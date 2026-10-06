@@ -1086,3 +1086,438 @@ rules:
       Transactions.
   record_fix_template: 'Business partner {BUT0BK.PARTNER} bank details {BUT0BK.BKVID}: IBAN country does not match bank country
     {BUT0BK.BANKS}.'
+- id: BP201
+  field: CVI_CUST_LINK.PARTNER_GUID
+  check_class: exists_check
+  grain: CVI_CUST_LINK
+  target_table: BUT000
+  target_fields:
+  - PARTNER_GUID
+  severity: high
+  dimension: consistency
+  message: Customer link points to a business partner that does not exist
+  why_it_matters: 'CVI_CUST_LINK ties each customer account to a business partner by GUID. A link whose GUID has no BUT000
+    record is orphaned: CVI synchronisation and the S/4HANA conversion treat the customer as linked when it is not.'
+  rule_authority: s4hana_migration
+  sap_impact: CVI_PRECHECK and the conversion stop on the customer; BP maintenance cannot reach it.
+  fix_map:
+    __other__: Remove the orphan link and re-synchronise the customer (MDS_LOAD_COCKPIT).
+  record_fix_template: 'Customer {CVI_CUST_LINK.CUSTOMER}: link points to a business partner GUID that does not exist.'
+- id: BP202
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: uniqueness_check
+  fields:
+  - CVI_CUST_LINK.CUSTOMER
+  grain: CVI_CUST_LINK
+  severity: high
+  dimension: uniqueness
+  message: Customer account is linked to more than one business partner
+  why_it_matters: Customer/vendor integration maps one business partner to one customer account. A customer linked to two
+    partners is synchronised from both, and changes overwrite each other.
+  rule_authority: s4hana_migration
+  sap_impact: Master data of the customer flips between two partners; the S/4HANA conversion rejects the duplicate link.
+  fix_map:
+    __other__: Keep one link for the customer and remove the other (CVI_UPGRADE_CHECK_RESOLVE), merging the partners if needed.
+  record_fix_template: 'Customer {CVI_CUST_LINK.CUSTOMER}: linked to more than one business partner.'
+- id: BP203
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: exists_check
+  fields:
+  - BUT000.PARTNER
+  target_table: BUT100
+  target_fields:
+  - PARTNER
+  target_when:
+    RLTYP:
+    - FLCU00
+  grain: CVI_CUST_LINK
+  severity: medium
+  dimension: completeness
+  message: Business partner linked to a customer has no FLCU00 role
+  why_it_matters: Each linked customer needs its BP role (FLCU00) so the account data is maintained in transaction BP. A link
+    without the role leaves the customer data unmaintainable from the business partner.
+  rule_authority: s4hana_migration
+  sap_impact: After conversion the customer data cannot be changed in BP; CVI synchronisation reports missing roles.
+  fix_map:
+    __other__: Add role FLCU00 to the business partner (BP) or re-run the synchronisation for the customer.
+  record_fix_template: 'Customer {CVI_CUST_LINK.CUSTOMER}: business partner {BUT000.PARTNER} has no FLCU00 role.'
+- id: BP204
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  fail_when: (`BUT000.XDELE` == 'X') & `KNA1.KUNNR`.notna() & `KNA1.LOEVM`.isna()
+  grain: CVI_CUST_LINK
+  severity: medium
+  dimension: consistency
+  message: Business partner is archived (XDELE) but the linked customer is still active
+  why_it_matters: The archiving flag on the business partner says the party is retired. If the linked customer is not flagged
+    for deletion, postings and documents continue on an account whose partner is gone.
+  rule_authority: best_practice
+  sap_impact: Archiving of the business partner fails on the active customer; the customer keeps receiving postings.
+  fix_map:
+    __other__: Flag the customer for deletion (XD06 / XK06), or remove the archiving flag from the business partner.
+  record_fix_template: 'Customer {CVI_CUST_LINK.CUSTOMER}: business partner {BUT000.PARTNER} is archived, the customer is
+    active.'
+- id: BP205
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  fail_when: (`KNA1.LOEVM` == 'X') & `BUT000.PARTNER`.notna() & `BUT000.XDELE`.isna()
+  grain: CVI_CUST_LINK
+  severity: low
+  dimension: consistency
+  message: Linked customer is flagged for deletion but the business partner is not archived
+  why_it_matters: When the customer is retired, the business partner should carry the archiving flag too, or it keeps appearing
+    in searches, MDG and CVI synchronisation.
+  rule_authority: best_practice
+  sap_impact: The retired customer is re-activated through the business partner; personal data is kept without a purpose.
+  fix_map:
+    __other__: Set the archiving flag on the business partner (BP > Status), or remove the deletion flag from the customer.
+  record_fix_template: 'Customer {CVI_CUST_LINK.CUSTOMER}: flagged for deletion, business partner {BUT000.PARTNER} is not
+    archived.'
+- id: BP206
+  field: CVI_VEND_LINK.PARTNER_GUID
+  check_class: exists_check
+  grain: CVI_VEND_LINK
+  target_table: BUT000
+  target_fields:
+  - PARTNER_GUID
+  severity: high
+  dimension: consistency
+  message: Vendor link points to a business partner that does not exist
+  why_it_matters: 'CVI_VEND_LINK ties each vendor account to a business partner by GUID. A link whose GUID has no BUT000 record
+    is orphaned: CVI synchronisation and the S/4HANA conversion treat the vendor as linked when it is not.'
+  rule_authority: s4hana_migration
+  sap_impact: CVI_PRECHECK and the conversion stop on the vendor; BP maintenance cannot reach it.
+  fix_map:
+    __other__: Remove the orphan link and re-synchronise the vendor (MDS_LOAD_COCKPIT).
+  record_fix_template: 'Vendor {CVI_VEND_LINK.VENDOR}: link points to a business partner GUID that does not exist.'
+- id: BP207
+  field: CVI_VEND_LINK.VENDOR
+  check_class: uniqueness_check
+  fields:
+  - CVI_VEND_LINK.VENDOR
+  grain: CVI_VEND_LINK
+  severity: high
+  dimension: uniqueness
+  message: Vendor account is linked to more than one business partner
+  why_it_matters: Customer/vendor integration maps one business partner to one vendor account. A vendor linked to two partners
+    is synchronised from both, and changes overwrite each other.
+  rule_authority: s4hana_migration
+  sap_impact: Master data of the vendor flips between two partners; the S/4HANA conversion rejects the duplicate link.
+  fix_map:
+    __other__: Keep one link for the vendor and remove the other (CVI_UPGRADE_CHECK_RESOLVE), merging the partners if needed.
+  record_fix_template: 'Vendor {CVI_VEND_LINK.VENDOR}: linked to more than one business partner.'
+- id: BP208
+  field: CVI_VEND_LINK.VENDOR
+  check_class: exists_check
+  fields:
+  - BUT000.PARTNER
+  target_table: BUT100
+  target_fields:
+  - PARTNER
+  target_when:
+    RLTYP:
+    - FLVN00
+  grain: CVI_VEND_LINK
+  severity: medium
+  dimension: completeness
+  message: Business partner linked to a vendor has no FLVN00 role
+  why_it_matters: Each linked vendor needs its BP role (FLVN00) so the account data is maintained in transaction BP. A link
+    without the role leaves the vendor data unmaintainable from the business partner.
+  rule_authority: s4hana_migration
+  sap_impact: After conversion the vendor data cannot be changed in BP; CVI synchronisation reports missing roles.
+  fix_map:
+    __other__: Add role FLVN00 to the business partner (BP) or re-run the synchronisation for the vendor.
+  record_fix_template: 'Vendor {CVI_VEND_LINK.VENDOR}: business partner {BUT000.PARTNER} has no FLVN00 role.'
+- id: BP209
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  fail_when: (`BUT000.XDELE` == 'X') & `LFA1.LIFNR`.notna() & `LFA1.LOEVM`.isna()
+  grain: CVI_VEND_LINK
+  severity: medium
+  dimension: consistency
+  message: Business partner is archived (XDELE) but the linked vendor is still active
+  why_it_matters: The archiving flag on the business partner says the party is retired. If the linked vendor is not flagged
+    for deletion, postings and documents continue on an account whose partner is gone.
+  rule_authority: best_practice
+  sap_impact: Archiving of the business partner fails on the active vendor; the vendor keeps receiving postings.
+  fix_map:
+    __other__: Flag the vendor for deletion (XD06 / XK06), or remove the archiving flag from the business partner.
+  record_fix_template: 'Vendor {CVI_VEND_LINK.VENDOR}: business partner {BUT000.PARTNER} is archived, the vendor is active.'
+- id: BP210
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  fail_when: (`LFA1.LOEVM` == 'X') & `BUT000.PARTNER`.notna() & `BUT000.XDELE`.isna()
+  grain: CVI_VEND_LINK
+  severity: low
+  dimension: consistency
+  message: Linked vendor is flagged for deletion but the business partner is not archived
+  why_it_matters: When the vendor is retired, the business partner should carry the archiving flag too, or it keeps appearing
+    in searches, MDG and CVI synchronisation.
+  rule_authority: best_practice
+  sap_impact: The retired vendor is re-activated through the business partner; personal data is kept without a purpose.
+  fix_map:
+    __other__: Set the archiving flag on the business partner (BP > Status), or remove the deletion flag from the vendor.
+  record_fix_template: 'Vendor {CVI_VEND_LINK.VENDOR}: flagged for deletion, business partner {BUT000.PARTNER} is not archived.'
+- id: BP211
+  field: BUT000.LEGAL_ENTY
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Business partner legal form BUT000.LEGAL_ENTY must exist in TB019
+  why_it_matters: The legal form classifies the organisation for reporting, credit and compliance screening. A value not defined
+    in TB019 is ignored by every selection and is rejected when the partner is next changed in BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is missing from analyses by legal form; maintenance in BP stops on the invalid value.
+  fix_map:
+    __other__: Choose a defined value in BP > Organisation data (customising BUC2).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: legal form is not defined in TB019.'
+- id: BP212
+  field: BUT000.IND_SECTOR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Business partner industry BUT000.IND_SECTOR must exist in TB023
+  why_it_matters: The industry classifies the organisation for reporting, credit and compliance screening. A value not defined
+    in TB023 is ignored by every selection and is rejected when the partner is next changed in BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is missing from analyses by industry; maintenance in BP stops on the invalid value.
+  fix_map:
+    __other__: Choose a defined value in BP > Organisation data (customising BUB2).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: industry is not defined in TB023.'
+- id: BP213
+  field: BUT000.LEGAL_ORG
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Business partner legal entity BUT000.LEGAL_ORG must exist in TB032
+  why_it_matters: The legal entity classifies the organisation for reporting, credit and compliance screening. A value not
+    defined in TB032 is ignored by every selection and is rejected when the partner is next changed in BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is missing from analyses by legal entity; maintenance in BP stops on the invalid value.
+  fix_map:
+    __other__: Choose a defined value in BP > Organisation data (customising BUC3).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: legal entity is not defined in TB032.'
+- id: BP214
+  field: BUT000.TYPE
+  check_class: cross_field_check
+  fail_when: (`BUT000.TYPE` == '1') & (`BUT000.LEGAL_ENTY`.notna() | `BUT000.LEGAL_ORG`.notna() | `BUT000.FOUND_DAT`.notna())
+  severity: medium
+  dimension: consistency
+  message: Person business partner carries organisation data
+  why_it_matters: Legal form, legal entity and founding date belong to organisations (category 2). On a person (category 1)
+    they were loaded into the wrong category, which usually means the category itself is wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP shows the person with organisation data it cannot edit; CVI maps the wrong name and tax fields to the customer
+    or vendor.
+  fix_map:
+    __other__: Correct the partner category (create the partner again in the right category and merge), or clear the organisation
+      fields.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: category person with organisation data.'
+- id: BP215
+  field: BUT000.TYPE
+  check_class: cross_field_check
+  fail_when: (`BUT000.TYPE` == '2') & (`BUT000.BIRTHDT`.notna() | `BUT000.DEATHDT`.notna())
+  severity: medium
+  dimension: consistency
+  message: Organisation business partner carries person data
+  why_it_matters: Birth and death dates belong to persons (category 1). On an organisation they are personal data in the wrong
+    place, usually a person loaded under the organisation category.
+  rule_authority: sap_hard_constraint
+  sap_impact: Personal data is held where privacy tooling does not look for it; CVI maps names wrongly.
+  fix_map:
+    __other__: Create the partner in the person category and merge, or clear the person fields.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: category organisation with person data.'
+- id: BP216
+  field: BUT000.LIQUID_DAT
+  check_class: cross_field_check
+  fail_when: (`BUT000.LIQUID_DAT` < @today) & `BUT000.XBLCK`.isna() & `BUT000.XDELE`.isna()
+  severity: high
+  dimension: consistency
+  message: Organisation is liquidated but the business partner is neither blocked nor archived
+  why_it_matters: A liquidated organisation can no longer trade. Without the central block (XBLCK) or the archiving flag (XDELE)
+    orders, invoices and payments can still be created for it.
+  rule_authority: best_practice
+  sap_impact: Sales to and payments for a company that no longer exists.
+  fix_map:
+    __other__: Set the central block in BP > Status and plan archiving, after settling open items.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: liquidated, but neither blocked nor archived.'
+- id: BP217
+  field: BUT000.DEATHDT
+  check_class: cross_field_check
+  fail_when: (`BUT000.DEATHDT` <= @today) & `BUT000.XBLCK`.isna() & `BUT000.XDELE`.isna()
+  severity: high
+  dimension: consistency
+  message: Person has a date of death but the business partner is neither blocked nor archived
+  why_it_matters: A deceased person cannot be a contract party. Without the central block or the archiving flag, documents
+    and payments can still be created, and personal data stays active.
+  rule_authority: regulatory
+  sap_impact: Payments and correspondence to a deceased person; personal data kept beyond its purpose.
+  fix_map:
+    __other__: Set the central block in BP > Status and start the end-of-purpose / archiving process.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: date of death recorded, but neither blocked nor archived.'
+- id: BP218
+  field: BUT000.XDELE
+  check_class: cross_field_check
+  fail_when: (`BUT000.XDELE` == 'X') & `BUT000.XBLCK`.isna()
+  severity: medium
+  dimension: consistency
+  message: Business partner is flagged for archiving but not centrally blocked
+  why_it_matters: The archiving flag only marks the partner for archiving. Without the central block it can still be used
+    in new documents until archiving runs.
+  rule_authority: best_practice
+  sap_impact: New documents for a retired partner; archiving fails because the partner keeps being used.
+  fix_map:
+    __other__: Set the central block together with the archiving flag (BP > Status).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: flagged for archiving but not blocked.'
+- id: BP219
+  field: BUT000.NOT_RELEASED
+  check_class: cross_field_check
+  fail_when: (`BUT000.NOT_RELEASED` == 'X') & ((@today - `BUT000.CRDAT`).dt.days > 30)
+  severity: medium
+  dimension: timeliness
+  message: Business partner has waited for release for more than 30 days
+  why_it_matters: With dual control or a release procedure the partner stays unreleased (NOT_RELEASED) until a second person
+    approves it. A partner unreleased for over a month is either abandoned or stuck, and cannot be used.
+  rule_authority: best_practice
+  sap_impact: Orders and payments for the partner are blocked; abandoned requests clutter the master data.
+  fix_map:
+    __other__: Release or reject the partner (BP > Status, or the release worklist).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: not released for more than 30 days.'
+- id: BP220
+  field: BUT100.RLTYP
+  check_class: cross_field_check
+  fail_when: '`BUT100.RLTYP`.isin([''BUP001'', ''BUP003'']) & `BUT000.TYPE`.notna() & (`BUT000.TYPE` != ''1'')'
+  grain: BUT100
+  severity: high
+  dimension: consistency
+  message: Contact person or employee role is assigned to a partner that is not a person
+  why_it_matters: Roles BUP001 (contact person) and BUP003 (employee) are restricted to category person. Assigned to an organisation
+    or group they were loaded around the role category check.
+  rule_authority: sap_hard_constraint
+  sap_impact: Relationships (contact person of, employee of) cannot be created; HR and CRM integration rejects the partner.
+  fix_map:
+    __other__: Remove the role and assign it to the correct person partner.
+  record_fix_template: 'Business partner {BUT100.PARTNER}: role {BUT100.RLTYP} on a partner that is not a person.'
+- id: BP221
+  field: BUT020.ADDRNUMBER
+  check_class: exists_check
+  grain: BUT020
+  target_table: ADRC
+  target_fields:
+  - ADDRNUMBER
+  severity: high
+  dimension: consistency
+  message: Business partner address number does not exist in central address management (ADRC)
+  why_it_matters: BUT020 assigns addresses to the partner; the address itself is in ADRC. An assignment without the ADRC record
+    gives the partner an empty address in BP and in every document.
+  rule_authority: sap_hard_constraint
+  sap_impact: Correspondence and output have no address; CVI synchronisation fails on the address.
+  fix_map:
+    __other__: Delete the broken assignment and maintain the address again in BP > Addresses.
+  record_fix_template: 'Business partner {BUT020.PARTNER}: address {BUT020.ADDRNUMBER} has no record in ADRC.'
+- id: BP222
+  field: BUT0BK.BANKL
+  check_class: exists_check
+  fields:
+  - BUT0BK.BANKS
+  - BUT0BK.BANKL
+  target_table: BNKA
+  target_fields:
+  - BANKS
+  - BANKL
+  target_when:
+    LOEVM:
+      blank: true
+  grain: BUT0BK
+  severity: medium
+  dimension: consistency
+  message: Business partner bank key does not exist in the bank directory or the bank is flagged for deletion
+  why_it_matters: Payment media read bank name, SWIFT code and address from the bank directory (BNKA). A partner bank without
+    a live BNKA record produces payment files without a routable bank.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payments and direct debits to the partner fail or are rejected by the bank.
+  fix_map:
+    __other__: Create or reactivate the bank in FI01 / FI02, or correct the bank key in BP > Payment transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank details {BUT0BK.BKVID}: bank missing from the directory or
+    deleted.'
+- id: BP223
+  field: BUT0BK.BKONT
+  check_class: null_check
+  applies_when:
+    BUT0BK.BANKS:
+    - ES
+    - FR
+    - IT
+  grain: BUT0BK
+  severity: medium
+  dimension: completeness
+  message: Bank control key is missing for a Spanish, French or Italian bank account
+  why_it_matters: In Spain, France and Italy the control key is part of the national account number and of the IBAN. Without
+    it the IBAN cannot be generated or validated.
+  rule_authority: iso_standard
+  sap_impact: IBAN generation fails; SEPA payments and direct debits are rejected.
+  fix_map:
+    __other__: Enter the control key or the IBAN in BP > Payment transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank details {BUT0BK.BKVID}: no control key for country {BUT0BK.BANKS}.'
+- id: BP224
+  field: BUT0BK.IBAN
+  check_class: uniqueness_check
+  fields:
+  - BUT0BK.IBAN
+  normalize: alnum
+  grain: BUT0BK
+  severity: medium
+  dimension: uniqueness
+  message: Several business partner bank details share the same IBAN
+  why_it_matters: An IBAN identifies one account. The same IBAN on two partners (or twice on one) usually means a duplicate
+    partner, or a bank detail copied to the wrong partner - a known payment fraud pattern.
+  rule_authority: best_practice
+  sap_impact: Payments for one party can be routed to another party's account.
+  fix_map:
+    __other__: Verify the account holder with the bank; remove the wrong bank details or merge the duplicate partners.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank details {BUT0BK.BKVID}: IBAN shared with other bank details.'
+- id: BP225
+  field: BUT000.NAME_LAST
+  check_class: uniqueness_check
+  fields:
+  - BUT000.NAME_LAST
+  - BUT000.NAME_FIRST
+  - BUT000.BIRTHDT
+  normalize: alnum
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+    BUT000.XDELE:
+      blank: true
+  severity: medium
+  dimension: uniqueness
+  message: Several person business partners share the same name and date of birth
+  why_it_matters: Last name, first name and date of birth together identify a person. Two partners with the same combination
+    are almost always one person created twice.
+  rule_authority: best_practice
+  sap_impact: Payments, contracts and personal data requests are split across duplicate partners.
+  fix_map:
+    __other__: Compare the partners in BP and merge them (or flag the redundant one for archiving).
+  record_fix_template: 'Business partner {BUT000.PARTNER}: same name and date of birth as another person partner.'
+- id: BP226
+  field: BUT000.NAME_ORG1
+  check_class: similarity_check
+  block_by:
+  - ADRC.COUNTRY
+  - ADRC.POST_CODE1
+  threshold: 0.9
+  exact_rule: false
+  evidence_key: BUT000.PARTNER
+  grain: BUT000
+  severity: medium
+  dimension: uniqueness
+  message: 'Possible duplicate organisation: near-identical name in the same country and postal code'
+  why_it_matters: Organisations created twice with a typo or a different word order escape exact checks. Comparing names within
+    one country and postal code finds them. Only partner numbers are reported.
+  rule_authority: best_practice
+  sap_impact: Duplicate partners split credit exposure, open items and history across customer and vendor accounts.
+  fix_map:
+    __other__: Compare the pair in BP; merge them or flag the redundant one for archiving.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: name is near-identical to another organisation at the same postal
+    code.'

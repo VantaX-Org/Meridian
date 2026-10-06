@@ -1146,3 +1146,585 @@ rules:
     fix_map:
       __other__: Set a sales-area order block (VD05 or XD05) before or together with the deletion flag.
     record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): flagged for deletion but not blocked.'
+  - id: SDCM208
+    field: KNVV.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNVV.LOEVM`.isna()
+    grain: KNVV
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion centrally but the sales area is not
+    why_it_matters: XD06 with 'all areas' sets the deletion flag in every sales area. A sales area without the flag stays selectable
+      in order entry help and in SD reports that read KNVV.
+    rule_authority: best_practice
+    sap_impact: Orders can still be created for a retired customer; SD archiving skips the sales area.
+    fix_map:
+      __other__: Flag the sales area for deletion too (XD06 / VD06), or remove the central flag if set in error.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): deleted centrally but not in the sales
+      area.'
+  - id: SDCM209
+    field: KNVV.AUFSD
+    check_class: cross_field_check
+    fail_when: '`KNA1.AUFSD`.notna() & `KNVV.AUFSD`.isna()'
+    grain: KNVV
+    severity: low
+    dimension: consistency
+    message: Customer has a central order block but the sales area has none
+    why_it_matters: The central order block (KNA1.AUFSD) applies in every sales area. Reports, MDG and CRM replication that
+      read KNVV.AUFSD still show the sales area as open, so the block is invisible to the people who work it.
+    rule_authority: best_practice
+    sap_impact: Sales and service users do not see the order block until a document stops on it.
+    fix_map:
+      __other__: Set the order block for the sales areas too (VD05 / XD05), or lift the central block if it is obsolete.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): central order block not mirrored in
+      the sales area.'
+  - id: SDCM210
+    field: KNVV.LIFSD
+    check_class: cross_field_check
+    fail_when: '`KNA1.LIFSD`.notna() & `KNVV.LIFSD`.isna()'
+    grain: KNVV
+    severity: low
+    dimension: consistency
+    message: Customer has a central delivery block but the sales area has none
+    why_it_matters: The central delivery block (KNA1.LIFSD) applies in every sales area. Reports, MDG and CRM replication that
+      read KNVV.LIFSD still show the sales area as open, so the block is invisible to the people who work it.
+    rule_authority: best_practice
+    sap_impact: Sales and service users do not see the delivery block until a document stops on it.
+    fix_map:
+      __other__: Set the delivery block for the sales areas too (VD05 / XD05), or lift the central block if it is obsolete.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): central delivery block not mirrored
+      in the sales area.'
+  - id: SDCM211
+    field: KNVV.FAKSD
+    check_class: cross_field_check
+    fail_when: '`KNA1.FAKSD`.notna() & `KNVV.FAKSD`.isna()'
+    grain: KNVV
+    severity: low
+    dimension: consistency
+    message: Customer has a central billing block but the sales area has none
+    why_it_matters: The central billing block (KNA1.FAKSD) applies in every sales area. Reports, MDG and CRM replication that
+      read KNVV.FAKSD still show the sales area as open, so the block is invisible to the people who work it.
+    rule_authority: best_practice
+    sap_impact: Sales and service users do not see the billing block until a document stops on it.
+    fix_map:
+      __other__: Set the billing block for the sales areas too (VD05 / XD05), or lift the central block if it is obsolete.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): central billing block not mirrored
+      in the sales area.'
+  - id: SDCM212
+    field: KNVV.AUFSD
+    check_class: cross_field_check
+    fail_when: (`KNA1.SPERR` == 'X') & `KNVV.AUFSD`.isna() & `KNVV.LOEVM`.isna()
+    grain: KNVV
+    severity: medium
+    dimension: consistency
+    message: Customer is blocked for posting centrally but the sales area accepts orders
+    why_it_matters: A central posting block (KNA1.SPERR) stops all FI postings. Orders and deliveries in an open sales area
+      still go through, and only the billing document fails when it is released to accounting.
+    rule_authority: best_practice
+    sap_impact: 'Goods are shipped and then cannot be invoiced: billing documents stay in VFX3 with ''account blocked for posting''.'
+    fix_map:
+      __other__: Set an order block in the sales areas (VD05) or lift the posting block if the customer is active.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): blocked for posting but open for orders.'
+  - id: SDCM213
+    field: KNVV.ZTERM
+    check_class: exists_check
+    fields:
+    - KNVV.KUNNR
+    - KNVV.ZTERM
+    target_table: KNB1
+    target_fields:
+    - KUNNR
+    - ZTERM
+    grain: KNVV
+    severity: low
+    dimension: consistency
+    message: Sales payment terms are not used in any company code of the customer
+    why_it_matters: Orders take the payment terms from the sales area (KNVV.ZTERM); manual FI invoices take them from the company
+      code (KNB1.ZTERM). Terms that differ everywhere mean the customer pays SD invoices on other terms than were agreed in
+      finance.
+    rule_authority: best_practice
+    sap_impact: Due dates, cash discount and dunning differ between SD and FI invoices for one customer.
+    fix_map:
+      __other__: Align the payment terms in the sales area (VD02) and the company code (FD02) with the contract.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): payment terms {KNVV.ZTERM} differ
+      from every company code.'
+  - id: SDCM214
+    field: KNVV.WAERS
+    check_class: referential_check
+    severity: high
+    dimension: validity
+    message: Customer currency KNVV.WAERS must exist in TCURC
+    why_it_matters: The sales area currency is the document currency of orders and the currency of pricing. A code not defined
+      in TCURC (ISO 4217) cannot be used in any document.
+    rule_authority: iso_standard
+    sap_impact: VA01 rejects the currency; pricing and billing cannot run.
+    fix_map:
+      __other__: Choose a defined currency in VD02 > Sales; define new ISO codes in OY03.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): currency is not defined in TCURC.'
+  - id: SDCM215
+    field: KNVV.KURST
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Exchange rate type KNVV.KURST must exist in TCURV
+    why_it_matters: The exchange rate type translates document currency to local currency in orders and billing. A type not
+      defined in TCURV makes the translation fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders in foreign currency stop with an exchange rate error.
+    fix_map:
+      __other__: Choose a defined exchange rate type (VD02 > Sales; customising OB07).
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): exchange rate type not defined in
+      TCURV.'
+  - id: SDCM216
+    field: KNVV.KVGR1
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer group 1 KNVV.KVGR1 must exist in TVV1
+    why_it_matters: Customer group 1 is a free classification used in pricing, statistics (LIS/BW) and output. A value not defined
+      in TVV1 is ignored by every selection and condition table keyed on it.
+    rule_authority: best_practice
+    sap_impact: Prices and statistics keyed on customer group 1 miss the customer.
+    fix_map:
+      __other__: 'Choose a defined customer group 1 (VD02 > Additional data; customising: Sales and Distribution > Master Data
+        > Business Partners > Customers > Additional data).'
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 1 not defined in TVV1.'
+  - id: SDCM217
+    field: KNVV.KVGR2
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer group 2 KNVV.KVGR2 must exist in TVV2
+    why_it_matters: Customer group 2 is a free classification used in pricing, statistics (LIS/BW) and output. A value not defined
+      in TVV2 is ignored by every selection and condition table keyed on it.
+    rule_authority: best_practice
+    sap_impact: Prices and statistics keyed on customer group 2 miss the customer.
+    fix_map:
+      __other__: 'Choose a defined customer group 2 (VD02 > Additional data; customising: Sales and Distribution > Master Data
+        > Business Partners > Customers > Additional data).'
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 2 not defined in TVV2.'
+  - id: SDCM218
+    field: KNVV.KVGR3
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer group 3 KNVV.KVGR3 must exist in TVV3
+    why_it_matters: Customer group 3 is a free classification used in pricing, statistics (LIS/BW) and output. A value not defined
+      in TVV3 is ignored by every selection and condition table keyed on it.
+    rule_authority: best_practice
+    sap_impact: Prices and statistics keyed on customer group 3 miss the customer.
+    fix_map:
+      __other__: 'Choose a defined customer group 3 (VD02 > Additional data; customising: Sales and Distribution > Master Data
+        > Business Partners > Customers > Additional data).'
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 3 not defined in TVV3.'
+  - id: SDCM219
+    field: KNVV.KVGR4
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer group 4 KNVV.KVGR4 must exist in TVV4
+    why_it_matters: Customer group 4 is a free classification used in pricing, statistics (LIS/BW) and output. A value not defined
+      in TVV4 is ignored by every selection and condition table keyed on it.
+    rule_authority: best_practice
+    sap_impact: Prices and statistics keyed on customer group 4 miss the customer.
+    fix_map:
+      __other__: 'Choose a defined customer group 4 (VD02 > Additional data; customising: Sales and Distribution > Master Data
+        > Business Partners > Customers > Additional data).'
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 4 not defined in TVV4.'
+  - id: SDCM220
+    field: KNVV.KVGR5
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer group 5 KNVV.KVGR5 must exist in TVV5
+    why_it_matters: Customer group 5 is a free classification used in pricing, statistics (LIS/BW) and output. A value not defined
+      in TVV5 is ignored by every selection and condition table keyed on it.
+    rule_authority: best_practice
+    sap_impact: Prices and statistics keyed on customer group 5 miss the customer.
+    fix_map:
+      __other__: 'Choose a defined customer group 5 (VD02 > Additional data; customising: Sales and Distribution > Master Data
+        > Business Partners > Customers > Additional data).'
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): customer group 5 not defined in TVV5.'
+  - id: SDCM221
+    field: KNVV.UEBTK
+    check_class: cross_field_check
+    fail_when: (`KNVV.UEBTK` == 'X') & (`KNVV.UEBTO` > 0)
+    severity: low
+    dimension: consistency
+    message: Unlimited overdelivery is allowed and an overdelivery tolerance is also set
+    why_it_matters: With unlimited overdelivery (KNVV.UEBTK) the tolerance (KNVV.UEBTO) is ignored. Both together means the
+      intended limit is not enforced on deliveries.
+    rule_authority: best_practice
+    sap_impact: Deliveries exceed the order quantity without the tolerance warning the business expects.
+    fix_map:
+      __other__: Remove the unlimited flag or the tolerance in VD02 > Shipping, whichever does not reflect the agreement.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): unlimited overdelivery with a tolerance.'
+  - id: SDCM222
+    field: KNVV.KKBER
+    check_class: exists_check
+    fields:
+    - KNVV.KUNNR
+    - KNVV.KKBER
+    target_table: KNKK
+    target_fields:
+    - KUNNR
+    - KKBER
+    grain: KNVV
+    severity: medium
+    dimension: consistency
+    message: Sales area credit control area has no credit master for the customer
+    why_it_matters: When KNVV.KKBER is set, orders in the sales area are checked in that credit control area. Without a KNKK
+      record there the customer has no limit, so automatic credit control either blocks every order or uses the risk category
+      default.
+    rule_authority: sap_hard_constraint
+    sap_impact: Orders are blocked for credit (VKM1) or pass without a real credit check.
+    fix_map:
+      __other__: Create the credit master for the credit control area (FD32), or remove the sales area override.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): no credit master in credit control
+      area {KNVV.KKBER}.'
+  - id: SDCM223
+    field: KNVV.KUNNR
+    check_class: exists_check
+    fields:
+    - KNVV.KUNNR
+    target_table: KNVI
+    target_fields:
+    - KUNNR
+    grain: KNVV
+    severity: high
+    dimension: completeness
+    message: Customer with sales data has no tax classification for any country
+    why_it_matters: Output tax in SD is found from the customer's tax classification (KNVI.TAXKD) per departure country and
+      tax category. A customer with sales areas but no KNVI row gets no tax condition on orders and invoices.
+    rule_authority: regulatory
+    sap_impact: Invoices are issued without VAT or sales tax, or billing stops with a missing tax condition.
+    fix_map:
+      __other__: Maintain the tax classification for each departure country in XD02 > Sales area > Billing documents.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): no tax classification.'
+  - id: SDCM224
+    field: KNVI.TAXKD
+    check_class: null_check
+    grain: KNVI
+    severity: medium
+    dimension: completeness
+    message: Tax classification row has no tax classification value
+    why_it_matters: 'A KNVI row for a country and tax category without a classification is treated like a missing row: the tax
+      condition record cannot be found for the customer.'
+    rule_authority: regulatory
+    sap_impact: Orders and invoices for the country are created without tax or stop in pricing.
+    fix_map:
+      __other__: Enter the tax classification in XD02 > Sales area > Billing documents > Taxes.
+    record_fix_template: 'Customer {KNVI.KUNNR}: country {KNVI.ALAND}, tax category {KNVI.TATYP} has no tax classification.'
+  - id: SDCM225
+    field: KNVI.TAXKD
+    check_class: referential_check
+    severity: medium
+    dimension: validity
+    message: Customer tax classification KNVI.TAXKD must exist in TSKD
+    why_it_matters: The classification must be defined for the tax category (TSKD); otherwise the tax condition records keyed
+      on it are never found.
+    rule_authority: sap_hard_constraint
+    sap_impact: Pricing finds no tax condition; invoices carry no or wrong tax.
+    fix_map:
+      __other__: Choose a classification defined for the tax category (customising OVK3).
+    record_fix_template: 'Customer {KNVI.KUNNR}: tax classification for country {KNVI.ALAND}, category {KNVI.TATYP} is not in
+      TSKD.'
+  - id: SDCM226
+    field: KNVI.TATYP
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Tax category KNVI.TATYP must exist as a condition type in T685A
+    why_it_matters: The tax category is a pricing condition type (MWST, UTXJ...). A category that is not a condition type is
+      never read by pricing, so the classification next to it has no effect.
+    rule_authority: sap_hard_constraint
+    sap_impact: Tax is not determined for the category the customer was classified under.
+    fix_map:
+      __other__: Use the tax categories assigned to the country (customising OVK1) and remove the others.
+    record_fix_template: 'Customer {KNVI.KUNNR}: tax category {KNVI.TATYP} for country {KNVI.ALAND} is not a condition type.'
+  - id: SDCM227
+    field: KNVP.PARVW
+    check_class: referential_check
+    severity: medium
+    dimension: validity
+    message: Partner function KNVP.PARVW must exist in TPAR
+    why_it_matters: The partner function decides how the partner is copied into documents. A function not defined in TPAR is
+      never determined.
+    rule_authority: sap_hard_constraint
+    sap_impact: The partner is not copied into orders, deliveries or invoices.
+    fix_map:
+      __other__: Replace the function with a defined one (customising VOPA).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner function {KNVP.PARVW} is not
+      in TPAR.'
+  - id: SDCM228
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      AUFSD:
+        populated: true
+    negate: true
+    severity: medium
+    dimension: consistency
+    message: Partner customer is blocked for orders centrally
+    why_it_matters: Partner functions are copied into every new order. A ship-to, bill-to or payer with a central order block
+      stops order entry for the sold-to as well.
+    rule_authority: sap_hard_constraint
+    sap_impact: Order entry stops with 'partner is blocked' for every order of the sold-to.
+    fix_map:
+      __other__: Replace the blocked partner in XD02 > Partner functions, or lift the block if it is obsolete.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner {KNVP.PARVW} {KNVP.KUNN2}
+      is blocked for orders.'
+  - id: SDCM229
+    field: KNVP.KUNN2
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.PARVW:
+      - RG
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      SPERR:
+        populated: true
+    negate: true
+    severity: high
+    dimension: consistency
+    message: Payer is blocked for posting centrally
+    why_it_matters: The payer receives the receivable when an invoice is released to accounting. A payer blocked for posting
+      makes every invoice for the sold-to fail in accounting.
+    rule_authority: sap_hard_constraint
+    sap_impact: Billing documents stay in VFX3 with 'account blocked for posting'; revenue is not posted.
+    fix_map:
+      __other__: Replace the payer in XD02 > Partner functions or lift the posting block (XD05).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): payer {KNVP.KUNN2} is blocked for
+      posting.'
+  - id: SDCM230
+    field: KNVP.PARNR
+    check_class: exists_check
+    grain: KNVP
+    target_table: KNVK
+    target_fields:
+    - PARNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Contact person in the partner functions does not exist or is flagged for deletion
+    why_it_matters: A contact person partner (AP) refers to a KNVK record. If that record is missing or deleted, output and
+      CRM replication address documents to nobody.
+    rule_authority: sap_hard_constraint
+    sap_impact: Order confirmations and invoices addressed to the contact cannot be sent.
+    fix_map:
+      __other__: Replace the contact person in XD02 > Partner functions or re-create the contact (XD02 > Contact persons).
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): contact person {KNVP.PARNR} does not
+      exist or is deleted.'
+  - id: SDCM231
+    field: KNVP.LIFNR
+    check_class: exists_check
+    grain: KNVP
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Vendor partner (forwarding agent) does not exist or is flagged for deletion
+    why_it_matters: Partner functions such as forwarding agent (SP) point to a vendor. A missing or deleted vendor is copied
+      into deliveries and shipments, where freight cost settlement fails.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost documents (VI01) cannot be settled to the carrier.
+    fix_map:
+      __other__: Replace the vendor in XD02 > Partner functions or reactivate the vendor.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): vendor partner {KNVP.LIFNR} does not
+      exist or is deleted.'
+  - id: SDCM232
+    field: KNVP.PARVW
+    check_class: exists_check
+    grain: KNVP
+    applies_when:
+      KNVP.KUNN2:
+        blank: true
+    target_table: TPAR
+    target_fields:
+    - PARVW
+    target_when:
+      NRART:
+      - KU
+    negate: true
+    severity: high
+    dimension: completeness
+    message: Customer-type partner function has no partner customer
+    why_it_matters: 'Partner functions of type customer (TPAR.NRART = KU: sold-to, ship-to, bill-to, payer and their custom
+      copies) must name a customer in KNVP.KUNN2. An empty partner is copied into documents as a gap.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Partner determination in VA01 fails or leaves the function empty; delivery or billing cannot be created.
+    fix_map:
+      __other__: Enter the partner customer in XD02 > Partner functions or delete the empty line.
+    record_fix_template: 'Customer {KNVP.KUNNR} ({KNVP.VKORG}/{KNVP.VTWEG}/{KNVP.SPART}): partner function {KNVP.PARVW} has
+      no customer.'
+  - id: SDCM233
+    field: KNVV.KUNNR
+    check_class: exists_check
+    fields:
+    - KNVV.KUNNR
+    - KNVV.VKORG
+    - KNVV.VTWEG
+    - KNVV.SPART
+    target_table: KNVP
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    target_when:
+      PARVW:
+      - AG
+    grain: KNVV
+    applies_when:
+      KNVV.LOEVM:
+        blank: true
+    severity: critical
+    dimension: completeness
+    message: Sales area has no sold-to party partner function
+    why_it_matters: Every sales area of a customer that buys needs the sold-to (AG) partner function; SAP creates it with the
+      sales area. Without it the customer cannot be entered as sold-to in that sales area.
+    rule_authority: sap_hard_constraint
+    sap_impact: VA01 rejects the customer in the sales area; partner determination has nothing to copy.
+    fix_map:
+      __other__: Add the sold-to function (normally the customer itself) in XD02 > Partner functions.
+    record_fix_template: 'Customer {KNVV.KUNNR} ({KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}): no sold-to partner function.'
+  - id: SDCM234
+    field: KNVK.KUNNR
+    check_class: exists_check
+    grain: KNVK
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: medium
+    dimension: consistency
+    message: Contact person belongs to a customer that does not exist
+    why_it_matters: 'KNVK rows hang off the customer number. A contact person whose customer is missing is an orphan: it appears
+      in contact searches and CVI conversion but no transaction can maintain it.'
+    rule_authority: sap_hard_constraint
+    sap_impact: CVI conversion of contact persons (CVI_CUST_CT_LINK) fails; orphan personal data is kept without a purpose.
+    fix_map:
+      __other__: Delete the orphan contact (report or table maintenance after approval) or re-create the customer link.
+    record_fix_template: 'Contact person {KNVK.PARNR}: customer {KNVK.KUNNR} does not exist.'
+  - id: SDCM235
+    field: KNVK.ABTNR
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Contact person department KNVK.ABTNR must exist in TSAB
+    why_it_matters: The contact person department is used to select contacts for output, marketing and CRM replication. A value
+      not defined in TSAB is dropped by every selection on it.
+    rule_authority: best_practice
+    sap_impact: The contact is missed by selections and output by department.
+    fix_map:
+      __other__: Choose a defined value in XD02 > Contact persons (customising OVPA).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: department is not defined in TSAB.'
+  - id: SDCM236
+    field: KNVK.PAFKT
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Contact person function KNVK.PAFKT must exist in TPFK
+    why_it_matters: The contact person function is used to select contacts for output, marketing and CRM replication. A value
+      not defined in TPFK is dropped by every selection on it.
+    rule_authority: best_practice
+    sap_impact: The contact is missed by selections and output by function.
+    fix_map:
+      __other__: Choose a defined value in XD02 > Contact persons (customising OVPA).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: function is not defined in TPFK.'
+  - id: SDCM237
+    field: KNVK.PARVO
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Contact person VIP indicator KNVK.PARVO must exist in TVPV
+    why_it_matters: The contact person VIP indicator is used to select contacts for output, marketing and CRM replication. A
+      value not defined in TVPV is dropped by every selection on it.
+    rule_authority: best_practice
+    sap_impact: The contact is missed by selections and output by VIP indicator.
+    fix_map:
+      __other__: Choose a defined value in XD02 > Contact persons (customising OVPV).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: VIP indicator is not defined in TVPV.'
+  - id: SDCM238
+    field: KNVK.PARLA
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Contact person language KNVK.PARLA must exist in T002
+    why_it_matters: The contact person language is used to select contacts for output, marketing and CRM replication. A value
+      not defined in T002 is dropped by every selection on it.
+    rule_authority: best_practice
+    sap_impact: The contact is missed by selections and output by language.
+    fix_map:
+      __other__: Choose a defined value in XD02 > Contact persons (customising SPRAS).
+    record_fix_template: 'Contact person {KNVK.PARNR} of customer {KNVK.KUNNR}: language is not defined in T002.'
+  - id: SDCM239
+    field: KNVK.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNVK.LOEVM`.isna()
+    grain: KNVK
+    severity: low
+    dimension: consistency
+    message: Contact person is active on a customer flagged for deletion
+    why_it_matters: When a customer is retired its contact persons should be retired too. Active contacts on a deleted customer
+      keep personal data without a business purpose and are still replicated.
+    rule_authority: regulatory
+    sap_impact: Personal data is retained beyond its purpose (GDPR / POPIA); contacts still receive output.
+    fix_map:
+      __other__: Flag the contact persons for deletion with the customer and plan their archiving or ILM blocking.
+    record_fix_template: 'Contact person {KNVK.PARNR}: customer {KNVK.KUNNR} is flagged for deletion, the contact is not.'
+  - id: SDCM240
+    field: KNVA.KUNNR
+    check_class: exists_check
+    grain: KNVA
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    severity: low
+    dimension: consistency
+    message: Unloading point belongs to a customer that does not exist
+    why_it_matters: Unloading points (KNVA) hang off the customer number. An orphan row is never offered in deliveries and shows
+      a load or deletion that went wrong.
+    rule_authority: sap_hard_constraint
+    sap_impact: None in documents; the orphan rows blur migration reconciliations.
+    fix_map:
+      __other__: Delete the orphan unloading point or re-create the customer link.
+    record_fix_template: 'Unloading point of customer {KNVA.KUNNR}: the customer does not exist.'
+  - id: SDCM241
+    field: KNVA.KNFAK
+    check_class: referential_check
+    severity: medium
+    dimension: validity
+    message: Unloading point calendar KNVA.KNFAK must exist in TFACD
+    why_it_matters: The customer calendar of the unloading point moves delivery dates to the customer's working days in scheduling.
+      A calendar not defined in TFACD makes delivery scheduling fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: Delivery dates are scheduled on days the customer does not receive goods, or scheduling errors.
+    fix_map:
+      __other__: Choose a defined factory calendar for the unloading point (XD02 > Unloading points; customising SCAL).
+    record_fix_template: 'Customer {KNVA.KUNNR}: unloading point calendar is not defined in TFACD.'
+  - id: SDCM242
+    field: KNVA.WANID
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Goods receiving hours KNVA.WANID must exist in TVWA
+    why_it_matters: Goods receiving hours restrict delivery scheduling to the customer's receiving times. An ID not defined
+      in TVWA is ignored.
+    rule_authority: best_practice
+    sap_impact: Deliveries are planned outside the customer's receiving hours.
+    fix_map:
+      __other__: Choose defined goods receiving hours (XD02 > Unloading points; customising OVL4).
+    record_fix_template: 'Customer {KNVA.KUNNR}: goods receiving hours ID is not defined in TVWA.'

@@ -170,6 +170,7 @@ def test_sd_customer_master_golden():
         "DT-KNA1-ERDAT": {f"KUNNR={D_ERDAT}"},           # created in the future (loaded wrongly)
         "SDCM031": {_area(D_ERDAT)},                     # no account assignment group (revenue accounts)
         "SDCM033": {_area(D_MAIL)},                      # shipping condition 99 not in TVSB
+        "SDCM208": {_area(DEL)},                         # deleted centrally, sales area not flagged
     }, found
     # DEL is flagged for deletion, OT is a one-time account, C3's wholesale area is deleted at sales level
     name = next(r for r in results if r.check_id == "SDCM003")

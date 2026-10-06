@@ -1701,3 +1701,772 @@ rules:
         Control Area and Credit Segment) before migrating credit data.
     record_fix_template: 'Customer {KNKK.KUNNR}: credit limit in credit control area {KNKK.KKBER}, which has no credit segment
       in UKM_KKBER2SGM.'
+  - id: AR210
+    field: KNA1.BRSCH
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer industry KNA1.BRSCH must exist in T016
+    why_it_matters: The industry key classifies the customer for sales statistics (LIS/BW), pricing by industry and credit risk
+      segmentation. A key that is not defined in T016 is ignored by every report that groups by industry.
+    rule_authority: sap_hard_constraint
+    sap_impact: Customers drop out of industry analyses and of condition records keyed by industry.
+    fix_map:
+      __other__: Choose a defined industry (XD02 > General data > Control data) or define the key in customising (Financial
+        Accounting > AR/AP > Customer Accounts > Master Data > Industries).
+    record_fix_template: 'Customer {KNA1.KUNNR}: industry key is not defined in T016.'
+  - id: AR211
+    field: KNA1.VBUND
+    check_class: referential_check
+    severity: high
+    dimension: validity
+    message: Customer trading partner KNA1.VBUND must exist in T880
+    why_it_matters: The trading partner is copied into every receivable posted to an affiliated company and drives the intercompany
+      elimination in consolidation. A company ID that is not defined in T880 cannot be eliminated.
+    rule_authority: sap_hard_constraint
+    sap_impact: Intercompany receivables are not eliminated in consolidation (EC-CS, BCS, Group Reporting); intercompany reconciliation
+      (F.2B/ICR) leaves open differences.
+    fix_map:
+      __other__: Enter the correct company ID of the affiliated company (XD02 > Control data > Trading partner), or create it
+        in T880 (transaction OX15).
+    record_fix_template: 'Customer {KNA1.KUNNR}: trading partner {KNA1.VBUND} is not a company in T880.'
+  - id: AR212
+    field: KNA1.KUKLA
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer classification KNA1.KUKLA must exist in TKUKL
+    why_it_matters: The customer classification (ABC customer, key account) is used in sales statistics, rebate and credit groupings.
+      A value missing from TKUKL is not offered in any selection.
+    rule_authority: best_practice
+    sap_impact: The customer is missing from classification-based statistics and selections.
+    fix_map:
+      __other__: Choose a defined classification in XD02 > Sales area > Sales, or define it in customising (OVFH).
+    record_fix_template: 'Customer {KNA1.KUNNR}: customer classification is not defined in TKUKL.'
+  - id: AR213
+    field: KNA1.TXJCD
+    check_class: null_check
+    applies_when:
+      KNA1.LAND1:
+      - US
+      - CA
+      KNA1.XCPDK:
+        blank: true
+    severity: high
+    dimension: completeness
+    message: Tax jurisdiction code is missing for a US or Canadian customer
+    why_it_matters: In the US and Canada sales and use tax is calculated per jurisdiction (state, county, city). With an external
+      tax system (Vertex, Sabrix, Avalara) or a jurisdiction-based tax procedure (TAXUSJ, TAXCAJ) SAP needs the customer's jurisdiction
+      code to calculate tax on orders and invoices.
+    rule_authority: regulatory
+    sap_impact: Pricing in VA01 and billing in VF01 stop with a tax jurisdiction error, or tax is calculated for the wrong jurisdiction.
+    fix_map:
+      __other__: Determine the jurisdiction code from the address (XD02 > Address > Tax jurisdiction; the external tax system
+        proposes it).
+    record_fix_template: 'Customer {KNA1.KUNNR}: no tax jurisdiction code for country {KNA1.LAND1}.'
+  - id: AR214
+    field: KNA1.TXJCD
+    check_class: referential_check
+    severity: high
+    dimension: validity
+    message: Customer tax jurisdiction KNA1.TXJCD must exist in TTXJ
+    why_it_matters: A jurisdiction code that is not defined for the country's tax procedure (TTXJ) cannot be passed to the tax
+      calculation, so every taxable item for the customer errors out or is taxed at zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Billing documents fail tax determination or carry no sales tax.
+    fix_map:
+      __other__: Correct the jurisdiction code in XD02 > Address, or define it in customising (OBCP / external tax system).
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax jurisdiction code is not defined in TTXJ.'
+  - id: AR215
+    field: KNA1.FISKN
+    check_class: exists_check
+    grain: KNA1
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Fiscal address account does not exist or is flagged for deletion
+    why_it_matters: KNA1.FISKN points to the customer that holds the fiscal (tax) address used on tax returns and EC sales lists.
+      If that account is missing or deleted, tax reports fall back to the customer's own address.
+    rule_authority: sap_hard_constraint
+    sap_impact: EC sales lists and VAT returns report the wrong address or tax number for the customer.
+    fix_map:
+      __other__: Point the fiscal address to an active account (XD02 > Control data > Fiscal address), or remove it.
+    record_fix_template: 'Customer {KNA1.KUNNR}: fiscal address account {KNA1.FISKN} does not exist or is deleted.'
+  - id: AR216
+    field: KNA1.FISKN
+    check_class: cross_field_check
+    fail_when: '`KNA1.FISKN` == `KNA1.KUNNR`'
+    applies_when:
+      KNA1.FISKN:
+        populated: true
+    severity: low
+    dimension: consistency
+    message: Customer names itself as its own fiscal address account
+    why_it_matters: The fiscal address field is only meaningful when it points to another account. A self-reference is a load
+      artefact and hides a missing link to the real fiscal account.
+    rule_authority: best_practice
+    sap_impact: Tax reports cannot tell which account holds the fiscal address.
+    fix_map:
+      __other__: Clear the field or enter the account that really holds the fiscal address (XD02 > Control data).
+    record_fix_template: 'Customer {KNA1.KUNNR}: fiscal address account points to itself.'
+  - id: AR217
+    field: KNA1.XCPDK
+    check_class: exists_check
+    fields:
+    - KNA1.KTOKD
+    applies_when:
+      KNA1.XCPDK:
+      - X
+    target_table: T077D
+    target_fields:
+    - KTOKD
+    target_when:
+      XCPDS:
+        populated: true
+    negate: true
+    severity: high
+    dimension: consistency
+    message: One-time indicator is set but the account group is not a one-time account group
+    why_it_matters: 'SAP sets KNA1.XCPDK from the account group (T077D.XCPDS). A one-time flag under a normal account group
+      means the record was loaded around the master data transaction: SAP asks for address data per document for an account
+      that also carries master address data.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Invoices and payments prompt for one-time data (BSEC) or ignore it; dunning and correspondence go to the wrong
+      address.
+    fix_map:
+      __other__: Move the customer to a one-time account group (XD07) or clear the one-time flag through the account group.
+    record_fix_template: 'Customer {KNA1.KUNNR}: one-time indicator set under account group {KNA1.KTOKD}, which is not a one-time
+      group.'
+  - id: AR218
+    field: KNA1.XCPDK
+    check_class: exists_check
+    fields:
+    - KNA1.KTOKD
+    applies_when:
+      KNA1.XCPDK:
+        blank: true
+    target_table: T077D
+    target_fields:
+    - KTOKD
+    target_when:
+      XCPDS:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Account group is a one-time account group but the one-time indicator is not set
+    why_it_matters: Accounts in a one-time account group (T077D.XCPDS) must carry KNA1.XCPDK. Without it SAP treats the account
+      as a normal customer and does not ask for name, address and bank data per document.
+    rule_authority: sap_hard_constraint
+    sap_impact: One-time invoices are posted without the customer's name and address (BSEC); payment and dunning cannot reach
+      the customer.
+    fix_map:
+      __other__: Set the one-time indicator through the account group (XD07 / XD02), or move the account to a normal group.
+    record_fix_template: 'Customer {KNA1.KUNNR}: account group {KNA1.KTOKD} is a one-time group but the one-time indicator is
+      blank.'
+  - id: AR219
+    field: KNA1.XCPDK
+    check_class: cross_field_check
+    fail_when: (`KNA1.XCPDK` == 'X') & (`KNKK.KLIMK` > 0)
+    severity: medium
+    dimension: consistency
+    message: One-time customer account has a credit limit
+    why_it_matters: A one-time account collects many unrelated customers. A credit limit on it is shared by all of them, so
+      credit management says nothing about any single customer.
+    rule_authority: best_practice
+    sap_impact: Credit checks on one-time orders pass or block every one-time customer together.
+    fix_map:
+      __other__: Remove the credit limit from the one-time account (FD32) and sell to recurring customers on their own accounts.
+    record_fix_template: 'One-time customer {KNA1.KUNNR}: carries a credit limit in credit control area {KNKK.KKBER}.'
+  - id: AR220
+    field: KNA1.XCPDK
+    check_class: exists_check
+    fields:
+    - KNA1.KUNNR
+    applies_when:
+      KNA1.XCPDK:
+      - X
+    target_table: KNBK
+    target_fields:
+    - KUNNR
+    negate: true
+    grain: KNA1
+    severity: medium
+    dimension: consistency
+    message: One-time customer account has bank details in the master record
+    why_it_matters: For one-time accounts the bank details are entered per document (BSEC). Bank details on the master record
+      are used for every one-time customer, so direct debits and refunds go to one stored account.
+    rule_authority: best_practice
+    sap_impact: Refunds and direct debits for one-time customers use a bank account that belongs to somebody else.
+    fix_map:
+      __other__: Delete the bank details from the one-time account (XD02 > Payment transactions).
+    record_fix_template: 'One-time customer {KNA1.KUNNR}: has bank details in the master record.'
+  - id: AR221
+    field: KNA1.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNA1.SPERR`.isna()
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion centrally but not blocked for posting centrally
+    why_it_matters: The central deletion flag only marks the account for archiving. Without the central posting block (KNA1.SPERR)
+      invoices and payments can still be posted in every company code.
+    rule_authority: best_practice
+    sap_impact: Postings to retired customers; archiving (FI_ACCRECV) fails because new documents keep appearing.
+    fix_map:
+      __other__: Set the central posting block together with the deletion flag (XD05, XD06).
+    record_fix_template: 'Customer {KNA1.KUNNR}: flagged for deletion centrally but not blocked for posting.'
+  - id: AR222
+    field: KNA1.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & (`KNKK.KLIMK` > 0)
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion but still has a credit limit
+    why_it_matters: A retired customer keeps its credit limit in KNKK. The limit still counts in credit exposure reports and
+      can be inherited when the credit account is reused for another customer.
+    rule_authority: best_practice
+    sap_impact: Credit reports (F.31, FD33) overstate the credit granted; the deleted account blocks credit master archiving.
+    fix_map:
+      __other__: Set the credit limit to zero (FD32) before flagging the customer for deletion.
+    record_fix_template: 'Customer {KNA1.KUNNR}: flagged for deletion, credit limit still set in credit control area {KNKK.KKBER}.'
+  - id: AR223
+    field: KNA1.NODEL
+    check_class: cross_field_check
+    fail_when: (`KNA1.NODEL` == 'X') & (`KNA1.LOEVM` == 'X')
+    severity: high
+    dimension: consistency
+    message: Customer has the central deletion block and is also flagged for deletion
+    why_it_matters: 'KNA1.NODEL forbids deletion of the account; KNA1.LOEVM requests it. Both together cannot be processed:
+      archiving rejects the account and the business intent is unclear.'
+    rule_authority: sap_hard_constraint
+    sap_impact: The account can never be archived; the deletion flag gives a false picture of the active customer base.
+    fix_map:
+      __other__: 'Decide which is right: remove the deletion block or the deletion flag (XD06).'
+    record_fix_template: 'Customer {KNA1.KUNNR}: deletion block and deletion flag are both set centrally.'
+  - id: AR224
+    field: KNB1.NODEL
+    check_class: cross_field_check
+    fail_when: (`KNB1.NODEL` == 'X') & (`KNB1.LOEVM` == 'X')
+    severity: high
+    dimension: consistency
+    message: Customer company code has the deletion block and is also flagged for deletion
+    why_it_matters: KNB1.NODEL forbids deletion of the company code data; KNB1.LOEVM requests it. The two flags contradict each
+      other, so archiving rejects the account in the company code.
+    rule_authority: sap_hard_constraint
+    sap_impact: Company code data can never be archived; the deletion flag misstates the active customer base in the company
+      code.
+    fix_map:
+      __other__: Remove either the deletion block or the deletion flag in the company code (XD06).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deletion block and deletion flag are both set.'
+  - id: AR225
+    field: KNB1.LOEVM
+    check_class: cross_field_check
+    fail_when: (`KNA1.LOEVM` == 'X') & `KNB1.LOEVM`.isna()
+    grain: KNB1
+    severity: medium
+    dimension: consistency
+    message: Customer is flagged for deletion centrally but the company code data is not
+    why_it_matters: XD06 with 'all areas' sets the deletion flag on every company code. A central flag with an unflagged company
+      code means the flags were set or loaded piecemeal; FI reports that read KNB1 still treat the customer as active.
+    rule_authority: best_practice
+    sap_impact: Archiving of the customer (FI_ACCRECV) skips the company code; open-item and dunning selections keep the retired
+      customer.
+    fix_map:
+      __other__: Flag the company code data for deletion as well (XD06), or remove the central flag if it was set in error.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: deleted centrally but not in the company code.'
+  - id: AR226
+    field: KNB1.SPERR
+    check_class: cross_field_check
+    fail_when: (`KNA1.SPERR` == 'X') & `KNB1.SPERR`.isna()
+    grain: KNB1
+    severity: low
+    dimension: consistency
+    message: Customer is blocked for posting centrally but not in the company code
+    why_it_matters: The central posting block (KNA1.SPERR) already stops postings in every company code. A company code without
+      its own block shows the account as open in KNB1-based reports and interfaces (lockbox, middleware, MDG replication).
+    rule_authority: best_practice
+    sap_impact: Collectors and interfaces that read the company code block keep working a blocked customer.
+    fix_map:
+      __other__: Set the posting block for the company codes as well (XD05 > all company codes).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: blocked centrally but not in the company code.'
+  - id: AR227
+    field: KNA1.ADRNR
+    check_class: exists_check
+    grain: KNA1
+    target_table: ADRC
+    target_fields:
+    - ADDRNUMBER
+    severity: high
+    dimension: consistency
+    message: Customer address number does not exist in central address management (ADRC)
+    why_it_matters: 'Since release 4.0 the customer address lives in ADRC; KNA1 only keeps a copy. A KNA1.ADRNR without an ADRC
+      record means the customer has no maintainable address: XD03 shows it empty and output, tax and CVI conversion read nothing.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Invoices and dunning letters print without an address; CVI synchronisation to the business partner fails on
+      the address.
+    fix_map:
+      __other__: Re-create the address in XD02 (the transaction writes ADRC), or repair it with report RSADRLSM02 / address
+        consistency tools.
+    record_fix_template: 'Customer {KNA1.KUNNR}: address number {KNA1.ADRNR} has no record in ADRC.'
+  - id: AR228
+    field: KNA1.LAND1
+    check_class: cross_field_check
+    fail_when: '`KNA1.LAND1` != `ADRC.COUNTRY`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Customer country in KNA1 differs from the central address (ADRC)
+    why_it_matters: KNA1.LAND1 is a redundant copy of ADRC.COUNTRY, written by the customer transactions. A difference means
+      one side was loaded or changed directly in the tables. Output and the address screen read ADRC, while tax, reporting and
+      many interfaces read KNA1.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents print one country while tax determination, statistics and interfaces use another; CVI conversion carries
+      the ADRC value into the business partner.
+    fix_map:
+      __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
+    record_fix_template: 'Customer {KNA1.KUNNR}: country in KNA1 differs from the central address {KNA1.ADRNR}.'
+  - id: AR229
+    field: KNA1.PSTLZ
+    check_class: cross_field_check
+    fail_when: '`KNA1.PSTLZ` != `ADRC.POST_CODE1`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Customer postal code in KNA1 differs from the central address (ADRC)
+    why_it_matters: KNA1.PSTLZ is a redundant copy of ADRC.POST_CODE1, written by the customer transactions. A difference means
+      one side was loaded or changed directly in the tables. Output and the address screen read ADRC, while tax, reporting and
+      many interfaces read KNA1.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents print one postal code while tax determination, statistics and interfaces use another; CVI conversion
+      carries the ADRC value into the business partner.
+    fix_map:
+      __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
+    record_fix_template: 'Customer {KNA1.KUNNR}: postal code in KNA1 differs from the central address {KNA1.ADRNR}.'
+  - id: AR230
+    field: KNA1.ORT01
+    check_class: cross_field_check
+    fail_when: '`KNA1.ORT01` != `ADRC.CITY1`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Customer city in KNA1 differs from the central address (ADRC)
+    why_it_matters: KNA1.ORT01 is a redundant copy of ADRC.CITY1, written by the customer transactions. A difference means one
+      side was loaded or changed directly in the tables. Output and the address screen read ADRC, while tax, reporting and many
+      interfaces read KNA1.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents print one city while tax determination, statistics and interfaces use another; CVI conversion carries
+      the ADRC value into the business partner.
+    fix_map:
+      __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
+    record_fix_template: 'Customer {KNA1.KUNNR}: city in KNA1 differs from the central address {KNA1.ADRNR}.'
+  - id: AR231
+    field: KNA1.REGIO
+    check_class: cross_field_check
+    fail_when: '`KNA1.REGIO` != `ADRC.REGION`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Customer region in KNA1 differs from the central address (ADRC)
+    why_it_matters: KNA1.REGIO is a redundant copy of ADRC.REGION, written by the customer transactions. A difference means
+      one side was loaded or changed directly in the tables. Output and the address screen read ADRC, while tax, reporting and
+      many interfaces read KNA1.
+    rule_authority: sap_hard_constraint
+    sap_impact: Documents print one region while tax determination, statistics and interfaces use another; CVI conversion carries
+      the ADRC value into the business partner.
+    fix_map:
+      __other__: Re-save the address in XD02 so KNA1 and ADRC are written together, after confirming which value is right.
+    record_fix_template: 'Customer {KNA1.KUNNR}: region in KNA1 differs from the central address {KNA1.ADRNR}.'
+  - id: AR232
+    field: KNA1.PFACH
+    check_class: cross_field_check
+    fail_when: '`KNA1.PFACH`.notna() & `KNA1.PSTL2`.isna()'
+    severity: low
+    dimension: completeness
+    message: Customer has a PO box but no PO box postal code
+    why_it_matters: In most countries a PO box has its own postal code (KNA1.PSTL2). Without it the PO box address cannot be
+      validated and postal software rejects it; SAP's postal code check (T005) does not run on it.
+    rule_authority: best_practice
+    sap_impact: Payment advices, statements and dunning letters sent to the PO box are returned.
+    fix_map:
+      __other__: Enter the PO box postal code in XD02 > Address, or remove the PO box if it is not used.
+    record_fix_template: 'Customer {KNA1.KUNNR}: PO box without a PO box postal code.'
+  - id: AR233
+    field: KNA1.STCD3
+    check_class: regex_check
+    pattern: ^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$
+    applies_when:
+      KNA1.LAND1:
+      - IN
+    severity: high
+    dimension: validity
+    message: Indian GSTIN in tax number 3 has the wrong format
+    why_it_matters: Under Indian GST the 15-character GSTIN (state code, PAN, entity number, Z, check character) is stored in
+      tax number 3. E-invoicing (IRN), e-way bills and GSTR-1 reject an invoice whose buyer GSTIN is malformed.
+    rule_authority: regulatory
+    sap_impact: E-invoices are rejected by the invoice registration portal; the customer cannot claim input tax credit.
+    fix_map:
+      __other__: Correct the GSTIN in XD02 > Control data > Tax number 3.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 3 is not a valid GSTIN.'
+  - id: AR234
+    field: KNA1.STCD2
+    check_class: uniqueness_check
+    fields:
+    - KNA1.LAND1
+    - KNA1.STCD2
+    normalize: alnum
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: Several customers share the same tax number 2 in the same country
+    why_it_matters: Tax number 2 identifies the legal entity (for example a VAT or GST registration). Two accounts with the
+      same number in one country are almost always the same customer created twice.
+    rule_authority: best_practice
+    sap_impact: Credit exposure and open items are split across duplicate accounts; tax reports list one registration under
+      two customers.
+    fix_map:
+      __other__: Merge the duplicate customers (block and flag the redundant one, move open items) or correct the number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 2 is shared with another customer in the same country.'
+  - id: AR235
+    field: KNA1.STCD3
+    check_class: uniqueness_check
+    fields:
+    - KNA1.LAND1
+    - KNA1.STCD3
+    normalize: alnum
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: Several customers share the same tax number 3 in the same country
+    why_it_matters: Tax number 3 identifies the legal entity (for example a VAT or GST registration). Two accounts with the
+      same number in one country are almost always the same customer created twice.
+    rule_authority: best_practice
+    sap_impact: Credit exposure and open items are split across duplicate accounts; tax reports list one registration under
+      two customers.
+    fix_map:
+      __other__: Merge the duplicate customers (block and flag the redundant one, move open items) or correct the number.
+    record_fix_template: 'Customer {KNA1.KUNNR}: tax number 3 is shared with another customer in the same country.'
+  - id: AR236
+    field: KNA1.NAME1
+    check_class: similarity_check
+    block_by:
+    - KNA1.LAND1
+    - KNA1.ORT01
+    threshold: 0.9
+    exact_rule: false
+    evidence_key: KNA1.KUNNR
+    grain: KNA1
+    applies_when:
+      KNA1.LOEVM:
+        blank: true
+    severity: medium
+    dimension: uniqueness
+    message: 'Possible duplicate customer: near-identical name in the same country and city'
+    why_it_matters: Customers created twice under different postal codes or with a typo escape the exact name and postal code
+      check. Comparing names within one city finds them. Only account numbers are reported.
+    rule_authority: best_practice
+    sap_impact: Two accounts for one customer split credit exposure, open items, rebates and sales history.
+    fix_map:
+      __other__: Compare the pair in XD03; merge by blocking and flagging the redundant account and moving its open items.
+    record_fix_template: 'Customer {KNA1.KUNNR}: name is near-identical to another customer in the same city.'
+  - id: AR237
+    field: KNB1.AKONT
+    check_class: exists_check
+    fields:
+    - KNB1.BUKRS
+    - KNB1.AKONT
+    target_table: SKB1
+    target_fields:
+    - BUKRS
+    - SAKNR
+    grain: KNB1
+    severity: critical
+    dimension: consistency
+    message: Customer reconciliation account does not exist in the company code's G/L master (SKB1)
+    why_it_matters: Every customer posting is also posted to the reconciliation account. If the account has no company code
+      segment in SKB1, SAP cannot post any document for the customer in that company code.
+    rule_authority: sap_hard_constraint
+    sap_impact: FB70, VF01 release to accounting, F-28 and lockbox fail for the customer.
+    fix_map:
+      __other__: Create the G/L account in the company code (FS00) as a customer reconciliation account, or assign an existing
+        one in XD02 > Company code data.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: reconciliation account {KNB1.AKONT} does not exist
+      in SKB1.'
+  - id: AR238
+    field: KNB1.BUSAB
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Accounting clerk KNB1.BUSAB must exist in T001S
+    why_it_matters: The accounting clerk prints on dunning letters and statements as the contact person and is a selection and
+      grouping criterion in the dunning run (F150) and open-item lists.
+    rule_authority: best_practice
+    sap_impact: Dunning letters print no contact; worklists by clerk miss the customer.
+    fix_map:
+      __other__: Assign a clerk defined for the company code (XD02 > Correspondence; customising OB25).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: accounting clerk {KNB1.BUSAB} is not defined in
+      T001S.'
+  - id: AR239
+    field: KNB1.VZSKZ
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Interest calculation indicator KNB1.VZSKZ must exist in T056
+    why_it_matters: The indicator selects the interest terms used by the arrears interest run (F.2A/F.24). A key missing from
+      T056 stops interest calculation for the customer.
+    rule_authority: best_practice
+    sap_impact: Arrears interest is not calculated or posted for the customer.
+    fix_map:
+      __other__: Choose a defined interest indicator (XD02 > Account management; customising OB46).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: interest calculation indicator {KNB1.VZSKZ} is not
+      defined in T056.'
+  - id: AR240
+    field: KNB1.TOGRU
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Tolerance group KNB1.TOGRU must exist in T043G
+    why_it_matters: The customer tolerance group sets the payment differences and cash discount tolerances accepted when incoming
+      payments are cleared. A group not defined in T043G falls back to the blank group.
+    rule_authority: best_practice
+    sap_impact: Payment differences are written off or rejected with the wrong tolerance.
+    fix_map:
+      __other__: Choose a tolerance group defined for the company code (XD02 > Payment transactions; customising OBA3).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: tolerance group {KNB1.TOGRU} is not defined in T043G.'
+  - id: AR241
+    field: KNB1.LOCKB
+    check_class: referential_check
+    severity: medium
+    dimension: validity
+    message: Lockbox KNB1.LOCKB must exist in T049L
+    why_it_matters: The lockbox key tells the customer which bank lockbox to pay into and is printed on invoices. A key not
+      defined in T049L for the company code cannot be printed or processed.
+    rule_authority: best_practice
+    sap_impact: Customers pay to the wrong lockbox; lockbox files (FLB2) cannot match the payments.
+    fix_map:
+      __other__: Choose a lockbox defined for the company code (XD02 > Payment transactions; customising OBAX).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: lockbox {KNB1.LOCKB} is not defined in T049L.'
+  - id: AR242
+    field: KNB1.ZUAWA
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Sort key KNB1.ZUAWA must exist in TZUN
+    why_it_matters: The sort key fills the assignment field (ZUONR) of every customer line item and drives the sort order of
+      open items and automatic clearing.
+    rule_authority: best_practice
+    sap_impact: Line items carry an empty or wrong assignment; automatic clearing (F.13) does not match items.
+    fix_map:
+      __other__: Choose a defined sort key (XD02 > Account management; customising OB16).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: sort key {KNB1.ZUAWA} is not defined in TZUN.'
+  - id: AR243
+    field: KNB1.UZAWE
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Payment method supplement KNB1.UZAWE must exist in T042F
+    why_it_matters: The payment method supplement groups payments and selects forms in the payment program. A supplement not
+      defined in T042F is rejected when the payment run proposal is built.
+    rule_authority: best_practice
+    sap_impact: Direct debits and refunds are not grouped or printed as intended.
+    fix_map:
+      __other__: Choose a defined supplement (XD02 > Payment transactions; customising OBCU).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: payment method supplement {KNB1.UZAWE} is not defined
+      in T042F.'
+  - id: AR244
+    field: KNB1.XAUSZ
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Account statement indicator KNB1.XAUSZ must exist in T048K
+    why_it_matters: The indicator decides whether and how often the customer receives account statements (F.27). A value not
+      defined in T048K produces no statements.
+    rule_authority: best_practice
+    sap_impact: Customers do not receive the periodic statements they are set up for.
+    fix_map:
+      __other__: Choose a defined statement indicator (XD02 > Correspondence; customising OB10).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: account statement indicator {KNB1.XAUSZ} is not
+      defined in T048K.'
+  - id: AR245
+    field: KNB1.ZUAWA
+    check_class: null_check
+    applies_when:
+      KNB1.LOEVM:
+        blank: true
+    severity: low
+    dimension: completeness
+    message: Customer company code data has no sort key
+    why_it_matters: Without a sort key the assignment field of customer line items stays empty, so open items cannot be sorted
+      or cleared automatically by reference.
+    rule_authority: best_practice
+    sap_impact: Automatic clearing (F.13) and open-item processing by reference do not work for the customer.
+    fix_map:
+      __other__: Set the sort key (usually 009 external document number or 001 posting date) in XD02 > Account management.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: no sort key.'
+  - id: AR246
+    field: KNB1.BUSAB
+    check_class: null_check
+    applies_when:
+      KNB1.LOEVM:
+        blank: true
+    severity: low
+    dimension: completeness
+    message: Customer company code data has no accounting clerk
+    why_it_matters: The accounting clerk is the contact on dunning letters and the main way collections work is split between
+      people. Customers without a clerk fall outside every clerk's worklist.
+    rule_authority: best_practice
+    sap_impact: Nobody owns collections for the customer; dunning letters print no contact.
+    fix_map:
+      __other__: Assign an accounting clerk in XD02 > Correspondence.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: no accounting clerk.'
+  - id: AR247
+    field: KNB1.KNRZE
+    check_class: exists_check
+    fields:
+    - KNB1.KNRZE
+    - KNB1.BUKRS
+    target_table: KNB1
+    target_fields:
+    - KUNNR
+    - BUKRS
+    target_when:
+      KNRZE:
+        blank: true
+    grain: KNB1
+    severity: high
+    dimension: consistency
+    message: Head office does not exist in the company code or is itself a branch
+    why_it_matters: 'SAP supports one level of head office and branch: the head office must be a customer in the same company
+      code, and XD02 rejects a head office that has its own head office. A missing head office or a chain means postings are
+      routed to an account that is not where open items are managed.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Branch postings land on an intermediate account; dunning and payment run by head office miss them.
+    fix_map:
+      __other__: Point the branch to a head office that is extended to the company code and has no head office of its own (XD02
+        > Account management > Head office).
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: head office {KNB1.KNRZE} is missing or is itself
+      a branch.'
+  - id: AR248
+    field: KNB1.KNRZB
+    check_class: exists_check
+    grain: KNB1
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Alternative payer in the company code does not exist or is flagged for deletion
+    why_it_matters: The alternative payer (KNB1.KNRZB) pays or is debited for the customer in the payment program. If it is
+      missing or deleted, direct debits and refunds cannot be created.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment run (F110) exceptions for the customer; incoming payments are applied to the wrong account.
+    fix_map:
+      __other__: Enter an active alternative payer in XD02 > Payment transactions, or remove the field.
+    record_fix_template: 'Customer {KNB1.KUNNR}, company code {KNB1.BUKRS}: alternative payer {KNB1.KNRZB} does not exist or
+      is deleted.'
+  - id: AR249
+    field: KNB5.MAHNS
+    check_class: cross_field_check
+    fail_when: '`KNB5.MAHNS`.notna() & (`KNB5.MAHNS` != ''0'') & `KNB5.MADAT`.isna()'
+    severity: low
+    dimension: consistency
+    message: Customer has a dunning level but no date of last dunning notice
+    why_it_matters: The dunning run sets the level (KNB5.MAHNS) and the date (KNB5.MADAT) together. A level without a date was
+      loaded, and the next run calculates the dunning interval from nothing.
+    rule_authority: best_practice
+    sap_impact: The next dunning run escalates or skips the customer incorrectly.
+    fix_map:
+      __other__: Reset the dunning data (XD02 > Correspondence) or load the date of the last dunning notice.
+    record_fix_template: 'Customer {KNB5.KUNNR}, company code {KNB5.BUKRS}: dunning level set without a last dunning date.'
+  - id: AR250
+    field: KNKK.SBGRP
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Credit representative group KNKK.SBGRP must exist in T024B
+    why_it_matters: The credit representative group routes blocked orders to the right credit team (VKM1) and selects credit
+      reports. A group not defined for the credit control area receives no work.
+    rule_authority: best_practice
+    sap_impact: Orders blocked for credit sit in no team's worklist.
+    fix_map:
+      __other__: Assign a group defined for the credit control area (FD32; customising OB02).
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: credit representative group is not defined
+      in T024B.'
+  - id: AR251
+    field: KNKK.GRUPP
+    check_class: referential_check
+    severity: low
+    dimension: validity
+    message: Customer credit group KNKK.GRUPP must exist in T691B
+    why_it_matters: The customer credit group is used with the risk category to select credit checks and reports. A group not
+      defined in T691B is ignored.
+    rule_authority: best_practice
+    sap_impact: Credit analyses and selections by credit group miss the customer.
+    fix_map:
+      __other__: Choose a defined credit group (FD32 > Status; customising OB12).
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: customer credit group is not defined in T691B.'
+  - id: AR252
+    field: KNKK.SBGRP
+    check_class: null_check
+    applies_when:
+      KNKK.KLIMK:
+        gt: 0
+    grain: KNKK
+    severity: low
+    dimension: completeness
+    message: Customer with a credit limit has no credit representative group
+    why_it_matters: When an order is blocked for credit, the release worklist (VKM1) and the notification e-mail are driven
+      by the credit representative group. Without it nobody is notified.
+    rule_authority: best_practice
+    sap_impact: Credit-blocked orders wait unseen and deliveries are late.
+    fix_map:
+      __other__: Assign a credit representative group in FD32 > Status.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: credit limit without credit representative
+      group.'
+  - id: AR253
+    field: KNKK.CASHD
+    check_class: cross_field_check
+    fail_when: (`KNKK.KLIMK` > 0) & ((@today - `KNKK.CASHD`).dt.days > 730)
+    grain: KNKK
+    severity: low
+    dimension: timeliness
+    message: Customer has a credit limit but has not paid for more than two years
+    why_it_matters: 'A credit limit is an open commitment. A customer whose last payment is more than two years old is dormant:
+      the limit is stale and should be reviewed or withdrawn before the account is used again.'
+    rule_authority: best_practice
+    sap_impact: Dormant accounts can place orders up to an outdated limit without a fresh credit review.
+    fix_map:
+      __other__: Review the credit limit (FD32) and reduce it to zero, or block the customer if the relationship has ended.
+    record_fix_template: 'Customer {KNKK.KUNNR}, credit control area {KNKK.KKBER}: credit limit set, last payment over two years
+      ago.'
+  - id: AR254
+    field: KNBK.BKONT
+    check_class: null_check
+    applies_when:
+      KNBK.BANKS:
+      - ES
+      - FR
+      - IT
+    grain: KNBK
+    severity: medium
+    dimension: completeness
+    message: Bank control key is missing for a Spanish, French or Italian bank account
+    why_it_matters: In Spain (DC digits), France (clé RIB) and Italy (CIN) the bank control key is part of the national account
+      number and of the IBAN. SAP's country check (OY17) and the SEPA direct debit formats need it.
+    rule_authority: iso_standard
+    sap_impact: IBAN generation fails; SEPA direct debits and refunds to the account are rejected.
+    fix_map:
+      __other__: Enter the control key from the customer's bank details (XD02 > Payment transactions) or maintain the IBAN.
+    record_fix_template: 'Customer {KNBK.KUNNR}: bank account in {KNBK.BANKS} has no control key.'
