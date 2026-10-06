@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Button as AuroraButton, Input as AuroraInput } from "@/components/aurora";
+import { Button as AuroraButton, Chip as AuroraChip, Input as AuroraInput, Menu, MenuItem } from "@/components/aurora";
 
 export {
   Banner,
@@ -175,16 +175,98 @@ export function EmptyState({ children, action }: { children: ReactNode; action?:
 
 /* ── FilterBar ─────────────────────────────────────────────────────── */
 
+/** One choice in a filter. `count` is how many rows it would show. */
+export interface FilterOption {
+  value: string;
+  label: string;
+  count?: number;
+}
+
+/** Below this many rows in total, options that match nothing are not offered. */
+const HIDE_EMPTY_BELOW = 10;
+
+/** Drop zero-count options when the options hold fewer than 10 rows in all. The chosen option always stays. */
+export function visibleOptions(options: ReadonlyArray<FilterOption>, selected = ""): FilterOption[] {
+  const counted = options.every((o) => o.count !== undefined);
+  const total = options.reduce((n, o) => n + (o.count ?? 0), 0);
+  if (!counted || total >= HIDE_EMPTY_BELOW) return [...options];
+  return options.filter((o) => o.count !== 0 || o.value === selected);
+}
+
+/** A menu chip: the filter's name, its choice, and the options with counts. */
+export interface FilterGroup {
+  id: string;
+  label: string;
+  /** The chosen option's value, "" for all. */
+  value: string;
+  options: ReadonlyArray<FilterOption>;
+  onChange: (value: string) => void;
+  /** Words for "no choice" in the menu. Defaults to "All". */
+  allLabel?: string;
+}
+
+function FilterMenu({ group }: { group: FilterGroup }) {
+  const options = visibleOptions(group.options, group.value);
+  const chosen = group.options.find((o) => o.value === group.value);
+  const all = group.options.every((o) => o.count !== undefined)
+    ? group.options.reduce((n, o) => n + (o.count ?? 0), 0)
+    : undefined;
+  const entries: FilterOption[] = [{ value: "", label: group.allLabel ?? "All", count: all }, ...options];
+  return (
+    <Menu
+      label={chosen ? `${group.label}: ${chosen.label}` : group.label}
+      align="start"
+      width={240}
+      triggerClassName={cx("aurora-chip ui-filtergroup", chosen && "ui-filtergroup--active")}
+      trigger={chosen ? <>{group.label}: {chosen.label}</> : group.label}
+    >
+      {entries.map((o) => (
+        <MenuItem key={o.value || "all"} aria-current={o.value === group.value ? "true" : undefined}
+          className="ui-filtergroup__item" onClick={() => group.onChange(o.value)}>
+          <span>{o.label}</span>
+          {o.count !== undefined ? <span className="ui-chip-count">{o.count.toLocaleString()}</span> : null}
+        </MenuItem>
+      ))}
+    </Menu>
+  );
+}
+
+/** One row of count chips: "All" plus an option each. Zero-count options hide when the total is small. */
+export function CountChips({ value, onChange, options, allLabel = "All", total: allCount }: {
+  value: string;
+  onChange: (value: string) => void;
+  options: ReadonlyArray<FilterOption & { count: number }>;
+  allLabel?: string;
+  /** Rows in all. Defaults to the sum of the options, which is wrong when options overlap. */
+  total?: number;
+}) {
+  const total = allCount ?? options.reduce((n, o) => n + o.count, 0);
+  return (
+    <>
+      <AuroraChip selected={value === ""} onClick={() => onChange("")}>
+        {allLabel}<span className="aurora-number ui-chip-count">{total.toLocaleString()}</span>
+      </AuroraChip>
+      {visibleOptions(options, value).map((o) => (
+        <AuroraChip key={o.value} selected={value === o.value} onClick={() => onChange(o.value)}>
+          {o.label}<span className="aurora-number ui-chip-count">{(o.count ?? 0).toLocaleString()}</span>
+        </AuroraChip>
+      ))}
+    </>
+  );
+}
+
 export interface FilterBarProps {
   /** Active filter chips. */
   children?: ReactNode;
+  /** Menu chips, one per filter, kept on the same row as the search. */
+  groups?: ReadonlyArray<FilterGroup>;
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
   onClear?: () => void;
   actions?: ReactNode;
 }
 
 /** "/" focuses the search field from anywhere on the page. */
-export function FilterBar({ children, search, onClear, actions }: FilterBarProps) {
+export function FilterBar({ children, groups, search, onClear, actions }: FilterBarProps) {
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!search) return;
@@ -213,7 +295,12 @@ export function FilterBar({ children, search, onClear, actions }: FilterBarProps
           <kbd aria-hidden>/</kbd>
         </label>
       ) : null}
-      <div className="ui-filterbar__chips">{children}</div>
+      {groups?.length || children ? (
+        <div className="ui-filterbar__chips">
+          {groups?.map((g) => <FilterMenu key={g.id} group={g} />)}
+          {children}
+        </div>
+      ) : null}
       {onClear ? (
         <button type="button" className="ui-link-button" onClick={onClear}>
           Clear filters
@@ -364,6 +451,8 @@ export { Tally, TallyFigure } from "./tally";
 export type { TallyProps, TallyFigureProps } from "./tally";
 export { Verdict } from "./verdict";
 export { ScoreRing } from "./score-ring";
+export { ScoreTrend, MIN_TREND_POINTS } from "./score-trend";
+export type { ScoreTrendPoint } from "./score-trend";
 export type { ScoreRingProps } from "./score-ring";
 export { OwnerLadder } from "./owner-ladder";
 export type { OwnerRung } from "./owner-ladder";

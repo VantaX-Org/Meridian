@@ -12,7 +12,7 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "accounts_payable": 108,
+    "accounts_payable": 173,
     "accounts_receivable": 88,
     "asset_accounting": 57,
     "hcm": 64,
@@ -112,7 +112,7 @@ def test_ap_checks_run_with_enrichment():
     results = run_checks("accounts_payable", df, "test-tenant")
 
     # Non-None results = rules whose fields exist in this synthetic extract.
-    assert len(results) == 7  # AP007 needs STCEG; XDUP002 needs LFB1 — both absent here
+    assert len(results) == 8  # AP007 needs STCEG; XDUP002 needs LFB1 — both absent here; AP229 runs on LAND1+STCD1
     assert all(isinstance(r, CheckResult) for r in results)
 
     failing = [r for r in results if not r.passed and not r.error]
@@ -141,7 +141,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1043, f"Expected 1043 total ECC rules, got {total}"
+    assert total == 1108, f"Expected 1108 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

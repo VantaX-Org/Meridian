@@ -187,6 +187,29 @@
   gap: var(--aurora-space-2);
   min-width: 0;
 }
+.ui-filtergroup { cursor: pointer; }
+.ui-filtergroup:hover { background: var(--aurora-canvas-elevated); color: var(--aurora-fg-primary); }
+.ui-filtergroup:focus-visible {
+  outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
+  outline-offset: 2px;
+}
+.ui-filtergroup--active {
+  background: var(--aurora-accent-selected-bg);
+  color: var(--aurora-accent-500);
+  border-color: var(--aurora-accent-selected-border);
+}
+/* The caret is drawn, not typed, so it follows the text colour. */
+.ui-filtergroup::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-left: var(--aurora-space-1);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+.ui-filtergroup__item { justify-content: space-between; }
+.ui-filtergroup__item[aria-current="true"] { font-weight: 600; }
 .ui-filterbar__actions {
   display: flex;
   gap: var(--aurora-space-2);
@@ -557,6 +580,12 @@ a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
 .ui-cell-stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ui-cell-stack__main { color: var(--aurora-fg-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-cell-stack__sub { display: flex; gap: var(--aurora-space-2); font-size: 12px; color: var(--aurora-fg-tertiary); }
+.ui-cell-stack__sub .ui-mono, .ui-cell-stack__sub .ui-field { font-size: 12px; }
+.ui-state-toggle { padding: 0; font: inherit; color: var(--aurora-fg-primary); background: none; border: 0; }
+button.ui-state-toggle { cursor: pointer; }
+button.ui-state-toggle:hover { text-decoration: underline; }
+button.ui-state-toggle:focus-visible { outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour); outline-offset: 2px; }
+.ui-state-toggle[data-off="true"] { color: var(--aurora-fg-tertiary); }
 .ui-chip-count { margin-left: var(--aurora-space-2); color: var(--aurora-fg-tertiary); font-variant-numeric: tabular-nums; }
 
 .ui-drawer-head { display: flex; align-items: flex-start; gap: var(--aurora-space-3); }

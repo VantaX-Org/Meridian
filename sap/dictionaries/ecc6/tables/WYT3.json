@@ -1,0 +1,202 @@
+{
+ "table": "WYT3",
+ "description": "Partner Functions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LIFNR",
+   "key": true,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 3,
+   "name": "EKORG",
+   "key": true,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  },
+  {
+   "pos": 4,
+   "name": "LTSNR",
+   "key": true,
+   "data_element": "LTSNR",
+   "domain": "LTSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Vendor Subrange",
+   "check_table": "WYT1"
+  },
+  {
+   "pos": 5,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 6,
+   "name": "PARVW",
+   "key": true,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 7,
+   "name": "PARZA",
+   "key": true,
+   "data_element": "PARZA",
+   "domain": "PARZA",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Partner counter",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "LIFN2",
+   "key": false,
+   "data_element": "LIFN2",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Reference to other vendor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 11,
+   "name": "DEFPA",
+   "key": false,
+   "data_element": "DEFPA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default partner",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PERNR",
+   "key": false,
+   "data_element": "PERNR_D",
+   "domain": "PERNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Personnel Number",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PARNR",
+   "key": false,
+   "data_element": "PARNR",
+   "domain": "PARNR",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of contact person",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "LIFN2",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "LTSNR",
+   "foreign_table": "WYT1",
+   "foreign_field": "LTSNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

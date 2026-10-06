@@ -1952,3 +1952,1216 @@ rules:
   fix_map:
     __other__: Assign a Business Partner role to the account group in CVI customizing (SPRO > Cross-Application Components > Master Data Synchronization > Customer/Vendor Integration > Business Partner Settings > Settings for Vendor Integration) before synchronising.
   record_fix_template: 'Vendor {LFA1.LIFNR}: account group {LFA1.KTOKK} has no Business Partner role in CVIC_VEND_TO_BP2.'
+# --- Vendor master depth pass (AP212 onward): general data (LFA1) ---------------------------------------------
+- id: AP212
+  field: LFA1.BRSCH
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.BRSCH]
+  target_table: T016
+  target_fields: [BRSCH]
+  severity: medium
+  dimension: validity
+  message: Vendor industry key is not defined in T016
+  why_it_matters: The industry key (LFA1.BRSCH) groups vendors for spend analysis, supplier evaluation and statutory
+    reporting by sector. A key that is not in T016 was loaded around the XK01 check and drops the vendor out of every
+    industry selection.
+  rule_authority: sap_hard_constraint
+  sap_impact: The vendor is missing from industry-based reports and selections (S_ALR_87012086, LIS, spend cubes); XK02 refuses
+    to save the record until the key is corrected.
+  fix_map:
+    __other__: Correct the industry in XK02 > Control data, or define the industry key in customizing (OB01 / SPRO > Logistics
+      General > Business Partner > Industries).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: industry key {LFA1.BRSCH} is not defined in T016.'
+- id: AP213
+  field: LFA1.VBUND
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.VBUND]
+  target_table: T880
+  target_fields: [RCOMP]
+  severity: high
+  dimension: validity
+  message: Vendor trading partner is not a company defined in T880
+  why_it_matters: The trading partner (LFA1.VBUND) is copied into every payable posted to the vendor and is the key for
+    intercompany elimination in consolidation. A trading partner that is not a company in T880 cannot be matched to the
+    other side of the intercompany relationship.
+  rule_authority: sap_hard_constraint
+  sap_impact: Intercompany payables carry an unknown partner; reconciliation (F.2A/F.2B, FBICR) and consolidation elimination
+    fail or leave differences.
+  fix_map:
+    __other__: Enter the company ID of the affiliated company in XK02 > Control data, or create the company in OX15 (T880).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: trading partner {LFA1.VBUND} is not defined in T880.'
+- id: AP214
+  field: LFA1.WERKS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Plant assigned to the vendor (LFA1.WERKS) must exist in T001W
+  why_it_matters: A plant on the vendor master marks the vendor as an internal plant supplier for stock transport orders
+    and intercompany deliveries. A plant that does not exist breaks the link between the supplying plant and its vendor
+    account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock transport orders and cross-company deliveries cannot determine the supplying plant; intercompany billing
+    and invoice receipt (EDI) fail.
+  fix_map:
+    __other__: Plant '{invalid_value}' is not defined in T001W. Correct the plant in XK02 > Control data or remove it.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: plant ''{actual_value}'' not in T001W.'
+- id: AP215
+  field: LFA1.FISKN
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.FISKN]
+  target_table: LFA1
+  target_fields: [LIFNR]
+  severity: medium
+  dimension: consistency
+  message: Vendor's fiscal address account (LFA1.FISKN) does not exist
+  why_it_matters: The fiscal address account holds the tax address used for this vendor in tax reporting and withholding
+    tax. A reference to a vendor that does not exist leaves the tax address undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Withholding tax and tax reports read the tax address from a missing account; returns show wrong or empty
+    address data.
+  fix_map:
+    __other__: Enter an existing vendor as account with tax authority in XK02 > Control data, or remove the reference.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: fiscal address account {LFA1.FISKN} does not exist.'
+- id: AP216
+  field: LFA1.KTOKK
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.KTOKK]
+  applies_when:
+    LFA1.XCPDK: [X]
+  target_table: T077K
+  target_fields: [KTOKK]
+  target_when:
+    XCPDS: [X]
+  severity: high
+  dimension: consistency
+  message: Vendor is flagged as one-time vendor but its account group is not a one-time account group
+  why_it_matters: SAP sets the one-time indicator (LFA1.XCPDK) from the account group (T077K.XCPDS) when the vendor is
+    created. A one-time flag on a normal account group comes from a direct load or table change; the vendor then expects
+    the name, address and bank details in each document while its account group treats it as a regular vendor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the vendor ask for one-time data that the number range and field status do not support; payments
+    run against document-level bank details that are never maintained.
+  fix_map:
+    __other__: Move the vendor to a one-time account group (XK07) or create a regular vendor and block this one (XK05).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: one-time flag set, but account group {LFA1.KTOKK} is not a one-time group.'
+- id: AP217
+  field: LFA1.KTOKK
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.KTOKK]
+  negate: true
+  applies_when:
+    LFA1.XCPDK:
+      blank: true
+  target_table: T077K
+  target_fields: [KTOKK]
+  target_when:
+    XCPDS: [X]
+  severity: high
+  dimension: consistency
+  message: Vendor in a one-time account group is not flagged as one-time vendor
+  why_it_matters: A vendor in a one-time account group is a collective account for many payees. Without the one-time flag
+    (LFA1.XCPDK) the documents do not ask for the individual payee's name, address and bank details, so all one-time
+    payments land on the collective account's own data.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoices on the collective account carry no payee data; the payment program pays every one-time payee to the
+    same (or no) bank account.
+  fix_map:
+    __other__: Correct the one-time indicator so it matches the account group (XK07 to change the group if the vendor is
+      a real vendor).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: account group {LFA1.KTOKK} is a one-time group, but the vendor is not flagged
+    as one-time.'
+- id: AP218
+  field: LFA1.LNRZA
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.LNRZA]
+  target_table: LFBK
+  target_fields: [LIFNR]
+  severity: high
+  dimension: completeness
+  message: Alternative payee of the vendor has no bank details
+  why_it_matters: When an alternative payee (LFA1.LNRZA) is set, the payment program pays to the payee's bank details, not
+    the vendor's. A payee without bank details cannot receive a bank transfer.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 lists the vendor's items as exceptions (no bank details for the payee) and nothing is paid by transfer.
+  fix_map:
+    __other__: Maintain bank details on the alternative payee account (XK02 > Payment transactions) or remove the alternative
+      payee from the vendor.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee {LFA1.LNRZA} has no bank details.'
+- id: AP219
+  field: LFA1.LNRZA
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.LNRZA]
+  target_table: LFA1
+  target_fields: [LIFNR]
+  target_when:
+    LOEVM:
+      blank: true
+    SPERR:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Alternative payee of the vendor is flagged for deletion or blocked for posting
+  why_it_matters: Payments for the vendor are made to the alternative payee. If that account is flagged for deletion or
+    posting-blocked, the payment program cannot pay the vendor although the vendor itself is active.
+  rule_authority: best_practice
+  sap_impact: The vendor's open items are not paid in F110 and appear in the exception list; late-payment charges follow.
+  fix_map:
+    __other__: Assign an active alternative payee in XK02 > Payment transactions, or remove the deletion flag or block from
+      the payee if it is still in use (XK06 / XK05).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee {LFA1.LNRZA} is flagged for deletion or posting-blocked.'
+- id: AP220
+  field: LFA1.NODEL
+  check_class: cross_field_check
+  grain: LFA1
+  fail_when: (`LFA1.NODEL` == 'X') & (`LFA1.LOEVM` == 'X')
+  severity: medium
+  dimension: consistency
+  message: Vendor has a central deletion block and a central deletion flag at the same time
+  why_it_matters: The deletion block (LFA1.NODEL) says the vendor must never be archived; the deletion flag (LFA1.LOEVM)
+    says it is to be archived. Both together come from a direct table change and leave the vendor's status undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving (FI_ACCPAYB) skips the vendor; users see a vendor flagged for deletion that can never be removed.
+  fix_map:
+    __other__: Decide the vendor's status and remove either the deletion block or the deletion flag (XK06).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: deletion block and deletion flag are both set.'
+- id: AP221
+  field: LFA1.LOEVM
+  check_class: cross_field_check
+  grain: LFA1
+  fail_when: (`LFA1.LOEVM` == 'X') & (`LFA1.SPERR`.isna() | `LFA1.SPERM`.isna())
+  severity: high
+  dimension: consistency
+  message: Vendor is flagged for deletion centrally but not blocked for posting and purchasing
+  why_it_matters: The deletion flag only marks the vendor for archiving; it does not stop postings or purchase orders.
+    A vendor that is to be removed must also carry the central posting block (SPERR) and purchasing block (SPERM), or
+    invoices and orders keep arriving on it.
+  rule_authority: best_practice
+  sap_impact: Invoices, payments and purchase orders can still be created for a vendor that the business considers closed;
+    archiving fails because new documents keep appearing.
+  fix_map:
+    __other__: Set the central posting and purchasing blocks in XK05 together with the deletion flag (XK06).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: flagged for deletion but posting block {LFA1.SPERR} / purchasing block {LFA1.SPERM}.'
+- id: AP222
+  field: LFA1.ORT01
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Vendor city is missing
+  why_it_matters: The city is a required entry of the vendor address in XK01. It is printed on payment advices, cheques
+    and purchase orders and is used for duplicate checks and tax jurisdiction. A vendor without a city was created around
+    the address checks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment media and cheques cannot be addressed; duplicate checks on name and city miss the vendor; withholding
+    tax returns are incomplete.
+  fix_map:
+    __blank__: Maintain the city in XK02 > Address.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: city is missing.'
+- id: AP223
+  field: LFA1.STRAS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Vendor street address is missing
+  why_it_matters: The street and house number are needed for cheque payments, payment advices sent by post, withholding
+    tax certificates and supplier due diligence. A vendor with a city but no street cannot be reached by post.
+  rule_authority: best_practice
+  sap_impact: Cheques and payment advices are returned; withholding tax certificates and 1099/annual returns carry an
+    incomplete address.
+  fix_map:
+    __blank__: Maintain street and house number in XK02 > Address (or a PO box with its postal code).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: street address is missing.'
+- id: AP224
+  field: LFA1.PSTL2
+  check_class: cross_field_check
+  grain: LFA1
+  fail_when: '`LFA1.PFACH`.notna() & `LFA1.PSTL2`.isna()'
+  severity: low
+  dimension: completeness
+  message: Vendor has a PO box but no PO box postal code
+  why_it_matters: Mail to a PO box goes to the PO box postal code, which usually differs from the street postal code. A PO
+    box without its own postal code makes payment advices and correspondence undeliverable.
+  rule_authority: best_practice
+  sap_impact: Payment advices and dunning letters printed with the PO box use the wrong postal code and are returned.
+  fix_map:
+    __other__: Maintain the PO box postal code in XK02 > Address, or remove the PO box if it is no longer used.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: PO box is maintained without a PO box postal code.'
+- id: AP225
+  field: LFA1.ADRNR
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.ADRNR]
+  target_table: ADRC
+  target_fields: [ADDRNUMBER]
+  severity: high
+  dimension: consistency
+  message: Vendor address number has no address record in ADRC
+  why_it_matters: Since central address management the vendor's address lives in ADRC under the address number LFA1.ADRNR;
+    the LFA1 address fields are only a copy. An address number without an ADRC record is an orphan left by a direct load or
+    an incomplete client copy.
+  rule_authority: sap_hard_constraint
+  sap_impact: XK03 shows no address; output (purchase orders, payment advices) has no address; CVI cannot create the
+    Business Partner address in S/4HANA.
+  fix_map:
+    __other__: Re-save the vendor address in XK02 so that the address is written to ADRC, or repair the address with report
+      RSADRCK1/RSADRCK2.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: address number {LFA1.ADRNR} has no ADRC record.'
+- id: AP226
+  field: LFA1.LAND1
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    ADRC.NATION:
+      blank: true
+  fail_when: '((`ADRC.COUNTRY` != `LFA1.LAND1`) | (`ADRC.CITY1` != `LFA1.ORT01`) | (`ADRC.POST_CODE1`
+    != `LFA1.PSTLZ`))'
+  severity: medium
+  dimension: consistency
+  message: Vendor address in LFA1 differs from its central address in ADRC
+  why_it_matters: XK01 and XK02 write the address to ADRC and copy country, city and postal code into LFA1. A difference
+    means one of the two was changed directly. Reports, payment media and tax functions read LFA1 while forms and the
+    Business Partner read ADRC, so the vendor has two addresses.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment media and tax returns (LFA1) show a different address than purchase orders and correspondence (ADRC);
+    the S/4HANA Business Partner takes the ADRC version.
+  fix_map:
+    __other__: Check the correct address with the supplier and re-save it in XK02 so both tables are aligned.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: country, city or postal code in LFA1 differs from address {LFA1.ADRNR} in ADRC.'
+- id: AP227
+  field: LFA1.STCEG
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.LAND1: [AT, BE, BG, CY, CZ, DE, DK, EE, ES, FI, FR, GR, HR, HU, IE, IT, LT, LU, LV, MT, NL, PL, PT, RO, SE, SI, SK]
+  fail_when: (`LFA1.STKZU` == 'X') & `LFA1.STCEG`.isna()
+  severity: high
+  dimension: completeness
+  message: EU vendor is flagged as liable for VAT but has no VAT registration number
+  why_it_matters: An EU vendor that is liable for VAT (LFA1.STKZU) must have a VAT registration number for intra-community
+    acquisitions, reverse-charge invoices and the EC sales list. Without it the reverse-charge treatment cannot be proven.
+  rule_authority: regulatory
+  sap_impact: Intra-community acquisitions cannot be reported with the supplier's VAT number; input tax on reverse-charge
+    invoices can be disallowed on audit.
+  fix_map:
+    __other__: Obtain and verify the VAT number (VIES) and maintain it in XK02 > Control data, or remove the VAT liability flag.
+  record_fix_template: 'Vendor {LFA1.LIFNR} ({LFA1.LAND1}): liable for VAT but no VAT registration number.'
+- id: AP228
+  field: LFAS.STCEG
+  check_class: cross_field_check
+  grain: LFAS
+  fail_when: (`LFAS.STCEG`.str.slice(0, 2).str.upper() != `LFAS.LAND1`) & ~((`LFAS.LAND1` == 'GR') & (`LFAS.STCEG`.str.slice(0,
+    2).str.upper() == 'EL')) & ~((`LFAS.LAND1` == 'GB') & (`LFAS.STCEG`.str.slice(0, 2).str.upper() == 'XI'))
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Additional VAT registration number of the vendor does not start with its country code
+  why_it_matters: LFAS holds the vendor's VAT numbers for other EU countries. Each number must start with the code of the
+    country it is registered for (EL for Greece, XI for Northern Ireland). A mismatch means the number was entered under
+    the wrong country and is picked for the wrong transactions.
+  rule_authority: regulatory
+  sap_impact: Intra-community acquisitions from that country are reported with an invalid VAT number; VIES validation fails.
+  fix_map:
+    __other__: Correct the country or the VAT number in XK02 > Control data > Other (VAT registration numbers).
+  record_fix_template: 'Vendor {LFAS.LIFNR}: VAT number for country {LFAS.LAND1} does not start with that country code.'
+- id: AP229
+  field: LFA1.STCD1
+  check_class: uniqueness_check
+  grain: LFA1
+  fields: [LFA1.LAND1, LFA1.STCD1]
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several vendors in the same country share tax number 1
+  why_it_matters: The same tax number on two vendor accounts in one country is almost always the same legal entity created
+    twice, often in different company codes so the per-company-code duplicate check does not see it. Spend, payments and
+    tax reporting split across both.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters across company codes; duplicate-invoice checks miss invoices posted to the other
+    account; withholding tax returns split per account.
+  fix_map:
+    __other__: Confirm whether the accounts are the same supplier; if so block one (XK05), move open items and flag it for
+      deletion. Legitimate branches should use the head office link (LFB1.LNRZE).
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number 1 is also used by another vendor in {LFA1.LAND1}.'
+- id: AP230
+  field: LFA1.STCD2
+  check_class: uniqueness_check
+  grain: LFA1
+  fields: [LFA1.LAND1, LFA1.STCD2]
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several vendors in the same country share tax number 2
+  why_it_matters: Tax number 2 holds the second national identifier (for example the VAT or company registration number in
+    many countries). Two vendors with the same one are almost always duplicates of one legal entity.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; fragmented spend and duplicate payments across the two accounts.
+  fix_map:
+    __other__: Confirm whether the accounts are the same supplier and merge them (block, move open items, flag for deletion),
+      or correct the tax number.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number 2 is also used by another vendor in {LFA1.LAND1}.'
+- id: AP231
+  field: LFA1.STCD3
+  check_class: uniqueness_check
+  grain: LFA1
+  fields: [LFA1.LAND1, LFA1.STCD3]
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several vendors in the same country share tax number 3
+  why_it_matters: Tax number 3 carries the tax registration in countries such as India (GSTIN) and South Africa (VAT number).
+    Two vendors with the same one are almost always the same registered entity created twice.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; tax credit reconciliation against the authority's records splits across accounts.
+  fix_map:
+    __other__: Confirm whether the accounts are the same supplier and merge them, or correct the tax number.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number 3 is also used by another vendor in {LFA1.LAND1}.'
+- id: AP232
+  field: LFA1.NAME1
+  check_class: similarity_check
+  grain: LFA1
+  block_by: [LFA1.LAND1, LFA1.ORT01]
+  threshold: 0.9
+  exact_rule: false
+  evidence_key: LFA1.LIFNR
+  severity: medium
+  dimension: uniqueness
+  message: 'Possible duplicate vendor: identical or near-identical name in the same city'
+  why_it_matters: Duplicate vendors are often created with a different or missing postal code, so a duplicate check on name
+    and postal code misses them. The same name in the same city is the second net that catches these pairs before they
+    split spend and enable duplicate payments.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendor masters; the same invoice paid twice on two accounts; fragmented spend and supplier
+    evaluation.
+  fix_map:
+    __other__: Compare the vendor pairs listed (XK03, tax number and bank details); merge real duplicates by blocking the
+      redundant account and flagging it for deletion.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: another vendor in the same city has an identical or near-identical name.'
+- id: AP233
+  field: LFA1.KUNNR
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: (`KNA1.LOEVM` == 'X') & `LFA1.LOEVM`.isna()
+  severity: medium
+  dimension: consistency
+  message: Active vendor is linked to a customer that is flagged for deletion
+  why_it_matters: The customer link (LFA1.KUNNR) is used to offset payables against receivables in the payment run and in
+    dunning. A link to a customer that is being removed keeps clearing open items against an account that should be
+    closed.
+  rule_authority: best_practice
+  sap_impact: F110 and dunning offset the vendor against a dead customer; archiving of the customer fails while the link
+    exists.
+  fix_map:
+    __other__: Remove the customer link in XK02 > Control data (and the clearing flag LFB1.XVERR), or remove the deletion
+      flag from the customer if it is still in use.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: linked customer {LFA1.KUNNR} is flagged for deletion.'
+- id: AP234
+  field: LFA1.UPDAT
+  check_class: freshness_check
+  max_age_hours: 26280
+  grain: LFA1
+  applies_when:
+    LFA1.SPERR:
+      blank: true
+    LFA1.SPERM:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Active vendor has not been changed for more than 3 years
+  why_it_matters: Supplier data (address, bank details, tax status, contacts) goes out of date. An open vendor whose master
+    record has not been touched for three years has either never been revalidated or is no longer used and should be
+    blocked.
+  rule_authority: best_practice
+  sap_impact: Payments go to outdated bank details; correspondence is returned; dormant open vendors widen the payment-fraud
+    attack surface.
+  fix_map:
+    __other__: Revalidate the vendor with the supplier (address, bank details, tax numbers), or block it (XK05) if it is no
+      longer used.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: last changed on {LFA1.UPDAT}.'
+# --- bank data (LFBK) ----------------------------------------------------------------------------------------------
+- id: AP235
+  field: LFBK.BVTYP
+  check_class: uniqueness_check
+  grain: LFBK
+  fields: [LFBK.LIFNR, LFBK.BVTYP]
+  severity: high
+  dimension: uniqueness
+  message: Partner bank type is used twice for the same vendor
+  why_it_matters: The partner bank type (LFBK.BVTYP) selects which of the vendor's bank accounts an invoice is paid to. Two
+    accounts with the same type make the selection ambiguous, and the payment program takes whichever it reads first.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 pays invoices to an unintended bank account of the vendor.
+  fix_map:
+    __other__: Give each of the vendor's bank accounts its own partner bank type in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: partner bank type {LFBK.BVTYP} is assigned to more than one bank account.'
+- id: AP236
+  field: LFBK.LIFNR
+  check_class: uniqueness_check
+  grain: LFBK
+  fields: [LFBK.LIFNR]
+  applies_when:
+    LFBK.BVTYP:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Vendor has several bank accounts without a partner bank type
+  why_it_matters: When a vendor has more than one bank account, the partner bank type is the only way to tell an invoice
+    which account to pay. With several untyped accounts the payment program picks one by itself.
+  rule_authority: best_practice
+  sap_impact: F110 chooses the bank account by sequence, not by intent; payments go to an old or wrong account.
+  fix_map:
+    __other__: Assign a partner bank type to each bank account in XK02 > Payment transactions, or delete accounts that are
+      no longer valid.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: more than one bank account has no partner bank type.'
+- id: AP237
+  field: LFBK.BANKS
+  check_class: cross_field_check
+  grain: LFBK
+  fail_when: '`LFA1.LAND1`.notna() & (`LFBK.BANKS` != `LFA1.LAND1`)'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Vendor bank account is held in a different country than the vendor's address
+  why_it_matters: A bank account abroad can be legitimate, but it is also a classic payment-redirection pattern and changes
+    the payment method (cross-border, SWIFT, fees, regulatory reporting). Each case should be known and documented.
+  rule_authority: best_practice
+  sap_impact: Payments run as cross-border transfers with higher fees and central bank reporting; redirected payments to
+    foreign accounts go unnoticed.
+  fix_map:
+    __other__: Verify the bank details with the supplier through a known contact and document the reason, or correct the
+      bank country.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank country {LFBK.BANKS} differs from vendor country {LFA1.LAND1}.'
+- id: AP238
+  field: LFBK.BANKN
+  check_class: exists_check
+  grain: LFBK
+  fields: [LFBK.BANKN]
+  negate: true
+  target_table: T012K
+  target_fields: [BANKN]
+  severity: high
+  dimension: validity
+  message: Vendor bank account number matches one of the company's own house bank accounts
+  why_it_matters: A vendor paid into the company's own bank account is a test or migration artefact at best, and a way to
+    hide payments at worst. The vendor's real bank details are then missing.
+  rule_authority: best_practice
+  sap_impact: Payments to the vendor go back to the company's own account; the supplier is not paid and the cash position
+    is misstated.
+  fix_map:
+    __other__: Replace the bank details with the supplier's verified account in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank account number equals a house bank account of the company.'
+- id: AP239
+  field: LFBK.BANKL
+  check_class: exists_check
+  grain: LFBK
+  fields: [LFBK.BANKS, LFBK.BANKL]
+  negate: true
+  target_table: BNKA
+  target_fields: [BANKS, BANKL]
+  target_when:
+    LOEVM: [X]
+  severity: medium
+  dimension: validity
+  message: Vendor bank account is at a bank that is flagged for deletion in the bank directory
+  why_it_matters: Banks are flagged for deletion in BNKA when they merge or close. Transfers to a bank key that no longer
+    exists are rejected by the clearing system.
+  rule_authority: best_practice
+  sap_impact: Payment files are rejected by the bank or the payment is returned; the supplier is paid late.
+  fix_map:
+    __other__: Ask the supplier for the new bank details and update them in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: bank in country {LFBK.BANKS} is flagged for deletion in BNKA.'
+# --- company code data (LFB1) -------------------------------------------------------------------------------------
+- id: AP240
+  field: LFB1.ZTERM
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.ZTERM]
+  target_table: T052
+  target_fields: [ZTERM]
+  target_when:
+    KOART:
+      not_in: [D]
+  severity: medium
+  dimension: validity
+  message: Vendor payment terms in the company code are defined for customers only
+  why_it_matters: Payment terms in T052 can be restricted to customers (account type D). Terms that exist only for customers
+    are not offered for vendors in XK01; assigned to a vendor they come from a load or copy and their day limits and
+    discounts were never designed for payables.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice entry (FB60, MIRO) rejects the proposed terms or calculates due dates and cash discount with
+    receivable-side terms.
+  fix_map:
+    __other__: Assign vendor payment terms in XK02 > Payment transactions, or allow the terms for vendors in OBB8.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: payment terms {LFB1.ZTERM} are customer-only.'
+- id: AP241
+  field: LFM1.ZTERM
+  check_class: exists_check
+  grain: LFM1
+  fields: [LFM1.ZTERM]
+  target_table: T052
+  target_fields: [ZTERM]
+  target_when:
+    KOART:
+      not_in: [D]
+  severity: medium
+  dimension: validity
+  message: Vendor payment terms in the purchasing organisation are defined for customers only
+  why_it_matters: The purchasing payment terms are copied into every purchase order and from there into the invoice. Terms
+    restricted to customers in T052 calculate due dates and discounts that were never meant for payables.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase orders carry customer-only terms; MIRO rejects them or calculates wrong due dates and cash discount.
+  fix_map:
+    __other__: Assign vendor payment terms in XK02 / MK02 > Purchasing data, or allow the terms for vendors in OBB8.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: payment terms {LFM1.ZTERM} are customer-only.'
+- id: AP242
+  field: LFB1.HBKID
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.BUKRS, LFB1.HBKID]
+  target_table: T012
+  target_fields: [BUKRS, HBKID]
+  severity: high
+  dimension: validity
+  message: Vendor's house bank is not defined in the vendor's company code
+  why_it_matters: House banks are defined per company code. A house bank ID (LFB1.HBKID) that exists only in another company
+    code passes a plain check against T012 but cannot pay from this company code.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 cannot use the vendor's house bank and either falls back to the bank determination or rejects the
+    items as exceptions.
+  fix_map:
+    __other__: Assign a house bank of the vendor's company code in XK02 > Payment transactions, or define the house bank in
+      FI12 for that company code.
+  record_fix_template: 'Vendor {LFB1.LIFNR}: house bank {LFB1.HBKID} is not defined in company code {LFB1.BUKRS}.'
+- id: AP243
+  field: LFB1.ZUAWA
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Vendor sort key LFB1.ZUAWA must exist in TZUN
+  why_it_matters: The sort key fills the assignment field (ZUONR) of every line item posted to the vendor; line item
+    display, open item clearing and reconciliation sort by it. A key that is not defined in TZUN fills nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor line items have an empty or wrong assignment; automatic clearing (F.13) and FBL1N sorting do not work.
+  fix_map:
+    __other__: Sort key '{invalid_value}' is not defined in TZUN. Choose a standard sort key in XK02 > Accounting information.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: sort key ''{actual_value}'' not in TZUN.'
+- id: AP244
+  field: LFB1.ZUAWA
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Vendor sort key is missing in the company code data
+  why_it_matters: Without a sort key the assignment field of vendor line items stays empty unless the user types it, so
+    open items cannot be sorted or cleared automatically by reference.
+  rule_authority: best_practice
+  sap_impact: FBL1N lists vendor items in no useful order; automatic clearing (F.13) has no criterion to match items.
+  fix_map:
+    __blank__: Set a sort key (for example 009 external document number) in XK02 > Accounting information, or make it
+      required in the account group field status (OBD3).
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: sort key is missing.'
+- id: AP245
+  field: LFB1.BUSAB
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.BUKRS, LFB1.BUSAB]
+  target_table: T001S
+  target_fields: [BUKRS, BUSAB]
+  severity: low
+  dimension: validity
+  message: Vendor's accounting clerk is not defined in the vendor's company code
+  why_it_matters: Accounting clerks (T001S) are defined per company code and drive the clerk on correspondence, workflow
+    for blocked invoices and payment-run selections. A clerk ID from another company code routes nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Workflow for blocked invoices and payment exceptions has no recipient; correspondence carries no clerk.
+  fix_map:
+    __other__: Assign a clerk of the company code in XK02 > Correspondence, or define the clerk in OB25 (T001S).
+  record_fix_template: 'Vendor {LFB1.LIFNR}: accounting clerk {LFB1.BUSAB} is not defined in company code {LFB1.BUKRS}.'
+- id: AP246
+  field: LFB1.ALTKN
+  check_class: uniqueness_check
+  grain: LFB1
+  fields: [LFB1.BUKRS, LFB1.ALTKN]
+  severity: medium
+  dimension: uniqueness
+  message: The same previous account number is used for several vendors in one company code
+  why_it_matters: The previous account number (LFB1.ALTKN) maps the vendor to its legacy account. One legacy account mapped
+    to two SAP vendors means a legacy supplier was migrated twice, or two legacy suppliers were merged without record.
+  rule_authority: best_practice
+  sap_impact: Migrated open items and history are split across two vendors; legacy reconciliation and audit trails break.
+  fix_map:
+    __other__: Find the correct SAP vendor for the legacy account; block and flag the duplicate for deletion, and correct
+      the previous account number on the other.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: previous account number {LFB1.ALTKN} is used by
+    another vendor.'
+- id: AP247
+  field: LFB1.QSZDT
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: '`LFB1.QSZNR`.notna() & (`LFB1.QSZDT` < @today)'
+  severity: medium
+  dimension: timeliness
+  message: Vendor's withholding tax exemption certificate has expired
+  why_it_matters: The exemption certificate number (LFB1.QSZNR) and its end date (LFB1.QSZDT) exempt the vendor from
+    classic withholding tax. After the end date the exemption no longer applies, but the record still shows it.
+  rule_authority: regulatory
+  sap_impact: Withholding tax is deducted although the vendor thinks it is exempt, or (if exemption is also held in LFBW)
+    not deducted although it should be; penalties from the tax authority.
+  fix_map:
+    __other__: Obtain a renewed certificate and update number and end date in XK02 > Accounting information, or remove the
+      exemption.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: withholding tax exemption ended on {LFB1.QSZDT}.'
+- id: AP248
+  field: LFB1.LNRZE
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.LNRZE, LFB1.BUKRS]
+  target_table: LFB1
+  target_fields: [LIFNR, BUKRS]
+  severity: high
+  dimension: consistency
+  message: Vendor's head office is not created in the vendor's company code
+  why_it_matters: Postings to a branch (LFB1.LNRZE set) are managed on the head office account in the same company code.
+    If the head office has no company code data there, the branch postings have no account to land on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoices to the branch fail with a missing head office in the company code; payment and dunning by head
+    office do not work.
+  fix_map:
+    __other__: Extend the head office vendor to the company code (XK01 with reference) or remove the head office link.
+  record_fix_template: 'Vendor {LFB1.LIFNR}: head office {LFB1.LNRZE} has no data in company code {LFB1.BUKRS}.'
+- id: AP249
+  field: LFB1.LNRZE
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.LNRZE, LFB1.BUKRS]
+  negate: true
+  target_table: LFB1
+  target_fields: [LIFNR, BUKRS]
+  target_when:
+    LNRZE:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Vendor's head office is itself a branch of another head office
+  why_it_matters: SAP supports one level of head office and branch. A head office that points to another head office
+    builds a chain that the payment program and dunning do not follow.
+  rule_authority: sap_hard_constraint
+  sap_impact: Branch items are managed on an intermediate account instead of the real head office; payments and dunning
+    are split.
+  fix_map:
+    __other__: Point all branches directly at the top head office in XK02 > Accounting information.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: head office {LFB1.LNRZE} has its own head office.'
+- id: AP250
+  field: LFB1.LNRZB
+  check_class: exists_check
+  grain: LFB1
+  fields: [LFB1.LNRZB, LFB1.BUKRS]
+  target_table: LFB1
+  target_fields: [LIFNR, BUKRS]
+  severity: high
+  dimension: consistency
+  message: Company-code alternative payee is not created in the vendor's company code
+  why_it_matters: The alternative payee in the company code (LFB1.LNRZB) is paid from this company code. Without company
+    code data the payee has no payment methods or bank selection there.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 cannot pay the vendor's items to the alternative payee; the items appear as exceptions.
+  fix_map:
+    __other__: Extend the alternative payee to the company code (XK01 with reference) or remove it from the vendor.
+  record_fix_template: 'Vendor {LFB1.LIFNR}: alternative payee {LFB1.LNRZB} has no data in company code {LFB1.BUKRS}.'
+- id: AP251
+  field: LFB1.NODEL
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: (`LFB1.NODEL` == 'X') & (`LFB1.LOEVM` == 'X')
+  severity: medium
+  dimension: consistency
+  message: Vendor company code data has a deletion block and a deletion flag at the same time
+  why_it_matters: The company-code deletion block (LFB1.NODEL) forbids archiving; the deletion flag (LFB1.LOEVM) requests it.
+    Both together leave the status undefined and come from a direct table change.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving (FI_ACCPAYB) skips the company code data; the vendor looks closed but stays forever.
+  fix_map:
+    __other__: Remove either the deletion block or the deletion flag in XK06 for the company code.
+  record_fix_template: 'Vendor {LFB1.LIFNR}, company code {LFB1.BUKRS}: deletion block and deletion flag are both set.'
+- id: AP252
+  field: LFB1.SPERR
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: (`LFA1.SPERR` == 'X') & `LFB1.SPERR`.isna()
+  severity: low
+  dimension: consistency
+  message: Vendor is posting-blocked centrally but open in the company code
+  why_it_matters: The central posting block stops postings in all company codes, so the company code flag looks redundant.
+    But company-code reports, interfaces and selections (FBL1N, F110 parameter checks, external procurement systems) read
+    the company-code flag, and when the central block is lifted every company code reopens at once.
+  rule_authority: best_practice
+  sap_impact: Company-code level reports and replicated systems show the vendor as open; removing the central block
+    reactivates the vendor everywhere without a company-code decision.
+  fix_map:
+    __other__: Set the posting block for the company codes too (XK05, 'selected company code' and 'all company codes').
+  record_fix_template: 'Vendor {LFB1.LIFNR}: blocked centrally but open in company code {LFB1.BUKRS}.'
+- id: AP253
+  field: LFB1.LOEVM
+  check_class: cross_field_check
+  grain: LFB1
+  fail_when: (`LFA1.LOEVM` == 'X') & `LFB1.LOEVM`.isna() & `LFB1.SPERR`.isna() & `LFA1.SPERR`.isna()
+  severity: high
+  dimension: consistency
+  message: Vendor is flagged for deletion centrally but its company code data is open
+  why_it_matters: A central deletion flag says the vendor is finished, but the deletion flag does not stop postings. With
+    company code data open and no posting block, invoices and payments can still be posted in that company code.
+  rule_authority: best_practice
+  sap_impact: Invoices and payments are posted to a vendor that is being removed; archiving fails because new documents
+    keep arriving.
+  fix_map:
+    __other__: Flag the company code data for deletion and set the posting block (XK06 / XK05), or remove the central flag
+      if the vendor is still in use.
+  record_fix_template: 'Vendor {LFB1.LIFNR}: flagged for deletion centrally but open in company code {LFB1.BUKRS}.'
+# --- dunning data (LFB5) ------------------------------------------------------------------------------------------
+- id: AP254
+  field: LFB5.BUKRS
+  check_class: exists_check
+  grain: LFB5
+  fields: [LFB5.LIFNR, LFB5.BUKRS]
+  target_table: LFB1
+  target_fields: [LIFNR, BUKRS]
+  severity: medium
+  dimension: consistency
+  message: Vendor dunning data exists for a company code in which the vendor is not created
+  why_it_matters: Dunning data (LFB5) belongs to the vendor's company code data. A dunning record without the company code
+    record is an orphan from a partial deletion or load and is never used.
+  rule_authority: sap_hard_constraint
+  sap_impact: The dunning data is invisible in XK03 and blocks a clean archiving of the vendor.
+  fix_map:
+    __other__: Create the vendor's company code data (XK01) if the vendor is used there, or delete the orphan dunning record.
+  record_fix_template: 'Vendor {LFB5.LIFNR}: dunning data for company code {LFB5.BUKRS} without company code data.'
+- id: AP255
+  field: LFB5.LFRMA
+  check_class: exists_check
+  grain: LFB5
+  fields: [LFB5.LFRMA]
+  target_table: LFA1
+  target_fields: [LIFNR]
+  target_when:
+    LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Vendor's dunning recipient does not exist or is flagged for deletion
+  why_it_matters: The dunning recipient (LFB5.LFRMA) receives the dunning letters for the vendor's debit balances. A
+    recipient that does not exist or is being removed sends the letters nowhere.
+  rule_authority: best_practice
+  sap_impact: F150 prints dunning letters to a missing or obsolete address; debit balances (credit memos, overpayments)
+    are never recovered.
+  fix_map:
+    __other__: Enter an active dunning recipient in XK02 > Correspondence, or remove it so letters go to the vendor.
+  record_fix_template: 'Vendor {LFB5.LIFNR}, company code {LFB5.BUKRS}: dunning recipient {LFB5.LFRMA} is missing or
+    flagged for deletion.'
+- id: AP256
+  field: LFB5.BUSAB
+  check_class: exists_check
+  grain: LFB5
+  fields: [LFB5.BUKRS, LFB5.BUSAB]
+  target_table: T001S
+  target_fields: [BUKRS, BUSAB]
+  severity: low
+  dimension: validity
+  message: Dunning clerk is not defined in the vendor's company code
+  why_it_matters: The dunning clerk is printed on dunning letters and receives questions about them. A clerk ID that is not
+    defined in the company code (T001S) prints no name or contact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dunning letters carry no clerk; supplier replies have no recipient.
+  fix_map:
+    __other__: Assign a clerk of the company code in XK02 > Correspondence, or define the clerk in OB25.
+  record_fix_template: 'Vendor {LFB5.LIFNR}: dunning clerk {LFB5.BUSAB} is not defined in company code {LFB5.BUKRS}.'
+# --- purchasing organisation data (LFM1, LFM2) -------------------------------------------------------------------
+- id: AP257
+  field: LFM1.XERSY
+  check_class: cross_field_check
+  grain: LFM1
+  fail_when: (`LFM1.XERSY` == 'X') & `LFM1.WEBRE`.isna()
+  severity: high
+  dimension: consistency
+  message: Evaluated receipt settlement is active but GR-based invoice verification is off
+  why_it_matters: Evaluated receipt settlement (ERS, LFM1.XERSY) creates the invoice from each goods receipt, which only
+    works when invoice verification is goods-receipt based (LFM1.WEBRE). Without it, ERS settles against the order
+    quantity and can settle quantities that were never received.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRRL rejects the purchase order items or settles them incorrectly; suppliers are paid for goods not received.
+  fix_map:
+    __other__: Set GR-based invoice verification together with ERS in XK02 / MK02 > Purchasing data, or switch ERS off.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: ERS active without GR-based invoice
+    verification.'
+- id: AP258
+  field: LFM1.ZTERM
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Payment terms are missing in the vendor's purchasing organisation data
+  why_it_matters: Purchase orders take their payment terms from the purchasing data (LFM1.ZTERM), and MIRO takes them from
+    the purchase order. Without them every order has no terms and every invoice is due immediately with no cash discount.
+  rule_authority: best_practice
+  sap_impact: Invoices from purchase orders are due on the baseline date; agreed payment periods and cash discount are
+    lost or entered by hand.
+  fix_map:
+    __blank__: Maintain the agreed payment terms in XK02 / MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: payment terms are missing.'
+- id: AP259
+  field: LFM1.INCO2
+  check_class: cross_field_check
+  grain: LFM1
+  fail_when: '`LFM1.INCO1`.notna() & `LFM1.INCO2`.isna()'
+  severity: low
+  dimension: completeness
+  message: Vendor Incoterms have no named place
+  why_it_matters: Every Incoterms rule (EXW, FCA, FOB, CIF, DAP, DDP and the others) is only complete with a named place
+    (LFM1.INCO2). Without it the transfer of risk and freight cost in the purchase order is undefined.
+  rule_authority: best_practice
+  sap_impact: Purchase orders print an incomplete delivery term; freight cost and customs value (import) are disputed.
+  fix_map:
+    __other__: Maintain the Incoterms location in XK02 / MK02 > Purchasing data.
+  record_fix_template: 'Vendor {LFM1.LIFNR}, purchasing organisation {LFM1.EKORG}: Incoterms {LFM1.INCO1} without a named
+    place.'
+- id: AP260
+  field: LFM1.SPERM
+  check_class: cross_field_check
+  grain: LFM1
+  fail_when: (`LFA1.SPERM` == 'X') & `LFM1.SPERM`.isna()
+  severity: low
+  dimension: consistency
+  message: Vendor is purchasing-blocked centrally but open in the purchasing organisation
+  why_it_matters: The central purchasing block stops orders in all purchasing organisations, but sourcing lists, info
+    records and replicated procurement systems read the purchasing organisation flag. When the central block is lifted,
+    every purchasing organisation reopens at once.
+  rule_authority: best_practice
+  sap_impact: Source determination and external procurement systems still offer the vendor; removing the central block
+    reactivates purchasing everywhere.
+  fix_map:
+    __other__: Set the purchasing block for the purchasing organisations too (XK05 / MK05).
+  record_fix_template: 'Vendor {LFM1.LIFNR}: purchasing-blocked centrally but open in purchasing organisation {LFM1.EKORG}.'
+- id: AP261
+  field: LFM1.LOEVM
+  check_class: cross_field_check
+  grain: LFM1
+  fail_when: (`LFA1.LOEVM` == 'X') & `LFM1.LOEVM`.isna() & `LFM1.SPERM`.isna() & `LFA1.SPERM`.isna()
+  severity: high
+  dimension: consistency
+  message: Vendor is flagged for deletion centrally but its purchasing organisation data is active
+  why_it_matters: The deletion flag does not stop purchasing. A vendor deleted centrally whose purchasing organisation is
+    neither flagged nor blocked can still receive purchase orders, contracts and scheduling agreements.
+  rule_authority: best_practice
+  sap_impact: Buyers and automatic PO creation (ME59N) order from a vendor that is being removed.
+  fix_map:
+    __other__: Flag the purchasing organisation data for deletion and set the purchasing block (XK06 / XK05), or remove the
+      central flag if the vendor is still in use.
+  record_fix_template: 'Vendor {LFM1.LIFNR}: flagged for deletion centrally but active in purchasing organisation {LFM1.EKORG}.'
+- id: AP262
+  field: LFM1.LIFNR
+  check_class: exists_check
+  grain: LFM1
+  fields: [LFM1.LIFNR]
+  applies_when:
+    LFM1.SPERM:
+      blank: true
+  target_table: LFB1
+  target_fields: [LIFNR]
+  severity: high
+  dimension: completeness
+  message: Vendor can be ordered from but has no company code data anywhere
+  why_it_matters: Purchase orders only need the purchasing view, but goods receipt valuation and invoice verification post
+    to the vendor's reconciliation account in a company code. A vendor with purchasing data and no company code data can be
+    ordered from but never invoiced or paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIRO stops because the vendor is not created in the company code; goods are received without a payable.
+  fix_map:
+    __other__: Extend the vendor to the company code of the ordering plant (XK01 with company code data) or block purchasing
+      (XK05).
+  record_fix_template: 'Vendor {LFM1.LIFNR}: purchasing data for {LFM1.EKORG} but no company code data.'
+- id: AP263
+  field: LFM2.EKORG
+  check_class: exists_check
+  grain: LFM2
+  fields: [LFM2.LIFNR, LFM2.EKORG]
+  target_table: LFM1
+  target_fields: [LIFNR, EKORG]
+  severity: medium
+  dimension: consistency
+  message: Vendor sub-range or plant purchasing data exists without purchasing organisation data
+  why_it_matters: LFM2 holds purchasing data that differs by vendor sub-range or plant below the purchasing organisation
+    (LFM1). Without the LFM1 record the lower level is an orphan that purchasing never reads.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plant-specific purchasing data is ignored; the vendor cannot be ordered from in that purchasing organisation.
+  fix_map:
+    __other__: Create the purchasing organisation data (XK01 / MK01) or delete the orphan record.
+  record_fix_template: 'Vendor {LFM2.LIFNR}: data for purchasing organisation {LFM2.EKORG} at sub-range or plant level
+    without LFM1.'
+- id: AP264
+  field: LFM2.LOEVM
+  check_class: exists_check
+  grain: LFM2
+  fields: [LFM2.LIFNR, LFM2.EKORG]
+  negate: true
+  applies_when:
+    LFM2.LOEVM:
+      blank: true
+  target_table: LFM1
+  target_fields: [LIFNR, EKORG]
+  target_when:
+    LOEVM: [X]
+  severity: low
+  dimension: consistency
+  message: Vendor sub-range or plant purchasing data is active while the purchasing organisation is flagged for deletion
+  why_it_matters: When the purchasing organisation data is flagged for deletion, the lower-level data should be flagged too.
+    Active plant or sub-range records keep the vendor visible in source determination and block archiving.
+  rule_authority: best_practice
+  sap_impact: Archiving of the vendor's purchasing data fails; plant-level conditions still point to the vendor.
+  fix_map:
+    __other__: Flag the plant or sub-range data for deletion as well (XK06 / MK06).
+  record_fix_template: 'Vendor {LFM2.LIFNR}: purchasing organisation {LFM2.EKORG} flagged for deletion, lower-level data
+    is not.'
+# --- partner functions (WYT3) -------------------------------------------------------------------------------------
+- id: AP265
+  field: WYT3.LIFN2
+  check_class: exists_check
+  grain: WYT3
+  fields: [WYT3.LIFN2]
+  target_table: LFA1
+  target_fields: [LIFNR]
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Vendor partner function points to a vendor that does not exist or is flagged for deletion
+  why_it_matters: Partner functions (ordering address, goods supplier, invoicing party) are copied into every purchase
+    order. A partner vendor that does not exist or is being removed sends orders, deliveries or invoices to a dead account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase orders carry an invalid partner; invoices for the order are posted to a deleted invoicing party.
+  fix_map:
+    __other__: Replace the partner in XK02 / MK02 > Partner functions, or remove the deletion flag from the partner vendor.
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: partner {WYT3.PARVW} vendor {WYT3.LIFN2}
+    is missing or flagged for deletion.'
+- id: AP266
+  field: WYT3.LIFN2
+  check_class: exists_check
+  grain: WYT3
+  fields: [WYT3.LIFN2]
+  negate: true
+  target_table: LFA1
+  target_fields: [LIFNR]
+  target_when:
+    SPERM: [X]
+  severity: medium
+  dimension: consistency
+  message: Vendor partner function points to a vendor that is blocked for purchasing
+  why_it_matters: A purchasing block on the partner vendor was set for a reason (quality, compliance, sanctions). Through
+    the partner function the blocked vendor still receives orders or invoices of the main vendor.
+  rule_authority: best_practice
+  sap_impact: The purchasing block is bypassed; orders and invoices reach a blocked supplier through the partner.
+  fix_map:
+    __other__: Replace the partner in XK02 / MK02 > Partner functions, or lift the block on the partner if it no longer
+      applies.
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: partner {WYT3.PARVW} vendor {WYT3.LIFN2}
+    is purchasing-blocked.'
+- id: AP267
+  field: WYT3.EKORG
+  check_class: exists_check
+  grain: WYT3
+  fields: [WYT3.LIFNR, WYT3.EKORG]
+  target_table: LFM1
+  target_fields: [LIFNR, EKORG]
+  severity: medium
+  dimension: consistency
+  message: Vendor partner functions exist for a purchasing organisation without purchasing data
+  why_it_matters: Partner functions belong to the vendor's purchasing organisation data. Partners maintained for a
+    purchasing organisation where the vendor is not created are orphans that no order uses.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner assignment is never used; extending the vendor later silently picks up outdated partners.
+  fix_map:
+    __other__: Create the purchasing organisation data (XK01 / MK01) or delete the orphan partner records.
+  record_fix_template: 'Vendor {WYT3.LIFNR}: partner functions for purchasing organisation {WYT3.EKORG} without LFM1.'
+- id: AP268
+  field: WYT3.PARVW
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Vendor partner function WYT3.PARVW must exist in TPAR
+  why_it_matters: The partner function decides what the partner does in purchasing (ordering address, goods supplier,
+    invoicing party). A function that is not defined in TPAR is ignored by the partner determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is never copied into purchase orders; invoices and deliveries go to the main vendor.
+  fix_map:
+    __other__: Partner function '{invalid_value}' is not defined in TPAR. Correct it in XK02 > Partner functions.
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: partner function ''{actual_value}'' not
+    in TPAR.'
+- id: AP269
+  field: WYT3.PARVW
+  check_class: uniqueness_check
+  grain: WYT3
+  fields: [WYT3.LIFNR, WYT3.EKORG, WYT3.PARVW]
+  applies_when:
+    WYT3.DEFPA: [X]
+    WYT3.LTSNR:
+      blank: true
+    WYT3.WERKS:
+      blank: true
+  severity: medium
+  dimension: uniqueness
+  message: More than one default partner for the same partner function
+  why_it_matters: The default partner indicator (WYT3.DEFPA) tells purchasing which partner to propose when several exist
+    for one function. Two defaults for the same function make the proposal arbitrary.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase orders propose a different ordering address or invoicing party from one order to the next.
+  fix_map:
+    __other__: Keep one default partner per partner function in XK02 / MK02 > Partner functions.
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: several default partners for function
+    {WYT3.PARVW}.'
+- id: AP270
+  field: WYT3.PARNR
+  check_class: exists_check
+  grain: WYT3
+  fields: [WYT3.PARNR]
+  target_table: KNVK
+  target_fields: [PARNR]
+  severity: medium
+  dimension: consistency
+  message: Vendor partner function points to a contact person that does not exist
+  why_it_matters: A contact person as partner (WYT3.PARNR) is printed on purchase orders as the supplier contact. A contact
+    number that is not in KNVK prints nothing and routes order confirmations nowhere.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase order output has no supplier contact; output by e-mail to the contact fails.
+  fix_map:
+    __other__: Assign an existing contact person in XK02 > Partner functions, or create the contact (XK02 > Contact persons).
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: contact person {WYT3.PARNR} does not exist.'
+- id: AP271
+  field: WYT3.LIFN2
+  check_class: exists_check
+  grain: WYT3
+  fields: [WYT3.LIFN2]
+  applies_when:
+    WYT3.PARVW: [RS]
+  target_table: LFB1
+  target_fields: [LIFNR]
+  severity: high
+  dimension: completeness
+  message: Invoicing party partner has no company code data
+  why_it_matters: The invoicing party (partner function RS) is the account the invoice is posted to in MIRO. An invoicing
+    party without company code data cannot carry a payable.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIRO stops because the invoicing party is not created in the company code; invoices for the orders cannot be
+    posted.
+  fix_map:
+    __other__: Extend the invoicing party to the company code (XK01 with company code data) or replace the partner.
+  record_fix_template: 'Vendor {WYT3.LIFNR}, purchasing organisation {WYT3.EKORG}: invoicing party {WYT3.LIFN2} has no company
+    code data.'
+# --- contact persons (KNVK with LIFNR) -----------------------------------------------------------------------------
+- id: AP272
+  field: KNVK.LIFNR
+  check_class: exists_check
+  grain: KNVK
+  fields: [KNVK.LIFNR]
+  target_table: LFA1
+  target_fields: [LIFNR]
+  severity: medium
+  dimension: consistency
+  message: Vendor contact person belongs to a vendor that does not exist
+  why_it_matters: Contact persons are attached to their vendor through KNVK.LIFNR. A contact of a vendor that does not exist
+    is an orphan holding personal data that no process uses and no one maintains.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan personal data is kept without a purpose (GDPR / POPIA retention); CVI cannot convert the contact.
+  fix_map:
+    __other__: Delete the orphan contact person, or assign it to the correct vendor.
+  record_fix_template: 'Contact person {KNVK.PARNR}: vendor {KNVK.LIFNR} does not exist.'
+- id: AP273
+  field: KNVK.KUNNR
+  check_class: cross_field_check
+  grain: KNVK
+  applies_when:
+    KNVK.LIFNR:
+      populated: true
+  fail_when: '`KNVK.KUNNR`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Contact person is assigned to a vendor and a customer at the same time
+  why_it_matters: A contact person (KNVK) belongs to either a customer or a vendor. A record with both is created by a load
+    or table change; XD02 and XK02 each change it without knowing the other uses it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Changes made for the customer change the vendor contact; CVI creates the contact relationship for only one of
+    the two Business Partners.
+  fix_map:
+    __other__: Create separate contact persons for the customer and the vendor, and remove the second assignment.
+  record_fix_template: 'Contact person {KNVK.PARNR}: assigned to vendor {KNVK.LIFNR} and customer {KNVK.KUNNR}.'
+- id: AP274
+  field: KNVK.LOEVM
+  check_class: cross_field_check
+  grain: KNVK
+  applies_when:
+    KNVK.LIFNR:
+      populated: true
+  fail_when: (`LFA1.LOEVM` == 'X') & `KNVK.LOEVM`.isna()
+  severity: low
+  dimension: consistency
+  message: Contact person is active while its vendor is flagged for deletion
+  why_it_matters: When a vendor is flagged for deletion its contact persons hold personal data without a purpose. They
+    should be flagged too, so that they are archived or deleted with the vendor.
+  rule_authority: regulatory
+  sap_impact: Personal data of contacts outlives the business relationship (GDPR / POPIA storage limitation).
+  fix_map:
+    __other__: Flag the contact person for deletion (XK06 / XK02 > Contact persons) or delete it.
+  record_fix_template: 'Contact person {KNVK.PARNR}: vendor {KNVK.LIFNR} is flagged for deletion.'
+# --- cross-level lifecycle ----------------------------------------------------------------------------------------
+- id: AP275
+  field: LFA1.LIFNR
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.LIFNR]
+  applies_when:
+    LFA1.SPERR:
+      blank: true
+    LFA1.WERKS:
+      blank: true
+  target_table: LFB1
+  target_fields: [LIFNR]
+  severity: medium
+  dimension: completeness
+  message: Active vendor has no company code data
+  why_it_matters: Only company code data (LFB1) gives the vendor a reconciliation account, payment terms and payment
+    methods. An active vendor with general data only can be selected in documents but nothing can be posted to it.
+  rule_authority: best_practice
+  sap_impact: Invoices and payments for the vendor fail with 'vendor not created in company code'; the vendor clutters
+    search helps and duplicate checks.
+  fix_map:
+    __other__: Extend the vendor to the company code where it is used (XK01 with company code data), or block it (XK05)
+      if it is not needed.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: no company code data.'
+- id: AP276
+  field: LFA1.LIFNR
+  check_class: exists_check
+  grain: LFA1
+  fields: [LFA1.LIFNR]
+  applies_when:
+    LFA1.SPERM:
+      blank: true
+    LFA1.XCPDK:
+      blank: true
+  target_table: LFM1
+  target_fields: [LIFNR]
+  severity: low
+  dimension: completeness
+  message: Vendor is open for purchasing but has no purchasing organisation data
+  why_it_matters: A vendor without a purchasing block but with no purchasing organisation data cannot be ordered from.
+    Vendors meant for accounting only (utilities, authorities, employees) should carry the purchasing block, so that
+    buyers and source determination do not offer them.
+  rule_authority: best_practice
+  sap_impact: ME21N rejects the vendor for every purchasing organisation; buyers create a second vendor instead.
+  fix_map:
+    __other__: Extend the vendor to the purchasing organisation (XK01 / MK01) or set the central purchasing block (XK05) for
+      an accounting-only vendor.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: no purchasing organisation data and no purchasing block.'

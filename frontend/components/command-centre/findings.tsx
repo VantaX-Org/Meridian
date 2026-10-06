@@ -2,7 +2,8 @@
 
 /**
  * Analyse, findings: every failing check in the estate.
- * Run, object, severity, dimension, check, type and order live in the URL, so
+ * Run, object, severity, dimension, check, type and order (`sort=column:direction`,
+ * set from the column headers) live in the URL, so
  * Home, trends and Object 360 deep-link a slice. The Tally filters by severity
  * in place. A row opens Finding detail.
  */
@@ -15,7 +16,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Banner, Menu, MenuItem, MenuLabel, MenuSeparator, RowHoverPreview } from "@/components/aurora";
 import {
-  Button, Chip, DataTable, EmptyState, FilterBar, Input, Mono, Pager, PageHeader, Select, StatusBadge, Tally, TableSkeleton,
+  Button, Chip, DataTable, EmptyState, FilterBar, Input, Mono, Pager, PageHeader, StatusBadge, Tally, TableSkeleton,
   type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { deleteSavedView, getFindings, getFindingsAggregate, listSavedViews, saveNamedView } from "@/lib/api/findings";
@@ -36,6 +37,7 @@ const OWN: FilterKey[] = ["severity", "module", "dimension", "baseline", "type",
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 type Sev = (typeof SEVERITIES)[number];
 const DIMENSIONS: Dimension[] = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
+const SEV_RANK: Record<Sev, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 const sev = (s: string): Sev => ((SEVERITIES as readonly string[]).includes(s) ? (s as Sev) : "medium");
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const title = (f: Finding) => f.business_name ?? f.details?.message ?? f.check_id;
@@ -75,7 +77,8 @@ export function FindingsSurface() {
     queryFn: () => getFindings({
       ...filter,
       type: filter.type === "anomaly" || filter.type === "rule" ? filter.type : undefined,
-      sort: filter.sort === "impact" ? "impact" : filter.sort === "severity" ? "severity" : undefined,
+      // the server picks which 200 findings come first; the header sort orders them
+      sort: filter.sort?.split(":")[0] === "severity" ? "severity" : undefined,
       limit: PAGE, offset,
     }),
     placeholderData: keepPreviousData,
@@ -100,32 +103,34 @@ export function FindingsSurface() {
   });
 
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
-    { id: "severity", header: "Severity", meta: meta({ sticky: "start", width: 104 }),
+    { id: "severity", header: "Severity", accessorFn: (f) => SEV_RANK[sev(f.severity)], meta: meta({ sticky: "start", width: 104 }),
       cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{cap(row.original.severity)}</StatusBadge> },
-    { id: "finding", header: "Finding", meta: meta({ minWidth: 300 }), cell: ({ row }) => {
+    { id: "finding", header: "Finding", accessorFn: (f) => title(f), meta: meta({ minWidth: 300, clamp: 2 }), cell: ({ row }) => {
       const f = row.original;
       return (
         <RowHoverPreview preview={<span>{f.details?.message ?? title(f)} {f.affected_count.toLocaleString()} of {f.total_count.toLocaleString()} records fail.</span>}>
-          <Link className="ui-cell-stack ui-link" href={`/analyse/finding/${f.id}?v=${f.version_id}`} onClick={(e) => e.stopPropagation()}>
-            <span className="ui-cell-stack__main">{title(f)}</span>
-            <span className="ui-cell-stack__sub">
-              <Mono>{f.check_id}</Mono>
-              {f.details?.field_checked ? <Mono>{f.details.field_checked}</Mono> : null}
-              {f.check_class ? <span title={f.check_class}>{checkClassLabel(f.check_class)}</span> : null}
-            </span>
-          </Link>
+          <Link className="ui-link" href={`/analyse/finding/${f.id}?v=${f.version_id}`} onClick={(e) => e.stopPropagation()}>{title(f)}</Link>
         </RowHoverPreview>
       );
     } },
-    { id: "module", header: "Object", meta: meta({ width: 160 }), cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "dimension", header: "Dimension", meta: meta({ width: 116 }), cell: ({ row }) => cap(row.original.dimension) },
-    { id: "records", header: "Records", meta: meta({ width: 96, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
-    ...(hasCost ? [{ id: "cost", header: "At risk", meta: meta({ width: 104, align: "end", numeric: true }),
+    { id: "check", header: "Check", accessorFn: (f) => f.check_id, meta: meta({ width: 168 }), cell: ({ row }) => {
+      const f = row.original;
+      return (
+        <span className="ui-cell-stack" title={f.check_class ? checkClassLabel(f.check_class) : undefined}>
+          <span className="ui-cell-stack__main"><Mono>{f.check_id}</Mono></span>
+          {f.details?.field_checked ? <span className="ui-cell-stack__sub"><Mono>{f.details.field_checked}</Mono></span> : null}
+        </span>
+      );
+    } },
+    { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module), meta: meta({ width: 160 }), cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "dimension", header: "Dimension", accessorFn: (f) => f.dimension, meta: meta({ width: 116 }), cell: ({ row }) => cap(row.original.dimension) },
+    { id: "records", header: "Records", accessorFn: (f) => f.affected_count, meta: meta({ width: 96, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
+    ...(hasCost ? [{ id: "cost", header: "At risk", accessorFn: (f: Finding) => f.cost_at_risk ?? -1, meta: meta({ width: 104, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.cost_at_risk == null ? <span className="ui-micro">—</span> : <span title={row.original.cost_formula ?? undefined}>{money(row.original.cost_at_risk)}</span>) } as ColumnDef<Finding, unknown>] : []),
-    { id: "pass", header: "Pass rate", meta: meta({ width: 92, align: "end", numeric: true }),
+    { id: "pass", header: "Pass rate", accessorFn: (f) => f.pass_rate ?? -1, meta: meta({ width: 92, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate)}%`) },
-    { id: "age", header: "Found", meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
-    { id: "fix", header: "Fix", meta: meta({ width: 190 }), cell: ({ row }) => {
+    { id: "age", header: "Found", accessorFn: (f) => f.created_at, meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "fix", header: "Fix", enableSorting: false, meta: meta({ width: 190 }), cell: ({ row }) => {
       const f = row.original;
       const href = `/analyse/finding/${f.id}?tab=records&v=${f.version_id}`;
       return (
@@ -138,7 +143,19 @@ export function FindingsSurface() {
   ], [hasCost]);
 
   const searching = active.length > 0 || search !== "";
-  const modules = agg.data?.by_module ?? [];
+  const groups = (() => {
+    // the aggregate is already narrowed by a chosen object or dimension, so its counts only describe the other filter
+    const moduleOptions = new Map((agg.data?.by_module ?? []).map((m) => [m.module, m.findings]));
+    if (filter.module) moduleOptions.set(filter.module, moduleOptions.get(filter.module) ?? 0);
+    const dimCount = new Map((agg.data?.by_dimension ?? []).map((d) => [d.dimension, d.findings]));
+    const counts = !!agg.data && !filter.type && !filter.baseline;
+    return [
+      { id: "module", label: "Object", value: filter.module ?? "", onChange: (v: string) => set({ module: v || undefined }), allLabel: "All objects",
+        options: [...moduleOptions].map(([m, n]) => ({ value: m, label: formatModuleName(m), count: counts && !filter.module ? n : undefined })) },
+      { id: "dimension", label: "Dimension", value: filter.dimension ?? "", onChange: (v: string) => set({ dimension: v || undefined }), allLabel: "All dimensions",
+        options: DIMENSIONS.map((d) => ({ value: d, label: cap(d), count: counts && !filter.dimension ? dimCount.get(d) ?? 0 : undefined })) },
+    ];
+  })();
 
   return (
     <div className="ui-page">
@@ -155,22 +172,11 @@ export function FindingsSurface() {
           verdict: `Across ${plural(objects, "object")}.` },
       ]} />
 
-      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search findings" }} onClear={active.length ? clearAll : undefined}
-        actions={
-          <>
-            <Select aria-label="Object" placeholder="All objects" style={{ width: 170 }} value={filter.module ?? ""}
-              options={[...new Set([...modules.map((m) => m.module), ...(filter.module ? [filter.module] : [])])].map((m) => ({ value: m, label: formatModuleName(m) }))}
-              onValueChange={(m) => set({ module: m || undefined })} />
-            <Select aria-label="Dimension" placeholder="All dimensions" style={{ width: 160 }} value={filter.dimension ?? ""}
-              options={DIMENSIONS.map((d) => ({ value: d, label: cap(d) }))} onValueChange={(d) => set({ dimension: d || undefined })} />
-          </>
-        }>
+      <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search findings" }} groups={groups} onClear={active.length ? clearAll : undefined}>
         <Chip selected={passing} onClick={() => setPassing((v) => !v)}>Include passing checks</Chip>
         <Chip selected={filter.type === "anomaly"} onClick={() => set({ type: filter.type === "anomaly" ? undefined : "anomaly" })}>Anomalies</Chip>
         <Chip selected={filter.type === "rule"} onClick={() => set({ type: filter.type === "rule" ? undefined : "rule" })}>Rules</Chip>
         <Chip selected={filter.baseline === "sap_standard"} onClick={() => set({ baseline: filter.baseline === "sap_standard" ? undefined : "sap_standard" })}>Baseline only</Chip>
-        <Chip selected={filter.sort !== "severity"} onClick={() => set({ sort: undefined })}>By impact</Chip>
-        <Chip selected={filter.sort === "severity"} onClick={() => set({ sort: "severity" })}>By severity</Chip>
         {active.filter((k) => !OWN.includes(k)).map((k) => (
           <Chip key={k} tone="info" onDismiss={() => set({ [k]: undefined })}>
             {FILTER_LABEL[k]}: <Mono>{k === "version_id" ? filter[k]?.slice(0, 8) : filter[k]}</Mono>
@@ -186,7 +192,8 @@ export function FindingsSurface() {
         ) : visible.length ? (
           <div className="ui-stack" style={{ gap: "var(--aurora-space-3)" }}>
             <DataTable columns={columns} data={visible} getRowId={(f) => f.id} onRowActivate={(f) => router.push(`/analyse/finding/${f.id}?v=${f.version_id}`)}
-              ariaLabel="Findings. Use j and k to move, Enter to open." maxHeight="62vh" />
+              ariaLabel="Findings. Use j and k to move, Enter to open." maxHeight="62vh"
+              sort={filter.sort ?? ""} onSortChange={(v) => set({ sort: v || undefined })} />
             <Pager offset={offset} total={total} pageSize={PAGE} noun="findings" onChange={setOffset} />
           </div>
         ) : (

@@ -372,7 +372,12 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     if r.error:
         return "error", r.error
     got = (r.total_count, r.affected_count)
-    return ("proven", f"refs={rows}") if got == (2, 1) else ("unproven", f"{got} != (2, 1)")
+    # a self-reference (head office in the same table) also checks the added target record itself
+    # when the target must populate one of the rule's own reference fields (head office of a head office)
+    self_ref = have is not None and any(f"{t}.{f}" in refs and isinstance(c, dict) and c.get("populated")
+                                        for f, c in (rule.get("target_when") or {}).items())
+    want = (3, 1) if self_ref else (2, 1)
+    return ("proven", f"refs={rows}") if got == want else ("unproven", f"{got} != {want}")
 
 
 def _prove_group_sum(rule, dictionary, cand, live) -> tuple[str, str]:

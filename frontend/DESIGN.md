@@ -29,6 +29,7 @@ Light values are listed first. Dark overrides live under `[data-theme="dark"]` i
 | Medium | `--aurora-status-warning-500` | `#A86A00` | lifted for dark |
 | Pass | `--aurora-status-success-500` | `#23794A` | lifted for dark |
 
+- In charts only Critical and High carry hue. Medium is ink at 60% and Low is ink at 35% (`ChartTokens.severity`), so the eye goes to what needs action. A badge keeps its own colour and shape (rule 6).
 - Low severity has no hue. It is a ring in the tertiary text colour, so the four severities differ in shape as well as hue.
 - `--aurora-signal-500` and `--aurora-status-info-500` alias the accent. There is no separate cyan "in flight" colour.
 - The chart palette is `--aurora-viz-1..12` plus sequential petrol and amber ramps. It is read through `components/aurora/data/chart-theme.ts`.
@@ -67,7 +68,7 @@ These are thin, opinionated wrappers over `components/aurora`. New pages compose
 | `MetricStrip` / `Metric` | A row of counts. `tone` sets the defect colour and `href` makes the count open the filtered list. `delta` shows change with a declared good direction |
 | `StatusBadge` / `Status` | Severity and job state as a dot plus a word, never colour alone |
 | `SectionCard` | A titled sheet with `meta` and one `action` link. `flush` removes the inner padding for lists and tables |
-| `FilterBar` | Search with a `/` shortcut, plus count chips that toggle filters |
+| `FilterBar` | One row: search with a `/` shortcut, then `groups`, one menu chip per filter showing its choice, with a count beside each option. Options that match nothing are hidden when the list holds fewer than 10 rows. `CountChips` is for a short, single status filter. Never put a native select in a `FilterBar` |
 | `KeyValue` | A definition list for drawers. `mono` rows hold identifiers |
 | `FieldChip`, `Mono` | SAP identifiers |
 | `EmptyState` | One sentence on what is absent, plus the action that fills it |
@@ -101,8 +102,9 @@ These are the rules a page is reviewed against. Breaking one needs a reason writ
 2. **One loud element per page.** Home has the journey strip; Object 360 has the score ring. Everything else is hairline sheets and tabular numbers.
 3. **Big numbers are counts people act on.** 32–48px, weight 600, tabular figures, with a plain label under or above. Never a percentage without the count beside it.
 4. **Say the verdict in a sentence.** A page or hero opens with what is true now ("12 of 40 checks fail. Weakest on validity."), not a description of the page.
-5. **Charts answer one question each,** named in the card title as the answer's subject ("Score per run", "Findings per object"). No chart without a click target, no legend that is not also a filter or link.
-6. **Severity is colour plus shape.** Critical, high and medium carry hue; low is a dotted or hollow mark. A badge always carries the word.
+5. **Charts answer one question each,** named in the card title as the answer's subject ("Score per run", "Findings per object"). No chart without a click target, no legend that is not also a filter or link. A line chart needs at least four points: with fewer runs, show the change as a chip and the runs as rows (`ScoreTrend`). The x-axis uses `formatDate`, and the legend lists series in the order given.
+6. **Severity is colour plus shape.** Critical, high and medium carry hue in badges; low is a dotted or hollow mark. In charts only critical and high carry hue; medium and low are ink at 60% and 35%. A badge always carries the word.
+6a. **Tables sort in the header.** A sortable column shows `aria-sort` and its choice lives in `?sort=key:dir`, so a sorted list can be shared. There is no "Sort by" control. Long primary cells wrap with `clamp: 2` instead of truncating, and a column whose rows all hold the same value is replaced by one "All rows" line (`collapseUniform`).
 7. **Show the cap.** When a critical finding caps the score, say so beside the score, with the reason.
 8. **Name SAP things the way SAP does.** Objects by their business name, fields as `TABLE.FIELD` in mono, transactions as codes.
 9. **Empty states direct.** One sentence on what is missing and the link that fills it. No illustrations.

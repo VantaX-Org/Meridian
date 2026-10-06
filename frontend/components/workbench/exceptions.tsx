@@ -12,7 +12,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Field, Select, Textarea } from "@/components/aurora";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Mono,
+  Banner, Button, CountChips, DataTable, DetailDrawer, EmptyState, FilterBar, Input, KeyValue, Mono,
   PageHeader, StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { copyToClipboard } from "@/lib/actions";
@@ -24,8 +24,9 @@ import type { Exception, ExceptionStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 const STATUS: Record<ExceptionStatus, Status> = { open: "medium", investigating: "running", pending_approval: "running", resolved: "ok", verified: "ok", closed: "idle" };
-const STATUSES: ("all" | ExceptionStatus)[] = ["all", "open", "investigating", "pending_approval", "resolved", "closed"];
+const STATUSES: ExceptionStatus[] = ["open", "investigating", "pending_approval", "resolved", "closed"];
 const sev = (s: string): Status => (s === "critical" || s === "high" || s === "low" ? s : "medium");
+const SEV_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 const label = (s: string) => { const t = s.replace(/_/g, " "); return t.charAt(0).toUpperCase() + t.slice(1); };
 const RESOLUTION_TYPES = [
   { value: "steward", label: "Steward resolved" }, { value: "dedup", label: "Resolved by merging duplicates" }, { value: "complex", label: "Complex, several steps" },
@@ -47,13 +48,17 @@ export function ExceptionsSurface() {
   const canRequest = can("analyse");
   const canApprove = can("approve");
   const [status, setStatus] = useUrlState("status", "all");
+  const [sort, setSort] = useUrlState("sort");
   const drawer = useDrawerParam("exception");
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState("");
 
-  const q = useQuery({ queryKey: ["exceptions.list", { status }], queryFn: () => getExceptions({ per_page: 100, status: status === "all" ? undefined : status }) });
-  const items = useMemo(() => q.data?.exceptions ?? [], [q.data]);
-  const total = q.data?.total ?? items.length;
+  // One unfiltered read, so every status chip can show its count.
+  const q = useQuery({ queryKey: ["exceptions.list"], queryFn: () => getExceptions({ per_page: 100 }) });
+  const everything = useMemo(() => q.data?.exceptions ?? [], [q.data]);
+  const items = useMemo(() => (status === "all" ? everything : everything.filter((e) => e.status === status)), [everything, status]);
+  const statusOptions = STATUSES.map((s) => ({ value: s, label: label(s), count: everything.filter((e) => e.status === s).length }));
+  const total = q.data?.total ?? everything.length;
   // Tenant-wide KPIs from the server, independent of the status filter and the 100-row page.
   const mq = useQuery({ queryKey: ["exceptions.metrics"], queryFn: () => getExceptionMetrics() });
   const m = mq.data;
@@ -67,16 +72,16 @@ export function ExceptionsSurface() {
   const selected = drawer.value ? items.find((e) => e.id === drawer.value) ?? null : null;
 
   const columns = useMemo<ColumnDef<Exception, unknown>[]>(() => [
-    { id: "status", header: "Status", meta: meta({ sticky: "start", width: 150 }), cell: ({ row }) => <StatusBadge status={STATUS[row.original.status]}>{label(row.original.status)}</StatusBadge> },
-    { id: "title", header: "Exception", meta: meta({ minWidth: 280 }), cell: ({ row }) => (
+    { id: "status", header: "Status", accessorFn: (e) => e.status, meta: meta({ sticky: "start", width: 150 }), cell: ({ row }) => <StatusBadge status={STATUS[row.original.status]}>{label(row.original.status)}</StatusBadge> },
+    { id: "title", header: "Exception", accessorFn: (e) => e.title, meta: meta({ minWidth: 280 }), cell: ({ row }) => (
       <span className="ui-cell-stack">
         <span className="ui-cell-stack__main">{row.original.title}</span>
         <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{label(row.original.category)}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
       </span>) },
-    { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{label(sev(row.original.severity))}</StatusBadge> },
-    { id: "tier", header: "Tier", meta: meta({ width: 70, align: "end", numeric: true }), cell: ({ row }) => row.original.escalation_tier },
-    { id: "assignee", header: "Assigned", meta: meta({ width: 150 }), cell: ({ row }) => row.original.assigned_to ?? "—" },
-    { id: "age", header: "Raised", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "severity", header: "Severity", accessorFn: (e) => SEV_RANK[sev(e.severity)], meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{label(sev(row.original.severity))}</StatusBadge> },
+    { id: "tier", header: "Tier", accessorFn: (e) => e.escalation_tier, meta: meta({ width: 70, align: "end", numeric: true }), cell: ({ row }) => row.original.escalation_tier },
+    { id: "assignee", header: "Assigned", accessorFn: (e) => e.assigned_to ?? "", meta: meta({ width: 150 }), cell: ({ row }) => row.original.assigned_to ?? "—" },
+    { id: "age", header: "Raised", accessorFn: (e) => e.created_at, meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
   ], []);
 
   return (
@@ -96,12 +101,12 @@ export function ExceptionsSurface() {
         ]} />
       )}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search exceptions" }}>
-        {STATUSES.map((s) => <Chip key={s} selected={status === s} onClick={() => setStatus(s)}>{s === "all" ? "All" : label(s)}</Chip>)}
+        <CountChips value={status === "all" ? "" : status} onChange={(v) => setStatus(v || "all")} options={statusOptions} total={everything.length} />
       </FilterBar>
       {q.isLoading ? <TableSkeleton rows={8} label="Loading exceptions" />
         : q.error ? <Banner tone="danger" title="Exceptions could not be read">{(q.error as Error).message}</Banner>
         : visible.length ? <DataTable columns={columns} data={visible} getRowId={(e) => e.id} onRowActivate={(e) => drawer.open(e.id)}
-            ariaLabel="Exceptions. Use j and k to move, Enter to open." maxHeight="62vh" />
+            ariaLabel="Exceptions. Use j and k to move, Enter to open." maxHeight="62vh" sort={sort} onSortChange={setSort} />
         : <EmptyState action={canRequest && !needle ? <button type="button" className="ui-link-button" onClick={() => setRequesting(true)}>Request exception</button> : undefined}>
             {needle || status !== "all" ? "No exceptions match this view." : "No exceptions raised. Raise one when a finding needs a decision a check cannot make."}
           </EmptyState>}
