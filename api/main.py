@@ -62,6 +62,7 @@ from api.routes.simulation import router as simulation_router
 from api.routes.mining import router as mining_router
 from api.routes.process_mining import router as process_mining_router
 from api.routes.process_designer import router as process_designer_router
+from api.routes.process_export import router as process_export_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
 from api.routes.prom_metrics import router as prom_metrics_router
@@ -320,6 +321,7 @@ app.include_router(simulation_router)
 app.include_router(mining_router)
 app.include_router(process_mining_router)
 app.include_router(process_designer_router)
+app.include_router(process_export_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
 app.include_router(prom_metrics_router)
