@@ -1,0 +1,127 @@
+{
+ "table": "TPAR",
+ "description": "Business Partner: Functions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "PARVW",
+   "key": true,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "STEIN",
+   "key": false,
+   "data_element": "STEIN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Uniqueness in the master data",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "UPARV",
+   "key": false,
+   "data_element": "UPARV",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Higher-level partner function",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 5,
+   "name": "FEHGR",
+   "key": false,
+   "data_element": "FEHGR",
+   "domain": "FEHGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Incompletion procedure for sales document",
+   "check_table": "TVUV"
+  },
+  {
+   "pos": 6,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "NRART",
+   "key": false,
+   "data_element": "NRART",
+   "domain": "NRART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Type of partner number",
+   "check_table": "TVPA"
+  },
+  {
+   "pos": 8,
+   "name": "HITYP",
+   "key": false,
+   "data_element": "HITYP_KH",
+   "domain": "HITYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Customer Hierarchy Category",
+   "check_table": "THIT"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FEHGR",
+   "foreign_table": "TVUV",
+   "foreign_field": "FEHGR"
+  },
+  {
+   "field": "HITYP",
+   "foreign_table": "THIT",
+   "foreign_field": "HITYP"
+  },
+  {
+   "field": "NRART",
+   "foreign_table": "TVPA",
+   "foreign_field": "NRART"
+  },
+  {
+   "field": "UPARV",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  }
+ ]
+}

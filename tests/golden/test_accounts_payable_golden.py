@@ -194,6 +194,11 @@ def test_accounts_payable_golden():
         # the two INV-1001 lines and RE-2026-0815: same vendor, amount, currency and baseline date
         "AP209": {_open("V2", "5100000118", "INV-1001"), _open("V2", "5100000119", "INV1001"),
                   _open("V2", "5100000105", "RE-2026-0815")},
+        # V6 is flagged for deletion centrally but carries no posting or purchasing block, and its
+        # company code and purchasing organisation views are not flagged
+        "AP221": {"LIFNR=V6"},
+        "AP253": {"LIFNR=V6|BUKRS=1000"},
+        "AP261": {"LIFNR=V6|EKORG=1000"},
     }, found
     # V6 is flagged for deletion and V7 is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AP003")
