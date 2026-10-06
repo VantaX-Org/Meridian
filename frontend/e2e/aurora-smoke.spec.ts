@@ -24,7 +24,7 @@ for (const r of ROUTES) {
         const el = n.parentElement;
         if (!el || el.closest(".ui-mono, .ui-field, code, script, style, [hidden]")) continue;
         const hit = (n.textContent ?? "").match(/\b[a-z]+_[a-z]+\b/);
-        if (hit) found.push(hit[0]);
+        if (hit) found.push(`${hit[0]} in "${(el.closest("tr,[role=row]") ?? el).textContent?.slice(0, 90)}"`);
       }
       return found;
     });

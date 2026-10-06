@@ -25,7 +25,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
-import { relativeTime, formatDate, labelOf, formatModuleName } from "@/lib/format";
+import { relativeTime, formatDate, labelOf, formatModuleName, humanizeIds } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -254,7 +254,7 @@ export function StewardInboxSurface() {
     },
     { id: "sla", header: "SLA", meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
     { id: "task", header: "Task", cell: ({ row }) => (
-      <span><strong>{typeLabel(row.original.item_type)}</strong> <span className="aurora-number">{row.original.source_id}</span>
+      <span><strong>{typeLabel(row.original.item_type)}</strong> <span className="aurora-number">{humanizeIds(row.original.source_id)}</span>
         <Text variant="text-micro" tone="muted" as="div">{formatModuleName(row.original.domain)}{row.original.ai_recommendation ? ", model suggestion" : ""}</Text></span>) },
     { id: "priority", header: "Priority", meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
     { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
@@ -342,7 +342,7 @@ export function StewardInboxSurface() {
       {canSeeTeam ? <TeamPanel items={all} now={now} who={who} metrics={m} /> : null}
 
       <Drawer open={!!detail} onClose={drawer.close} ariaLabel="Task details"
-        header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)}: {detail.source_id}</Text></Stack> : null}>
+        header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)}: {humanizeIds(detail.source_id)}</Text></Stack> : null}>
         {detail ? (
           <TaskDetail task={detail} now={now} who={who} canApprove={canApprove} busy={busy} assignees={assignees} me={user?.id}
             onApprove={() => approve.mutate([detail.id])} onReject={() => setRejectIds([detail.id])} onEscalate={() => escalate.mutate([detail.id])}
@@ -377,7 +377,7 @@ function TaskDetail({ task: t, now, who, canApprove, busy, assignees, me, onAppr
 }) {
   const s = slaOf(t, now);
   const rows: [string, string][] = [
-    ["Record", t.source_id], ["Domain", formatModuleName(t.domain)], ["Type", typeLabel(t.item_type)], ["Priority", `P${t.priority}`],
+    ["Record", humanizeIds(t.source_id)], ["Domain", formatModuleName(t.domain)], ["Type", typeLabel(t.item_type)], ["Priority", `P${t.priority}`],
     ["Assignee", who(t.assigned_to)], ["SLA", t.sla_hours ? `${t.sla_hours}h · ${slaText(s)}` : "no SLA"],
     ["Due", t.due_at ? formatDate(t.due_at, "datetime") : "—"], ["Raised", relativeTime(t.created_at)], ["Updated", relativeTime(t.updated_at)],
   ];

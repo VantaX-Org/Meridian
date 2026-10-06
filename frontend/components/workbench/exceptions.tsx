@@ -71,7 +71,7 @@ export function ExceptionsSurface() {
     { id: "title", header: "Exception", meta: meta({ minWidth: 280 }), cell: ({ row }) => (
       <span className="ui-cell-stack">
         <span className="ui-cell-stack__main">{row.original.title}</span>
-        <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{row.original.category}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
+        <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{label(row.original.category)}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
       </span>) },
     { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{label(sev(row.original.severity))}</StatusBadge> },
     { id: "tier", header: "Tier", meta: meta({ width: 70, align: "end", numeric: true }), cell: ({ row }) => row.original.escalation_tier },
@@ -140,7 +140,7 @@ function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: E
     <div className="ui-detail">
       <p className="ui-note">{e.description}</p>
       <KeyValue rows={[
-        { k: "Type", v: label(e.type) }, { k: "Category", v: e.category }, { k: "Severity", v: label(e.severity) },
+        { k: "Type", v: label(e.type) }, { k: "Category", v: label(e.category) }, { k: "Severity", v: label(e.severity) },
         { k: "Source", v: e.source_system ?? "—", mono: !!e.source_system }, { k: "Reference", v: e.source_reference ?? "—", mono: !!e.source_reference },
         { k: "Assigned", v: e.assigned_to ?? "—" }, { k: "Escalation tier", v: String(e.escalation_tier) },
         { k: "SLA", v: e.sla_deadline ? formatDate(e.sla_deadline, "datetime") : "—" },

@@ -19,7 +19,7 @@ import { getSystems } from "@/lib/api/systems";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
-import { formatModuleName, relativeTime, formatDate, errorLabel } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate, errorLabel, humanizeIds } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { JobCard, KIND_LABEL, fmtDuration, fmtInt, jobTiming } from "./job-card";
 
@@ -68,7 +68,7 @@ export function RunsSurface() {
         return <span title={formatDate(d, "datetime")}>{relativeTime(d.toISOString())}</span>;
       } },
     { id: "kind", header: "Kind", meta: meta({ width: 120 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
-    { id: "label", header: "Run", accessorKey: "label", meta: meta({ width: 260 }) },
+    { id: "label", header: "Run", meta: meta({ width: 260 }), cell: ({ row }) => humanizeIds(row.original.label) },
     { id: "system", header: "System", meta: meta({ width: 150 }),
       cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "" },
     { id: "status", header: "Status", meta: meta({ width: 130 }),

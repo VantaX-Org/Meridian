@@ -15,7 +15,7 @@ import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/anal
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, formatDate } from "@/lib/format";
+import { formatModuleName, formatDate, humanizeIds } from "@/lib/format";
 
 const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const WEIGHTS: Record<string, number> = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
@@ -199,7 +199,7 @@ export function ExecutiveReport() {
                   {sprint.actions.map((x, i) => (
                     <tr key={x.id}>
                       <td className="ui-num">{i + 1}</td>
-                      <td>{x.title}<div className="ui-micro">{x.type}</div></td>
+                      <td>{humanizeIds(x.title)}<div className="ui-micro">{x.type}</div></td>
                       <td className="ui-num">{x.affected_count.toLocaleString()} of {x.total_count.toLocaleString()}</td>
                       <td className="ui-num">{x.effort_hours.toFixed(1)} h</td>
                       <td>{x.recommended_steward ?? "Unassigned"}</td>
