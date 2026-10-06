@@ -1,0 +1,27 @@
+{
+ "domain": "WRF_POTB_STATUS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Not Checked"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "OTB Check Without Errors"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Checked with Errors"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

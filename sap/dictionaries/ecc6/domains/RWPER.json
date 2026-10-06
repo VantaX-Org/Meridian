@@ -1,0 +1,27 @@
+{
+ "domain": "RWPER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "M",
+   "high": null,
+   "text": "Month"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Week"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "PP planning calendar"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

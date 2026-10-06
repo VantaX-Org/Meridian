@@ -236,7 +236,7 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "interval_check":
         # one group: two adjoining periods, then a third starting inside the first
-        g = {c: "G1" for c in rule["group_by"]}
+        g = {**{c: cand[c][0] for c in cand if c in (rule.get("applies_when") or {})}, **{c: "G1" for c in rule["group_by"]}}  # inside the scope
         s, e = rule["start"], rule["end"]
         rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
                 {**g, s: "20200601", e: "20200630"}]
@@ -362,7 +362,8 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     for i, f in enumerate(rule["target_fields"]):
         target[f"{t}.{f}"] = [df.loc[0, refs[i]]]  # as placed: a join field carries a row suffix
     for f, cond in (rule.get("target_when") or {}).items():
-        target[f"{t}.{f}"] = ["" if cond.get("blank") else "X"] if isinstance(cond, dict) else [str((cond or [""])[0])]
+        target[f"{t}.{f}"] = ([str(float(cond["gt"]) + 1)] if "gt" in cond else ["" if cond.get("blank") else "X"]) \
+            if isinstance(cond, dict) else [str((cond or [""])[0])]
     extra = pd.DataFrame(target)
     have = frames.frames.get(t)
     frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)

@@ -1,0 +1,132 @@
+{
+ "table": "A016",
+ "description": "Contract Item",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 3,
+   "name": "KSCHL",
+   "key": true,
+   "data_element": "KSCHA",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition Type",
+   "check_table": "T685"
+  },
+  {
+   "pos": 4,
+   "name": "EVRTN",
+   "key": true,
+   "data_element": "EBELN",
+   "domain": "EBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Purchasing Document Number",
+   "check_table": "EKKO"
+  },
+  {
+   "pos": 5,
+   "name": "EVRTP",
+   "key": true,
+   "data_element": "EBELP",
+   "domain": "EBELP",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Item Number of Purchasing Document",
+   "check_table": "EKPO"
+  },
+  {
+   "pos": 6,
+   "name": "DATBI",
+   "key": true,
+   "data_element": "KODATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity end date of the condition record",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "KODATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity start date of the condition record",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KNUMH",
+   "key": false,
+   "data_element": "KNUMH",
+   "domain": "KNUMB",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Condition record number",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EVRTN",
+   "foreign_table": "EKKO",
+   "foreign_field": "EBELN"
+  },
+  {
+   "field": "EVRTP",
+   "foreign_table": "EKPO",
+   "foreign_field": "EBELP"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

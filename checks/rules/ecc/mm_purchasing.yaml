@@ -2959,3 +2959,1493 @@ rules:
   fix_map:
     __other__: Process the invoice in MIR6 / MIR4 (correct the error and post it) or delete it.
   record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: with errors or on hold for {age_days} days.'
+- id: PUR306
+  field: EINA.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+      blank: true
+  applies_when:
+    EINA.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Active purchasing info record for a vendor that is centrally blocked for purchasing (LFA1.SPERM) or does not exist
+  why_it_matters: A central purchasing block stops every new purchase order to the vendor, but the info record still feeds
+    source determination, price simulation and the source list. Requisitions keep being assigned to a vendor that cannot be
+    ordered from.
+  rule_authority: best_practice
+  sap_impact: ME21N / ME59N reject the vendor with a purchasing-block error when the proposed source is converted; MRP and
+    ME57 keep proposing it.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15) or remove the purchasing block on the vendor (XK05) if the block is
+      no longer valid.
+  record_fix_template: 'Info record {EINA.INFNR}: vendor {EINA.LIFNR} is centrally blocked for purchasing or does not exist.'
+- id: PUR307
+  field: EINE.EKORG
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINE.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  target_when:
+    SPERM:
+      blank: true
+    LOEVM:
+      blank: true
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Purchasing-organisation info record for a vendor that is not created, blocked or flagged for deletion in that purchasing
+    organisation (LFM1)
+  why_it_matters: The purchasing-organisation data of the info record (price, tolerances, planned delivery time) can only be
+    used on a purchase order if the vendor exists and is open for purchasing in the same purchasing organisation. Otherwise
+    the record carries a price nobody can order at.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N stops with "vendor not created for purchasing organisation" or "vendor blocked"; automatic PO creation
+    and source determination skip the record.
+  fix_map:
+    __other__: Extend the vendor to the purchasing organisation (XK01) or lift the block (XK05); otherwise flag the info record
+      for deletion in ME15.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: vendor {EINA.LIFNR} is not created, blocked or
+    deleted in that purchasing organisation.'
+- id: PUR308
+  field: EINE.WAERS
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINE.EKORG
+  - EINE.WAERS
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  - WAERS
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Info record currency differs from the vendor's order currency in the purchasing organisation (LFM1.WAERS)
+  why_it_matters: The purchase order takes its currency from the vendor (LFM1.WAERS) and its price from the info record. When
+    the two differ, every PO converts the price at the current exchange rate, so the agreed price is never the price on the
+    order and price comparisons across vendors are distorted.
+  rule_authority: best_practice
+  sap_impact: PO prices drift with exchange rates; price variances post at goods receipt and invoice; ME1L / ME1M price reports
+    mix currencies.
+  fix_map:
+    __other__: Maintain the info record conditions in the vendor's order currency (ME12 / MEK2) or correct the vendor order
+      currency (XK02) if the vendor has changed currency.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: currency {EINE.WAERS} differs from the order
+    currency of vendor {EINA.LIFNR}.'
+- id: PUR309
+  field: EINE.APLFZ
+  check_class: cross_field_check
+  fail_when: '`EINE.APLFZ` > 365'
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Info record planned delivery time is longer than a year
+  why_it_matters: The info record's planned delivery time drives the order date MRP calculates for requisitions assigned to
+    this source. A lead time over a year is almost always a keying error (weeks or a date typed as days) and pulls requisitions
+    and purchase orders months forward.
+  rule_authority: best_practice
+  sap_impact: MRP (MD04) creates requisitions with release dates far in the past or opens them as overdue; ME59N POs carry
+    delivery dates a year out.
+  fix_map:
+    __other__: Correct the planned delivery time in ME12 to the vendor's real lead time in calendar days.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: planned delivery time {actual_value} days.'
+- id: PUR310
+  field: EINE.WERKS
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.MATNR
+  - EINE.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  applies_when:
+    EINA.MATNR:
+      populated: true
+    EINE.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Plant-level info record for a material that is not extended to the plant or is flagged for deletion there
+  why_it_matters: A plant-specific info record is only used for purchase orders in that plant. When the material does not exist
+    at the plant, or is flagged for deletion there, the record keeps an active price and lead time for a material that can
+    no longer be procured.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N rejects the material for the plant; the info record clutters source determination and price reports.
+  fix_map:
+    __other__: Flag the plant-level info record for deletion (ME15), or extend the material to the plant (MM01) and remove
+      the deletion flag (MM06) if it is still procured.
+  record_fix_template: 'Info record {EINE.INFNR}, plant {EINE.WERKS}: material {EINA.MATNR} is not extended to the plant or
+    is flagged for deletion there.'
+- id: PUR311
+  field: EINE.WERKS
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINE.WERKS
+  - EINE.EKORG
+  target_table: T024W
+  target_fields:
+  - WERKS
+  - EKORG
+  severity: medium
+  dimension: consistency
+  message: Info record plant is not assigned to the info record's purchasing organisation (T024W)
+  why_it_matters: A purchasing organisation can only buy for the plants assigned to it. An info record for a plant outside
+    that assignment can never be used on a purchase order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The info record is never found by source determination; ME11 / ME12 reject the combination when the record
+    is next changed.
+  fix_map:
+    __other__: Correct the plant or purchasing organisation of the info record, or assign the plant to the purchasing organisation
+      in customizing (OX17) if the assignment is missing.
+  record_fix_template: 'Info record {EINE.INFNR}: plant {EINE.WERKS} is not assigned to purchasing organisation {EINE.EKORG}.'
+- id: PUR312
+  field: EINE.UEBTK
+  check_class: cross_field_check
+  fail_when: '`EINE.UEBTK` == ''X'''
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Info record allows unlimited overdelivery
+  why_it_matters: The unlimited-overdelivery flag is copied into every purchase order item created from the info record. Goods
+    receipts are then accepted for any quantity, so the company pays for goods it did not order.
+  rule_authority: best_practice
+  sap_impact: MIGO accepts any received quantity; the invoice follows the receipt, so overdeliveries are paid without approval.
+  fix_map:
+    __other__: Remove the unlimited-overdelivery flag in ME12 and set a percentage tolerance instead.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: unlimited overdelivery is allowed.'
+- id: PUR313
+  field: EINE.UEBTO
+  check_class: cross_field_check
+  fail_when: '`EINE.UEBTO` > 10'
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Info record has an overdelivery tolerance above 10%
+  why_it_matters: The tolerance is proposed into every purchase order item from this info record. A wide tolerance lets receipts
+    well beyond the ordered quantity post without a warning.
+  rule_authority: best_practice
+  sap_impact: MIGO accepts receipts up to the tolerance without message M7 022; excess stock and payables build up unnoticed.
+  fix_map:
+    __other__: Reduce the overdelivery tolerance in ME12 to the agreed commercial limit (typically 10% or less).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: overdelivery tolerance {actual_value}%.'
+- id: PUR314
+  field: EINE.UNTTO
+  check_class: cross_field_check
+  fail_when: '`EINE.UNTTO` > 10'
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Info record has an underdelivery tolerance above 10%
+  why_it_matters: Within the underdelivery tolerance a goods receipt closes the PO item as delivered. A wide tolerance closes
+    items while a large part of the quantity is still missing, so MRP stops expecting it.
+  rule_authority: best_practice
+  sap_impact: MIGO sets the delivery-completed indicator on short receipts; MRP plans the shortfall again or misses it.
+  fix_map:
+    __other__: Reduce the underdelivery tolerance in ME12 to the agreed commercial limit.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: underdelivery tolerance {actual_value}%.'
+- id: PUR315
+  field: EINE.NORBM
+  check_class: cross_field_check
+  fail_when: '`EINE.NORBM` < `EINE.MINBM`'
+  applies_when:
+    EINE.NORBM:
+      gt: 0
+  severity: low
+  dimension: consistency
+  message: Standard order quantity in the info record is below the vendor's minimum order quantity
+  why_it_matters: The standard quantity is proposed when the info record is used to order. A proposal below the vendor's minimum
+    makes every such order fail the minimum-quantity check.
+  rule_authority: best_practice
+  sap_impact: ME21N issues the minimum-quantity message (ME 064) on every order that takes the standard quantity.
+  fix_map:
+    __other__: Raise the standard order quantity to at least the minimum order quantity in ME12, or correct the minimum.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: standard quantity {EINE.NORBM} is below the
+    minimum {EINE.MINBM}.'
+- id: PUR316
+  field: EINE.MWSKZ
+  check_class: null_check
+  applies_when:
+    EINE.ESOKZ:
+    - '0'
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Standard info record has no tax code
+  why_it_matters: The info record's tax code is proposed into the purchase order item and from there into invoice verification.
+    Without it the buyer must enter the code on every order, and wrong or missing tax codes lead to wrong input tax.
+  rule_authority: best_practice
+  sap_impact: PO items are created without a tax code; MIRO requires manual entry and input tax postings vary per clerk.
+  fix_map:
+    __other__: Maintain the tax code on the purchasing organisation data of the info record (ME12).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: no tax code.'
+- id: PUR317
+  field: EINE.PRDAT
+  check_class: freshness_check
+  max_age_hours: 0
+  applies_when:
+    EINE.ESOKZ:
+    - '0'
+    EINE.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Price in the standard info record has expired (price valid until is in the past)
+  why_it_matters: Once the price validity has passed, purchase orders no longer find a valid price condition for the info record
+    and fall back to the last PO price or a manual entry, so the negotiated price is not applied.
+  rule_authority: best_practice
+  sap_impact: ME21N proposes no price or an outdated one; price variances appear at invoice verification.
+  fix_map:
+    __other__: Create a new validity period for the price conditions in ME12 / MEK1 or flag the info record for deletion.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing org {EINE.EKORG}: price validity ended {age_days} days ago.'
+- id: PUR318
+  field: EINE.INFNR
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: '`EINA.LOEKZ` == ''X'''
+  applies_when:
+    EINE.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Purchasing-organisation info record is still active under a general info record that is flagged for deletion
+  why_it_matters: A deletion flag on the general data means the vendor-material relationship is retired. Leaving the purchasing-organisation
+    record active keeps its price and tolerances in source determination and reporting.
+  rule_authority: best_practice
+  sap_impact: The archiving run (MM_EINA) cannot remove the info record; reports still list the active purchasing data.
+  fix_map:
+    __other__: Flag the purchasing-organisation data for deletion as well (ME15), or remove the deletion flag from the general
+      data if the record is still needed.
+  record_fix_template: 'Info record {EINE.INFNR}: general data is flagged for deletion but purchasing org {EINE.EKORG} is still
+    active.'
+- id: PUR319
+  field: EORD.LIFNR
+  check_class: exists_check
+  fields:
+  - EORD.LIFNR
+  - EORD.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  target_when:
+    SPERM:
+      blank: true
+    LOEVM:
+      blank: true
+  applies_when:
+    EORD.NOTKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Active source list record for a vendor that is not created, blocked or flagged for deletion in the purchasing organisation
+  why_it_matters: Source determination assigns requisitions to the vendor in the source list. If the vendor cannot be ordered
+    from in that purchasing organisation, the requisitions cannot be converted and procurement stalls.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME59N fails for the assigned requisitions; ME21N stops with a vendor-blocked or vendor-not-created error.
+  fix_map:
+    __other__: Block the source list record (ME01, blocked indicator) or delete it, or lift the vendor block in XK05 if the
+      vendor is to be used again.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: vendor {EORD.LIFNR} is not created,
+    blocked or deleted in purchasing organisation {EORD.EKORG}.'
+- id: PUR320
+  field: EORD.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+      blank: true
+  applies_when:
+    EORD.NOTKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Active source list record for a vendor that is centrally blocked for purchasing (LFA1.SPERM)
+  why_it_matters: A central purchasing block applies in every purchasing organisation. An unblocked source list record still
+    sends requisitions to that vendor, where they cannot be converted.
+  rule_authority: best_practice
+  sap_impact: Requisitions with this source fail conversion in ME59N / ME21N with a vendor-blocked error.
+  fix_map:
+    __other__: Set the blocked indicator on the source list record (ME01) or remove the central purchasing block (XK05).
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: vendor {EORD.LIFNR} is centrally
+    blocked for purchasing or does not exist.'
+- id: PUR321
+  field: EORD.VDATU
+  check_class: interval_check
+  grain: EORD
+  group_by:
+  - EORD.MATNR
+  - EORD.WERKS
+  start: EORD.VDATU
+  end: EORD.BDATU
+  applies_when:
+    EORD.FLIFN:
+    - X
+    EORD.NOTKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: More than one fixed source of supply for the same material and plant in overlapping periods
+  why_it_matters: Source determination needs a single fixed source per material, plant and period. Two overlapping fixed records
+    make the assigned source depend on record order, so requisitions go to different vendors at random.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME01 rejects the overlap on change (ME 027); MRP and ME57 assign whichever record they read first.
+  fix_map:
+    __other__: Remove the fixed indicator from all but one record per period in ME01, or adjust the validity dates so the periods
+      no longer overlap.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS}: fixed record {EORD.ZEORD} valid {EORD.VDATU} to {EORD.BDATU}
+    overlaps another fixed record.'
+- id: PUR322
+  field: EORD.AUTET
+  check_class: null_check
+  applies_when:
+    EORD.FLIFN:
+    - X
+    EORD.NOTKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Fixed source of supply is not relevant to MRP
+  why_it_matters: The MRP indicator decides whether MRP uses the source list record. A fixed source without it is ignored when
+    MRP creates requisitions, so the planned requisitions carry no vendor and need manual source assignment.
+  rule_authority: best_practice
+  sap_impact: MRP requisitions have no assigned source; ME59N cannot convert them automatically.
+  fix_map:
+    __other__: Set the MRP indicator (1, or 2 for scheduling agreements with automatic schedule lines) on the source list record
+      in ME01.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: fixed source is not relevant to MRP.'
+- id: PUR323
+  field: EORD.LIFNR
+  check_class: exists_check
+  fields:
+  - EORD.MATNR
+  - EORD.LIFNR
+  target_table: EINA
+  target_fields:
+  - MATNR
+  - LIFNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    EORD.EBELN:
+      blank: true
+    EORD.NOTKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Source list names a vendor for the material without an active purchasing info record or agreement
+  why_it_matters: A source list record without an agreement points at the vendor's info record for the price. Without an info
+    record the purchase order has no price, tolerances or delivery time to propose.
+  rule_authority: best_practice
+  sap_impact: Purchase orders from this source carry no price; ME59N cannot create them and the buyer enters the price manually.
+  fix_map:
+    __other__: Create the info record for the vendor and material (ME11), assign an outline agreement to the source list record,
+      or remove the record from the source list (ME01).
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: vendor {EORD.LIFNR} has no active
+    info record for the material.'
+- id: PUR324
+  field: EORD.EBELN
+  check_class: exists_check
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  target_when:
+    LOEKZ:
+      blank: true
+    BSTYP:
+    - K
+    - L
+  applies_when:
+    EORD.NOTKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Source list record refers to an outline agreement that does not exist, is deleted or is not a contract or scheduling
+    agreement
+  why_it_matters: The agreement in the source list is used as the source for requisitions and release orders. A deleted or
+    missing agreement leaves the source list pointing at nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requisitions assigned to the source cannot be converted (ME 080 agreement not found or deleted); MRP keeps proposing
+    it.
+  fix_map:
+    __other__: Assign a valid contract or scheduling agreement to the source list record in ME01, or block or delete the record.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: agreement {EORD.EBELN} is missing,
+    deleted or not an outline agreement.'
+- id: PUR325
+  field: EORD.EBELP
+  check_class: exists_check
+  fields:
+  - EORD.EBELN
+  - EORD.EBELP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    EORD.NOTKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Source list record refers to an agreement item that does not exist or is deleted
+  why_it_matters: Release orders and scheduling-agreement schedule lines are created against the agreement item named in the
+    source list. A deleted item cannot be released against.
+  rule_authority: sap_hard_constraint
+  sap_impact: Requisitions assigned to the item cannot be converted into release orders; MRP schedule lines for the item fail.
+  fix_map:
+    __other__: Assign a valid agreement item to the source list record in ME01, or block or delete the record.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: agreement item {EORD.EBELN}/{EORD.EBELP}
+    is missing or deleted.'
+- id: PUR326
+  field: EORD.WERKS
+  check_class: exists_check
+  fields:
+  - EORD.WERKS
+  - EORD.EKORG
+  target_table: T024W
+  target_fields:
+  - WERKS
+  - EKORG
+  severity: medium
+  dimension: consistency
+  message: Source list plant is not assigned to the source list's purchasing organisation (T024W)
+  why_it_matters: A purchasing organisation can only order for its assigned plants. A source list record combining a plant
+    with another purchasing organisation can never be used to create a purchase order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination finds the record but PO creation fails for the plant and purchasing organisation.
+  fix_map:
+    __other__: Correct the purchasing organisation on the source list record (ME01), or assign the plant to the purchasing organisation
+      (OX17) if the assignment is missing.
+  record_fix_template: 'Source list {EORD.MATNR} plant {EORD.WERKS} record {EORD.ZEORD}: plant is not assigned to purchasing
+    organisation {EORD.EKORG}.'
+- id: PUR327
+  field: EQUK.VDATU
+  check_class: cross_field_check
+  fail_when: '`EQUK.VDATU` > `EQUK.BDATU`'
+  severity: high
+  dimension: validity
+  message: Quota arrangement is valid from a date after its valid-to date
+  why_it_matters: A quota arrangement with an inverted validity period is never active, so requisitions for the material are
+    not split between the vendors as planned.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and source determination ignore the arrangement; requisitions are assigned by source list or manually.
+  fix_map:
+    __other__: Correct the validity period of the quota arrangement in MEQ1.
+  record_fix_template: 'Quota arrangement {EQUK.QUNUM} for material {EQUK.MATNR} plant {EQUK.WERKS}: valid from {EQUK.VDATU}
+    is after valid to {EQUK.BDATU}.'
+- id: PUR328
+  field: EQUK.VDATU
+  check_class: interval_check
+  grain: EQUK
+  group_by:
+  - EQUK.MATNR
+  - EQUK.WERKS
+  start: EQUK.VDATU
+  end: EQUK.BDATU
+  severity: high
+  dimension: consistency
+  message: Quota arrangements for the same material and plant have overlapping validity periods
+  why_it_matters: Only one quota arrangement may be valid for a material and plant on a given day. Overlapping periods make
+    the split between vendors depend on which arrangement is read first.
+  rule_authority: sap_hard_constraint
+  sap_impact: MEQ1 rejects the overlap on change; source determination and MRP use one arrangement and ignore the other.
+  fix_map:
+    __other__: Adjust the validity periods in MEQ1 so they follow each other without overlap, or delete the obsolete arrangement.
+  record_fix_template: 'Quota arrangement {EQUK.QUNUM} for material {EQUK.MATNR} plant {EQUK.WERKS}: valid {EQUK.VDATU} to
+    {EQUK.BDATU} overlaps another arrangement.'
+- id: PUR329
+  field: EQUK.QUNUM
+  check_class: exists_check
+  grain: EQUK
+  target_table: EQUP
+  target_fields:
+  - QUNUM
+  target_when:
+    QUOTE:
+      gt: 0
+  severity: medium
+  dimension: completeness
+  message: Quota arrangement has no item with a positive quota
+  why_it_matters: The quota of each item decides how requisitions are split. An arrangement whose items all have a quota of
+    zero, or that has no items, can never assign a source.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination finds the arrangement but assigns no vendor; requisitions stay without a source.
+  fix_map:
+    __other__: Maintain the quota for at least one item in MEQ1 or delete the empty arrangement.
+  record_fix_template: 'Quota arrangement {EQUK.QUNUM} for material {EQUK.MATNR} plant {EQUK.WERKS}: no item has a positive
+    quota.'
+- id: PUR330
+  field: EQUP.LIFNR
+  check_class: exists_check
+  grain: EQUP
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+    SPERM:
+      blank: true
+  applies_when:
+    EQUP.QUOTE:
+      gt: 0
+  severity: high
+  dimension: consistency
+  message: Quota arrangement item with a positive quota for a vendor that does not exist, is deleted or is blocked for purchasing
+  why_it_matters: The quota arrangement keeps allocating requisitions to the vendor according to its quota. If the vendor can
+    no longer be ordered from, that share of demand cannot be converted.
+  rule_authority: best_practice
+  sap_impact: Requisitions assigned to the vendor fail conversion (ME59N / ME21N); the quota base quantity still grows, skewing
+    the split between the remaining vendors.
+  fix_map:
+    __other__: Set the quota of the item to zero or remove it in MEQ1, or lift the vendor block (XK05) if the vendor is to be
+      used again.
+  record_fix_template: 'Quota arrangement {EQUP.QUNUM} item {EQUP.QUPOS}: vendor {EQUP.LIFNR} is missing, deleted or blocked
+    for purchasing.'
+- id: PUR331
+  field: EQUP.LIFNR
+  check_class: null_check
+  grain: EQUP
+  applies_when:
+    EQUP.BESKZ:
+    - F
+    EQUP.SOBES:
+      not_in:
+      - '7'
+  severity: high
+  dimension: completeness
+  message: Externally procured quota arrangement item has no vendor
+  why_it_matters: For external procurement the vendor is the source the quota assigns. An item without one cannot receive any
+    requisition, so its share of demand is lost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination selects the item by quota but cannot assign a source; requisitions stay unassigned.
+  fix_map:
+    __other__: Enter the vendor on the quota arrangement item in MEQ1, or change the procurement type.
+  record_fix_template: 'Quota arrangement {EQUP.QUNUM} item {EQUP.QUPOS}: external procurement without a vendor.'
+- id: PUR332
+  field: EQUP.BEWRK
+  check_class: null_check
+  grain: EQUP
+  applies_when:
+    EQUP.SOBES:
+    - '7'
+  severity: high
+  dimension: completeness
+  message: Stock-transfer quota arrangement item has no supplying plant
+  why_it_matters: A stock-transfer item sources the material from another plant. Without the supplying plant the item cannot
+    create stock transport requisitions.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot create the stock transport requisition for the quota share; demand is not covered.
+  fix_map:
+    __other__: Enter the supplying plant on the quota arrangement item in MEQ1.
+  record_fix_template: 'Quota arrangement {EQUP.QUNUM} item {EQUP.QUPOS}: stock transfer without a supplying plant.'
+- id: PUR333
+  field: EQUP.QUMNG
+  check_class: cross_field_check
+  fail_when: '`EQUP.QUMNG` > `EQUP.MAXMG`'
+  applies_when:
+    EQUP.MAXMG:
+      gt: 0
+  severity: low
+  dimension: consistency
+  message: Quota arrangement item has exceeded its maximum quantity
+  why_it_matters: Once the allocated quantity passes the maximum, the item is no longer selected and its vendor drops out of
+    the arrangement. The planned split between vendors no longer holds unless the maximum is reviewed.
+  rule_authority: best_practice
+  sap_impact: Source determination skips the item; the remaining vendors receive all requisitions.
+  fix_map:
+    __other__: Raise the maximum quantity or reset the quota base quantity in MEQ1, or end the arrangement and create a new one.
+  record_fix_template: 'Quota arrangement {EQUP.QUNUM} item {EQUP.QUPOS}: allocated quantity {EQUP.QUMNG} exceeds the maximum
+    {EQUP.MAXMG}.'
+- id: PUR334
+  field: EQUP.MINLS
+  check_class: cross_field_check
+  fail_when: '`EQUP.MINLS` > `EQUP.MAXLS`'
+  applies_when:
+    EQUP.MAXLS:
+      gt: 0
+  severity: medium
+  dimension: validity
+  message: Quota arrangement item's minimum lot size is larger than its maximum lot size
+  why_it_matters: The lot-size limits bound the requisition quantity assigned to the item. A minimum above the maximum leaves
+    no valid lot size, so the item can never be assigned.
+  rule_authority: best_practice
+  sap_impact: Source determination never selects the item; its vendor receives no requisitions.
+  fix_map:
+    __other__: Correct the minimum and maximum lot sizes of the quota arrangement item in MEQ1.
+  record_fix_template: 'Quota arrangement {EQUP.QUNUM} item {EQUP.QUPOS}: minimum lot size {EQUP.MINLS} exceeds maximum lot
+    size {EQUP.MAXLS}.'
+- id: PUR335
+  field: EKAB.BEDAT
+  check_class: cross_field_check
+  grain: EKAB
+  fail_when: (`EKAB.BEDAT` > `EKKO.KDATE`) | (`EKAB.BEDAT` < `EKKO.KDATB`)
+  applies_when:
+    EKAB.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Release order was placed against an outline agreement outside the agreement's validity period
+  why_it_matters: An outline agreement's terms only apply within its validity period. Release orders dated before the start
+    or after the end of the agreement use expired or not-yet-agreed prices and count against volumes that were never committed.
+  rule_authority: best_practice
+  sap_impact: The release documentation (EKAB) shows call-offs outside the contract term; spend-under-contract reports and
+    vendor rebate settlements include them.
+  fix_map:
+    __other__: Extend or renew the agreement (ME32K) if the call-offs are legitimate, otherwise move the release orders to a
+      valid agreement and review the vendor's pricing.
+  record_fix_template: 'Agreement {EKAB.KONNR} item {EKAB.KTPNR}: release order {EKAB.EBELN}/{EKAB.EBELP} dated {EKAB.BEDAT}
+    lies outside the validity {EKKO.KDATB} to {EKKO.KDATE}.'
+- id: PUR336
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.KTMNG
+  amount: EKAB.MENGE
+  group_keys:
+    EKAB.KONNR: EKPO.EBELN
+    EKAB.KTPNR: EKPO.EBELP
+  compare: <=
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.KTMNG:
+      gt: 0
+  severity: medium
+  dimension: accuracy
+  message: Release orders against the contract item exceed the item's target quantity
+  why_it_matters: The target quantity is the volume the contract price was negotiated for. Call-offs beyond it are bought at
+    a price that was never agreed for that volume, and the overrun is invisible unless the release documentation is summed.
+  rule_authority: best_practice
+  sap_impact: ME21N only warns (ME 045) when a release exceeds the target; ME3L / ME3K show released quantities above target
+    and the contract is reported as more than fully used.
+  fix_map:
+    __other__: Raise the target quantity with the vendor's agreement (ME32K) or create a follow-on contract for further call-offs.
+  record_fix_template: 'Contract {EKPO.EBELN} item {EKPO.EBELP}: released quantity exceeds the target quantity {EKPO.KTMNG}.'
+- id: PUR337
+  check_class: group_sum_check
+  grain: EKKO
+  field: EKKO.KTWRT
+  amount: EKAB.NETWR
+  group_keys:
+    EKAB.KONNR: EKKO.EBELN
+    EKAB.WAERS: EKKO.WAERS
+  compare: <=
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKKO.LOEKZ:
+      blank: true
+    EKKO.KTWRT:
+      gt: 0
+  severity: medium
+  dimension: accuracy
+  message: Release orders against the contract exceed the contract's target value
+  why_it_matters: The target value caps the spend committed under the contract. Releases beyond it spend money the contract
+    (and often its approval) never covered.
+  rule_authority: best_practice
+  sap_impact: ME21N only warns when a release exceeds the target value; ME3L / ME2K report the contract as more than fully
+    used and commitments exceed the approved budget.
+  fix_map:
+    __other__: Raise the target value with approval (ME32K) or create a follow-on contract; review releases placed after the
+      target was reached.
+  record_fix_template: 'Contract {EKKO.EBELN}: released value exceeds the target value {EKKO.KTWRT} {EKKO.WAERS}.'
+- id: PUR338
+  field: EKPO.KONNR
+  check_class: exists_check
+  grain: EKPO
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  target_when:
+    LOEKZ:
+      blank: true
+    BSTYP:
+    - K
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase order item refers to a contract that does not exist or is deleted
+  why_it_matters: A release order inherits price and terms from its contract and updates the contract's release documentation.
+    When the contract is deleted, the open order still claims contract terms that no longer exist.
+  rule_authority: best_practice
+  sap_impact: Spend-under-contract reports and release documentation are wrong; follow-on documents for the item cannot be
+    checked against the contract terms.
+  fix_map:
+    __other__: Reassign the item to a valid contract (ME22N) or remove the contract reference, and check the price.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: contract {EKPO.KONNR} is missing or deleted.'
+- id: PUR339
+  field: EKPO.EBELP
+  check_class: exists_check
+  grain: EKPO
+  fields:
+  - EKPO.EBELN
+  - EKPO.EBELP
+  target_table: A016
+  target_fields:
+  - EVRTN
+  - EVRTP
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.NETPR:
+      gt: 0
+  severity: medium
+  dimension: completeness
+  message: Priced contract item has no contract condition record (A016)
+  why_it_matters: Release orders take the contract price from the item's time-dependent conditions (condition table A016),
+    not from the item's net price field. A priced item without conditions gives release orders no contract price.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release orders against the item are priced from the info record or manually; the negotiated contract price is
+    not applied.
+  fix_map:
+    __other__: Maintain the conditions for the contract item in ME32K (Item > Conditions) with a valid period.
+  record_fix_template: 'Contract {EKPO.EBELN} item {EKPO.EBELP}: net price {EKPO.NETPR} but no condition record.'
+- id: PUR340
+  field: A016.DATAB
+  check_class: interval_check
+  grain: A016
+  group_by:
+  - A016.KAPPL
+  - A016.KSCHL
+  - A016.EVRTN
+  - A016.EVRTP
+  start: A016.DATAB
+  end: A016.DATBI
+  severity: high
+  dimension: consistency
+  message: Contract condition records for the same contract item and condition type have overlapping validity periods
+  why_it_matters: Pricing expects one condition record per key and date. Overlapping records make the release-order price depend
+    on which record is read first.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release orders are priced inconsistently; MEK2 / ME32K cannot be maintained cleanly for the overlap.
+  fix_map:
+    __other__: Delimit the overlapping condition records in ME32K so the periods follow each other.
+  record_fix_template: Contract condition {A016.KSCHL} for {A016.EVRTN}/{A016.EVRTP} valid {A016.DATAB} to {A016.DATBI} overlaps
+    another record.
+- id: PUR341
+  field: A016.EVRTP
+  check_class: exists_check
+  grain: A016
+  fields:
+  - A016.EVRTN
+  - A016.EVRTP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  severity: medium
+  dimension: consistency
+  message: Contract condition record for a contract item that does not exist
+  why_it_matters: A condition record keyed to a missing contract item is an orphan left by deletion or migration. It is never
+    used but still counted in condition reports and archiving.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan conditions remain in A016 / KONH / KONP; condition archiving and price reports carry dead records.
+  fix_map:
+    __other__: Delete the orphan condition records (MEK2 or condition archiving) after confirming the contract item is gone.
+  record_fix_template: 'Contract condition {A016.KSCHL}: contract item {A016.EVRTN}/{A016.EVRTP} does not exist.'
+- id: PUR342
+  field: A016.KNUMH
+  check_class: exists_check
+  grain: A016
+  target_table: KONH
+  target_fields:
+  - KNUMH
+  severity: medium
+  dimension: consistency
+  message: Contract condition key (A016) points at a condition record header that does not exist (KONH)
+  why_it_matters: The condition table only holds the key; the rate lives in KONH / KONP. A key without its header gives pricing
+    a condition record with no rate.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release-order pricing finds the access but no condition; the contract price is missing on the PO.
+  fix_map:
+    __other__: Re-create the contract conditions in ME32K and delete the broken key record.
+  record_fix_template: 'Contract condition {A016.KSCHL} for {A016.EVRTN}/{A016.EVRTP}: condition record {A016.KNUMH} does not
+    exist.'
+- id: PUR343
+  field: EKPO.WERKS
+  check_class: exists_check
+  grain: EKPO
+  fields:
+  - EKPO.WERKS
+  - EKKO.EKORG
+  target_table: T024W
+  target_fields:
+  - WERKS
+  - EKORG
+  applies_when:
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Purchase order item plant is not assigned to the PO's purchasing organisation (T024W)
+  why_it_matters: A purchasing organisation may only buy for its assigned plants. Items outside that assignment were created
+    before the assignment changed or by conversion, and bypass the purchasing organisation's responsibility and approval
+    structure.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME22N rejects any change to the item (ME 038 plant not assigned to purchasing organisation); spend reports by
+    purchasing organisation include plants it does not serve.
+  fix_map:
+    __other__: Assign the plant to the purchasing organisation (OX17) if the assignment is missing, otherwise close the item
+      and re-order through the responsible purchasing organisation.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: plant {EKPO.WERKS} is not assigned to purchasing organisation {EKKO.EKORG}.'
+- id: PUR344
+  field: EKPO.INFNR
+  check_class: exists_check
+  grain: EKPO
+  target_table: EINA
+  target_fields:
+  - INFNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Open purchase order item refers to an info record that does not exist or is flagged for deletion
+  why_it_matters: The info record on the item is the source of its price and conditions and is updated with the last PO price.
+    A deleted or missing info record means the item's price can no longer be traced to an agreed source.
+  rule_authority: best_practice
+  sap_impact: Price history (ME1P) and info-record updates are lost for the item; price simulation on change uses no source.
+  fix_map:
+    __other__: Remove the deletion flag from the info record (ME15) if the relationship is still valid, or remove the info record
+      reference and confirm the price on the item (ME22N).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: info record {EKPO.INFNR} is missing or flagged for deletion.'
+- id: PUR345
+  field: EKPO.KNTTP
+  check_class: exists_check
+  grain: EKPO
+  fields:
+  - EKPO.EBELN
+  - EKPO.EBELP
+  target_table: EKKN
+  target_fields:
+  - EBELN
+  - EBELP
+  applies_when:
+    EKPO.KNTTP:
+      populated: true
+      not_in:
+      - U
+    EKPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Account-assigned purchase order item has no account assignment record (EKKN)
+  why_it_matters: The account assignment category says the item is consumed against a cost object, but the cost object lives
+    in EKKN. Without it, goods receipt and invoice have nothing to post the consumption to.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO and MIRO stop with missing account assignment; the commitment never reaches a cost centre, order, asset
+    or WBS element.
+  fix_map:
+    __other__: Enter the account assignment on the item in ME22N, or change the account assignment category if the item is
+      for stock.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: account assignment category {EKPO.KNTTP} but no account assignment
+    record.'
+- id: PUR346
+  field: EKKN.KOSTL
+  check_class: null_check
+  grain: EKKN
+  applies_when:
+    EKPO.KNTTP:
+    - K
+    EKKN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Cost-centre account assignment (category K) without a cost centre
+  why_it_matters: Category K posts the consumption to a cost centre. Without one the GR / IR posting has no cost object and
+    the commitment cannot be shown against a budget.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO / MIRO stop with missing cost centre (KI 235); controlling reports miss the commitment.
+  fix_map:
+    __other__: Enter the cost centre in the item's account assignment (ME22N).
+  record_fix_template: 'PO {EKKN.EBELN} item {EKKN.EBELP} account assignment {EKKN.ZEKKN}: category K without a cost centre.'
+- id: PUR347
+  field: EKKN.ANLN1
+  check_class: null_check
+  grain: EKKN
+  applies_when:
+    EKPO.KNTTP:
+    - A
+    EKKN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Asset account assignment (category A) without an asset number
+  why_it_matters: Category A capitalises the purchase on an asset. Without the asset number the acquisition cannot be posted
+    to the asset and the capital spend is unaccounted for.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO / MIRO stop with missing asset; the asset's acquisition value and depreciation are understated.
+  fix_map:
+    __other__: Create the asset (AS01) and enter it in the item's account assignment (ME22N).
+  record_fix_template: 'PO {EKKN.EBELN} item {EKKN.EBELP} account assignment {EKKN.ZEKKN}: category A without an asset.'
+- id: PUR348
+  field: EKKN.AUFNR
+  check_class: null_check
+  grain: EKKN
+  applies_when:
+    EKPO.KNTTP:
+    - F
+    EKKN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Order account assignment (category F) without an order number
+  why_it_matters: Category F settles the cost on an internal, maintenance or production order. Without the order the cost
+    cannot reach the order or its settlement receiver.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO / MIRO stop with missing order; order costs and budget availability control miss the commitment.
+  fix_map:
+    __other__: Enter the order in the item's account assignment (ME22N).
+  record_fix_template: 'PO {EKKN.EBELN} item {EKKN.EBELP} account assignment {EKKN.ZEKKN}: category F without an order.'
+- id: PUR349
+  field: EKKN.PS_PSP_PNR
+  check_class: null_check
+  grain: EKKN
+  applies_when:
+    EKPO.KNTTP:
+    - P
+    EKKN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Project account assignment (category P) without a WBS element
+  why_it_matters: Category P posts the cost to a WBS element. Without it, project cost and budget availability control never
+    see the commitment.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIGO / MIRO stop with missing WBS element; project reports (CJI3 / CJI5) miss the cost and commitment.
+  fix_map:
+    __other__: Enter the WBS element in the item's account assignment (ME22N).
+  record_fix_template: 'PO {EKKN.EBELN} item {EKKN.EBELP} account assignment {EKKN.ZEKKN}: category P without a WBS element.'
+- id: PUR350
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.MENGE
+  amount: EKKN.MENGE
+  group_keys:
+    EKKN.EBELN: EKPO.EBELN
+    EKKN.EBELP: EKPO.EBELP
+  compare: ==
+  no_children: skip
+  applies_when:
+    EKPO.VRTKZ:
+    - '1'
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Quantity-based multiple account assignment does not add up to the purchase order item quantity
+  why_it_matters: With distribution by quantity, each account assignment line carries part of the item quantity. If the parts
+    do not sum to the item quantity, goods receipt and invoice costs are split in the wrong proportions or part of the cost
+    is left without a cost object.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME22N reports the distribution as incomplete; GR / IR postings split the cost incorrectly across cost objects.
+  fix_map:
+    __other__: Correct the quantities on the account assignment lines in ME22N so they add up to the item quantity.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: account assignment quantities do not add up to the item quantity
+    {EKPO.MENGE}.'
+- id: PUR351
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.MENGE
+  amount: EKET.MENGE
+  group_keys:
+    EKET.EBELN: EKPO.EBELN
+    EKET.EBELP: EKPO.EBELP
+  compare: ==
+  no_children: zero
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: Schedule line quantities do not add up to the purchase order item quantity
+  why_it_matters: MRP reads open purchase order quantities from the schedule lines, not from the item. When they disagree,
+    MRP plans with a different quantity from the one ordered and the vendor confirmation and goods receipt checks compare
+    against the wrong total.
+  rule_authority: sap_hard_constraint
+  sap_impact: MD04 shows a different incoming quantity from ME2N; shortages or excess orders follow.
+  fix_map:
+    __other__: Correct the schedule lines in ME22N so their total matches the item quantity.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: schedule line quantities do not add up to the item quantity {EKPO.MENGE}.'
+- id: PUR352
+  field: EKET.EINDT
+  check_class: cross_field_check
+  grain: EKET
+  fail_when: '`EKET.WEMNG` < `EKET.MENGE`'
+  applies_when:
+    EKET.EINDT:
+      older_than_days: 30
+    EKKO.BSTYP:
+    - F
+    EKPO.WEPOS:
+    - X
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Schedule line more than 30 days past its delivery date and not fully received
+  why_it_matters: MRP treats an overdue schedule line as still coming. Lines that will never be delivered keep inflating expected
+    receipts, hide real shortages and leave commitments open in controlling.
+  rule_authority: best_practice
+  sap_impact: MD04 shows overdue receipts as coverage; ME2M / ME91F list the line for expediting; commitments stay open.
+  fix_map:
+    __other__: Expedite the delivery with the vendor (ME91F), move the delivery date (ME22N), or set the delivery-completed
+      indicator if the rest will not be delivered.
+  record_fix_template: 'PO {EKET.EBELN} item {EKET.EBELP} schedule line {EKET.ETENR}: due {EKET.EINDT}, received {EKET.WEMNG}
+    of {EKET.MENGE}.'
+- id: PUR353
+  field: EKKO.BEDAT
+  check_class: freshness_check
+  grain: EKPO
+  max_age_hours: 8760
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Purchase order item older than one year is still open (no delivery-completed or deletion indicator)
+  why_it_matters: Open items more than a year old are almost always dead commitments. They tie up budget, inflate open order
+    reports and GR/IR reconciliation, and must be cleaned up before archiving or migration.
+  rule_authority: best_practice
+  sap_impact: ME2N / ME2M list the items as open; commitments stay on cost objects; MM_EKKO archiving skips the document.
+  fix_map:
+    __other__: Review with the requester and set the delivery-completed indicator or the deletion flag in ME22N (mass change
+      via MEMASSPO).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: created {age_days} days ago and still open.'
+- id: PUR354
+  check_class: group_sum_check
+  grain: EKPO
+  field: EKPO.MENGE
+  amount: EKBE.MENGE
+  group_keys:
+    EKBE.EBELN: EKPO.EBELN
+    EKBE.EBELP: EKPO.EBELP
+  child_when:
+    EKBE.VGABE:
+    - '1'
+  sign_field: EKBE.SHKZG
+  negative_value: H
+  compare: <=
+  tolerance: -0.001
+  no_children: pass
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.MENGE:
+      gt: 0
+  severity: low
+  dimension: consistency
+  message: Purchase order item fully received but the delivery-completed indicator is not set
+  why_it_matters: Once the full quantity is received the item should be closed for delivery. Without the indicator it stays
+    in open-order lists, can accept further receipts, and keeps commitments open until invoicing.
+  rule_authority: best_practice
+  sap_impact: ME2M lists the item as open; further goods receipts are accepted against it; MD04 may show residual coverage.
+  fix_map:
+    __other__: Set the delivery-completed indicator on the item (ME22N or MEMASSPO), or have MIGO set it automatically at goods
+      receipt.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: received quantity has reached the ordered {EKPO.MENGE} but delivery
+    is not marked complete.'
+- id: PUR355
+  field: EKPO.WEBRE
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`LFM1.WEBRE` == ''X'''
+  applies_when:
+    EKPO.WEBRE:
+      blank: true
+    EKPO.WEPOS:
+    - X
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase order item without GR-based invoice verification although the vendor requires it (LFM1.WEBRE)
+  why_it_matters: The vendor master asks for GR-based invoice verification, which matches each invoice line to its goods receipt.
+    An item without it lets an invoice be matched to the total, so invoices for goods not yet received can be paid.
+  rule_authority: best_practice
+  sap_impact: MIRO matches invoices to the PO total; GR/IR clearing (MR11) needs manual work; early payments are possible.
+  fix_map:
+    __other__: Set GR-based invoice verification on the item (ME22N) before invoices are posted.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: GR-based invoice verification not set although vendor {EKKO.LIFNR}
+    requires it.'
+- id: PUR356
+  field: EKPO.XERSY
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`LFM1.XERSY` == ''X'''
+  applies_when:
+    EKPO.XERSY:
+      blank: true
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+    EKKO.BSTYP:
+    - F
+  severity: low
+  dimension: consistency
+  message: Open purchase order item not flagged for evaluated receipt settlement although the vendor is set up for it (LFM1.XERSY)
+  why_it_matters: Evaluated receipt settlement creates the invoice from the goods receipt. An item without the flag drops out
+    of the ERS run and waits for a paper invoice that the vendor will never send.
+  rule_authority: best_practice
+  sap_impact: MRRL skips the item; the receipt sits on GR/IR and the vendor is paid late or not at all.
+  fix_map:
+    __other__: Set the ERS indicator on the item in ME22N (and GR-based invoice verification, which ERS requires).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: not set for evaluated receipt settlement although vendor {EKKO.LIFNR}
+    is.'
+- id: PUR357
+  field: EKKO.INCO1
+  check_class: cross_field_check
+  fail_when: '`EKKO.INCO1` != `LFM1.INCO1`'
+  applies_when:
+    EKKO.INCO1:
+      populated: true
+    LFM1.INCO1:
+      populated: true
+    EKKO.LOEKZ:
+      blank: true
+    EKKO.BSTYP:
+    - F
+  severity: low
+  dimension: consistency
+  message: Purchase order Incoterms differ from the vendor's agreed Incoterms in the purchasing organisation (LFM1.INCO1)
+  why_it_matters: Incoterms decide who pays freight and insurance and when risk passes. A PO that deviates from the vendor agreement
+    either leaves freight unbudgeted or pays it twice, and changes when the goods belong to the company.
+  rule_authority: best_practice
+  sap_impact: Freight conditions and delivery costs on the PO do not match the vendor's invoices; MIRO shows delivery-cost
+    variances.
+  fix_map:
+    __other__: Confirm the deviation with purchasing; correct the PO Incoterms (ME22N) or update the vendor's purchasing data
+      (XK02) if the agreement changed.
+  record_fix_template: 'PO {EKKO.EBELN}: Incoterms {EKKO.INCO1} differ from vendor {EKKO.LIFNR} agreement {LFM1.INCO1}.'
+- id: PUR358
+  field: EKKO.FRGSX
+  check_class: exists_check
+  fields:
+  - EKKO.FRGGR
+  - EKKO.FRGSX
+  target_table: T16FS
+  target_fields:
+  - FRGGR
+  - FRGSX
+  applies_when:
+    EKKO.FRGSX:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Purchase order uses a release group and strategy that do not exist (T16FS)
+  why_it_matters: The release strategy decides who must approve the PO. A strategy that no longer exists in customizing cannot
+    be released or reset, so the document is stuck or its approvals cannot be traced.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME28 / ME29N cannot process the document; output and goods receipt stay blocked while it is unreleased.
+  fix_map:
+    __other__: Restore the release strategy in customizing (OMGS) or re-determine the strategy by changing the PO (ME22N).
+  record_fix_template: 'PO {EKKO.EBELN}: release group {EKKO.FRGGR} strategy {EKKO.FRGSX} does not exist.'
+- id: PUR359
+  field: EKKO.BEDAT
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    EKKO.FRGRL:
+    - X
+    EKKO.LOEKZ:
+      blank: true
+    EKKO.BSTYP:
+    - F
+  severity: medium
+  dimension: timeliness
+  message: Purchase order has waited for release for more than 30 days
+  why_it_matters: A PO subject to release cannot be output to the vendor or received against until it is released. A month
+    without approval means a stalled need or an abandoned document that still counts as a commitment.
+  rule_authority: best_practice
+  sap_impact: ME28 work lists grow; the requester's need is unmet; commitments remain on cost objects.
+  fix_map:
+    __other__: Escalate the release to the approver (ME28 / ME29N) or delete the PO if the need has gone.
+  record_fix_template: 'PO {EKKO.EBELN}: created {age_days} days ago and still not released.'
+- id: PUR360
+  field: EBAN.BADAT
+  check_class: freshness_check
+  max_age_hours: 2160
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.EBAKZ:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Purchase requisition has been open for more than 90 days without a purchase order
+  why_it_matters: Requisitions not converted within a quarter are usually obsolete. They keep appearing as planned receipts
+    in MRP and clutter the buyers' work lists.
+  rule_authority: best_practice
+  sap_impact: MD04 counts the requisition as coverage; ME57 lists it; MRP does not plan the real need again.
+  fix_map:
+    __other__: Convert the requisition (ME57 / ME59N), or close it (ME54N / MEMASSRQ with the closed or deletion indicator).
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: requested {age_days} days ago and not yet ordered.'
+- id: PUR361
+  field: EBAN.FRGDT
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.EBAKZ:
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Released purchase requisition not converted into a purchase order within 30 days
+  why_it_matters: A released requisition is an approved need. Leaving it unconverted for a month means the need is either late
+    or gone, and the approval is going stale.
+  rule_authority: best_practice
+  sap_impact: ME57 lists the requisition as assigned or unassigned; MD04 counts it as coverage while nothing is on order.
+  fix_map:
+    __other__: Convert the requisition (ME57 / ME59N) or close it if the need no longer exists.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: released {age_days} days ago and not yet ordered.'
+- id: PUR362
+  field: EBAN.FLIEF
+  check_class: exists_check
+  fields:
+  - EBAN.FLIEF
+  - EBAN.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  target_when:
+    SPERM:
+      blank: true
+    LOEVM:
+      blank: true
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.EKORG:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase requisition has a fixed vendor that is not created, blocked or flagged for deletion in its purchasing
+    organisation
+  why_it_matters: The fixed vendor is copied to the purchase order when the requisition is converted. A blocked or missing vendor
+    makes the conversion fail and the need waits.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME59N / ME21N stop with a vendor error for the requisition; the buyer must reassign the source manually.
+  fix_map:
+    __other__: Assign another fixed vendor or source (ME52N / ME57), or lift the vendor block (XK05) if appropriate.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: fixed vendor {EBAN.FLIEF} is not created, blocked or deleted
+    in purchasing organisation {EBAN.EKORG}.'
+- id: PUR363
+  field: EBAN.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+      blank: true
+    LOEVM:
+      blank: true
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase requisition has a desired vendor that does not exist, is deleted or is blocked for purchasing
+  why_it_matters: The desired vendor guides the buyer's source choice. Pointing at a blocked or deleted vendor sends the buyer
+    to a source that cannot be used.
+  rule_authority: best_practice
+  sap_impact: Conversion with the desired vendor fails in ME21N; the buyer must research another source.
+  fix_map:
+    __other__: Change the desired vendor on the requisition (ME52N) or remove it.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: desired vendor {EBAN.LIFNR} is missing, deleted or blocked.'
+- id: PUR364
+  field: EBAN.KNTTP
+  check_class: exists_check
+  fields:
+  - EBAN.BANFN
+  - EBAN.BNFPO
+  target_table: EBKN
+  target_fields:
+  - BANFN
+  - BNFPO
+  applies_when:
+    EBAN.KNTTP:
+      populated: true
+      not_in:
+      - U
+    EBAN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Account-assigned purchase requisition has no account assignment record (EBKN)
+  why_it_matters: The account assignment is copied from the requisition to the purchase order. Without it the PO cannot be
+    created with the category the requisition asks for, and the commitment has no cost object.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME21N / ME59N stop with missing account assignment on conversion; the requisition commitment is not shown in
+    controlling.
+  fix_map:
+    __other__: Enter the account assignment on the requisition (ME52N), or change the account assignment category.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: account assignment category {EBAN.KNTTP} but no account
+    assignment record.'
+- id: PUR365
+  field: EBAN.KONNR
+  check_class: exists_check
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  target_when:
+    LOEKZ:
+      blank: true
+    BSTYP:
+    - K
+    - L
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase requisition is assigned to an outline agreement that does not exist or is deleted
+  why_it_matters: The assigned agreement is the source the requisition is released against. A deleted agreement leaves the
+    requisition with a source that cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME59N fails to create the release order; ME57 shows the requisition as assigned to an invalid source.
+  fix_map:
+    __other__: Reassign the requisition to a valid agreement or vendor in ME57 / ME52N.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: agreement {EBAN.KONNR} is missing or deleted.'
+- id: PUR366
+  field: EBAN.FRGST
+  check_class: exists_check
+  fields:
+  - EBAN.FRGGR
+  - EBAN.FRGST
+  target_table: T16FS
+  target_fields:
+  - FRGGR
+  - FRGSX
+  applies_when:
+    EBAN.FRGST:
+      populated: true
+    EBAN.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Purchase requisition uses a release group and strategy that do not exist (T16FS)
+  why_it_matters: A requisition whose release strategy has gone from customizing cannot be released or reset, so it can never
+    be converted, and its earlier approvals cannot be traced.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME54N / ME55 cannot process the requisition; it stays blocked for conversion.
+  fix_map:
+    __other__: Restore the release strategy in customizing (OMGQ) or change the requisition so the strategy is re-determined
+      (ME52N).
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: release group {EBAN.FRGGR} strategy {EBAN.FRGST} does
+    not exist.'
+- id: PUR367
+  field: EBAN.INFNR
+  check_class: exists_check
+  target_table: EINA
+  target_fields:
+  - INFNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Open purchase requisition refers to an info record that does not exist or is flagged for deletion
+  why_it_matters: The fixed info record on the requisition supplies the price and vendor when it is converted. A deleted record
+    means the PO is priced without the agreed source.
+  rule_authority: best_practice
+  sap_impact: ME59N creates the PO without the info record's price, or the buyer must reassign the source.
+  fix_map:
+    __other__: Reassign the source on the requisition (ME57 / ME52N) or remove the deletion flag from the info record (ME15).
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: info record {EBAN.INFNR} is missing or flagged for deletion.'
+- id: PUR368
+  field: T16FS.FRGC1
+  check_class: null_check
+  grain: T16FS
+  severity: high
+  dimension: completeness
+  message: Release strategy has no first release code
+  why_it_matters: The release codes define who approves documents under the strategy. A strategy without a first code means
+    documents classified into it need no approval at all, which defeats the control.
+  rule_authority: best_practice
+  sap_impact: Documents with this strategy are released immediately or cannot be released; the approval audit trail is empty.
+  fix_map:
+    __other__: Assign the release codes and prerequisites to the strategy in customizing (OMGS for POs, OMGQ for requisitions).
+  record_fix_template: 'Release group {T16FS.FRGGR} strategy {T16FS.FRGSX}: no release code.'
