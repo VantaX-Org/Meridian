@@ -1,0 +1,160 @@
+{
+ "table": "TKA05",
+ "description": "Cost Center Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KOSAR",
+   "key": true,
+   "data_element": "KOSAR",
+   "domain": "KOSAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Cost Center Category",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BKZKP",
+   "key": false,
+   "data_element": "BKZKP",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Actual Primary Postings",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BKZKS",
+   "key": false,
+   "data_element": "BKZKS",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Actual Secondary Costs",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BKZER",
+   "key": false,
+   "data_element": "BKZER",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Actual Revenue Postings",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BKZOB",
+   "key": false,
+   "data_element": "BKZOB",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Commitment Update",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PKZKP",
+   "key": false,
+   "data_element": "PKZKP",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Plan Primary Costs",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "PKZKS",
+   "key": false,
+   "data_element": "PKZKS",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Plan Secondary Costs",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "PKZER",
+   "key": false,
+   "data_element": "PKZER",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator for Planning Revenues",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "VMETH",
+   "key": false,
+   "data_element": "VMETH",
+   "domain": "VMETH",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator for Allowed Allocation Methods",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "MGEFL",
+   "key": false,
+   "data_element": "MGEFL",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Recording Consumption Quantities",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FUNC_AREA",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "TFKB"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FUNC_AREA",
+   "foreign_table": "TFKB",
+   "foreign_field": "FKBER"
+  }
+ ]
+}

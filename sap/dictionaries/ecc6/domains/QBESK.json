@@ -1,0 +1,22 @@
+{
+ "domain": "QBESK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "F",
+   "high": null,
+   "text": "External procurement"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Internal procurement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

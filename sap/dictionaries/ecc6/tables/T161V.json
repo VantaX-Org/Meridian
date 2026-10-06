@@ -1,0 +1,311 @@
+{
+ "table": "T161V",
+ "description": "Shipping-Specific Data for Stock Tfr. for Purch. Doc. Type",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BSTYP",
+   "key": true,
+   "data_element": "BSTYP",
+   "domain": "BSTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Purchasing document category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "BSART",
+   "key": true,
+   "data_element": "ESART",
+   "domain": "BSART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing Document Type",
+   "check_table": "T161"
+  },
+  {
+   "pos": 4,
+   "name": "RESWK",
+   "key": true,
+   "data_element": "RESWK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Supplying (issuing) plant in case of stock transport order",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "LFART",
+   "key": false,
+   "data_element": "LFART",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 6,
+   "name": "PRREG",
+   "key": false,
+   "data_element": "PRREG",
+   "domain": "PRREG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Checking rule for the availability check",
+   "check_table": "T441R"
+  },
+  {
+   "pos": 7,
+   "name": "LFRET",
+   "key": false,
+   "data_element": "LFRET",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Returns to Vendors",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 8,
+   "name": "LBLFA",
+   "key": false,
+   "data_element": "LBLFA",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Materials Provided to Subcontractor",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 9,
+   "name": "LFRFL",
+   "key": false,
+   "data_element": "LFRFL",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery type for store returns",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 10,
+   "name": "MEVST",
+   "key": false,
+   "data_element": "MEVST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Perform Shipment Scheduling",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MERFP",
+   "key": false,
+   "data_element": "MERFP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Use Route Schedule for Shipment Scheduling",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "LFART1",
+   "key": false,
+   "data_element": "LFART1",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Stock Transfers Within a Company Code",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 13,
+   "name": "LFART2",
+   "key": false,
+   "data_element": "LFART2",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Stock Transfers Between Two Company Codes",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 14,
+   "name": "LFCON",
+   "key": false,
+   "data_element": "LFCON",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Transfers to Consignment Stock",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 15,
+   "name": "REVFE",
+   "key": false,
+   "data_element": "REVFE",
+   "domain": "REVFE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Rule for Adoption of ATP Results in Purchasing",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "CRM_BILL",
+   "key": false,
+   "data_element": "/SPE/CRM_BILLING_ACTIVE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "CRM Billing active",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "AUTO_DELV",
+   "key": false,
+   "data_element": "/SPE/AUTO_ACTIVE",
+   "domain": "/SPE/DO_AUTO_ACTIVE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Automatic Delivery Creation Active",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "REQPRF",
+   "key": false,
+   "data_element": "APOREQPRF",
+   "domain": "APOREQPRF",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "ATP: Profile at Requirement Level for APO",
+   "check_table": "TREQPRF"
+  },
+  {
+   "pos": 19,
+   "name": "FLS_LFART",
+   "key": false,
+   "data_element": "FLS_LFART",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Delivery Type for Outbound Delivery for Enh. Store Return",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 20,
+   "name": "ATPCONFMRP",
+   "key": false,
+   "data_element": "ATPCONFMRP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ATP Confirmations Relevant for MRP",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BSART",
+   "foreign_table": "T161",
+   "foreign_field": "BSART"
+  },
+  {
+   "field": "FLS_LFART",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LBLFA",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFART",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFART1",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFART2",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFCON",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFRET",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "LFRFL",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PRREG",
+   "foreign_table": "T441R",
+   "foreign_field": "PRREG"
+  },
+  {
+   "field": "REQPRF",
+   "foreign_table": "TREQPRF",
+   "foreign_field": "REQPRF"
+  }
+ ]
+}

@@ -1,0 +1,57 @@
+{
+ "domain": "WRF_POTB_STATUS_REASON",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "001",
+   "high": null,
+   "text": "No Check Required"
+  },
+  {
+   "low": "002",
+   "high": null,
+   "text": "Active Budget Available"
+  },
+  {
+   "low": "005",
+   "high": null,
+   "text": "Complete OTB Check Successful"
+  },
+  {
+   "low": "006",
+   "high": null,
+   "text": "Complete OTB Check Not Successful"
+  },
+  {
+   "low": "007",
+   "high": null,
+   "text": "OTB Check Not Active According to Customizing"
+  },
+  {
+   "low": "008",
+   "high": null,
+   "text": "OTB Check Deactivated According to BAdI"
+  },
+  {
+   "low": "009",
+   "high": null,
+   "text": "At Least One Variant of Generic Material w. Negative OTB Ch."
+  },
+  {
+   "low": "010",
+   "high": null,
+   "text": "All Variants of Generic Material with Positive OTB Check"
+  },
+  {
+   "low": "011",
+   "high": null,
+   "text": "At least one doc. w. same coll. no. OTB neg. (reason 006)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,300 @@
+{
+ "table": "EQUP",
+ "description": "Quota File: Item",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QUNUM",
+   "key": true,
+   "data_element": "QUNUM",
+   "domain": "QUNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of quota arrangement",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "QUPOS",
+   "key": true,
+   "data_element": "QUPOS",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Quota arrangement item",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BESKZ",
+   "key": false,
+   "data_element": "QBESK",
+   "domain": "QBESK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Procurement Type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SOBES",
+   "key": false,
+   "data_element": "SOBES",
+   "domain": "SOBES",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special procurement type",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "ELIFN",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vendor's account number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 7,
+   "name": "BEWRK",
+   "key": false,
+   "data_element": "BEWRK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant from Which Material is Procured",
+   "check_table": "*"
+  },
+  {
+   "pos": 8,
+   "name": "QUOTE",
+   "key": false,
+   "data_element": "QUOTE",
+   "domain": "QUOTE",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Quota",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "QUBMG",
+   "key": false,
+   "data_element": "QUBAS",
+   "domain": "MENG15",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Quota Base Quantity of Quota Arrangement Item",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "QUMNG",
+   "key": false,
+   "data_element": "QUMNG",
+   "domain": "MENG15",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Allocated Quantity of Quota Arrangement Item",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MAXMG",
+   "key": false,
+   "data_element": "QUMAX",
+   "domain": "MENG15",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Maximum Quantity of Quota Arrangement Item",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "VERID",
+   "key": false,
+   "data_element": "VERID",
+   "domain": "VERID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Production Version",
+   "check_table": "MKAL"
+  },
+  {
+   "pos": 13,
+   "name": "MAXLS",
+   "key": false,
+   "data_element": "MAXLS",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum Lot Size per Quota Item",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "MINLS",
+   "key": false,
+   "data_element": "MINLS",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Minimum Lot Size per Quota Item",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "RDPRF",
+   "key": false,
+   "data_element": "RDPRF",
+   "domain": "RDPRF",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Rounding Profile",
+   "check_table": "RDPR"
+  },
+  {
+   "pos": 16,
+   "name": "KZEIN",
+   "key": false,
+   "data_element": "KZEIM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: \"Once-Only\"",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ABRMG",
+   "key": false,
+   "data_element": "ABRMG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Maximum Release Quantity per Period",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ABPER",
+   "key": false,
+   "data_element": "ABPER",
+   "domain": "RWPER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Period to Which the Release Quantity Relates",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "ABANZ",
+   "key": false,
+   "data_element": "ABANZ",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of Periods to Which the Release Quantity Relates",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "PREIH",
+   "key": false,
+   "data_element": "PREIH",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority for Determination of Sequence",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "EMATN",
+   "key": false,
+   "data_element": "EMATN",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material number corresponding to manufacturer part number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 22,
+   "name": "PLIFZ",
+   "key": false,
+   "data_element": "PLIFZ",
+   "domain": "DEC3",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planned delivery time in days",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EMATN",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "RDPRF",
+   "foreign_table": "RDPR",
+   "foreign_field": "RDPRF"
+  },
+  {
+   "field": "VERID",
+   "foreign_table": "MKAL",
+   "foreign_field": "VERID"
+  }
+ ]
+}

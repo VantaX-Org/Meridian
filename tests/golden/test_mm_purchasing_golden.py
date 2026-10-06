@@ -381,6 +381,8 @@ def test_mm_purchasing_golden():
         "PUR063": {"EBELN=4500012017|EBELP=00010"},              # open item, vendor blocked in purchasing org
         "PUR080": {"INFNR=5300000003|EKORG=1000|ESOKZ=0|WERKS="},  # info record price unit 0
         "PUR084": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # source valid to before valid from
+        "PUR319": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # same source: vendor blocked in LFM1
+        "PUR323": {"MATNR=000000000000300010|WERKS=1000|ZEORD=00002"},  # same source: vendor has no info record
         # GR/IR per PO item: the group's first history line carries the result
         "PUR117": {_hist("4500011510", "00010", "5000088020", 190)},  # final invoice, 100 received / 80 invoiced
         "PUR118": {_hist("4500011511", "00010", "5000091230", 80)},  # delivery complete, 380 received / 400 invoiced
