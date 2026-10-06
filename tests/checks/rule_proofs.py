@@ -270,6 +270,15 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
     # the scope's own values first: with many conditions, MAX_ROWS would never reach a second checked value
     aw = rule.get("applies_when") or {}
     cand = {c: v[:2] if c in aw and c != rule.get("field") and len(cols) > 5 else v for c, v in cand.items()}
+    verdict = _prove_generic(rule, dictionary, cand, cols, live)
+    if verdict[0] != "proven" and rule.get("field") in cols[:-1]:
+        # retry with the checked field varying fastest: with several scope conditions the first MAX_ROWS
+        # combinations may otherwise never reach a second value of it
+        verdict = _prove_generic(rule, dictionary, cand, sorted(cols, key=lambda c: c == rule["field"]), live)
+    return verdict
+
+
+def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
     df = _rows(rule, dictionary, values)

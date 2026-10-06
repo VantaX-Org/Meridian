@@ -100,7 +100,7 @@ Counts are the new rules only (PUR306 to PUR368). Views follow the purchasing ma
 | PUR343, PUR344 | exists_check | PO plant not assigned to the purchasing organisation; PO info record missing or deleted. |
 | PUR345 to PUR349 | exists_check, null_check | Account-assigned PO item without EKKN; EKKN without cost centre, asset, order or WBS element for K, A, F and P. |
 | PUR350, PUR351 | group_sum_check | Quantity-based distribution (EKKN) or schedule lines (EKET) do not add up to the item quantity. |
-| PUR352, PUR353 | cross_field_check, freshness_check | Schedule line 30 days overdue and not received; PO item open for more than a year. |
+| PUR352, PUR353 | cross_field_check, freshness_check | Schedule line 30 days overdue and not received; PO item open for more than a year (no delivery-completed, final-invoice or deletion indicator). |
 | PUR354 | group_sum_check | Item fully received (EKBE, GR net of reversals) but delivery-completed not set. |
 | PUR355 to PUR357 | cross_field_check | PO item misses GR-based IV or ERS required by the vendor; PO Incoterms differ from the vendor. |
 | PUR358, PUR359 | exists_check, freshness_check | PO release group and strategy not in T16FS; PO waiting for release for more than 30 days. |
@@ -114,7 +114,7 @@ Counts are the new rules only (PUR306 to PUR368). Views follow the purchasing ma
 
 - DDIC tables added to `sap/dictionaries/ecc6`: A016, EBKN, EKAB, EKET, EKKN, EQUK, EQUP, T161V, T16FB, T16FS, T16FV, with their domains.
 - Join edges added to `sap/dictionaries/joins.yaml`: EKPO to EKET and EKPO to EKKN (by `EBELN`, `EBELP`), EKKO to EKAB (contract `EBELN` to `EKAB.KONNR`).
-- `tests/checks/rule_proofs.py`: the interval proof now keeps generated records inside the rule scope (`applies_when`), and the exists proof can satisfy a numeric `gt` condition in `target_when`.
+- `tests/checks/rule_proofs.py`: the interval proof now keeps generated records inside the rule scope (`applies_when`), the exists proof can satisfy a numeric `gt` condition in `target_when`, and when the generic proof finds no passing record it retries once with the checked field varying fastest, so the first `MAX_ROWS` combinations try all its values inside the scope (needed for PUR353, which has four scope conditions).
 - Golden fixture `tests/golden/test_mm_purchasing_golden.py`: two expected hits added (PUR319, PUR323) for the existing defective source list record whose vendor is blocked in LFM1 and has no info record. No fixture data changed.
 
 ## Not covered, and why

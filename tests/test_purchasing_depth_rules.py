@@ -186,8 +186,9 @@ def test_overdue_schedule_line():
 
 
 def test_old_open_item():
-    ekko = frame("EKKO", EBELN=["1", "2"], BSTYP=["F", "F"], BEDAT=[ago(500), ago(20)])
-    ekpo = frame("EKPO", EBELN=["1", "2"], EBELP=["10", "10"], ELIKZ=["", ""], LOEKZ=["", ""])
+    ekko = frame("EKKO", EBELN=["1", "2", "3"], BSTYP=["F", "F", "F"], BEDAT=[ago(500), ago(20), ago(500)])
+    ekpo = frame("EKPO", EBELN=["1", "2", "3"], EBELP=["10", "10", "10"], ELIKZ=["", "", ""], LOEKZ=["", "", ""],
+                 EREKZ=["", "", "X"])  # PO 3: final invoice posted, out of scope
     assert fire("PUR353", {"EKKO": ekko, "EKPO": ekpo}) == (1, 2)
 
 

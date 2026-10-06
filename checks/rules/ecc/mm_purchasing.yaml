@@ -4059,9 +4059,11 @@ rules:
       blank: true
     EKPO.LOEKZ:
       blank: true
+    EKPO.EREKZ:
+      blank: true
   severity: medium
   dimension: timeliness
-  message: Purchase order item older than one year is still open (no delivery-completed or deletion indicator)
+  message: Purchase order item older than one year is still open (no delivery-completed, final-invoice or deletion indicator)
   why_it_matters: Open items more than a year old are almost always dead commitments. They tie up budget, inflate open order
     reports and GR/IR reconciliation, and must be cleaned up before archiving or migration.
   rule_authority: best_practice
