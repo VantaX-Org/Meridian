@@ -1,0 +1,27 @@
+{
+ "domain": "CMPGN_COPY_MODE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Copy All"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Do Not Copy, Redetermination in Target Document"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Manual Copying and Redetermination in Target Document"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

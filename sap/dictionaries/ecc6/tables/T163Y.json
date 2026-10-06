@@ -1,0 +1,86 @@
+{
+ "table": "T163Y",
+ "description": "Texts for Item Categories",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "PSTYP",
+   "key": true,
+   "data_element": "PSTYP",
+   "domain": "PSTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Item category in purchasing document",
+   "check_table": "T163"
+  },
+  {
+   "pos": 4,
+   "name": "PTEXT",
+   "key": false,
+   "data_element": "PTEXT_D",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Text for Item Category",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "EPSTP",
+   "key": false,
+   "data_element": "EPSTP",
+   "domain": "EPSTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Item category in purchasing document",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PSTYP",
+   "foreign_table": "T163",
+   "foreign_field": "PSTYP"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "domain": "AOB_DARST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "As a finish/start relationship"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "By relationship type"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

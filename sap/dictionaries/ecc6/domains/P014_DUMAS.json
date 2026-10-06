@@ -1,0 +1,72 @@
+{
+ "domain": "P014_DUMAS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Notification"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Start of Employment                          Registration 10"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "End of Employment                          Deregistration 30"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "End of Employment due to Death             Deregistration 49"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "(Obsolete)Change of Work Relationship (De)Registration 33/13"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "(Obsolete)Change of Company           (De)Registration 30/10"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Change of Payroll Accounting System        Deregistration 36"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Special Registration (Other Reasons)         Registration 13"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "(Obsolete)Parental Leave            Notific. of Interrupt 52"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "(Obsolete)Mil./Non-Military Service   Notif. of Interrupt 53"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Start of Mini Job in Parental Leave          Registration 11"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "End of Mini Job in Parental Leave          Deregistration 31"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

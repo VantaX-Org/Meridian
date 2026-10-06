@@ -1,0 +1,312 @@
+{
+ "table": "T184",
+ "description": "Sales Documents: Item Category Determination",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUART",
+   "key": true,
+   "data_element": "AUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Document Type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 3,
+   "name": "MTPOS",
+   "key": true,
+   "data_element": "MTPOS",
+   "domain": "MTPOS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item category group from material master",
+   "check_table": "TPTM"
+  },
+  {
+   "pos": 4,
+   "name": "VWPOS",
+   "key": true,
+   "data_element": "VWPOS",
+   "domain": "VWPOS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item usage",
+   "check_table": "TVVW"
+  },
+  {
+   "pos": 5,
+   "name": "UEPST",
+   "key": true,
+   "data_element": "UEPST",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item category of the higher-level item",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 6,
+   "name": "PSTYV",
+   "key": false,
+   "data_element": "PSTYD",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default item category for the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 7,
+   "name": "PSTY1",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 8,
+   "name": "PSTY2",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 9,
+   "name": "PSTY3",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 10,
+   "name": "PSTY4",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 11,
+   "name": "PSTY5",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 12,
+   "name": "PSTY6",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 13,
+   "name": "PSTY7",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 14,
+   "name": "PSTY8",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 15,
+   "name": "PSTY9",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 16,
+   "name": "PSTY10",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 17,
+   "name": "PSTY11",
+   "key": false,
+   "data_element": "PSTYM",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manual entries allowed for item category in the document",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 18,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUART",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MTPOS",
+   "foreign_table": "TPTM",
+   "foreign_field": "MTPOS"
+  },
+  {
+   "field": "PSTY1",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY10",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY11",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY2",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY3",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY4",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY5",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY6",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY7",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY8",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTY9",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "UEPST",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "VWPOS",
+   "foreign_table": "TVVW",
+   "foreign_field": "VWPOS"
+  }
+ ]
+}

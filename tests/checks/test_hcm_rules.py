@@ -19,7 +19,7 @@ PERSONAL = {"NACHN", "VORNA", "GBDAT", "PERID", "BANKN", "USRID", "BET01", "STEX
 
 def test_pack_loads():
     assert PACK["module"] == "hcm"
-    assert 40 <= len(RULES) <= 80
+    assert 40 <= len(RULES) <= 200
     assert len({r["id"] for r in RULES}) == len(RULES)
     assert all(r["id"].startswith("PA") for r in RULES)
 

@@ -1,0 +1,32 @@
+{
+ "domain": "OCM_CH_PROC",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Manually changed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Change sales order"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Release of change number"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Not changed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

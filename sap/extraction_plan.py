@@ -218,6 +218,12 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         for t, cols in DISCOVERY_CONFIG.items():
             add(t, set(cols), DISCOVERY_MODULE, purpose="config")
 
+    # config tables behind the derived process flows (full-table reads), per area module
+    from sap.process_definitions import flow_config_tables
+    for t, (cols, mods) in flow_config_tables().items():
+        if mods & set(modules):
+            add(t, cols, DISCOVERY_MODULE, purpose="config")
+
     # the tables population exclusions look values up in (JEST status, T370T category)
     from checks.population import policy
     for t, p in list(plans.items()):

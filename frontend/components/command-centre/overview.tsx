@@ -197,7 +197,7 @@ export function CommandCentreOverview() {
     module: m.module, object: formatModuleName(m.module), critical: m.critical, high: m.high, medium: m.medium, low: m.low,
   }));
 
-  const arrivedJob = jobs.find((j) => j.kind !== "config_sync" && j.status === "completed"
+  const arrivedJob = jobs.find((j) => j.kind !== "config_sync" && j.kind !== "config_load" && j.status === "completed"
     && nowSec - (j.finished_at ?? 0) < 900 && j.id !== dismissed);
   const dismiss = () => {
     if (!arrivedJob) return;

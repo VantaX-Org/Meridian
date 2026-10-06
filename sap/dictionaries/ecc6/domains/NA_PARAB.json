@@ -1,0 +1,22 @@
+{
+ "domain": "NA_PARAB",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Output dependent on partner"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Output independent of partner"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

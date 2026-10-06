@@ -1,0 +1,52 @@
+{
+ "table": "TSAD4",
+ "description": "Name Prefixes (Business Address Services)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PREFIX_KEY",
+   "key": true,
+   "data_element": "AD_PREFIX",
+   "domain": "AD_PREFIX",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Name Prefix (Key)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "PREFIX_TXT",
+   "key": false,
+   "data_element": "AD_PREFIXT",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Name prefix",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
