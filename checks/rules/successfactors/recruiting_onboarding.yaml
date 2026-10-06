@@ -301,3 +301,54 @@ rules:
       their applications with a reason.
   record_fix_template: 'Application by candidate {JOBAPPLICATION.CANDIDATE_ID} on requisition {JOBAPPLICATION.JOB_REQ_ID}:
     applied {JOBAPPLICATION.APPLICATION_DATE}, requisition closed {JOBREQUISITION.CLOSE_DATE}.'
+- id: REC023
+  field: JOBREQUISITION.HIRING_MANAGER
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: medium
+  dimension: consistency
+  message: Hiring manager of the requisition is not an employee
+  why_it_matters: The hiring manager of a requisition must be an employee so approvals and the later hire can use the manager hierarchy.
+  rule_authority: best_practice
+  sap_impact: Approvals route to nobody and the hire cannot inherit the manager.
+  fix_map:
+    __other__: Assign an employee as hiring manager.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: hiring manager is not an employee. Correct the requisition.'
+- id: REC024
+  field: ONBOARDINGCANDIDATEINFO.MANAGER_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.MANAGER_ID:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Onboarding manager is not an employee
+  why_it_matters: The manager of a new hire must exist as an employee so the hire can be placed in the reporting line.
+  rule_authority: best_practice
+  sap_impact: The new hire is created without a manager and workflow items go unassigned.
+  fix_map:
+    __other__: Assign an existing employee as manager.
+  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: manager is not an employee. Correct the onboarding record.'
+- id: REC025
+  field: ONBOARDINGCANDIDATEINFO.DEPARTMENT
+  check_class: exists_check
+  target_table: FODEPARTMENT
+  target_fields:
+  - EXTERNAL_CODE
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.DEPARTMENT:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Onboarding department does not exist in the foundation data
+  why_it_matters: The department of a new hire must be a valid foundation department, because it is copied to the employment and to the SAP organisation assignment.
+  rule_authority: best_practice
+  sap_impact: The hire is created with an invalid organisation assignment and the replication rejects it.
+  fix_map:
+    __other__: Select a valid department.
+  record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: department is not a foundation department. Correct the onboarding record.'

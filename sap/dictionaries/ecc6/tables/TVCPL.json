@@ -1,0 +1,247 @@
+{
+ "table": "TVCPL",
+ "description": "Deliveries: Copying Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LFARN",
+   "key": true,
+   "data_element": "LFART_NACH",
+   "domain": "LFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Target delivery type",
+   "check_table": "TVLK"
+  },
+  {
+   "pos": 3,
+   "name": "AUARV",
+   "key": true,
+   "data_element": "AUART_VON",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Reference document type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 4,
+   "name": "PSTYV",
+   "key": true,
+   "data_element": "PSTYV_VON",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 5,
+   "name": "AUBED",
+   "key": false,
+   "data_element": "AUBED",
+   "domain": "BEDNG",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Requirements for the order to be delivered",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AUZUS",
+   "key": false,
+   "data_element": "AUZUS",
+   "domain": "BEDNG",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Requirement for combining orders in one delivery",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ETBED",
+   "key": false,
+   "data_element": "ETBED",
+   "domain": "BEDNG",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Requirement relating to a schedule line to be delivered",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "GRUAK",
+   "key": false,
+   "data_element": "GRUAK",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer VBAK",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "GRUAP",
+   "key": false,
+   "data_element": "GRUAP",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer VBAP",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "GRUKD",
+   "key": false,
+   "data_element": "GRUKD",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for transferring business data",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "GRUPA",
+   "key": false,
+   "data_element": "GRUPA",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for partner data VBPA",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "GRUET",
+   "key": false,
+   "data_element": "GRUET",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Group requirement for schedule line data transfer",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "POSVO",
+   "key": false,
+   "data_element": "POSVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy item number from reference",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "PLMIN",
+   "key": false,
+   "data_element": "PLMIN",
+   "domain": "PLMIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity is calculated positively, negatively or not at all",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "UPFLU",
+   "key": false,
+   "data_element": "UPFLU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Update indicator for flow table",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "GRUVS",
+   "key": false,
+   "data_element": "GRUVS",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying Requirements for Data Transfer VEKP",
+   "check_table": "*"
+  },
+  {
+   "pos": 17,
+   "name": "GRUAK_AIP",
+   "key": false,
+   "data_element": "GRUAK_AIP",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data trans. of header data from ext. system",
+   "check_table": "*"
+  },
+  {
+   "pos": 18,
+   "name": "GRUAP_AIP",
+   "key": false,
+   "data_element": "GRUAP_AIP",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Data transfer of item data from external system",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUARV",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "LFARN",
+   "foreign_table": "TVLK",
+   "foreign_field": "LFART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  }
+ ]
+}

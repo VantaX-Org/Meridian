@@ -1,0 +1,42 @@
+{
+ "domain": "KUNBZ",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Military/non-mil. service"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Parental leave (> 12 months)"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Long-term leave (> 12 months)"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Leaving on the first of next"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Change of employer (leg.pers.)"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Change of employment"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,62 @@
+{
+ "domain": "ABSPZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Display all documents"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Display totals by sold-to party/material/validity period"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Display totals by sold-to party/material"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Display totals by sold-to party"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Display totals by payer/material/validity period"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Display totals by payer/material"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Display totals by payer"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Display totals by rebate condition record"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Reserved for Ext. Bonus: Display All Documents for Var. Key"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Reserved for Ext. Bonus: Display Total for Var. Key"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

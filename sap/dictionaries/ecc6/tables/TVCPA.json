@@ -1,0 +1,529 @@
+{
+ "table": "TVCPA",
+ "description": "Sales Documents: Copying Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUARN",
+   "key": true,
+   "data_element": "AUART_NACH",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Target sales document type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 3,
+   "name": "AUARV",
+   "key": true,
+   "data_element": "AUART_VON",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Reference document type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 4,
+   "name": "FKARV",
+   "key": true,
+   "data_element": "FKART_VON",
+   "domain": "FKART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Copying control: Reference billing document type",
+   "check_table": "TVFK"
+  },
+  {
+   "pos": 5,
+   "name": "ETTYV",
+   "key": true,
+   "data_element": "ETTYP_VON",
+   "domain": "ETTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference schedule line category",
+   "check_table": "TVEP"
+  },
+  {
+   "pos": 6,
+   "name": "PSTYV",
+   "key": true,
+   "data_element": "PSTYV_VON",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 7,
+   "name": "PSTYN",
+   "key": false,
+   "data_element": "PSTYV_NACH",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Default item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 8,
+   "name": "GRBED",
+   "key": false,
+   "data_element": "GRBED",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "GRUAK",
+   "key": false,
+   "data_element": "GRUAK",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer VBAK",
+   "check_table": "*"
+  },
+  {
+   "pos": 10,
+   "name": "GRUAP",
+   "key": false,
+   "data_element": "GRUAP",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer VBAP",
+   "check_table": "*"
+  },
+  {
+   "pos": 11,
+   "name": "GRUEP",
+   "key": false,
+   "data_element": "GRUEP",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for schedule line data",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "GRUKD",
+   "key": false,
+   "data_element": "GRUKD",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for transferring business data",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "GRUPA",
+   "key": false,
+   "data_element": "GRUPA",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for partner data VBPA",
+   "check_table": "*"
+  },
+  {
+   "pos": 14,
+   "name": "POSVO",
+   "key": false,
+   "data_element": "POSVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy item number from reference",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ETTYN",
+   "key": false,
+   "data_element": "ETTYP_NACH",
+   "domain": "ETTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Proposed schedule line category",
+   "check_table": "TVEP"
+  },
+  {
+   "pos": 16,
+   "name": "ETKOP",
+   "key": false,
+   "data_element": "ETKOP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy schedule lines",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "GRPZE",
+   "key": false,
+   "data_element": "GRPZE",
+   "domain": "GRPZE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Group indicator for copying control",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "SPRAS",
+   "key": false,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 19,
+   "name": "VOREF",
+   "key": false,
+   "data_element": "VOREF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Complete reference indicator",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "PLMIN",
+   "key": false,
+   "data_element": "PLMIN",
+   "domain": "PLMIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Quantity is calculated positively, negatively or not at all",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "UPFLU",
+   "key": false,
+   "data_element": "UPFLV",
+   "domain": "UPFLV",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Update indicator for sales document document flow",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "GRUKO",
+   "key": false,
+   "data_element": "GRUFA",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer FPLA",
+   "check_table": "*"
+  },
+  {
+   "pos": 23,
+   "name": "KNPRS",
+   "key": false,
+   "data_element": "KNPRS",
+   "domain": "KNPRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Pricing type",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "HINEU",
+   "key": false,
+   "data_element": "HINEU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determine customer heirarchy again",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "GRUVE",
+   "key": false,
+   "data_element": "GRUVE",
+   "domain": "GRPNO",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Copying requirements for data transfer VEDA",
+   "check_table": "*"
+  },
+  {
+   "pos": 26,
+   "name": "CHNEW",
+   "key": false,
+   "data_element": "CHNEW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Do not copy batch",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "PSCOP",
+   "key": false,
+   "data_element": "PSCOP",
+   "domain": "PSCOP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy result of product selection",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "STNEW",
+   "key": false,
+   "data_element": "STNEW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Reexplode structure/free goods",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "CPMEN",
+   "key": false,
+   "data_element": "CPMEN",
+   "domain": "CPMEN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy quantity",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "PSTY2",
+   "key": false,
+   "data_element": "PSTYV_NAC2",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "2nd default item category",
+   "check_table": "TVPT"
+  },
+  {
+   "pos": 31,
+   "name": "KNPR2",
+   "key": false,
+   "data_element": "KNPR2",
+   "domain": "KNPRS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "2nd pricing type",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "WKKOP",
+   "key": false,
+   "data_element": "WKKOP",
+   "domain": "WKKOP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy mode for material in value contract item",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "COPY_CON",
+   "key": false,
+   "data_element": "COPY_CON",
+   "domain": "COPY_CON",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy configuration",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "OIFERP",
+   "key": false,
+   "data_element": "OIA_FERP",
+   "domain": "OIA_FERP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Fee repricing indicator",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "OIFEECH",
+   "key": false,
+   "data_element": "OIA_FEECH",
+   "domain": "OIA_FEECH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Fee edit control",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "LVKOP",
+   "key": false,
+   "data_element": "LVKOP",
+   "domain": "LVKOP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy bill of services",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "CUANZ",
+   "key": false,
+   "data_element": "SAPHT_SW_CUANZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: set configuration read / only after copy",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "DPTYPE",
+   "key": false,
+   "data_element": "JDPTYPE",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "IS-M:",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "CMPGN_COPY",
+   "key": false,
+   "data_element": "CMPC_COPY_MODE",
+   "domain": "CMPGN_COPY_MODE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy Mode for Campaign Determination",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUARN",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUARV",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "ETTYN",
+   "foreign_table": "TVEP",
+   "foreign_field": "ETTYP"
+  },
+  {
+   "field": "ETTYV",
+   "foreign_table": "TVEP",
+   "foreign_field": "ETTYP"
+  },
+  {
+   "field": "FKARV",
+   "foreign_table": "TVFK",
+   "foreign_field": "FKART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PSTY2",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTYN",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "PSTYV",
+   "foreign_table": "TVPT",
+   "foreign_field": "PSTYV"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

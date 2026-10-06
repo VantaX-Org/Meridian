@@ -734,7 +734,7 @@ rules:
     sap_impact: Bank transfer cannot be made; the employee owes money that must be recovered in a later period.
     fix_map:
       __other__: Review the deductions and retroactive changes for the period with payroll and agree a recovery plan.
-    record_fix_template: 'Employee {PAYRESULT.USERID}: net pay {PAYRESULT.NET_PAY} on {PAYRESULT.PAY_DATE}.'
+    record_fix_template: 'Employee {PAYRESULT.USERID}: Net pay is negative. Correct the record.'
   - id: PAY023
     field: PAYRESULT.CURRENCY
     check_class: cross_field_check
@@ -750,3 +750,351 @@ rules:
     fix_map:
       __other__: Confirm the employee's legal entity and the payroll currency mapping; correct the wrong one.
     record_fix_template: 'Employee {PAYRESULT.USERID}: paid in {PAYRESULT.CURRENCY}, legal entity uses {FOCOMPANY.CURRENCY}.'
+  - id: HPY019
+    field: PA0008.TRFGR
+    check_class: exists_check
+    grain: PA0008
+    fields:
+    - PA0008.TRFAR
+    - PA0008.TRFGB
+    - PA0008.TRFGR
+    - PA0008.TRFST
+    target_table: T510
+    target_fields:
+    - TRFAR
+    - TRFGB
+    - TRFGR
+    - TRFST
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+    severity: high
+    dimension: validity
+    message: Pay scale assignment is not defined in the pay scale tables
+    why_it_matters: The combination of pay scale type, area, group and level on infotype 0008 must exist in T510. A combination that was never defined cannot be valued.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll cannot determine the scale pay and stops with an error for the employee.
+    fix_map:
+      __other__: Correct the pay scale fields in PA30 infotype 0008 or create the pay scale in T510. Note that T510 is checked without the country grouping.
+    record_fix_template: 'Employee {PA0008.PERNR}: pay scale type, area, group and level are not defined in T510. Correct in PA30 infotype 0008.'
+  - id: HPY020
+    field: PA0008.TRFGB
+    check_class: null_check
+    grain: PA0008
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+      PA0008.TRFGR:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Pay scale group is set but the pay scale area is blank
+    why_it_matters: A pay scale group alone does not identify a pay scale. The pay scale area is part of the T510 key.
+    rule_authority: best_practice
+    sap_impact: Scale pay cannot be determined, so basic pay is not valued from the scale.
+    fix_map:
+      __blank__: Enter the pay scale area in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: has a pay scale group but no pay scale area. Complete in PA30 infotype 0008.'
+  - id: HPY021
+    field: PA0008.TRFST
+    check_class: null_check
+    grain: PA0008
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+      PA0008.TRFGR:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Pay scale group is set but the pay scale level is blank
+    why_it_matters: A pay scale group alone does not identify a pay scale. The pay scale level is part of the T510 key.
+    rule_authority: best_practice
+    sap_impact: Scale pay cannot be determined, so basic pay is not valued from the scale.
+    fix_map:
+      __blank__: Enter the pay scale level in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: has a pay scale group but no pay scale level. Complete in PA30 infotype 0008.'
+  - id: HPY022
+    field: PA0008.LGA01
+    check_class: cross_field_check
+    grain: PA0008
+    fail_when: '`PA0008.LGA01`.isna() & (`PA0008.BET01` > 0)'
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+    severity: high
+    dimension: consistency
+    message: Basic pay has an amount but no wage type
+    why_it_matters: An amount in the first basic pay slot needs the wage type that tells payroll how to value and post it.
+    rule_authority: best_practice
+    sap_impact: The amount is ignored by payroll or raises an error.
+    fix_map:
+      __other__: Enter the wage type in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: has a basic pay amount without a wage type. Correct in PA30 infotype 0008.'
+  - id: HPY023
+    field: PA0008.ANSAL
+    check_class: cross_field_check
+    grain: PA0008
+    fail_when: '`PA0008.ANSAL` < 0'
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+    severity: high
+    dimension: validity
+    message: Annual salary is negative
+    why_it_matters: An annual salary below zero is impossible and usually a sign reversal.
+    rule_authority: best_practice
+    sap_impact: Annual salary reports and compensation planning take a negative base.
+    fix_map:
+      __other__: Correct the annual salary in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: has a negative annual salary. Correct in PA30 infotype 0008.'
+  - id: HPY024
+    field: PA0008.ANCUR
+    check_class: cross_field_check
+    grain: PA0008
+    fail_when: '`PA0008.ANCUR` != `PA0008.WAERS`'
+    require_populated: true
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+    severity: medium
+    dimension: consistency
+    message: Annual salary currency differs from the pay currency
+    why_it_matters: The annual salary is stated in a currency that differs from the pay currency of the same record. One of the two is wrong.
+    rule_authority: best_practice
+    sap_impact: Compensation reports convert at the wrong rate or mix currencies.
+    fix_map:
+      __other__: Align the currencies in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: has an annual salary currency that differs from the pay currency. Correct in PA30 infotype 0008.'
+  - id: HPY025
+    field: PA0008.LGA01
+    check_class: exists_check
+    grain: PA0008
+    target_table: T512Z
+    target_fields:
+    - LGA01
+    target_when:
+      INFTY:
+      - 0008
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+      PA0008.LGA01:
+        populated: true
+    severity: high
+    dimension: validity
+    message: Wage type is not permitted for infotype 0008
+    why_it_matters: Table T512Z lists the wage types that may be entered in infotype 0008. A wage type outside the list is rejected by dialog maintenance, so it arrived through a load or a configuration change.
+    rule_authority: best_practice
+    sap_impact: Payroll evaluates the wage type without the permissibility rules that normally protect it.
+    fix_map:
+      __other__: Remove the wage type or add it to T512Z for infotype 0008. T512Z is checked without the country grouping.
+    record_fix_template: 'Employee {PA0008.PERNR}: uses a wage type that is not permitted for infotype 0008. Correct in PA30.'
+  - id: HPY026
+    field: PA0014.LGART
+    check_class: exists_check
+    grain: PA0014
+    target_table: T512Z
+    target_fields:
+    - LGART
+    target_when:
+      INFTY:
+      - '0014'
+    applies_when:
+      PA0014.ENDDA:
+      - '99991231'
+      PA0014.LGART:
+        populated: true
+    severity: high
+    dimension: validity
+    message: Wage type is not permitted for infotype 0014
+    why_it_matters: Table T512Z lists the wage types that may be entered in infotype 0014. A wage type outside the list is rejected by dialog maintenance, so it arrived through a load or a configuration change.
+    rule_authority: best_practice
+    sap_impact: Payroll evaluates the wage type without the permissibility rules that normally protect it.
+    fix_map:
+      __other__: Remove the wage type or add it to T512Z for infotype 0014. T512Z is checked without the country grouping.
+    record_fix_template: 'Employee {PA0014.PERNR}: uses a wage type that is not permitted for infotype 0014. Correct in PA30.'
+  - id: HPY027
+    field: PA0015.LGART
+    check_class: exists_check
+    grain: PA0015
+    target_table: T512Z
+    target_fields:
+    - LGART
+    target_when:
+      INFTY:
+      - '0015'
+    applies_when:
+      PA0015.ENDDA:
+      - '99991231'
+      PA0015.LGART:
+        populated: true
+    severity: high
+    dimension: validity
+    message: Wage type is not permitted for infotype 0015
+    why_it_matters: Table T512Z lists the wage types that may be entered in infotype 0015. A wage type outside the list is rejected by dialog maintenance, so it arrived through a load or a configuration change.
+    rule_authority: best_practice
+    sap_impact: Payroll evaluates the wage type without the permissibility rules that normally protect it.
+    fix_map:
+      __other__: Remove the wage type or add it to T512Z for infotype 0015. T512Z is checked without the country grouping.
+    record_fix_template: 'Employee {PA0015.PERNR}: uses a wage type that is not permitted for infotype 0015. Correct in PA30.'
+  - id: HPY028
+    field: PA0014.BEGDA
+    check_class: interval_check
+    grain: PA0014
+    group_by:
+    - PA0014.PERNR
+    - PA0014.LGART
+    start: PA0014.BEGDA
+    end: PA0014.ENDDA
+    severity: high
+    dimension: consistency
+    message: Recurring payment of the same wage type overlaps itself
+    why_it_matters: Two recurring payments for one wage type with overlapping validity are paid twice for the overlap period.
+    rule_authority: sap_hard_constraint
+    sap_impact: The employee is paid twice for the overlap and retroactive accounting corrects it later.
+    fix_map:
+      __other__: Delimit one of the records in PA30 infotype 0014.
+    record_fix_template: 'Employee {PA0014.PERNR}: has overlapping recurring payments for one wage type. Delimit in PA30 infotype 0014.'
+  - id: HPY029
+    field: HRPY_RGDIR.VOIDD
+    check_class: null_check
+    grain: HRPY_RGDIR
+    applies_when:
+      HRPY_RGDIR.VOID:
+      - X
+    severity: medium
+    dimension: completeness
+    message: Voided payroll result has no void date
+    why_it_matters: A voided payroll result must record when it was voided so reversals and audit trails can be reconstructed.
+    rule_authority: best_practice
+    sap_impact: The audit trail of the void is incomplete.
+    fix_map:
+      __blank__: Review the result in the payroll cluster directory (PC_PAYRESULT) and correct the void.
+    record_fix_template: Payroll result {HRPY_RGDIR.PERNR}/{HRPY_RGDIR.SEQNR} is voided without a void date. Review the result directory.
+  - id: HPY030
+    field: HRPY_RGDIR.FPBEG
+    check_class: cross_field_check
+    grain: HRPY_RGDIR
+    fail_when: (`HRPY_RGDIR.FPBEG` - `PA0000.BEGDA`).dt.days > 31
+    require_populated: true
+    applies_when:
+      PA0000.STAT2:
+      - '0'
+      HRPY_RGDIR.VOID:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: Payroll was run for a leaver for a period starting more than a month after leaving
+    why_it_matters: A payroll result whose period begins more than 31 days after the leaving date means payroll kept running for a person who left.
+    rule_authority: best_practice
+    sap_impact: The leaver is paid or is shown on payroll reports for periods after employment.
+    fix_map:
+      __other__: Review the personnel number control record (PA03) and void the result with the payroll void function.
+    record_fix_template: Payroll result {HRPY_RGDIR.PERNR}/{HRPY_RGDIR.SEQNR} is for a period after the employee left. Review the result.
+  - id: PAY024
+    field: PAYRESULT.GROSS_PAY
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.GROSS_PAY` < 0'
+    applies_when:
+      PAYRESULT.DELTA_FLAG:
+        not_in:
+        - X
+    severity: medium
+    dimension: validity
+    message: Payroll result has a negative gross pay
+    why_it_matters: The gross pay of a payroll result is a positive quantity; a negative value is a sign error or an unflagged reversal.
+    rule_authority: best_practice
+    sap_impact: Posting to the general ledger reverses the intended direction.
+    fix_map:
+      __other__: Check the payroll run; if the result is a reversal it must carry the delta flag.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} has a negative gross pay. Review the run.
+  - id: PAY025
+    field: PAYRESULT.TAX_AMOUNT
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.TAX_AMOUNT` < 0'
+    applies_when:
+      PAYRESULT.DELTA_FLAG:
+        not_in:
+        - X
+    severity: medium
+    dimension: validity
+    message: Payroll result has a negative tax amount
+    why_it_matters: The tax amount of a payroll result is a positive quantity; a negative value is a sign error or an unflagged reversal.
+    rule_authority: best_practice
+    sap_impact: Posting to the general ledger reverses the intended direction.
+    fix_map:
+      __other__: Check the payroll run; if the result is a reversal it must carry the delta flag.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} has a negative tax amount. Review the run.
+  - id: PAY026
+    field: PAYRESULT.DEDUCTIONS
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.DEDUCTIONS` < 0'
+    applies_when:
+      PAYRESULT.DELTA_FLAG:
+        not_in:
+        - X
+    severity: medium
+    dimension: validity
+    message: Payroll result has a negative deductions
+    why_it_matters: The deductions of a payroll result is a positive quantity; a negative value is a sign error or an unflagged reversal.
+    rule_authority: best_practice
+    sap_impact: Posting to the general ledger reverses the intended direction.
+    fix_map:
+      __other__: Check the payroll run; if the result is a reversal it must carry the delta flag.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} has a negative deductions. Review the run.
+  - id: PAY027
+    field: PAYRESULT.NET_PAY
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.GROSS_PAY` - `PAYRESULT.TAX_AMOUNT` - `PAYRESULT.DEDUCTIONS` - `PAYRESULT.NET_PAY`).abs() > 0.01
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Net pay does not equal gross pay less tax and deductions
+    why_it_matters: Net pay must reconcile to gross pay less tax and deductions. A difference above one cent means a component is missing from the extract or the posting.
+    rule_authority: best_practice
+    sap_impact: The posted payroll cost and the bank transfer disagree.
+    fix_map:
+      __other__: Reconcile the payroll result components and re-extract the run.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} does not reconcile. Review the run.
+  - id: PAY028
+    field: PAYRESULT.COMPANY
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.COMPANY` != `EMPEMPLOYMENT.COMPANY`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Payroll result company differs from the employee company
+    why_it_matters: The company on the payroll result must be the company of the employee. A difference posts the personnel cost to the wrong legal entity.
+    rule_authority: best_practice
+    sap_impact: Intercompany differences and wrong legal-entity cost.
+    fix_map:
+      __other__: Correct the company assignment on the employment or re-run the payroll for the correct company.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} has a company that differs from the employment. Review.
+  - id: PAY029
+    field: PAYRESULT.COST_CENTRE
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.COST_CENTRE` != `EMPEMPLOYMENT.COST_CENTER`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Payroll result cost centre differs from the employment cost centre
+    why_it_matters: The payroll cost centre normally equals the employment cost centre. A difference can be valid (split assignment) but is mostly a stale transfer.
+    rule_authority: best_practice
+    sap_impact: Personnel cost is posted to a cost centre other than the one the manager owns.
+    fix_map:
+      __other__: Confirm the assignment with finance.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} uses a cost centre that differs from the employment. Review.
+  - id: PAY030
+    field: PAYRESULT.NET_PAY
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.NET_PAY` == 0) & (`PAYRESULT.GROSS_PAY` > 0)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Payroll result pays nothing although gross pay is positive
+    why_it_matters: Net pay of zero with positive gross pay means deductions consumed everything or the result is incomplete.
+    rule_authority: best_practice
+    sap_impact: The employee receives no transfer; garnishments and advances may not be recovered correctly.
+    fix_map:
+      __other__: Review the payroll result for the employee.
+    record_fix_template: Payroll result for employee {PAYRESULT.USERID} has zero net pay with positive gross pay. Review the run.

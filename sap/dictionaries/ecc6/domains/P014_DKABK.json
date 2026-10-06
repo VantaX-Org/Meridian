@@ -1,0 +1,62 @@
+{
+ "domain": "P014_DKABK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No Reason for Abandonment"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "No Abandonment due to Breach of Contract"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Unpaid Leave, Military Service"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Cancellation of Early Retirement Allowance"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Shutdown, Bankruptcy Proceedings, Merging of Companies"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Dismissal (and Key 5 Does Not Apply)"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Illness, Incapacity to Work, Aftereffects of Accidents"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Voluntary Abandonment (Notice of Contract Termination)"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Other Reasons"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Coll. Agrmt Flexible Coal / Coll. Agrmt Phase-Out Saarland"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

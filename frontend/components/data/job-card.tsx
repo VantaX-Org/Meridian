@@ -4,7 +4,7 @@ import { Chip, Text, type ChipTone } from "@/components/aurora";
 import type { Job, JobStage, JobTable } from "@/types/jobs";
 
 export const KIND_LABEL: Record<Job["kind"], string> = {
-  extraction: "Download", config_sync: "Config sync", analysis: "Analysis", upload: "Import", simulation: "Simulation",
+  extraction: "Download", config_sync: "Load configuration", config_load: "Load configuration", analysis: "Analysis", upload: "Import", simulation: "Simulation",
 };
 export const STATUS_TONE: Record<Job["status"], ChipTone> = {
   queued: "neutral", running: "info", completed: "success", failed: "danger",

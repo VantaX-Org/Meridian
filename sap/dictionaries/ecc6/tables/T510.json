@@ -1,0 +1,168 @@
+{
+ "table": "T510",
+ "description": "Pay Scale Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MOLGA",
+   "key": true,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 3,
+   "name": "TRFAR",
+   "key": true,
+   "data_element": "TRFAR",
+   "domain": "TRFAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay scale type",
+   "check_table": "T510A"
+  },
+  {
+   "pos": 4,
+   "name": "TRFGB",
+   "key": true,
+   "data_element": "TRFGB",
+   "domain": "TRFGB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Area",
+   "check_table": "T510G"
+  },
+  {
+   "pos": 5,
+   "name": "TRFKZ",
+   "key": true,
+   "data_element": "TRFKZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ES grouping for collective agreement provision",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TRFGR",
+   "key": true,
+   "data_element": "TRFGR",
+   "domain": "TRFGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Pay Scale Group",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "TRFST",
+   "key": true,
+   "data_element": "TRFST",
+   "domain": "TRFST",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Level",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LGART",
+   "key": true,
+   "data_element": "LGART",
+   "domain": "LGART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Wage Type",
+   "check_table": "T512W"
+  },
+  {
+   "pos": 9,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "BETRG",
+   "key": false,
+   "data_element": "PAD_AMT7S",
+   "domain": "P_AMT07V",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Wage Type Amount for Payments",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LGART",
+   "foreign_table": "T512W",
+   "foreign_field": "LGART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "TRFAR",
+   "foreign_table": "T510A",
+   "foreign_field": "TRFAR"
+  },
+  {
+   "field": "TRFGB",
+   "foreign_table": "T510G",
+   "foreign_field": "TRFGB"
+  }
+ ]
+}

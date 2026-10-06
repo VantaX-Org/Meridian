@@ -1,0 +1,57 @@
+{
+ "table": "TB037",
+ "description": "Authorization Groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUOBJ",
+   "key": true,
+   "data_element": "BU_AUOBJ",
+   "domain": "BU_AUOBJ",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Authorization Group Object",
+   "check_table": "TB036"
+  },
+  {
+   "pos": 3,
+   "name": "AUGRP",
+   "key": true,
+   "data_element": "BU_AUGRP",
+   "domain": "BU_AUGRP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUOBJ",
+   "foreign_table": "TB036",
+   "foreign_field": "AUOBJ"
+  },
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

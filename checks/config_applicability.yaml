@@ -1,0 +1,63 @@
+# Which rules apply to a system, decided from its loaded configuration.
+#
+# packs:  rule module (the `module:` of checks/rules/<system>/*.yaml) -> condition
+# rules:  rule id -> condition, overrides the pack (none needed yet)
+#
+# A condition says what the configuration must contain for the rules to mean anything:
+#   requires: {object: <config object>, min_rows: 1, where: {FIELD: [values]}}
+# `where` counts only rows whose FIELD is one of the values. `reason` is shown when it is not met.
+#
+# Never guess: the condition is judged only when its object was read (loaded or empty). An object that
+# failed or that the system cannot expose leaves the rules applicable. Modules and rules not listed here
+# have no configuration dependency and stay applicable.
+
+packs:
+  # ---- ECC / S/4HANA on-premise (SPRO tables) ------------------------------------------------------
+  quality_management:
+    requires: {object: TQ30, min_rows: 1}
+    reason: "no QM inspection types active in TQ30"
+  plant_maintenance:
+    requires: {object: T003O, where: {AUTYP: ["30"]}}
+    reason: "no maintenance order types (category 30) in T003O"
+  production_planning:
+    requires: {object: T003O, where: {AUTYP: ["10", "40"]}}
+    reason: "no production or process order types (categories 10, 40) in T003O"
+  project_system:
+    requires: {object: TCJ1, min_rows: 1}
+    reason: "no project types in TCJ1"
+  asset_accounting:
+    requires: {object: TABW, min_rows: 1}
+    reason: "no asset transaction types in TABW"
+  hcm:
+    requires: {object: T529A, min_rows: 1}
+    reason: "no personnel action types in T529A"
+  mm_purchasing:
+    requires: {object: T161, min_rows: 1}
+    reason: "no purchasing document types in T161"
+  sd_sales_orders:
+    requires: {object: TVAK, min_rows: 1}
+    reason: "no sales document types in TVAK"
+  # ---- SuccessFactors (OData) ----------------------------------------------------------------------
+  time_attendance:
+    requires: {object: TimeType, min_rows: 1}
+    reason: "no time types defined (TimeType empty)"
+  performance_goals:
+    requires: {object: GoalPlanTemplate, min_rows: 1}
+    reason: "no goal plan templates defined (GoalPlanTemplate empty)"
+  payroll_integration:
+    requires: {object: FOPayGroup, min_rows: 1}
+    reason: "no pay groups defined (FOPayGroup empty)"
+  # ---- Concur (REST) -------------------------------------------------------------------------------
+  concur_expense:
+    requires: {object: ExpenseType, min_rows: 1}
+    reason: "no expense types configured (ExpenseType empty)"
+  # ---- eWM (/SCWM/ tables) -------------------------------------------------------------------------
+  ewms_stock:
+    requires: {object: /SCWM/T300, min_rows: 1}
+    reason: "no warehouse numbers defined in /SCWM/T300"
+
+rules: {}
+
+# Not covered (no confident configuration signal): all other ECC packs (their configuration is always
+# present once the system is installed), Ariba and S/4HANA Cloud (no configuration API wired), the
+# remaining SuccessFactors packs, and the warehouse packs other than ewms_stock.
