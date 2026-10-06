@@ -1,0 +1,926 @@
+{
+ "table": "KONA",
+ "description": "Agreements",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KNUMA",
+   "key": true,
+   "data_element": "KNUMA",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Agreement (various conditions grouped together)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "VKORG",
+   "key": false,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 4,
+   "name": "VTWEG",
+   "key": false,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVKOV"
+  },
+  {
+   "pos": 5,
+   "name": "SPART",
+   "key": false,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TVTA"
+  },
+  {
+   "pos": 6,
+   "name": "VKBUR",
+   "key": false,
+   "data_element": "VKBUR",
+   "domain": "VKBUR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales office",
+   "check_table": "TVKBZ"
+  },
+  {
+   "pos": 7,
+   "name": "VKGRP",
+   "key": false,
+   "data_element": "VKGRP",
+   "domain": "VKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales group",
+   "check_table": "TVBVK"
+  },
+  {
+   "pos": 8,
+   "name": "BOART",
+   "key": false,
+   "data_element": "BOART",
+   "domain": "BOART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Agreement type",
+   "check_table": "T6B1"
+  },
+  {
+   "pos": 9,
+   "name": "ABTYP",
+   "key": false,
+   "data_element": "BOABTYP",
+   "domain": "ABTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Category of the rebate agreement",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "KAPPL",
+   "key": false,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681A"
+  },
+  {
+   "pos": 11,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ERZET",
+   "key": false,
+   "data_element": "ERZET",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Entry time",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "AEZET",
+   "key": false,
+   "data_element": "AEZET",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time last change was made",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "BONEM",
+   "key": false,
+   "data_element": "BONEM",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rebate recipient",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 18,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 19,
+   "name": "MAXBO",
+   "key": false,
+   "data_element": "MAXBO",
+   "domain": "WERTV7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Maximum rebate                                    (not used)",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "ABREX",
+   "key": false,
+   "data_element": "ABREX",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "External description for agreement",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "EKORG",
+   "key": false,
+   "data_element": "EKORG",
+   "domain": "EKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Purchasing organization",
+   "check_table": "T024E"
+  },
+  {
+   "pos": 22,
+   "name": "BOLIF",
+   "key": false,
+   "data_element": "BOGEW",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Condition granter",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 23,
+   "name": "ABSPZ",
+   "key": false,
+   "data_element": "ABSPZ",
+   "domain": "ABSPZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Scope of verification level of rebate agreement",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "BOSTA",
+   "key": false,
+   "data_element": "BOSTA",
+   "domain": "BOSTA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of the agreement",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "ABDATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Agreement valid-from date",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "DATBI",
+   "key": false,
+   "data_element": "ABDATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Agreement valid-to date",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "KOBOG",
+   "key": false,
+   "data_element": "KOBOG",
+   "domain": "KOBOG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Condition type/table group for agreements",
+   "check_table": "T6B2"
+  },
+  {
+   "pos": 28,
+   "name": "BOTEXT",
+   "key": false,
+   "data_element": "BOTEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Description of agreement (e.g. sales deal, promotion)",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "ZLSCH",
+   "key": false,
+   "data_element": "DZLSCH",
+   "domain": "ZLSCH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Payment method",
+   "check_table": "T042Z"
+  },
+  {
+   "pos": 30,
+   "name": "VALTG",
+   "key": false,
+   "data_element": "VALTG",
+   "domain": "TAGE2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Additional value days",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "VALDT",
+   "key": false,
+   "data_element": "VALDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Fixed value date",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "ZTERM",
+   "key": false,
+   "data_element": "DZTERM",
+   "domain": "ZTERM",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Terms of payment key",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "UKNUMA",
+   "key": false,
+   "data_element": "KNUMA_UEB",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Higher-level agreement",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 34,
+   "name": "IDENT1",
+   "key": false,
+   "data_element": "WFCID1",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Settlement calendar for rebate arrangements",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 35,
+   "name": "IDENT2",
+   "key": false,
+   "data_element": "WFCID2",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Arrangement calendar for rebate arrangements",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 36,
+   "name": "UMNAM",
+   "key": false,
+   "data_element": "UMNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Person responsible for BVol. comparison f. final settlement",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "UMSDA",
+   "key": false,
+   "data_element": "UMSDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of last business volume comparison for final settlement",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "UMSAE",
+   "key": false,
+   "data_element": "UMSAEF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Business volume comparison required for final settlement",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "EKGRP",
+   "key": false,
+   "data_element": "EKGRP",
+   "domain": "EKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Purchasing group",
+   "check_table": "T024"
+  },
+  {
+   "pos": 40,
+   "name": "AKTNR",
+   "key": false,
+   "data_element": "WAKTION",
+   "domain": "WAKTION",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Promotion",
+   "check_table": "WAKH"
+  },
+  {
+   "pos": 41,
+   "name": "ABEIN",
+   "key": false,
+   "data_element": "ABEIN",
+   "domain": "ABEIN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Scope of statem. f. rebate arr. (Purchasing) -no longer used",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS_AB",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company code for subsequent settlement",
+   "check_table": "T001"
+  },
+  {
+   "pos": 43,
+   "name": "VKNUMA",
+   "key": false,
+   "data_element": "KNUMA_VOR",
+   "domain": "KNUMA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preceding arrangement for automatic renewal",
+   "check_table": "KONA"
+  },
+  {
+   "pos": 44,
+   "name": "FORZP",
+   "key": false,
+   "data_element": "FORZP",
+   "domain": "FORZP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Subsequent settlement: time of LIS update",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "FOART",
+   "key": false,
+   "data_element": "FOART_NA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Subsequent settlement: update type (scale/condition basis)",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "IDENT3",
+   "key": false,
+   "data_element": "WFCID3",
+   "domain": "WFCID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Settlement periods for agreements",
+   "check_table": "TFACD"
+  },
+  {
+   "pos": 47,
+   "name": "ABPAR",
+   "key": false,
+   "data_element": "WABPAR",
+   "domain": "WABPAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for type of settlement partner (vendor/customer)",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "KFRST",
+   "key": false,
+   "data_element": "KFRST",
+   "domain": "KFRST",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Release Status",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "ANGRP",
+   "key": false,
+   "data_element": "ANGRP",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Trigger Group Message Determination",
+   "check_table": "TMAN2"
+  },
+  {
+   "pos": 50,
+   "name": "ANBEDNFE",
+   "key": false,
+   "data_element": "ANBEDNFE",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Trigger condition, message determination",
+   "check_table": "TMAN3"
+  },
+  {
+   "pos": 51,
+   "name": "NAUMF_ENAW",
+   "key": false,
+   "data_element": "NAUMF_ENAW",
+   "domain": "CHAR02",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Default aggregation level \"Detailed statement\"",
+   "check_table": "TMAB"
+  },
+  {
+   "pos": 52,
+   "name": "NAUMF_SNAW",
+   "key": false,
+   "data_element": "NAUMF_SNAW",
+   "domain": "CHAR02",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Default aggregation level \"Statement of statistical data\"",
+   "check_table": "TMAB"
+  },
+  {
+   "pos": 53,
+   "name": "NAUMF_ANAW",
+   "key": false,
+   "data_element": "NAUMF_ANAW",
+   "domain": "CHAR02",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Default Summarization Level: \"Statement of Settlement Docs\"",
+   "check_table": "TMAB"
+  },
+  {
+   "pos": 54,
+   "name": "UMSAEP",
+   "key": false,
+   "data_element": "UMSAEP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Business volume comparison required for parital settlement",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "UMNAMP",
+   "key": false,
+   "data_element": "UMNAMP",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Pers. responsible for last BVol. comparison, partial settlm.",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "UMSDAP",
+   "key": false,
+   "data_element": "UMSDAP",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of last business vol. comparison for partial settlement",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "/BEV1/RBRTT",
+   "key": false,
+   "data_element": "RANTYP",
+   "domain": "RANTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Contract Type",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "/BEV1/RBRTN",
+   "key": false,
+   "data_element": "RANL",
+   "domain": "RANL",
+   "type": "CHAR",
+   "length": 13,
+   "decimals": 0,
+   "description": "Contract Number",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "/BEV1/RBEWA",
+   "key": false,
+   "data_element": "SBEWART",
+   "domain": "SBEWART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Flow Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 63,
+   "name": "BON_ENH_VAKEY",
+   "key": false,
+   "data_element": "BON_ENH_VAKEY",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicates Enhanced Rebate Settlement",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "BON_ENH_INDIRECT",
+   "key": false,
+   "data_element": "BON_ENH_INDIRECT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for Indirect Settlement Types",
+   "check_table": null
+  },
+  {
+   "pos": 65,
+   "name": "BON_ENH_PERIOD_S",
+   "key": false,
+   "data_element": "BON_ENH_PERIOD_S",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicates Periodic Settlement",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "BON_ENH_CTYP",
+   "key": false,
+   "data_element": "RANTYP",
+   "domain": "RANTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Contract Type",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "BON_ENH_CNO",
+   "key": false,
+   "data_element": "RANL",
+   "domain": "RANL",
+   "type": "CHAR",
+   "length": 13,
+   "decimals": 0,
+   "description": "Contract Number",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "BON_ENH_TTYP",
+   "key": false,
+   "data_element": "SBEWART",
+   "domain": "SBEWART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Flow Type",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AKTNR",
+   "foreign_table": "WAKH",
+   "foreign_field": "AKTNR"
+  },
+  {
+   "field": "ANBEDNFE",
+   "foreign_table": "TMAN3",
+   "foreign_field": "ANBEDNFE"
+  },
+  {
+   "field": "ANGRP",
+   "foreign_table": "TMAN2",
+   "foreign_field": "ANGRP"
+  },
+  {
+   "field": "BOART",
+   "foreign_table": "T6B1",
+   "foreign_field": "BOART"
+  },
+  {
+   "field": "BOLIF",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "BONEM",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "EKGRP",
+   "foreign_table": "T024",
+   "foreign_field": "EKGRP"
+  },
+  {
+   "field": "EKORG",
+   "foreign_table": "T024E",
+   "foreign_field": "EKORG"
+  },
+  {
+   "field": "IDENT1",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "IDENT2",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "IDENT3",
+   "foreign_table": "TFACD",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681A",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KOBOG",
+   "foreign_table": "T6B2",
+   "foreign_field": "KOBOG"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NAUMF_ANAW",
+   "foreign_table": "TMAB",
+   "foreign_field": "NAUMF"
+  },
+  {
+   "field": "NAUMF_ENAW",
+   "foreign_table": "TMAB",
+   "foreign_field": "NAUMF"
+  },
+  {
+   "field": "NAUMF_SNAW",
+   "foreign_table": "TMAB",
+   "foreign_field": "NAUMF"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TVTA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "UKNUMA",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVKBZ",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVBVK",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VKNUMA",
+   "foreign_table": "KONA",
+   "foreign_field": "KNUMA"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "ZLSCH",
+   "foreign_table": "T042Z",
+   "foreign_field": "ZLSCH"
+  }
+ ]
+}

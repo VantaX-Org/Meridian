@@ -1,0 +1,152 @@
+{
+ "domain": "KNPRS",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Copy Price Components and Redetermine Scales"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Carry Out New Pricing"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Copy Manual Pricing Elements and Redetermine the Others"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Copy Pricing Elements Unchanged"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Adopt Price Components and Fix Values"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Copy Pricing Elements, Turn Value and Fix"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Copy Pricing Elements Unchanged and Redetermine Taxes"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Redetermine Freight Conditions"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Redermine rebate conditions"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Redetermine confirmed purch. net price / value (KNTYP=d)"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Adopt Price Components and Cost. Redetermine Taxes."
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Copy Pricing Elements, Turn Value"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Transfer Pricing Components Unchanged, New Cost"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Redetermine Variant Conditions (KNTYP=0)"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Redetermine calculation conditions (KNTYP=Q)"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Redetermine precious metal conditions (KNTYP=U)"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Customer Reserve X"
+  },
+  {
+   "low": "Y",
+   "high": null,
+   "text": "Customer Reserve Y"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Customer Reserve Z"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Customer Reserve 1"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Customer Reserve 2"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Customer Reserve 3"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Customer Reserve 4"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Customer Reserve 5"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Customer Reserve 6"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Customer Reserve 7"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Customer Reserve 8"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Customer Reserve 9"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

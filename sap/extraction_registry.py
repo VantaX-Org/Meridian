@@ -22,6 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from sap.process_definitions import flow_config_tables as _flow_config_tables
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -635,6 +637,9 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(source="T156", fields=["BWART"], is_config=True, description="Movement types"),
         ExtractionTarget(source="TVLK", fields=["LFART"], is_config=True, description="Delivery types"),
         ExtractionTarget(source="TVFK", fields=["FKART"], is_config=True, description="Billing document types"),
+        # config tables behind the derived process flows (sap.process_templates probes)
+        *[ExtractionTarget(source=t, fields=sorted(f), is_config=True, description="Process flow configuration")
+          for t, (f, _m) in sorted(_flow_config_tables().items()) if t not in {"TVAK", "T156", "TVLK", "TVFK"}],
     ],
 
     # ------------------------------------------------------------------

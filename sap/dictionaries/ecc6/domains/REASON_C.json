@@ -1,0 +1,32 @@
+{
+ "domain": "REASON_C",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Acquisitions of New Assets/Asset Disposals (Sales)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Acquisitions of Used Assets/Asset Disposals (Scrap)"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Intercity Asset Transfers"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Other"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

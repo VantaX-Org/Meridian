@@ -1,0 +1,47 @@
+{
+ "domain": "ABEIN",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Display all documents"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Display totals at vendor/material/period level"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Display totals at vendor/material level"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Display totals at vendor level"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Display totals at condition granter/material/period level"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Display totals at condition granter/material level"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Display totals at condition granter level"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -220,3 +220,29 @@ rules:
       __other__: Remove the nomination in the Succession Org Chart and nominate an active employee.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID} is not an
       active employee.'
+  - id: SUC015
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NOMINATED_DATE` > @today'
+    severity: low
+    dimension: validity
+    message: Nomination date lies in the future
+    why_it_matters: A nomination cannot be dated after today.
+    rule_authority: best_practice
+    sap_impact: Nomination ageing reports are wrong.
+    fix_map:
+      __other__: Correct the nomination date.
+    record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: nomination date is in the future. Correct the date.'
+  - id: SUC016
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: cross_field_check
+    fail_when: '`EMPEMPLOYMENT.STATUS`.isin([''T'',''R''])'
+    severity: high
+    dimension: consistency
+    message: Nominee has already left the company
+    why_it_matters: A succession slate that names a terminated or retired employee leaves the position without a real successor.
+    rule_authority: best_practice
+    sap_impact: Succession coverage and bench strength are overstated.
+    fix_map:
+      __other__: Remove the nominee and nominate an active employee.
+    record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: the nominee has left. Remove the nominee.'

@@ -39,6 +39,8 @@ STAGES: dict[str, list[tuple[str, str]]] = {
     "extraction": [("connect", "Connecting"), ("read", "Reading tables"), ("store", "Storing data"),
                    ("register", "Registering version"), ("analyse", "Analysis")],
     "config_sync": [("connect", "Connecting"), ("read", "Reading configuration"), ("store", "Storing snapshots")],
+    "config_load": [("connect", "Connecting"), ("read", "Reading configuration"), ("store", "Storing snapshot"),
+                    ("derive", "Deriving flows")],
     "analysis": [("load", "Loading data"), ("checks", "Running checks"), ("insights", "AI insights"),
                  ("report", "Building report")],
     "upload": [("parse", "Parsing file"), ("checks", "Running checks"), ("insights", "AI insights"),

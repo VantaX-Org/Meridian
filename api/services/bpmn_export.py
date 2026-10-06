@@ -204,6 +204,7 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dic
     ma = _sub(ext, MER, "activity", {
         "id": act.id, "nodeId": node.id, "pos": pos, "order": act.order, "tcode": act.tcode,
         "sapTables": ";".join(act.sap_tables) if act.sap_tables else None,
+        "ruleModules": ";".join(act.rule_modules) if act.rule_modules else None,
         "description": act.description or None, **_extras(act), **_extras(node, "node")})
     for f in act.fields:
         _sub(ma, MER, "field", {"name": f.field, "checkId": f.check_id, "mandatory": str(f.mandatory).lower(),
@@ -400,6 +401,7 @@ def import_zip(data: bytes) -> ProcessModelDocument:
                        order=int(ma.get("order")), tcode=ma.get("tcode"), fields=fields,
                        check_ids=[r.get("id") for r in ma.findall(_q(MER, "rule"))],
                        sap_tables=[t for t in (ma.get("sapTables") or "").split(";") if t],
+                       rule_modules=[m for m in (ma.get("ruleModules") or "").split(";") if m],
                        **_read_extras(L5, ma.attrib))
                 acts.append((int(ma.get("pos")), a))
                 nid = ma.get("nodeId")

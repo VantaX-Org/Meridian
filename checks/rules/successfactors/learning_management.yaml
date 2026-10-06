@@ -318,8 +318,7 @@ rules:
     sap_impact: Pass/fail determination and assessment analytics wrong for this record.
     fix_map:
       __blank__: Correct the score on the learning history record via Learning Administration.
-    record_fix_template: 'Learning history {LEARNINGCOMPLETION.USERID}/{LEARNINGCOMPLETION.COURSE_ID}: score {LEARNINGCOMPLETION.SCORE}
-      is negative.'
+    record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: Learning score must not be negative. Correct the record.'
   - id: LMS021
     field: LEARNINGCOMPLETION.CREDIT_HOURS
     check_class: cross_field_check
@@ -352,3 +351,75 @@ rules:
       __other__: Correct the completion date in the learning history (Record Learning).
     record_fix_template: 'Employee {LEARNINGCOMPLETION.USERID}: course {LEARNINGCOMPLETION.COURSE_ID} completed
       {LEARNINGCOMPLETION.COMPLETION_DATE}, which is in the future.'
+  - id: LMS023
+    field: LEARNINGCOMPLETION.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: medium
+    dimension: consistency
+    message: Learning completion belongs to a user without employment
+    why_it_matters: A completion must belong to an employee. A user that has no employment record cannot be linked to a person in a migration.
+    rule_authority: best_practice
+    sap_impact: The training history is orphaned and is dropped or cannot be loaded.
+    fix_map:
+      __other__: Link the completion to an existing employee or archive it.
+    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} has no employment record. Review.
+  - id: LMS024
+    field: LEARNINGASSIGNMENT.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: medium
+    dimension: consistency
+    message: Learning assignment belongs to a user without employment
+    why_it_matters: An assignment must belong to an employee. Assignments to users without employment are orphans.
+    rule_authority: best_practice
+    sap_impact: Open assignments are never completed and count against compliance reports.
+    fix_map:
+      __other__: Remove the assignment or link it to an employee.
+    record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} has no employment record. Review.
+  - id: LMS025
+    field: LEARNINGCOMPLETION.COMPLETION_DATE
+    check_class: cross_field_check
+    fail_when: '`LEARNINGCOMPLETION.COMPLETION_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    severity: medium
+    dimension: consistency
+    message: Learning completed before the employment started
+    why_it_matters: A completion before the start of employment points to a wrong date or a mix-up of persons, unless it is prior learning that was loaded on purpose.
+    rule_authority: best_practice
+    sap_impact: Training history and compliance status are wrong for the employee.
+    fix_map:
+      __other__: Correct the completion date or the employment start.
+    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is dated before the employment started. Review.
+  - id: LMS026
+    field: LEARNINGASSIGNMENT.ASSIGNED_DATE
+    check_class: cross_field_check
+    fail_when: '`LEARNINGASSIGNMENT.ASSIGNED_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    severity: medium
+    dimension: timeliness
+    message: Learning assigned after the employment ended
+    why_it_matters: Assigning training to a person who has left creates open items nobody can complete.
+    rule_authority: best_practice
+    sap_impact: Compliance reports show overdue learning for leavers.
+    fix_map:
+      __other__: Cancel the assignment.
+    record_fix_template: Learning assignment for user {LEARNINGASSIGNMENT.USERID} is dated after the employment ended. Cancel it.
+  - id: LMS027
+    field: LEARNINGCOMPLETION.COMPLETION_DATE
+    check_class: uniqueness_check
+    fields:
+    - LEARNINGCOMPLETION.USERID
+    - LEARNINGCOMPLETION.COURSE_ID
+    - LEARNINGCOMPLETION.COMPLETION_DATE
+    severity: low
+    dimension: uniqueness
+    message: Learning completion is recorded more than once
+    why_it_matters: The same course completed by the same user on the same date twice is a duplicate load.
+    rule_authority: best_practice
+    sap_impact: Credit hours are counted twice.
+    fix_map:
+      __other__: Delete the duplicate completion.
+    record_fix_template: Learning completion for user {LEARNINGCOMPLETION.USERID} is recorded more than once. Remove the duplicate.
