@@ -1,0 +1,103 @@
+{
+ "table": "T049L",
+ "description": "Lockboxes at our House Banks",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "LOCKB",
+   "key": true,
+   "data_element": "LOCKB",
+   "domain": "LCKID",
+   "type": "CHAR",
+   "length": 7,
+   "decimals": 0,
+   "description": "Key of the Lockbox to Which the Customer Is To Pay",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "HBKID",
+   "key": false,
+   "data_element": "HBKID",
+   "domain": "HBKID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Short key for a house bank",
+   "check_table": "T012"
+  },
+  {
+   "pos": 5,
+   "name": "LCKNR",
+   "key": false,
+   "data_element": "LCKNR",
+   "domain": "NUM07",
+   "type": "NUMC",
+   "length": 7,
+   "decimals": 0,
+   "description": "Lockbox Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "ADRNR",
+   "domain": "ADRNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address",
+   "check_table": "SADRP"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADRNR",
+   "foreign_table": "SADRP",
+   "foreign_field": "ADRNR"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

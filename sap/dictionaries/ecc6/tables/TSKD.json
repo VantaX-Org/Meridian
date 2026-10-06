@@ -1,0 +1,57 @@
+{
+ "table": "TSKD",
+ "description": "Customer Taxes",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TATYP",
+   "key": true,
+   "data_element": "TATYP",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Tax category (sales tax, federal sales tax,...)",
+   "check_table": "T685A"
+  },
+  {
+   "pos": 3,
+   "name": "TAXKD",
+   "key": true,
+   "data_element": "TAKLD",
+   "domain": "TAXKD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Tax classification for customer",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "TATYP",
+   "foreign_table": "T685A",
+   "foreign_field": "KSCHL"
+  }
+ ]
+}

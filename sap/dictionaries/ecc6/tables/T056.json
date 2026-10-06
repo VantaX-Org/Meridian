@@ -1,0 +1,58 @@
+{
+ "table": "T056",
+ "description": "Interest settlement",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "VZSKZ",
+   "key": true,
+   "data_element": "VZSKZ",
+   "domain": "VZSKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Interest calculation indicator",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KENNZ",
+   "key": false,
+   "data_element": "VZART_056",
+   "domain": "VZART_056",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Interest Calculation Type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "VZSKZ_L",
+   "key": false,
+   "data_element": "FLAG1_056",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account number as interest calculation indicator",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}
