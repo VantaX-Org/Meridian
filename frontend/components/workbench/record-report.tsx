@@ -23,7 +23,7 @@ import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
 import { materialHref } from "@/lib/material-views";
-import { formatModuleName, labelOf, objectNoun, recordKeyLabel, recordKeyParts, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, keyFieldLabel, objectNoun, recordKeyLabel, recordKeyParts, relativeTime, formatDate } from "@/lib/format";
 import type { Finding } from "@/types/api";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
@@ -73,7 +73,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
 
   const worst = (open.length ? open : [issue]).map((i) => i.severity).sort((a, b) => ["critical", "high", "medium", "low"].indexOf(a) - ["critical", "high", "medium", "low"].indexOf(b))[0];
   const parts = recordKeyParts(issue.record_key);
-  const title = `${objectNoun(issue.module)} ${parts[0]?.value ?? issue.record_key}${parts[1] ? ` in ${labelOf(parts[1].key)} ${parts[1].value}` : ""}`;
+  const title = `${objectNoun(issue.module)} ${parts[0]?.value ?? issue.record_key}${parts[1] ? ` in ${keyFieldLabel(parts[1].key)} ${parts[1].value}` : ""}`;
   const status = open.length === 0
     ? "This record passes every check it once failed."
     : `This record fails ${open.length} check${open.length === 1 ? "" : "s"}${open.some((i) => i.severity === "critical") ? ", one of them critical" : ""}.`;
