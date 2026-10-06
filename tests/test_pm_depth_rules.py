@@ -16,7 +16,7 @@ MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "
 DDIC = get_dictionary("ecc6")
 ALL = yaml.safe_load(open("checks/rules/ecc/plant_maintenance.yaml"))["rules"]
 RULES = {r["id"]: r for r in ALL}
-NEW = [r for r in ALL if int(r["id"][2:]) >= START]
+NEW = [r for r in ALL if START <= int(r["id"][2:]) < START + COUNT]
 
 
 def rid(field, text):

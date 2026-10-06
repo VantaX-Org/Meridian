@@ -4451,3 +4451,1097 @@ rules:
   fix_map:
     __other__: Assign the release codes and prerequisites to the strategy in customizing (OMGS for POs, OMGQ for requisitions).
   record_fix_template: 'Release group {T16FS.FRGGR} strategy {T16FS.FRGSX}: no release code.'
+- id: PUR369
+  field: RSEG.SPGRP
+  check_class: cross_field_check
+  grain: RSEG
+  fail_when: '`RSEG.SPGRP` == ''X'''
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RBKP.BUDAT:
+      older_than_days: 30
+  severity: high
+  dimension: timeliness
+  message: Invoice item is still blocked for price variance more than 30 days after posting
+  why_it_matters: A price block that nobody releases keeps the vendor unpaid and the variance unexplained. Late payment costs
+    cash discount and supplier goodwill, and the open variance hides a wrong PO or info record price.
+  rule_authority: best_practice
+  sap_impact: MRBR lists the item; the payment program skips the invoice; cash discount is lost and GR/IR stays open.
+  fix_map:
+    __other__: Investigate the price variance, correct the PO price if it was wrong, and release the item in MRBR.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: price block still set on an invoice posted more
+    than 30 days ago.'
+- id: PUR370
+  field: RSEG.SPGRM
+  check_class: cross_field_check
+  grain: RSEG
+  fail_when: '`RSEG.SPGRM` == ''X'''
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RBKP.BUDAT:
+      older_than_days: 30
+  severity: high
+  dimension: timeliness
+  message: Invoice item is still blocked for quantity variance more than 30 days after posting
+  why_it_matters: A quantity block usually means goods were invoiced before or beyond receipt. If the goods never arrive or
+    the receipt is never posted, the block stays forever and the vendor is never paid or never chased for a credit.
+  rule_authority: best_practice
+  sap_impact: MRBR lists the item; the invoice is not paid; GR/IR clearing (MR11) shows an unexplained difference.
+  fix_map:
+    __other__: Post the missing goods receipt, request a credit memo for the excess, or release the block in MRBR.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: quantity block still set on an invoice posted
+    more than 30 days ago.'
+- id: PUR371
+  field: RSEG.SPGRT
+  check_class: cross_field_check
+  grain: RSEG
+  fail_when: '`RSEG.SPGRT` == ''X'''
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RBKP.BUDAT:
+      older_than_days: 30
+  severity: medium
+  dimension: timeliness
+  message: Invoice item is still blocked for a date variance more than 30 days after posting
+  why_it_matters: A date variance block (invoice before the agreed delivery date) is meant to be worked within days. Old blocks
+    are forgotten work that delays payment and leaves liabilities in the wrong status.
+  rule_authority: best_practice
+  sap_impact: MRBR shows the invoice as blocked; the payment run skips it; vendor statements no longer reconcile.
+  fix_map:
+    __other__: Check the delivery date against the PO schedule line and release the item in MRBR.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: a date variance block is still set more than
+    30 days after posting.'
+- id: PUR372
+  field: RSEG.MWSKZ
+  check_class: null_check
+  grain: RSEG
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RSEG.WRBTR:
+      gt: 0
+  severity: high
+  dimension: accuracy
+  message: Posted invoice item with an amount has no tax code
+  why_it_matters: Without a tax code no input tax is claimed and the VAT return understates deductible tax. In S/4HANA the
+    tax code is mandatory on every taxable supplier invoice line.
+  rule_authority: sap_hard_constraint
+  sap_impact: No input tax line is posted; the VAT return (RFUMSV00) and tax audit files miss the item.
+  fix_map:
+    __other__: Reverse the invoice (MR8M) and re-enter it with the correct tax code, or post a tax correction.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: no tax code on an item worth {RSEG.WRBTR}.'
+- id: PUR373
+  field: RSEG.MWSKZ
+  check_class: exists_check
+  grain: RSEG
+  fields:
+  - RSEG.EBELN
+  - RSEG.EBELP
+  - RSEG.MWSKZ
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  - MWSKZ
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RSEG.EBELN:
+      populated: true
+    RSEG.MWSKZ:
+      populated: true
+  severity: low
+  dimension: consistency
+  message: Invoice item tax code differs from the tax code on the purchase order item
+  why_it_matters: The PO tax code is the agreed tax treatment. An invoice posted with another code either corrects a wrong
+    PO or books the wrong input tax; either way the PO and the invoice should agree before go-live migration.
+  rule_authority: best_practice
+  sap_impact: Input tax differs from the planned tax on the PO; tax determination for follow-on invoices repeats the error.
+  fix_map:
+    __other__: Confirm the correct tax code; fix the PO item (ME22N) or correct the invoice tax posting.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: tax code {RSEG.MWSKZ} differs from PO {RSEG.EBELN}
+    item {RSEG.EBELP}.'
+- id: PUR374
+  field: RSEG.EBELP
+  check_class: exists_check
+  grain: RSEG
+  fields:
+  - RSEG.EBELN
+  - RSEG.EBELP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RSEG.EBELN:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Invoice item refers to a purchase order item that does not exist or is flagged for deletion
+  why_it_matters: Logistics invoice verification is only valid against a live PO item. An invoice line pointing to a missing
+    or deleted item breaks the three-way match and leaves GR/IR balances that can never be cleared.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase order history (EKBE) and GR/IR clearing cannot match the invoice; MR11 leaves residues.
+  fix_map:
+    __other__: Undo the deletion flag on the PO item, or reverse the invoice and post it against the right PO item.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: PO {RSEG.EBELN} item {RSEG.EBELP} is missing
+    or deleted.'
+- id: PUR375
+  field: RSEG.MENGE
+  check_class: cross_field_check
+  grain: RSEG
+  fail_when: ~(`RSEG.MENGE` > 0)
+  applies_when:
+    RSEG.TBTKZ:
+      blank: true
+    RSEG.WRBTR:
+      gt: 0
+    RSEG.EBELN:
+      populated: true
+    RSEG.PSTYP:
+      not_in:
+      - '9'
+  severity: medium
+  dimension: accuracy
+  message: PO-based invoice item has an amount but no quantity
+  why_it_matters: Quantity drives the GR/IR clearing and the quantity variance check. A value-only line on a quantity-based
+    PO item leaves the PO looking uninvoiced and allows the same quantity to be invoiced again.
+  rule_authority: best_practice
+  sap_impact: EKBE shows value without quantity; the PO stays open for invoicing; duplicate invoices are not blocked.
+  fix_map:
+    __other__: Reverse the invoice and re-enter it with the invoiced quantity, or use subsequent debit if it was one.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: amount {RSEG.WRBTR} but quantity {RSEG.MENGE}.'
+- id: PUR376
+  field: RSEG.BUKRS
+  check_class: cross_field_check
+  grain: RSEG
+  fail_when: '`RSEG.BUKRS` != `RBKP.BUKRS`'
+  applies_when:
+    RSEG.BUKRS:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Invoice item company code differs from the invoice header company code
+  why_it_matters: One logistics invoice posts to one company code. An item in another company code points to a corrupted document
+    or an unsupported cross-company posting that S/4HANA migration rejects.
+  rule_authority: sap_hard_constraint
+  sap_impact: Accounting document split fails reconciliation; the item cannot be matched in the header company code.
+  fix_map:
+    __other__: Analyse the document in MIR4; reverse and repost the invoice in the correct company code.
+  record_fix_template: 'Invoice {RSEG.BELNR}/{RSEG.GJAHR} item {RSEG.BUZEI}: item company code {RSEG.BUKRS} differs from header
+    company code {RBKP.BUKRS}.'
+- id: PUR377
+  field: RBKP.RMWWR
+  check_class: cross_field_check
+  grain: RBKP
+  fail_when: ~(`RBKP.RMWWR` > 0)
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RBKP.XRECH:
+    - X
+  severity: medium
+  dimension: validity
+  message: Posted invoice has a zero or negative gross amount
+  why_it_matters: An invoice (not a credit memo) with no gross amount usually comes from a test, an interface error or a document
+    where everything was booked to the wrong side. It distorts spend and duplicate checks.
+  rule_authority: best_practice
+  sap_impact: Duplicate invoice check (same amount) is ineffective; spend analytics under-report the vendor.
+  fix_map:
+    __other__: Check the document in MIR4; reverse it and repost with the gross amount, or as a credit memo if intended.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: gross amount {RBKP.RMWWR}.'
+- id: PUR378
+  field: RBKP.KURSF
+  check_class: cross_field_check
+  grain: RBKP
+  fail_when: '`RBKP.KURSF` <= 0'
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+  severity: high
+  dimension: validity
+  message: Invoice exchange rate is zero or negative
+  why_it_matters: The exchange rate converts the invoice into local currency. A zero rate gives zero local amounts and breaks
+    GR/IR clearing and foreign-currency valuation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Local currency amounts are zero; FAGL_FCV and GR/IR clearing produce wrong differences.
+  fix_map:
+    __other__: Reverse the invoice and post it again with the correct rate from the rate table (OB08).
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: exchange rate {RBKP.KURSF} in currency {RBKP.WAERS}.'
+- id: PUR379
+  field: RBKP.ZFBDT
+  check_class: null_check
+  grain: RBKP
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Posted invoice has no baseline date for payment
+  why_it_matters: The baseline date is the start of the payment terms. Without it the due date is unreliable and the payment
+    run pays early or late.
+  rule_authority: sap_hard_constraint
+  sap_impact: Net due date in FBL1N is wrong; F110 pays at the wrong time; cash discount is lost.
+  fix_map:
+    __other__: Enter the baseline date on the vendor line item (FB02) or reverse and repost the invoice.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: no baseline date for payment.'
+- id: PUR380
+  field: RBKP.BUDAT
+  check_class: cross_field_check
+  grain: RBKP
+  fail_when: '`RBKP.BUDAT` > @today'
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+  severity: high
+  dimension: validity
+  message: Invoice is posted with a posting date in the future
+  why_it_matters: A future posting date books the liability into a later period. Period-end accruals and GR/IR reconciliation
+    for the current period are then wrong.
+  rule_authority: best_practice
+  sap_impact: Period close (MR11, F.19) misses the liability; the invoice appears in the wrong period of the ledger.
+  fix_map:
+    __other__: Reverse the invoice and repost it with the correct posting date.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: posting date {RBKP.BUDAT} is in the future.'
+- id: PUR381
+  field: RBKP.XBLNR
+  check_class: null_check
+  grain: RBKP
+  applies_when:
+    RBKP.RBSTAT:
+    - '5'
+    RBKP.STBLG:
+      blank: true
+    RBKP.XRECH:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Posted vendor invoice has no reference (vendor invoice number)
+  why_it_matters: The reference is the vendor's invoice number. It is the key of the duplicate invoice check and of every
+    vendor query; without it duplicates pass and statements cannot be reconciled.
+  rule_authority: best_practice
+  sap_impact: Duplicate invoice check (same reference) never fires; vendor reconciliation needs manual searching.
+  fix_map:
+    __other__: Enter the vendor's invoice number in the reference field (MIR4 change or FB02 on the FI document).
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: no vendor reference.'
+- id: PUR382
+  field: RBKP.STBLG
+  check_class: exists_check
+  grain: RBKP
+  fields:
+  - RBKP.STBLG
+  - RBKP.STJAH
+  target_table: RBKP
+  target_fields:
+  - BELNR
+  - GJAHR
+  applies_when:
+    RBKP.STBLG:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Invoice names a reversal document that does not exist
+  why_it_matters: A reversed invoice must point to its reversal. A dangling pointer means the reversal was lost or archived
+    inconsistently, so the net liability cannot be proven.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIR4 cannot navigate to the reversal; audit trail and GR/IR clearing are incomplete.
+  fix_map:
+    __other__: Find the reversal document in FI (FB03) and repair the link, or reverse the invoice properly with MR8M.
+  record_fix_template: 'Invoice {RBKP.BELNR}/{RBKP.GJAHR}: reversal document {RBKP.STBLG}/{RBKP.STJAH} not found.'
+- id: PUR383
+  field: EKBE.EBELP
+  check_class: exists_check
+  grain: EKBE
+  fields:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+  severity: high
+  dimension: consistency
+  message: Goods receipt history refers to a purchase order item that does not exist
+  why_it_matters: A PO goods receipt is the second leg of the three-way match. History rows pointing to a missing PO item
+    break the PO history and leave GR/IR postings that no invoice can clear.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME23N shows no history for the receipt; the GR/IR account carries an unclearable balance.
+  fix_map:
+    __other__: Reverse the goods receipt (MIGO, 102) and post it against the right purchase order item.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    PO item {EKBE.EBELN}/{EKBE.EBELP} not found.'
+- id: PUR384
+  field: EKBE.BUDAT
+  check_class: cross_field_check
+  grain: EKBE
+  fail_when: '`EKBE.BUDAT` > @today'
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+  severity: high
+  dimension: validity
+  message: Goods receipt is posted with a posting date in the future
+  why_it_matters: A receipt dated in the future books stock and the GR/IR liability into a later period. Current-period inventory,
+    accruals and the GR/IR reconciliation are then understated.
+  rule_authority: best_practice
+  sap_impact: Period close (MR11, F.19) misses the receipt; stock and GR/IR appear in the wrong period of the ledger.
+  fix_map:
+    __other__: Reverse the goods receipt (MIGO, 102) and repost it with the actual receipt date.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    posting date {EKBE.BUDAT} is in the future.'
+- id: PUR385
+  field: EKBE.WERKS
+  check_class: exists_check
+  grain: EKBE
+  fields:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  - EKBE.WERKS
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  - WERKS
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+    EKBE.WERKS:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Goods receipt was posted in a plant other than the plant of the purchase order item
+  why_it_matters: Stock and valuation follow the plant. A receipt in another plant books stock and GR/IR in the wrong valuation
+    area and leaves the PO item open in its own plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock appears in the wrong plant; MRP double-plans; material ledger and GR/IR reconcile per wrong plant.
+  fix_map:
+    __other__: Reverse the receipt and post it against the right plant, or correct the PO item plant before receiving.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    plant {EKBE.WERKS} differs from the PO item plant.'
+- id: PUR386
+  field: EKBE.MATNR
+  check_class: exists_check
+  grain: EKBE
+  fields:
+  - EKBE.EBELN
+  - EKBE.EBELP
+  - EKBE.MATNR
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  - MATNR
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+    EKBE.MATNR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Goods receipt material differs from the material of the purchase order item
+  why_it_matters: Receiving a different material against a PO item means the PO was changed after receipt or a substitute
+    was booked without a new item. Quantities and values on the PO history no longer describe the same goods.
+  rule_authority: best_practice
+  sap_impact: PO history mixes materials; invoice quantity check and material valuation compare unlike items.
+  fix_map:
+    __other__: Reverse the receipt and post the correct material, or add a PO item for the substitute material.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    material {EKBE.MATNR} is not the material of the PO item.'
+- id: PUR387
+  field: EKBE.LFBNR
+  check_class: null_check
+  grain: EKBE
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+    EKBE.BWART:
+    - '122'
+  severity: medium
+  dimension: completeness
+  message: Return delivery to vendor has no reference to the original goods receipt
+  why_it_matters: A return (122) should reference the receipt it reverses. Without the reference, GR-based invoice verification
+    cannot net the return against the right receipt and the vendor may be paid for returned goods.
+  rule_authority: best_practice
+  sap_impact: MIRO proposes the original receipt in full; the returned quantity is invoiced and paid.
+  fix_map:
+    __other__: Post returns with reference to the material document (MIGO, return delivery) so the link is kept.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    return delivery without reference document.'
+- id: PUR388
+  field: EKBE.BELNR
+  check_class: exists_check
+  grain: EKBE
+  fields:
+  - EKBE.BELNR
+  - EKBE.GJAHR
+  target_table: MKPF
+  target_fields:
+  - MBLNR
+  - MJAHR
+  applies_when:
+    EKBE.VGABE:
+    - '1'
+  severity: high
+  dimension: consistency
+  message: Goods receipt history points to a material document that does not exist
+  why_it_matters: PO history and the material document are two views of one receipt. A history row whose material document
+    is missing cannot be proven, and orphaned material documents are a known blocker for the MATDOC conversion in S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: MB51 cannot show the receipt; S/4HANA conversion of material documents (MATDOC) reports the inconsistency.
+  fix_map:
+    __other__: Check the material document in MB03; repair or archive the inconsistent history following SAP note guidance.
+  record_fix_template: 'PO {EKBE.EBELN} item {EKBE.EBELP} history {EKBE.VGABE} {EKBE.BELNR}/{EKBE.GJAHR} line {EKBE.BUZEI}:
+    material document {EKBE.BELNR}/{EKBE.GJAHR} not found.'
+- id: PUR389
+  field: MKPF.BLDAT
+  check_class: cross_field_check
+  grain: MKPF
+  fail_when: '`MKPF.BLDAT` > `MKPF.BUDAT`'
+  applies_when:
+    MKPF.VGART:
+    - WE
+  severity: low
+  dimension: validity
+  message: Goods receipt document date is after its posting date
+  why_it_matters: The document date is the delivery note date. A delivery dated after it was posted points to keying errors
+    that distort delivery-date adherence in vendor evaluation.
+  rule_authority: best_practice
+  sap_impact: Vendor evaluation on-time delivery scores are skewed; audit sampling flags the document.
+  fix_map:
+    __other__: Correct the dating practice in MIGO; the document date should be the delivery note date.
+  record_fix_template: 'Material document {MKPF.MBLNR}/{MKPF.MJAHR}: document date {MKPF.BLDAT} after posting date {MKPF.BUDAT}.'
+- id: PUR390
+  field: MKPF.CPUDT
+  check_class: cross_field_check
+  grain: MKPF
+  fail_when: (`MKPF.CPUDT` - `MKPF.BUDAT`).dt.days > 30
+  applies_when:
+    MKPF.VGART:
+    - WE
+  severity: medium
+  dimension: timeliness
+  message: Goods receipt was entered more than 30 days after its posting date
+  why_it_matters: Back-posting receipts long after the event means stock, GR/IR and accruals were wrong for a whole period.
+    It often hides receipts entered only when the invoice arrived.
+  rule_authority: best_practice
+  sap_impact: Period-end GR/IR and inventory are understated; MRP planned against stock that was already there.
+  fix_map:
+    __other__: Enforce timely receipt posting; review users and plants with frequent late entries.
+  record_fix_template: 'Material document {MKPF.MBLNR}/{MKPF.MJAHR}: posted for {MKPF.BUDAT} but entered on {MKPF.CPUDT}.'
+- id: PUR391
+  field: EKKO.LIFNR
+  check_class: exists_check
+  grain: EKKO
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+    SPERM:
+      blank: true
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open purchase order is with a vendor that is deleted or blocked for purchasing
+  why_it_matters: Ordering from a vendor that is flagged for deletion or centrally blocked means the block is ignored in practice
+    or was set without closing open POs. Either way the vendor status does not reflect real business.
+  rule_authority: best_practice
+  sap_impact: Receipts and invoices for the PO need manual intervention; vendor clean-up and BP conversion stall.
+  fix_map:
+    __other__: Confirm the vendor status in XK05/XK06; remove the block if business continues, else close the open POs.
+  record_fix_template: 'PO {EKKO.EBELN}: vendor {EKKO.LIFNR} is deleted or blocked.'
+- id: PUR392
+  field: EKKO.ZBD2T
+  check_class: cross_field_check
+  grain: EKKO
+  fail_when: (`EKKO.ZBD2T` > 0) & (`EKKO.ZBD2T` < `EKKO.ZBD1T`)
+  applies_when:
+    EKKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Second cash discount period on the purchase document is shorter than the first
+  why_it_matters: Payment terms run from the first discount period to the second and then to net. A shorter second period
+    makes the discount stages overlap so the payment program takes the wrong discount.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 calculates the wrong cash discount and due date for invoices that inherit these terms.
+  fix_map:
+    __other__: Correct the terms on the document (ME22N) or the payment term in OBB8 and re-default them.
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: discount days {EKKO.ZBD1T} then {EKKO.ZBD2T}.'
+- id: PUR393
+  field: EKKO.ZBD2P
+  check_class: cross_field_check
+  grain: EKKO
+  fail_when: (`EKKO.ZBD2P` > 0) & (`EKKO.ZBD2P` > `EKKO.ZBD1P`)
+  applies_when:
+    EKKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Second cash discount percentage on the purchase document is higher than the first
+  why_it_matters: Paying later should never earn a bigger discount. A higher second percentage is a keying error that makes
+    late payment cheaper than early payment.
+  rule_authority: best_practice
+  sap_impact: F110 takes the larger discount when paying late; vendor disputes follow.
+  fix_map:
+    __other__: Correct the discount percentages on the document or in the payment term definition (OBB8).
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: discount {EKKO.ZBD1P}% then {EKKO.ZBD2P}%.'
+- id: PUR394
+  field: EKKO.ZBD3T
+  check_class: cross_field_check
+  grain: EKKO
+  fail_when: (`EKKO.ZBD3T` > 0) & (`EKKO.ZBD3T` < `EKKO.ZBD2T`)
+  applies_when:
+    EKKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Net payment period on the purchase document is shorter than the second discount period
+  why_it_matters: The net period ends the payment terms. A net period shorter than a discount period gives a due date before
+    the discount deadline.
+  rule_authority: sap_hard_constraint
+  sap_impact: Due date analysis and F110 pay on the wrong date; dunning by the vendor starts early.
+  fix_map:
+    __other__: Correct the day limits on the document or the payment term in OBB8.
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: discount days {EKKO.ZBD2T}, net days {EKKO.ZBD3T}.'
+- id: PUR395
+  field: EKKO.WKURS
+  check_class: cross_field_check
+  grain: EKKO
+  fail_when: (`EKKO.KUFIX` == 'X') & ~(`EKKO.WKURS` > 0)
+  applies_when:
+    EKKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: validity
+  message: Purchasing document fixes an exchange rate that is zero
+  why_it_matters: A fixed rate overrides the rate table for every receipt and invoice. A fixed zero rate gives zero local
+    values for the whole document.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts and invoices post zero local amounts; stock and GR/IR are undervalued.
+  fix_map:
+    __other__: Enter the agreed exchange rate or remove the fixing indicator in ME22N.
+  record_fix_template: 'Purchasing document {EKKO.EBELN}: exchange rate fixed at {EKKO.WKURS}.'
+- id: PUR396
+  field: EKKO.ANGDT
+  check_class: freshness_check
+  grain: EKKO
+  max_age_hours: 2160
+  applies_when:
+    EKKO.BSTYP:
+    - A
+    EKKO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Request for quotation deadline passed more than 90 days ago and the RFQ is still open
+  why_it_matters: Old RFQs that are never completed clutter the sourcing worklist and keep obsolete quotations available as
+    price references.
+  rule_authority: best_practice
+  sap_impact: ME4M/ME49 price comparison shows stale quotations; RFQ lists are cluttered.
+  fix_map:
+    __other__: Close the RFQ by flagging it for deletion or converting the winning quotation into a PO or contract.
+  record_fix_template: 'RFQ {EKKO.EBELN}: quotation deadline {EKKO.ANGDT}.'
+- id: PUR397
+  field: EKKO.IHRAN
+  check_class: cross_field_check
+  grain: EKKO
+  fail_when: '`EKKO.IHRAN` < `EKKO.BEDAT`'
+  applies_when:
+    EKKO.BSTYP:
+    - A
+  severity: low
+  dimension: validity
+  message: Quotation submission deadline is before the RFQ document date
+  why_it_matters: Vendors cannot answer before the request exists. A deadline earlier than the RFQ date is a keying error
+    that invalidates the sourcing timeline.
+  rule_authority: best_practice
+  sap_impact: Quotation monitoring and RFQ reminders run on impossible dates.
+  fix_map:
+    __other__: Correct the quotation deadline in ME42.
+  record_fix_template: 'RFQ {EKKO.EBELN}: deadline {EKKO.IHRAN} before document date {EKKO.BEDAT}.'
+- id: PUR398
+  field: EKPO.WEPOS
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.INSMK`.notna() & `EKPO.WEPOS`.isna()'
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: PO item posts receipts into quality inspection stock but has no goods receipt
+  why_it_matters: The stock-type indicator only has effect when a goods receipt is posted. With no goods receipt the inspection
+    requirement is silently dropped.
+  rule_authority: best_practice
+  sap_impact: Goods are never inspected; the quality inspection lot is never created.
+  fix_map:
+    __other__: Set the goods receipt indicator on the item, or remove the stock type if no receipt is intended.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: stock type {EKPO.INSMK} without goods receipt.'
+- id: PUR399
+  field: EKPO.KTPNR
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.KONNR`.notna() & `EKPO.KTPNR`.isna()'
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: PO item refers to an outline agreement but not to an agreement item
+  why_it_matters: Release documentation and contract consumption work per agreement item. A header-only reference does not
+    update the contract target value or quantity.
+  rule_authority: sap_hard_constraint
+  sap_impact: EKAB has no release record; contract consumption (ME3N) is understated.
+  fix_map:
+    __other__: Enter the agreement item on the PO item (ME22N), or remove the agreement reference.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: agreement {EKPO.KONNR} without item.'
+- id: PUR400
+  field: EKPO.KONNR
+  check_class: exists_check
+  grain: EKPO
+  fields:
+  - EKPO.KONNR
+  - EKKO.LIFNR
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  - LIFNR
+  target_when:
+    BSTYP:
+    - K
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.KONNR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Release order is placed with a vendor other than the vendor of its contract
+  why_it_matters: A contract binds one vendor. Releasing it to another vendor uses negotiated prices outside the agreement
+    and makes contract compliance reports wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contract consumption counts spend with another vendor; vendor rebates and evaluations are wrong.
+  fix_map:
+    __other__: Re-create the release order with the contract vendor, or remove the contract reference from the PO item.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: contract {EKPO.KONNR} belongs to another vendor than {EKKO.LIFNR}.'
+- id: PUR401
+  field: EKET.EINDT
+  check_class: cross_field_check
+  grain: EKET
+  fail_when: '`EKET.EINDT` < `EKKO.BEDAT`'
+  applies_when:
+    EKKO.BSTYP:
+    - F
+  severity: medium
+  dimension: validity
+  message: Schedule line delivery date is before the purchase order date
+  why_it_matters: A delivery requested before the PO was issued is impossible. It makes the item overdue on day one and corrupts
+    on-time delivery measurement.
+  rule_authority: best_practice
+  sap_impact: ME2M shows the item as overdue immediately; vendor evaluation penalises the vendor wrongly.
+  fix_map:
+    __other__: Correct the delivery date in ME22N to the agreed date.
+  record_fix_template: 'PO {EKET.EBELN} item {EKET.EBELP} schedule line {EKET.ETENR}: delivery {EKET.EINDT} before PO date
+    {EKKO.BEDAT}.'
+- id: PUR402
+  field: EBAN.LFDAT
+  check_class: cross_field_check
+  grain: EBAN
+  fail_when: '`EBAN.LFDAT` < `EBAN.BADAT`'
+  applies_when:
+    EBAN.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Requisition needs the goods before the date it was raised
+  why_it_matters: A delivery date before the requisition date can never be met. Purchasing has no realistic due date and the
+    requisition looks overdue at creation.
+  rule_authority: best_practice
+  sap_impact: ME5A and MRP show the requisition as already late; buyers expedite by default.
+  fix_map:
+    __other__: Correct the delivery date on the requisition (ME52N).
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: delivery {EBAN.LFDAT} before requisition date {EBAN.BADAT}.'
+- id: PUR403
+  field: EBAN.PREIS
+  check_class: cross_field_check
+  grain: EBAN
+  fail_when: ~(`EBAN.PREIS` > 0)
+  applies_when:
+    EBAN.STATU:
+    - N
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.EBAKZ:
+      blank: true
+    EBAN.PSTYP:
+      not_in:
+      - '1'
+      - '6'
+      - '9'
+  severity: medium
+  dimension: completeness
+  message: Open requisition item has no valuation price
+  why_it_matters: Value-based release strategies use the requisition value. A zero price gives a zero value, so the item escapes
+    approval and commitments are understated.
+  rule_authority: best_practice
+  sap_impact: Release strategy classification sees value 0; commitment reporting (KSB1) misses the item.
+  fix_map:
+    __other__: Enter a valuation price in ME52N or maintain an info record so a price is proposed.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: no valuation price.'
+- id: PUR404
+  field: EBAN.BSMNG
+  check_class: cross_field_check
+  grain: EBAN
+  fail_when: '`EBAN.BSMNG` > `EBAN.MENGE`'
+  applies_when:
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.MENGE:
+      gt: 0
+  severity: medium
+  dimension: accuracy
+  message: Quantity ordered against the requisition is higher than the requisition quantity
+  why_it_matters: Ordering more than was requested bypasses the requisition approval for the excess quantity.
+  rule_authority: best_practice
+  sap_impact: Ordered value exceeds the approved requisition; budget and release controls are bypassed.
+  fix_map:
+    __other__: Check the PO quantity against the requirement; reduce it or raise a new requisition for the extra quantity.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: ordered {EBAN.BSMNG} of {EBAN.MENGE}.'
+- id: PUR405
+  field: EBAN.EBELP
+  check_class: exists_check
+  grain: EBAN
+  fields:
+  - EBAN.EBELN
+  - EBAN.EBELP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  applies_when:
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.EBELN:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Requisition points to a purchase order item that does not exist
+  why_it_matters: The PO reference on the requisition closes it. A reference to a missing PO item marks the need as covered
+    although nothing was ordered.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP treats the requirement as ordered; the material is never procured.
+  fix_map:
+    __other__: Remove the dangling reference so the requisition can be converted again, or link the correct PO item.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: PO {EBAN.EBELN} item {EBAN.EBELP} not found.'
+- id: PUR406
+  field: EKAB.KONNR
+  check_class: exists_check
+  grain: EKAB
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  target_when:
+    BSTYP:
+    - K
+    - L
+  severity: high
+  dimension: consistency
+  message: Release documentation refers to a contract that does not exist
+  why_it_matters: EKAB records every release against an outline agreement. Records for a missing contract are orphans that
+    overstate consumption and fail the S/4HANA consistency checks.
+  rule_authority: sap_hard_constraint
+  sap_impact: ME3N and contract consumption reports cannot resolve the agreement.
+  fix_map:
+    __other__: Investigate the orphan release records; repair the agreement link or archive the records.
+  record_fix_template: 'Release record for agreement {EKAB.KONNR} item {EKAB.KTPNR}: agreement not found.'
+- id: PUR407
+  field: EKAB.EBELP
+  check_class: exists_check
+  grain: EKAB
+  fields:
+  - EKAB.EBELN
+  - EKAB.EBELP
+  target_table: EKPO
+  target_fields:
+  - EBELN
+  - EBELP
+  applies_when:
+    EKAB.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Release documentation refers to a release order item that does not exist
+  why_it_matters: The release record must point to the PO item that consumed the agreement. Without it consumption cannot
+    be traced to an order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contract consumption cannot be drilled down to orders; audits cannot prove spend.
+  fix_map:
+    __other__: Investigate the orphan release record and repair or archive it.
+  record_fix_template: 'Release record for agreement {EKAB.KONNR} item {EKAB.KTPNR}: PO {EKAB.EBELN} item {EKAB.EBELP} not
+    found.'
+- id: PUR408
+  field: EORD.ZEORD
+  check_class: uniqueness_check
+  grain: EORD
+  fields:
+  - EORD.MATNR
+  - EORD.WERKS
+  - EORD.LIFNR
+  - EORD.EKORG
+  - EORD.VDATU
+  applies_when:
+    EORD.LIFNR:
+      populated: true
+  severity: medium
+  dimension: uniqueness
+  message: Source list has duplicate records for the same material, plant, vendor, purchasing organisation and start date
+  why_it_matters: Duplicate source list lines make source determination ambiguous and double the work when validity changes.
+  rule_authority: best_practice
+  sap_impact: Source determination may pick either record; changing validity on one leaves the other active.
+  fix_map:
+    __other__: Delete the duplicate source list records in ME01.
+  record_fix_template: 'Material {EORD.MATNR} plant {EORD.WERKS}: duplicate source list record {EORD.ZEORD}.'
+- id: PUR409
+  field: EKKO.LIFRE
+  check_class: exists_check
+  grain: EKKO
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Purchase order names an invoicing party that does not exist or is flagged for deletion
+  why_it_matters: The invoicing party receives the payment. A missing or deleted party blocks invoice entry or sends money
+    to an account nobody maintains.
+  rule_authority: sap_hard_constraint
+  sap_impact: MIRO cannot default the invoicing party; payments are blocked or misdirected.
+  fix_map:
+    __other__: Correct the invoicing party on the PO (ME22N) or the vendor partner functions (XK02).
+  record_fix_template: 'PO {EKKO.EBELN}: invoicing party {EKKO.LIFRE} is missing or deleted.'
+- id: PUR410
+  field: EKKO.LLIEF
+  check_class: exists_check
+  grain: EKKO
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+      blank: true
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Purchase order names a goods supplier that does not exist or is flagged for deletion
+  why_it_matters: The goods supplier is used for returns and vendor evaluation. A missing or deleted supplier sends returns
+    to nobody and scores the wrong vendor.
+  rule_authority: best_practice
+  sap_impact: Return deliveries and vendor evaluation use an invalid vendor.
+  fix_map:
+    __other__: Correct the goods supplier on the PO (ME22N) or the vendor partner functions (XK02).
+  record_fix_template: 'PO {EKKO.EBELN}: goods supplier {EKKO.LLIEF} is missing or deleted.'
+- id: PUR411
+  field: EKKO.RESWK
+  check_class: exists_check
+  grain: EKKO
+  target_table: T001W
+  target_fields:
+  - WERKS
+  applies_when:
+    EKKO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Stock transport order names a supplying plant that does not exist
+  why_it_matters: The supplying plant issues the goods. A plant that is not defined makes the outbound delivery impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: VL10B cannot create the delivery; the receiving plant waits for stock that never ships.
+  fix_map:
+    __other__: Correct the supplying plant on the stock transport order (ME22N).
+  record_fix_template: 'Stock transport order {EKKO.EBELN}: supplying plant {EKKO.RESWK} not found.'
+- id: PUR412
+  field: EKPO.EMLIF
+  check_class: exists_check
+  grain: EKPO
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: PO item names a vendor to be supplied that does not exist
+  why_it_matters: For subcontracting and third-party flows the vendor to be supplied receives components. A missing vendor
+    breaks provision of components.
+  rule_authority: sap_hard_constraint
+  sap_impact: Subcontracting component provision (ME2O) cannot find the vendor.
+  fix_map:
+    __other__: Correct the vendor to be supplied on the PO item (ME22N).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: vendor to be supplied {EKPO.EMLIF} not found.'
+- id: PUR413
+  field: EKPO.BNFPO
+  check_class: exists_check
+  grain: EKPO
+  fields:
+  - EKPO.BANFN
+  - EKPO.BNFPO
+  target_table: EBAN
+  target_fields:
+  - BANFN
+  - BNFPO
+  applies_when:
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.BANFN:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: PO item refers to a requisition item that does not exist
+  why_it_matters: The requisition reference is the approval trail of the order. A reference to a missing requisition breaks
+    the trace from need to order.
+  rule_authority: best_practice
+  sap_impact: Requisition-to-order reports cannot link the PO; approval audits fail.
+  fix_map:
+    __other__: Correct or remove the requisition reference on the PO item.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: requisition {EKPO.BANFN} item {EKPO.BNFPO} not found.'
+- id: PUR414
+  field: EKPO.PLIFZ
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.PLIFZ` > 365'
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Open PO item has a planned delivery time above one year
+  why_it_matters: Planned delivery time drives MRP and expected receipt dates. A value above 365 days is almost always a typing
+    error that pushes requirements a year out.
+  rule_authority: best_practice
+  sap_impact: MRP schedules too early or too late; buyers chase the wrong orders.
+  fix_map:
+    __other__: Correct the planned delivery time on the item and in the source info record.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: planned delivery time {EKPO.PLIFZ} days.'
+- id: PUR415
+  field: EKPO.UNTTO
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: '`EKPO.UNTTO` > 10'
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Open PO item allows more than 10% underdelivery
+  why_it_matters: A wide underdelivery tolerance lets the item close on a short delivery without anyone noticing, so shortages
+    appear only when stock runs out.
+  rule_authority: best_practice
+  sap_impact: GR closes the item early (delivery completed); MRP stops planning the missing quantity.
+  fix_map:
+    __other__: Lower the underdelivery tolerance on the item and in the info record (EINE.UNTTO).
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: underdelivery tolerance {EKPO.UNTTO}%.'
+- id: PUR416
+  field: EKPO.NETWR
+  check_class: cross_field_check
+  grain: EKPO
+  fail_when: abs(`EKPO.NETWR` - `EKPO.MENGE` * `EKPO.BPUMZ` / `EKPO.BPUMN` * `EKPO.NETPR` / `EKPO.PEINH`) > 0.01 * abs(`EKPO.NETWR`)
+    + 1
+  applies_when:
+    EKPO.BSTYP:
+    - F
+    EKPO.LOEKZ:
+      blank: true
+    EKPO.ELIKZ:
+      blank: true
+    EKPO.PSTYP:
+      not_in:
+      - '1'
+      - '2'
+      - '6'
+      - '9'
+    EKPO.MENGE:
+      gt: 0
+    EKPO.PEINH:
+      gt: 0
+    EKPO.BPUMN:
+      gt: 0
+    EKPO.BPUMZ:
+      gt: 0
+  severity: medium
+  dimension: accuracy
+  message: PO item net value does not equal quantity times net price
+  why_it_matters: The item value is the commitment. When it no longer matches quantity times price (converted to the price
+    unit), one of the fields was changed outside the dialog or by a faulty interface.
+  rule_authority: best_practice
+  sap_impact: Commitments, release strategy value and invoice price check use inconsistent numbers.
+  fix_map:
+    __other__: Re-save the item in ME22N so pricing recalculates the value, or correct the interface that wrote it.
+  record_fix_template: 'PO {EKPO.EBELN} item {EKPO.EBELP}: value {EKPO.NETWR} for quantity {EKPO.MENGE} at {EKPO.NETPR} per
+    {EKPO.PEINH}.'
