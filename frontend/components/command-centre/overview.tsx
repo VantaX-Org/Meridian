@@ -17,11 +17,12 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, DonutChart, LineChart, resolveChartTokens, Sparkline } from "@/components/aurora";
+import { BarChart, DonutChart, resolveChartTokens, Sparkline } from "@/components/aurora";
 import { GettingStarted } from "@/components/getting-started";
 import {
   Button,
   EmptyState,
+  ScoreTrend,
   FieldChip,
   OwnerLadder,
   PageHeader,
@@ -187,10 +188,10 @@ export function CommandCentreOverview() {
 
   const colours = useMemo(() => resolveChartTokens(null), []);
   const sev = [
-    { key: "critical", label: "Critical", color: colours.status.danger },
-    { key: "high", label: "High", color: colours.status.warning },
-    { key: "medium", label: "Medium", color: colours.status.info },
-    { key: "low", label: "Low", color: colours.axisInk },
+    { key: "critical", label: "Critical", color: colours.severity.critical },
+    { key: "high", label: "High", color: colours.severity.high },
+    { key: "medium", label: "Medium", color: colours.severity.medium },
+    { key: "low", label: "Low", color: colours.severity.low },
   ] as const;
   const byObject = (a?.by_module ?? []).slice(0, 8).map((m) => ({
     module: m.module, object: formatModuleName(m.module), critical: m.critical, high: m.high, medium: m.medium, low: m.low,
@@ -325,9 +326,10 @@ export function CommandCentreOverview() {
 
       <div className="mn-charts">
         <SectionCard title="Score per run" meta={trend.length ? "Select a run to see its findings" : undefined}>
-          {trend.length < 2 ? <EmptyState>The trend appears after the second run.</EmptyState> : (
-            <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "DQS", color: colours.accent }]}
-              height={220} yFormatter={(v) => v.toFixed(0)} ariaLabel={`DQS over ${trend.length} runs`}
+          {trend.length === 0 ? <EmptyState>The trend appears after the first run.</EmptyState> : (
+            <ScoreTrend
+              points={trend.map((t) => ({ label: t.run, score: t.dqs, to: `/analyse?tab=analyses&version_id=${t.id}` }))}
+              color={colours.accent} seriesLabel="DQS" ariaLabel={`DQS over ${trend.length} runs`}
               onPointClick={(i) => router.push(`/analyse?tab=analyses&version_id=${trend[i]?.id}`)} />
           )}
         </SectionCard>

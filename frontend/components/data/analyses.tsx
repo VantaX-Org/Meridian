@@ -13,12 +13,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { LineChart, Select } from "@/components/aurora";
 import {
   Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, Mono, PageHeader,
-  SectionCard, StatusBadge, TableSkeleton, Tally, type AuroraColumnMeta, type Status,
+  ScoreTrend, SectionCard, StatusBadge, TableSkeleton, Tally, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
+import { useUrlState } from "@/hooks/use-url-state";
 import { compareRecordKeys, compareRecords, compareVersions, getVersions, pinBaseline } from "@/lib/api/versions";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { DQSSummary, Version } from "@/types/api";
@@ -66,6 +66,7 @@ export function AnalysesSurface() {
   const { can } = useRole();
   const systemId = search.get("system_id") ?? undefined;
   const object = search.get("module") ?? "";
+  const [sort, setSort] = useUrlState("sort");
   const setParams = useCallback((patch: Record<string, string | null>) => {
     const next = new URLSearchParams(search.toString());
     for (const [k, v] of Object.entries(patch)) { if (v) next.set(k, v); else next.delete(k); }
@@ -79,12 +80,10 @@ export function AnalysesSurface() {
   // ticked rows live in state; Compare writes them to ?compare=v1,v2, which opens the drawer
   const compareParam = search.get("compare");
   const [picked, setPicked] = useState<string[]>(() => (compareParam ? compareParam.split(",").slice(0, 2) : []));
-  const byAge = (ids: string[]) => ids.map((x) => versions.find((v) => v.id === x)).filter((v): v is Version => !!v)
-    .sort((a, b) => a.run_at.localeCompare(b.run_at)).map((v) => v.id);
-  const pair = useMemo<string[]>(() => (compareParam ? byAge(compareParam.split(",").slice(0, 2)) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [compareParam, versions]);
-  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= 2 ? [p[1], id] : [...p, id]));
+  const byAge = useCallback((ids: string[]) => ids.map((x) => versions.find((v) => v.id === x)).filter((v): v is Version => !!v)
+    .sort((a, b) => a.run_at.localeCompare(b.run_at)).map((v) => v.id), [versions]);
+  const pair = useMemo<string[]>(() => (compareParam ? byAge(compareParam.split(",").slice(0, 2)) : []), [compareParam, byAge]);
+  const toggle = useCallback((id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= 2 ? [p[1], id] : [...p, id])), []);
   const older = versions.find((v) => v.id === pair[0]);
   const newer = versions.find((v) => v.id === pair[1]);
 
@@ -92,17 +91,23 @@ export function AnalysesSurface() {
     queryKey: ["versions.compare", pair[0], pair[1], object], enabled: pair.length === 2 && !!older && !!newer, retry: false,
     queryFn: () => compareVersions(pair[0], pair[1], object || undefined),
   });
-  const objects = useMemo(() => Array.from(new Set([...Object.keys(older?.dqs_summary ?? {}), ...Object.keys(newer?.dqs_summary ?? {}), ...(object ? [object] : [])])).sort(), [older, newer, object]);
-  const trend = useMemo(() => completed.slice(0, 20).reverse().map((v) => ({ run: relativeTime(v.run_at), id: v.id, dqs: averageDqs(scoped(v.dqs_summary, object || undefined)) ?? 0 })), [completed, object]);
+  /** Objects across every run, with how many runs include each. */
+  const objectOptions = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const v of versions) for (const o of Object.keys(v.dqs_summary ?? {})) n.set(o, (n.get(o) ?? 0) + 1);
+    if (object && !n.has(object)) n.set(object, 0);
+    return [...n.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([value, count]) => ({ value, label: formatModuleName(value), count }));
+  }, [versions, object]);
+  const trend = useMemo(() => completed.slice(0, 20).reverse().map((v) => ({ run: formatDate(v.run_at), id: v.id, dqs: averageDqs(scoped(v.dqs_summary, object || undefined)) ?? 0 })), [completed, object]);
   const baseline = versions.find((v) => v.metadata?.baseline);
   const latestDqs = completed[0] ? averageDqs(scoped(completed[0].dqs_summary, object || undefined)) : null;
   const baselineDqs = baseline ? averageDqs(scoped(baseline.dqs_summary, object || undefined)) : null;
   const sinceBaseline = latestDqs !== null && baselineDqs !== null && baseline?.id !== completed[0]?.id ? Math.round((latestDqs - baselineDqs) * 10) / 10 : null;
 
   const columns = useMemo<ColumnDef<Version, unknown>[]>(() => [
-    { id: "pick", header: "", meta: meta({ width: 44, align: "center" }), cell: ({ row }) => (
+    { id: "pick", header: "", enableSorting: false, meta: meta({ width: 44, align: "center" }), cell: ({ row }) => (
       <input type="checkbox" aria-label={`Compare ${versionName(row.original)}`} checked={picked.includes(row.original.id)} onChange={() => toggle(row.original.id)} onClick={(e) => e.stopPropagation()} />) },
-    { id: "when", header: "Version", meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
+    { id: "when", header: "Version", accessorFn: (v) => v.run_at, meta: meta({ sticky: "start", width: 240 }), cell: ({ row }) => (
       <div className="ui-cell-stack">
         <Link href={`/data/runs/${row.original.id}?tab=summary`} className="ui-cell-stack__main ui-link" onClick={(e) => e.stopPropagation()}>{versionName(row.original)}</Link>
         <span className="ui-cell-stack__sub">
@@ -111,21 +116,25 @@ export function AnalysesSurface() {
           {row.original.metadata?.baseline ? <span>Baseline</span> : null}
         </span>
       </div>) },
-    { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <VersionStatus v={row.original} /> },
-    { id: "dqs", header: "Score", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "" : d.toFixed(1); } },
-    { id: "crit", header: "Critical", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "critical_count") },
-    { id: "high", header: "High", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "high_count") },
-    { id: "checks", header: "Checks", meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "total_checks") },
-    { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [picked, object, versions]);
+    { id: "status", header: "Status", accessorFn: (v) => STATUS_BADGE[displayStatus(v.status)].label, meta: meta({ width: 120 }), cell: ({ row }) => <VersionStatus v={row.original} /> },
+    { id: "dqs", header: "Score", accessorFn: (v) => averageDqs(scoped(v.dqs_summary, object || undefined)) ?? -1, meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => { const d = averageDqs(scoped(row.original.dqs_summary, object || undefined)); return d === null ? "" : d.toFixed(1); } },
+    { id: "crit", header: "Critical", accessorFn: (v) => sumCounts(v.dqs_summary, "critical_count"), meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "critical_count") },
+    { id: "high", header: "High", accessorFn: (v) => sumCounts(v.dqs_summary, "high_count"), meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "high_count") },
+    { id: "checks", header: "Checks", accessorFn: (v) => sumCounts(v.dqs_summary, "total_checks"), meta: meta({ width: 90, align: "end", numeric: true }), cell: ({ row }) => sumCounts(row.original.dqs_summary, "total_checks") },
+    { id: "objects", header: "Objects", enableSorting: false, meta: meta({ minWidth: 200 }), cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
+  ], [picked, object, toggle]);
 
   return (
     <div className="ui-page">
       <PageHeader
         title="Analysis runs"
         summary="Tick two runs and compare them. The older one is always on the left; the pin makes it the baseline later runs are measured against."
-        actions={<Button disabled={picked.length !== 2} onClick={() => setParams({ compare: byAge(picked).join(",") })}>Compare</Button>} />
+        actions={(
+          <>
+            {picked.length !== 2 ? <span className="ui-note">Tick two runs to compare.</span> : null}
+            <Button disabled={picked.length !== 2} onClick={() => setParams({ compare: byAge(picked).join(",") })}>Compare</Button>
+          </>
+        )} />
       <Tally level={2} label="Analysis runs" figures={[
         { label: "Runs", value: versions.length, href: "/analyse?tab=analyses", loading: list.isLoading, verdict: `${completed.length} analysed.` },
         { label: "Latest score", value: latestDqs, href: completed[0] ? `/data/runs/${completed[0].id}` : "/analyse?tab=analyses", loading: list.isLoading, unit: latestDqs === null ? undefined : "of 100", verdict: completed[0] ? versionName(completed[0]) : "Nothing analysed yet." },
@@ -133,20 +142,22 @@ export function AnalysesSurface() {
         { label: "Change since baseline", value: null, text: sinceBaseline === null ? undefined : signed(sinceBaseline), href: "/analyse?tab=analyses", loading: list.isLoading,
           tone: sinceBaseline !== null && sinceBaseline < 0 ? "danger" : undefined, verdict: sinceBaseline === null ? "Needs a baseline and a later analysed run." : "Latest score minus baseline score." },
       ]} />
-      <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}>
-        <Select aria-label="Object" placeholder="All objects" value={object} options={objects.map((o) => ({ value: o, label: formatModuleName(o) }))} onValueChange={(v) => setParams({ module: v || null })} />
+      <FilterBar onClear={object || systemId ? () => setParams({ module: null, system_id: null }) : undefined}
+        groups={[{ id: "object", label: "Object", value: object, allLabel: "All objects", options: objectOptions, onChange: (v) => setParams({ module: v || null }) }]}>
         {systemId ? <Chip selected onDismiss={() => setParams({ system_id: null })}>System <Mono>{systemId.slice(0, 8)}</Mono></Chip> : null}
       </FilterBar>
 
       {trend.length >= 2 ? (
         <SectionCard title="Score trend" meta={`Last ${trend.length} analysed runs${object ? `, ${formatModuleName(object)}` : ""}`}>
-          <LineChart data={trend} xKey="run" series={[{ key: "dqs", label: "Score" }]} height={180} ariaLabel="Score trend" yFormatter={(v) => v.toFixed(0)} onPointClick={(i) => router.push(`/data/runs/${trend[i].id}?tab=summary`)} />
+          <ScoreTrend height={180} ariaLabel="Score trend"
+            points={trend.map((t) => ({ label: t.run, score: t.dqs, to: `/data/runs/${t.id}?tab=summary` }))}
+            onPointClick={(i) => router.push(`/data/runs/${trend[i].id}?tab=summary`)} />
         </SectionCard>
       ) : null}
 
       <SectionCard title="Run history" meta={versions.length || undefined} flush>
         {list.isLoading ? <TableSkeleton rows={6} label="Loading versions" /> : versions.length ? (
-          <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => router.push(`/data/runs/${v.id}?tab=summary`)} ariaLabel="Run history" maxHeight="56vh" />
+          <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowActivate={(v) => router.push(`/data/runs/${v.id}?tab=summary`)} ariaLabel="Run history" maxHeight="56vh" sort={sort} onSortChange={setSort} />
         ) : <EmptyState action={<Link href="/data?tab=import" className="ui-link">Import a file</Link>}>No runs yet. Import a file or download objects from a connected system to create the first one.</EmptyState>}
       </SectionCard>
 

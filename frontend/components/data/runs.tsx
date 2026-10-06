@@ -8,17 +8,18 @@
  */
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  DataTable, DetailDrawer, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, Tally, useDrawerParam,
+  CountChips, DataTable, DetailDrawer, FilterBar, Mono, PageHeader, SectionCard, StatusBadge, Tally, useDrawerParam,
   type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { getSystems } from "@/lib/api/systems";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
+import { useUrlState } from "@/hooks/use-url-state";
 import { formatModuleName, relativeTime, formatDate, errorLabel, humanizeIds } from "@/lib/format";
 import type { Job } from "@/types/jobs";
 import { JobCard, KIND_LABEL, fmtDuration, fmtInt, jobTiming } from "./job-card";
@@ -39,26 +40,28 @@ export function RunsSurface() {
   const { jobs, active, isLoading } = useJobs();
   const nowSec = useNowSec(active.length > 0);
   const drawer = useDrawerParam("job");
+  const [status, setStatus] = useUrlState("status");
 
   const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems });
   const systems = useMemo(() => systemsQ.data ?? [], [systemsQ.data]);
   const systemName = useMemo(() => new Map(systems.map((s) => [s.id, s.name])), [systems]);
-  const versionQs = useQueries({
-    queries: systems.map((s) => ({ queryKey: ["systems.versions", s.id], queryFn: () => getSystemVersions(s.id).then((d) => d.versions) })),
-  });
-  const versions = useMemo<VersionRow[]>(
-    () => systems.flatMap((s, i) => (versionQs[i]?.data ?? []).map((v) => ({ ...v, systemId: s.id, systemName: s.name })))
+  const combineVersions = useCallback(
+    (rs: Array<{ data?: SystemVersion[] }>): VersionRow[] => systems.flatMap((s, i) => (rs[i]?.data ?? []).map((v) => ({ ...v, systemId: s.id, systemName: s.name })))
       .sort((a, b) => b.run_at.localeCompare(a.run_at)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [systems, ...versionQs.map((q) => q.data)],
+    [systems],
   );
+  const versions = useQueries({
+    queries: systems.map((s) => ({ queryKey: ["systems.versions", s.id], queryFn: () => getSystemVersions(s.id).then((d) => d.versions) })),
+    combine: combineVersions,
+  });
 
   const since = nowSec - DAY;
   const last24 = jobs.filter((j) => j.updated_at >= since);
   const completed24 = last24.filter((j) => j.status === "completed").length;
   const failed24 = last24.filter((j) => j.status === "failed").length;
   const rows24 = last24.reduce((a, j) => a + (j.rows_done || 0), 0);
-  const recent = jobs.filter((j) => j.status === "completed" || j.status === "failed");
+  const finished = jobs.filter((j) => j.status === "completed" || j.status === "failed");
+  const recent = status === "failed" || status === "completed" ? finished.filter((j) => j.status === status) : finished;
   const selected = drawer.value ? jobs.find((j) => j.id === drawer.value) ?? null : null;
 
   const jobColumns = useMemo<ColumnDef<Job, unknown>[]>(() => [
@@ -68,7 +71,7 @@ export function RunsSurface() {
         return <span title={formatDate(d, "datetime")}>{relativeTime(d.toISOString())}</span>;
       } },
     { id: "kind", header: "Kind", meta: meta({ width: 120 }), cell: ({ row }) => KIND_LABEL[row.original.kind] },
-    { id: "label", header: "Run", meta: meta({ width: 260 }), cell: ({ row }) => humanizeIds(row.original.label) },
+    { id: "label", header: "Run", meta: meta({ width: 260, clamp: 2 }), cell: ({ row }) => humanizeIds(row.original.label) },
     { id: "system", header: "System", meta: meta({ width: 150 }),
       cell: ({ row }) => (row.original.system_id && systemName.get(row.original.system_id)) || "" },
     { id: "status", header: "Status", meta: meta({ width: 130 }),
@@ -77,17 +80,17 @@ export function RunsSurface() {
       cell: ({ row }) => (row.original.status === "failed" ? "—" : fmtDuration(jobTiming(row.original, nowSec).elapsed)) },
     { id: "rows", header: "Rows", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "") },
-    { id: "note", header: "Note", meta: meta({ minWidth: 240 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
+    { id: "note", header: "Note", meta: meta({ minWidth: 240, clamp: 2 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
   ], [systemName, nowSec]);
 
   const versionColumns = useMemo<ColumnDef<VersionRow, unknown>[]>(() => [
     { id: "when", header: "Downloaded", meta: meta({ width: 120 }),
       cell: ({ row }) => <span title={formatDate(row.original.run_at, "datetime")}>{relativeTime(row.original.run_at)}</span> },
     { id: "system", header: "System", accessorKey: "systemName", meta: meta({ width: 150 }) },
-    { id: "label", header: "Version", meta: meta({ width: 240 }),
+    { id: "label", header: "Version", meta: meta({ width: 240, clamp: 2 }),
       cell: ({ row }) => <Link href={`/data/runs/${row.original.id}`} className="ui-link">
         {row.original.label ?? row.original.objects.map(formatModuleName).join(", ")}</Link> },
-    { id: "objects", header: "Objects", meta: meta({ minWidth: 200 }), cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
+    { id: "objects", header: "Objects", meta: meta({ minWidth: 200, clamp: 2 }), cell: ({ row }) => row.original.objects.map(formatModuleName).join(", ") },
     { id: "records", header: "Records", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => fmtInt(Object.values(row.original.records).reduce((a, b) => a + b, 0)) },
     { id: "coverage", header: "Read", meta: meta({ width: 170 }),
@@ -116,24 +119,29 @@ export function RunsSurface() {
         summary="Every download, config sync, import and analysis. Jobs are kept for seven days; the download history is kept for good."
       />
       <Tally level={2} label="Runs in the last 24 hours" figures={[
-        { label: "Running now", value: active.length, href: "/data?tab=runs", verdict: active.length ? "Progress is shown for each stage." : "Nothing is running." },
+        { label: "Running now", value: active.length, href: "/data?tab=runs", verdict: active.length ? "Progress is shown for each stage." : "Nothing is running. Downloads, imports and analyses appear here when they start." },
         { label: "Finished today", value: completed24, href: "/data?tab=runs", verdict: "Completed in the last 24 hours." },
-        { label: "Failed today", value: failed24, href: "/data?tab=runs", tone: failed24 ? "danger" : undefined, verdict: failed24 ? "Open a run to see why." : "No run failed." },
+        { label: "Failed today", value: failed24, href: "/data?tab=runs&status=failed", tone: failed24 ? "danger" : undefined, verdict: failed24 ? "Open a run to see why." : "No run failed." },
         { label: "Rows read today", value: rows24, href: "/data?tab=runs", verdict: "Across all runs in the last 24 hours." },
       ]} />
 
-      <SectionCard title="Running now" meta={active.length || undefined}>
-        {active.length === 0 ? (
-          <EmptyState>Nothing is running. Downloads, imports and analyses appear here as soon as they start, with progress for each SAP table.</EmptyState>
-        ) : (
+      {active.length ? (
+        <SectionCard title="Running now" meta={active.length}>
           <div className="aurora-runs__live">
             {active.map((j) => (
               <JobCard key={j.id} job={j} nowSec={nowSec} expanded
                        systemName={j.system_id ? systemName.get(j.system_id) : undefined} onOpen={() => drawer.open(j.id)} />
             ))}
           </div>
-        )}
-      </SectionCard>
+        </SectionCard>
+      ) : null}
+
+      <FilterBar>
+        <CountChips value={status} onChange={setStatus} total={finished.length} options={[
+          { value: "completed", label: "Completed", count: finished.filter((j) => j.status === "completed").length },
+          { value: "failed", label: "Failed", count: finished.filter((j) => j.status === "failed").length },
+        ]} />
+      </FilterBar>
 
       <SectionCard title="Recent runs" meta={recent.length || undefined} flush>
         <DataTable<Job>

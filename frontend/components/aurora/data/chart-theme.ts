@@ -35,6 +35,16 @@ export interface ChartTokens {
     danger: string;
     info: string;
   };
+  /**
+   * Finding severity. Only Critical and High carry a hue; Medium and Low are
+   * the same grey at 60% and 35% ink, so the eye goes to what needs action.
+   */
+  severity: {
+    critical: string;
+    high: string;
+    medium: string;
+    low: string;
+  };
 }
 
 /**
@@ -81,6 +91,12 @@ export function resolveChartTokens(element?: Element | null): ChartTokens {
       warning: light ? status.warning[500] : status.warning.dark500,
       danger: light ? status.danger[500] : status.danger.dark500,
       info: light ? status.info[500] : status.info.dark500,
+    },
+    severity: {
+      critical: light ? status.danger[500] : status.danger.dark500,
+      high: light ? status.warning[500] : status.warning.dark500,
+      medium: light ? ink[500] : ink[400],
+      low: light ? ink[300] : ink[600],
     },
   };
 }
