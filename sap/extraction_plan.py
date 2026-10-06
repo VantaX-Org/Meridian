@@ -35,7 +35,7 @@ _SF = ["employee_central", "compensation", "benefits", "payroll_integration", "p
 
 # Modules whose rules can be evaluated on data from each system type.
 MODULES_BY_SYSTEM: dict[str, list[str]] = {
-    "ecc": _ECC + _LOGISTICS + ["s4_readiness"],  # S/4HANA conversion readiness of ECC data
+    "ecc": _ECC + _LOGISTICS + ["s4_readiness", "banking_tax"],  # S/4HANA conversion readiness of ECC data
     "s4hana_onprem": _ECC + _LOGISTICS + ["s4hc_master_data"],
     "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface", "interface_health"],
     "s4hana_cloud": _ECC + ["s4hc_master_data"],

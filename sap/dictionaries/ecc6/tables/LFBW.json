@@ -1,0 +1,202 @@
+{
+ "table": "LFBW",
+ "description": "Vendor master record (withholding tax types) X",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LIFNR",
+   "key": true,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 3,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 4,
+   "name": "WITHT",
+   "key": true,
+   "data_element": "WITHT",
+   "domain": "WITHT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator for withholding tax type",
+   "check_table": "T059P"
+  },
+  {
+   "pos": 5,
+   "name": "WT_SUBJCT",
+   "key": false,
+   "data_element": "WT_SUBJCT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Subject to withholding tax?",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "QSREC",
+   "key": false,
+   "data_element": "WT_QSREC",
+   "domain": "WT_QSREC",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Type of recipient",
+   "check_table": "T059C"
+  },
+  {
+   "pos": 7,
+   "name": "WT_WTSTCD",
+   "key": false,
+   "data_element": "WT_WTSTCD",
+   "domain": "STCD1",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Withholding tax identification number",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "WT_WITHCD",
+   "key": false,
+   "data_element": "WT_WITHCD",
+   "domain": "WT_WITHCD",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Withholding tax code",
+   "check_table": "T059Z"
+  },
+  {
+   "pos": 9,
+   "name": "WT_EXNR",
+   "key": false,
+   "data_element": "WT_EXNR",
+   "domain": "CHAR15",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Exemption certificate number",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "WT_EXRT",
+   "key": false,
+   "data_element": "WT_EXRT",
+   "domain": "PRZ32",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Exemption rate",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "WT_EXDF",
+   "key": false,
+   "data_element": "WT_EXDF",
+   "domain": "WT_START",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which exemption begins",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "WT_EXDT",
+   "key": false,
+   "data_element": "WT_EXDT",
+   "domain": "WT_END",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which exemption ends",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "WT_WTEXRS",
+   "key": false,
+   "data_element": "WT_WTEXRS",
+   "domain": "WT_WTEXRS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for exemption",
+   "check_table": "T059V"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "QSREC",
+   "foreign_table": "T059C",
+   "foreign_field": "QSREC"
+  },
+  {
+   "field": "WITHT",
+   "foreign_table": "T059P",
+   "foreign_field": "WITHT"
+  },
+  {
+   "field": "WT_WITHCD",
+   "foreign_table": "T059Z",
+   "foreign_field": "WT_WITHCD"
+  },
+  {
+   "field": "WT_WTEXRS",
+   "foreign_table": "T059V",
+   "foreign_field": "WT_WTEXRS"
+  }
+ ]
+}

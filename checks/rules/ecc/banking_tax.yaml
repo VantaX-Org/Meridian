@@ -1,0 +1,1391 @@
+# Bank, payment and tax master data: bank master (BNKA), IBANs (TIBAN), vendor and customer bank
+# accounts (LFBK/KNBK), house banks (T012/T012K), withholding tax (LFBW/T059P), payment methods
+# (T042Z), tax numbers and tax codes (T007A). Deepens the AP/AR/BP packs: rules they already
+# carry (SWIFT format, bank key exists, KOVON/KOBIS, STCEG regex) are not repeated here.
+#
+# overlay: the pack reads tables other modules already extract. The worker does not generate
+# value-placement / country / config rules, profile fields or run cleaning, dedup, mining or
+# golden records for it, so nothing is reported twice.
+module: banking_tax
+target_state: ECC_AND_S4HANA
+overlay: true
+rules:
+- id: BKT001
+  field: BNKA.BANKA
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Bank master record has no bank name
+  why_it_matters: The bank name is what a clerk sees in the F4 help when maintaining vendor and customer bank details, and
+    it is printed on remittance advices and payment lists. A nameless bank key cannot be recognised or de-duplicated.
+  rule_authority: best_practice
+  sap_impact: Bank cannot be identified in FI01/FI02 search help; payment medium lists show a blank bank.
+  fix_map:
+    __other__: 'Enter the legal bank name in FI02 (S/4HANA: bank directory app, or BP bank data).'
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL}: bank name is empty.'
+- id: BKT002
+  field: BNKA.SWIFT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  applies_when:
+    BNKA.BANKS: &id001
+    - DE
+    - FR
+    - NL
+    - BE
+    - AT
+    - IT
+    - ES
+    - PT
+    - IE
+    - LU
+    - FI
+    - GR
+    - GB
+    - CH
+    - SE
+    - DK
+    - 'NO'
+    - PL
+    - CZ
+    - SK
+    - SI
+    - HU
+    - EE
+    - LV
+    - LT
+    - MT
+    - CY
+    - HR
+    - RO
+    - BG
+  message: Bank in an IBAN/SEPA country has no SWIFT/BIC code
+  why_it_matters: SEPA and most cross-border payment media need the BIC of the creditor bank. Without it the DMEE/payment-medium
+    program either rejects the payment line or the bank returns it.
+  rule_authority: iso_standard
+  sap_impact: F110 payment medium (DMEE/SEPA XML) cannot derive the creditor BIC; payment is rejected or repaired by hand.
+  fix_map:
+    __other__: Look up the BIC in the bank directory and enter it in FI02 > SWIFT code.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): SWIFT/BIC is missing.'
+- id: BKT003
+  field: BNKA.BANKL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  negate: true
+  fields:
+  - BNKA.BANKS
+  - BNKA.BANKL
+  target_table: LFBK
+  target_fields:
+  - BANKS
+  - BANKL
+  applies_when:
+    BNKA.LOEVM:
+    - X
+  message: Bank is flagged for deletion but vendor bank accounts still use it
+  why_it_matters: A bank flagged for deletion (LOEVM) is no longer a valid payee bank. Vendors that still reference it keep
+    being paid into an account at a bank the master data says is gone, and the archive run cannot remove the bank.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving of the bank master (FI_BANKS) is blocked; payments to the vendor bank may fail at the bank.
+  fix_map:
+    __other__: Replace the vendor bank detail in XK02 with the successor bank, then re-run the deletion.
+  record_fix_template: Bank {BNKA.BANKS}/{BNKA.BANKL} is flagged for deletion but is still used by a vendor bank account.
+- id: BKT004
+  field: BNKA.BANKL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  negate: true
+  fields:
+  - BNKA.BANKS
+  - BNKA.BANKL
+  target_table: KNBK
+  target_fields:
+  - BANKS
+  - BANKL
+  applies_when:
+    BNKA.LOEVM:
+    - X
+  message: Bank is flagged for deletion but customer bank accounts still use it
+  why_it_matters: Customers whose direct-debit or refund bank is flagged for deletion are collected from or refunded to a
+    bank that is meant to disappear; the deletion can never complete.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving of the bank master is blocked; direct debits (F110) may be rejected.
+  fix_map:
+    __other__: Replace the customer bank detail in XD02 with the successor bank, then re-run the deletion.
+  record_fix_template: Bank {BNKA.BANKS}/{BNKA.BANKL} is flagged for deletion but is still used by a customer bank account.
+- id: BKT005
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([1-9][0-9]{7}|0[0-9]{7})$
+  applies_when:
+    BNKA.BANKS:
+    - DE
+  message: German bank code (Bankleitzahl) is not 8 digits
+  why_it_matters: The BLZ is exactly eight digits and is embedded in the IBAN. A wrong bank key means the clearing code in
+    the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country DE.'
+- id: BKT006
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[0-9]{9}$
+  applies_when:
+    BNKA.BANKS:
+    - US
+  message: US ABA routing number is not 9 digits
+  why_it_matters: An ABA routing number is exactly nine digits; ACH and wire files are rejected otherwise. A wrong bank key
+    means the clearing code in the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country US.'
+- id: BKT007
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([1-9][0-9]{5}|0[0-9]{5})$
+  applies_when:
+    BNKA.BANKS:
+    - GB
+  message: UK sort code is not 6 digits
+  why_it_matters: A sort code is six digits; BACS and Faster Payments reject anything else. A wrong bank key means the clearing
+    code in the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country GB.'
+- id: BKT008
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([1-9][0-9]{5}|0[0-9]{5})$
+  applies_when:
+    BNKA.BANKS:
+    - ZA
+  message: South African branch code is not 6 digits
+  why_it_matters: A universal branch code is six digits; EFT files are rejected otherwise. A wrong bank key means the clearing
+    code in the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country ZA.'
+- id: BKT009
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([1-9][0-9]{5}|0[0-9]{5})$
+  applies_when:
+    BNKA.BANKS:
+    - AU
+  message: Australian BSB is not 6 digits
+  why_it_matters: A BSB is six digits; direct-entry (ABA) files are rejected otherwise. A wrong bank key means the clearing
+    code in the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country AU.'
+- id: BKT010
+  field: BNKA.BANKL
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[A-Z]{4}0[A-Z0-9]{6}$
+  applies_when:
+    BNKA.BANKS:
+    - IN
+  message: Indian IFSC does not follow the 11-character pattern
+  why_it_matters: An IFSC is four letters, a zero and six alphanumerics; NEFT/RTGS files are rejected otherwise. A wrong bank
+    key means the clearing code in the payment file is invalid.
+  rule_authority: iso_standard
+  sap_impact: Payment medium carries an invalid clearing code; the bank rejects the payment line.
+  fix_map:
+    __other__: Correct the bank key in FI02 to the national clearing code format.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}): bank key format is wrong for country IN.'
+- id: BKT011
+  field: BNKA.BANKA
+  check_class: similarity_check
+  severity: medium
+  dimension: uniqueness
+  block_by:
+  - BNKA.BANKS
+  - BNKA.ORT01
+  threshold: 0.9
+  exact_rule: true
+  message: 'Probable duplicate bank: very similar name in the same country and city'
+  why_it_matters: The same branch created under two bank keys splits vendor bank details across both, so a bank change or
+    deletion has to be repeated and payee checks miss matches.
+  rule_authority: best_practice
+  sap_impact: Duplicate bank keys; inconsistent routing of payments for the same branch.
+  fix_map:
+    __other__: Merge the vendor and customer bank details onto one bank key and flag the other for deletion in FI02.
+  record_fix_template: Bank {BNKA.BANKS}/{BNKA.BANKL} ({BNKA.BANKA}) looks like a duplicate of another bank in the same city.
+- id: BKT012
+  field: BNKA.SWIFT
+  check_class: uniqueness_check
+  severity: medium
+  dimension: uniqueness
+  fields:
+  - BNKA.BANKS
+  - BNKA.SWIFT
+  - BNKA.BRNCH
+  normalize: alnum
+  case_insensitive: true
+  applies_when:
+    BNKA.SWIFT:
+      populated: true
+  message: Same SWIFT/BIC and branch is held under more than one bank key
+  why_it_matters: A BIC identifies one institution and branch. Two bank keys with the same BIC and branch id are duplicates,
+    even when their local clearing codes were typed differently.
+  rule_authority: best_practice
+  sap_impact: Duplicate bank master records; vendor bank data is spread over several keys.
+  fix_map:
+    __other__: Consolidate to one bank key in FI02 and move the dependent bank details.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL}: SWIFT {BNKA.SWIFT} branch {BNKA.BRNCH} also exists under another bank
+    key.'
+- id: BKT013
+  field: BNKA.ORT01
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Bank master record has no city
+  why_it_matters: The city separates branches of the same bank and feeds the duplicate check; payment lists show it beside
+    the bank name.
+  rule_authority: best_practice
+  sap_impact: Branches cannot be told apart in bank search help.
+  fix_map:
+    __other__: Enter the branch city in FI02.
+  record_fix_template: 'Bank {BNKA.BANKS}/{BNKA.BANKL}: city is empty.'
+- id: BKT014
+  field: TIBAN.IBAN
+  check_class: format_check
+  severity: high
+  dimension: validity
+  grain: TIBAN
+  format: iban
+  message: IBAN fails the ISO 13616 mod-97 check
+  why_it_matters: An IBAN with wrong check digits is a typo or a fabricated account. Banks reject the payment, or worse, a
+    transposition hits another valid account.
+  rule_authority: iso_standard
+  sap_impact: SEPA/DMEE payment line is rejected by the bank; payment is returned and the invoice stays open.
+  fix_map:
+    __other__: Re-key the IBAN from the vendor's bank letter in FI12/XK02 > Bank details > IBAN.
+  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} has wrong check digits.'
+- id: BKT015
+  field: TIBAN.IBAN
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  fail_when: '`TIBAN.IBAN`.str.slice(0, 2).str.upper() != `TIBAN.BANKS`'
+  require_populated: true
+  message: IBAN country prefix does not match the bank country
+  why_it_matters: The first two characters of an IBAN are the country of the account. A different bank country means the IBAN
+    belongs to another account than the bank key says.
+  rule_authority: iso_standard
+  sap_impact: Payment routed by IBAN differs from the bank key used for clearing; bank rejects or repairs it.
+  fix_map:
+    __other__: Align IBAN and bank country in FI12; correct whichever was keyed wrongly.
+  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} does not start with country
+    {TIBAN.BANKS}.'
+- id: BKT016
+  field: TIBAN.IBAN
+  check_class: regex_check
+  severity: medium
+  dimension: validity
+  pattern: ^[A-Z0-9]{5,34}$
+  message: IBAN contains spaces, lower-case letters or punctuation
+  why_it_matters: SAP stores the IBAN in electronic form (upper-case, no spaces). Print-format values break matching, duplicate
+    detection and file generation.
+  rule_authority: iso_standard
+  sap_impact: Payment file and duplicate checks compare IBAN strings; formatted values do not match.
+  fix_map:
+    __other__: Re-enter the IBAN in electronic format (no spaces) in FI12.
+  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} is not in electronic format.'
+- id: BKT017
+  field: TIBAN.IBAN
+  check_class: uniqueness_check
+  severity: high
+  dimension: uniqueness
+  grain: TIBAN
+  fields:
+  - TIBAN.IBAN
+  normalize: alnum
+  case_insensitive: true
+  message: Same IBAN is assigned to more than one bank account record
+  why_it_matters: An IBAN identifies exactly one account. Two records with the same IBAN mean one account is held twice, or
+    a different vendor or customer was given someone else's IBAN.
+  rule_authority: sap_hard_constraint
+  sap_impact: IBAN uniqueness is enforced per account only; duplicates enable payment redirection fraud.
+  fix_map:
+    __other__: Remove or correct the wrong bank account in FI12 and re-check the owning master records.
+  record_fix_template: IBAN {TIBAN.IBAN} appears on more than one bank account record.
+- id: BKT018
+  field: TIBAN.BANKL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  grain: TIBAN
+  fields:
+  - TIBAN.BANKS
+  - TIBAN.BANKL
+  target_table: BNKA
+  target_fields:
+  - BANKS
+  - BANKL
+  message: IBAN is held for a bank key that does not exist in the bank master
+  why_it_matters: TIBAN rows reference BNKA by country and bank key. An orphan IBAN belongs to no bank and cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: IBAN is unusable; vendor/customer bank detail validation fails.
+  fix_map:
+    __other__: Create the bank in FI01 or correct the bank key of the account.
+  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: bank key is not in BNKA.'
+- id: BKT019
+  field: TIBAN.VALID_FROM
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  fail_when: '`TIBAN.VALID_FROM` > @today'
+  require_populated: true
+  message: IBAN is valid from a future date
+  why_it_matters: An IBAN that only becomes valid in the future is ignored by payment programs today; the account looks maintained
+    but cannot be paid.
+  rule_authority: best_practice
+  sap_impact: IBAN is not picked up by payment runs until its validity date.
+  fix_map:
+    __other__: Correct the valid-from date in FI12 or confirm that the account is meant to start later.
+  record_fix_template: 'Bank account {TIBAN.BANKS}/{TIBAN.BANKL}/{TIBAN.BANKN}: IBAN {TIBAN.IBAN} is valid from {TIBAN.VALID_FROM}.'
+- id: BKT020
+  field: LFBK.BANKN
+  check_class: exists_check
+  severity: high
+  dimension: completeness
+  grain: LFBK
+  fields:
+  - LFBK.BANKS
+  - LFBK.BANKL
+  - LFBK.BANKN
+  target_table: TIBAN
+  target_fields:
+  - BANKS
+  - BANKL
+  - BANKN
+  applies_when:
+    LFBK.BANKS: *id001
+  message: Vendor bank account in an IBAN country has no IBAN
+  why_it_matters: In IBAN countries payment media identify the account by IBAN. A bank detail without a TIBAN row cannot be
+    paid by the SEPA payment method, and the clerk sees no IBAN on the master record.
+  rule_authority: iso_standard
+  sap_impact: F110 payment medium has no IBAN to write; payment line is rejected or the method is skipped.
+  fix_map:
+    __other__: 'Enter the IBAN on the bank detail (XK02 > Payment transactions > IBAN, S/4HANA: BP > Bank Data).'
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/{LFBK.BANKL}/{LFBK.BANKN} has no IBAN.'
+- id: BKT021
+  field: KNBK.BANKN
+  check_class: exists_check
+  severity: high
+  dimension: completeness
+  grain: KNBK
+  fields:
+  - KNBK.BANKS
+  - KNBK.BANKL
+  - KNBK.BANKN
+  target_table: TIBAN
+  target_fields:
+  - BANKS
+  - BANKL
+  - BANKN
+  applies_when:
+    KNBK.BANKS: *id001
+  message: Customer bank account in an IBAN country has no IBAN
+  why_it_matters: In IBAN countries payment media identify the account by IBAN. A bank detail without a TIBAN row cannot be
+    paid by the SEPA payment method, and the clerk sees no IBAN on the master record.
+  rule_authority: iso_standard
+  sap_impact: F110 payment medium has no IBAN to write; payment line is rejected or the method is skipped.
+  fix_map:
+    __other__: 'Enter the IBAN on the bank detail (XD02 > Payment transactions > IBAN, S/4HANA: BP > Bank Data).'
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} has no IBAN.'
+- id: BKT022
+  field: LFBK.BANKN
+  check_class: exists_check
+  severity: critical
+  dimension: consistency
+  negate: true
+  grain: LFBK
+  fields:
+  - LFBK.BANKS
+  - LFBK.BANKL
+  - LFBK.BANKN
+  target_table: KNBK
+  target_fields:
+  - BANKS
+  - BANKL
+  - BANKN
+  message: Vendor bank account is also held on a customer master record
+  why_it_matters: 'A vendor and a customer sharing one bank account is a known fraud and error pattern: refunds and payments
+    can be redirected between the two roles, and it hides netting that was never agreed.'
+  rule_authority: best_practice
+  sap_impact: Payment of a vendor invoice or customer refund may land in an account owned by the other party.
+  fix_map:
+    __other__: Confirm the relationship (same legal entity, then link via CVI/BP) or correct the wrong account in XK02/XD02.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKS}/{LFBK.BANKL}/{LFBK.BANKN} also belongs to a customer.'
+- id: BKT023
+  field: KNBK.BANKN
+  check_class: exists_check
+  severity: critical
+  dimension: consistency
+  negate: true
+  grain: KNBK
+  fields:
+  - KNBK.BANKS
+  - KNBK.BANKL
+  - KNBK.BANKN
+  target_table: LFBK
+  target_fields:
+  - BANKS
+  - BANKL
+  - BANKN
+  message: Customer bank account is also held on a vendor master record
+  why_it_matters: A customer sharing a bank account with a vendor lets refunds and direct debits cross between roles; the
+    same account on both sides must be a deliberate, documented relationship.
+  rule_authority: best_practice
+  sap_impact: Customer refund may be paid to a vendor's account, or a debit collected from it.
+  fix_map:
+    __other__: Confirm the relationship or correct the wrong account in XD02/XK02.
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} also belongs to a vendor.'
+- id: BKT024
+  field: KNBK.KOINH
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  grain: KNBK
+  message: Customer bank account has no account holder name
+  why_it_matters: The account holder name is part of a SEPA direct-debit mandate and is printed on payment advices. Without
+    it the bank cannot verify the debtor and the collection is rejected.
+  rule_authority: best_practice
+  sap_impact: Direct debit (F110) lines have no debtor name; collection is rejected or disputed.
+  fix_map:
+    __other__: Enter the account holder in XD02 > Payment transactions > Bank details.
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKS}/{KNBK.BANKL}/{KNBK.BANKN} has no account holder.'
+- id: BKT025
+  field: LFBK.BANKN
+  check_class: uniqueness_check
+  severity: high
+  dimension: uniqueness
+  grain: LFBK
+  fields:
+  - LFBK.BANKS
+  - LFBK.BANKN
+  normalize: alnum
+  case_insensitive: true
+  message: Same account number is held at the same bank country under several vendor records
+  why_it_matters: Two vendors with the same account number in one country, even under differently typed bank keys, is the
+    classic duplicate-vendor and payment-redirect signal. Normalising punctuation catches what the exact match misses.
+  rule_authority: best_practice
+  sap_impact: Duplicate vendors; one account receives payments for several suppliers.
+  fix_map:
+    __other__: Review the vendors in XK02, merge duplicates, or remove the wrong bank detail.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account {LFBK.BANKN} in {LFBK.BANKS} is used by another vendor record.'
+- id: BKT026
+  field: KNBK.BANKN
+  check_class: uniqueness_check
+  severity: medium
+  dimension: uniqueness
+  grain: KNBK
+  fields:
+  - KNBK.BANKS
+  - KNBK.BANKN
+  normalize: alnum
+  case_insensitive: true
+  message: Same account number is held at the same bank country under several customer records
+  why_it_matters: Customers sharing one account is legitimate for group payers but usually shows duplicate customers or a
+    keying error.
+  rule_authority: best_practice
+  sap_impact: Cash application and direct debit cannot tell the customers apart.
+  fix_map:
+    __other__: Review the customers in XD02; link group payers via alternative payer, merge duplicates.
+  record_fix_template: 'Customer {KNBK.KUNNR}: account {KNBK.BANKN} in {KNBK.BANKS} is used by another customer record.'
+- id: BKT027
+  field: KNBK.XEZER
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  grain: KNBK
+  fail_when: '`KNBK.XEZER` == ''X'' & `KNBK.KOINH`.isna()'
+  message: Collection authorisation is set but the account holder is missing
+  why_it_matters: The collection authorisation flag says a direct-debit mandate exists. A mandate always names the account
+    holder; without it the bank rejects the debit as unauthorised.
+  rule_authority: regulatory
+  sap_impact: Direct debit is rejected by the bank (SEPA mandate data incomplete).
+  fix_map:
+    __other__: Enter the account holder in XD02 or remove the flag if no mandate exists.
+  record_fix_template: 'Customer {KNBK.KUNNR}: collection authorisation set on {KNBK.BANKN} but the account holder is empty.'
+- id: BKT028
+  field: LFBK.BANKN
+  check_class: regex_check
+  severity: medium
+  dimension: validity
+  grain: LFBK
+  pattern: ^[A-Za-z0-9-]+$
+  message: Vendor bank account number contains spaces or special characters
+  why_it_matters: SAP compares account numbers as strings. Embedded spaces or punctuation make the same account look different,
+    defeat duplicate checks and break payment file layouts that expect digits and letters.
+  rule_authority: best_practice
+  sap_impact: Duplicate checks miss the account; payment file field is malformed.
+  fix_map:
+    __other__: Re-key the account number without separators in XK02.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account number {LFBK.BANKN} has invalid characters.'
+- id: BKT029
+  field: LFBK.BANKN
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  grain: LFBK
+  fail_when: '`LFBK.BANKN`.isin([''11111111'', ''99999999'', ''12345678'', ''00000000'', ''0000000'', ''1111111'', ''123456789'',
+    ''0000000000'', ''XXXXXXXX'', ''TBC''])'
+  require_populated: true
+  message: Vendor bank account number is a placeholder (one repeated character)
+  why_it_matters: Numbers such as 00000000 or 11111111 are dummies keyed to pass the mandatory-field check. The account does
+    not exist and any payment is returned.
+  rule_authority: best_practice
+  sap_impact: Payment to the dummy account is returned by the bank.
+  fix_map:
+    __other__: Obtain the real account from the vendor and correct it in XK02.
+  record_fix_template: 'Vendor {LFBK.LIFNR}: account number {LFBK.BANKN} is a placeholder.'
+- id: BKT030
+  field: KNBK.BANKN
+  check_class: regex_check
+  severity: medium
+  dimension: validity
+  grain: KNBK
+  pattern: ^[A-Za-z0-9-]+$
+  message: Customer bank account number contains spaces or special characters
+  why_it_matters: SAP compares account numbers as strings. Embedded spaces or punctuation make the same account look different,
+    defeat duplicate checks and break payment file layouts that expect digits and letters.
+  rule_authority: best_practice
+  sap_impact: Duplicate checks miss the account; payment file field is malformed.
+  fix_map:
+    __other__: Re-key the account number without separators in XD02.
+  record_fix_template: 'Customer {KNBK.KUNNR}: account number {KNBK.BANKN} has invalid characters.'
+- id: BKT031
+  field: KNBK.BANKN
+  check_class: cross_field_check
+  severity: high
+  dimension: validity
+  grain: KNBK
+  fail_when: '`KNBK.BANKN`.isin([''11111111'', ''99999999'', ''12345678'', ''00000000'', ''0000000'', ''1111111'', ''123456789'',
+    ''0000000000'', ''XXXXXXXX'', ''TBC''])'
+  require_populated: true
+  message: Customer bank account number is a placeholder (one repeated character)
+  why_it_matters: Numbers such as 00000000 or 11111111 are dummies keyed to pass the mandatory-field check. The account does
+    not exist and any payment is returned.
+  rule_authority: best_practice
+  sap_impact: Payment to the dummy account is returned by the bank.
+  fix_map:
+    __other__: Obtain the real account from the customer and correct it in XD02.
+  record_fix_template: 'Customer {KNBK.KUNNR}: account number {KNBK.BANKN} is a placeholder.'
+- id: BKT032
+  field: LFA1.LNRZA
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  fail_when: '`LFA1.LNRZA` == `LFA1.LIFNR`'
+  require_populated: true
+  message: Vendor is its own alternative payee
+  why_it_matters: An alternative payee that equals the vendor itself is a circular assignment with no effect; it usually means
+    the field was filled with the wrong number during a load.
+  rule_authority: best_practice
+  sap_impact: Payment run follows the alternative payee chain; a self reference gives no redirection and hides the real intent.
+  fix_map:
+    __other__: Clear or correct the alternative payee in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee {LFA1.LNRZA} is the vendor itself.'
+- id: BKT033
+  field: LFA1.LNRZA
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  negate: true
+  fields:
+  - LFA1.LNRZA
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERZ:
+    - X
+  message: Alternative payee is blocked for payment
+  why_it_matters: Paying through an alternative payee that is itself payment-blocked means the invoice is either blocked at
+    the payee or released to an account that was deliberately stopped.
+  rule_authority: best_practice
+  sap_impact: Payment of the vendor's invoices is held or paid to a blocked party; F110 exception list.
+  fix_map:
+    __other__: Choose an active alternative payee or lift the payment block deliberately in XK05.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: alternative payee {LFA1.LNRZA} has a payment block.'
+- id: BKT034
+  field: KNA1.KNRZA
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  negate: true
+  fields:
+  - KNA1.KNRZA
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  target_when:
+    LOEVM:
+    - X
+  message: Alternative payer is flagged for deletion
+  why_it_matters: Payments made by the alternative payer are cleared against the customer's items. A payer flagged for deletion
+    disappears with the next archiving run and leaves unassigned payments behind.
+  rule_authority: best_practice
+  sap_impact: Incoming payments cannot be assigned; cash application falls to manual.
+  fix_map:
+    __other__: Assign a valid alternative payer in XD02 or remove the assignment.
+  record_fix_template: 'Customer {KNA1.KUNNR}: alternative payer {KNA1.KNRZA} is flagged for deletion.'
+- id: BKT035
+  field: LFB1.XVERR
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  fail_when: '`LFB1.XVERR` == ''X'' & `LFA1.KUNNR`.isna()'
+  message: Clearing with customer is set but the vendor has no customer number
+  why_it_matters: Customer/vendor clearing (F110 netting, F.13) needs LFA1.KUNNR to find the customer's open items. Without
+    it the indicator has no effect and netting silently does not happen.
+  rule_authority: sap_hard_constraint
+  sap_impact: Open items of customer and vendor are not netted; payments are made gross.
+  fix_map:
+    __other__: Enter the customer number in XK02 > Control data or clear the indicator in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR} company code {LFB1.BUKRS}: clearing with customer set but no customer is linked.'
+- id: BKT040
+  field: LFBW.WITHT
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  grain: LFBW
+  fields:
+  - LFBW.WITHT
+  target_table: T059P
+  target_fields:
+  - WITHT
+  message: Withholding tax type on the vendor is not defined in T059P
+  why_it_matters: Extended withholding tax needs the type to be defined in IMG (T059P). An undefined type makes the invoice
+    posting dump or skip withholding altogether.
+  rule_authority: sap_hard_constraint
+  sap_impact: FB60/MIRO error 'withholding tax type not defined'; tax is not withheld.
+  fix_map:
+    __other__: Define the type in SPRO > Financial Accounting > Withholding Tax > Extended Withholding Tax or remove it in
+      XK02.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: type is not defined.'
+- id: BKT041
+  field: LFBW.WT_WITHCD
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  grain: LFBW
+  fields:
+  - LFBW.WITHT
+  - LFBW.WT_WITHCD
+  target_table: T059Z
+  target_fields:
+  - WITHT
+  - WT_WITHCD
+  message: Withholding tax code on the vendor does not exist for its type
+  why_it_matters: The code carries the rate and base. An unknown code gives no rate and the posting either stops or withholds
+    nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Invoice posts without withholding or is rejected; vendor is overpaid.
+  fix_map:
+    __other__: Create the code in T059Z (OBCZ) or correct it in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: code {LFBW.WT_WITHCD}
+    is not defined.'
+- id: BKT042
+  field: LFBW.WT_WITHCD
+  check_class: cross_field_check
+  severity: high
+  dimension: completeness
+  grain: LFBW
+  fail_when: '`LFBW.WT_SUBJCT` == ''X'' & `LFBW.WT_WITHCD`.isna()'
+  message: Vendor is subject to withholding tax but has no withholding tax code
+  why_it_matters: The subject-to-tax flag turns the type on; without a code there is no rate, so withholding is calculated
+    as zero.
+  rule_authority: regulatory
+  sap_impact: Tax authority remittance is understated; vendor paid in full.
+  fix_map:
+    __other__: Enter the withholding tax code in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: subject to tax but
+    no code.'
+- id: BKT043
+  field: LFBW.WT_WITHCD
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  grain: LFBW
+  fail_when: '`LFBW.WT_SUBJCT`.isna() & `LFBW.WT_WITHCD`.notna()'
+  message: Withholding tax code is assigned but the vendor is not flagged as subject to tax
+  why_it_matters: 'The code is dead data: nothing is withheld because the subject-to-tax flag is off, which may be an error
+    or a leftover from a migration.'
+  rule_authority: best_practice
+  sap_impact: Withholding does not apply although a code is maintained.
+  fix_map:
+    __other__: Set the flag in XK02 or remove the code.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: code {LFBW.WT_WITHCD}
+    without subject-to-tax flag.'
+- id: BKT044
+  field: LFBW.WT_EXDT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  grain: LFBW
+  fail_when: '`LFBW.WT_EXDT` < `LFBW.WT_EXDF`'
+  require_populated: true
+  message: Exemption valid-to date is before valid-from date
+  why_it_matters: An inverted exemption period never matches a posting date, so the exemption is silently never applied.
+  rule_authority: sap_hard_constraint
+  sap_impact: Exempt vendor is taxed; claims and certificates are ignored.
+  fix_map:
+    __other__: Correct the exemption dates in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: exemption {LFBW.WT_EXDF}
+    to {LFBW.WT_EXDT} is inverted.'
+- id: BKT045
+  field: LFBW.WT_EXNR
+  check_class: cross_field_check
+  severity: high
+  dimension: completeness
+  grain: LFBW
+  fail_when: '`LFBW.WT_EXRT`.notna() & `LFBW.WT_EXNR`.isna()'
+  message: Exemption rate is given but no exemption certificate number is recorded
+  why_it_matters: A reduced or zero rate is only valid with a certificate. Without its number the exemption cannot be evidenced
+    in an audit.
+  rule_authority: regulatory
+  sap_impact: Withholding exemption is unsupported; tax authority can reclaim tax.
+  fix_map:
+    __other__: Enter the certificate number in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: exemption rate {LFBW.WT_EXRT}
+    without certificate number.'
+- id: BKT046
+  field: LFBW.WT_EXDT
+  check_class: cross_field_check
+  severity: high
+  dimension: timeliness
+  grain: LFBW
+  fail_when: '`LFBW.WT_EXDT` < @today & `LFBW.WT_EXRT`.notna()'
+  message: Withholding tax exemption certificate has expired
+  why_it_matters: Postings after the valid-to date are no longer exempt; the master data still shows an exemption rate, which
+    misleads buyers and accountants.
+  rule_authority: regulatory
+  sap_impact: Exemption no longer applies; tax must be withheld or a new certificate obtained.
+  fix_map:
+    __other__: Obtain a renewed certificate and update the dates in XK02, or clear the exemption.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: exemption expired
+    on {LFBW.WT_EXDT}.'
+- id: BKT047
+  field: LFBW.WT_EXRT
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  grain: LFBW
+  fail_when: (`LFBW.WT_EXRT` < 0) | (`LFBW.WT_EXRT` > 100)
+  require_populated: true
+  message: Exemption rate is outside 0 to 100 percent
+  why_it_matters: A rate below zero or above 100 gives a negative or more than full withholding.
+  rule_authority: sap_hard_constraint
+  sap_impact: Withholding amount is nonsensical at posting.
+  fix_map:
+    __other__: Correct the exemption rate in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: exemption rate {LFBW.WT_EXRT}
+    is out of range.'
+- id: BKT048
+  field: LFBW.WT_EXDF
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  grain: LFBW
+  fail_when: '`LFBW.WT_EXNR`.notna() & `LFBW.WT_EXDF`.isna()'
+  message: Exemption certificate number is set but no valid-from date
+  why_it_matters: Without a start date the exemption has no defined period and is applied to every posting date or none.
+  rule_authority: best_practice
+  sap_impact: Exemption applied to the wrong periods.
+  fix_map:
+    __other__: Enter the validity period in XK02 > Withholding tax.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: certificate {LFBW.WT_EXNR}
+    without a valid-from date.'
+- id: BKT049
+  field: LFBW.BUKRS
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  grain: LFBW
+  fields:
+  - LFBW.LIFNR
+  - LFBW.BUKRS
+  target_table: LFB1
+  target_fields:
+  - LIFNR
+  - BUKRS
+  target_when:
+    LOEVM:
+      blank: true
+  message: Withholding tax assignment exists for a vendor not extended to that company code
+  why_it_matters: LFBW hangs under LFB1. An assignment for a vendor/company-code pair with no LFB1 row, or one flagged for
+    deletion, is orphaned and will be archived or lost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Withholding data cannot be used; orphan records block archiving.
+  fix_map:
+    __other__: Extend the vendor to the company code in XK01/XK02 or delete the orphan.
+  record_fix_template: 'Vendor {LFBW.LIFNR} company code {LFBW.BUKRS} withholding tax type {LFBW.WITHT}: vendor not active
+    in company code.'
+- id: BKT050
+  field: T012.BANKL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  grain: T012
+  fields:
+  - T012.BANKS
+  - T012.BANKL
+  target_table: BNKA
+  target_fields:
+  - BANKS
+  - BANKL
+  target_when:
+    LOEVM:
+      blank: true
+  message: House bank points to a bank key that is missing or flagged for deletion
+  why_it_matters: The house bank is the bank the company pays from; it must be a live bank in BNKA or payment media cannot
+    take the bank data.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 payment medium and bank statement import (FF67/FEBA) fail for the house bank.
+  fix_map:
+    __other__: Fix the bank key in FI12 or restore the bank in FI02.
+  record_fix_template: 'Company code {T012.BUKRS} house bank {T012.HBKID}: bank {T012.BANKS}/{T012.BANKL} is missing or flagged
+    for deletion.'
+- id: BKT051
+  field: T012K.HBKID
+  check_class: exists_check
+  severity: critical
+  dimension: consistency
+  grain: T012K
+  fields:
+  - T012K.BUKRS
+  - T012K.HBKID
+  target_table: T012
+  target_fields:
+  - BUKRS
+  - HBKID
+  message: House bank account belongs to a house bank that does not exist
+  why_it_matters: An account row without its house bank cannot be selected by F110 or the bank statement import.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment run cannot choose the account; statement import fails.
+  fix_map:
+    __other__: Create the house bank in FI12 or delete the stray account.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: house bank not defined.'
+- id: BKT052
+  field: T012K.HKONT
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  grain: T012K
+  message: House bank account has no G/L account for the bank
+  why_it_matters: The G/L account is where the bank posting from F110 and the statement lands. Without it payments cannot
+    post to the bank.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 and electronic statement posting stop with 'no G/L account for house bank'.
+  fix_map:
+    __other__: Assign the bank G/L account in FI12 > Bank accounts.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: no bank G/L account.'
+- id: BKT053
+  field: T012K.HKONT
+  check_class: exists_check
+  severity: critical
+  dimension: consistency
+  grain: T012K
+  fields:
+  - T012K.BUKRS
+  - T012K.HKONT
+  target_table: SKB1
+  target_fields:
+  - BUKRS
+  - SAKNR
+  target_when:
+    XLOEB:
+      blank: true
+  message: House bank G/L account does not exist in the company code or is flagged for deletion
+  why_it_matters: The bank G/L account must be created in the company code (SKB1) and active, or no payment can post to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Posting error 'account not created in company code'; payments fail.
+  fix_map:
+    __other__: Create the account in FS00 for the company code or fix the assignment in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: bank G/L account {T012K.HKONT}
+    is not available.'
+- id: BKT054
+  field: T012K.WKKON
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  grain: T012K
+  fields:
+  - T012K.BUKRS
+  - T012K.WKKON
+  target_table: SKB1
+  target_fields:
+  - BUKRS
+  - SAKNR
+  message: Bill-of-exchange clearing G/L account on the house bank does not exist
+  why_it_matters: The account is used by F110 and bill of exchange processing; a dead account number makes that posting fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bill of exchange postings stop with a missing-account error.
+  fix_map:
+    __other__: Correct the account in FI12 > Bank accounts or create it in FS00.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: account {T012K.WKKON} is
+    not available.'
+- id: BKT055
+  field: T012K.WAERS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  grain: T012K
+  message: House bank account has no currency
+  why_it_matters: The account currency drives which payments can be made from the account and checks the G/L account currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 cannot choose the account for a payment currency.
+  fix_map:
+    __other__: Enter the account currency in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: currency is empty.'
+- id: BKT056
+  field: T012K.WAERS
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  grain: T012K
+  fail_when: '`T012K.WAERS` != `SKB1.WAERS`'
+  require_populated: true
+  message: House bank account currency differs from the currency of its G/L account
+  why_it_matters: A foreign-currency bank account must be posted to a G/L account in that currency, or revaluation and statement
+    postings are wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bank postings fail currency validation or revalue incorrectly.
+  fix_map:
+    __other__: Align the currency in FI12 or FS00.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: currency {T012K.WAERS}
+    differs from the G/L account currency {SKB1.WAERS}.'
+- id: BKT057
+  field: T012K.HKONT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  grain: T012K
+  fail_when: '`SKB1.MITKZ`.notna()'
+  message: House bank G/L account is a reconciliation account
+  why_it_matters: A bank account must be a normal balance sheet account. A reconciliation account is controlled by the subledger
+    and rejects direct postings from payment and statement runs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Direct posting to a reconciliation account is blocked.
+  fix_map:
+    __other__: Assign a normal bank G/L account in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: G/L account {T012K.HKONT}
+    is a reconciliation account.'
+- id: BKT058
+  field: T012K.HKONT
+  check_class: cross_field_check
+  severity: high
+  dimension: consistency
+  grain: T012K
+  fail_when: (`SKB1.XSPEB` == 'X') | (`SKB1.XLOEB` == 'X')
+  message: House bank G/L account is blocked for posting or flagged for deletion
+  why_it_matters: A blocked or deleted G/L account refuses the posting; every payment and statement item from this bank goes
+    to an error list.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the bank account are rejected.
+  fix_map:
+    __other__: Unblock the account in FS00 or move the house bank to an active account.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: G/L account {T012K.HKONT}
+    is blocked or flagged for deletion.'
+- id: BKT059
+  field: T012K.BANKN
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  grain: T012K
+  message: House bank account has no bank account number
+  why_it_matters: The account number appears in payment media and statements; without it the payment file has no debit account.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment medium shows no ordering account; the bank rejects the file.
+  fix_map:
+    __other__: Enter the account number in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: account number empty.'
+- id: BKT060
+  field: T012K.BANKN
+  check_class: uniqueness_check
+  severity: high
+  dimension: uniqueness
+  grain: T012K
+  fields:
+  - T012.BANKS
+  - T012.BANKL
+  - T012K.BANKN
+  normalize: alnum
+  case_insensitive: true
+  message: Same bank account is defined twice as a house bank account
+  why_it_matters: One physical account under two house bank IDs gets split postings and duplicate statement uploads.
+  rule_authority: best_practice
+  sap_impact: Statements and payments are posted twice or split.
+  fix_map:
+    __other__: Remove the duplicate in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: account {T012K.BANKN} is
+    defined more than once.'
+- id: BKT070
+  field: T042Z.XBKKT
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`T042Z.XIBAN` == ''X'' & `T042Z.XBKKT`.isna()'
+  message: Payment method needs an IBAN or SWIFT code but does not require bank details
+  why_it_matters: A method that demands an IBAN implies bank details are required. A method that does not require bank data
+    gives a vendor without a bank account no error and F110 produces an empty creditor line.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment medium without creditor bank data.
+  fix_map:
+    __other__: Set 'Bank details required' in FBZP > Payment methods in country.
+  record_fix_template: 'Country {T042Z.LAND1} payment method {T042Z.ZLSCH}: IBAN required but bank details not required.'
+- id: BKT071
+  field: T042Z.XEZER
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`T042Z.XEZER` == ''X'' & `T042Z.XBKKT`.isna()'
+  message: Payment method needs collection authorisation but does not require bank details
+  why_it_matters: Collection authorisation refers to the account holder's bank account. A method that has no bank-data requirement
+    has nothing to authorise.
+  rule_authority: sap_hard_constraint
+  sap_impact: Direct debit without the debtor bank data.
+  fix_map:
+    __other__: Set 'Bank details required' in FBZP.
+  record_fix_template: 'Country {T042Z.LAND1} payment method {T042Z.ZLSCH}: collection authorisation required but bank details
+    not required.'
+- id: BKT072
+  field: LFB1.ZWELS
+  check_class: cross_field_check
+  severity: low
+  dimension: validity
+  fail_when: '`LFB1.ZWELS`.str.contains(''(.).*\\1'')'
+  require_populated: true
+  message: Vendor payment method list repeats the same method
+  why_it_matters: A method listed twice has no extra effect and is a sign of a loading or editing error in the list.
+  rule_authority: best_practice
+  sap_impact: None at runtime; hides what the intended list was.
+  fix_map:
+    __other__: Re-key the list in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR} company code {LFB1.BUKRS}: payment methods {LFB1.ZWELS} contain a duplicate.'
+- id: BKT073
+  field: KNB1.ZWELS
+  check_class: cross_field_check
+  severity: low
+  dimension: validity
+  fail_when: '`KNB1.ZWELS`.str.contains(''(.).*\\1'')'
+  require_populated: true
+  message: Customer payment method list repeats the same method
+  why_it_matters: A method listed twice has no extra effect and shows a loading or editing error.
+  rule_authority: best_practice
+  sap_impact: None at runtime; hides the intended list.
+  fix_map:
+    __other__: Re-key the list in XD02 > Payment transactions.
+  record_fix_template: 'Customer {KNB1.KUNNR} company code {KNB1.BUKRS}: payment methods {KNB1.ZWELS} contain a duplicate.'
+- id: BKT074
+  field: LFB1.HBKID
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`LFB1.HBKID`.notna() & `LFB1.ZWELS`.isna()'
+  message: Vendor has a house bank but no payment method
+  why_it_matters: F110 selects a vendor by payment method; the house bank has no effect without it and the vendor is never
+    paid automatically.
+  rule_authority: best_practice
+  sap_impact: Vendor is skipped by the automatic payment program.
+  fix_map:
+    __other__: Enter payment methods in XK02 > Payment transactions.
+  record_fix_template: 'Vendor {LFB1.LIFNR} company code {LFB1.BUKRS}: house bank {LFB1.HBKID} set but no payment method.'
+- id: BKT075
+  field: KNB1.HBKID
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`KNB1.HBKID`.notna() & `KNB1.ZWELS`.isna()'
+  message: Customer has a house bank but no payment method
+  why_it_matters: A house bank without a payment method is never used in the automatic payment program for the customer (debit).
+  rule_authority: best_practice
+  sap_impact: Customer is skipped by the payment program.
+  fix_map:
+    __other__: Enter payment methods in XD02.
+  record_fix_template: 'Customer {KNB1.KUNNR} company code {KNB1.BUKRS}: house bank {KNB1.HBKID} set but no payment method.'
+- id: BKT080
+  field: LFA1.STCEG
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: (`LFA1.STCEG`.str.slice(0, 2).str.upper() != `LFA1.LAND1`) & ~((`LFA1.LAND1` == 'GR') & (`LFA1.STCEG`.str.slice(0,
+    2).str.upper() == 'EL')) & ~((`LFA1.LAND1` == 'GB') & (`LFA1.STCEG`.str.slice(0, 2).str.upper() == 'XI'))
+  require_populated: true
+  message: Vendor VAT number prefix does not match the vendor country
+  why_it_matters: A VAT number starts with the issuing country code. A different prefix means the number belongs to another
+    country or was keyed on the wrong record; the exception is EL for Greece and XI for Northern Ireland.
+  rule_authority: regulatory
+  sap_impact: Intra-EU reporting (ZM/EC lists) and input VAT claims are rejected.
+  fix_map:
+    __other__: Correct the VAT number or the country in XK02.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: VAT number {LFA1.STCEG} does not match country {LFA1.LAND1}.'
+- id: BKT081
+  field: KNA1.STCEG
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: (`KNA1.STCEG`.str.slice(0, 2).str.upper() != `KNA1.LAND1`) & ~((`KNA1.LAND1` == 'GR') & (`KNA1.STCEG`.str.slice(0,
+    2).str.upper() == 'EL')) & ~((`KNA1.LAND1` == 'GB') & (`KNA1.STCEG`.str.slice(0, 2).str.upper() == 'XI'))
+  require_populated: true
+  message: Customer VAT number prefix does not match the customer country
+  why_it_matters: A VAT number starts with the issuing country code. A different prefix means the number belongs to another
+    country or was keyed on the wrong record; the exception is EL for Greece and XI for Northern Ireland.
+  rule_authority: regulatory
+  sap_impact: Zero-rated intra-EU deliveries are not supported; VIES validation fails.
+  fix_map:
+    __other__: Correct the VAT number or the country in XD02.
+  record_fix_template: 'Customer {KNA1.KUNNR}: VAT number {KNA1.STCEG} does not match country {KNA1.LAND1}.'
+- id: BKT082
+  field: LFA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[0-9]{10}$
+  applies_when:
+    LFA1.LAND1:
+    - ZA
+  message: 'Vendor tax number 1: South African income tax reference is not 10 digits'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country ZA.'
+- id: BKT083
+  field: LFA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([0-9]{14}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2})$
+  applies_when:
+    LFA1.LAND1:
+    - BR
+  message: 'Vendor tax number 1: Brazilian CNPJ is not 14 digits'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country BR.'
+- id: BKT084
+  field: LFA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[A-Z]{5}[0-9]{4}[A-Z]$
+  applies_when:
+    LFA1.LAND1:
+    - IN
+  message: 'Vendor tax number 1: Indian PAN does not follow the AAAAA9999A pattern'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country IN.'
+- id: BKT085
+  field: LFA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[0-9]{2}-?[0-9]{7}$
+  applies_when:
+    LFA1.LAND1:
+    - US
+  message: 'Vendor tax number 1: US EIN does not follow the 99-9999999 pattern'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XK02 > Control data.
+  record_fix_template: 'Vendor {LFA1.LIFNR}: tax number {LFA1.STCD1} is malformed for country US.'
+- id: BKT086
+  field: KNA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[0-9]{10}$
+  applies_when:
+    KNA1.LAND1:
+    - ZA
+  message: 'Customer tax number 1: South African income tax reference is not 10 digits'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XD02 > Control data.
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country ZA.'
+- id: BKT087
+  field: KNA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^([0-9]{14}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2})$
+  applies_when:
+    KNA1.LAND1:
+    - BR
+  message: 'Customer tax number 1: Brazilian CNPJ is not 14 digits'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XD02 > Control data.
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country BR.'
+- id: BKT088
+  field: KNA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[A-Z]{5}[0-9]{4}[A-Z]$
+  applies_when:
+    KNA1.LAND1:
+    - IN
+  message: 'Customer tax number 1: Indian PAN does not follow the AAAAA9999A pattern'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XD02 > Control data.
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country IN.'
+- id: BKT089
+  field: KNA1.STCD1
+  check_class: regex_check
+  severity: high
+  dimension: validity
+  pattern: ^[0-9]{2}-?[0-9]{7}$
+  applies_when:
+    KNA1.LAND1:
+    - US
+  message: 'Customer tax number 1: US EIN does not follow the 99-9999999 pattern'
+  why_it_matters: Tax number 1 is the national business identifier. A malformed value is rejected by the tax authority portals
+    and the e-invoicing and withholding processes that read it.
+  rule_authority: regulatory
+  sap_impact: Tax reports and e-invoices carrying the number are rejected.
+  fix_map:
+    __other__: Correct the tax number in XD02 > Control data.
+  record_fix_template: 'Customer {KNA1.KUNNR}: tax number {KNA1.STCD1} is malformed for country US.'
+- id: BKT090
+  field: T007A.ZMWSK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  fields:
+  - T007A.KALSM
+  - T007A.ZMWSK
+  target_table: T007A
+  target_fields:
+  - KALSM
+  - MWSKZ
+  message: Tax code target tax code (tax code for tax-exempt processing) does not exist in the same tax procedure
+  why_it_matters: Tax codes that point to another code (target code, EU service substitution) fail at posting if the target
+    is missing; the invoice cannot be posted or the wrong tax is computed.
+  rule_authority: sap_hard_constraint
+  sap_impact: FB60/MIRO error 'tax code does not exist'; document cannot be posted.
+  fix_map:
+    __other__: Create the target code in FTXP or correct the reference.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: ZMWSK {T007A.ZMWSK} is not defined.'
+- id: BKT091
+  field: T007A.ZMWSK_ESA
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  fields:
+  - T007A.KALSM
+  - T007A.ZMWSK_ESA
+  target_table: T007A
+  target_fields:
+  - KALSM
+  - MWSKZ
+  message: Tax code sales tax code for the EU service rule does not exist in the same tax procedure
+  why_it_matters: Tax codes that point to another code (target code, EU service substitution) fail at posting if the target
+    is missing; the invoice cannot be posted or the wrong tax is computed.
+  rule_authority: sap_hard_constraint
+  sap_impact: FB60/MIRO error 'tax code does not exist'; document cannot be posted.
+  fix_map:
+    __other__: Create the target code in FTXP or correct the reference.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: ZMWSK_ESA {T007A.ZMWSK_ESA} is not defined.'
+- id: BKT092
+  field: T007A.ZMWSK_ESE
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  fields:
+  - T007A.KALSM
+  - T007A.ZMWSK_ESE
+  target_table: T007A
+  target_fields:
+  - KALSM
+  - MWSKZ
+  message: Tax code purchase tax code for the EU service rule does not exist in the same tax procedure
+  why_it_matters: Tax codes that point to another code (target code, EU service substitution) fail at posting if the target
+    is missing; the invoice cannot be posted or the wrong tax is computed.
+  rule_authority: sap_hard_constraint
+  sap_impact: FB60/MIRO error 'tax code does not exist'; document cannot be posted.
+  fix_map:
+    __other__: Create the target code in FTXP or correct the reference.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: ZMWSK_ESE {T007A.ZMWSK_ESE} is not defined.'
+- id: BKT093
+  field: T007A.EGRKZ
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`T007A.EGRKZ`.notna() & `T007A.MWART`.isna()'
+  message: Tax code carries an EU code but no tax type
+  why_it_matters: The EU code controls the EC sales list; a code without a tax type (input, output) is not picked up by the
+    report.
+  rule_authority: regulatory
+  sap_impact: Intra-community supplies are missing from the EC sales list (S_ALR_87012357).
+  fix_map:
+    __other__: Set the tax type in FTXP.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: EU code {T007A.EGRKZ} without tax type.'
+- id: BKT094
+  field: T007A.ZMWSK
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  fail_when: '`T007A.ZMWSK` == `T007A.MWSKZ`'
+  require_populated: true
+  message: Tax code refers to itself as target tax code
+  why_it_matters: A target code that equals the code is a loop with no effect; the intended substitution never happens.
+  rule_authority: best_practice
+  sap_impact: Tax substitution does not apply.
+  fix_map:
+    __other__: Correct the target code in FTXP.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: target code is itself.'
