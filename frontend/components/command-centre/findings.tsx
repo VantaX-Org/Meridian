@@ -130,7 +130,8 @@ export function FindingsSurface() {
     { id: "pass", header: "Pass rate", accessorFn: (f) => f.pass_rate ?? -1, meta: meta({ width: 92, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate)}%`) },
     { id: "age", header: "Found", accessorFn: (f) => f.created_at, meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
-    { id: "fix", header: "Fix", enableSorting: false, meta: meta({ width: 190 }), cell: ({ row }) => {
+    { id: "fix", header: "Fix", enableSorting: false, meta: meta({ width: 190, clamp: 2 }),
+      accessorFn: (f) => (f.affected_count > 0 ? `Open ${plural(f.affected_count, "record")}${f.severity === "critical" || f.severity === "high" ? ", assign" : ""}` : "Passing"), cell: ({ row }) => {
       const f = row.original;
       const href = `/analyse/finding/${f.id}?tab=records&v=${f.version_id}`;
       return (

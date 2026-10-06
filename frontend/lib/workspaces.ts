@@ -65,8 +65,10 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "records", label: "Failing records", href: "/issues" },
       { id: "analyses", label: "Analysis runs", href: "/versions" },
       { id: "reports", label: "Reports", href: "/reports" },
+      { id: "coverage", label: "Rule coverage", href: "/analyse/coverage" },
       { id: "finding", label: "Finding", href: "/analyse/finding", hidden: true },
       { id: "object", label: "Object", href: "/analyse/object", hidden: true },
+      { id: "rule", label: "Rule", href: "/analyse/rule", hidden: true },
     ],
   },
   {

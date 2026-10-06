@@ -178,6 +178,9 @@ export interface RecordReportProps {
   findings?: ReadonlyArray<RecordReportFinding>;
   /** Fix playbook excerpt for the top finding. */
   fixPlaybook?: FixPlaybookProps;
+  /** The "Fix this record" section body and its count; the section shows only when `fix` is given. */
+  fix?: ReactNode;
+  fixCount?: number;
   configImpact?: ReadonlyArray<RecordReportConfigImpactItem>;
   related?: ReadonlyArray<RecordReportRelatedItem>;
   fixHistory?: RecordReportFixHistory;
@@ -233,6 +236,8 @@ export function RecordReport({
   context,
   findings,
   fixPlaybook,
+  fix,
+  fixCount,
   configImpact,
   related,
   fixHistory,
@@ -255,6 +260,7 @@ export function RecordReport({
         <WhatsWrongSection findings={findings} fixPlaybook={fixPlaybook} />
       ),
     },
+    ...(fix ? [{ id: "fix", label: "Fix", count: fixCount, body: fix }] : []),
     {
       id: "config-impact",
       label: "Config impact",

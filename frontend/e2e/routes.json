@@ -122,6 +122,26 @@
   {
     "name": "record",
     "path": "/workbench/record/c6718ce8-8d5b-4432-933a-4df2b07ee9f0",
-    "heading": "fails 1 check"
+    "heading": "Accounts Payable V3 in Bukrs 1000"
+  },
+  {
+    "name": "coverage",
+    "path": "/analyse/coverage",
+    "heading": "Rule coverage"
+  },
+  {
+    "name": "coverage-object",
+    "path": "/analyse/coverage?object=material_master",
+    "heading": "Rule coverage: Material master"
+  },
+  {
+    "name": "rule-detail",
+    "path": "/analyse/rule/XREC001",
+    "heading": "Reconciliation account is not a vendor reconciliation account in this company code"
+  },
+  {
+    "name": "rule-detail-never-run",
+    "path": "/analyse/rule/MM551",
+    "heading": "Follow-up materials form a loop within a plant"
   }
 ]

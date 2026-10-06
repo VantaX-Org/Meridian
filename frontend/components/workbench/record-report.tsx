@@ -8,11 +8,13 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, Chip, EmptyState, RecordReport, type FixStep, type RecordReportStatus } from "@/components/aurora";
-import { ReasonButton, Tally } from "@/components/ui-core";
+import { FieldChip, KeyValue, Mono, ReasonButton, Tally } from "@/components/ui-core";
+import { copyToClipboard } from "@/lib/actions";
+import { getRuleByCode } from "@/lib/api/rules";
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { useRole } from "@/hooks/use-role";
 import { findingToRecordReport } from "@/lib/aurora";
@@ -20,7 +22,8 @@ import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, labelOf, objectNoun, recordKeyParts, relativeTime, formatDate } from "@/lib/format";
+import type { Finding } from "@/types/api";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
 const SEV = (s: string): "critical" | "high" | "medium" | "low" =>
@@ -68,9 +71,13 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   if (!issue) return <EmptyState title="This record issue no longer exists." actions={<Link className="aurora-link" href="/workbench">Open the steward inbox</Link>} />;
 
   const worst = (open.length ? open : [issue]).map((i) => i.severity).sort((a, b) => ["critical", "high", "medium", "low"].indexOf(a) - ["critical", "high", "medium", "low"].indexOf(b))[0];
-  const verdict = open.length === 0
-    ? `${issue.record_key} passes every check it once failed.`
-    : `${issue.record_key} fails ${open.length} check${open.length === 1 ? "" : "s"}${open.some((i) => i.severity === "critical") ? ", one of them critical" : ""}.`;
+  const parts = recordKeyParts(issue.record_key);
+  const title = `${objectNoun(issue.module)} ${parts[0]?.value ?? issue.record_key}${parts[1] ? ` in ${labelOf(parts[1].key)} ${parts[1].value}` : ""}`;
+  const status = open.length === 0
+    ? "This record passes every check it once failed."
+    : `This record fails ${open.length} check${open.length === 1 ? "" : "s"}${open.some((i) => i.severity === "critical") ? ", one of them critical" : ""}.`;
+  const openChecks = new Set(open.map((i) => i.check_id));
+  const fixable = findings.filter((f) => openChecks.has(f.check_id));
 
   const remediation = findings.filter((f) => f.remediation_text);
   const steps: FixStep[] = [
@@ -91,13 +98,12 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   const days = Math.max(0, Math.floor((end - new Date(issue.first_seen_at).getTime()) / 86_400_000));
   const records = `/analyse?tab=records&status=open&search=${encodeURIComponent(issue.record_key)}`;
   const self = `/workbench/record/${issueId}`;
-  const checkFinding = findings.find((f) => f.check_id === issue.check_id);
   return (
     <div className="ui-page">
       <PageCrumb segments={[
         { level: "portfolio", label: "Portfolio", href: "/" },
         { level: "object", label: `Object: ${formatModuleName(issue.module)}`, href: `/analyse/object/${encodeURIComponent(issue.module)}` },
-        { level: "check", label: `Check: ${issue.check_id}`, href: checkFinding ? `/analyse/finding/${checkFinding.id}` : undefined },
+        { level: "check", label: `Check: ${issue.check_id}`, href: `/analyse/rule/${encodeURIComponent(issue.check_id)}?module=${encodeURIComponent(issue.module)}` },
         { level: "record", label: `Record: ${issue.record_key}` },
       ]} />
       <Tally level={4} label="This record" figures={[
@@ -108,8 +114,12 @@ export function RecordReportView({ issueId }: { issueId: string }) {
       <RecordReport
         recordId={issue.record_key}
         module={formatModuleName(issue.module)}
-        verdict={verdict}
-        support={`${formatModuleName(issue.module)}${issue.grain ? `, evaluated on ${issue.grain}` : ""}. First seen ${relativeTime(issue.first_seen_at)}, last failing ${relativeTime(issue.last_seen_at)}.${issue.reopened_count ? ` Re-opened ${issue.reopened_count} time${issue.reopened_count === 1 ? "" : "s"}.` : ""}`}
+        verdict={title}
+        support={<>
+          {status}{" "}
+          {parts.map((p, i) => <Fragment key={i}>{p.key ? <FieldChip field={p.key} /> : null} <Mono>{p.value}</Mono>{" "}</Fragment>)}
+          {`${issue.grain ? `Evaluated on ${issue.grain}. ` : ""}First seen ${relativeTime(issue.first_seen_at)}, last failing ${relativeTime(issue.last_seen_at)}.${issue.reopened_count ? ` Re-opened ${issue.reopened_count} time${issue.reopened_count === 1 ? "" : "s"}.` : ""}`}
+        </>}
         severity={SEV(worst)}
         status={STATUS[issue.status]}
         lastUpdated={relativeTime(issue.last_seen_at)}
@@ -122,6 +132,8 @@ export function RecordReportView({ issueId }: { issueId: string }) {
           ...(issue.resolution ? [{ id: "resolution", label: "Resolution", value: issue.resolution.replace(/_/g, " ") }] : []),
         ]}
         findings={findings.map((f) => findingToRecordReport(f))}
+        fix={fixable.length ? <FixThis findings={fixable} recordKey={issue.record_key} module={issue.module} /> : undefined}
+        fixCount={fixable.length}
         fixPlaybook={steps.length ? { title: "What to do", steps } : undefined}
         configImpact={configImpact}
         activity={[
@@ -142,6 +154,40 @@ export function RecordReportView({ issueId }: { issueId: string }) {
           </>
         ) : undefined}
       />
+    </div>
+  );
+}
+
+/** One block per open check: the field, what it holds, what it should hold, and how to change it. */
+function FixThis({ findings, recordKey, module }: { findings: Finding[]; recordKey: string; module: string }) {
+  return (
+    <div className="ui-stack" style={{ gap: "var(--aurora-space-5)" }}>
+      {findings.map((f) => <FixBlock key={f.check_id} f={f} recordKey={recordKey} module={module} />)}
+    </div>
+  );
+}
+
+function FixBlock({ f, recordKey, module }: { f: Finding; recordKey: string; module: string }) {
+  const rule = useQuery({ queryKey: ["rule.by-code", f.check_id, module], retry: false, meta: { ignoreError: true }, queryFn: () => getRuleByCode(f.check_id, module) });
+  const rf = f.record_fixes?.find((x) => x.record_id === recordKey);
+  const vf = rf ? f.value_fix_map?.[rf.invalid_value] : undefined;
+  const field = f.details?.field_checked ?? (f.details?.table && f.details?.field ? `${f.details.table}.${f.details.field}` : null);
+  const [table, name] = field?.includes(".") ? [field.slice(0, field.indexOf(".")), field.slice(field.indexOf(".") + 1)] : [null, field];
+  const sql = rf?.sql_statement ?? vf?.sql_statement ?? null;
+  const tcode = rule.data?.transaction;
+  return (
+    <div>
+      <p className="ui-micro"><Link className="ui-link" href={`/analyse/rule/${encodeURIComponent(f.check_id)}?module=${encodeURIComponent(module)}`}>{f.business_name ?? f.details?.message ?? f.check_id}</Link></p>
+      {!rf ? <p className="ui-note">No fix is stored for this record yet.</p> : (
+        <KeyValue rows={[
+          { k: "Field", v: name ? <FieldChip table={table} field={name} /> : "Not tied to one field" },
+          { k: "Now", v: rf.invalid_value === "" ? "Blank" : <Mono>{rf.invalid_value}</Mono> },
+          { k: "Should be", v: vf?.suggested_value ? <Mono>{vf.suggested_value}</Mono> : "Not proposed, decide in SAP" },
+          { k: "Do", v: tcode ? <span>Change it in SAP with <Mono>{tcode}</Mono></span> : "Change it in SAP" },
+          { k: "Instruction", v: rf.fix_instruction },
+          ...(sql ? [{ k: "SQL", v: <span><code className="ui-code">{sql}</code>{" "}<Button size="sm" variant="ghost" onClick={() => copyToClipboard(sql, "SQL copied")}>Copy</Button></span> }] : []),
+        ]} />
+      )}
     </div>
   );
 }
