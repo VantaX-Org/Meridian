@@ -135,10 +135,11 @@ def test_nav_permission_gating():
 
 
 def test_settings_cards_are_gated():
-    """Settings cards (Admin → Settings surface) use the same gate as their nav entries."""
+    """Settings shows a deployment block and health checks, no link list duplicating the rail; health stays gated."""
     content = Path("frontend/components/admin/settings.tsx").read_text(encoding="utf-8")
-    assert "isItemVisible" in content
-    assert "SETTINGS_ITEMS" in content
+    assert "KeyValue" in content and "DoctorCard" in content
+    assert 'can("manage_system")' in content
+    assert "SETTINGS_ITEMS" not in content
 
 
 # ── O.2 AI Rules page ──────────────────────────────────────────────────────
@@ -188,10 +189,10 @@ def test_settings_has_ai_reviewer_role():
 
 
 def test_settings_ai_reviewer_distinct_badge():
-    """ai_reviewer role has its own badge tone (Aurora status tones, not hex)."""
+    """ai_reviewer has its own label; roles are plain text, hue is for defects only."""
     path = Path("frontend/components/admin/users.tsx")
     content = path.read_text(encoding="utf-8")
-    assert "ai_reviewer: \"warning\"" in content
+    assert 'ai_reviewer: { label: "AI Reviewer"' in content
 
 
 def test_settings_ai_reviewer_tooltip():

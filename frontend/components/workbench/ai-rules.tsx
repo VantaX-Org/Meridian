@@ -123,9 +123,8 @@ export function AiRulesSurface() {
       <PageHeader title="AI rule review" summary="Match rules the AI proposes after stewards keep correcting the same field." />
       <Tally level={2} label="AI rule proposals" figures={[
         { label: "Proposed", value: nPending, loading, tone: nPending ? "warning" : undefined, verdict: nPending ? "Waiting for a reviewer." : "No rules waiting for review.", href: "/ai/rules?status=pending" },
-        { label: "Accepted", value: nOk, loading, verdict: nOk ? "Live in the match engine." : "No AI rules in use yet.", href: "/ai/rules?status=approved" },
+        { label: "Accepted", value: nOk, loading, verdict: nOk ? `Live in the match engine${typeof rate === "number" ? `, ${rate}% of those decided` : ""}.` : "No AI rules in use yet.", href: "/ai/rules?status=approved" },
         { label: "Rejected", value: nNo, loading, verdict: nNo ? "Turned down by a reviewer." : "Nothing turned down.", href: "/ai/rules?status=rejected" },
-        { label: "Acceptance rate", value: rate, unit: typeof rate === "number" ? "%" : undefined, loading, verdict: typeof rate === "number" ? "Of decided proposals." : "Nothing decided yet.", href: "/ai/rules?status=approved" },
       ]} />
 
       {ask ? (

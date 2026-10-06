@@ -21,7 +21,7 @@ import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
 import { materialHref } from "@/lib/material-views";
-import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { formatModuleName, recordKeyLabel, relativeTime, formatDate } from "@/lib/format";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
 const SEV = (s: string): "critical" | "high" | "medium" | "low" =>
@@ -69,9 +69,10 @@ export function RecordReportView({ issueId }: { issueId: string }) {
   if (!issue) return <EmptyState title="This record issue no longer exists." actions={<Link className="aurora-link" href="/workbench">Open the steward inbox</Link>} />;
 
   const worst = (open.length ? open : [issue]).map((i) => i.severity).sort((a, b) => ["critical", "high", "medium", "low"].indexOf(a) - ["critical", "high", "medium", "low"].indexOf(b))[0];
+  const keyLabel = recordKeyLabel(issue.record_key);
   const verdict = open.length === 0
-    ? `${issue.record_key} passes every check it once failed.`
-    : `${issue.record_key} fails ${open.length} check${open.length === 1 ? "" : "s"}${open.some((i) => i.severity === "critical") ? ", one of them critical" : ""}.`;
+    ? `${keyLabel} passes every check it once failed.`
+    : `${keyLabel} fails ${open.length} check${open.length === 1 ? "" : "s"}${open.some((i) => i.severity === "critical") ? ", one of them critical" : ""}.`;
 
   const remediation = findings.filter((f) => f.remediation_text);
   const steps: FixStep[] = [
@@ -99,7 +100,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         { level: "portfolio", label: "Portfolio", href: "/" },
         { level: "object", label: `Object: ${formatModuleName(issue.module)}`, href: `/analyse/object/${encodeURIComponent(issue.module)}` },
         { level: "check", label: `Check: ${issue.check_id}`, href: checkFinding ? `/analyse/finding/${checkFinding.id}` : undefined },
-        { level: "record", label: `Record: ${issue.record_key}` },
+        { level: "record", label: `Record: ${keyLabel}` },
       ]} />
       <Tally level={4} label="This record" figures={[
         { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "This record passes every check.", href: records, loading: siblings.isLoading },

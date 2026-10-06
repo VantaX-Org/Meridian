@@ -483,9 +483,7 @@ function RunResult({ run, targetType, canEdit, canExport }: {
         { label: "Verdict", value: null, text: r.readiness_verdict ? VERDICT[r.readiness_verdict].label : undefined,
           tone: r.readiness_verdict === "no-go" ? "danger" : r.readiness_verdict === "conditional" ? "warning" : r.readiness_verdict === "go" ? "success" : undefined,
           verdict: "Overall call for this run.", href: MIGRATION_HREF },
-        { label: "Records transfer-ready", value: ready, verdict: `Of ${r.records_total.toLocaleString()} analysed.`, href: MIGRATION_HREF },
-        { label: "Readiness", value: r.readiness_score != null ? Math.round(r.readiness_score * 10) / 10 : null, unit: "%",
-          verdict: "Share of records with no blocking gap.", href: MIGRATION_HREF },
+        { label: "Records transfer-ready", value: ready, verdict: `Of ${r.records_total.toLocaleString()} analysed${r.readiness_score != null ? `, ${Math.round(r.readiness_score * 10) / 10}% with no blocking gap` : ""}.`, href: MIGRATION_HREF },
         { label: "Critical gaps", value: r.critical_count, tone: r.critical_count ? "danger" : undefined,
           verdict: r.critical_count ? "These records cannot load." : "Nothing blocks the load.", href: MIGRATION_HREF },
       ]} />

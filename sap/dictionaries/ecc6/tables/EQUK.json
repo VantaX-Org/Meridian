@@ -1,0 +1,134 @@
+{
+ "table": "EQUK",
+ "description": "Quota File: Header",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 4,
+   "name": "BDATU",
+   "key": true,
+   "data_element": "QUOBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Quota arrangement period valid until",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "VDATU",
+   "key": false,
+   "data_element": "QUOAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Quota arrangement period valid from",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "QUNUM",
+   "key": false,
+   "data_element": "QUNUM",
+   "domain": "QUNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of quota arrangement",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "SCMNG",
+   "key": false,
+   "data_element": "SCMNG",
+   "domain": "MENG15",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Minimum Quantity for Splitting Quota",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

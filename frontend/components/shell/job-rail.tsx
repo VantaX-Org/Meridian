@@ -31,6 +31,7 @@ export function JobRail() {
         onClick={() => setOpen((o) => !o)}>
         <Activity size={14} aria-hidden />
         <span className="aurora-job-rail__count aurora-number">{active.length}</span>
+        {active.length ? <span className="aurora-job-rail__label">running</span> : <span className="aurora-job-rail__label">Jobs</span>}
         {percent !== null ? (
           <span className="aurora-job-rail__bar" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
             <span style={{ transform: `scaleX(${percent / 100})` }} />
