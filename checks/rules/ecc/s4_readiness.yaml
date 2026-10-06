@@ -54,13 +54,15 @@ areas:
     label: Universal Journal / General Ledger
     simplification_item: Data Model Changes in Financials - Universal Journal
     related:
-      blocking: [S4-CE-PRIMARY-GL, S4-CE-SECONDARY-CLASH]
-      warning: [AR058, AP074]
+      blocking: [S4-CE-PRIMARY-GL, S4-CE-SECONDARY-CLASH, S4-CE-PRIMARY-BS]
+      warning: [AR058, AP074, S4-CE-GL-DELETED, S4-CE-NO-COMPANY-CODE, S4-CO-PRCTR-SEGMENT, S4-CO-ORDER-PRCTR,
+                GL259, CO091, CO092]
   asset_accounting:
     label: New Asset Accounting
     simplification_item: Asset Accounting - new data structures
     related:
-      blocking: [S4-AA-PERIODIC-APC]
+      blocking: [S4-AA-PERIODIC-APC, S4-AA-CLASS-KTOGR, AA221, AA224, AA234, AA241]
+      warning: [AA229, AA233, AA235, AA244, AA245, AA246]
   production:
     label: Production planning
     simplification_item: Production version mandatory for BOM selection

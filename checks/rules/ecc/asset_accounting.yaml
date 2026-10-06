@@ -1157,3 +1157,506 @@ rules:
       company code of the cost centre (ABT1N).
   record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): cost centre {ANLZ.KOSTL} belongs to
     another company code.'
+
+# Depth pass 2: asset master, depreciation areas, time-dependent data, class and chart of depreciation (AA221 onward)
+- id: AA221
+  field: ANLA.ANLN1
+  fields:
+  - ANLA.BUKRS
+  - ANLA.ANLN1
+  check_class: exists_check
+  target_table: ANLA
+  target_fields:
+  - BUKRS
+  - ANLN1
+  target_when:
+    ANLN2:
+    - '0000'
+  applies_when:
+    ANLA.ANLN2:
+      not_in:
+      - '0000'
+  severity: high
+  dimension: consistency
+  message: Asset subnumber has no main asset record
+  why_it_matters: A subnumber is a part of a main asset. Without the record with subnumber 0000 the sub asset hangs on an
+    asset that does not exist as its own record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfers, retirements and the asset explorer (AW01N) fail for the group, and the main asset's totals leave
+    out the sub asset.
+  fix_map:
+    __other__: Recreate the main asset (AS01) or move the sub asset to an existing main asset (ABUMN).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} in company code {ANLA.BUKRS}: main asset record is missing.'
+- id: AA222
+  field: ANLA.ABGDT
+  check_class: cross_field_check
+  fail_when: '`ANLA.ABGDT`.notna() & `ANLA.DEAKT`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Asset has a retirement date but no deactivation date
+  why_it_matters: The retirement date records when the last retirement was posted. Without a deactivation date the asset stays
+    active in the register.
+  rule_authority: best_practice
+  sap_impact: The asset remains in depreciation runs and reports as an active asset.
+  fix_map:
+    __other__: Set the deactivation date in AS02 or reverse the retirement.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): retired, not deactivated.'
+- id: AA223
+  field: ANLA.ABGDT
+  check_class: cross_field_check
+  fail_when: '`ANLA.ABGDT` > @today'
+  severity: high
+  dimension: validity
+  message: Asset retirement date is in the future
+  why_it_matters: A retirement date is the posting date of a retirement that has already happened. A future value is a typing
+    error or a faulty load.
+  rule_authority: best_practice
+  sap_impact: Retirement reports and the asset history show a retirement that has not happened.
+  fix_map:
+    __other__: Correct the date in AS02 or reverse the retirement (AB01L).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): retirement date is in the future.'
+- id: AA224
+  field: ANLA.ABGDT
+  check_class: cross_field_check
+  fail_when: '`ANLA.ABGDT` < `ANLA.AKTIV`'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Asset was retired before it was capitalised
+  why_it_matters: An asset cannot be retired before its capitalisation date. The dates were loaded or changed in the wrong
+    order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Depreciation up to the retirement has no base and the asset history contradicts itself.
+  fix_map:
+    __other__: Correct the capitalisation date or the retirement date in AS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): retirement before capitalisation.'
+- id: AA225
+  field: ANLA.XLOEV
+  check_class: cross_field_check
+  fail_when: (`ANLA.XLOEV` == 'X') & `ANLA.XSPEB`.isna()
+  severity: medium
+  dimension: consistency
+  message: Asset flagged for deletion is not blocked for posting
+  why_it_matters: An asset flagged for deletion is supposed to be blocked so that nothing is posted to it before archiving.
+  rule_authority: best_practice
+  sap_impact: Acquisitions can still be posted to an asset that is about to be archived.
+  fix_map:
+    __other__: Block the asset in AS02 or remove the deletion flag.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): flagged for deletion, not blocked.'
+- id: AA226
+  field: ANLA.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when:
+    ANLA.LIFNR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Asset's vendor does not exist
+  why_it_matters: The vendor on the asset master records the supplier of the asset. A vendor that is not in the vendor master
+    leaves a dangling reference.
+  rule_authority: sap_hard_constraint
+  sap_impact: Asset reports by vendor and warranty follow-up find no vendor; the vendor cannot be migrated as a business partner
+    relationship.
+  fix_map:
+    __other__: Correct the vendor in AS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): vendor {ANLA.LIFNR} does not exist.'
+- id: AA227
+  field: ANLA.MENGE
+  check_class: cross_field_check
+  fail_when: '`ANLA.MENGE` < 0'
+  severity: medium
+  dimension: validity
+  message: Asset quantity is negative
+  why_it_matters: The quantity of an asset is a count of physical units and cannot be below zero.
+  rule_authority: best_practice
+  sap_impact: Inventory lists and quantity-based reports show wrong totals.
+  fix_map:
+    __other__: Correct the quantity in AS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): negative quantity.'
+- id: AA228
+  field: ANLA.ZUGDT
+  check_class: cross_field_check
+  fail_when: '`ANLA.ZUGDT` > @today'
+  severity: medium
+  dimension: validity
+  message: Asset first acquisition date is in the future
+  why_it_matters: The first acquisition date is the date of the first posted acquisition. A future date cannot belong to a
+    posted acquisition.
+  rule_authority: best_practice
+  sap_impact: Ageing and the depreciation start derived from the date are wrong.
+  fix_map:
+    __other__: Correct the date in AS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): first acquisition in the future.'
+- id: AA229
+  field: ANLB.AFABG
+  check_class: cross_field_check
+  fail_when: (`ANLB.AFABG`.dt.year * 12 + `ANLB.AFABG`.dt.month) < (`ANLA.AKTIV`.dt.year * 12 + `ANLA.AKTIV`.dt.month)
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Depreciation starts in a period before the asset's capitalisation period
+  why_it_matters: Depreciation starts in the capitalisation period or later (period control moves the start to the first day
+    of that period). A start in an earlier period means depreciation for a period in which the asset was not in use.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run posts depreciation for periods before capitalisation, or a catch-up that is not intended.
+  fix_map:
+    __other__: Correct the depreciation start date in AS02 > Depreciation areas.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: depreciation starts before capitalisation.'
+- id: AA230
+  field: ANLB.NAPRZ
+  check_class: cross_field_check
+  fail_when: '`ANLB.NAPRZ` > 100'
+  severity: high
+  dimension: validity
+  message: Ordinary depreciation percentage rate is above 100
+  why_it_matters: The percentage rate is the share of the base depreciated per year, so it cannot exceed 100.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run posts more than the asset is worth in a year.
+  fix_map:
+    __other__: Correct the rate in AS02.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: rate above 100.'
+- id: AA231
+  field: ANLB.SAPRZ
+  check_class: cross_field_check
+  fail_when: '`ANLB.SAPRZ` > 100'
+  severity: high
+  dimension: validity
+  message: Special depreciation percentage rate is above 100
+  why_it_matters: The percentage rate for special depreciation cannot exceed 100.
+  rule_authority: sap_hard_constraint
+  sap_impact: Special depreciation posts more than the asset is worth.
+  fix_map:
+    __other__: Correct the rate in AS02.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: special rate above 100.'
+- id: AA232
+  field: ANLB.XLOEV
+  check_class: cross_field_check
+  fail_when: (`ANLB.XLOEV` == 'X') & `ANLA.XLOEV`.isna() & `ANLA.DEAKT`.isna()
+  severity: medium
+  dimension: consistency
+  message: Depreciation area is flagged for deletion on an active asset
+  why_it_matters: A depreciation area flagged for deletion is no longer maintained. On an asset that is still active it stops
+    one valuation view of the asset.
+  rule_authority: best_practice
+  sap_impact: The area is left out of the depreciation run while the asset is still posted to in other areas.
+  fix_map:
+    __other__: Remove the flag or deactivate the asset.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2}: area {ANLB.AFABE} flagged for deletion, asset active.'
+- id: AA233
+  field: ANLZ.PRCTR
+  fields:
+  - ANLZ.KOSTL
+  - ANLZ.PRCTR
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  - PRCTR
+  target_when:
+    DATBI:
+    - '99991231'
+  applies_when:
+    ANLZ.BDATU:
+    - '99991231'
+    ANLZ.KOSTL:
+      populated: true
+    ANLZ.PRCTR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Asset profit centre differs from the profit centre of its cost centre
+  why_it_matters: The profit centre of an asset is normally derived from its cost centre. A different one splits the asset's
+    depreciation and its cost centre costs across two profit centres.
+  rule_authority: best_practice
+  sap_impact: Profit centre results mix the asset's depreciation with the wrong organisation unit.
+  fix_map:
+    __other__: Align the profit centre in AS02 > Time-dependent or change the cost centre.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2}: profit centre {ANLZ.PRCTR} differs from its cost centre''s.'
+- id: AA234
+  field: ANLZ.PRCTR
+  check_class: exists_check
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  applies_when:
+    ANLZ.BDATU:
+    - '99991231'
+    ANLZ.PRCTR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Asset profit centre does not exist
+  why_it_matters: Depreciation and acquisitions post to the asset's profit centre. A profit centre that does not exist cannot
+    take the posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB and acquisition postings fail on the profit centre.
+  fix_map:
+    __other__: Correct the profit centre in AS02.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2}: profit centre {ANLZ.PRCTR} does not exist.'
+- id: AA235
+  field: ANLZ.PRCTR
+  check_class: exists_check
+  negate: true
+  target_table: CEPC
+  target_fields:
+  - PRCTR
+  target_when:
+    DATBI:
+    - '99991231'
+    LOCK_IND:
+      populated: true
+  applies_when:
+    ANLZ.BDATU:
+    - '99991231'
+    ANLZ.PRCTR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Asset profit centre is locked
+  why_it_matters: A locked profit centre refuses postings. Depreciation of an asset assigned to it cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run (AFAB) ends with an error for the asset.
+  fix_map:
+    __other__: Unlock the profit centre (KE52) or change the asset's profit centre.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2}: profit centre {ANLZ.PRCTR} is locked.'
+- id: AA236
+  field: ANLZ.WERKS
+  check_class: exists_check
+  target_table: T001W
+  target_fields:
+  - WERKS
+  applies_when:
+    ANLZ.BDATU:
+    - '99991231'
+    ANLZ.WERKS:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Asset plant does not exist
+  why_it_matters: The plant locates the asset. A plant that is not defined breaks the location hierarchy and plant reports.
+  rule_authority: sap_hard_constraint
+  sap_impact: Location and plant based reports miss the asset.
+  fix_map:
+    __other__: Correct the plant in AS02.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2}: plant {ANLZ.WERKS} does not exist.'
+- id: AA237
+  field: ANLZ.LSTAR
+  check_class: exists_check
+  target_table: CSLA
+  target_fields:
+  - LSTAR
+  applies_when:
+    ANLZ.BDATU:
+    - '99991231'
+    ANLZ.LSTAR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Asset activity type does not exist
+  why_it_matters: The activity type on the asset is used to allocate depreciation by activity. A type that is not defined
+    cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Activity-based allocation of the asset fails.
+  fix_map:
+    __other__: Correct the activity type in AS02.
+  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2}: activity type {ANLZ.LSTAR} does not exist.'
+- id: AA238
+  field: ANKA.ANLKL
+  check_class: exists_check
+  target_table: ANKB
+  target_fields:
+  - ANLKL
+  applies_when:
+    ANKA.XLOEV:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Asset class has no depreciation area definitions
+  why_it_matters: The depreciation areas of a class (OAYD) give every new asset of the class its depreciation terms. A class
+    without them creates assets with no depreciation.
+  rule_authority: sap_hard_constraint
+  sap_impact: New assets of the class have no depreciation areas and are never depreciated.
+  fix_map:
+    __other__: Define the depreciation areas of the class in OAYD or flag the class for deletion.
+  record_fix_template: 'Asset class {ANKA.ANLKL}: no depreciation area definitions.'
+- id: AA239
+  field: ANKB.AFASL
+  fields:
+  - ANKB.AFAPL
+  - ANKB.AFASL
+  check_class: exists_check
+  target_table: T090NA
+  target_fields:
+  - AFAPL
+  - AFASL
+  applies_when:
+    ANKB.AFASL:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Depreciation key of the asset class is not defined in the chart of depreciation
+  why_it_matters: Assets of the class inherit the depreciation key. A key that is not defined in the chart of depreciation
+    cannot calculate depreciation.
+  rule_authority: sap_hard_constraint
+  sap_impact: New assets of the class get a depreciation key that the system rejects.
+  fix_map:
+    __other__: Correct the key in OAYD or define it in AFAMA.
+  record_fix_template: 'Asset class {ANKB.ANLKL} area {ANKB.AFABE}: depreciation key {ANKB.AFASL} is not defined.'
+- id: AA240
+  field: ANKB.NAPRZ
+  check_class: cross_field_check
+  fail_when: '`ANKB.NAPRZ` > 100'
+  severity: medium
+  dimension: validity
+  message: Class default depreciation rate is above 100
+  why_it_matters: The percentage rate default in the class is inherited by new assets and cannot exceed 100.
+  rule_authority: sap_hard_constraint
+  sap_impact: New assets of the class are created with an impossible rate.
+  fix_map:
+    __other__: Correct the rate in OAYD.
+  record_fix_template: 'Asset class {ANKB.ANLKL} area {ANKB.AFABE}: rate above 100.'
+- id: AA241
+  field: T093C.PERIV
+  fields:
+  - T093C.BUKRS
+  - T093C.PERIV
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  - PERIV
+  applies_when:
+    T093C.PERIV:
+      populated: true
+  severity: critical
+  dimension: consistency
+  message: Fiscal year variant of the company code in Asset Accounting differs from the company code
+  why_it_matters: Asset Accounting and Financial Accounting must use the same fiscal year variant. A difference breaks every
+    period-based posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Depreciation periods and G/L periods diverge; AFAB and period close cannot reconcile.
+  fix_map:
+    __other__: Align the variant in OAYN or OX02.
+  record_fix_template: 'Company code {T093C.BUKRS}: fiscal year variant {T093C.PERIV} in Asset Accounting differs from the
+    company code.'
+- id: AA242
+  field: T093C.PERIV
+  check_class: exists_check
+  target_table: T009
+  target_fields:
+  - PERIV
+  applies_when:
+    T093C.PERIV:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Fiscal year variant of Asset Accounting does not exist
+  why_it_matters: Depreciation is calculated per fiscal year period. A variant that is not defined cannot return periods.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run cannot determine periods.
+  fix_map:
+    __other__: Correct the variant in OAYN.
+  record_fix_template: 'Company code {T093C.BUKRS}: fiscal year variant {T093C.PERIV} does not exist.'
+- id: AA243
+  field: T093C.AFAPL
+  check_class: exists_check
+  target_table: T093
+  target_fields:
+  - AFAPL
+  severity: critical
+  dimension: consistency
+  message: Chart of depreciation assigned to the company code has no depreciation areas
+  why_it_matters: A chart of depreciation without areas (T093) has no valuation view to post in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Assets of the company code cannot be created.
+  fix_map:
+    __other__: Define the areas in EC08.
+  record_fix_template: 'Company code {T093C.BUKRS}: chart of depreciation {T093C.AFAPL} has no depreciation areas.'
+- id: S4-AA-CLASS-KTOGR
+  field: ANKA.KTOGR
+  check_class: exists_check
+  target_table: T095
+  target_fields:
+  - KTOGR
+  applies_when:
+    ANKA.XLOEV:
+      blank: true
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: active asset class uses an account determination with no G/L accounts (T095) - simplification
+    item S4TWL Asset Accounting, SAP Note 2270388'
+  why_it_matters: New Asset Accounting posts every area managed in the general ledger in real time through the account determination
+    of the class. An account determination without accounts cannot post the values of any asset of the class.
+  rule_authority: sap_hard_constraint
+  sap_impact: Assets created in the class cannot be migrated or posted in new Asset Accounting.
+  fix_map:
+    __other__: Maintain the G/L accounts in AO90 for each chart of accounts in use, or change the class account determination
+      in OAOA.
+  record_fix_template: 'Asset class {ANKA.ANLKL}: account determination {ANKA.KTOGR} has no G/L accounts.'
+- id: AA244
+  field: ANLA.ABGDT
+  check_class: freshness_check
+  max_age_hours: 17520
+  severity: low
+  dimension: timeliness
+  message: Asset retired more than two years ago is still in the master
+  why_it_matters: A retired asset has no more depreciation and no more postings. After two years it belongs in the archive
+    instead of in the data to migrate.
+  rule_authority: best_practice
+  sap_impact: Migration volume and asset reconciliation include assets that are fully retired.
+  fix_map:
+    __other__: Archive the asset (SARA, object FI_ASSETS) before the conversion.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): retired more than two years ago.'
+- id: AA245
+  field: ANLA.AKTIV
+  check_class: null_check
+  applies_when:
+    ANLA.ANLTP:
+      not_in:
+      - '2'
+    ANLA.DEAKT:
+      blank: true
+    ANLA.XLOEV:
+      blank: true
+    ANLA.ERDAT:
+      older_than_days: 365
+  severity: medium
+  dimension: timeliness
+  message: Asset created more than a year ago has never been capitalised
+  why_it_matters: An asset that is neither an asset under construction nor capitalised after a year was created and forgotten.
+    The migration of its balances has no capitalisation date.
+  rule_authority: best_practice
+  sap_impact: The migration cockpit rejects assets with no capitalisation date, or carries them as open items.
+  fix_map:
+    __other__: Capitalise the asset (ABZON or AS02) or flag it for deletion.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): created over a year ago, not capitalised.'
+- id: AA246
+  field: ANLA.ANLKL
+  check_class: exists_check
+  negate: true
+  grain: ANLA
+  target_table: ANKA
+  target_fields:
+  - ANLKL
+  target_when:
+    XLOEV:
+    - X
+  applies_when:
+    ANLA.DEAKT:
+      blank: true
+    ANLA.ABGDT:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Active asset belongs to an asset class flagged for deletion
+  why_it_matters: A class flagged for deletion is being phased out. Assets that are still active in it block the deletion
+    and make the class part of the migration.
+  rule_authority: best_practice
+  sap_impact: The class cannot be deleted and its assets are migrated into a class that is obsolete.
+  fix_map:
+    __other__: Reclassify the assets (ABUMN) or remove the deletion flag from the class.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): class {ANLA.ANLKL} is flagged for deletion.'

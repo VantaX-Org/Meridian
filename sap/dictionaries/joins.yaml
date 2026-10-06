@@ -82,6 +82,8 @@ edges:
   - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
   # chart of accounts and company code above the G/L master (chart-level and company-code-level settings)
   - {parent: T004, child: SKA1, join: {KTOPL: KTOPL}, cardinality: many}
+  # account group number interval (OBD4): account numbers are judged against the interval of their group
+  - {parent: T077S, child: SKA1, join: {KTOPL: KTOPL, KTOKS: KTOKS}, cardinality: many}
   - {parent: T001, child: SKB1, join: {BUKRS: BUKRS}, cardinality: many}
   # cost elements under their controlling area (chart of accounts of the CO area)
   - {parent: TKA01, child: CSKB, join: {KOKRS: KOKRS}, cardinality: many}

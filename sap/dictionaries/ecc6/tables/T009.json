@@ -1,0 +1,88 @@
+{
+ "table": "T009",
+ "description": "Fiscal Year Variants",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PERIV",
+   "key": true,
+   "data_element": "PERIV",
+   "domain": "PERIV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Fiscal Year Variant",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "XKALE",
+   "key": false,
+   "data_element": "XKALE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Determine periods like calendar year ?",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "XJABH",
+   "key": false,
+   "data_element": "XJABH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Fiscal year variants year-dependent ?",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ANZBP",
+   "key": false,
+   "data_element": "ANZBP",
+   "domain": "ANZBP",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of posting periods",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ANZSP",
+   "key": false,
+   "data_element": "ANZSP",
+   "domain": "ANZSP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number of special periods",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -125,9 +125,10 @@ def test_plan_reads_children_by_parent_keys():
 
 
 def test_plan_reads_the_check_table_of_every_field():
-    # SKB1.WAERS is value-checked against TCURC even though no fi_gl rule names TCURC
+    # SKB1.WAERS is value-checked against TCURC; an fi_gl exists_check also names TCURC as its
+    # target (read in full as data), so the check-table read is satisfied either way
     plans = plan_modules(["fi_gl"], get_dictionary("ecc6"))
-    assert plans["TCURC"].purpose == "config" and "WAERS" in plans["TCURC"].fields
+    assert "WAERS" in plans["TCURC"].fields
     assert all(p.purpose == "data" for t, p in plans.items() if t in ("SKA1", "SKB1"))
 
 
