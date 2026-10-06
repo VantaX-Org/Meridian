@@ -643,3 +643,243 @@ rules:
     fix_map:
       __other__: Create the measuring point (IK01) or correct the reference on the equipment (IE02).
     record_fix_template: 'Equipment {EQUI.EQUNR}: measuring point {EQUI.IMRC_POINT} not found.'
+
+  - id: FLEET036
+    field: FLEET_MASTER.CURRENT_KM
+    check_class: cross_field_check
+    fail_when: '`FLEET_MASTER.CURRENT_KM` < 0'
+    severity: high
+    dimension: validity
+    message: Vehicle odometer reading is negative
+    why_it_matters: An odometer reading cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Service intervals and depreciation by distance are wrong.
+    fix_map:
+      __other__: Correct the reading.
+    record_fix_template: 'Vehicle {FLEET_MASTER.EQUNR}: odometer {actual_value}.'
+
+  - id: FLEET037
+    field: FLEET_MASTER.SERVICE_KM
+    check_class: cross_field_check
+    fail_when: '`FLEET_MASTER.SERVICE_KM` < 0'
+    severity: medium
+    dimension: validity
+    message: Vehicle service distance is negative
+    why_it_matters: A service interval distance cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Service planning is wrong.
+    fix_map:
+      __other__: Correct the service distance.
+    record_fix_template: 'Vehicle {FLEET_MASTER.EQUNR}: service distance {actual_value}.'
+
+  - id: FLEET038
+    field: FLEET_MASTER.LAST_SERVICE_DATE
+    check_class: cross_field_check
+    fail_when: '`FLEET_MASTER.LAST_SERVICE_DATE` > @today'
+    severity: medium
+    dimension: validity
+    message: Last service date is in the future
+    why_it_matters: A service that has not happened yet cannot be recorded.
+    rule_authority: sap_hard_constraint
+    sap_impact: The vehicle shows as freshly serviced.
+    fix_map:
+      __other__: Correct the last service date.
+    record_fix_template: 'Vehicle {FLEET_MASTER.EQUNR}: last service {actual_value}, in the future.'
+
+  - id: FLEET039
+    field: FLEET_MASTER.NEXT_SERVICE_DUE
+    check_class: freshness_check
+    max_age_hours: 0
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+    severity: high
+    dimension: timeliness
+    message: Vehicle service is overdue
+    why_it_matters: A vehicle past its service due date is a safety and warranty risk.
+    rule_authority: best_practice
+    sap_impact: Breakdown risk and warranty cover are lost.
+    fix_map:
+      __other__: Book the service and update the next due date.
+    record_fix_template: 'Vehicle {FLEET_MASTER.EQUNR}: service was due {actual_value}.'
+
+  - id: FLEET040
+    field: FLEET.GROSS_WGT
+    check_class: cross_field_check
+    fail_when: (`FLEET.GROSS_WGT` <= 0)
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+      FLEET.GROSS_WGT:
+        populated: true
+    severity: medium
+    dimension: validity
+    message: Vehicle gross weight is zero or negative
+    why_it_matters: A gross weight of zero or less cannot be used for load limits.
+    rule_authority: sap_hard_constraint
+    sap_impact: Load planning and permits use a wrong limit.
+    fix_map:
+      __other__: Enter the gross vehicle weight.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: gross weight {actual_value}.'
+
+  - id: FLEET041
+    field: FLEET.LOAD_WGT
+    check_class: cross_field_check
+    fail_when: '`FLEET.LOAD_WGT` < 0'
+    severity: medium
+    dimension: validity
+    message: Vehicle load weight is negative
+    why_it_matters: A load capacity cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Load planning uses a wrong limit.
+    fix_map:
+      __other__: Correct the load weight.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: load weight {actual_value}.'
+
+  - id: FLEET042
+    field: FLEET.ENGINE_POWER
+    check_class: cross_field_check
+    fail_when: '`FLEET.ENGINE_POWER` < 0'
+    severity: low
+    dimension: validity
+    message: Vehicle engine power is negative
+    why_it_matters: Engine power cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Emission and tax classification is wrong.
+    fix_map:
+      __other__: Correct the engine power.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: engine power {actual_value}.'
+
+  - id: FLEET043
+    field: EQUI.INBDT
+    check_class: cross_field_check
+    fail_when: '`EQUI.INBDT` > @today'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+    severity: low
+    dimension: validity
+    message: Vehicle start-up date is in the future
+    why_it_matters: A start-up date later than today is a keying error.
+    rule_authority: sap_hard_constraint
+    sap_impact: Depreciation and age reports are wrong.
+    fix_map:
+      __other__: Correct the start-up date.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: start-up {actual_value}, in the future.'
+
+  - id: FLEET044
+    field: FLEET.EXPIRY_DATE
+    check_class: cross_field_check
+    fail_when: '`FLEET.EXPIRY_DATE` < `EQUI.INBDT`'
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+    severity: medium
+    dimension: consistency
+    message: Vehicle licence expires before start-up
+    why_it_matters: A licence cannot expire before the vehicle was put into service.
+    rule_authority: sap_hard_constraint
+    sap_impact: Licence tracking flags the vehicle as unlicensed from day one.
+    fix_map:
+      __other__: Correct the licence expiry date.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: licence expiry {FLEET.EXPIRY_DATE}, start-up {EQUI.INBDT}.'
+
+  - id: FLEET045
+    field: EQUZ.ILOAN
+    check_class: exists_check
+    fields:
+    - EQUZ.ILOAN
+    target_table: ILOA
+    target_fields:
+    - ILOAN
+    applies_when:
+      EQUZ.ILOAN:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Equipment location and account assignment record does not exist
+    why_it_matters: Every equipment time segment points at an ILOA record that holds its location, plant section and cost centre.
+    rule_authority: sap_hard_constraint
+    sap_impact: The vehicle has no cost centre or location.
+    fix_map:
+      __other__: Repair the assignment in IE02 or recreate the vehicle.
+    record_fix_template: 'Equipment {EQUZ.EQUNR}: assignment {EQUZ.ILOAN} not found.'
+
+  - id: FLEET046
+    field: EQUI.EQUNR
+    check_class: exists_check
+    fields:
+    - EQUI.EQUNR
+    target_table: EQUZ
+    target_fields:
+    - EQUNR
+    applies_when:
+      EQUI.S_FLEET:
+      - X
+    severity: high
+    dimension: consistency
+    message: Vehicle has no equipment time segment
+    why_it_matters: The time segment holds the plant, location and cost assignment. Without it the equipment is incomplete.
+    rule_authority: sap_hard_constraint
+    sap_impact: The vehicle cannot be planned or costed.
+    fix_map:
+      __other__: Repair the equipment in IE02.
+    record_fix_template: Equipment {EQUI.EQUNR} has no time segment.
+
+  - id: FLEET047
+    field: ILOA.KOKRS
+    check_class: exists_check
+    fields:
+    - ILOA.KOKRS
+    - ILOA.KOSTL
+    target_table: CSKS
+    target_fields:
+    - KOKRS
+    - KOSTL
+    applies_when:
+      ILOA.KOSTL:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Equipment cost centre does not exist
+    why_it_matters: Fleet costs post to the cost centre of the equipment assignment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Postings for fuel and service fail or land on a wrong centre.
+    fix_map:
+      __other__: Correct the cost centre in the equipment assignment.
+    record_fix_template: 'Assignment {ILOA.ILOAN}: cost centre {ILOA.KOSTL} not in controlling area {ILOA.KOKRS}.'
+
+  - id: FLEET048
+    field: EQUZ.IWERK
+    check_class: exists_check
+    fields:
+    - EQUZ.IWERK
+    target_table: T001W
+    target_fields:
+    - WERKS
+    applies_when:
+      EQUZ.IWERK:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Equipment planning plant does not exist
+    why_it_matters: The maintenance planning plant must exist as a plant.
+    rule_authority: sap_hard_constraint
+    sap_impact: Maintenance orders for the vehicle cannot be created.
+    fix_map:
+      __other__: Correct the planning plant.
+    record_fix_template: 'Equipment {EQUZ.EQUNR}: planning plant {EQUZ.IWERK} not found.'
+
+  - id: FLEET049
+    field: FLEET.SPEED_UNIT
+    check_class: cross_field_check
+    fail_when: (`FLEET.SPEED_MAX` > 0) & `FLEET.SPEED_UNIT`.isna()
+    severity: low
+    dimension: completeness
+    message: Vehicle maximum speed has no unit
+    why_it_matters: A speed without a unit cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: Speed limits are misread.
+    fix_map:
+      __other__: Enter the speed unit.
+    record_fix_template: 'Vehicle {EQUI.EQUNR}: speed {FLEET.SPEED_MAX} has no unit.'

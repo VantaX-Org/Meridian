@@ -488,3 +488,230 @@ rules:
       __blank__: Reactivate the risk in Access Control (Risk maintenance) and regenerate the rules, or document why
         it was retired and lower its level.
     record_fix_template: 'Risk {GRACSODRISK.RISKID}: level {GRACSODRISK.RISKLEVEL} but inactive.'
+
+  - id: GRC027
+    field: GRACUSERROLE.ROLE_ID
+    check_class: exists_check
+    fields:
+    - GRACUSERROLE.ROLE_ID
+    target_table: GRACROLE
+    target_fields:
+    - ROLEID
+    applies_when:
+      GRACUSERROLE.ROLE_ID:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: User is assigned a role that is not in the role repository
+    why_it_matters: An assignment to a role with no repository entry cannot be risk analysed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Segregation of duties analysis misses the access the role gives.
+    fix_map:
+      __other__: Import the role into the repository or remove the assignment.
+    record_fix_template: 'Assignment {GRACUSERROLE.USERROLEID}: role {GRACUSERROLE.ROLE_ID} not in the repository.'
+
+  - id: GRC028
+    field: GRACROLE.LOCKED
+    check_class: cross_field_check
+    grain: GRACUSERROLE
+    fail_when: (`GRACROLE.LOCKED` == 'X') & (`GRACUSERROLE.USER_ID`.notna())
+    severity: high
+    dimension: consistency
+    message: User is assigned a locked role
+    why_it_matters: A locked role should not be assigned. Existing assignments are access the owner meant to stop.
+    rule_authority: sap_hard_constraint
+    sap_impact: Users keep access the role owner blocked.
+    fix_map:
+      __other__: Remove the assignment or unlock the role through the approved process.
+    record_fix_template: 'Assignment {GRACUSERROLE.USERROLEID}: role {GRACUSERROLE.ROLE_ID} is locked.'
+
+  - id: GRC029
+    field: GRACROLE.CERTIFY_DATE
+    check_class: cross_field_check
+    fail_when: '`GRACROLE.CERTIFY_DATE` > @today'
+    severity: medium
+    dimension: validity
+    message: Role certification date is in the future
+    why_it_matters: A certification cannot be dated later than today.
+    rule_authority: sap_hard_constraint
+    sap_impact: The role shows as certified before the review happened.
+    fix_map:
+      __other__: Correct the certification date.
+    record_fix_template: 'Role {GRACROLE.ROLEID}: certified {actual_value}, in the future.'
+
+  - id: GRC030
+    field: GRACROLE.CERTIFY_BY
+    check_class: cross_field_check
+    fail_when: '`GRACROLE.CERTIFY_DATE`.notna() & `GRACROLE.CERTIFY_BY`.isna()'
+    severity: high
+    dimension: completeness
+    message: Certified role has no certifier
+    why_it_matters: A certification without a name has no accountable owner.
+    rule_authority: sap_hard_constraint
+    sap_impact: The audit trail of the review is incomplete.
+    fix_map:
+      __other__: Record the certifier or repeat the certification.
+    record_fix_template: Role {GRACROLE.ROLEID} was certified {GRACROLE.CERTIFY_DATE} by no one.
+
+  - id: GRC031
+    field: GRACROLE.LAST_REAFFIRM_BY
+    check_class: cross_field_check
+    fail_when: '`GRACROLE.LAST_REAFFIRM_DT`.notna() & `GRACROLE.LAST_REAFFIRM_BY`.isna()'
+    severity: high
+    dimension: completeness
+    message: Reaffirmed role has no reaffirming owner
+    why_it_matters: A reaffirmation without a name has no accountable owner.
+    rule_authority: sap_hard_constraint
+    sap_impact: The audit trail of the review is incomplete.
+    fix_map:
+      __other__: Record the reaffirming owner or repeat the reaffirmation.
+    record_fix_template: Role {GRACROLE.ROLEID} was reaffirmed {GRACROLE.LAST_REAFFIRM_DT} by no one.
+
+  - id: GRC032
+    field: GRACROLE.CERTIFY_DUE
+    check_class: cross_field_check
+    fail_when: (`GRACROLE.CERTIFY_PERIOD`.str.lstrip('0').str.len() > 0) & `GRACROLE.CERTIFY_DUE`.isna()
+    severity: medium
+    dimension: completeness
+    message: Role has a certification period but no due date
+    why_it_matters: A period without a due date never triggers a review.
+    rule_authority: best_practice
+    sap_impact: The role is never re-certified.
+    fix_map:
+      __other__: Set the next certification due date.
+    record_fix_template: 'Role {GRACROLE.ROLEID}: period {GRACROLE.CERTIFY_PERIOD} with no due date.'
+
+  - id: GRC033
+    field: GRACROLE.REAFFIRM_DUE
+    check_class: cross_field_check
+    fail_when: (`GRACROLE.REAFFIRM_PERIOD`.str.lstrip('0').str.len() > 0) & `GRACROLE.REAFFIRM_DUE`.isna()
+    severity: medium
+    dimension: completeness
+    message: Role has a reaffirmation period but no due date
+    why_it_matters: A period without a due date never triggers a review.
+    rule_authority: best_practice
+    sap_impact: The role is never reaffirmed.
+    fix_map:
+      __other__: Set the next reaffirmation due date.
+    record_fix_template: 'Role {GRACROLE.ROLEID}: period {GRACROLE.REAFFIRM_PERIOD} with no due date.'
+
+  - id: GRC034
+    field: GRACROLE.CRITLVL
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Role has no criticality level
+    why_it_matters: Criticality drives review frequency and approver routing.
+    rule_authority: best_practice
+    sap_impact: Risky roles get the same review as harmless ones.
+    fix_map:
+      __blank__: Set the criticality level in the role repository.
+    record_fix_template: Role {GRACROLE.ROLEID} has no criticality level.
+
+  - id: GRC035
+    field: GRACROLE.BPROC
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Role has no business process
+    why_it_matters: The business process places the role in the risk analysis.
+    rule_authority: best_practice
+    sap_impact: Process owners are not notified of changes.
+    fix_map:
+      __blank__: Assign the business process.
+    record_fix_template: Role {GRACROLE.ROLEID} has no business process.
+
+  - id: GRC036
+    field: GRACROLE.CHANGE_ON
+    check_class: cross_field_check
+    fail_when: (`GRACROLE.CHANGE_ON` > 0) & (`GRACROLE.CHANGE_ON` < `GRACROLE.CREATE_ON`)
+    severity: low
+    dimension: consistency
+    message: Role changed before it was created
+    why_it_matters: A change timestamp earlier than the creation timestamp points to a bad load.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change history is unreliable.
+    fix_map:
+      __other__: Correct the timestamps at the source.
+    record_fix_template: 'Role {GRACROLE.ROLEID}: changed {GRACROLE.CHANGE_ON}, created {GRACROLE.CREATE_ON}.'
+
+  - id: GRC037
+    field: GRACSODRISK.RISKID
+    check_class: exists_check
+    fields:
+    - GRACSODRISK.RISKID
+    target_table: GRACSODRISKT
+    target_fields:
+    - RISKID
+    severity: medium
+    dimension: consistency
+    message: Risk has no description text
+    why_it_matters: A risk without a description cannot be explained to a reviewer.
+    rule_authority: sap_hard_constraint
+    sap_impact: Reviewers cannot judge the conflict.
+    fix_map:
+      __other__: Maintain the risk description.
+    record_fix_template: Risk {GRACSODRISK.RISKID} has no description.
+
+  - id: GRC038
+    field: GRACSODRISK.ACTGEN
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Risk action-level generation flag has an invalid value
+    why_it_matters: The flag is blank or X.
+    rule_authority: sap_hard_constraint
+    sap_impact: Rule generation reads the flag wrongly.
+    fix_map:
+      __other__: Correct the flag.
+    record_fix_template: 'Risk {GRACSODRISK.RISKID}: flag {actual_value}.'
+
+  - id: GRC039
+    field: GRACSODRISK.PRMGEN
+    check_class: domain_value_check
+    allowed_values:
+    - ''
+    - X
+    severity: low
+    dimension: validity
+    message: Risk permission-level generation flag has an invalid value
+    why_it_matters: The flag is blank or X.
+    rule_authority: sap_hard_constraint
+    sap_impact: Rule generation reads the flag wrongly.
+    fix_map:
+      __other__: Correct the flag.
+    record_fix_template: 'Risk {GRACSODRISK.RISKID}: flag {actual_value}.'
+
+  - id: GRC040
+    field: GRACSODRISK.ACTIVE
+    check_class: cross_field_check
+    fail_when: (`GRACSODRISK.ACTIVE` == 'X') & `GRACSODRISK.ACTGEN`.isna() & `GRACSODRISK.PRMGEN`.isna()
+    severity: high
+    dimension: consistency
+    message: Active risk has no generated rules
+    why_it_matters: An active risk with neither action-level nor permission-level rules detects nothing.
+    rule_authority: sap_hard_constraint
+    sap_impact: Conflicts under the risk are never found.
+    fix_map:
+      __other__: Generate the rules or deactivate the risk.
+    record_fix_template: Risk {GRACSODRISK.RISKID} is active with no generated rules.
+
+  - id: GRC041
+    field: GRACUSERROLE.CONNECTOR
+    check_class: uniqueness_check
+    fields:
+    - GRACUSERROLE.CONNECTOR
+    - GRACUSERROLE.USER_ID
+    - GRACUSERROLE.ROLE_ID
+    severity: medium
+    dimension: uniqueness
+    message: User holds the same role twice on one system
+    why_it_matters: Two assignments of one role to one user on one connector are redundant and obscure the validity dates.
+    rule_authority: best_practice
+    sap_impact: Removal of one assignment does not remove the access.
+    fix_map:
+      __other__: Merge the assignments.
+    record_fix_template: 'User assignment {GRACUSERROLE.USERROLEID}: role {GRACUSERROLE.ROLE_ID} repeated.'

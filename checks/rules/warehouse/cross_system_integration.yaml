@@ -400,3 +400,73 @@ rules:
     fix_map:
       __blank__: Fix the extraction so every record carries the system id it was read from.
     record_fix_template: '{XSYS.OBJECT_TYPE} {XSYS.OBJECT_KEY}: source system is blank.'
+
+  - id: XSYS028
+    field: XSYS.OBJECT_KEY
+    check_class: cross_field_check
+    fail_when: (`XSYS.OBJECT_TYPE` == 'MATERIAL') & `XSYS.MATNR`.isna()
+    severity: high
+    dimension: completeness
+    message: Material row has no material number
+    why_it_matters: Reconciliation joins on the material number. A MATERIAL row without one cannot be matched.
+    rule_authority: best_practice
+    sap_impact: The material is reported as missing in the other system.
+    fix_map:
+      __other__: Re-run the extract and check the key mapping.
+    record_fix_template: Row for material key {XSYS.OBJECT_KEY} in {XSYS.SOURCE_SYSTEM} has no material number.
+
+  - id: XSYS029
+    field: XSYS.OBJECT_KEY
+    check_class: cross_field_check
+    fail_when: (`XSYS.OBJECT_TYPE` == 'VENDOR') & `XSYS.LIFNR`.isna()
+    severity: high
+    dimension: completeness
+    message: Vendor row has no vendor number
+    why_it_matters: Reconciliation joins on the vendor number.
+    rule_authority: best_practice
+    sap_impact: The vendor is reported as missing in the other system.
+    fix_map:
+      __other__: Re-run the extract and check the key mapping.
+    record_fix_template: Row for vendor key {XSYS.OBJECT_KEY} in {XSYS.SOURCE_SYSTEM} has no vendor number.
+
+  - id: XSYS030
+    field: XSYS.OBJECT_KEY
+    check_class: cross_field_check
+    fail_when: (`XSYS.OBJECT_TYPE` == 'CUSTOMER') & `XSYS.KUNNR`.isna()
+    severity: high
+    dimension: completeness
+    message: Customer row has no customer number
+    why_it_matters: Reconciliation joins on the customer number.
+    rule_authority: best_practice
+    sap_impact: The customer is reported as missing in the other system.
+    fix_map:
+      __other__: Re-run the extract and check the key mapping.
+    record_fix_template: Row for customer key {XSYS.OBJECT_KEY} in {XSYS.SOURCE_SYSTEM} has no customer number.
+
+  - id: XSYS031
+    field: XSYS.BUDAT
+    check_class: cross_field_check
+    fail_when: (`XSYS.BUDAT` > @today)
+    severity: medium
+    dimension: validity
+    message: Posting date is in the future
+    why_it_matters: Reconciled documents are posted. A future date points to a bad date mapping.
+    rule_authority: sap_hard_constraint
+    sap_impact: Period-based reconciliation puts the document in the wrong period.
+    fix_map:
+      __other__: Check the date mapping of the extract.
+    record_fix_template: 'Document row {XSYS.OBJECT_KEY}: posting date {actual_value}, in the future.'
+
+  - id: XSYS032
+    field: XSYS.BUDAT
+    check_class: cross_field_check
+    fail_when: (`XSYS.BLDAT` > `XSYS.BUDAT`) & (`XSYS.OBJECT_TYPE` == 'FI_DOCUMENT')
+    severity: low
+    dimension: consistency
+    message: Document date is later than posting date
+    why_it_matters: SAP allows this only through special settings. Mostly it is a mapping error.
+    rule_authority: best_practice
+    sap_impact: Aging reports are distorted.
+    fix_map:
+      __other__: Check the date mapping of the extract.
+    record_fix_template: 'Document row {XSYS.OBJECT_KEY}: document date {XSYS.BLDAT}, posting date {XSYS.BUDAT}.'
