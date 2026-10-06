@@ -156,3 +156,85 @@ async def get_config_snapshot(
             for r in rows
         ],
     }
+
+
+# -- Config load: read-only configuration snapshot of one system + flow derivation ----------------------------
+
+
+class ConfigLoadRequest(BaseModel):
+    system_id: str
+
+
+@router.post("/config-load", dependencies=[Depends(require_permission("trigger_sync"))])
+async def start_config_load(
+    body: ConfigLoadRequest,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Load all configuration of the system in one job (every module), then derive the process flows.
+    Read only. Call it right after a successful test connection; poll ``GET /api/v1/jobs/{job_id}``."""
+    from workers.tasks.run_load_config import run_load_config
+
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    row = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+                            {"sid": body.system_id, "tid": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(404, "System not found")
+    load_id = str(uuid.uuid4())
+    job_id = f"cfgload-{load_id}"
+    jobs.start_job(str(tenant.id), job_id, "config_load", f"Configuration load: {row[0]}", status="queued",
+                   system_id=body.system_id, load_id=load_id)
+    run_load_config.apply_async(args=(str(tenant.id), body.system_id, load_id, job_id), task_id=load_id)
+    return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": row[0]}
+
+
+@router.get("/config-load/{system_id}")
+async def get_config_load(
+    system_id: str,
+    role: str = "source",
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Latest config load of the system: per-object state (loaded, empty, failed, not_available), the customizing
+    change history (last change date and change count per table; ``table_logging_off`` when DBTABLOG is empty)
+    and whether flows were derived."""
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    r = (await db.execute(
+        text("SELECT id::text, system_type, role, origin, status, objects, history, error, created_at::text, "
+             "finished_at::text, derivation IS NOT NULL FROM config_loads "
+             "WHERE tenant_id = :tid AND system_id = :sid AND role = :role ORDER BY created_at DESC LIMIT 1"),
+        {"tid": str(tenant.id), "sid": system_id, "role": role})).fetchone()
+    if not r:
+        raise HTTPException(404, "No configuration load for this system")
+    objects = r[5] or []
+    history = r[6] or {}
+    per_table = history.get("tables") or {}
+    summary: dict[str, int] = {}
+    for o in objects:
+        o["history"] = per_table.get(o["object"])
+        summary[o["state"]] = summary.get(o["state"], 0) + 1
+    return {"load_id": r[0], "system_id": system_id, "system_type": r[1], "role": r[2], "origin": r[3],
+            "status": r[4], "error": r[7], "created_at": r[8], "finished_at": r[9], "flows_derived": r[10],
+            "summary": summary, "objects": objects,
+            "history": {k: v for k, v in history.items() if k != "tables"}}
+
+
+@router.get("/config-load/{system_id}/items")
+async def get_config_load_items(
+    system_id: str,
+    object: str,
+    role: str = "source",
+    limit: int = 500,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Config items (object + key + values) of the latest completed load for one config object."""
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+    rows = (await db.execute(
+        text("SELECT i.key, i.\"values\" FROM config_items i WHERE i.tenant_id = :tid AND i.object = :obj "
+             "AND i.load_id = (SELECT id FROM config_loads WHERE tenant_id = :tid AND system_id = :sid "
+             "AND role = :role AND status = 'completed' ORDER BY created_at DESC LIMIT 1) "
+             "ORDER BY i.key LIMIT :lim"),
+        {"tid": str(tenant.id), "sid": system_id, "obj": object, "role": role,
+         "lim": max(1, min(limit, 5000))})).fetchall()
+    return {"system_id": system_id, "object": object, "items": [{"key": r[0], "values": r[1]} for r in rows]}

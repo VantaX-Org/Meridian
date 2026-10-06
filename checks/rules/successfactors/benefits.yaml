@@ -165,8 +165,7 @@ rules:
     fix_map:
       __blank__: Correct the employee contribution on the enrolment via Benefits Administration; refunds are handled as separate
         claims, not negative contributions.
-    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}/{BENEFITENROLLMENT.PLAN_ID}: employee contribution {BENEFITENROLLMENT.EMPLOYEE_COST}
-      is negative.'
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: Employee contribution must not be negative. Correct the record.'
   - id: BEN013
     field: BENEFITENROLLMENT.EMPLOYER_COST
     check_class: cross_field_check
@@ -181,8 +180,7 @@ rules:
     sap_impact: Employer benefit cost understated; taxable fringe-benefit value and carrier premium files wrong.
     fix_map:
       __blank__: Correct the employer contribution on the enrolment via Benefits Administration.
-    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}/{BENEFITENROLLMENT.PLAN_ID}: employer contribution {BENEFITENROLLMENT.EMPLOYER_COST}
-      is negative.'
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: Employer contribution must not be negative. Correct the record.'
   - id: BEN014
     field: BENEFITENROLLMENT.PLAN_TYPE
     check_class: null_check
@@ -236,3 +234,45 @@ rules:
       __other__: Cancel the enrolment and notify the carrier, or correct the termination date if the employee did not leave.
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan {BENEFITENROLLMENT.PLAN_ID} from
       {BENEFITENROLLMENT.EFFECTIVE_DATE}, employment ended {EMPEMPLOYMENT.END_DATE}.'
+  - id: BEN017
+    field: BENEFITENROLLMENT.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: medium
+    dimension: consistency
+    message: Benefit enrolment belongs to a user without employment
+    why_it_matters: An enrolment must belong to an employee. Orphans cannot be loaded to the SAP benefits infotypes.
+    rule_authority: best_practice
+    sap_impact: Premiums are deducted or reported for nobody.
+    fix_map:
+      __other__: Link the enrolment to an employee or end it.
+    record_fix_template: Benefit enrolment for user {BENEFITENROLLMENT.USERID} has no employment record. Review.
+  - id: BEN018
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.ENROL_DATE` > `BENEFITENROLLMENT.EFFECTIVE_DATE`'
+    require_populated: true
+    severity: low
+    dimension: timeliness
+    message: Enrolment was recorded after its effective date
+    why_it_matters: An enrolment recorded after it became effective is retroactive. It needs retroactive payroll accounting and often a manual premium correction.
+    rule_authority: best_practice
+    sap_impact: Retroactive deductions or premiums are produced.
+    fix_map:
+      __other__: Review the enrolment and confirm that the retroactive effect is intended.
+    record_fix_template: Benefit enrolment for user {BENEFITENROLLMENT.USERID} was recorded after its effective date. Review.
+  - id: BEN019
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.EFFECTIVE_DATE` - @today).dt.days > 365
+    severity: medium
+    dimension: timeliness
+    message: Enrolment starts more than a year in the future
+    why_it_matters: An enrolment effective more than a year ahead is nearly always a typed year.
+    rule_authority: best_practice
+    sap_impact: Coverage does not start when the employee expects.
+    fix_map:
+      __other__: Correct the effective date.
+    record_fix_template: Benefit enrolment for user {BENEFITENROLLMENT.USERID} starts more than a year in the future. Correct the date.

@@ -97,6 +97,12 @@ class SAPConnector(ABC):
     def close(self) -> None:
         """Close the connection. Must be safe to call multiple times."""
 
+    def load_config(self, system_type: str, progress=None):
+        """Read-only configuration snapshot (SPRO customizing tables). Returns sap.config_snapshot.ConfigSnapshot."""
+        from sap.config_loader import load_abap
+
+        return load_abap(self, system_type, progress)
+
     # ── Context manager support ────────────────────────────────────────────────
 
     def __enter__(self) -> "SAPConnector":
@@ -164,6 +170,12 @@ class CloudSAPConnector(ABC):
     @abstractmethod
     def close(self) -> None:
         """Close session."""
+
+    def load_config(self, system_type: str, progress=None):
+        """Read-only configuration snapshot. Objects the system cannot expose are reported not_available."""
+        from sap.config_loader import load_cloud
+
+        return load_cloud(self, system_type, progress)
 
     def __enter__(self):
         return self

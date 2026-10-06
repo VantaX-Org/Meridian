@@ -61,7 +61,12 @@ _SENSITIVE_PREFIX = ("NAME", "ORT", "CITY", "POST_CODE", "TEL", "SMTP", "STCD", 
 _SENSITIVE_EXACT = {"STRAS", "PSTLZ", "BANKN", "IBAN", "STCEG", "PERID", "ICNUM",
                     "BANKL", "SWIFT", "GBDAT", "GBORT", "NACHN", "VORNA", "NACH2", "MIDNM", "RUFNM",
                     "BIRTHDT", "DEATHDT", "PFACH", "PSTL2", "BKONT",
-                    "KOINH", "EBPP_ACCNAME", "QSZNR"}
+                    "KOINH", "EBPP_ACCNAME", "QSZNR",
+                    # people data (SuccessFactors canonical and payroll integration)
+                    "SALARY", "GROSS_PAY", "NET_PAY", "TAX_AMOUNT", "DEDUCTIONS", "EMPLOYEE_COST", "EMPLOYER_COST",
+                    "PAY_RANGE_MIN", "PAY_RANGE_MID", "PAY_RANGE_MAX", "ANSAL", "BET01", "NATIONAL_ID",
+                    "DATE_OF_BIRTH", "EMAIL_ADDRESS", "PHONE_NUMBER", "ADDRESS_LINE1", "ADDRESS_LINE2", "SCORE",
+                    "COMPA_RATIO"}
 
 
 def _sensitive_name(name: Optional[str]) -> bool:

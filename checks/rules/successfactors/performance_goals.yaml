@@ -260,3 +260,59 @@ rules:
       form launches.
   record_fix_template: 'Employee {PMREVIEWRESULT.USERID}: review from {PMREVIEWRESULT.REVIEW_PERIOD}, employment ended
     {EMPEMPLOYMENT.END_DATE}.'
+- id: PERF019
+  field: GOALPLAN.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: medium
+  dimension: consistency
+  message: Goal belongs to a user without employment
+  why_it_matters: A goal must belong to an employee. Orphaned goals cannot be carried into a migration.
+  rule_authority: best_practice
+  sap_impact: Goal achievement reports include goals nobody owns.
+  fix_map:
+    __other__: Link the goal to an employee or archive it.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: user has no employment record. Review.'
+- id: PERF020
+  field: PMREVIEWRESULT.USERID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - USERID
+  severity: medium
+  dimension: consistency
+  message: Review belongs to a user without employment
+  why_it_matters: A review result must belong to an employee. Orphaned reviews cannot be carried into a migration.
+  rule_authority: best_practice
+  sap_impact: Rating distributions include reviews of unknown persons.
+  fix_map:
+    __other__: Link the review to an employee or archive it.
+  record_fix_template: Review for user {PMREVIEWRESULT.USERID} has no employment record. Review.
+- id: PERF021
+  field: GOALPLAN.TARGET_DATE
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.TARGET_DATE` > `EMPEMPLOYMENT.END_DATE`'
+  severity: low
+  dimension: timeliness
+  message: Goal target date lies after the employment ended
+  why_it_matters: A goal that falls due after the owner left can never be achieved.
+  rule_authority: best_practice
+  sap_impact: The goal stays open for ever and distorts achievement rates.
+  fix_map:
+    __other__: Close or reassign the goal.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: target date is after the employment ended. Close or reassign.'
+- id: PERF022
+  field: PMREVIEWRESULT.OVERALL_RATING
+  check_class: cross_field_check
+  fail_when: '`PMREVIEWRESULT.OVERALL_RATING` < 0'
+  severity: medium
+  dimension: validity
+  message: Overall rating is negative
+  why_it_matters: A rating below zero is outside every rating scale.
+  rule_authority: best_practice
+  sap_impact: Calibration and compensation matrices read a rating that has no meaning.
+  fix_map:
+    __other__: Correct the rating.
+  record_fix_template: 'Review for user {PMREVIEWRESULT.USERID}: overall rating is negative. Correct the review.'
