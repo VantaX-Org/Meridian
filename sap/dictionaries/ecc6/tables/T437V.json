@@ -1,0 +1,86 @@
+{
+ "table": "T437V",
+ "description": "Distribution key in MRP",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "VERTL",
+   "key": true,
+   "data_element": "SA_VERTL",
+   "domain": "SA_VERTL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "MRP Distribution Key",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FUNCT",
+   "key": false,
+   "data_element": "SA_FUNCT",
+   "domain": "CY_FUNC",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Distribution function",
+   "check_table": "TC29V"
+  },
+  {
+   "pos": 5,
+   "name": "FNART",
+   "key": false,
+   "data_element": "SA_ART",
+   "domain": "CY_ART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Type of distribution (by distribution function or discrete)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FUNCT",
+   "foreign_table": "TC29V",
+   "foreign_field": "FUNCT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "MNGVZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "+",
+   "high": null,
+   "text": "Value must be positive"
+  },
+  {
+   "low": ".",
+   "high": null,
+   "text": "Value can be positive or negative"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Value must be negative"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

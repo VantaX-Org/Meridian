@@ -1,0 +1,273 @@
+{
+ "table": "STAS",
+ "description": "BOMs - Item Selection",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STLTY",
+   "key": true,
+   "data_element": "STLTY",
+   "domain": "STLTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "STLNR",
+   "key": true,
+   "data_element": "STNUM",
+   "domain": "STNUM",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bill of Material",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "STLAL",
+   "key": true,
+   "data_element": "STALT",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Alternative BOM",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "STLKN",
+   "key": true,
+   "data_element": "STLKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "BOM Item Node Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "STASZ",
+   "key": true,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "DATUV",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "TECHV",
+   "key": false,
+   "data_element": "TECHV",
+   "domain": "TECHS",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Technical status from",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AENNR",
+   "key": false,
+   "data_element": "AENNR",
+   "domain": "AENNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Number",
+   "check_table": "AENR"
+  },
+  {
+   "pos": 10,
+   "name": "LKENZ",
+   "key": false,
+   "data_element": "LKENZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ANDAT",
+   "key": false,
+   "data_element": "ANDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Record Created on",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "ANNAM",
+   "key": false,
+   "data_element": "ANNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Who Created Record",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DVDAT",
+   "key": false,
+   "data_element": "DVDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Last Date Shift",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "DVNAM",
+   "key": false,
+   "data_element": "DVNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of the User Who Carried out the Date Shift",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "AEHLP",
+   "key": false,
+   "data_element": "CC_AEHLP",
+   "domain": "CC_AEHLP",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Date Shift Hierarchy Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "STVKN",
+   "key": false,
+   "data_element": "STVKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inherited Node Number of BOM Item",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "IDPOS",
+   "key": false,
+   "data_element": "CS_IDPOS",
+   "domain": "CS_IDPOS",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Item group",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "IDVAR",
+   "key": false,
+   "data_element": "CS_IDVAR",
+   "domain": "CS_IDVAR",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Item variant",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "LPSRT",
+   "key": false,
+   "data_element": "CS_LPSRT",
+   "domain": "NUMC4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sort key within a logical item",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AENNR",
+   "foreign_table": "AENR",
+   "foreign_field": "AENNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -1,0 +1,72 @@
+{
+ "domain": "CRES_PP_BUCKET_SCHEMA",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Shift"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Day (Shift Start)"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Day (Start 00:00)"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Week (from Monday)"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Week (from Tuesday)"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Week (from Wednesday)"
+  },
+  {
+   "low": "07",
+   "high": null,
+   "text": "Week (from Thursday)"
+  },
+  {
+   "low": "08",
+   "high": null,
+   "text": "Week (from Friday)"
+  },
+  {
+   "low": "09",
+   "high": null,
+   "text": "Week (from Saturday)"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "Week (from Sunday)"
+  },
+  {
+   "low": "12",
+   "high": null,
+   "text": "Month"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Japanese Ten Days"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,42 @@
+{
+ "domain": "PRDFLID",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Take product out of container at start of activity"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Take product out of container at end of activity"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Take product out of container continually"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Put product in container at start of activity"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Put product in container at end of activity"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Put product in container continually"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

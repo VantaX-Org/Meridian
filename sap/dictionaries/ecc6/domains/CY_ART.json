@@ -1,0 +1,22 @@
+{
+ "domain": "CY_ART",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Carry out distribution continuously through time"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Carry out distribution according to discrete points"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

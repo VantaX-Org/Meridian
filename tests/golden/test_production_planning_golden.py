@@ -207,6 +207,7 @@ def test_production_planning_golden():
         "PP019": {_plko("50000006")},                          # lot size from 500 > to 100
         "PP005": {_plko("50000007")},                          # status 9 is not in T412
         "DO-PLKO": {_plko("50000008")},                        # changed before it was created
+        "PP275": {_plko("50000008")},                          # same defect as DO-PLKO, caught by the PP depth rule
         "PP012": {f"MATNR={_m(100120)}|WERKS=ZA01|STLAN=1|STLNR={_bom(104)}|STLAL=01"},  # no base quantity
         "PP013": {_stpo(104, 2)},                              # variable-size item without component
         "PP015": {_stpo(104, 3)},                              # stock item without unit of measure

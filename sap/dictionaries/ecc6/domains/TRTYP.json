@@ -1,0 +1,82 @@
+{
+ "domain": "TRTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "*",
+   "high": null,
+   "text": "Masked"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Display"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Edit"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Display from archive"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Single-item planning"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Add"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Change"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Initial transaction"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Standard parameter: normal mode"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Convert indiv. planned order"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Delete"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Planning file entry"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Copy reference"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Print"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

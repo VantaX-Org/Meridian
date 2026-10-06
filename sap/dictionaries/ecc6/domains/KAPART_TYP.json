@@ -1,0 +1,27 @@
+{
+ "domain": "KAPART_TYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "available capacity = available capacity of shift in tm. unit"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Available capacity defined in volume unit and unit of meas."
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Avail. cap. in tm. unit, and avail. cap. in vol. unit and UM"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
