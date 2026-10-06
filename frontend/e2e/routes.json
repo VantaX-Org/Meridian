@@ -143,5 +143,15 @@
     "name": "rule-detail-never-run",
     "path": "/analyse/rule/MM551",
     "heading": "Follow-up materials form a loop within a plant"
+  },
+  {
+    "name": "material",
+    "path": "/analyse/material/101",
+    "heading": "Hydraulic pump seal kit 50mm"
+  },
+  {
+    "name": "material-no-supersession",
+    "path": "/analyse/material/105",
+    "heading": "Wiper blade standard"
   }
 ]

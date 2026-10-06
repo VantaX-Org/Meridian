@@ -9,7 +9,7 @@ import { Banner, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, TableSk
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { getModuleCoverage, type ModuleCoverage } from "@/lib/api/rules";
 import { DIMENSIONS, formatModuleName, labelOf } from "@/lib/format";
-import { MM_VIEWS } from "@/lib/mm-views";
+import { MM_VIEWS } from "@/lib/material-views";
 import { Count, plural, qs, RULES } from "./coverage-shared";
 
 export function ObjectCoverage({ object }: { object: string }) {

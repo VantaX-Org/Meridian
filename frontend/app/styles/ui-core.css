@@ -227,6 +227,8 @@
 }
 .ui-link-button:hover, a.ui-link:hover { text-decoration: underline; }
 a.ui-link { color: var(--aurora-accent-500); text-decoration: none; }
+/* a link inside running text must differ from it by more than colour */
+p a.ui-link, li a.ui-link, dd a.ui-link { text-decoration: underline; text-underline-offset: 2px; }
 .ui-link-button:focus-visible, a.ui-link:focus-visible {
   outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
   outline-offset: 2px;
@@ -766,7 +768,12 @@ button.ui-state-toggle:focus-visible { outline: var(--aurora-focus-ring-width) s
   .ui-section { break-inside: avoid; border-color: var(--aurora-canvas-line-strong); }
   .ui-columns { grid-template-columns: minmax(0, 1fr); }
   a.ui-link { color: inherit; text-decoration: none; }
+  .aurora-app-shell__rail, .aurora-app-shell__topbar, button, .ui-btn { display: none !important; }
+  * { box-shadow: none !important; }
 }
+
+/* Running prose holds a readable measure. */
+.ui-prose { max-width: 72ch; }
 
 /* ── Score ring ─────────────────────────────────────────────────────
    Shared by Object 360 and System detail. The fill animates once, with the Tally. */

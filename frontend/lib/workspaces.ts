@@ -69,6 +69,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "finding", label: "Finding", href: "/analyse/finding", hidden: true },
       { id: "object", label: "Object", href: "/analyse/object", hidden: true },
       { id: "rule", label: "Rule", href: "/analyse/rule", hidden: true },
+      { id: "material", label: "Material", href: "/analyse/material", hidden: true },
     ],
   },
   {

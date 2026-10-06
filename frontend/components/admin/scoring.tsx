@@ -113,7 +113,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       <Tally level={4} label="Score preview" figures={[
         { label: "Score now", value: current === null ? null : Number(current.toFixed(1)), loading: agg.isLoading, tone: capped ? "danger" : undefined, verdict: capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run.", href: HREF },
         { label: "With these weights", value: preview === null ? null : Number(preview.toFixed(1)), loading: agg.isLoading, verdict: capValue !== null && rawPreview !== null && rawPreview > capValue ? `Capped at ${capValue} by ${criticals} critical ${criticals === 1 ? "finding" : "findings"}.` : delta === null ? "Needs a scored run." : delta === 0 ? "Same as now." : `${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} points.`, href: HREF },
-        { label: "Weights sum", value: null, text: sum.toFixed(2), tone: Math.abs(sum - 1) < 0.005 ? undefined : "warning", verdict: Math.abs(sum - 1) < 0.005 ? "Sums to one." : "Normalised to one on save.", href: HREF },
+        { label: "Weights sum", value: null, text: sum.toFixed(2), tone: Math.abs(sum - 1) < 0.005 ? undefined : "danger", verdict: Math.abs(sum - 1) < 0.005 ? "Sums to one." : "Must sum to 1.00 before you can save.", href: HREF },
       ]} />
 
       <SectionCard title="Dimension weights" meta="Normalised to 1 on save">
@@ -140,8 +140,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           </table>
           {write ? (
             <div className="ui-form__actions">
-              <Button onClick={() => saveWeights.mutate()} disabled={saveWeights.isPending || sum <= 0}>Save weights</Button>
+              <Button onClick={() => saveWeights.mutate()} disabled={saveWeights.isPending || Math.abs(sum - 1) >= 0.005}>Save weights</Button>
               <Button variant="ghost" onClick={() => setWeights(DEFAULT)}>Use DAMA defaults</Button>
+              {Math.abs(sum - 1) >= 0.005 ? <span className="ui-micro">Weights sum to {sum.toFixed(2)}. Adjust them to 1.00 to save.</span> : null}
             </div>
           ) : null}
         </div>

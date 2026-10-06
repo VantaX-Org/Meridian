@@ -107,19 +107,19 @@ export function HeaderExportMenu() {
         disabled={!hasReport}
         onClick={() => latestComplete && download(getReportDownloadUrl(latestComplete.id), `meridian_dq_report_${latestComplete.id}.pdf`, "PDF report downloaded", "The PDF report did not download. Check your sign-in and try again.")}
       >
-        <FileText size={16} aria-hidden />Download PDF report
+        <FileText size={16} aria-hidden />Report as PDF
       </MenuItem>
       <MenuItem
         disabled={!hasReport}
         onClick={() => latestComplete && download(getReportJsonExportUrl(latestComplete.id), `meridian_dq_report_${latestComplete.id}.json`, "JSON report downloaded", "The JSON report did not download. Check your sign-in and try again.")}
       >
-        <FileJson size={16} aria-hidden />Download JSON report
+        <FileJson size={16} aria-hidden />Report as JSON
       </MenuItem>
       <MenuItem
         disabled={!hasReport}
         onClick={() => latestComplete && download(getConfigMatchesExportUrl(latestComplete.id), `meridian-config-${latestComplete.id.slice(0, 8)}.xlsx`, "Config matches downloaded", "The config matches did not download. Check your sign-in and try again.")}
       >
-        <FileSpreadsheet size={16} aria-hidden />Download config matches (xlsx)
+        <FileSpreadsheet size={16} aria-hidden />Config matches as xlsx
       </MenuItem>
       <MenuSeparator />
       <MenuItem onClick={() => router.push("/reports")}><List size={16} aria-hidden />View all reports</MenuItem>

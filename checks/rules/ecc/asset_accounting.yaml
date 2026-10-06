@@ -841,3 +841,319 @@ rules:
       chart of depreciation) before the conversion.
   record_fix_template: 'Chart of depreciation {T093.AFAPL}, area {T093.AFABER}: APC is posted periodically (posting indicator
     2).'
+
+# ── Depth pass: class, account determination, depreciation terms, assignments (AA207 onward) ──────────────────
+- id: AA207
+  field: ANLA.ANLKL
+  check_class: exists_check
+  target_table: ANKA
+  target_fields:
+  - ANLKL
+  target_when:
+    XLOEV: {blank: true}
+    XSPEA: {blank: true}
+  severity: medium
+  dimension: consistency
+  message: Active asset belongs to an asset class that is blocked or flagged for deletion
+  why_it_matters: An asset class is blocked (ANKA.XSPEA) or flagged for deletion (ANKA.XLOEV) when it is no longer meant
+    to be used. Active assets still in such a class keep its account determination and screen layout, and cannot be
+    copied or recreated with the same class.
+  rule_authority: best_practice
+  sap_impact: AS01 with reference to the asset fails; the class cannot be archived while assets use it; the S/4HANA
+    migration carries an obsolete class into the new asset accounting.
+  fix_map:
+    __other__: Transfer the asset to a current class (ABUMN / ABT1N intercompany) or remove the block in OAOA if the class
+      is still in use.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): class {ANLA.ANLKL} is blocked or
+    flagged for deletion.'
+
+- id: AA208
+  field: ANLA.KTOGR
+  fields:
+  - ANLA.ANLKL
+  - ANLA.KTOGR
+  check_class: exists_check
+  target_table: ANKA
+  target_fields:
+  - ANLKL
+  - KTOGR
+  severity: high
+  dimension: consistency
+  message: Asset's account determination differs from its asset class
+  why_it_matters: The account determination (ANLA.KTOGR) is taken from the asset class (OAOA, ANKA.KTOGR) and cannot be
+    changed on the asset in AS02. A different value comes from a load or a later class change, and the asset posts to G/L
+    accounts other than its class's.
+  rule_authority: sap_hard_constraint
+  sap_impact: Acquisitions, depreciation and retirements of the asset post to the reconciliation and expense accounts of
+    another account determination; the asset history sheet by class no longer reconciles with the G/L.
+  fix_map:
+    __other__: Transfer the asset to a class with the right account determination (ABUMN), or correct the class
+      definition in OAOA if the class is wrong.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}, class {ANLA.ANLKL}): account
+    determination {ANLA.KTOGR} differs from the class.'
+
+- id: AA209
+  field: ANLA.KTOGR
+  fields:
+  - T001.KTOPL
+  - ANLA.KTOGR
+  check_class: exists_check
+  target_table: T095
+  target_fields:
+  - KTOPL
+  - KTOGR
+  severity: critical
+  dimension: consistency
+  message: Account determination has no balance sheet accounts in the company code's chart of accounts
+  why_it_matters: The balance sheet accounts for acquisition, accumulated depreciation and retirement are assigned per
+    chart of accounts and account determination in AO90 (T095). Without them no value posting on the asset can find its
+    reconciliation account.
+  rule_authority: sap_hard_constraint
+  sap_impact: ABZON, ABAVN and AFAB stop with "no account found" for the asset; the asset cannot be capitalised or
+    retired.
+  fix_map:
+    __other__: Assign the balance sheet accounts for the account determination in AO90 for the company code's chart of
+      accounts.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): account determination {ANLA.KTOGR}
+    has no balance sheet accounts in chart {T001.KTOPL}.'
+
+- id: AA210
+  field: ANLA.KTOGR
+  fields:
+  - T001.KTOPL
+  - ANLA.KTOGR
+  check_class: exists_check
+  target_table: T095B
+  target_fields:
+  - KTOPL
+  - KTOGR
+  severity: high
+  dimension: consistency
+  message: Account determination has no depreciation accounts in the company code's chart of accounts
+  why_it_matters: The expense and accumulated depreciation accounts for the depreciation run are assigned per chart of
+    accounts and account determination in AO90 (T095B). A capitalised asset whose account determination has none cannot
+    post depreciation.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB ends with errors for every asset of the account determination; depreciation is missing from the
+    period close.
+  fix_map:
+    __other__: Assign the depreciation accounts for the account determination in AO90 (Depreciation section).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): account determination {ANLA.KTOGR}
+    has no depreciation accounts in chart {T001.KTOPL}.'
+
+- id: AA211
+  field: ANLB.AFABE
+  fields:
+  - ANLA.ANLKL
+  - T093C.AFAPL
+  - ANLB.AFABE
+  check_class: exists_check
+  target_table: ANKB
+  target_fields:
+  - ANLKL
+  - AFAPL
+  - AFABE
+  target_when:
+    XAFBE: {blank: true}
+  applies_when:
+    ANLB.XAFBE: {blank: true}
+  severity: medium
+  dimension: consistency
+  message: Asset has an active depreciation area that its class does not define for the chart of depreciation
+  why_it_matters: The depreciation areas of an asset are proposed from the class for the company code's chart of
+    depreciation (OAYZ, ANKB). An active area on the asset that is missing or deactivated in the class was added by a load
+    or survived a class or chart change.
+  rule_authority: best_practice
+  sap_impact: New assets created with reference to this one carry an area the class does not expect; the asset history
+    sheet and parallel valuation differ from other assets of the class.
+  fix_map:
+    __other__: Define the depreciation area for the class in OAYZ, or deactivate the area on the asset in AS02 if it should
+      not be valuated there.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}, class {ANLA.ANLKL}): area {ANLB.AFABE}
+    is not active in the class for chart of depreciation {T093C.AFAPL}.'
+
+- id: AA212
+  field: ANLB.AFASL
+  fields:
+  - T093C.AFAPL
+  - ANLB.AFASL
+  check_class: exists_check
+  target_table: T090NA
+  target_fields:
+  - AFAPL
+  - AFASL
+  severity: high
+  dimension: consistency
+  message: Depreciation key is not defined in the company code's chart of depreciation
+  why_it_matters: Depreciation keys (AFAMA, T090NA) are defined per chart of depreciation. A key that exists in another
+    chart but not in the one of the asset's company code (OAOB, T093C) passes a plain key check and still cannot be
+    calculated.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAR and AFAB cannot calculate depreciation for the area; AS02 refuses to save the asset until the key is
+    changed.
+  fix_map:
+    __other__: Copy the depreciation key into the chart of depreciation (AFAMA) or assign a key of that chart in AS02.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}), area {ANLB.AFABE}: depreciation key
+    {ANLB.AFASL} is not in chart of depreciation {T093C.AFAPL}.'
+
+- id: AA213
+  field: ANLZ.STORT
+  fields:
+  - ANLZ.WERKS
+  - ANLZ.STORT
+  check_class: exists_check
+  target_table: T499S
+  target_fields:
+  - WERKS
+  - STAND
+  severity: medium
+  dimension: validity
+  message: Asset location is not defined for the asset's plant
+  why_it_matters: Locations (OC10, T499S) are defined per plant. A location that the plant does not have was loaded or
+    survived a plant change, and the asset cannot be found by location for physical inventory.
+  rule_authority: sap_hard_constraint
+  sap_impact: AS02 refuses to save the time-dependent data; inventory lists by location (S_ALR_87011990) and location
+    based reports miss the asset.
+  fix_map:
+    __other__: Define the location for the plant in OC10 or assign an existing location in AS02 > Time-dependent.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): location {ANLZ.STORT} is not
+    defined for plant {ANLZ.WERKS}.'
+
+- id: AA214
+  field: ANLB.NDPER
+  check_class: cross_field_check
+  fail_when: '`ANLB.NDPER`.str.fullmatch(''0*(1[2-9]|[2-9][0-9]|[1-9][0-9]{2})'').fillna(False)'
+  applies_when:
+    ANLB.XAFBE: {blank: true}
+  severity: medium
+  dimension: validity
+  message: Useful life in periods is a full year or more
+  why_it_matters: The useful life is entered as years (ANLB.NDJAR) plus the remaining periods (ANLB.NDPER). In a
+    12-period fiscal year the periods must stay below 12; 12 or more periods means the years were entered as periods and
+    the depreciation term is wrong.
+  rule_authority: best_practice
+  sap_impact: The planned depreciation runs over a different term than intended; the asset depreciates too fast or too
+    slowly and the asset explorer (AW01N) shows an unexpected end of life.
+  fix_map:
+    __other__: Move whole years from periods to years in AS02 > Depreciation areas, then recalculate (AFAR).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}), area {ANLB.AFABE}: useful life
+    {ANLB.NDJAR} years and {ANLB.NDPER} periods.'
+
+- id: AA215
+  field: ANLC.XAFAR
+  check_class: cross_field_check
+  fail_when: (`ANLC.XAFAR` == '1') | (`ANLC.XAFAR` == '2')
+  severity: high
+  dimension: accuracy
+  message: Depreciation calculation ended in error for the asset
+  why_it_matters: The depreciation error indicator (ANLC.XAFAR) is set when the depreciation calculation for the
+    fiscal year (2) or for previous years (1) failed. The planned values in the asset values are then not reliable.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB reports the asset as faulty and does not post its depreciation; fiscal year change (AJRW) and year-end
+    closing (AJAB) are blocked until it is corrected.
+  fix_map:
+    __other__: Run AFAR for the asset, correct the cause shown in the log (depreciation key, useful life, missing account),
+      and repeat the depreciation run.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}), area {ANLC.AFABE}, fiscal year
+    {ANLC.GJAHR}: depreciation calculation error {ANLC.XAFAR}.'
+
+- id: AA216
+  field: ANLA.EAUFN
+  check_class: exists_check
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  severity: medium
+  dimension: consistency
+  message: Asset's investment order does not exist
+  why_it_matters: The investment order (ANLA.EAUFN) links the asset to the order whose costs are capitalised on it, and is
+    used by capital investment reporting. An order that no longer exists breaks that link.
+  rule_authority: best_practice
+  sap_impact: Investment programme reports and the asset's origin analysis (AW01N, S_ALR_87012050) cannot trace the
+    acquisition back to its order.
+  fix_map:
+    __other__: Clear or correct the investment order in AS02 > Origin.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): investment order {ANLA.EAUFN} does
+    not exist.'
+
+- id: AA217
+  field: ANLA.POSNR
+  check_class: referential_check
+  applies_when:
+    ANLA.POSNR: {not_in: ['00000000']}
+  severity: medium
+  dimension: consistency
+  message: Asset's investment WBS element does not exist
+  why_it_matters: The WBS element of the investment project (ANLA.POSNR) links the asset to the project that built it. A
+    WBS element that does not exist was archived or the reference was loaded with a wrong internal number.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capital investment reports by project and the settlement history of the asset under construction cannot
+    find the project.
+  fix_map:
+    __other__: Clear or correct the WBS element in AS02 > Origin.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): investment WBS element does not
+    exist.'
+
+- id: AA218
+  field: ANLZ.CAUFN
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Internal order assigned to the asset does not exist
+  why_it_matters: The internal order in the asset's time-dependent data (ANLZ.CAUFN) receives the depreciation and
+    interest of the asset in CO. An order that does not exist leaves those postings without a receiver.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB posts with errors for the asset; depreciation is missing on the order and in CO reporting.
+  fix_map:
+    __other__: Assign an existing, released internal order in AS02 > Time-dependent, or remove the order.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): internal order {ANLZ.CAUFN} does not
+    exist.'
+
+- id: AA219
+  field: ANLZ.KOSTLV
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  target_when:
+    DATBI: ['99991231']
+  severity: medium
+  dimension: consistency
+  message: Cost centre responsible for the asset does not exist
+  why_it_matters: The responsible cost centre (ANLZ.KOSTLV) names the organisational unit accountable for the asset, and
+    is used by asset reports and physical inventory by responsibility. A cost centre without a current validity was
+    closed or never existed.
+  rule_authority: best_practice
+  sap_impact: Reports by responsible cost centre (S_ALR_87011964 with cost centre selection) miss the asset; inventory by
+    responsibility cannot reach anyone.
+  fix_map:
+    __other__: Assign a current cost centre as responsible cost centre in AS02 > Time-dependent.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): responsible cost centre {ANLZ.KOSTLV}
+    does not exist.'
+
+- id: AA220
+  field: ANLZ.KOSTL
+  fields:
+  - ANLA.BUKRS
+  - ANLZ.KOSTL
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - BUKRS
+  - KOSTL
+  target_when:
+    DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Asset's cost centre belongs to another company code
+  why_it_matters: Depreciation is posted in the asset's company code to the cost centre in its time-dependent data. A cost
+    centre that belongs to another company code (CSKS.BUKRS) would make the depreciation a cross-company posting, which
+    Asset Accounting does not allow.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB ends with "cost centre belongs to company code ..." for the asset; depreciation for the period is not
+    posted.
+  fix_map:
+    __other__: Assign a cost centre of the asset's company code in AS02 > Time-dependent, or transfer the asset to the
+      company code of the cost centre (ABT1N).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): cost centre {ANLZ.KOSTL} belongs to
+    another company code.'

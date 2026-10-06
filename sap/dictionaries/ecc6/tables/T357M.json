@@ -1,0 +1,52 @@
+{
+ "table": "T357M",
+ "description": "Machine operating condition",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ANLZU",
+   "key": true,
+   "data_element": "ANLZU",
+   "domain": "ANLZU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Syst.Condition",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KAPAO",
+   "key": false,
+   "data_element": "KAPAO",
+   "domain": "KREUZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Production Work Center Reserved by Plant Maintenance",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

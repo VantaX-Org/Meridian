@@ -1,0 +1,27 @@
+{
+ "domain": "EAM_CC_CALLHORIZON_QUALIFIER",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": "EAMQF",
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Percent"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Calendar Days"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Working Days (Factory Calendar Days)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

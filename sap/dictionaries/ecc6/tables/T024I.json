@@ -1,0 +1,110 @@
+{
+ "table": "T024I",
+ "description": "Maintenance planner groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "IWERK",
+   "key": true,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T399I"
+  },
+  {
+   "pos": 3,
+   "name": "INGRP",
+   "key": true,
+   "data_element": "INGRP",
+   "domain": "INGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planner Group for Customer Service and Plant Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "INNAM",
+   "key": false,
+   "data_element": "INNAM",
+   "domain": "TEXT18",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Name of the Maintenance Planner Group",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "INTEL",
+   "key": false,
+   "data_element": "INTEL",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Maintenance Planner Group Telephone Number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AUART_WP",
+   "key": false,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": "T003O"
+  },
+  {
+   "pos": 7,
+   "name": "SMTP_ADDR",
+   "key": false,
+   "data_element": "AD_SMTPADR",
+   "domain": "AD_SMTPADR",
+   "type": "CHAR",
+   "length": 241,
+   "decimals": 0,
+   "description": "E-Mail Address",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUART_WP",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

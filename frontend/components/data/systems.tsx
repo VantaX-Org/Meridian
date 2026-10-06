@@ -141,7 +141,10 @@ export function SystemsSurface() {
     { id: "type", header: "Type", meta: meta({ width: 170 }),
       cell: ({ row }) => <span className="ui-cell-stack"><span className="ui-cell-stack__main">{TYPE_LABEL[row.original.system.system_type] ?? row.original.system.system_type}</span>
         <span className="ui-cell-stack__sub">{row.original.system.environment}</span></span> },
-    { id: "health", header: "Health", meta: meta({ width: 170 }), cell: ({ row }) => <HealthBadge s={row.original.system.health_status} /> },
+    { id: "health", header: "Health", meta: meta({ width: 170 }), cell: ({ row }) => (
+      <Link href={`/systems/${row.original.system.id}?tab=health`} className="ui-link" title={row.original.system.health_message ?? undefined}>
+        <HealthBadge s={row.original.system.health_status} />
+      </Link>) },
     { id: "objects", header: "Objects", meta: meta({ numeric: true, width: 90 }),
       cell: ({ row }) => row.original.modules ? `${row.original.loadedObjects} of ${row.original.modules.length}` : row.original.loading ? PENDING : NONE_YET },
     { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }),

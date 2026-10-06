@@ -24,7 +24,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
-import { MM_VIEWS } from "@/lib/mm-views";
+import { MM_VIEWS } from "@/lib/material-views";
 
 const HREF = "/admin?tab=rules";
 const meta = (m: AuroraColumnMeta) => m;
@@ -164,7 +164,7 @@ export function RulesSurface() {
         actions={canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null} />
       <Tally level={4} label="Rule library" figures={[
         { label: "Rules", value: summary.isLoading ? null : totals.yaml + totals.other || rules.length, loading: summary.isLoading, verdict: `${totals.yaml.toLocaleString()} built in, ${totals.other.toLocaleString()} HQ, mined or custom.`, href: HREF },
-        { label: "Enabled", value: summary.isLoading ? null : totals.enabled, loading: summary.isLoading, tone: "success", verdict: "Run on every analysis.", href: HREF },
+        { label: "Enabled", value: summary.isLoading ? null : totals.enabled, loading: summary.isLoading, verdict: "Run on every analysis.", href: HREF },
         { label: "Disabled", value: summary.isLoading ? null : totals.disabled, loading: summary.isLoading, tone: totals.disabled ? "warning" : undefined, verdict: totals.disabled ? "Skipped by analyses." : "Every rule is active.", href: HREF },
       ]} />
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} groups={groups} onClear={filtered ? clearFilters : undefined} />
@@ -186,7 +186,7 @@ export function RulesSurface() {
               { k: "System", v: CATEGORY_LABEL[selected.category] ?? selected.category },
               { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? `, ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },
               { k: "Authority", v: authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured" },
-              { k: "State", v: <StatusBadge status={selected.enabled ? "ok" : "idle"}>{selected.enabled ? "enabled" : "disabled"}</StatusBadge> },
+              { k: "State", v: selected.enabled ? "Enabled" : "Disabled" },
               { k: "Updated", v: formatDate(selected.updated_at, "datetime") },
               { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${formatDate(selected.last_run_at, "datetime")}` : ""}` : "not run yet" },
               ...(valuesOf(selected, "check_class").length

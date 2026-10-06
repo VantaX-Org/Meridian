@@ -10,14 +10,14 @@
  *  - Who fixes it: the planner's recommended steward and effort for this object.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { LineChart, RadarChart } from "@/components/aurora";
 import {
-  DataTable, EmptyState, KeyValue, Mono, PageHeader, ScoreRing, SectionCard, StatusBadge, Tally, TableSkeleton,
+  Button, DataTable, EmptyState, Input, KeyValue, Mono, PageHeader, ScoreRing, SectionCard, StatusBadge, Tally, TableSkeleton,
   type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
@@ -41,6 +41,7 @@ export default function Object360Page() {
   const obj = decodeURIComponent(useParams<{ module: string }>().module);
   const name = formatModuleName(obj);
   const router = useRouter();
+  const [matnr, setMatnr] = useState("");
   const crumb = (
     <PageCrumb segments={[
       { level: "portfolio", label: "Portfolio", href: "/" },
@@ -175,6 +176,15 @@ export default function Object360Page() {
             onRowActivate={(f) => router.push(`/analyse/finding/${f.id}?v=${f.version_id}`)} />
         )}
       </SectionCard>
+
+      {obj === "material_master" ? (
+        <SectionCard title="Open a material" meta="Material 360">
+          <form className="ui-filterbar" onSubmit={(e) => { e.preventDefault(); if (matnr.trim()) router.push(`/analyse/material/${encodeURIComponent(matnr.trim())}`); }}>
+            <Input aria-label="Material number" placeholder="Material number" value={matnr} onChange={(e) => setMatnr(e.target.value)} />
+            <Button type="submit" variant="secondary" disabled={!matnr.trim()}>Open material</Button>
+          </form>
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Who fixes it">
         <div className="ui-stack" style={{ gap: "var(--aurora-space-3)" }}>

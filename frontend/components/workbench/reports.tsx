@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import {
   Banner, Button, DataTable, DetailDrawer, EmptyState, KeyValue, Mono, PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
+import { MoreHorizontal } from "lucide-react";
+import { Menu, MenuItem } from "@/components/aurora";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { copyToClipboard } from "@/lib/actions";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
@@ -52,7 +54,7 @@ export function ReportsSurface() {
   const selected = selectedId ? versions.find((v) => v.id === selectedId) ?? null : null;
   const latest = versions[0];
   const latestDqs = latest ? compositeDqs(latest.dqs_summary) : null;
-  const week = versions.filter((v) => Date.now() - new Date(v.run_at).getTime() < 7 * 86_400_000).length;
+  const prevDqs = versions[1] ? compositeDqs(versions[1].dqs_summary) : null;
 
   const qc = useQueryClient();
   const [confirmClear, setConfirmClear] = useState(false);
@@ -93,8 +95,12 @@ export function ReportsSurface() {
     <div className="ui-page">
       <PageHeader title="Reports" summary="Every completed analysis as a PDF for people, JSON for systems, and the config workbook for consultants."
         actions={latest ? <>
-          {versions.length > 1 ? <Button variant="secondary" onClick={() => setConfirmClear(true)} disabled={clear.isPending}>Clear old runs</Button> : null}
           <Button onClick={() => download.mutate({ v: latest, kind: "pdf" })} disabled={download.isPending}>Download latest PDF</Button>
+          {versions.length > 1 ? (
+            <Menu label="More actions" trigger={<MoreHorizontal size={16} aria-hidden />} triggerClassName="aurora-topbar__icon aurora-focus-ring" width={200}>
+              <MenuItem onClick={() => setConfirmClear(true)} disabled={clear.isPending}>Clear old runs</MenuItem>
+            </Menu>
+          ) : null}
         </> : null} />
       {confirmClear ? (
         <Banner tone="warning" title="Clear old runs?"
@@ -107,8 +113,8 @@ export function ReportsSurface() {
       ) : null}
       <Tally level={2} label="Reports" figures={[
         { label: "Reports", value: q.isLoading ? null : versions.length, loading: q.isLoading, verdict: versions.length ? "Completed analyses." : "No analysis has finished yet.", href: "/reports" },
-        { label: "This week", value: q.isLoading ? null : week, loading: q.isLoading, verdict: week ? "Written in the last 7 days." : "Nothing written this week.", href: "/reports" },
         { label: "Latest DQS", value: latestDqs === null ? null : Math.round(latestDqs * 10) / 10, loading: q.isLoading,
+          delta: latestDqs !== null && prevDqs !== null ? { value: Math.round((latestDqs - prevDqs) * 10) / 10, unit: " points", good: "up" as const } : undefined,
           tone: latestDqs !== null && latestDqs < 70 ? "danger" : latestDqs !== null && latestDqs < 90 ? "warning" : undefined,
           verdict: latest ? `Run ${relativeTime(latest.run_at)}.` : "No analysis has completed.", href: latest ? `/reports?report=${latest.id}` : "/reports" },
       ]} />

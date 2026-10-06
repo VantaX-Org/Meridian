@@ -1,0 +1,797 @@
+{
+ "table": "EBKN",
+ "description": "Purchase Requisition Account Assignment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BANFN",
+   "key": true,
+   "data_element": "BANFN",
+   "domain": "BANFN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Purchase requisition number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "BNFPO",
+   "key": true,
+   "data_element": "BNFPO",
+   "domain": "BNFPO",
+   "type": "NUMC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Item number of purchase requisition",
+   "check_table": "EBAN"
+  },
+  {
+   "pos": 4,
+   "name": "ZEBKN",
+   "key": true,
+   "data_element": "DZEBKN",
+   "domain": "ZEBKN",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Serial number for PReq account assignment segment",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "ELOEK",
+   "domain": "ELOEK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion indicator in purchasing document",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MENGE",
+   "key": false,
+   "data_element": "BAMNG",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Purchase requisition quantity",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "VPROZ",
+   "key": false,
+   "data_element": "VPROZ",
+   "domain": "VPROZ",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 1,
+   "description": "Distribution percentage in the case of multiple acct assgt",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "SAKTO",
+   "key": false,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 11,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 12,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 13,
+   "name": "PROJN",
+   "key": false,
+   "data_element": "PROJN",
+   "domain": "PROJN",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Old: Project number : No longer used --> PS_POSNR",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "VBELN",
+   "key": false,
+   "data_element": "VBELN",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales and Distribution Document Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 15,
+   "name": "VBELP",
+   "key": false,
+   "data_element": "POSNR_VA",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sales Document Item",
+   "check_table": "VBUP"
+  },
+  {
+   "pos": 16,
+   "name": "VETEN",
+   "key": false,
+   "data_element": "ETENR",
+   "domain": "ETENR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Schedule line",
+   "check_table": "VBEP"
+  },
+  {
+   "pos": 17,
+   "name": "ANLN1",
+   "key": false,
+   "data_element": "ANLN1",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Main Asset Number",
+   "check_table": "ANLH"
+  },
+  {
+   "pos": 18,
+   "name": "ANLN2",
+   "key": false,
+   "data_element": "ANLN2",
+   "domain": "ANLN2",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Asset Subnumber",
+   "check_table": "ANLA"
+  },
+  {
+   "pos": 19,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 20,
+   "name": "WEMPF",
+   "key": false,
+   "data_element": "WEMPF",
+   "domain": "WEMPF",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Goods recipient",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "ABLAD",
+   "key": false,
+   "data_element": "ABLAD",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Unloading Point",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 23,
+   "name": "XBKST",
+   "key": false,
+   "data_element": "XBKST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Posting to cost center?",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "XBAUF",
+   "key": false,
+   "data_element": "XBAUF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Post To Order",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "XBPRO",
+   "key": false,
+   "data_element": "XBPRO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Post to project",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "KSTRG",
+   "key": false,
+   "data_element": "KSTRG",
+   "domain": "KSTRG",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Cost Object",
+   "check_table": "*"
+  },
+  {
+   "pos": 27,
+   "name": "PAOBJNR",
+   "key": false,
+   "data_element": "RKEOBJNR",
+   "domain": "RKEOBJNR",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profitability Segment Number (CO-PA)",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "PRCTR",
+   "key": false,
+   "data_element": "PRCTR",
+   "domain": "PRCTR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profit Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 29,
+   "name": "PS_PSP_PNR",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 30,
+   "name": "NPLNR",
+   "key": false,
+   "data_element": "NPLNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Network Number for Account Assignment",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 31,
+   "name": "AUFPL",
+   "key": false,
+   "data_element": "CO_AUFPL",
+   "domain": "AUFPL",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Routing number of operations in the order",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "IMKEY",
+   "key": false,
+   "data_element": "IMKEY",
+   "domain": "IMKEY",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal Key for Real Estate Object",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "APLZL",
+   "key": false,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "VPTNR",
+   "key": false,
+   "data_element": "JV_PART",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Partner account number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 35,
+   "name": "FIPOS",
+   "key": false,
+   "data_element": "FIPOS",
+   "domain": "FIPOS",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Commitment Item",
+   "check_table": "FMFPO"
+  },
+  {
+   "pos": 36,
+   "name": "RECID",
+   "key": false,
+   "data_element": "JV_RECIND",
+   "domain": "JV_RECIND",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recovery Indicator",
+   "check_table": "*"
+  },
+  {
+   "pos": 38,
+   "name": "FISTL",
+   "key": false,
+   "data_element": "FISTL",
+   "domain": "FISTL",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Funds Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 39,
+   "name": "GEBER",
+   "key": false,
+   "data_element": "BP_GEBER",
+   "domain": "BP_GEBER",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Fund",
+   "check_table": "*"
+  },
+  {
+   "pos": 40,
+   "name": "FKBER",
+   "key": false,
+   "data_element": "FKBER",
+   "domain": "FKBER",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Functional Area",
+   "check_table": "*"
+  },
+  {
+   "pos": 41,
+   "name": "DABRZ",
+   "key": false,
+   "data_element": "DABRBEZ",
+   "domain": "DDAT",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Reference date for settlement",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "NETWR",
+   "key": false,
+   "data_element": "BWERT",
+   "domain": "WERT7",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Net Order Value in PO Currency",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "AUFPL_ORD",
+   "key": false,
+   "data_element": "CO_AUFPL",
+   "domain": "AUFPL",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Routing number of operations in the order",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "APLZL_ORD",
+   "key": false,
+   "data_element": "CO_APLZL",
+   "domain": "CO_APLZL",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "General counter for order",
+   "check_table": "*"
+  },
+  {
+   "pos": 46,
+   "name": "KBLNR",
+   "key": false,
+   "data_element": "KBLNR",
+   "domain": "KBLNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document Number for Earmarked Funds",
+   "check_table": "*"
+  },
+  {
+   "pos": 47,
+   "name": "KBLPOS",
+   "key": false,
+   "data_element": "KBLPOS",
+   "domain": "KBLPOS",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Earmarked Funds: Document Item",
+   "check_table": "*"
+  },
+  {
+   "pos": 48,
+   "name": "LSTAR",
+   "key": false,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": "CSLA"
+  },
+  {
+   "pos": 49,
+   "name": "PRZNR",
+   "key": false,
+   "data_element": "CO_PRZNR",
+   "domain": "CO_PRZNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Business Process",
+   "check_table": "CBPR"
+  },
+  {
+   "pos": 50,
+   "name": "GRANT_NBR",
+   "key": false,
+   "data_element": "GM_GRANT_NBR",
+   "domain": "GM_GRANT_NBR",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Grant",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "FM_SPLIT_BATCH",
+   "key": false,
+   "data_element": "FMSP_SPLIT_BATCH",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Batch to group results from an PSM assignment distribution",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "FM_SPLIT_BEGRU",
+   "key": false,
+   "data_element": "FMSP_SPLIT_AUTG",
+   "domain": "FMSP_SPLIT_AUTG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization group for PSM account assignment distribution",
+   "check_table": "*"
+  },
+  {
+   "pos": 54,
+   "name": "BUDGET_PD",
+   "key": false,
+   "data_element": "FM_BUDGET_PERIOD",
+   "domain": "FM_BUDGET_PERIOD",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "FM: Budget Period",
+   "check_table": "*"
+  },
+  {
+   "pos": 56,
+   "name": "EGRUP",
+   "key": false,
+   "data_element": "JV_EGROUP",
+   "domain": "JV_EGROUP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Equity group",
+   "check_table": "*"
+  },
+  {
+   "pos": 57,
+   "name": "VNAME",
+   "key": false,
+   "data_element": "JV_NAME",
+   "domain": "JV_NAME",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Joint venture",
+   "check_table": "*"
+  },
+  {
+   "pos": 60,
+   "name": "TCOBJNR",
+   "key": false,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "*"
+  },
+  {
+   "pos": 61,
+   "name": "DATEOFSERVICE",
+   "key": false,
+   "data_element": "VVBEACTDATE",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Service",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "NOTAXCORR",
+   "key": false,
+   "data_element": "VVREITNOTAXCORR",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Do Not Consider Item in Input Tax Correction",
+   "check_table": null
+  },
+  {
+   "pos": 63,
+   "name": "DIFFOPTRATE",
+   "key": false,
+   "data_element": "POPTSATZ",
+   "domain": "POPTSATZ",
+   "type": "DEC",
+   "length": 9,
+   "decimals": 6,
+   "description": "Real Estate Option Rate",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "HASDIFFOPTRATE",
+   "key": false,
+   "data_element": "VVREITUSEDIFFOPTRATE",
+   "domain": "BOOLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Use Different Option Rate",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ANLN1",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLN2",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BNFPO",
+   "foreign_table": "EBAN",
+   "foreign_field": "BNFPO"
+  },
+  {
+   "field": "FIPOS",
+   "foreign_table": "FMFPO",
+   "foreign_field": "FIPOS"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "LSTAR",
+   "foreign_table": "CSLA",
+   "foreign_field": "LSTAR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "NPLNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "PRZNR",
+   "foreign_table": "CBPR",
+   "foreign_field": "PRZNR"
+  },
+  {
+   "field": "PS_PSP_PNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "SAKTO",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "VBELN",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "VBELP",
+   "foreign_table": "VBUP",
+   "foreign_field": "POSNR"
+  },
+  {
+   "field": "VETEN",
+   "foreign_table": "VBEP",
+   "foreign_field": "ETENR"
+  },
+  {
+   "field": "VPTNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  }
+ ]
+}

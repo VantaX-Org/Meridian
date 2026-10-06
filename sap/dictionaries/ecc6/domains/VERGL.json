@@ -1,0 +1,62 @@
+{
+ "domain": "VERGL",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "<",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "<=",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "=",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": ">=",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": ">",
+   "high": null,
+   "text": ""
+  },
+  {
+   "low": "LT",
+   "high": null,
+   "text": "smaller"
+  },
+  {
+   "low": "LE",
+   "high": null,
+   "text": "smaller or equal"
+  },
+  {
+   "low": "EQ",
+   "high": null,
+   "text": "equal"
+  },
+  {
+   "low": "GE",
+   "high": null,
+   "text": "larger or equal"
+  },
+  {
+   "low": "GT",
+   "high": null,
+   "text": "larger"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

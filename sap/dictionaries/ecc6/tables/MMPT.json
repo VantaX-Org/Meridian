@@ -1,0 +1,228 @@
+{
+ "table": "MMPT",
+ "description": "Cycle definitions and MeasPoints for MaintPlan",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WARPL",
+   "key": true,
+   "data_element": "WARPL",
+   "domain": "WARPL",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Maintenance Plan",
+   "check_table": "MPLA"
+  },
+  {
+   "pos": 3,
+   "name": "NUMMER",
+   "key": true,
+   "data_element": "DZAEHLER",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Counter in control tables",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "OPERATOR",
+   "key": false,
+   "data_element": "PM_VERGL",
+   "domain": "VERGL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Comparison operator for maint. package cycle duration",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ZYKL1",
+   "key": false,
+   "data_element": "DZYK_ZEIT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Maintenance package cycle/offset",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ZEIEH",
+   "key": false,
+   "data_element": "DZEIEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for the performance of maintenance tasks",
+   "check_table": "T006"
+  },
+  {
+   "pos": 7,
+   "name": "PAK_TEXT",
+   "key": false,
+   "data_element": "TXZYKLUS",
+   "domain": "TXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Text for maintenance package/cycle (time/performance)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LANGU",
+   "key": false,
+   "data_element": "MLANG",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language for object texts",
+   "check_table": "T002"
+  },
+  {
+   "pos": 9,
+   "name": "POINT",
+   "key": false,
+   "data_element": "IMRC_POINT",
+   "domain": "IMRC_POINT",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Measuring Point",
+   "check_table": "IMPTT"
+  },
+  {
+   "pos": 10,
+   "name": "OFFSET",
+   "key": false,
+   "data_element": "DZYK_OFFZT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Start offset of a time-based maintenance package",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "INAKTIV",
+   "key": false,
+   "data_element": "INAKT_TERM",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: event scheduling inactive",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "NZAEH",
+   "key": false,
+   "data_element": "NZAEH",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Next planned counter reading",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ZAEHL",
+   "key": false,
+   "data_element": "PAKETZAEHL",
+   "domain": "PAKZAE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Maintenance Package Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 14,
+   "name": "KTEXTYZK",
+   "key": false,
+   "data_element": "KTEXTZYK",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Short text for the maintenance cycle (time/performance)",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "CYCLESEQIND",
+   "key": false,
+   "data_element": "CYCLESETSEQ",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Cycle Set Sequence",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "SETREPEATIND",
+   "key": false,
+   "data_element": "IND_SET_REPEAT",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Repeat Factor for Cycle Set Sequence",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LANGU",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "POINT",
+   "foreign_table": "IMPTT",
+   "foreign_field": "POINT"
+  },
+  {
+   "field": "WARPL",
+   "foreign_table": "MPLA",
+   "foreign_field": "WARPL"
+  },
+  {
+   "field": "ZEIEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}

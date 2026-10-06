@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, Tally, Verdict, type Status } from "@/components/ui-core";
 import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
+import { getLicenceManifest } from "@/lib/api/licence";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
 import { getVersions } from "@/lib/api/versions";
@@ -47,6 +48,7 @@ export function ExecutiveReport() {
   const predictive = useQuery({ queryKey: ["analytics.predictive"], retry: false, meta: { ignoreError: true },
     queryFn: () => getPredictiveAnalytics() });
 
+  const licence = useQuery({ queryKey: ["licence.manifest"], queryFn: getLicenceManifest, retry: false, meta: { ignoreError: true } });
   const a = agg.data;
   const dqs = a?.dqs.composite ?? null;
   const history = useMemo(() => (versions.data?.versions ?? [])
@@ -71,6 +73,9 @@ export function ExecutiveReport() {
   return (
     <div className="ui-page">
       <PageHeader title="Executive report" summary="A one page read of data quality across the estate." />
+      <p className="ui-note ui-prose">
+        Prepared{licence.data?.company_name ? ` for ${licence.data.company_name}` : ""}{latest ? ` from run ${latest.label ?? latest.metadata?.file_name ?? latest.id.slice(0, 8)}` : ""}, {day(new Date().toISOString())}.
+      </p>
       <div className="ui-report__bar">
         <Verdict>{sentence}</Verdict>
         <div className="ui-report__actions" data-print="hide">

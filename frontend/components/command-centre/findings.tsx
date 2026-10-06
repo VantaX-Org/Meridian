@@ -105,15 +105,15 @@ export function FindingsSurface() {
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "severity", header: "Severity", accessorFn: (f) => SEV_RANK[sev(f.severity)], meta: meta({ sticky: "start", width: 104 }),
       cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{cap(row.original.severity)}</StatusBadge> },
-    { id: "finding", header: "Finding", accessorFn: (f) => title(f), meta: meta({ minWidth: 300, clamp: 2 }), cell: ({ row }) => {
+    { id: "finding", header: "Finding", accessorFn: (f) => title(f), meta: meta({ minWidth: 240, clamp: 2 }), cell: ({ row }) => {
       const f = row.original;
       return (
         <RowHoverPreview preview={<span>{f.details?.message ?? title(f)} {f.affected_count.toLocaleString()} of {f.total_count.toLocaleString()} records fail.</span>}>
-          <Link className="ui-link" href={`/analyse/finding/${f.id}?v=${f.version_id}`} onClick={(e) => e.stopPropagation()}>{title(f)}</Link>
+          <Link className="ui-link" title={title(f)} href={`/analyse/finding/${f.id}?v=${f.version_id}`} onClick={(e) => e.stopPropagation()}>{title(f)}</Link>
         </RowHoverPreview>
       );
     } },
-    { id: "check", header: "Check", accessorFn: (f) => f.check_id, meta: meta({ width: 168 }), cell: ({ row }) => {
+    { id: "check", header: "Check", accessorFn: (f) => f.check_id, meta: meta({ width: 120 }), cell: ({ row }) => {
       const f = row.original;
       return (
         <span className="ui-cell-stack" title={f.check_class ? checkClassLabel(f.check_class) : undefined}>
@@ -122,15 +122,15 @@ export function FindingsSurface() {
         </span>
       );
     } },
-    { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module), meta: meta({ width: 160 }), cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "dimension", header: "Dimension", accessorFn: (f) => f.dimension, meta: meta({ width: 116 }), cell: ({ row }) => cap(row.original.dimension) },
-    { id: "records", header: "Records", accessorFn: (f) => f.affected_count, meta: meta({ width: 96, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
+    { id: "module", header: "Object", accessorFn: (f) => formatModuleName(f.module), meta: meta({ width: 120 }), cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "dimension", header: "Dimension", accessorFn: (f) => f.dimension, meta: meta({ width: 110 }), cell: ({ row }) => cap(row.original.dimension) },
+    { id: "records", header: "Records", accessorFn: (f) => f.affected_count, meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => row.original.affected_count.toLocaleString() },
     ...(hasCost ? [{ id: "cost", header: "At risk", accessorFn: (f: Finding) => f.cost_at_risk ?? -1, meta: meta({ width: 104, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.cost_at_risk == null ? <span className="ui-micro">—</span> : <span title={row.original.cost_formula ?? undefined}>{money(row.original.cost_at_risk)}</span>) } as ColumnDef<Finding, unknown>] : []),
-    { id: "pass", header: "Pass rate", accessorFn: (f) => f.pass_rate ?? -1, meta: meta({ width: 92, align: "end", numeric: true }),
+    { id: "pass", header: "Pass rate", accessorFn: (f) => f.pass_rate ?? -1, meta: meta({ width: 84, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate)}%`) },
-    { id: "age", header: "Found", accessorFn: (f) => f.created_at, meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
-    { id: "fix", header: "Fix", enableSorting: false, meta: meta({ width: 190, clamp: 2 }),
+    { id: "age", header: "Found", accessorFn: (f) => f.created_at, meta: meta({ width: 76, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "fix", header: "Fix", enableSorting: false, meta: meta({ width: 180, clamp: 2 }),
       accessorFn: (f) => (f.affected_count > 0 ? `Open ${plural(f.affected_count, "record")}${f.severity === "critical" || f.severity === "high" ? ", assign" : ""}` : "Passing"), cell: ({ row }) => {
       const f = row.original;
       const href = `/analyse/finding/${f.id}?tab=records&v=${f.version_id}`;

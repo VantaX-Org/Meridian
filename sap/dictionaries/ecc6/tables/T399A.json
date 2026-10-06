@@ -1,0 +1,284 @@
+{
+ "table": "T399A",
+ "description": "Control: Automatic Order Creation",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "IWERK",
+   "key": true,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "SVOBJ_ID",
+   "key": true,
+   "data_element": "SVOBJ_ID",
+   "domain": "SVOBJ_ID",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Service object ID",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SVOBJ",
+   "key": true,
+   "data_element": "SVOBJ",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Service object",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "AUART",
+   "key": false,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": "T003O"
+  },
+  {
+   "pos": 6,
+   "name": "VAPLZ",
+   "key": false,
+   "data_element": "GEWRK",
+   "domain": "ARBPL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Main work center for maintenance tasks",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VAWRK",
+   "key": false,
+   "data_element": "WERGW",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant associated with main work center",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 8,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 9,
+   "name": "STDNR",
+   "key": false,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": "PLKO"
+  },
+  {
+   "pos": 10,
+   "name": "STDAL",
+   "key": false,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PLNTY",
+   "key": false,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 12,
+   "name": "BZGSART",
+   "key": false,
+   "data_element": "BZGSART",
+   "domain": "BZGSART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reference type when creating PM/SM order automatically",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "BZGSOBJTYP",
+   "key": false,
+   "data_element": "BZGSOBJTYP",
+   "domain": "BZGSOBJTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Technical reference object type",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BZGSOBJ",
+   "key": false,
+   "data_element": "BZGSOBJ",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Technical reference object",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "BZGSERNR",
+   "key": false,
+   "data_element": "GERNR",
+   "domain": "GERNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Serial Number",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ILART",
+   "key": false,
+   "data_element": "ILA",
+   "domain": "ILART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maintenance activity type",
+   "check_table": "T353I"
+  },
+  {
+   "pos": 18,
+   "name": "KENNZ_AVO",
+   "key": false,
+   "data_element": "KENNZ_AVO",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Determine Settlement Rule",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "AUFNR_AVO",
+   "key": false,
+   "data_element": "AUFNR_AVO",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Template for Copying a Settlement Rule",
+   "check_table": "AFIH"
+  },
+  {
+   "pos": 20,
+   "name": "REQ_CAPACITY",
+   "key": false,
+   "data_element": "EEWM_REQ_CAPACITY",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Required Capacity in Minutes",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUART",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUFNR_AVO",
+   "foreign_table": "AFIH",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "ILART",
+   "foreign_table": "T353I",
+   "foreign_field": "ILART"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "STDNR",
+   "foreign_table": "PLKO",
+   "foreign_field": "PLNNR"
+  },
+  {
+   "field": "VAWRK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

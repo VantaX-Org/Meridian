@@ -12,4 +12,4 @@ export function PageCrumb({ segments }: { segments: ReadonlyArray<DepthSegment> 
 }
 
 /** Routes whose pages draw their own crumb. */
-export const SELF_CRUMB = /^\/(analyse\/(finding|object|rule)\/[^/]+|systems\/[^/]+|data\/runs\/[^/]+|workbench\/record\/[^/]+|golden-records\/[^/]+|glossary\/[^/]+)$/;
+export const SELF_CRUMB = /^\/(analyse\/(finding|object|rule|material)\/[^/]+|systems\/[^/]+|data\/runs\/[^/]+|workbench\/record\/[^/]+|golden-records\/[^/]+|glossary\/[^/]+)$/;

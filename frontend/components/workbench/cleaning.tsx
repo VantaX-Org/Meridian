@@ -152,7 +152,6 @@ export function CleaningSurface() {
   });
 
   const counts = items.reduce((a, i) => ({ ...a, [bucket(i.status)]: a[bucket(i.status)] + 1 }), { auto: 0, approved: 0, review: 0, closed: 0 } as Record<Bucket, number>);
-  const meanConf = items.length ? Math.round(items.reduce((a, i) => a + pct(i.confidence), 0) / items.length) : null;
   const needle = search.trim().toLowerCase();
   const visible = needle ? items.filter((i) => `${i.record_key} ${i.object_type} ${preview(i)}`.toLowerCase().includes(needle)) : items;
   const selected = drawer.value ? items.find((i) => i.id === drawer.value) ?? null : null;
@@ -183,7 +182,7 @@ export function CleaningSurface() {
         { label: "In queue", value: q.isLoading ? null : total, loading: q.isLoading, verdict: total ? "Corrections proposed for single records." : "No corrections proposed.", href: "/cleaning" },
         { label: "Needs review", value: q.isLoading ? null : counts.review, loading: q.isLoading, tone: counts.review ? "warning" : undefined, verdict: counts.review ? "Waiting for a steward." : "Nothing waiting for a steward.", href: "/cleaning?view=review" },
         { label: "Auto-applied", value: q.isLoading ? null : counts.auto, loading: q.isLoading, verdict: counts.auto ? "Can be rolled back." : "Nothing applied automatically.", href: "/cleaning?view=auto" },
-        { label: "Mean confidence", value: meanConf, unit: meanConf === null ? undefined : "%", loading: q.isLoading, verdict: meanConf === null ? "No corrections to average." : "Across the queue.", href: "/cleaning" },
+        { label: `At ${BULK_CONFIDENCE}% or higher`, value: q.isLoading ? null : confident.length, loading: q.isLoading, verdict: confident.length ? `${confident.length.toLocaleString()} of ${counts.review.toLocaleString()} in review can be approved together.` : "None in review are confident enough to approve together.", href: "/cleaning?view=review" },
       ]} />
       {confirmAuto ? (
         <Banner tone="info" title={`Approve ${confident.length.toLocaleString()} corrections at ${BULK_CONFIDENCE}% or higher?`} action={

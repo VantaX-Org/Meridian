@@ -1,0 +1,62 @@
+{
+ "domain": "AKKNZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Order created online"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Order created historically"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Order created subsequently"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Order from notification"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Order from maintenance plan"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Order from reference"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Follow-up order"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Generated order from IM_SM_CREATE_ORDER"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Order for an SD service item"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Order for an SD repair item (RMA)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

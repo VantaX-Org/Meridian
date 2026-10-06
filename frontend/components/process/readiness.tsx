@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { EmptyState, FilterBar, PageHeader, TableSkeleton, Tally } from "@/components/ui-core";
 import { FeaturesTable } from "@/components/process/features";
 import { useFindingHref } from "@/components/process/shared";
@@ -47,6 +48,15 @@ export function ProcessReadiness() {
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
   const findingHref = useFindingHref(latest?.id);
   const [l1Choice, setL1] = useState<string>("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const openNode = params.get("node");
+  const setOpenNode = (id: string | null) => {
+    const next = new URLSearchParams(params.toString());
+    if (id) next.set("node", id); else next.delete("node");
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+  };
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
 
@@ -79,6 +89,7 @@ export function ProcessReadiness() {
 
   const all = fields(l1);
   const pct = score(all);
+  const passing = all.filter((f) => f.dq_status === "green").length;
   const blocking = red(all);
   const checkIds = new Set(all.filter((f) => f.check_id).map((f) => f.check_id as string));
 
@@ -150,8 +161,9 @@ export function ProcessReadiness() {
         ) : null}
       </FilterBar>
       <Tally level={2} label={`${l1.l1_name} readiness`} figures={[
-        { label: "Ready", value: pct, unit: "%", href: "/process?tab=readiness", tone: blocking ? "danger" : pct >= 90 ? "success" : "warning",
-          verdict: pct >= 90 ? "Share of fields that pass." : "Below the go-live line of 90%." },
+        { label: "Fields passing", value: passing, unit: `of ${all.length.toLocaleString()}`, href: "/process?tab=readiness",
+          tone: blocking ? "danger" : pct >= 90 ? "success" : "warning",
+          verdict: pct >= 90 ? `${pct}%, at or above the 90% line.` : `${pct}%, below the 90% line.` },
         { label: "Blocking fields", value: blocking, href: "/process?tab=readiness", tone: blocking ? "danger" : undefined,
           verdict: blocking ? "Fields failing a mandatory check." : "Nothing blocks go-live." },
         { label: "Gates blocked", value: gates, href: "/process?tab=readiness", tone: gates ? "danger" : undefined,
@@ -167,6 +179,8 @@ export function ProcessReadiness() {
         readinessSemantic={semantic(pct, blocking)}
         lastUpdated={formatDate(latest.run_at)}
         hierarchy={hierarchy}
+        openNode={openNode}
+        onOpenNode={setOpenNode}
         configAlignment={configAlignment}
         blockingFindings={blockingFindings}
         recommendations={recommendations}

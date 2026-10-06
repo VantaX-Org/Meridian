@@ -14,15 +14,15 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 EXPECTED_COUNTS = {
     "accounts_payable": 173,
     "accounts_receivable": 133,
-    "asset_accounting": 43,
+    "asset_accounting": 57,
     "hcm": 64,
-    "controlling": 41,
-    "mm_purchasing": 151,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
+    "controlling": 59,
+    "mm_purchasing": 214,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 91,
     "sd_sales_orders": 69,
     "production_planning": 72,
     "project_system": 80,
-    "plant_maintenance": 71,
+    "plant_maintenance": 188,
     "quality_management": 78,
     "s4_readiness": 13,
     "banking_tax": 77,
@@ -141,7 +141,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1156, f"Expected 1156 total ECC rules, got {total}"
+    assert total == 1368, f"Expected 1368 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

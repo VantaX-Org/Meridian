@@ -1,0 +1,324 @@
+{
+ "table": "CSLA",
+ "description": "Activity master",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KOKRS",
+   "key": true,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 3,
+   "name": "LSTAR",
+   "key": true,
+   "data_element": "LSTAR",
+   "domain": "LSTAR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Activity Type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "DATBI",
+   "key": true,
+   "data_element": "DATBI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid To Date",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "DATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "LEINH",
+   "key": false,
+   "data_element": "LEINH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Activity Unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 7,
+   "name": "LATYP",
+   "key": false,
+   "data_element": "LATYP",
+   "domain": "LATYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activity Type Category",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LATYPI",
+   "key": false,
+   "data_element": "LATYPI",
+   "domain": "LATYPI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variant Activity Type Category for Actual Postings",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ERSDA",
+   "key": false,
+   "data_element": "ERFDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Created on",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "USNAM",
+   "key": false,
+   "data_element": "ERFNM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Entered by",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KSTTY",
+   "key": false,
+   "data_element": "KSTTY",
+   "domain": "KSTTY",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid Cost Center Categories",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AUSEH",
+   "key": false,
+   "data_element": "AUSEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Output Unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 14,
+   "name": "AUSFK",
+   "key": false,
+   "data_element": "AUSFK",
+   "domain": "AUSFK",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Output factor",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "VKSTA",
+   "key": false,
+   "data_element": "VKSTA",
+   "domain": "KSTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Allocation Cost Element",
+   "check_table": "*"
+  },
+  {
+   "pos": 16,
+   "name": "LARK1",
+   "key": false,
+   "data_element": "LARK1",
+   "domain": "LARKK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for component relevancy CO",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "LARK2",
+   "key": false,
+   "data_element": "LARK2",
+   "domain": "LARKK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Component Relevance, HR",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "SPRKZ",
+   "key": false,
+   "data_element": "SPRKZ",
+   "domain": "YNFLG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Lock Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "HRKFT",
+   "key": false,
+   "data_element": "HRKFT",
+   "domain": "HRKFT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Origin Group as Subdivision of Cost Element",
+   "check_table": "*"
+  },
+  {
+   "pos": 20,
+   "name": "FIXVO",
+   "key": false,
+   "data_element": "CO_FIXVO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Predistribution of fixed costs for acty type/bus. process",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TARKZ",
+   "key": false,
+   "data_element": "TARKZ",
+   "domain": "TARKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Price Indicator: Calculate Allocation Price",
+   "check_table": "TKA10"
+  },
+  {
+   "pos": 22,
+   "name": "YRATE",
+   "key": false,
+   "data_element": "CO_YRATE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Price Calculation with Period-Based Average Prices",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "TARKZ_I",
+   "key": false,
+   "data_element": "CO_TARKZ_I",
+   "domain": "TARKZ",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Indicator: Actual Allocation Price",
+   "check_table": "TKA10"
+  },
+  {
+   "pos": 24,
+   "name": "MANIST",
+   "key": false,
+   "data_element": "CO_MANIST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Confirm quantity manually in actual",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "MANPLAN",
+   "key": false,
+   "data_element": "CO_MANPLAN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Plan quantity manually set.",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AUSEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "LEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "TARKZ",
+   "foreign_table": "TKA10",
+   "foreign_field": "TARKZ"
+  },
+  {
+   "field": "TARKZ_I",
+   "foreign_table": "TKA10",
+   "foreign_field": "TARKZ"
+  }
+ ]
+}

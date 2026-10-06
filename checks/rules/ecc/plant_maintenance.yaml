@@ -1312,3 +1312,1976 @@ rules:
   applies_when:
     EQUZ.ILOAN:
       populated: true
+- id: PM202
+  field: EQUZ.HEQUI
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Superior equipment is flagged for deletion
+  why_it_matters: A superior equipment marked for deletion is archived or deleted in the next reorganisation; its sub-equipment
+    would lose the installation hierarchy.
+  rule_authority: sap_hard_constraint
+  sap_impact: Hierarchy reports and cost roll-ups drop the sub-equipment; deletion run is blocked or orphans the subtree.
+  fix_map:
+    __other__: Reinstall the sub-equipment elsewhere (IE4N) or remove the deletion flag on the superior (IE05).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: superior {EQUZ.HEQUI} is flagged for deletion.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  applies_when:
+    EQUZ.DATBI:
+    - '99991231'
+- id: PM203
+  field: MPLA.EQUNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Active maintenance plan refers to equipment flagged for deletion
+  why_it_matters: Scheduled calls keep generating orders for an object that is being retired.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders are created for deleted equipment and fail on release or settlement.
+  fix_map:
+    __other__: Lock or deactivate the plan (IP02) or replace the equipment on the plan.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: equipment {MPLA.EQUNR} is flagged for deletion.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  applies_when:
+    MPLA.LVORM:
+      blank: true
+- id: PM204
+  field: EQUI.GWLEN
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Warranty ends before it starts
+  why_it_matters: The warranty end date must not precede the guarantee start date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warranty checks on notifications evaluate wrongly; claims against the vendor are missed.
+  fix_map:
+    __other__: Correct the warranty dates in IE02 (Location tab > Warranty).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: warranty ends {EQUI.GWLEN} before it starts {EQUI.GWLDT}.'
+  fail_when: '`EQUI.GWLEN`.notna() & `EQUI.GWLDT`.notna() & (`EQUI.GWLEN` < `EQUI.GWLDT`)'
+- id: PM205
+  field: EQUI.ANSDT
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Acquisition date is after the start-up date
+  why_it_matters: Equipment cannot be put into operation before it is acquired.
+  rule_authority: best_practice
+  sap_impact: Asset age and depreciation-driven replacement planning are distorted.
+  fix_map:
+    __other__: Correct acquisition or start-up date in IE02.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: acquired {EQUI.ANSDT} after start-up {EQUI.INBDT}.'
+  fail_when: '`EQUI.ANSDT`.notna() & `EQUI.INBDT`.notna() & (`EQUI.ANSDT` > `EQUI.INBDT`)'
+- id: PM206
+  field: EQUI.INBDT
+  check_class: cross_field_check
+  severity: low
+  dimension: validity
+  message: Start-up date lies in the future
+  why_it_matters: A start-up date ahead of today for equipment already in the system usually means a typing error in the year.
+  rule_authority: best_practice
+  sap_impact: Age-based reporting and warranty logic see the equipment as not yet in operation.
+  fix_map:
+    __other__: Correct the start-up date in IE02.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: start-up date {EQUI.INBDT} is in the future.'
+  fail_when: '`EQUI.INBDT` > @today'
+- id: PM207
+  field: EQUI.ANSWT
+  check_class: cross_field_check
+  severity: low
+  dimension: completeness
+  message: Acquisition value has no acquisition date
+  why_it_matters: A value without a date cannot be placed in time for depreciation or replacement analysis.
+  rule_authority: best_practice
+  sap_impact: Value history cannot be used for lifecycle analysis.
+  fix_map:
+    __other__: Enter the acquisition date in IE02.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: acquisition value {EQUI.ANSWT} without acquisition date.'
+  fail_when: '`EQUI.ANSWT` > 0 & `EQUI.ANSDT`.isna()'
+- id: PM208
+  field: EQUI.WDBWT
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Replacement value has no currency
+  why_it_matters: Replacement value is a currency amount; without a currency it cannot be read or summed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Insurance and replacement-cost reports cannot convert the amount.
+  fix_map:
+    __other__: Enter the currency in IE02 (General data).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: replacement value {EQUI.WDBWT} has no currency.'
+  fail_when: '`EQUI.WDBWT` > 0 & `EQUI.WAERS`.isna()'
+- id: PM209
+  field: EQUI.ELIEF
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Equipment vendor does not exist
+  why_it_matters: Vendor on the equipment must exist in the vendor master for warranty and service contacts.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warranty and service notifications cannot reach the vendor.
+  fix_map:
+    __other__: Correct the vendor number in IE02 or create the vendor (XK01).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: vendor {EQUI.ELIEF} does not exist.'
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+- id: PM210
+  field: EQUI.KUNDE
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Customer the equipment was delivered to does not exist
+  why_it_matters: Customer on a serialised equipment must exist in the customer master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Service orders and warranty claims for the customer cannot be processed.
+  fix_map:
+    __other__: Correct the customer number in IE02 (Serial data) or create the customer (XD01).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: delivered-to customer {EQUI.KUNDE} does not exist.'
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+- id: PM211
+  field: EQUI.WERK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Equipment plant does not exist
+  why_it_matters: The plant on the equipment must be a defined plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock and serial number logic for the equipment fails.
+  fix_map:
+    __other__: Correct the plant in IE02 (Serial data).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: plant {EQUI.WERK} does not exist.'
+  target_table: T001W
+  target_fields:
+  - WERKS
+- id: PM212
+  field: EQUI.LAGER
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Equipment storage location does not exist in its plant
+  why_it_matters: Storage location must be defined for the plant of the equipment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements for the equipment fail.
+  fix_map:
+    __other__: Correct the storage location in IE02 (Serial data).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: storage location {EQUI.LAGER} does not exist in plant {EQUI.WERK}.'
+  target_table: T001L
+  target_fields:
+  - WERKS
+  - LGORT
+  fields:
+  - EQUI.WERK
+  - EQUI.LAGER
+- id: PM213
+  field: EQUI.INVNR
+  check_class: uniqueness_check
+  severity: medium
+  dimension: uniqueness
+  message: Inventory number is used by more than one equipment
+  why_it_matters: The inventory number identifies the physical item during stocktaking.
+  rule_authority: best_practice
+  sap_impact: Physical inventory counts cannot match the item to one equipment.
+  fix_map:
+    __other__: Give each equipment its own inventory number (IE02).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: inventory number {EQUI.INVNR} is duplicated.'
+  fields:
+  - EQUI.INVNR
+  normalize: alnum
+  case_insensitive: true
+- id: PM214
+  field: EQUZ.IWERK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Equipment planning plant is not a maintenance planning plant
+  why_it_matters: Planning plant must be defined in T399I.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders and notifications cannot be planned in that plant.
+  fix_map:
+    __other__: Correct the planning plant in IE02 (Organisation) or define it (OIOA).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: planning plant {EQUZ.IWERK} is not defined for maintenance.'
+  target_table: T399I
+  target_fields:
+  - IWERK
+  applies_when:
+    EQUZ.DATBI:
+    - '99991231'
+- id: PM215
+  field: EQUZ.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Equipment construction-type material does not exist
+  why_it_matters: The construction type links the equipment to a material for BOM and spare parts.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spare-part determination from the material BOM fails.
+  fix_map:
+    __other__: Correct the construction type in IE02 (General > Construction type).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: construction type {EQUZ.SUBMT} does not exist in the material master.'
+  target_table: MARA
+  target_fields:
+  - MATNR
+  applies_when:
+    EQUZ.DATBI:
+    - '99991231'
+- id: PM216
+  field: EQUZ.ILOAN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Current equipment segment has no location and account assignment
+  why_it_matters: Without ILOAN the equipment has no maintenance plant, cost centre or location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders get no settlement cost centre; location reporting omits the equipment.
+  fix_map:
+    __blank__: Enter location and account data in IE02.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: no location and account assignment.'
+  applies_when:
+    EQUZ.DATBI:
+    - '99991231'
+- id: PM217
+  field: EQUZ.GEWRK
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Main work centre without planning plant
+  why_it_matters: A work centre is plant specific; without the planning plant its assignment cannot be validated.
+  rule_authority: best_practice
+  sap_impact: Order planning cannot resolve the work centre plant.
+  fix_map:
+    __other__: Enter the planning plant in IE02 (Organisation).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: work centre {EQUZ.GEWRK} without planning plant.'
+  fail_when: '`EQUZ.GEWRK`.notna() & `EQUZ.IWERK`.isna()'
+  grain: EQUZ
+- id: PM218
+  field: EQUZ.INGRP
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Planner group without planning plant
+  why_it_matters: Planner groups are defined per planning plant.
+  rule_authority: best_practice
+  sap_impact: Planner group cannot be validated; worklists by planner miss the equipment.
+  fix_map:
+    __other__: Enter the planning plant in IE02.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: planner group {EQUZ.INGRP} without planning plant.'
+  fail_when: '`EQUZ.INGRP`.notna() & `EQUZ.IWERK`.isna()'
+  grain: EQUZ
+- id: PM219
+  field: EQUI.MATNR
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Equipment material is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Equipment {EQUI.EQUNR}: {EQUI.MATNR} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id001
+  - MATNR
+  - WERKS
+  fields: &id002
+  - EQUI.MATNR
+  - EQUI.WERK
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+- id: PM220
+  field: EQUI.MATNR
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Equipment material is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: {EQUI.MATNR} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id001
+  fields: *id002
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+- id: PM221
+  field: EQUI.MATNR
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Equipment material is flagged for deletion at the plant
+  why_it_matters: A plant-level deletion flag (MARC.LVORM) blocks use of the material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Serial number and goods movements for the equipment fail.
+  fix_map:
+    __other__: Remove the flag (MM17/MM02) or move the equipment to a valid material.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: material {EQUI.MATNR} is flagged for deletion in plant {EQUI.WERK}.'
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  fields:
+  - EQUI.MATNR
+  - EQUI.WERK
+  target_when:
+    LVORM:
+    - X
+  negate: true
+- id: PM222
+  field: EQUZ.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Construction type material is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: {EQUZ.SUBMT} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id003
+  - MATNR
+  - WERKS
+  fields: &id004
+  - EQUZ.SUBMT
+  - EQUZ.IWERK
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+  applies_when: &id005
+    EQUZ.DATBI:
+    - '99991231'
+- id: PM223
+  field: EQUZ.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Construction type material is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: {EQUZ.SUBMT} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id003
+  fields: *id004
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+  applies_when: *id005
+- id: PM224
+  field: IFLOT.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Functional location construction type is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: {IFLOT.SUBMT} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id006
+  - MATNR
+  - WERKS
+  fields: &id007
+  - IFLOT.SUBMT
+  - IFLOT.IWERK
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+- id: PM225
+  field: IFLOT.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Functional location construction type is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: {IFLOT.SUBMT} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id006
+  fields: *id007
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+- id: PM226
+  field: MPOS.BAUTL
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Maintenance item assembly is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: {MPOS.BAUTL} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id008
+  - MATNR
+  - WERKS
+  fields: &id009
+  - MPOS.BAUTL
+  - MPOS.IWERK
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+- id: PM227
+  field: MPOS.BAUTL
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Maintenance item assembly is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: {MPOS.BAUTL} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id008
+  fields: *id009
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+- id: PM228
+  field: MPOS.SERMAT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Maintenance item service material is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: {MPOS.SERMAT} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id010
+  - MATNR
+  - WERKS
+  fields: &id011
+  - MPOS.SERMAT
+  - MPOS.IWERK
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+- id: PM229
+  field: MPOS.SERMAT
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Maintenance item service material is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: {MPOS.SERMAT} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id010
+  fields: *id011
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+- id: PM230
+  field: STPO.IDNRK
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Equipment BOM component is discontinued with a follow-up material
+  why_it_matters: A material flagged as discontinued (MARC.KZAUS) with a follow-up (MARC.NFMAT) has been superseded; maintenance
+    records should reference the successor.
+  rule_authority: best_practice
+  sap_impact: Spare-part reservations and BOM explosions reference a material being phased out; orders are planned with obsolete
+    parts.
+  fix_map:
+    __other__: Replace the material by the follow-up material in the object or BOM, or reset the discontinuation indicator
+      (MM02).
+  record_fix_template: 'Equipment BOM {STPO.STLNR} item {STPO.STLKN}: {STPO.IDNRK} is discontinued and has a follow-up material.'
+  target_table: MARC
+  target_fields: &id012
+  - MATNR
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      populated: true
+  negate: true
+  applies_when: &id013
+    STPO.STLTY:
+    - E
+    STPO.LKENZ:
+      blank: true
+- id: PM231
+  field: STPO.IDNRK
+  check_class: exists_check
+  severity: medium
+  dimension: lifecycle
+  message: Equipment BOM component is discontinued without a follow-up material
+  why_it_matters: A discontinued material (KZAUS populated) with no follow-up (NFMAT) has no replacement path.
+  rule_authority: best_practice
+  sap_impact: Planners find no successor when the part runs out; orders stall waiting for parts that cannot be procured.
+  fix_map:
+    __other__: Name a follow-up material in MM02 (Plant data / Material Master > MRP 4) or replace the part.
+  record_fix_template: 'Equipment BOM {STPO.STLNR} item {STPO.STLKN}: {STPO.IDNRK} is discontinued with no follow-up.'
+  target_table: MARC
+  target_fields: *id012
+  target_when:
+    KZAUS:
+      populated: true
+    NFMAT:
+      blank: true
+  negate: true
+  applies_when: *id013
+- id: PM232
+  field: MPOS.BAUTL
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Maintenance item assembly does not exist
+  why_it_matters: The assembly on an item must be a material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders from the plan carry an invalid assembly.
+  fix_map:
+    __other__: Correct the assembly in IP02 (item).
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: assembly {MPOS.BAUTL} does not exist.'
+  target_table: MARA
+  target_fields:
+  - MATNR
+- id: PM233
+  field: STPO.IDNRK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Equipment BOM component does not exist
+  why_it_matters: BOM items of an equipment must be existing materials.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spare-part lists and reservations from the BOM fail.
+  fix_map:
+    __other__: Correct the component in IB02.
+  record_fix_template: 'Equipment BOM {STPO.STLNR} item {STPO.STLKN}: component {STPO.IDNRK} does not exist.'
+  target_table: MARA
+  target_fields:
+  - MATNR
+  applies_when:
+    STPO.STLTY:
+    - E
+    STPO.LKENZ:
+      blank: true
+- id: PM234
+  field: STPO.NFMAT
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: BOM item follow-up material is the component itself
+  why_it_matters: The follow-up material of an item cannot be the item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Follow-up processing loops on the same material.
+  fix_map:
+    __other__: Enter the true successor in IB02 or clear it.
+  record_fix_template: 'Equipment BOM {STPO.STLNR} item {STPO.STLKN}: follow-up equals component.'
+  fail_when: '`STPO.NFMAT` == `STPO.IDNRK`'
+  applies_when:
+    STPO.STLTY:
+    - E
+- id: PM235
+  field: EQST.STLNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Equipment BOM link points to a missing BOM header
+  why_it_matters: EQST links an equipment to its BOM.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spare-part list of the equipment is empty.
+  fix_map:
+    __other__: Recreate the equipment BOM (IB01) or remove the link.
+  record_fix_template: 'Equipment {EQST.EQUNR}: BOM {EQST.STLNR} alternative {EQST.STLAL} does not exist.'
+  target_table: STKO
+  target_fields:
+  - STLNR
+  - STLAL
+  fields:
+  - EQST.STLNR
+  - EQST.STLAL
+  target_when:
+    STLTY:
+    - E
+- id: PM236
+  field: EQST.EQUNR
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Equipment BOM link belongs to a non-existent equipment
+  why_it_matters: Orphan BOM link.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM data cannot be reached by any object.
+  fix_map:
+    __other__: Remove the orphaned link.
+  record_fix_template: Equipment BOM link {EQST.EQUNR} has no equipment.
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+- id: PM237
+  field: PLMZ.STLNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Task list material component points to a missing BOM item
+  why_it_matters: PLMZ links a task list operation to a BOM item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Operation components are lost on orders.
+  fix_map:
+    __other__: Reassign the component in the task list (IA06/IA02).
+  record_fix_template: 'Task list {PLMZ.PLNNR}: BOM item {PLMZ.STLNR}/{PLMZ.STLKN} does not exist.'
+  target_table: STPO
+  target_fields:
+  - STLTY
+  - STLNR
+  - STLKN
+  fields:
+  - PLMZ.STLTY
+  - PLMZ.STLNR
+  - PLMZ.STLKN
+  applies_when:
+    PLMZ.PLNTY:
+    - A
+    - E
+    - T
+    PLMZ.LOEKZ:
+      blank: true
+- id: PM238
+  field: ILOA.TPLNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Location record refers to a functional location flagged for deletion
+  why_it_matters: Objects assigned to a functional location marked for deletion lose their location on archiving.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment, plans and orders point at a retiring location.
+  fix_map:
+    __other__: Reassign the objects to a valid location or remove the deletion flag (IL05).
+  record_fix_template: 'Location record {ILOA.ILOAN}: functional location {ILOA.TPLNR} is flagged for deletion.'
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+- id: PM239
+  field: IFLOT.TPLMA
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Superior functional location is flagged for deletion
+  why_it_matters: Children of a deletion-flagged location are orphaned by reorganisation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Structure reports lose the subtree.
+  fix_map:
+    __other__: Move the location under a valid superior (IL02) or unflag the superior (IL05).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: superior {IFLOT.TPLMA} is flagged for deletion.'
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+- id: PM240
+  field: IFLOT.ILOAN
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Functional location points to a missing location and account assignment record
+  why_it_matters: ILOAN holds plant, cost centre and company data of the location.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost centre and plant cannot be derived for orders.
+  fix_map:
+    __other__: Re-enter location and account data in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: ILOAN {IFLOT.ILOAN} does not exist.'
+  target_table: ILOA
+  target_fields:
+  - ILOAN
+  applies_when:
+    IFLOT.ILOAN:
+      populated: true
+- id: PM241
+  field: IFLOT.ILOAN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Functional location has no location and account assignment
+  why_it_matters: Without it the location has no maintenance plant or cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the location get no settlement cost centre.
+  fix_map:
+    __blank__: Enter location and account data in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: no location and account assignment.'
+- id: PM242
+  field: IFLOT.SUBMT
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Functional location construction type does not exist
+  why_it_matters: Construction type must be a material.
+  rule_authority: sap_hard_constraint
+  sap_impact: BOM-based spare-part lookup fails.
+  fix_map:
+    __other__: Correct it in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: construction type {IFLOT.SUBMT} does not exist.'
+  target_table: MARA
+  target_fields:
+  - MATNR
+- id: PM243
+  field: IFLOT.BAUJJ
+  check_class: regex_check
+  severity: medium
+  dimension: validity
+  message: Construction year of the functional location is not a plausible year
+  why_it_matters: The year must be 4 digits between 1900 and 2099.
+  rule_authority: best_practice
+  sap_impact: Age reports and replacement planning use a wrong year.
+  fix_map:
+    __other__: Correct the construction year in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: construction year {IFLOT.BAUJJ} is not valid.'
+  pattern: ^(19|20)\d{2}$
+- id: PM244
+  field: IFLOT.ANSWT
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Acquisition value without currency
+  why_it_matters: An amount needs a currency.
+  rule_authority: sap_hard_constraint
+  sap_impact: Value reports cannot convert the amount.
+  fix_map:
+    __other__: Enter the currency in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: acquisition value without currency.'
+  fail_when: '`IFLOT.ANSWT` > 0 & `IFLOT.WAERS`.isna()'
+- id: PM245
+  field: IFLOT.INGRP
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Planner group without planning plant
+  why_it_matters: Planner groups are plant specific.
+  rule_authority: best_practice
+  sap_impact: Planner group cannot be validated.
+  fix_map:
+    __other__: Enter the planning plant in IL02.
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: planner group {IFLOT.INGRP} without planning plant.'
+  fail_when: '`IFLOT.INGRP`.notna() & `IFLOT.IWERK`.isna()'
+- id: PM246
+  field: IFLOT.INVNR
+  check_class: uniqueness_check
+  severity: low
+  dimension: uniqueness
+  message: Inventory number is used by more than one functional location
+  why_it_matters: The inventory number identifies the physical item.
+  rule_authority: best_practice
+  sap_impact: Stocktaking cannot tie the item to a single location.
+  fix_map:
+    __other__: Give each location its own number (IL02).
+  record_fix_template: 'Functional location {IFLOT.TPLNR}: inventory number {IFLOT.INVNR} is duplicated.'
+  fields:
+  - IFLOT.INVNR
+  normalize: alnum
+  case_insensitive: true
+- id: PM247
+  field: IFLOTX.PLTXT
+  check_class: regex_check
+  severity: low
+  dimension: validity
+  message: Functional location description is a placeholder or too short
+  why_it_matters: Short or placeholder text is not searchable.
+  rule_authority: best_practice
+  sap_impact: Location lists and reports show unusable text.
+  fix_map:
+    __other__: Enter a meaningful description in IL02.
+  record_fix_template: 'Functional location {IFLOTX.TPLNR}: description is a placeholder or too short.'
+  pattern: (?i)^(?!(tbd|test|xxx+|n/?a|dummy|-+|\.+|\?+|.{1,2})$).*$
+- id: PM248
+  field: ILOA.SWERK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance plant on the location record does not exist
+  why_it_matters: The plant must be defined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the objects cannot find the plant.
+  fix_map:
+    __other__: Correct it in IE02/IL02 (Location).
+  record_fix_template: 'Location record {ILOA.ILOAN}: plant {ILOA.SWERK} does not exist.'
+  target_table: T001W
+  target_fields:
+  - WERKS
+- id: PM249
+  field: ILOA.KOSTL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Cost centre does not exist in the controlling area and company code of the location record
+  why_it_matters: The cost centre must exist for the controlling area and belong to the company code on the same record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of maintenance orders to the object fails or posts to the wrong company.
+  fix_map:
+    __other__: Correct cost centre, controlling area or company code in IE02/IL02.
+  record_fix_template: 'Location record {ILOA.ILOAN}: cost centre {ILOA.KOSTL} not found in {ILOA.KOKRS}/{ILOA.BUKRS}.'
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  - BUKRS
+  fields:
+  - ILOA.KOKRS
+  - ILOA.KOSTL
+  - ILOA.BUKRS
+- id: PM250
+  field: ILOA.KOSTL
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Cost centre without company code
+  why_it_matters: The company code carries the posting entity of the account assignment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement cannot determine the company code.
+  fix_map:
+    __other__: Enter the company code in IE02/IL02.
+  record_fix_template: 'Location record {ILOA.ILOAN}: cost centre {ILOA.KOSTL} without company code.'
+  fail_when: '`ILOA.KOSTL`.notna() & `ILOA.BUKRS`.isna()'
+- id: PM251
+  field: ILOA.BUKRS
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Company code on the location record does not exist
+  why_it_matters: The company code must be defined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement fails.
+  fix_map:
+    __other__: Correct it in IE02/IL02.
+  record_fix_template: 'Location record {ILOA.ILOAN}: company code {ILOA.BUKRS} does not exist.'
+  target_table: T001
+  target_fields:
+  - BUKRS
+- id: PM252
+  field: ILOA.AUFNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Settlement order does not exist
+  why_it_matters: The order must exist for cost settlement.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs of the object cannot be settled to the order.
+  fix_map:
+    __other__: Correct or clear the settlement order (IE02/IL02).
+  record_fix_template: 'Location record {ILOA.ILOAN}: settlement order {ILOA.AUFNR} does not exist.'
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+- id: PM253
+  field: ILOA.PROID
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: WBS element does not exist
+  why_it_matters: The WBS element must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs of the object cannot be settled to the project.
+  fix_map:
+    __other__: Correct or clear the WBS element (IE02/IL02).
+  record_fix_template: 'Location record {ILOA.ILOAN}: WBS element {ILOA.PROID} does not exist.'
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+- id: PM254
+  field: ILOA.ADRNR
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Address number does not exist
+  why_it_matters: The address number must exist in the address table.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address data for the object cannot be shown.
+  fix_map:
+    __other__: Correct or clear the address (IE02/IL02).
+  record_fix_template: 'Location record {ILOA.ILOAN}: address {ILOA.ADRNR} does not exist.'
+  target_table: ADRC
+  target_fields:
+  - ADDRNUMBER
+- id: PM255
+  field: ILOA.ANLNR
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Asset assigned without company code
+  why_it_matters: An asset number only identifies an asset together with its company code.
+  rule_authority: sap_hard_constraint
+  sap_impact: Asset cannot be resolved.
+  fix_map:
+    __other__: Enter the company code in IE02/IL02.
+  record_fix_template: 'Location record {ILOA.ILOAN}: asset {ILOA.ANLNR} without company code.'
+  fail_when: '`ILOA.ANLNR`.notna() & `ILOA.BUKRS`.isna()'
+- id: PM256
+  field: IMPTT.MPTYP
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Measuring point category is missing
+  why_it_matters: Category separates equipment, functional location and other object types.
+  rule_authority: sap_hard_constraint
+  sap_impact: Measurement documents cannot be classified.
+  fix_map:
+    __blank__: Set the category in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: no category.'
+- id: PM257
+  field: IMPTT.ATINN
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Measuring point has no characteristic
+  why_it_matters: The characteristic defines what is measured and its unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Readings cannot be entered or evaluated.
+  fix_map:
+    __blank__: Assign a characteristic in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: no characteristic.'
+- id: PM258
+  field: IMPTT.ATINN
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Measuring point characteristic does not exist
+  why_it_matters: The characteristic must exist in the characteristic master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Readings cannot be recorded.
+  fix_map:
+    __other__: Correct it in IK02 or create the characteristic (CT04).
+  record_fix_template: 'Measuring point {IMPTT.POINT}: characteristic {IMPTT.ATINN} does not exist.'
+  target_table: CABN
+  target_fields:
+  - ATINN
+- id: PM259
+  field: IMPTT.MPOBJ
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Measuring point belongs to equipment flagged for deletion
+  why_it_matters: Points on deleted equipment are archived with it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning based on the point is lost.
+  fix_map:
+    __other__: Move the point or remove the deletion flag (IE05).
+  record_fix_template: 'Measuring point {IMPTT.POINT}: equipment is flagged for deletion.'
+  target_table: EQUI
+  target_fields:
+  - OBJNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+- id: PM260
+  field: IMPTT.REFMP
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Reference measuring point does not exist
+  why_it_matters: The referenced point must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inherited characteristic and range are lost.
+  fix_map:
+    __other__: Correct it in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: reference point {IMPTT.REFMP} does not exist.'
+  target_table: IMPTT
+  target_fields:
+  - POINT
+- id: PM261
+  field: IMPTT.TRANS
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Transfer source measuring point does not exist
+  why_it_matters: The transfer source must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reading transfer fails.
+  fix_map:
+    __other__: Correct it in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: transfer point {IMPTT.TRANS} does not exist.'
+  target_table: IMPTT
+  target_fields:
+  - POINT
+- id: PM262
+  field: IMPTT.TRANS
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Measuring point transfers readings to itself
+  why_it_matters: A point cannot be its own transfer source.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reading transfer loops.
+  fix_map:
+    __other__: Clear or correct the transfer point in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: transfer point equals the point.'
+  fail_when: '`IMPTT.TRANS` == `IMPTT.POINT`'
+- id: PM263
+  field: IMPTT.LOCAS
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Localisation assembly does not exist
+  why_it_matters: The assembly must be a material.
+  rule_authority: sap_hard_constraint
+  sap_impact: Point localisation is invalid.
+  fix_map:
+    __other__: Correct it in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: assembly {IMPTT.LOCAS} does not exist.'
+  target_table: MARA
+  target_fields:
+  - MATNR
+- id: PM264
+  field: IMPTT.MRNGU
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Range limits without unit
+  why_it_matters: Range values need a unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Range checks on readings are meaningless.
+  fix_map:
+    __other__: Enter the range unit in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: range limits without unit.'
+  fail_when: (`IMPTT.MRMINI` == 'X' | `IMPTT.MRMAXI` == 'X') & `IMPTT.MRNGU`.isna()
+- id: PM265
+  field: IMPTT.MRMAXI
+  check_class: cross_field_check
+  severity: medium
+  dimension: completeness
+  message: Counter without upper reading limit
+  why_it_matters: A counter needs its maximum reading to detect an overflow.
+  rule_authority: best_practice
+  sap_impact: Counter roll-over is read as a drop in usage.
+  fix_map:
+    __other__: Enter the maximum counter reading in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: counter without maximum reading.'
+  fail_when: '`IMPTT.INDCT` == ''X'' & `IMPTT.MRMAXI` != ''X'''
+- id: PM266
+  field: IMPTT.INDRV
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Backward-running flag on a point that is not a counter
+  why_it_matters: Only counters run backwards.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reading logic is inconsistent.
+  fix_map:
+    __other__: Clear the flag or set the point as counter in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: backward counter flag on a non-counter.'
+  fail_when: '`IMPTT.INDRV` == ''X'' & `IMPTT.INDCT` != ''X'''
+- id: PM267
+  field: IMPTT.CODGR
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Code group without catalog type
+  why_it_matters: Code group needs its catalog type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Valuation codes cannot be read.
+  fix_map:
+    __other__: Enter the catalog type in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: code group without catalog type.'
+  fail_when: '`IMPTT.CODGR`.notna() & `IMPTT.CODCT`.isna()'
+- id: PM268
+  field: IMPTT.PYEAR
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Annual estimate is negative
+  why_it_matters: Annual usage cannot be negative.
+  rule_authority: sap_hard_constraint
+  sap_impact: Performance-based scheduling projects a negative interval.
+  fix_map:
+    __other__: Correct the estimate in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: annual estimate {IMPTT.PYEAR} is negative.'
+  fail_when: '`IMPTT.PYEAR` < 0'
+- id: PM269
+  field: IMPTT.PSORT
+  check_class: uniqueness_check
+  severity: medium
+  dimension: uniqueness
+  message: Position number is used twice on the same object
+  why_it_matters: Sort positions identify points on an object.
+  rule_authority: best_practice
+  sap_impact: Users pick the wrong point.
+  fix_map:
+    __other__: Renumber the points in IK02.
+  record_fix_template: 'Measuring point {IMPTT.POINT}: position {IMPTT.PSORT} duplicated on object.'
+  fields:
+  - IMPTT.MPOBJ
+  - IMPTT.PSORT
+  applies_when:
+    IMPTT.PSORT:
+      populated: true
+- id: PM270
+  field: MMPT.POINT
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance plan cycle uses a missing measuring point
+  why_it_matters: Performance-based cycles read a measuring point.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls are never triggered.
+  fix_map:
+    __other__: Correct the point in IP02.
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: measuring point {MMPT.POINT} does not exist.'
+  target_table: IMPTT
+  target_fields:
+  - POINT
+- id: PM271
+  field: MMPT.POINT
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance plan cycle uses a measuring point flagged for deletion
+  why_it_matters: The point is retired.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls are never triggered.
+  fix_map:
+    __other__: Replace the point (IP02).
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: point {MMPT.POINT} is flagged for deletion.'
+  target_table: IMPTT
+  target_fields:
+  - POINT
+  target_when:
+    LVORM:
+    - X
+  negate: true
+- id: PM272
+  field: MPLA.MPTYP
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Maintenance plan category is missing
+  why_it_matters: The category selects preventive, inspection or service logic.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling cannot run.
+  fix_map:
+    __blank__: Set the category in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: no category.'
+- id: PM273
+  field: MPLA.WPTXT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Maintenance plan has no text
+  why_it_matters: Planners identify plans by text.
+  rule_authority: sap_hard_constraint
+  sap_impact: Worklists show blank plans.
+  fix_map:
+    __blank__: Enter text in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: no text.'
+- id: PM274
+  field: MPLA.STADT
+  check_class: cross_field_check
+  severity: high
+  dimension: completeness
+  message: Maintenance plan has no start date
+  why_it_matters: Scheduling needs a start date.
+  rule_authority: sap_hard_constraint
+  sap_impact: The plan cannot be scheduled.
+  fix_map:
+    __other__: Enter a start date in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: no start date.'
+  fail_when: '`MPLA.STADT`.isna() & `MPLA.START_DATE`.isna()'
+- id: PM275
+  field: MPLA.WARPL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance plan has no maintenance item
+  why_it_matters: Items define what is maintained.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling creates no calls.
+  fix_map:
+    __other__: Add an item (IP02) or lock the plan.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: no maintenance item.'
+  target_table: MPOS
+  target_fields:
+  - WARPL
+  applies_when:
+    MPLA.LVORM:
+      blank: true
+- id: PM276
+  field: MPLA.WARPL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Single-cycle maintenance plan has no cycle
+  why_it_matters: Plans without a strategy carry their own cycles.
+  rule_authority: sap_hard_constraint
+  sap_impact: The plan cannot be scheduled.
+  fix_map:
+    __other__: Add a cycle (IP02).
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: no cycle.'
+  target_table: MMPT
+  target_fields:
+  - WARPL
+  applies_when:
+    MPLA.STRAT:
+      blank: true
+    MPLA.LVORM:
+      blank: true
+- id: PM277
+  field: MPLA.WARPL
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Strategy plan also carries own cycles
+  why_it_matters: A strategy supplies the cycle; own cycles conflict.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling becomes ambiguous.
+  fix_map:
+    __other__: Remove the own cycles or the strategy (IP02).
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: strategy {MPLA.STRAT} and own cycles.'
+  target_table: MMPT
+  target_fields:
+  - WARPL
+  negate: true
+  applies_when:
+    MPLA.STRAT:
+      populated: true
+- id: PM278
+  field: MPLA.SFAKT
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Cycle modification factor is zero or negative
+  why_it_matters: The factor scales the cycle; zero collapses it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Call intervals become zero.
+  fix_map:
+    __other__: Correct the factor in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: factor {MPLA.SFAKT}.'
+  fail_when: '`MPLA.SFAKT` <= 0'
+- id: PM279
+  field: MPLA.HORIZ
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Call horizon exceeds 100 percent
+  why_it_matters: The horizon is a percentage of the cycle.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls are created before the previous is done.
+  fix_map:
+    __other__: Correct in IP02.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: horizon {MPLA.HORIZ}.'
+  fail_when: '`MPLA.HORIZ` > ''100'''
+- id: PM280
+  field: MPLA.ABNUM
+  check_class: cross_field_check
+  severity: medium
+  dimension: lifecycle
+  message: Plan started over a year ago and never called
+  why_it_matters: A plan that has produced no call is dormant.
+  rule_authority: best_practice
+  sap_impact: Maintenance is not happening.
+  fix_map:
+    __other__: Run scheduling (IP10) or lock the plan.
+  record_fix_template: 'Maintenance plan {MPLA.WARPL}: never called.'
+  fail_when: (`MPLA.ABNUM`.isna() | (`MPLA.ABNUM` <= 0))
+  applies_when:
+    MPLA.STADT:
+      older_than_days: 365
+    MPLA.LVORM:
+      blank: true
+- id: PM281
+  field: MPOS.WARPL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item belongs to a missing plan
+  why_it_matters: Items hang on a plan.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is never scheduled.
+  fix_map:
+    __other__: Delete the item or restore the plan.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: plan {MPOS.WARPL} does not exist.'
+  target_table: MPLA
+  target_fields:
+  - WARPL
+- id: PM282
+  field: MPOS.EQUNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item equipment does not exist
+  why_it_matters: Equipment must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders from the item fail.
+  fix_map:
+    __other__: Correct it in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: equipment {MPOS.EQUNR} does not exist.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+- id: PM283
+  field: MPOS.EQUNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item equipment is flagged for deletion
+  why_it_matters: Equipment is retiring.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders from the item fail.
+  fix_map:
+    __other__: Replace the equipment (IP02).
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: equipment {MPOS.EQUNR} is flagged for deletion.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  applies_when:
+    MPOS.INACT:
+      blank: true
+- id: PM284
+  field: MPOS.PLNNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item task list does not exist
+  why_it_matters: The task list supplies operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders have no operations.
+  fix_map:
+    __other__: Correct it in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: task list {MPOS.PLNNR}/{MPOS.PLNAL} does not exist.'
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  fields:
+  - MPOS.PLNTY
+  - MPOS.PLNNR
+  - MPOS.PLNAL
+- id: PM285
+  field: MPOS.PLNNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item uses a task list flagged for deletion
+  why_it_matters: Deleted task lists disappear.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders have no operations.
+  fix_map:
+    __other__: Replace the list (IP02).
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: task list {MPOS.PLNNR} is flagged for deletion.'
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  fields:
+  - MPOS.PLNTY
+  - MPOS.PLNNR
+  - MPOS.PLNAL
+  target_when:
+    LOEKZ:
+    - X
+  negate: true
+- id: PM286
+  field: MPOS.GEWRK
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Item work centre does not exist or is flagged for deletion
+  why_it_matters: Work centre must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders get no capacity.
+  fix_map:
+    __other__: Correct it in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: work centre {MPOS.GEWRK} invalid.'
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY:
+    - A
+    LVORM:
+      blank: true
+- id: PM287
+  field: MPOS.ILOAN
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Maintenance item location record does not exist
+  why_it_matters: ILOA supplies cost data.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders have no cost centre.
+  fix_map:
+    __other__: Re-enter location data in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: location {MPOS.ILOAN} does not exist.'
+  target_table: ILOA
+  target_fields:
+  - ILOAN
+- id: PM288
+  field: MPOS.IWERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Maintenance item has no planning plant
+  why_it_matters: Orders take the planning plant from the item.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation fails.
+  fix_map:
+    __blank__: Enter in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: no planning plant.'
+- id: PM289
+  field: MPOS.AUART
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Maintenance item has no order type
+  why_it_matters: The call creates an order of this type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls produce no order.
+  fix_map:
+    __blank__: Enter in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: no order type.'
+- id: PM290
+  field: MPOS.ILART
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Maintenance item has no maintenance activity type
+  why_it_matters: The activity type drives cost and reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders cannot be analysed by activity.
+  fix_map:
+    __blank__: Enter in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: no activity type.'
+- id: PM291
+  field: MPOS.PLNTY
+  check_class: domain_value_check
+  severity: high
+  dimension: validity
+  message: Task list type of a maintenance item is not A, E or T
+  why_it_matters: Only general (A), equipment (E) and functional location (T) lists are maintenance task lists.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls cannot find the list.
+  fix_map:
+    __other__: Correct it in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: task list type ''{actual_value}''.'
+  allowed_values:
+  - A
+  - E
+  - T
+  valid_values_with_labels:
+    A: General maintenance task list
+    E: Equipment task list
+    T: Functional location task list
+  applies_when:
+    MPOS.PLNTY:
+      populated: true
+- id: PM292
+  field: MPOS.WSTRA
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Item strategy differs from plan strategy
+  why_it_matters: Items follow the plan strategy.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling uses the wrong cycles.
+  fix_map:
+    __other__: Align in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: strategy differs from plan.'
+  fail_when: '`MPOS.WSTRA`.notna() & `MPLA.STRAT`.notna() & (`MPOS.WSTRA` != `MPLA.STRAT`)'
+  grain: MPOS
+- id: PM293
+  field: MPOS.EQUNR
+  check_class: cross_field_check
+  severity: low
+  dimension: consistency
+  message: Item equipment differs from plan equipment
+  why_it_matters: Header equipment and item equipment normally match.
+  rule_authority: best_practice
+  sap_impact: Reports show the wrong object.
+  fix_map:
+    __other__: Align in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: equipment differs from plan.'
+  fail_when: '`MPOS.EQUNR`.notna() & `MPLA.EQUNR`.notna() & (`MPOS.EQUNR` != `MPLA.EQUNR`)'
+  grain: MPOS
+- id: PM294
+  field: MPOS.WPPOS
+  check_class: uniqueness_check
+  severity: medium
+  dimension: uniqueness
+  message: Item number used twice in one plan
+  why_it_matters: Item numbers order items inside a plan.
+  rule_authority: best_practice
+  sap_impact: Items are confused.
+  fix_map:
+    __other__: Renumber in IP02.
+  record_fix_template: 'Maintenance item {MPOS.WAPOS}: item number {MPOS.WPPOS} duplicated.'
+  fields:
+  - MPOS.WARPL
+  - MPOS.WPPOS
+- id: PM295
+  field: MMPT.WARPL
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: Cycle belongs to a missing maintenance plan
+  why_it_matters: Cycles hang on a plan.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan data.
+  fix_map:
+    __other__: Remove or restore.
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: plan does not exist.'
+  target_table: MPLA
+  target_fields:
+  - WARPL
+- id: PM296
+  field: MMPT.ZEIEH
+  check_class: cross_field_check
+  severity: high
+  dimension: completeness
+  message: Cycle length without unit
+  why_it_matters: Needs a unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling fails.
+  fix_map:
+    __other__: Enter the unit in IP02.
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: no unit.'
+  fail_when: '`MMPT.ZYKL1` > 0 & `MMPT.ZEIEH`.isna()'
+- id: PM297
+  field: MMPT.ZYKL1
+  check_class: cross_field_check
+  severity: medium
+  dimension: validity
+  message: Cycle length is zero or negative
+  why_it_matters: Cycle must be positive.
+  rule_authority: sap_hard_constraint
+  sap_impact: Calls are due immediately and repeatedly.
+  fix_map:
+    __other__: Correct in IP02.
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: length {MMPT.ZYKL1}.'
+  fail_when: '`MMPT.ZYKL1` <= 0 & `MMPT.ZEIEH`.notna()'
+- id: PM298
+  field: MMPT.NZAEH
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Next counter reading without measuring point
+  why_it_matters: A counter reading needs a point.
+  rule_authority: sap_hard_constraint
+  sap_impact: Performance scheduling is inconsistent.
+  fix_map:
+    __other__: Assign a point or clear in IP02.
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: counter reading without point.'
+  fail_when: '`MMPT.NZAEH` > 0 & `MMPT.POINT`.isna()'
+- id: PM299
+  field: MMPT.ZYKL1
+  check_class: uniqueness_check
+  severity: low
+  dimension: uniqueness
+  message: Same cycle defined twice in one plan
+  why_it_matters: Duplicate cycles produce duplicate calls.
+  rule_authority: best_practice
+  sap_impact: Double calls.
+  fix_map:
+    __other__: Remove duplicate (IP02).
+  record_fix_template: 'Plan {MMPT.WARPL} cycle {MMPT.ZAEHL}: duplicate cycle.'
+  fields:
+  - MMPT.WARPL
+  - MMPT.ZYKL1
+  - MMPT.ZEIEH
+  - MMPT.POINT
+- id: PM300
+  field: PLKO.KTEXT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PM task list has no description
+  why_it_matters: Users select lists by text.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lists are unusable.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLKO.PLNNR}/{PLKO.PLNAL}: no description.'
+  applies_when: &id014
+    PLKO.PLNTY:
+    - A
+    - E
+    - T
+    PLKO.LOEKZ:
+      blank: true
+- id: PM301
+  field: PLKO.IWERK
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PM task list has no planning plant
+  why_it_matters: Plant drives selection for items and orders.
+  rule_authority: sap_hard_constraint
+  sap_impact: The list is not found.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLKO.PLNNR}/{PLKO.PLNAL}: no planning plant.'
+  applies_when: *id014
+- id: PM302
+  field: PLKO.PLNNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: PM task list has no operations
+  why_it_matters: A list without operations gives orders nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders from the list are empty.
+  fix_map:
+    __other__: Add operations (IA06).
+  record_fix_template: 'Task list {PLKO.PLNNR}/{PLKO.PLNAL}: no operations.'
+  target_table: PLPO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  fields:
+  - PLKO.PLNTY
+  - PLKO.PLNNR
+  applies_when: *id014
+- id: PM303
+  field: PLPO.STEUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PM operation has no control key
+  why_it_matters: Control key defines scheduling and confirmation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders cannot be released.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: no control key.'
+  applies_when: &id015
+    PLPO.PLNTY:
+    - A
+    - E
+    - T
+- id: PM304
+  field: PLPO.ARBID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PM operation has no work centre
+  why_it_matters: Needed for capacity and cost.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders have no work centre.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: no work centre.'
+  applies_when: *id015
+- id: PM305
+  field: PLPO.WERKS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: PM operation has no plant
+  why_it_matters: Needed to resolve the work centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Work centre cannot resolve.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: no plant.'
+  applies_when: *id015
+- id: PM306
+  field: PLPO.LTXA1
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: PM operation has no short text
+  why_it_matters: Technicians read the text.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders show blank operations.
+  fix_map:
+    __blank__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: no text.'
+  applies_when: *id015
+- id: PM307
+  field: PLPO.ARBID
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: PM operation work centre does not exist
+  why_it_matters: Work centre must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: No capacity.
+  fix_map:
+    __other__: Correct in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: work centre {PLPO.ARBID} invalid.'
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY:
+    - A
+    LVORM:
+      blank: true
+  applies_when: *id015
+- id: PM308
+  field: PLPO.EQUNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: PM operation equipment does not exist
+  why_it_matters: Equipment must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Wrong object.
+  fix_map:
+    __other__: Correct in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: equipment {PLPO.EQUNR} does not exist.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  applies_when: *id015
+- id: PM309
+  field: PLPO.TPLNR
+  check_class: exists_check
+  severity: high
+  dimension: consistency
+  message: PM operation functional location does not exist
+  why_it_matters: Location must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Wrong object.
+  fix_map:
+    __other__: Correct in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: location {PLPO.TPLNR} does not exist.'
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  applies_when: *id015
+- id: PM310
+  field: PLPO.LIFNR
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: PM operation vendor does not exist
+  why_it_matters: Vendor must exist for external operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase requisitions fail.
+  fix_map:
+    __other__: Correct in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: vendor {PLPO.LIFNR} does not exist.'
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when: *id015
+- id: PM311
+  field: PLPO.ARBEH
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Work without unit
+  why_it_matters: Needs a unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Hours are misread.
+  fix_map:
+    __other__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: work without unit.'
+  fail_when: '`PLPO.ARBEI` > 0 & `PLPO.ARBEH`.isna()'
+  applies_when: *id015
+- id: PM312
+  field: PLPO.DAUNE
+  check_class: cross_field_check
+  severity: medium
+  dimension: consistency
+  message: Duration without unit
+  why_it_matters: Needs a unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling is wrong.
+  fix_map:
+    __other__: Enter in IA06.
+  record_fix_template: 'Task list {PLPO.PLNNR} operation {PLPO.VORNR}: duration without unit.'
+  fail_when: '`PLPO.DAUNO` > 0 & `PLPO.DAUNE`.isna()'
+  applies_when: *id015
+- id: PM313
+  field: IHPA.PARNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Partner function has no partner
+  why_it_matters: A function without partner is empty.
+  rule_authority: sap_hard_constraint
+  sap_impact: Notifications get no contact.
+  fix_map:
+    __blank__: Enter or delete in IE02.
+  record_fix_template: 'Partner record {IHPA.OBJNR}/{IHPA.PARVW}: no partner.'
+  applies_when:
+    IHPA.KZLOESCH:
+      blank: true
+- id: PM314
+  field: IHPA.PARNR
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Vendor partner does not exist
+  why_it_matters: Vendor must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contact lost.
+  fix_map:
+    __other__: Correct in IE02.
+  record_fix_template: 'Partner record {IHPA.OBJNR}/{IHPA.PARVW}: vendor {IHPA.PARNR} does not exist.'
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when:
+    IHPA.PARVW:
+    - VN
+    IHPA.KZLOESCH:
+      blank: true
+- id: PM315
+  field: INOB.OBJEK
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Equipment classification link points to a missing equipment
+  why_it_matters: Orphan link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Class reports show ghosts.
+  fix_map:
+    __other__: Delete the allocation.
+  record_fix_template: 'Classification link {INOB.CUOBJ}: equipment {INOB.OBJEK} does not exist.'
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  applies_when:
+    INOB.OBTAB:
+    - EQUI
+- id: PM316
+  field: INOB.OBJEK
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: Functional location classification link points to a missing location
+  why_it_matters: Orphan link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Class reports show ghosts.
+  fix_map:
+    __other__: Delete the allocation.
+  record_fix_template: 'Classification link {INOB.CUOBJ}: location {INOB.OBJEK} does not exist.'
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  applies_when:
+    INOB.OBTAB:
+    - IFLOT
+- id: PM317
+  field: KSSK.OBJEK
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: PM class assignment points to a missing object link
+  why_it_matters: Class allocation needs its object link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Class values unreachable.
+  fix_map:
+    __other__: Reassign in IE02 (Class).
+  record_fix_template: 'Class assignment {KSSK.OBJEK}: object link does not exist.'
+  target_table: INOB
+  target_fields:
+  - CUOBJ
+  applies_when:
+    KSSK.KLART:
+    - '002'
+    - '003'
+    KSSK.MAFID:
+    - O
+- id: PM318
+  field: KSSK.CLINT
+  check_class: exists_check
+  severity: medium
+  dimension: consistency
+  message: PM class assignment points to a missing class
+  why_it_matters: Class must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Characteristics unavailable.
+  fix_map:
+    __other__: Reassign (CL20N).
+  record_fix_template: 'Class assignment {KSSK.OBJEK}: class {KSSK.CLINT} does not exist.'
+  target_table: KLAH
+  target_fields:
+  - CLINT
+  applies_when:
+    KSSK.KLART:
+    - '002'
+    - '003'

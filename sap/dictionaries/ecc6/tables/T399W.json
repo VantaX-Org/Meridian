@@ -1,0 +1,148 @@
+{
+ "table": "T399W",
+ "description": "Maintenance Plan Category Parameter",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MPTYP",
+   "key": true,
+   "data_element": "MPTYP",
+   "domain": "MPTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Maintenance plan category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "CALL_TYPE",
+   "key": false,
+   "data_element": "CALL_TYPE",
+   "domain": "CALL_TYPE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Call object for maintenance plan",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "WPEXT",
+   "key": false,
+   "data_element": "WPEXT",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "External number range for maintenance plan",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "WPINT",
+   "key": false,
+   "data_element": "WPINT",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Internal number range for maintenance plan",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "DYNNR",
+   "key": false,
+   "data_element": "WP_DYNNR",
+   "domain": "WP_DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance plan include screen category data",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SCREENTY",
+   "key": false,
+   "data_element": "SCREENTY",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "SCREEN TYPE: for order-order category (see domain)",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MPCONTRACT",
+   "key": false,
+   "data_element": "MPCONTRACT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintenance plan created with ref. to outline agreement",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "MPCONFDATE",
+   "key": false,
+   "data_element": "MPCONFIRMDATE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Separate completion of maintenance call date",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "MPCHANGED",
+   "key": false,
+   "data_element": "CO_FLG_DOC",
+   "domain": "FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: creation of change documents active",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "CHDOC_RCAL",
+   "key": false,
+   "data_element": "MP_CHDOC_RCAL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Change Document When Maintenance Plan Scheduling is Released",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

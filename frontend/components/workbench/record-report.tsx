@@ -22,7 +22,8 @@ import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { getIssue, getIssues, updateIssues, type IssueStatus, type RecordIssue } from "@/lib/api/issues";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, labelOf, objectNoun, recordKeyParts, relativeTime, formatDate } from "@/lib/format";
+import { materialHref } from "@/lib/material-views";
+import { formatModuleName, labelOf, objectNoun, recordKeyLabel, recordKeyParts, relativeTime, formatDate } from "@/lib/format";
 import type { Finding } from "@/types/api";
 
 const STATUS: Record<IssueStatus, RecordReportStatus> = { open: "open", in_progress: "in_progress", waiting_sap: "in_progress", waiting_requester: "in_progress", accepted: "resolved", resolved: "resolved" };
@@ -104,7 +105,7 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         { level: "portfolio", label: "Portfolio", href: "/" },
         { level: "object", label: `Object: ${formatModuleName(issue.module)}`, href: `/analyse/object/${encodeURIComponent(issue.module)}` },
         { level: "check", label: `Check: ${issue.check_id}`, href: `/analyse/rule/${encodeURIComponent(issue.check_id)}?module=${encodeURIComponent(issue.module)}` },
-        { level: "record", label: `Record: ${issue.record_key}` },
+        { level: "record", label: `Record: ${recordKeyLabel(issue.record_key)}` },
       ]} />
       <Tally level={4} label="This record" figures={[
         { label: "Open issues on this record", value: open.length, tone: open.length ? "high" : undefined, verdict: open.length ? "Checks this record still fails." : "This record passes every check.", href: records, loading: siblings.isLoading },
@@ -124,7 +125,12 @@ export function RecordReportView({ issueId }: { issueId: string }) {
         severity={SEV(worst)}
         status={STATUS[issue.status]}
         lastUpdated={relativeTime(issue.last_seen_at)}
-        actions={<Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>}
+        actions={(
+          <>
+            {materialHref(issue.module, issue.record_key) ? <Link className="ui-link" href={materialHref(issue.module, issue.record_key)!}>Open material</Link> : null}
+            <Button variant="secondary" onClick={() => window.print()}>Print or save as PDF</Button>
+          </>
+        )}
         context={[
           { id: "object", label: "Object", value: formatModuleName(issue.module) },
           { id: "key", label: "Record key", value: <span className="aurora-number">{issue.record_key}</span> },
