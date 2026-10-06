@@ -289,6 +289,7 @@ export function RecordReport({
           </>
         }
         title={verdict}
+        titleAs="h1"
         support={support}
         chips={
           <>

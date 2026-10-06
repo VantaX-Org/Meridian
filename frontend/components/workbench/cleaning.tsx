@@ -12,13 +12,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Mono,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, Mono,
   PageHeader, Select, StatusBadge, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import {
-  approveCleaning, bulkApprove, downloadCleaningExport, getCleaningExportOptions, getCleaningQueue, rejectCleaning, rollbackCleaning,
+  approveCleaning, downloadCleaningExport, getCleaningExportOptions, getCleaningQueue, rejectCleaning, rollbackCleaning,
   type CleaningQueueItem, type ExportFormat,
 } from "@/lib/api/cleaning";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
@@ -35,10 +35,20 @@ const LABEL: Record<Bucket, string> = { auto: "Auto-applied", approved: "Approve
 const VIEWS = [["all", "All"], ["review", "Needs review"], ["auto", "Auto-applied"]] as const;
 const text = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v));
 
+/** Steward approves in bulk only at or above this confidence, in percent. */
+const BULK_CONFIDENCE = 85;
+/** Why the engine could not propose a value, when validation failed. */
+const failure = (i: CleaningQueueItem): string | null => {
+  const e = i.record_data_before?.error;
+  return typeof e === "string" && e ? e : null;
+};
+/** "LFA1.STCD1" gives table and field; a bare field has no table. */
+const splitField = (s: string) => (s.includes(".") ? { table: s.slice(0, s.indexOf(".")), field: s.slice(s.indexOf(".") + 1) } : { field: s });
+
 function changedFields(i: CleaningQueueItem): [string, string, string][] {
   const before = i.record_data_before ?? {}, after = i.record_data_after ?? {};
   return Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
-    .filter((k) => JSON.stringify(before[k]) !== JSON.stringify(after[k]))
+    .filter((k) => k !== "error" && JSON.stringify(before[k]) !== JSON.stringify(after[k]))
     .map((k) => [k, text(before[k]), text(after[k])]);
 }
 function preview(i: CleaningQueueItem): string {
@@ -49,6 +59,22 @@ function preview(i: CleaningQueueItem): string {
   if (!changed.length) return "—";
   const [k, b, a] = changed[0];
   return `${k}: ${b} to ${a}${changed.length > 1 ? `, and ${changed.length - 1} more` : ""}`;
+}
+
+/** One proposal as a field chip and "before to after", or why none could be made. */
+function ChangeCell({ item: i }: { item: CleaningQueueItem }) {
+  const why = failure(i);
+  if (why) return <span>Cannot propose: {why}</span>;
+  const after = i.record_data_after ?? {};
+  const changed = changedFields(i);
+  const field = changed.find(([k]) => k.includes("."));
+  if (typeof after.suggested_action === "string") return <span>{field ? <><FieldChip {...splitField(field[0])} />{" "}</> : null}Suggested: {after.suggested_action}</span>;
+  if (field) {
+    const [k, b, a] = field;
+    return <span><FieldChip {...splitField(k)} /> {b} to {a === "—" ? "clear value" : a}{changed.length > 1 ? `, and ${changed.length - 1} more` : ""}</span>;
+  }
+  if (i.record_data_before?.record_b) return <span>Possible duplicate of {text(i.record_data_before.record_b)}</span>;
+  return <Mono>{preview(i)}</Mono>;
 }
 
 const FORMATS: { value: ExportFormat; label: string }[] = [
@@ -99,14 +125,27 @@ export function CleaningSurface() {
     queryKey: ["cleaning.queue", { view }],
     queryFn: () => getCleaningQueue({ per_page: 100, status: view === "auto" ? "auto_approved" : view === "review" ? "recommended" : undefined }),
   });
-  const items = useMemo(() => q.data?.items ?? [], [q.data]);
-  const total = q.data?.total ?? items.length;
+  // The engine re-proposes the same fix on every run: keep the newest per (record, field, after).
+  const items = useMemo(() => {
+    const newest = new Map<string, CleaningQueueItem>();
+    for (const i of q.data?.items ?? []) {
+      const k = `${i.record_key}|${changedFields(i)[0]?.[0] ?? ""}|${changedFields(i)[0]?.[2] ?? i.golden_field_value ?? ""}|${failure(i) ?? ""}`;
+      const seen = newest.get(k);
+      if (!seen || Date.parse(i.detected_at) > Date.parse(seen.detected_at)) newest.set(k, i);
+    }
+    return Array.from(newest.values());
+  }, [q.data]);
+  const total = items.length < (q.data?.items.length ?? 0) ? items.length : q.data?.total ?? items.length;
   const refresh = () => qc.invalidateQueries({ queryKey: ["cleaning.queue"] });
   const approve = useAction((id) => approveCleaning(id), "Correction approved", refresh);
   const reject = useAction((id) => rejectCleaning(id, "Reviewed and rejected"), "Correction rejected", refresh);
   const rollback = useAction(rollbackCleaning, "Correction rolled back", refresh);
+  const confident = items.filter((i) => bucket(i.status) === "review" && !failure(i) && pct(i.confidence) >= BULK_CONFIDENCE);
   const runAuto = useMutation({
-    mutationFn: () => bulkApprove({ max_count: 100 }),
+    mutationFn: async () => {
+      const done = await Promise.allSettled(confident.map((i) => approveCleaning(i.id)));
+      return { approved_count: done.filter((r) => r.status === "fulfilled").length, skipped_count: done.filter((r) => r.status === "rejected").length };
+    },
     onSuccess: (d) => { toast.success(`Approved ${d.approved_count} correction${d.approved_count === 1 ? "" : "s"}${d.skipped_count ? `, skipped ${d.skipped_count}` : ""}`); setConfirmAuto(false); refresh(); },
     onError: (e) => toast.error((e as Error).message || "Auto-approval did not run"),
   });
@@ -124,8 +163,8 @@ export function CleaningSurface() {
     } },
     { id: "record", header: "Record", meta: meta({ width: 220 }), cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
     { id: "object", header: "Object", meta: meta({ width: 150 }), cell: ({ row }) => formatModuleName(row.original.object_type) },
-    { id: "change", header: "Proposed change", meta: meta({ minWidth: 260 }), cell: ({ row }) => <Mono>{preview(row.original)}</Mono> },
-    { id: "conf", header: "Confidence", meta: meta({ width: 104, align: "end", numeric: true }), cell: ({ row }) => `${pct(row.original.confidence)}%` },
+    { id: "change", header: "Proposed change", meta: meta({ minWidth: 260 }), cell: ({ row }) => <ChangeCell item={row.original} /> },
+    { id: "conf", header: "Confidence", meta: meta({ width: 104, align: "end", numeric: true }), cell: ({ row }) => (failure(row.original) ? "—" : `${pct(row.original.confidence)}%`) },
     { id: "when", header: "Detected", meta: meta({ width: 110, align: "end" }), cell: ({ row }) => relativeTime(row.original.detected_at) },
   ], []);
 
@@ -135,7 +174,7 @@ export function CleaningSurface() {
         summary={q.data ? `${total.toLocaleString()} corrections proposed for single records. ${counts.review} wait for review.` : undefined}
         actions={<>
           {can("export") ? <SapExport /> : null}
-          {canApprove ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Approve confident corrections</Button> : null}
+          {canApprove && confident.length ? <Button onClick={() => setConfirmAuto(true)} disabled={runAuto.isPending || confirmAuto}>Approve {confident.length.toLocaleString()} at {BULK_CONFIDENCE}% or higher</Button> : null}
         </>} />
       <Tally level={2} label="Cleaning queue" figures={[
         { label: "In queue", value: q.isLoading ? null : total, loading: q.isLoading, verdict: total ? "Corrections proposed for single records." : "No corrections proposed.", href: "/cleaning" },
@@ -144,12 +183,12 @@ export function CleaningSurface() {
         { label: "Mean confidence", value: meanConf, unit: meanConf === null ? undefined : "%", loading: q.isLoading, verdict: meanConf === null ? "No corrections to average." : "Across the queue.", href: "/cleaning" },
       ]} />
       {confirmAuto ? (
-        <Banner tone="info" title="Approve every correction above the auto-approval threshold?" action={
+        <Banner tone="info" title={`Approve ${confident.length.toLocaleString()} corrections at ${BULK_CONFIDENCE}% or higher?`} action={
           <div className="ui-page-header__actions">
             <Button size="sm" onClick={() => runAuto.mutate()} disabled={runAuto.isPending}>{runAuto.isPending ? "Approving" : "Approve corrections"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setConfirmAuto(false)}>Not now</Button>
           </div>}>
-          Up to 100 corrections whose confidence clears the threshold are approved and applied. The rest stay in review.
+          Corrections that need review and score {BULK_CONFIDENCE}% or higher are approved. Lower ones and failed proposals stay in review. Nothing is written to SAP.
         </Banner>
       ) : null}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search records" }}>

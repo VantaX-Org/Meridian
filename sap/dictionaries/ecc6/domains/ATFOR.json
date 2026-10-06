@@ -1,0 +1,42 @@
+{
+ "domain": "ATFOR",
+ "type": "CHAR",
+ "length": 4,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "CHAR",
+   "high": null,
+   "text": "Character Format"
+  },
+  {
+   "low": "CURR",
+   "high": null,
+   "text": "Currency Format"
+  },
+  {
+   "low": "DATE",
+   "high": null,
+   "text": "Date Format"
+  },
+  {
+   "low": "NUM",
+   "high": null,
+   "text": "Numeric Format"
+  },
+  {
+   "low": "TIME",
+   "high": null,
+   "text": "Time Format"
+  },
+  {
+   "low": "UDEF",
+   "high": null,
+   "text": "User-Defined Data Type"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
