@@ -1,0 +1,42 @@
+{
+ "domain": "PWDCHGSTATE",
+ "type": "INT1",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "254",
+   "high": null,
+   "text": "Password cannot be changed in principle"
+  },
+  {
+   "low": "255",
+   "high": null,
+   "text": "Password cannot be changed until the end of the wait time"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Password can be changed but does not need to be changed"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Password is initial and must be changed"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Password has expired and must be changed"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Password must be changed due to tightened rules"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

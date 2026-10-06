@@ -1,0 +1,37 @@
+{
+ "domain": "FUNCH",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Initial hiring"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Initial hiring and transfer of data from Recruitment"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Activation of pers. assignment for global employees (host)"
+  },
+  {
+   "low": "9",
+   "high": null,
+   "text": "Activation of pers. assignment for global employees (home)"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "Other actions"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

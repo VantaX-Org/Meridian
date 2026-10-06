@@ -39,6 +39,9 @@ DOMAIN_LINK_MAPS: dict[str, list[tuple[str, str, str, str]]] = {
     "asset_accounting": [
         ("ANLZ", "asset_time_segment", "asset_in_cost_center", "ANLN1"),
     ],
+    "hcm": [
+        ("PA0008", "basic_pay_time_segment", "pay_for_employee", "PERNR"),
+    ],
     "mm_purchasing": [
         ("EKPO", "po_item", "po_references_material", "MATNR"),
     ],
@@ -81,7 +84,7 @@ DOMAIN_LINK_MAPS: dict[str, list[tuple[str, str, str, str]]] = {
 ALL_DOMAINS = [
     "business_partner", "customer", "vendor", "material_master",
     "material_plant", "fi_gl", "gl_company_code",
-    "accounts_payable", "accounts_receivable", "asset_accounting", "controlling",
+    "accounts_payable", "accounts_receivable", "asset_accounting", "hcm", "controlling",
     "mm_purchasing", "plant_maintenance", "sd_customer_master",
     "sd_sales_orders", "production_planning", "project_system",
     "ewms_stock", "batch_management",
