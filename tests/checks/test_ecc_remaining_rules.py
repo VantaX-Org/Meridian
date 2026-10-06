@@ -26,6 +26,8 @@ EXPECTED_COUNTS = {
     "quality_management": 133,
     "s4_readiness": 13,
     "banking_tax": 77,
+    "interface_health": 50,
+    "s4hc_master_data": 41,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -141,7 +143,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1774, f"Expected 1774 total ECC rules, got {total}"
+    assert total == 1865, f"Expected 1865 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

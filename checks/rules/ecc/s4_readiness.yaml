@@ -19,11 +19,14 @@ areas:
     related:
       blocking: [S4-CVI-LFA1, S4-CVI-KNA1, S4-CVI-KNVK-VEND, S4-CVI-KNVK-CUST, S4-CVI-KTOKK-NUM, S4-CVI-KTOKK-ROLE,
                  S4-CVI-KTOKD-NUM, S4-CVI-KTOKD-ROLE, AP003, AP005, AR003, AR005,
-                 BP201, BP202, BP206, BP207, BP227, BP228, BP229, BP230, BP233, BP234, BP237, BP238, BP239, BP240]
+                 BP201, BP202, BP206, BP207, BP227, BP228, BP229, BP230, BP233, BP234, BP237, BP238, BP239, BP240,
+                 S4C011, S4C016, S4C017, S4C018, S4C019, S4C022, S4C023, S4C030]
       warning: [AP026, XLNK001, XDUP002, CF-LFA1-STCD1, CF-LFA1-STCD2, CF-KNA1-STCD1, CF-KNA1-STCD2,
                 CF-LFA1-PSTLZ, CF-KNA1-PSTLZ, CR-LFA1-PSTLZ, CR-KNA1-PSTLZ,
                 BP203, BP204, BP205, BP208, BP209, BP210, BP221, BP222,
-                BP231, BP232, BP235, BP236, BP243, BP244, BP246, BP248]
+                BP231, BP232, BP235, BP236, BP243, BP244, BP246, BP248,
+                S4C012, S4C013, S4C014, S4C015, S4C020, S4C021, S4C024, S4C025, S4C032, S4C033,
+                S4C037, S4C040, S4C041]
   quality_management:
     label: Quality management
     simplification_item: Business Partner Approach (SAP Note 2265093)
@@ -41,6 +44,7 @@ areas:
     simplification_item: Material Number Field Length Extension
     related:
       blocking: [MM001, MM002]
+      warning: [S4C031]
   mrp:
     label: MRP areas
     simplification_item: Storage Location MRP
@@ -49,7 +53,7 @@ areas:
     label: Material Ledger
     simplification_item: Material Ledger Obligatory for Material Valuation
     related:
-      warning: [MM043]
+      warning: [MM043, S4C039]
   purchasing:
     label: Purchasing info records and source lists
     simplification_item: Business Partner Approach (SAP Note 2265093)
