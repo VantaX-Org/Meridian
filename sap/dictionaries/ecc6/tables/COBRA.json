@@ -1,0 +1,356 @@
+{
+ "table": "COBRA",
+ "description": "Settlement Rule for Order Settlement",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 3,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "BRGERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Entered by",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "BRGERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Created on",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "BRGAENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Last changed by",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "BRGAEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KTEXT",
+   "key": false,
+   "data_element": "BRGKTEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Description of settlement rule",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ABSCH",
+   "key": false,
+   "data_element": "BRGABSCH",
+   "domain": "ABSCH",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Allocation Structure for Settlement/Assessment",
+   "check_table": "TKB5A"
+  },
+  {
+   "pos": 9,
+   "name": "KSTAR",
+   "key": false,
+   "data_element": "ABRKSTAR",
+   "domain": "KSTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Settlement cost element for receiver",
+   "check_table": "CSKA"
+  },
+  {
+   "pos": 10,
+   "name": "URSCH",
+   "key": false,
+   "data_element": "URSCH",
+   "domain": "CO_SCNAM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Source structure",
+   "check_table": "TSC0A"
+  },
+  {
+   "pos": 11,
+   "name": "GMENG",
+   "key": false,
+   "data_element": "BRGGMENG",
+   "domain": "MENGV8",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Total quantity",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "GEINH",
+   "key": false,
+   "data_element": "GEINH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure of total quantity",
+   "check_table": "T006"
+  },
+  {
+   "pos": 13,
+   "name": "ANALG",
+   "key": false,
+   "data_element": "ANALG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Identifier for \"proportional settlement\"",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "ERSAV",
+   "key": false,
+   "data_element": "ERSAV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Identifier for \"incorrect update\"",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "APROF",
+   "key": false,
+   "data_element": "APROF",
+   "domain": "APROF",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Settlement profile",
+   "check_table": "TKB1A"
+  },
+  {
+   "pos": 16,
+   "name": "ABRNR",
+   "key": false,
+   "data_element": "ABRNR",
+   "domain": "INT2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Sequential settlement number",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "BZDAT",
+   "key": false,
+   "data_element": "BZDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Asset Value Date",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ERSCH",
+   "key": false,
+   "data_element": "ERSCH",
+   "domain": "ERSCH",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "PA transfer structure",
+   "check_table": "TKB9A"
+  },
+  {
+   "pos": 19,
+   "name": "LETJA",
+   "key": false,
+   "data_element": "LETJA",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year last used",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "LETPE",
+   "key": false,
+   "data_element": "LETPE",
+   "domain": "POPER",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Period of last use",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "HIENR",
+   "key": false,
+   "data_element": "BRGHIENR",
+   "domain": "BRGHIENR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Hierarchy number for settlement",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "SORT",
+   "key": false,
+   "data_element": "SETTLESORT",
+   "domain": "SETTLEREC",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Settlement rule sort field",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "TIMESTMP",
+   "key": false,
+   "data_element": "RKE_HZSTMP",
+   "domain": "RKE_TSTMP",
+   "type": "DEC",
+   "length": 16,
+   "decimals": 0,
+   "description": "Time created (Greenwich Meantime)",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "LYOPR",
+   "key": false,
+   "data_element": "LYOPR",
+   "domain": "JAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Final Year with Old Plan Settlement Method",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "SRSLIST",
+   "key": false,
+   "data_element": "SR_SLIST",
+   "domain": "SR_SLIST",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Strategy sequences for automatic generation of SETC",
+   "check_table": "TKB10SLA"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABSCH",
+   "foreign_table": "TKB5A",
+   "foreign_field": "ABSCH"
+  },
+  {
+   "field": "APROF",
+   "foreign_table": "TKB1A",
+   "foreign_field": "APROF"
+  },
+  {
+   "field": "ERSCH",
+   "foreign_table": "TKB9A",
+   "foreign_field": "ERSCH"
+  },
+  {
+   "field": "GEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "KSTAR",
+   "foreign_table": "CSKA",
+   "foreign_field": "KSTAR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "SRSLIST",
+   "foreign_table": "TKB10SLA",
+   "foreign_field": "SLIST"
+  },
+  {
+   "field": "URSCH",
+   "foreign_table": "TSC0A",
+   "foreign_field": "SCNAM"
+  }
+ ]
+}

@@ -23,6 +23,9 @@ edges:
   # the customer account a vendor is linked to (clearing between vendor and customer)
   - {parent: KNA1, child: LFA1,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: LFB1, child: LFB5,  join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: one}
+  - {parent: LFB1, child: LFBW, join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: many}
+  - {parent: T012, child: T012K, join: {BUKRS: BUKRS, HBKID: HBKID}, cardinality: many}
+  - {parent: SKB1, child: T012K, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
   - {parent: LFA1, child: LFBK,  join: {LIFNR: LIFNR}, cardinality: one}
   - {parent: LFA1, child: LFM1,  join: {LIFNR: LIFNR}, cardinality: many}
   - {parent: LFA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}
@@ -119,6 +122,15 @@ edges:
 
   # ── HCM: the employee's current employment status beside each org-assignment record ──
   - {parent: PA0001, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0002, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  # the infotype record in force today beside the org-assignment record (time constraint 1/2: at most one)
+  - {parent: PA0001, child: PA0003, join: {PERNR: PERNR}, cardinality: one}
+  - {parent: PA0001, child: PA0007, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0001, child: PA0008, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0001, child: PA0105, join: {PERNR: PERNR}, cardinality: one, filter: {SUBTY: "0001", ENDDA: "99991231"}}
+  - {parent: PA0001, child: T500P, join: {PERSA: WERKS}, cardinality: one}
+  - {parent: PA0105, child: USR02, join: {BNAME: USRID}, cardinality: one}
+  - {parent: PA0001, child: HRP1001, join: {OBJID: PLANS}, cardinality: one, filter: {PLVAR: "01", OTYPE: S, RSIGN: A, RELAT: "003", ENDDA: "99991231"}}
 
   # ── Payroll: results directory → wage-type totals (Z_MERIDIAN_PAYROLL_TOTALS) ──
   - {parent: HRPY_RGDIR, child: ZMERIDIAN_PAYRT, join: {PERNR: PERNR, SEQNR: SEQNR}, cardinality: many}
@@ -130,6 +142,12 @@ edges:
   - {parent: EQUI, child: JEST,  join: {OBJNR: OBJNR}, cardinality: one, filter: {INACT: ""}, prefer: {}}
   - {parent: EQUI, child: FLEET, join: {OBJNR: OBJNR}, cardinality: one}
   - {parent: EQUI, child: FLEET_MASTER, join: {EQUNR: EQUNR}, cardinality: one}
+  # ── Project system and internal orders ─────────────────────────────────
+  - {parent: PROJ, child: PRPS, join: {PSPHI: PSPNR}, cardinality: many}
+  - {parent: PRPS, child: PRHI, join: {POSNR: PSPNR}, cardinality: one}
+  - {parent: PRPS, child: AUFK, join: {PSPEL: PSPNR}, cardinality: many}
+  - {parent: AUFK, child: T003O, join: {AUART: AUART}, cardinality: one}
+  - {parent: COBRA, child: COBRB, join: {OBJNR: OBJNR}, cardinality: many}
   - {parent: IFLOT, child: IFLOTX, join: {TPLNR: TPLNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: IFLOT, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
 
@@ -191,10 +209,12 @@ anchors:
   mm_purchasing: EKKO
   fi_gl: SKA1
   asset_accounting: ANLA
+  hcm: PA0001
   controlling: CSKS
   plant_maintenance: EQUI
   fleet_management: EQUI
   production_planning: MAST
+  project_system: PRPS
   sd_sales_orders: VBAK
   batch_management: MCH1
   ewms_stock: LQUA

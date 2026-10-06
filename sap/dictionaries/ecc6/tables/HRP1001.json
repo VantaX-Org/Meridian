@@ -1,0 +1,349 @@
+{
+ "table": "HRP1001",
+ "description": "Infotype 1001 DB Table",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OTYPE",
+   "key": true,
+   "data_element": "OTYPE",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 3,
+   "name": "OBJID",
+   "key": true,
+   "data_element": "HROBJID",
+   "domain": "HROBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID",
+   "check_table": "PLOGI"
+  },
+  {
+   "pos": 4,
+   "name": "PLVAR",
+   "key": true,
+   "data_element": "PLVAR",
+   "domain": "PLVAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Plan Version",
+   "check_table": "T778P"
+  },
+  {
+   "pos": 5,
+   "name": "RSIGN",
+   "key": true,
+   "data_element": "RSIGN",
+   "domain": "RSIGN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relationship Specification",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "RELAT",
+   "key": true,
+   "data_element": "RELAT",
+   "domain": "RELAT",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Relationship Between Objects",
+   "check_table": "T778V"
+  },
+  {
+   "pos": 7,
+   "name": "ISTAT",
+   "key": true,
+   "data_element": "ISTAT_D",
+   "domain": "ISTAT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Planning Status",
+   "check_table": "T778S"
+  },
+  {
+   "pos": 8,
+   "name": "PRIOX",
+   "key": true,
+   "data_element": "PRIOX",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "BEGDA",
+   "key": true,
+   "data_element": "BEGDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "VARYF",
+   "key": true,
+   "data_element": "VARYF",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Variation Field for File PLOG",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "SEQNR",
+   "key": true,
+   "data_element": "SEQNR",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Infotype Record With Same Key",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "INFTY",
+   "key": false,
+   "data_element": "INFOTYP",
+   "domain": "INFOTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Infotype",
+   "check_table": "T778T"
+  },
+  {
+   "pos": 14,
+   "name": "OTJID",
+   "key": false,
+   "data_element": "OTJID",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Concatenation of Object Type and Object ID",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "SUBTY",
+   "key": false,
+   "data_element": "SUBTYP",
+   "domain": "SUBTYP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subtype",
+   "check_table": "T778U"
+  },
+  {
+   "pos": 17,
+   "name": "AEDTM",
+   "key": false,
+   "data_element": "AEDTM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "UNAME",
+   "key": false,
+   "data_element": "USRNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "REASN",
+   "key": false,
+   "data_element": "REASN",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "HISTO",
+   "key": false,
+   "data_element": "HISTO",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Historical Record Flag",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "ITXNR",
+   "key": false,
+   "data_element": "ITXNR",
+   "domain": "NUM08",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Text Module for Infotype",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "SCLAS",
+   "key": false,
+   "data_element": "SCLAS",
+   "domain": "OTYPE",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Type of Related Object",
+   "check_table": "T778O"
+  },
+  {
+   "pos": 23,
+   "name": "SOBID",
+   "key": false,
+   "data_element": "SOBID",
+   "domain": "CHAR45",
+   "type": "CHAR",
+   "length": 45,
+   "decimals": 0,
+   "description": "ID of Related Object",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "PROZT",
+   "key": false,
+   "data_element": "PROZT",
+   "domain": "DEC3_2",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Weighting Percentage",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "ADATANR",
+   "key": false,
+   "data_element": "HRADATANR",
+   "domain": "HRADATANR",
+   "type": "CHAR",
+   "length": 32,
+   "decimals": 0,
+   "description": "ADATA Number",
+   "check_table": "HRIADATANR"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ADATANR",
+   "foreign_table": "HRIADATANR",
+   "foreign_field": "ADATANR"
+  },
+  {
+   "field": "INFTY",
+   "foreign_table": "T778T",
+   "foreign_field": "INFTY"
+  },
+  {
+   "field": "ISTAT",
+   "foreign_table": "T778S",
+   "foreign_field": "ISTAT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "PLOGI",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "OTYPE",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "PLVAR",
+   "foreign_table": "T778P",
+   "foreign_field": "PLVAR"
+  },
+  {
+   "field": "RELAT",
+   "foreign_table": "T778V",
+   "foreign_field": "RELAT"
+  },
+  {
+   "field": "SCLAS",
+   "foreign_table": "T778O",
+   "foreign_field": "OTYPE"
+  },
+  {
+   "field": "SUBTY",
+   "foreign_table": "T778U",
+   "foreign_field": "SUBTY"
+  }
+ ]
+}

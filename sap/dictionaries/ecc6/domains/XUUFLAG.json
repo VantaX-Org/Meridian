@@ -1,0 +1,32 @@
+{
+ "domain": "XUUFLAG",
+ "type": "INT1",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Not Locked"
+  },
+  {
+   "low": "32",
+   "high": null,
+   "text": "Locked Globally By Administrator"
+  },
+  {
+   "low": "64",
+   "high": null,
+   "text": "Locked Locally By Administrator"
+  },
+  {
+   "low": "128",
+   "high": null,
+   "text": "Locked Due To Incorrect Logons (Limited Term)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

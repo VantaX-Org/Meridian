@@ -15,13 +15,16 @@ EXPECTED_COUNTS = {
     "accounts_payable": 108,
     "accounts_receivable": 88,
     "asset_accounting": 43,
+    "hcm": 64,
     "controlling": 41,
     "mm_purchasing": 151,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 56,
     "sd_sales_orders": 69,
     "production_planning": 72,
+    "project_system": 80,
     "plant_maintenance": 71,
     "s4_readiness": 13,
+    "banking_tax": 77,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -137,7 +140,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 712, f"Expected 712 total ECC rules, got {total}"
+    assert total == 933, f"Expected 933 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

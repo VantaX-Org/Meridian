@@ -1,0 +1,11 @@
+{
+ "domain": "PS_SCHDPRF",
+ "type": "CHAR",
+ "length": 12,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": "TCXPS",
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

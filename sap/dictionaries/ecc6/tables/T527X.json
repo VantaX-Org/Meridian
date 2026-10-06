@@ -1,0 +1,105 @@
+{
+ "table": "T527X",
+ "description": "Organizational Units",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "SPRSL",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 3,
+   "name": "ORGEH",
+   "key": true,
+   "data_element": "ORGEH",
+   "domain": "ORGEH",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Organizational Unit",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ORGTX",
+   "key": false,
+   "data_element": "ORGTX",
+   "domain": "TEXT25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Short Text of Organizational Unit",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "MAINT",
+   "key": false,
+   "data_element": "MAINT",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintenance of table entry in OM",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPRSL",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

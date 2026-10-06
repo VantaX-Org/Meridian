@@ -1,0 +1,79 @@
+{
+ "table": "T503Z",
+ "description": "Country Assignment for Employee Group/Subgroup",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MOLGA",
+   "key": true,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 3,
+   "name": "PERSG",
+   "key": true,
+   "data_element": "PERSG",
+   "domain": "PERSG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Employee Group",
+   "check_table": "T501"
+  },
+  {
+   "pos": 4,
+   "name": "PERSK",
+   "key": true,
+   "data_element": "PERSK",
+   "domain": "PERSK",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Employee Subgroup",
+   "check_table": "T503K"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "PERSG",
+   "foreign_table": "T501",
+   "foreign_field": "PERSG"
+  },
+  {
+   "field": "PERSK",
+   "foreign_table": "T503K",
+   "foreign_field": "PERSK"
+  }
+ ]
+}

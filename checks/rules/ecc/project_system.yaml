@@ -1,0 +1,1297 @@
+module: project_system
+target_state: ECC_AND_S4HANA
+rules:
+- id: PS001
+  field: PROJ.PSPID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Project definition ID is missing
+  why_it_matters: PSPID is the external key users type in CJ20N, CN41 and every PS report. A project definition without it
+    cannot be found, selected or referenced by its WBS elements, orders or sales documents.
+  rule_authority: sap_hard_constraint
+  sap_impact: The project cannot be displayed, planned or settled by ID. Reports that select by project definition skip it.
+  fix_map:
+    __blank__: 'Project definition has no ID. Recreate it in CJ20N with a valid ID (number range and edit mask in OPSK). Do
+      not patch the table: the WBS elements point at the internal number.'
+  record_fix_template: 'Project {PROJ.PSPNR}: PSPID is {actual_value}. Recreate the project definition in CJ20N.'
+- id: PS002
+  field: PROJ.PSPID
+  check_class: regex_check
+  pattern: ^[A-Z0-9][A-Z0-9\-./_]{0,23}$
+  severity: medium
+  dimension: validity
+  message: Project definition ID has characters outside the usual project coding mask
+  why_it_matters: Project IDs are built with an edit mask (OPSK) that fixes the separators and character classes. Values with
+    spaces, lower-case or stray symbols point at a load that bypassed the mask and will not match the keys users type.
+  rule_authority: best_practice
+  sap_impact: The project is hard to find in CJ20N / CN41 selections, and external interfaces that rebuild the ID from the
+    mask do not match it.
+  fix_map:
+    __other__: Project ID '{invalid_value}' does not fit the project coding mask. Check the mask in OPSK and rename the project
+      (CJ02 does not rename; copy to a new ID with CJ20N and move the objects) or correct the load.
+  record_fix_template: 'Project {PROJ.PSPNR}: PSPID ''{actual_value}'' does not fit the project coding mask. Review in OPSK.'
+- id: PS003
+  field: PROJ.POST1
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Project definition has no description
+  why_it_matters: The description is the only readable identity of a project in selection lists, approval workflows and management
+    reports.
+  rule_authority: best_practice
+  sap_impact: Project lists show an empty line; approvers and controllers cannot tell what the project is for.
+  fix_map:
+    __blank__: Enter the short description in CJ20N > Project definition > Basic data.
+  record_fix_template: 'Project {PROJ.PSPNR}: POST1 is {actual_value}. Add a description in CJ20N.'
+- id: PS004
+  field: PROJ.VBUKR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Project definition has no company code
+  why_it_matters: The project-definition company code is the default for every WBS element created under it. Without it the
+    elements start without a legal entity and postings cannot be assigned to a balance sheet.
+  rule_authority: sap_hard_constraint
+  sap_impact: WBS elements inherit no company code; account assignment to the project fails with a missing-company-code message.
+  fix_map:
+    __blank__: Set the company code in CJ20N > Project definition > Control data. Existing WBS elements keep their own company
+      code (PRPS.PBUKR).
+  record_fix_template: 'Project {PROJ.PSPNR}: VBUKR is {actual_value}. Set the company code in CJ20N.'
+- id: PS005
+  field: PROJ.VKOKR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Project definition has no controlling area
+  why_it_matters: A project belongs to exactly one controlling area. All costs, plan values and settlements of its WBS elements
+    are held in that area.
+  rule_authority: sap_hard_constraint
+  sap_impact: No controlling area means no cost collection, no planning and no settlement for the project.
+  fix_map:
+    __blank__: Set the controlling area in CJ20N > Project definition > Control data.
+  record_fix_template: 'Project {PROJ.PSPNR}: VKOKR is {actual_value}. Set the controlling area in CJ20N.'
+- id: PS006
+  field: PROJ.VBUKR
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  severity: high
+  dimension: validity
+  message: Project company code is not a defined company code
+  why_it_matters: The company code must exist in T001. An undefined code is left over from a deleted entity or a bad load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the project's WBS elements are rejected because the legal entity does not exist.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not defined in T001. Replace it in CJ20N, or create the company code (OX02)
+      if the entity is real.
+  record_fix_template: 'Project {PROJ.PSPNR}: company code {actual_value} is not in T001. Correct it in CJ20N.'
+- id: PS007
+  field: PROJ.VKOKR
+  check_class: exists_check
+  target_table: TKA01
+  target_fields:
+  - KOKRS
+  severity: high
+  dimension: validity
+  message: Project controlling area is not a defined controlling area
+  why_it_matters: The controlling area must exist in TKA01. All CO objects of the project are keyed by it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost collection and settlement of the project fail because the controlling area does not exist.
+  fix_map:
+    __other__: Controlling area '{invalid_value}' is not defined in TKA01. Correct it in CJ20N or define the area (OKKP).
+  record_fix_template: 'Project {PROJ.PSPNR}: controlling area {actual_value} is not in TKA01. Correct it in CJ20N.'
+- id: PS008
+  field: PROJ.VBUKR
+  check_class: exists_check
+  fields:
+  - PROJ.VBUKR
+  - PROJ.VKOKR
+  target_table: TKA02
+  target_fields:
+  - BUKRS
+  - KOKRS
+  severity: high
+  dimension: consistency
+  message: Project company code is not assigned to the project's controlling area
+  why_it_matters: A controlling area only controls the company codes assigned to it (OX19 / TKA02). A project whose company
+    code belongs to another controlling area cannot collect costs consistently.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings from that company code do not reach the project's controlling area; settlement and reporting disagree.
+  fix_map:
+    __other__: Company code and controlling area do not match in TKA02. Fix the project's company code or controlling area
+      in CJ20N, or correct the assignment in OX19.
+  record_fix_template: 'Project {PROJ.PSPNR}: company code {PROJ.VBUKR} is not assigned to controlling area {PROJ.VKOKR}.
+    Review in CJ20N and OX19.'
+- id: PS009
+  field: PROJ.PRCTR
+  check_class: exists_check
+  fields:
+  - PROJ.VKOKR
+  - PROJ.PRCTR
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  severity: medium
+  dimension: validity
+  message: Project profit centre does not exist in the project's controlling area
+  why_it_matters: The profit centre on the project definition is the default for new WBS elements. It must exist in the same
+    controlling area (CEPC).
+  rule_authority: sap_hard_constraint
+  sap_impact: New WBS elements inherit a profit centre that cannot be posted to, so postings fall back to the dummy profit
+    centre or are rejected.
+  fix_map:
+    __other__: Profit centre '{invalid_value}' is not in CEPC for the project's controlling area. Create it (KE51) or choose
+      an existing one in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPNR}: profit centre {actual_value} does not exist in controlling area {PROJ.VKOKR}.
+    Review in KE53 and CJ20N.'
+- id: PS010
+  field: PROJ.VERNR
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Project has no person responsible
+  why_it_matters: The project manager receives status, budget and deadline notifications, and approval workflows route to
+    that person.
+  rule_authority: best_practice
+  sap_impact: Nobody owns the project; budget overruns and open items have no addressee.
+  fix_map:
+    __blank__: Enter the project manager in CJ20N > Project definition > Control data (persons responsible are maintained
+      in the PS customising).
+  record_fix_template: 'Project {PROJ.PSPNR}: VERNR is {actual_value}. Assign a project manager in CJ20N.'
+- id: PS011
+  field: PROJ.VERNR
+  check_class: exists_check
+  target_table: TCJ04
+  target_fields:
+  - VERNR
+  severity: medium
+  dimension: validity
+  message: Project manager number is not a defined person responsible
+  why_it_matters: VERNR must exist in TCJ04. A number that is not defined is left over after the person responsible was deleted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Display of the project shows no name; notifications cannot be sent.
+  fix_map:
+    __other__: Person responsible '{invalid_value}' is not in TCJ04. Create the person in the PS customising or assign a defined
+      one in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPNR}: project manager {actual_value} is not defined. Assign a valid person in CJ20N.'
+- id: PS012
+  field: PROJ.PLFAZ
+  check_class: cross_field_check
+  fail_when: '`PROJ.PLFAZ` > `PROJ.PLSEZ`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Project planned start is after the planned finish
+  why_it_matters: A project cannot finish before it starts. The dates drive scheduling, the default dates of new WBS elements
+    and date-based reports.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling and deadline monitoring (CN41, CNS41) report negative durations; new WBS elements inherit impossible
+    dates.
+  fix_map:
+    __other__: Planned start is after planned finish. Correct the dates in CJ20N > Project definition > Control data.
+  record_fix_template: 'Project {PROJ.PSPNR}: planned start {PROJ.PLFAZ} is after planned finish {PROJ.PLSEZ}. Correct in
+    CJ20N.'
+- id: PS013
+  field: PROJ.PWHIE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Project definition has no WBS currency
+  why_it_matters: The project currency is the default currency of every WBS element and the currency of plan, budget and commitments.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning and budgeting in the project cannot start; amounts have no currency.
+  fix_map:
+    __blank__: Set the project currency in CJ20N > Project definition > Control data.
+  record_fix_template: 'Project {PROJ.PSPNR}: PWHIE is {actual_value}. Set the project currency in CJ20N.'
+- id: PS014
+  field: PROJ.PSPID
+  check_class: uniqueness_check
+  fields:
+  - PROJ.PSPID
+  normalize: alnum
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: Project IDs that differ only in separators or case
+  why_it_matters: P-1000 and P1000 are different keys to SAP but the same project to people. Twins split costs, budget and
+    reporting between two shells.
+  rule_authority: best_practice
+  sap_impact: Costs are posted to the wrong twin; consolidated project reports understate both.
+  fix_map:
+    __other__: Compare both projects in CN41 and move the WBS elements of one into the other (CJ20N). Mark the empty shell
+      for deletion (CJ02).
+  record_fix_template: 'Project {PROJ.PSPNR}: PSPID has a twin that differs only in separators or case. Merge the two projects.'
+- id: PS015
+  field: PROJ.POST1
+  check_class: similarity_check
+  block_by:
+  - PROJ.VBUKR
+  threshold: 0.92
+  exact_rule: false
+  severity: medium
+  dimension: uniqueness
+  message: Near-duplicate project description in the same company code
+  why_it_matters: Two projects with almost the same description in one company code are usually one project entered twice,
+    or a copy that was never renamed.
+  rule_authority: best_practice
+  sap_impact: Budget, hours and costs are split across two project definitions; approvers pick the wrong one.
+  fix_map:
+    __other__: Compare the projects in CN41. Merge them or rename the copy so the description is unique.
+  record_fix_template: 'Project {PROJ.PSPNR}: description ''{actual_value}'' is almost the same as another project in this
+    company code.'
+- id: PS016
+  field: PRPS.POSID
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: WBS element has no external ID
+  why_it_matters: POSID is what users type in CJ20N, CJ03, KOB1 and CN41. Without it the element is anonymous.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element cannot be selected by ID in postings or reports; cost and settlement documents show a blank WBS.
+  fix_map:
+    __blank__: WBS element has no ID. Recreate it in CJ20N with a valid ID and move dependent objects.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: POSID is {actual_value}. Recreate the element in CJ20N.'
+- id: PS017
+  field: PRPS.POSID
+  check_class: regex_check
+  pattern: ^[A-Z0-9][A-Z0-9\-./_]{0,23}$
+  severity: medium
+  dimension: validity
+  message: WBS element ID has characters outside the usual coding mask
+  why_it_matters: WBS IDs follow the project coding mask (OPSK). Spaces, lower-case or stray symbols indicate a load that
+    skipped the mask.
+  rule_authority: best_practice
+  sap_impact: Users cannot key the element in postings; hierarchy reports sort it in the wrong place.
+  fix_map:
+    __other__: WBS element ID '{invalid_value}' does not fit the coding mask. Review in OPSK and CJ20N.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: POSID ''{actual_value}'' does not fit the coding mask.'
+- id: PS018
+  field: PRPS.POST1
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: WBS element has no description
+  why_it_matters: Cost and commitment line items show the WBS description. A blank text makes budget owners guess what a cost
+    belongs to.
+  rule_authority: best_practice
+  sap_impact: Reports and line items (CJI3) show elements by number only.
+  fix_map:
+    __blank__: Enter a description in CJ20N > WBS element > Basic data.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: POST1 is {actual_value}. Add a description in CJ20N.'
+- id: PS019
+  field: PRPS.PSPHI
+  check_class: exists_check
+  target_table: PROJ
+  target_fields:
+  - PSPNR
+  severity: critical
+  dimension: consistency
+  message: WBS element points at a project definition that does not exist
+  why_it_matters: Every WBS element belongs to one project definition (PROJ). An orphaned element cannot be reached in the
+    Project Builder or any project report.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element and its costs are invisible to project reporting, budgeting and settlement.
+  fix_map:
+    __other__: Project definition '{invalid_value}' is missing. Restore the project definition or archive the orphaned elements.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: project definition {actual_value} does not exist. Restore it or archive
+    the element.'
+- id: PS020
+  field: PRPS.PBUKR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: WBS element has no company code
+  why_it_matters: Postings to a WBS element are made in the company code of the element.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the element are rejected; the company code cannot be derived.
+  fix_map:
+    __blank__: Set the company code in CJ20N > WBS element > Assignments.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: PBUKR is {actual_value}. Set it in CJ20N.'
+- id: PS021
+  field: PRPS.PKOKR
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: WBS element has no controlling area
+  why_it_matters: Costs on a WBS element are collected in its controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost collection, planning and settlement of the element fail.
+  fix_map:
+    __blank__: Set the controlling area in CJ20N > WBS element > Assignments.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: PKOKR is {actual_value}. Set it in CJ20N.'
+- id: PS022
+  field: PRPS.PBUKR
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  severity: high
+  dimension: validity
+  message: WBS company code is not a defined company code
+  why_it_matters: The company code must exist in T001.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the WBS element fail with an undefined company code.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not in T001. Correct it in CJ20N.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: company code {actual_value} is not in T001.'
+- id: PS023
+  field: PRPS.PBUKR
+  check_class: exists_check
+  fields:
+  - PRPS.PBUKR
+  - PRPS.PKOKR
+  target_table: TKA02
+  target_fields:
+  - BUKRS
+  - KOKRS
+  severity: high
+  dimension: consistency
+  message: WBS company code is not assigned to the WBS controlling area
+  why_it_matters: The company code of the element must be controlled by the controlling area of the element (OX19 / TKA02).
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs are collected in an area that does not control the legal entity; settlement to FI fails.
+  fix_map:
+    __other__: Company code and controlling area do not match in TKA02. Correct the element in CJ20N or the assignment in
+      OX19.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: company code {PRPS.PBUKR} is not assigned to controlling area {PRPS.PKOKR}.'
+- id: PS024
+  field: PRPS.PKOKR
+  check_class: cross_field_check
+  fail_when: '`PRPS.PKOKR` != `PROJ.VKOKR`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: WBS controlling area differs from the project definition's controlling area
+  why_it_matters: A project is controlled in one controlling area only. WBS elements in another area cannot be planned, budgeted
+    or settled with the rest of the project.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project-level plan, budget and settlement leave the odd element out; cost reports do not add up.
+  fix_map:
+    __other__: Align the WBS controlling area with the project's (CJ20N). Elements with postings need a transfer posting first.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: controlling area {PRPS.PKOKR} differs from the project''s {PROJ.VKOKR}.'
+- id: PS025
+  field: PRPS.PBUKR
+  check_class: cross_field_check
+  fail_when: '`PRPS.PBUKR` != `PROJ.VBUKR`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: WBS company code differs from the project definition's company code
+  why_it_matters: SAP allows cross-company projects, but a mixed company code is more often a default that was never changed.
+    Costs then post to the wrong legal entity and need intercompany clearing.
+  rule_authority: best_practice
+  sap_impact: Intercompany postings and clearing are created; project profitability is split across entities.
+  fix_map:
+    __other__: Confirm the cross-company set-up is intended. If not, set the element's company code to the project's (CJ20N).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: company code {PRPS.PBUKR} differs from the project''s {PROJ.VBUKR}.'
+- id: PS026
+  field: PRPS.PRCTR
+  check_class: null_check
+  applies_when:
+    PRPS.BELKZ:
+    - X
+    PRPS.LOEVM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Account assignment element has no profit centre
+  why_it_matters: Costs and revenues post to the profit centre of the account assignment element. Without one they land on
+    the dummy profit centre and profit centre accounting is wrong.
+  rule_authority: sap_hard_constraint
+  sap_impact: Profit centre reports carry unallocated amounts; period-end clean-up needs a manual reassignment.
+  fix_map:
+    __blank__: Set the profit centre in CJ20N > WBS element > Assignments, then transfer already posted amounts (3KE5 for
+      existing documents).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: PRCTR is {actual_value} on an account assignment element. Set it in CJ20N.'
+- id: PS027
+  field: PRPS.PRCTR
+  check_class: exists_check
+  fields:
+  - PRPS.PKOKR
+  - PRPS.PRCTR
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  severity: medium
+  dimension: validity
+  message: WBS profit centre does not exist in the WBS controlling area
+  why_it_matters: The profit centre must exist in CEPC for the element's controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings fall back to the dummy profit centre or are rejected.
+  fix_map:
+    __other__: Profit centre '{invalid_value}' is missing for this controlling area. Create it (KE51) or select a valid one
+      in CJ20N.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: profit centre {actual_value} does not exist in controlling area {PRPS.PKOKR}.'
+- id: PS028
+  field: PRPS.VERNR
+  check_class: null_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: WBS element has no person responsible
+  why_it_matters: The element owner approves budget and takes the deadline and cost alerts for the element.
+  rule_authority: best_practice
+  sap_impact: Budget overruns and status changes on the element have no addressee.
+  fix_map:
+    __blank__: Assign the person responsible in CJ20N > WBS element > Basic data.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: VERNR is {actual_value}. Assign a person responsible in CJ20N.'
+- id: PS029
+  field: PRPS.VERNR
+  check_class: exists_check
+  target_table: TCJ04
+  target_fields:
+  - VERNR
+  severity: medium
+  dimension: validity
+  message: WBS person responsible is not a defined person responsible
+  why_it_matters: VERNR must exist in TCJ04.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element shows no responsible person; notifications fail.
+  fix_map:
+    __other__: Person responsible '{invalid_value}' is not in TCJ04. Assign a defined person in CJ20N.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: person responsible {actual_value} is not defined.'
+- id: PS030
+  field: PRPS.FKSTL
+  check_class: exists_check
+  fields:
+  - PRPS.PKOKR
+  - PRPS.FKSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  severity: medium
+  dimension: validity
+  message: WBS responsible cost centre does not exist in the controlling area
+  why_it_matters: The responsible cost centre carries the element's organisational ownership and is used for reporting and
+    authorisation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Responsibility reports and cost-centre-based authorisation do not recognise the element.
+  fix_map:
+    __other__: Cost centre '{invalid_value}' is not in CSKS for this controlling area. Correct it in CJ20N or create it (KS01).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: responsible cost centre {actual_value} does not exist in controlling area
+    {PRPS.PKOKR}.'
+- id: PS031
+  field: PRPS.FAKKZ
+  check_class: cross_field_check
+  fail_when: (`PRPS.FAKKZ` == 'X') & `PRPS.BELKZ`.isna()
+  severity: medium
+  dimension: consistency
+  message: Billing element is not also an account assignment element
+  why_it_matters: Revenue from sales orders and billing is posted to the WBS element. An element flagged for billing but not
+    for account assignment cannot hold the revenue lines.
+  rule_authority: best_practice
+  sap_impact: Billing postings against the element are rejected or land on another element.
+  fix_map:
+    __other__: Set the account assignment indicator on the billing element in CJ20N, or remove the billing indicator.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: billing indicator is set but the account assignment indicator is not.'
+- id: PS032
+  field: PRPS.PSPNR
+  check_class: cross_field_check
+  fail_when: '`PRHI.DOWN`.isna() & `PRPS.PLAKZ`.isna() & `PRPS.BELKZ`.isna() & `PRPS.FAKKZ`.isna()'
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Lowest-level WBS element carries no planning, account assignment or billing indicator
+  why_it_matters: A WBS element with no children that is neither planning, account assignment nor billing element can hold
+    no values. It is a dead end in the structure.
+  rule_authority: best_practice
+  sap_impact: The element cannot take costs, plan or revenue; users post to a sibling instead.
+  fix_map:
+    __other__: Set at least one of the three indicators on the element (CJ20N > Control data), or delete it.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: element has no children and no planning, account assignment or billing indicator.'
+- id: PS033
+  field: PRPS.STUFE
+  check_class: cross_field_check
+  fail_when: '`PRPS.STUFE` < 1'
+  severity: high
+  dimension: validity
+  message: WBS element level is zero or negative
+  why_it_matters: The hierarchy level starts at 1 for the top element. A level below 1 is meaningless and breaks level-based
+    reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Level-based reporting (CN41, structure overview) drops or misplaces the element.
+  fix_map:
+    __other__: Rebuild the WBS hierarchy in CJ20N; the level is set from the position in the tree.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: level {actual_value} is below 1. Rebuild the hierarchy in CJ20N.'
+- id: PS034
+  field: PRPS.STUFE
+  check_class: cross_field_check
+  fail_when: '`PRHI.POSNR`.notna() & `PRHI.UP`.isna() & (`PRPS.STUFE` != 1)'
+  severity: high
+  dimension: consistency
+  message: Top-of-hierarchy WBS element is not at level 1
+  why_it_matters: An element without a parent in PRHI is a root of the tree and must be at level 1.
+  rule_authority: sap_hard_constraint
+  sap_impact: Roll-up of plan, budget and actuals starts at the wrong level.
+  fix_map:
+    __other__: Rebuild the WBS hierarchy in CJ20N so the level follows the tree.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: element has no parent but its level is {actual_value}.'
+- id: PS035
+  field: PRPS.STUFE
+  check_class: cross_field_check
+  fail_when: '`PRHI.UP`.notna() & (`PRPS.STUFE` == 1)'
+  severity: high
+  dimension: consistency
+  message: WBS element with a parent is at level 1
+  why_it_matters: Level 1 is reserved for roots. An element below a parent that still shows level 1 means the hierarchy was
+    changed outside the Project Builder.
+  rule_authority: sap_hard_constraint
+  sap_impact: Roll-up and level-based reports treat a child as a root.
+  fix_map:
+    __other__: Rebuild the WBS hierarchy in CJ20N so the level follows the tree.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: element has a parent but level is {actual_value}.'
+- id: PS036
+  field: PRHI.UP
+  check_class: hierarchy_check
+  grain: PRHI
+  id_field: PRHI.POSNR
+  severity: critical
+  dimension: consistency
+  message: WBS hierarchy loops back on itself
+  why_it_matters: Following the parent pointer upward must end at a root. A loop means roll-up of plan, budget and actual
+    costs never terminates.
+  rule_authority: sap_hard_constraint
+  sap_impact: Roll-up, budget distribution and settlement of the loop elements fail or hang; the Project Builder cannot display
+    the tree.
+  fix_map:
+    __other__: Break the loop by moving one element in CJ20N (or repair PRHI by a controlled SAP repair report).
+  record_fix_template: 'WBS element {PRHI.POSNR}: part of a hierarchy loop. Re-parent it in CJ20N.'
+- id: PS037
+  field: PRHI.UP
+  check_class: exists_check
+  grain: PRHI
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  severity: high
+  dimension: consistency
+  message: WBS hierarchy points at a parent element that does not exist
+  why_it_matters: Every parent pointer must lead to a WBS element master record. A dangling pointer cuts the subtree off from
+    its root.
+  rule_authority: sap_hard_constraint
+  sap_impact: Roll-up skips the subtree; the Project Builder shows it detached.
+  fix_map:
+    __other__: Parent element '{invalid_value}' is missing. Restore it or re-parent the child in CJ20N.
+  record_fix_template: 'WBS element {PRHI.POSNR}: parent {actual_value} does not exist.'
+- id: PS038
+  field: PRHI.POSNR
+  check_class: exists_check
+  grain: PRHI
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  severity: high
+  dimension: consistency
+  message: Hierarchy entry has no WBS element master record
+  why_it_matters: PRHI rows exist only for elements in PRPS. A row without a master is a remnant of a partly deleted or archived
+    element.
+  rule_authority: sap_hard_constraint
+  sap_impact: The hierarchy shows a ghost node that cannot be displayed or changed.
+  fix_map:
+    __other__: Remove the orphaned hierarchy entry through a project check/repair (CJ20N > Project > Check), not by table
+      edit.
+  record_fix_template: 'Hierarchy entry {actual_value}: no WBS element master record.'
+- id: PS039
+  field: PRPS.PSPNR
+  check_class: exists_check
+  grain: PRPS
+  target_table: PRHI
+  target_fields:
+  - POSNR
+  severity: high
+  dimension: consistency
+  message: WBS element is missing from the hierarchy table
+  why_it_matters: Every WBS element must have a row in PRHI that holds its place in the tree. Without it the element is unreachable
+    from its project.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element does not show in the Project Builder or in any hierarchy report.
+  fix_map:
+    __other__: Re-insert the element into the structure in CJ20N, or archive it.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: no hierarchy entry in PRHI.'
+- id: PS040
+  field: PRHI.PSPHI
+  check_class: cross_field_check
+  fail_when: '`PRHI.PSPHI` != `PRPS.PSPHI`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Hierarchy entry belongs to a different project than the WBS element
+  why_it_matters: PRHI.PSPHI and PRPS.PSPHI must name the same project. A mismatch means the element was moved by direct table
+    change.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element appears in one project's tree but is owned by another; roll-up is wrong in both.
+  fix_map:
+    __other__: Re-assign the element to the intended project in CJ20N and run the project check.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: hierarchy project {PRHI.PSPHI} differs from the element''s project {PRPS.PSPHI}.'
+- id: PS041
+  field: PRPS.PSPNR
+  check_class: cross_field_check
+  fail_when: '`PROJ.LOEVM` == ''X'''
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Active WBS element under a project marked for deletion
+  why_it_matters: When the project definition is flagged for deletion, its elements should follow. An active element under
+    a deleted project keeps collecting postings no one monitors.
+  rule_authority: best_practice
+  sap_impact: Costs continue to post to a project that is on its way to archiving; archiving then fails on residual items.
+  fix_map:
+    __other__: Flag the element for deletion too (CJ02) after settling, or take the deletion flag off the project (CJ02).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: element is active under a project marked for deletion.'
+- id: PS042
+  field: PRPS.POSID
+  check_class: uniqueness_check
+  fields:
+  - PRPS.POSID
+  normalize: alnum
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: WBS element IDs that differ only in separators or case
+  why_it_matters: A-100.01 and A100-01 look like different keys to SAP and the same element to people.
+  rule_authority: best_practice
+  sap_impact: Costs are split between twins; settlement and budget reports disagree.
+  fix_map:
+    __other__: Compare both elements in CN41 and merge one into the other (CJ20N).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: POSID has a twin that differs only in separators or case.'
+- id: PS043
+  field: PRPS.OBJNR
+  check_class: exists_check
+  target_table: COBRB
+  target_fields:
+  - OBJNR
+  applies_when:
+    PRPS.BELKZ:
+    - X
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Account assignment WBS element has no settlement rule
+  why_it_matters: Costs collected on a WBS element must be settled to a receiver. Without a settlement rule, CJ88 / CJ8G stops
+    with an error and the costs stay on the element.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs remain unsettled at period end; assets under construction and cost centres are not relieved.
+  fix_map:
+    __other__: Maintain the settlement rule in CJ02 > Goto > Settlement rule (or derive it with the settlement rule strategy).
+  record_fix_template: 'WBS element {PRPS.PSPNR}: no settlement rule in COBRB.'
+- id: PS044
+  field: PRPS.PSPHI
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: WBS element carries no project definition
+  why_it_matters: PSPHI is the link from the element to its project. A blank link is a half-created element.
+  rule_authority: sap_hard_constraint
+  sap_impact: The element is not part of any project and cannot be reported or settled with one.
+  fix_map:
+    __blank__: Assign the element to a project in CJ20N, or delete it.
+  record_fix_template: 'WBS element {PRPS.PSPNR}: PSPHI is {actual_value}.'
+- id: PS045
+  field: AUFK.AUART
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Order has no order type
+  why_it_matters: The order type controls number range, status profile, settlement profile and screen layout.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be released or settled; behaviour is undefined.
+  fix_map:
+    __blank__: Order type is empty. Recreate the order with KO01 (internal) or the relevant order transaction.
+  record_fix_template: 'Order {AUFK.AUFNR}: AUART is {actual_value}.'
+- id: PS046
+  field: AUFK.AUART
+  check_class: exists_check
+  target_table: T003O
+  target_fields:
+  - AUART
+  severity: high
+  dimension: validity
+  message: Order type is not defined in the order-type table
+  why_it_matters: AUART must exist in T003O (CO order types) so that status profile, settlement profile and number range apply.
+  rule_authority: sap_hard_constraint
+  sap_impact: Release, settlement and posting rules cannot be found for the order.
+  fix_map:
+    __other__: Order type '{invalid_value}' is not in T003O. Define it (KOT2 / OKKP) or correct the order.
+  record_fix_template: 'Order {AUFK.AUFNR}: order type {actual_value} is not defined in T003O.'
+- id: PS047
+  field: AUFK.AUTYP
+  check_class: cross_field_check
+  fail_when: '`AUFK.AUTYP` != `T003O.AUTYP`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Order category differs from the category of its order type
+  why_it_matters: T003O fixes the order category of every order type (01 internal, 10 production, 30 maintenance). A differing
+    category on the order means the header was changed outside SAP.
+  rule_authority: sap_hard_constraint
+  sap_impact: Category-specific processing (status management, settlement, archiving) reads the wrong category.
+  fix_map:
+    __other__: Recreate the order under an order type of the intended category. Never change AUTYP on the table.
+  record_fix_template: 'Order {AUFK.AUFNR}: category {AUFK.AUTYP} differs from order type category {T003O.AUTYP}.'
+- id: PS048
+  field: AUFK.KTEXT
+  check_class: null_check
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Order has no description
+  why_it_matters: The description identifies the order in cost reports and when picking a settlement receiver.
+  rule_authority: best_practice
+  sap_impact: Controllers cannot tell the purpose of the order in KOB1 or reports.
+  fix_map:
+    __blank__: Enter the description in KO02.
+  record_fix_template: 'Order {AUFK.AUFNR}: KTEXT is {actual_value}.'
+- id: PS049
+  field: AUFK.BUKRS
+  check_class: null_check
+  applies_when: &id001
+    AUFK.AUTYP:
+    - '01'
+    AUFK.LOEKZ:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Internal order has no company code
+  why_it_matters: The company code determines where postings of the order land in FI.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order cannot be derived to a legal entity.
+  fix_map:
+    __blank__: Set the company code in KO02 > Assignments.
+  record_fix_template: 'Order {AUFK.AUFNR}: BUKRS is {actual_value}.'
+- id: PS050
+  field: AUFK.KOKRS
+  check_class: null_check
+  applies_when: *id001
+  severity: high
+  dimension: completeness
+  message: Internal order has no controlling area
+  why_it_matters: An internal order is a CO object of one controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: No cost collection, planning or settlement for the order.
+  fix_map:
+    __blank__: Set the controlling area in KO02.
+  record_fix_template: 'Order {AUFK.AUFNR}: KOKRS is {actual_value}.'
+- id: PS051
+  field: AUFK.BUKRS
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  severity: high
+  dimension: validity
+  message: Order company code is not defined
+  why_it_matters: The company code must exist in T001.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order fail on an undefined company code.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not in T001. Correct it in KO02.
+  record_fix_template: 'Order {AUFK.AUFNR}: company code {actual_value} is not in T001.'
+- id: PS052
+  field: AUFK.KOKRS
+  check_class: exists_check
+  target_table: TKA01
+  target_fields:
+  - KOKRS
+  severity: high
+  dimension: validity
+  message: Order controlling area is not defined
+  why_it_matters: The controlling area must exist in TKA01.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost collection for the order fails.
+  fix_map:
+    __other__: Controlling area '{invalid_value}' is not in TKA01. Correct it in KO02.
+  record_fix_template: 'Order {AUFK.AUFNR}: controlling area {actual_value} is not in TKA01.'
+- id: PS053
+  field: AUFK.BUKRS
+  check_class: exists_check
+  fields:
+  - AUFK.BUKRS
+  - AUFK.KOKRS
+  target_table: TKA02
+  target_fields:
+  - BUKRS
+  - KOKRS
+  severity: high
+  dimension: consistency
+  message: Order company code is not assigned to the order's controlling area
+  why_it_matters: The company code must be controlled by the controlling area of the order (OX19 / TKA02).
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs are collected in an area that does not control the company code; settlement to FI fails.
+  fix_map:
+    __other__: Company code and controlling area do not match in TKA02. Correct the order in KO02 or the assignment in OX19.
+  record_fix_template: 'Order {AUFK.AUFNR}: company code {AUFK.BUKRS} is not assigned to controlling area {AUFK.KOKRS}.'
+- id: PS054
+  field: AUFK.PRCTR
+  check_class: null_check
+  applies_when: *id001
+  severity: medium
+  dimension: completeness
+  message: Active internal order has no profit centre
+  why_it_matters: The profit centre of the order receives its costs in profit centre accounting. Without it costs fall on
+    the dummy profit centre.
+  rule_authority: best_practice
+  sap_impact: Profit centre reports contain unallocated amounts.
+  fix_map:
+    __blank__: Set the profit centre in KO02 > Assignments.
+  record_fix_template: 'Order {AUFK.AUFNR}: PRCTR is {actual_value}.'
+- id: PS055
+  field: AUFK.PRCTR
+  check_class: exists_check
+  fields:
+  - AUFK.KOKRS
+  - AUFK.PRCTR
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  severity: medium
+  dimension: validity
+  message: Order profit centre does not exist in the order's controlling area
+  why_it_matters: The profit centre must exist in CEPC for the order's controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings fall back to the dummy profit centre or are rejected.
+  fix_map:
+    __other__: Profit centre '{invalid_value}' is missing for this controlling area. Create it (KE51) or select another in
+      KO02.
+  record_fix_template: 'Order {AUFK.AUFNR}: profit centre {actual_value} does not exist in controlling area {AUFK.KOKRS}.'
+- id: PS056
+  field: AUFK.KOSTV
+  check_class: null_check
+  applies_when: *id001
+  severity: medium
+  dimension: completeness
+  message: Active internal order has no responsible cost centre
+  why_it_matters: The responsible cost centre ties the order to an owner and to responsibility reporting.
+  rule_authority: best_practice
+  sap_impact: Nobody is accountable for the order's costs.
+  fix_map:
+    __blank__: Set the responsible cost centre in KO02 > Assignments.
+  record_fix_template: 'Order {AUFK.AUFNR}: KOSTV is {actual_value}.'
+- id: PS057
+  field: AUFK.KOSTV
+  check_class: exists_check
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KOSTV
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  severity: medium
+  dimension: validity
+  message: Order responsible cost centre does not exist in the controlling area
+  why_it_matters: KOSTV must exist in CSKS for the order's controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Responsibility reporting and authorisation do not recognise the order.
+  fix_map:
+    __other__: Cost centre '{invalid_value}' is not in CSKS. Correct it in KO02 or create it (KS01).
+  record_fix_template: 'Order {AUFK.AUFNR}: responsible cost centre {actual_value} does not exist in controlling area {AUFK.KOKRS}.'
+- id: PS058
+  field: AUFK.PSPEL
+  check_class: exists_check
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  target_when:
+    LOEVM:
+      blank: true
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Order is assigned to a WBS element that is missing or marked for deletion
+  why_it_matters: An order assigned to a WBS element reports its costs into the project. If the element is gone or flagged
+    for deletion, the order's costs leave the project reports and cannot be rolled up.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project costs are understated; archiving of the project is blocked by the open order.
+  fix_map:
+    __other__: Re-assign the order to a live WBS element in KO02 > Assignments, or remove the WBS assignment.
+  record_fix_template: 'Order {AUFK.AUFNR}: WBS element {actual_value} is missing or flagged for deletion.'
+- id: PS059
+  field: AUFK.BUKRS
+  check_class: cross_field_check
+  fail_when: '`AUFK.BUKRS` != `PRPS.PBUKR`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Order company code differs from the company code of its WBS element
+  why_it_matters: An order assigned to a WBS element must post in the same legal entity as the element; otherwise project
+    and order costs sit in different companies.
+  rule_authority: sap_hard_constraint
+  sap_impact: Intercompany differences arise and project costs are split across entities.
+  fix_map:
+    __other__: Correct the company code of the order (KO02) or the WBS assignment.
+  record_fix_template: 'Order {AUFK.AUFNR}: company code {AUFK.BUKRS} differs from WBS company code {PRPS.PBUKR}.'
+- id: PS060
+  field: AUFK.KOKRS
+  check_class: cross_field_check
+  fail_when: '`AUFK.KOKRS` != `PRPS.PKOKR`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Order controlling area differs from the controlling area of its WBS element
+  why_it_matters: An order and its WBS element must share the controlling area, or costs cannot be settled or rolled up between
+    them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement between order and WBS fails; project reporting misses the order.
+  fix_map:
+    __other__: Correct the controlling area of the order (KO02) or the WBS assignment.
+  record_fix_template: 'Order {AUFK.AUFNR}: controlling area {AUFK.KOKRS} differs from WBS controlling area {PRPS.PKOKR}.'
+- id: PS061
+  field: AUFK.PRCTR
+  check_class: cross_field_check
+  fail_when: '`AUFK.PRCTR` != `PRPS.PRCTR`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Order profit centre differs from the profit centre of its WBS element
+  why_it_matters: Costs of an order assigned to a project normally follow the project's profit centre. A different profit
+    centre splits project profitability.
+  rule_authority: best_practice
+  sap_impact: Profit centre reports show the same project in two profit centres.
+  fix_map:
+    __other__: Confirm the profit centre. If the project's is right, change it on the order (KO02).
+  record_fix_template: 'Order {AUFK.AUFNR}: profit centre {AUFK.PRCTR} differs from WBS profit centre {PRPS.PRCTR}.'
+- id: PS062
+  field: AUFK.OBJNR
+  check_class: exists_check
+  target_table: COBRB
+  target_fields:
+  - OBJNR
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    - '30'
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.ASTKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open internal or maintenance order has no settlement rule
+  why_it_matters: Order costs must be settled to a receiver (cost centre, WBS, asset). Without a rule, KO88 stops with an
+    error and the order cannot be closed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs stay on the order at period end; the order cannot be completed (TECO) or closed.
+  fix_map:
+    __other__: Maintain the settlement rule in KO02 > Goto > Settlement rule, or flag the order statistical if it must not
+      settle.
+  record_fix_template: 'Order {AUFK.AUFNR}: no settlement rule in COBRB.'
+- id: PS063
+  field: AUFK.IDAT1
+  check_class: null_check
+  applies_when:
+    AUFK.PHAS1:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Order is in the released phase but has no release date
+  why_it_matters: The release date is set when the order is released. A missing date with the released phase on points at
+    a changed status that bypassed the order logic.
+  rule_authority: sap_hard_constraint
+  sap_impact: Date-based reporting, interest and ageing of the order are wrong.
+  fix_map:
+    __blank__: Review the status history in KO03 > Extras > Status. Correct the date through a status action, not by table
+      edit.
+  record_fix_template: 'Order {AUFK.AUFNR}: released phase set but IDAT1 is {actual_value}.'
+- id: PS064
+  field: AUFK.IDAT2
+  check_class: null_check
+  applies_when:
+    AUFK.PHAS2:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Order is technically completed but has no completion date
+  why_it_matters: The TECO date closes the period in which costs are expected. Without it, accruals and ageing treat the order
+    as still running.
+  rule_authority: sap_hard_constraint
+  sap_impact: Accrual and WIP calculation and TECO ageing reports are wrong.
+  fix_map:
+    __blank__: Review the status history in KO03. Correct through a status action, not by table edit.
+  record_fix_template: 'Order {AUFK.AUFNR}: completed phase set but IDAT2 is {actual_value}.'
+- id: PS065
+  field: AUFK.IDAT3
+  check_class: null_check
+  applies_when:
+    AUFK.PHAS3:
+    - X
+  severity: medium
+  dimension: completeness
+  message: Order is closed but has no close date
+  why_it_matters: The close date marks when the order stopped taking postings. Archiving rules and retention periods read
+    it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving residence times cannot be computed; closed-order reports are incomplete.
+  fix_map:
+    __blank__: Review the status history in KO03. Correct through a status action, not by table edit.
+  record_fix_template: 'Order {AUFK.AUFNR}: closed phase set but IDAT3 is {actual_value}.'
+- id: PS066
+  field: AUFK.IDAT2
+  check_class: cross_field_check
+  fail_when: (`AUFK.IDAT2` < `AUFK.IDAT1`) | (`AUFK.IDAT3` < `AUFK.IDAT2`)
+  severity: medium
+  dimension: consistency
+  message: Order dates are out of sequence (release, completion, close)
+  why_it_matters: Release, technical completion and close occur in that order. A completion before release or a close before
+    completion shows tampered or wrongly loaded status dates.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order ageing and lifecycle reports are wrong.
+  fix_map:
+    __other__: Review the status history in KO03 and correct through status actions.
+  record_fix_template: 'Order {AUFK.AUFNR}: release {AUFK.IDAT1}, completion {AUFK.IDAT2}, close {AUFK.IDAT3} are out of sequence.'
+- id: PS067
+  field: AUFK.PDAT1
+  check_class: cross_field_check
+  fail_when: (`AUFK.PDAT1` > `AUFK.PDAT2`) | (`AUFK.PDAT2` > `AUFK.PDAT3`)
+  severity: medium
+  dimension: consistency
+  message: Planned order dates are out of sequence (release, completion, close)
+  why_it_matters: Planned release, completion and close dates must follow in that order. A plan that completes before it is
+    released cannot be scheduled.
+  rule_authority: best_practice
+  sap_impact: Scheduling and overdue monitoring give wrong results.
+  fix_map:
+    __other__: Correct the planned dates in KO02 > Control data.
+  record_fix_template: 'Order {AUFK.AUFNR}: planned release {AUFK.PDAT1}, completion {AUFK.PDAT2}, close {AUFK.PDAT3} are
+    out of sequence.'
+- id: PS068
+  field: AUFK.STDAT
+  check_class: freshness_check
+  max_age_hours: 8760
+  applies_when:
+    AUFK.PHAS1: &id002
+    - X
+    AUFK.PHAS2: &id003
+      blank: true
+    AUFK.PHAS3: &id004
+      blank: true
+  severity: medium
+  dimension: timeliness
+  message: Released order without a status change for over a year
+  why_it_matters: Open orders that nobody completes keep accruals, commitments and reservations alive and distort period-end
+    results.
+  rule_authority: best_practice
+  sap_impact: Stale open orders carry old commitments and block archiving of the project they belong to.
+  fix_map:
+    __other__: Review the order in KOB1 / KO03. Settle and complete (TECO) or close it (KO02), or flag it for deletion if
+      never used.
+  record_fix_template: 'Order {AUFK.AUFNR}: released and unchanged since {actual_value}. Settle and close it.'
+- id: PS069
+  field: AUFK.PDAT2
+  check_class: cross_field_check
+  fail_when: '`AUFK.AUFNR`.notna()'
+  applies_when:
+    AUFK.PHAS1: *id002
+    AUFK.PHAS2: *id003
+    AUFK.PHAS3: *id004
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PDAT2:
+      older_than_days: 180
+  severity: medium
+  dimension: timeliness
+  message: Order is open more than six months after its planned completion date
+  why_it_matters: An order that is far past its planned completion is either finished and not completed in the system, or
+    really late and needs a new plan.
+  rule_authority: best_practice
+  sap_impact: Overdue orders keep costs open and mislead variance reports and accrual calculations.
+  fix_map:
+    __other__: Check whether work is done. If yes, settle and TECO the order (KO88, KO02). If not, replan the completion date.
+  record_fix_template: 'Order {AUFK.AUFNR}: planned completion {AUFK.PDAT2} is more than six months ago and the order is still
+    open.'
+- id: PS070
+  field: AUFK.IDAT3
+  check_class: cross_field_check
+  fail_when: '`AUFK.AUFNR`.notna()'
+  applies_when:
+    AUFK.PHAS3:
+    - X
+    AUFK.IDAT3:
+      older_than_days: 730
+    AUFK.LOEKZ:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Order closed over two years ago and not flagged for deletion
+  why_it_matters: Closed orders without a deletion flag cannot be archived. They stay in AUFK and the CO tables indefinitely.
+  rule_authority: best_practice
+  sap_impact: Table growth and slow CO reports; archiving of the order's cost documents never starts.
+  fix_map:
+    __other__: Set the deletion flag (KO02) after the residence time and run the archiving object CO_ORDER (SARA).
+  record_fix_template: 'Order {AUFK.AUFNR}: closed on {AUFK.IDAT3} and not flagged for deletion. Archive candidate.'
+- id: PS071
+  field: AUFK.ERDAT
+  check_class: cross_field_check
+  fail_when: '`AUFK.ERDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Order created in the future
+  why_it_matters: A creation date after today comes from a wrong load or a clock error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Age-based rules, archiving and audit trails treat the order wrongly.
+  fix_map:
+    __other__: Correct through the source of the load; do not patch the date by table edit.
+  record_fix_template: 'Order {AUFK.AUFNR}: creation date {AUFK.ERDAT} is in the future.'
+- id: PS072
+  field: AUFK.ERDAT
+  check_class: cross_field_check
+  fail_when: '`AUFK.ERDAT` > `AUFK.AEDAT`'
+  severity: low
+  dimension: consistency
+  message: Order changed before it was created
+  why_it_matters: The change date can never be earlier than the creation date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Audit trail is unreliable; change-based freshness rules mis-age the order.
+  fix_map:
+    __other__: Review change documents in KO03 > Environment > Change documents.
+  record_fix_template: 'Order {AUFK.AUFNR}: created {AUFK.ERDAT} after the last change {AUFK.AEDAT}.'
+- id: PS073
+  field: AUFK.KTEXT
+  check_class: similarity_check
+  block_by:
+  - AUFK.BUKRS
+  - AUFK.AUART
+  threshold: 0.92
+  exact_rule: false
+  severity: medium
+  dimension: uniqueness
+  message: Near-duplicate order description in the same company code and order type
+  why_it_matters: Two orders with almost the same description in the same company code and order type are usually the same
+    activity entered twice.
+  rule_authority: best_practice
+  sap_impact: Costs for one activity are split across two orders; budgets and reports disagree.
+  fix_map:
+    __other__: Compare the orders in KOB1 and settle one into the other, then close it.
+  record_fix_template: 'Order {AUFK.AUFNR}: description ''{actual_value}'' is almost the same as another order.'
+- id: PS074
+  field: COBRA.APROF
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Settlement header has no settlement profile
+  why_it_matters: The settlement profile controls allowed receivers, residual-cost handling and the allocation structure.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement (KO88, CJ88) of the object fails with a missing-profile error.
+  fix_map:
+    __blank__: Assign the settlement profile on the object (KO02 / CJ02 > Settlement parameters) or in the order type / project
+      profile (OKO7).
+  record_fix_template: 'Settlement object {COBRA.OBJNR}: APROF is {actual_value}.'
+- id: PS075
+  field: COBRB.OBJNR
+  check_class: exists_check
+  grain: COBRB
+  target_table: COBRA
+  target_fields:
+  - OBJNR
+  severity: high
+  dimension: consistency
+  message: Settlement distribution rule has no settlement header
+  why_it_matters: Every distribution rule belongs to a settlement header (COBRA). A rule without it comes from a partial deletion
+    or archiving.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the object stops with an error; the rule is ignored or reported as a residue.
+  fix_map:
+    __other__: Re-create the settlement parameters on the object (KO02 / CJ02), then re-enter the rule.
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: no settlement header.'
+- id: PS076
+  field: COBRB.PERBZ
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Settlement rule has no settlement type
+  why_it_matters: The settlement type decides whether the rule settles periodically or in full, and when.
+  rule_authority: sap_hard_constraint
+  sap_impact: The rule is not applied or settlement ends with an error.
+  fix_map:
+    __blank__: Set the settlement type (PER / FUL) in the settlement rule (KO02 / CJ02).
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: PERBZ is {actual_value}.'
+- id: PS077
+  field: COBRB.PROZS
+  check_class: cross_field_check
+  fail_when: (`COBRB.PROZS` > 100) | (`COBRB.PROZS` < 0)
+  severity: high
+  dimension: validity
+  message: Settlement percentage is above 100 or below 0
+  why_it_matters: A percentage rule distributes a share of the cost. Above 100 over-settles; below 0 is meaningless.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement posts more than the collected cost or fails the consistency check.
+  fix_map:
+    __other__: Correct the percentage in the settlement rule (KO02 / CJ02).
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: percentage {actual_value} is out of range.'
+- id: PS078
+  field: COBRB.AUFNR
+  check_class: exists_check
+  grain: COBRB
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  target_when:
+    LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Settlement receiver order is missing or marked for deletion
+  why_it_matters: Settling to an order that is gone or flagged for deletion stops the settlement run and strands the costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: KO88 / CJ88 reports an error for the sender; costs stay unsettled.
+  fix_map:
+    __other__: Change the receiver in the settlement rule (KO02 / CJ02) or remove the deletion flag on the receiver order.
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: receiver order {actual_value} is missing or flagged for
+    deletion.'
+- id: PS079
+  field: COBRB.PS_PSP_PNR
+  check_class: exists_check
+  grain: COBRB
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  target_when:
+    LOEVM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Settlement receiver WBS element is missing or marked for deletion
+  why_it_matters: Settling to a WBS element that is gone or flagged for deletion stops the settlement and strands the costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: CJ88 / KO88 reports an error for the sender; costs stay unsettled.
+  fix_map:
+    __other__: Change the receiver in the settlement rule (KO02 / CJ02) or remove the deletion flag on the receiver WBS element.
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: receiver WBS element {actual_value} is missing or flagged
+    for deletion.'
+- id: PS080
+  field: COBRB.KOSTL
+  check_class: exists_check
+  grain: COBRB
+  fields:
+  - COBRB.KOKRS
+  - COBRB.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  severity: medium
+  dimension: consistency
+  message: Settlement receiver cost centre does not exist in the controlling area
+  why_it_matters: A cost-centre receiver must exist in CSKS for the receiver's controlling area, or settlement posts to a
+    cost centre that cannot take costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement fails with an invalid account assignment.
+  fix_map:
+    __other__: Correct the receiver cost centre in the settlement rule (KO02 / CJ02) or create it (KS01).
+  record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: receiver cost centre {actual_value} does not exist.'

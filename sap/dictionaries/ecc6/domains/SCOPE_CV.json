@@ -1,0 +1,32 @@
+{
+ "domain": "SCOPE_CV",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "OC",
+   "high": null,
+   "text": "Overhead costs"
+  },
+  {
+   "low": "IV",
+   "high": null,
+   "text": "Investment"
+  },
+  {
+   "low": "PR",
+   "high": null,
+   "text": "Production"
+  },
+  {
+   "low": "PA",
+   "high": null,
+   "text": "Profit analysis"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

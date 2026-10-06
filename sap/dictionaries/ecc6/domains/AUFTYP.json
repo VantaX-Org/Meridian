@@ -1,0 +1,77 @@
+{
+ "domain": "AUFTYP",
+ "type": "NUMC",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "Internal Order (Controlling)"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Accrual Calculation Order (Controlling)"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Model Order (Controlling)"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "CO Production Order"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Product Cost Collector"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "QM Order"
+  },
+  {
+   "low": "10",
+   "high": null,
+   "text": "PP Production Order"
+  },
+  {
+   "low": "20",
+   "high": null,
+   "text": "Network"
+  },
+  {
+   "low": "30",
+   "high": null,
+   "text": "Maintenance order"
+  },
+  {
+   "low": "40",
+   "high": null,
+   "text": "Process Order"
+  },
+  {
+   "low": "50",
+   "high": null,
+   "text": "Inspection Lot"
+  },
+  {
+   "low": "60",
+   "high": null,
+   "text": "Personnel Order"
+  },
+  {
+   "low": "70",
+   "high": null,
+   "text": "Shipping deadlines"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,27 @@
+{
+ "domain": "WT_WTRD",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "00",
+   "high": null,
+   "text": "Round up or down one place"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Always round up"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Always round down"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

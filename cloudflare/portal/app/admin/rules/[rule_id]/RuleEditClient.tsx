@@ -20,8 +20,8 @@ const OPERATORS = [
 const MODULES_BY_CATEGORY: Record<string, string[]> = {
   ecc: [
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "controlling", "mm_purchasing", "plant_maintenance",
-    "production_planning", "sd_customer_master", "sd_sales_orders",
+    "accounts_receivable", "asset_accounting", "hcm", "controlling", "mm_purchasing", "plant_maintenance",
+    "production_planning", "project_system", "sd_customer_master", "sd_sales_orders",
   ],
   successfactors: [
     "employee_central", "compensation", "benefits", "payroll_integration",

@@ -341,6 +341,29 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
     ],
 
     # ------------------------------------------------------------------
+    # HCM Personnel Administration (ECC infotypes + organisational management)
+    # ------------------------------------------------------------------
+    "hcm": [
+        ExtractionTarget(source="PA0000", fields=['PERNR', 'BEGDA', 'ENDDA', 'STAT2'], description="Actions"),
+        ExtractionTarget(source="PA0001", fields=['PERNR', 'BEGDA', 'ENDDA', 'ORGEH', 'PLANS', 'STELL', 'ABKRS', 'KOSTL', 'BUKRS', 'WERKS', 'BTRTL', 'PERSG', 'PERSK'], description="Organisational assignment"),
+        ExtractionTarget(source="PA0002", fields=['PERNR', 'BEGDA', 'ENDDA', 'NACHN', 'VORNA', 'GBDAT', 'PERID', 'GESCH'], description="Personal data"),
+        ExtractionTarget(source="PA0003", fields=['PERNR', 'BEGDA', 'ENDDA', 'ABRSP', 'ABRDT'], description="Payroll status"),
+        ExtractionTarget(source="PA0006", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'OBJPS', 'LAND1'], description="Addresses"),
+        ExtractionTarget(source="PA0007", fields=['PERNR', 'BEGDA', 'ENDDA', 'EMPCT', 'TEILK'], description="Planned working time"),
+        ExtractionTarget(source="PA0008", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'BET01', 'BSGRD'], description="Basic pay"),
+        ExtractionTarget(source="PA0009", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'ZLSCH', 'BANKS', 'BANKL', 'BANKN'], description="Bank details"),
+        ExtractionTarget(source="PA0105", fields=['PERNR', 'BEGDA', 'ENDDA', 'SUBTY', 'USRID'], description="Communication (user link)"),
+        ExtractionTarget(source="HRP1000", fields=['PLVAR', 'OTYPE', 'OBJID', 'LANGU', 'BEGDA', 'ENDDA', 'ISTAT', 'STEXT'], description="Organisational objects"),
+        ExtractionTarget(source="HRP1001", fields=['PLVAR', 'OTYPE', 'OBJID', 'RSIGN', 'RELAT', 'BEGDA', 'ENDDA', 'SCLAS', 'SOBID', 'PROZT'], description="Organisational relationships"),
+        ExtractionTarget(source="CSKS", fields=['KOKRS', 'KOSTL', 'DATBI', 'BUKRS', 'BKZKP'], description="Cost centre master"),
+        ExtractionTarget(source="USR02", fields=['BNAME', 'UFLAG', 'GLTGB'], description="User master logon data"),
+        ExtractionTarget(source="BNKA", fields=['BANKS', 'BANKL'], description="Bank master", is_config=True),
+        ExtractionTarget(source="T500P", fields=['PERSA', 'BUKRS'], description="Personnel areas", is_config=True),
+        ExtractionTarget(source="T001P", fields=['WERKS', 'BTRTL'], description="Personnel subareas", is_config=True),
+        ExtractionTarget(source="T503Z", fields=['PERSG', 'PERSK'], description="Employee group / subgroup combinations", is_config=True),
+    ],
+
+    # ------------------------------------------------------------------
     # Plant Maintenance
     # ------------------------------------------------------------------
     "plant_maintenance": [
@@ -386,6 +409,84 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="CRHD",
             fields=["OBJID", "OBJTY", "ARBPL", "WERKS", "VERWE", "ERNAM", "ERDAT"],
             description="Work center header",
+        ),
+    ],
+
+    # ------------------------------------------------------------------
+    # Project System and internal orders
+    # ------------------------------------------------------------------
+    "project_system": [
+        ExtractionTarget(
+            source="PROJ",
+            fields=["LOEVM", "PLFAZ", "PLSEZ", "POST1", "PRCTR", "PSPID", "PSPNR", "PWHIE", "VBUKR", "VERNR", "VKOKR"],
+            description="Project definition",
+        ),
+        ExtractionTarget(
+            source="PRPS",
+            fields=["BELKZ", "FAKKZ", "FKSTL", "LOEVM", "OBJNR", "PBUKR", "PKOKR", "PLAKZ", "POSID", "POST1", "PRCTR", "PSPHI", "PSPNR", "STUFE", "VERNR"],
+            description="WBS element master",
+        ),
+        ExtractionTarget(
+            source="PRHI",
+            fields=["DOWN", "POSNR", "PSPHI", "UP"],
+            description="WBS hierarchy",
+        ),
+        ExtractionTarget(
+            source="AUFK",
+            fields=["AEDAT", "ASTKZ", "AUART", "AUFNR", "AUTYP", "BUKRS", "ERDAT", "IDAT1", "IDAT2", "IDAT3", "KOKRS", "KOSTV", "KTEXT", "LOEKZ", "OBJNR", "PDAT1", "PDAT2", "PDAT3", "PHAS1", "PHAS2", "PHAS3", "PRCTR", "PSPEL", "STDAT"],
+            description="Order master (internal / maintenance / production)",
+        ),
+        ExtractionTarget(
+            source="COBRA",
+            fields=["APROF", "OBJNR"],
+            description="Settlement header",
+        ),
+        ExtractionTarget(
+            source="COBRB",
+            fields=["AUFNR", "KOKRS", "KOSTL", "LFDNR", "OBJNR", "PERBZ", "PROZS", "PS_PSP_PNR"],
+            description="Settlement distribution rules",
+        ),
+        ExtractionTarget(
+            source="T003O",
+            fields=["AUART", "AUTYP"],
+            description="Order types",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TCJ04",
+            fields=["VERNR"],
+            description="Persons responsible",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TKA01",
+            fields=["KOKRS"],
+            description="Controlling areas",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="TKA02",
+            fields=["BUKRS", "KOKRS"],
+            description="Company code to controlling area assignment",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T001",
+            fields=["BUKRS"],
+            description="Company codes",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="CEPC",
+            fields=["KOKRS", "PRCTR"],
+            description="Profit centres",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="CSKS",
+            fields=["KOKRS", "KOSTL"],
+            description="Cost centres",
+            is_config=True,
         ),
     ],
 

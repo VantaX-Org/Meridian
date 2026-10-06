@@ -1,0 +1,27 @@
+{
+ "domain": "COPAR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "N",
+   "high": null,
+   "text": "Not active"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Semi-active"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Active"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

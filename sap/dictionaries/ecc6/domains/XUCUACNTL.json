@@ -1,0 +1,22 @@
+{
+ "domain": "XUCUACNTL",
+ "type": "INT1",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Normal User (Can be distributed using CUA)"
+  },
+  {
+   "low": "11",
+   "high": null,
+   "text": "Local User (Is not distributed using CUA)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
