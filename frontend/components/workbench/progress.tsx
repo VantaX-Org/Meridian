@@ -64,8 +64,7 @@ export function ProgressSurface() {
         { label: "Open", value: loading ? null : openNow, loading, verdict: openNow ? "Issues a run found failing." : "The inbox is clear.", href: "/workbench" },
         { label: "Opened this week", value: last?.opened ?? null, loading, verdict: last?.opened ? "New since the week began." : "Nothing new this week.", href: last ? `${RECORDS}&week=${last.week}` : RECORDS },
         { label: "Resolved this week", value: last?.resolved ?? null, loading, tone: last?.resolved ? "success" : undefined, verdict: last?.resolved ? "Closed since the week began." : "Nothing closed this week.", href: `${RECORDS}&status=resolved` },
-        { label: "SLA attainment", value: m?.sla_attainment_pct ?? null, unit: "%", loading, verdict: m?.sla_attainment_pct != null ? "Resolved inside their SLA." : "Never.", href: "/workbench?view=breached" },
-        { label: "Mean time to resolve", value: m?.mttr_hours != null ? Math.round(m.mttr_hours * 10) / 10 : null, unit: " h", loading, verdict: m?.mttr_hours != null ? "From SLA start to resolved." : "Never.", href: `${RECORDS}&status=resolved` },
+        { label: "Mean time to resolve", value: m?.mttr_hours != null ? Math.round(m.mttr_hours * 10) / 10 : null, unit: " h", loading, verdict: m?.mttr_hours != null ? `From SLA start to resolved.${m?.sla_attainment_pct != null ? ` ${m.sla_attainment_pct}% inside their SLA.` : ""}` : "Never.", href: `${RECORDS}&status=resolved` },
       ]} />
 
       <SectionCard title="Burn-down" meta={`${weeks} weeks`}>

@@ -143,8 +143,8 @@ function Body({ f }: { f: FindingDetailData }) {
         { label: "Records affected", value: f.affected_count, href: issuesHref, tone: f.severity === "critical" ? "danger" : f.severity === "high" ? "high" : undefined,
           verdict: f.affected_count === 0 ? "No record fails this check." : `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()} records fail.` },
         { label: "Of total", value: f.total_count, href: "#sample", verdict: "Records this check examined." },
-        { label: "Pass rate", value: pct, unit: "%", href: "#runs",
-          verdict: pct === null ? "No pass rate for this check." : `${(f.total_count - f.affected_count).toLocaleString()} of ${f.total_count.toLocaleString()} records pass.` },
+        { label: "Records passing", value: pct === null ? null : f.total_count - f.affected_count, unit: ` of ${f.total_count.toLocaleString()}`, href: "#runs",
+          verdict: pct === null ? "No pass rate for this check." : `${pct}% of records pass.` },
         { label: "Cost at risk", value: null, text: f.cost_at_risk == null ? undefined : money(f.cost_at_risk), href: "#remediation", delta: costDelta,
           verdict: f.cost_at_risk == null ? "No cost model for this check." : `${f.cost_formula ?? "Worked out from the records that fail."}${f.cost_formula?.endsWith(".") ? "" : "."}`.replace("..", ".") },
       ]} />
