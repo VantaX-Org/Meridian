@@ -1,0 +1,819 @@
+{
+ "table": "COBRB",
+ "description": "Distribution Rules Settlement Rule Order Settlement",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 3,
+   "name": "BUREG",
+   "key": true,
+   "data_element": "BRSGR",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Distribution rule group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "LFDNR",
+   "key": true,
+   "data_element": "BR_LFDNR",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sequence number of distribution rule",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PERBZ",
+   "key": false,
+   "data_element": "PERBZ_LD",
+   "domain": "PERBZ_LD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Settlement type",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "URZUO",
+   "key": false,
+   "data_element": "URZUO",
+   "domain": "CO_SCZUO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Source Assignment",
+   "check_table": "TSC0D"
+  },
+  {
+   "pos": 7,
+   "name": "GABJA",
+   "key": false,
+   "data_element": "GABJA",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valid-from year",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "GABPE",
+   "key": false,
+   "data_element": "GABPE",
+   "domain": "POPER",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Valid-from period",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "GBISJ",
+   "key": false,
+   "data_element": "GBISJ",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valid-to year",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "GBISP",
+   "key": false,
+   "data_element": "GBISP",
+   "domain": "POPER",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Valid to",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "PROZS",
+   "key": false,
+   "data_element": "BRGPROZS",
+   "domain": "PROZS",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 2,
+   "description": "Settlement percentage rate",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AQZIF",
+   "key": false,
+   "data_element": "AQZIF",
+   "domain": "AQZIF",
+   "type": "DEC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Equivalence number for order settlement",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "BMENG",
+   "key": false,
+   "data_element": "BRGMENGE",
+   "domain": "MENGV8",
+   "type": "QUAN",
+   "length": 15,
+   "decimals": 3,
+   "description": "Quantity for settlement",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BEINH",
+   "key": false,
+   "data_element": "BRGMEINH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of measure",
+   "check_table": "T006"
+  },
+  {
+   "pos": 15,
+   "name": "BETRR",
+   "key": false,
+   "data_element": "BETRR",
+   "domain": "WERTV8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Amount for amount rule",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "BWAER",
+   "key": false,
+   "data_element": "BRGBWAER",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency for the amount in the amount rule",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 17,
+   "name": "BRTYP",
+   "key": false,
+   "data_element": "BRTYP",
+   "domain": "BRTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Amount rule type",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "BREST",
+   "key": false,
+   "data_element": "AMOUNTREST",
+   "domain": "WERTV8",
+   "type": "CURR",
+   "length": 15,
+   "decimals": 2,
+   "description": "Remaining Amount for Amount Settlement w. Amount Rule Cat.",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "ERSJA",
+   "key": false,
+   "data_element": "ERSJA",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year first used",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "ERSPE",
+   "key": false,
+   "data_element": "ERSPE",
+   "domain": "POPER",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Period of first use",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "LETJA",
+   "key": false,
+   "data_element": "LETJA",
+   "domain": "GJAHR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year last used",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "LETPE",
+   "key": false,
+   "data_element": "LETPE",
+   "domain": "POPER",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Period of last use",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "ZINCL",
+   "key": false,
+   "data_element": "DZINCL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "\"Including overheads\" - indicator",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "DFREG",
+   "key": false,
+   "data_element": "DFREG",
+   "domain": "DFREG",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Default Rule",
+   "check_table": "TKB2A"
+  },
+  {
+   "pos": 25,
+   "name": "AVORG",
+   "key": false,
+   "data_element": "AVORG",
+   "domain": "J_VORGANG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Settlement transaction",
+   "check_table": "TJ01"
+  },
+  {
+   "pos": 26,
+   "name": "VERSN",
+   "key": false,
+   "data_element": "VERSN",
+   "domain": "COVERSI",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Version",
+   "check_table": "*"
+  },
+  {
+   "pos": 27,
+   "name": "KONTY",
+   "key": false,
+   "data_element": "KONTY",
+   "domain": "J_OBART_LD",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Account assignment category",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "BRGKOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling area of receiver",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 29,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "*"
+  },
+  {
+   "pos": 30,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "*"
+  },
+  {
+   "pos": 31,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 32,
+   "name": "HKONT",
+   "key": false,
+   "data_element": "SAKNR",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "G/L Account Number",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 33,
+   "name": "PRCTR",
+   "key": false,
+   "data_element": "PRCTR",
+   "domain": "PRCTR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profit Center",
+   "check_table": "*"
+  },
+  {
+   "pos": 34,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "BRGKOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Receiver cost center",
+   "check_table": "*"
+  },
+  {
+   "pos": 35,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 36,
+   "name": "PS_PSP_PNR",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "*"
+  },
+  {
+   "pos": 37,
+   "name": "ANLN1",
+   "key": false,
+   "data_element": "ANLN1",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Main Asset Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 38,
+   "name": "ANLN2",
+   "key": false,
+   "data_element": "ANLN2",
+   "domain": "ANLN2",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Asset Subnumber",
+   "check_table": "*"
+  },
+  {
+   "pos": 39,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 40,
+   "name": "BWTAR",
+   "key": false,
+   "data_element": "BWTAR_D",
+   "domain": "BWTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Valuation type",
+   "check_table": "T149D"
+  },
+  {
+   "pos": 41,
+   "name": "NPLNR",
+   "key": false,
+   "data_element": "NPLNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Network Number for Account Assignment",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 42,
+   "name": "AUFPL",
+   "key": false,
+   "data_element": "CO_AUFPL",
+   "domain": "AUFPL",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Routing number of operations in the order",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "APLZL",
+   "key": false,
+   "data_element": "CIM_COUNT",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Internal counter",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "PAOBJNR",
+   "key": false,
+   "data_element": "RKEOBJNR",
+   "domain": "RKEOBJNR",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Profitability Segment Number (CO-PA)",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "PASUBNR",
+   "key": false,
+   "data_element": "RKESUBNR",
+   "domain": "RKESUBNR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Profitability Segment Changes (CO-PA)",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "KDAUF",
+   "key": false,
+   "data_element": "KDAUF",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales Order Number",
+   "check_table": "VBUK"
+  },
+  {
+   "pos": 47,
+   "name": "KDPOS",
+   "key": false,
+   "data_element": "KDPOS",
+   "domain": "NUM06",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Item number in Sales Order",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "RECID",
+   "key": false,
+   "data_element": "JV_RECIND",
+   "domain": "JV_RECIND",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Recovery Indicator",
+   "check_table": "T8JJ"
+  },
+  {
+   "pos": 49,
+   "name": "RIFIND",
+   "key": false,
+   "data_element": "JV_RIFIND",
+   "domain": "JV_RIFIND",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Derivation Rule for Recovery Indicator in Settlement (JV)",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "POSNR",
+   "key": false,
+   "data_element": "CO_POSNR",
+   "domain": "CO_POSNR",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order item number",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "KSTRG",
+   "key": false,
+   "data_element": "KSTRG",
+   "domain": "KSTRG",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Cost Object",
+   "check_table": "*"
+  },
+  {
+   "pos": 52,
+   "name": "PRZNR",
+   "key": false,
+   "data_element": "CO_PRZNR",
+   "domain": "CO_PRZNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Business Process",
+   "check_table": "*"
+  },
+  {
+   "pos": 53,
+   "name": "REC_OBJNR1",
+   "key": false,
+   "data_element": "SREC_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number for settlement receiver",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 54,
+   "name": "REC_OBJNR2",
+   "key": false,
+   "data_element": "SREC_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number for settlement receiver",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 55,
+   "name": "MRULE",
+   "key": false,
+   "data_element": "MANIPRULE",
+   "domain": "MANIPRULE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Manipulation Rule",
+   "check_table": "T8JL1"
+  },
+  {
+   "pos": 56,
+   "name": "EXTNR",
+   "key": false,
+   "data_element": "COBR_EXTNR",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Distribution Rule Number",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "STRAT",
+   "key": false,
+   "data_element": "CO_STRAT",
+   "domain": "CO_STRAT",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Method for Determining the Tracing Factor for Settlement",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "ANBWA",
+   "key": false,
+   "data_element": "ANBWA",
+   "domain": "BWASL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Asset Transaction Type",
+   "check_table": "TABW"
+  },
+  {
+   "pos": 59,
+   "name": "SRSTRAT",
+   "key": false,
+   "data_element": "SR_STRAT",
+   "domain": "SR_STRAT",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Strategy for automatic generation of settlement rules",
+   "check_table": "TKB10SA"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ANBWA",
+   "foreign_table": "TABW",
+   "foreign_field": "BWASL"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "AVORG",
+   "foreign_table": "TJ01",
+   "foreign_field": "VRGNG"
+  },
+  {
+   "field": "BEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "BWAER",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "BWTAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "DFREG",
+   "foreign_table": "TKB2A",
+   "foreign_field": "DFREG"
+  },
+  {
+   "field": "HKONT",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KDAUF",
+   "foreign_table": "VBUK",
+   "foreign_field": "VBELN"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MRULE",
+   "foreign_table": "T8JL1",
+   "foreign_field": "MRULE"
+  },
+  {
+   "field": "NPLNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "RECID",
+   "foreign_table": "T8JJ",
+   "foreign_field": "RECID"
+  },
+  {
+   "field": "REC_OBJNR1",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "REC_OBJNR2",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "SRSTRAT",
+   "foreign_table": "TKB10SA",
+   "foreign_field": "STRAT"
+  },
+  {
+   "field": "URZUO",
+   "foreign_table": "TSC0D",
+   "foreign_field": "SCZUO"
+  }
+ ]
+}

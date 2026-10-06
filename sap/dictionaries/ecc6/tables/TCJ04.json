@@ -1,0 +1,64 @@
+{
+ "table": "TCJ04",
+ "description": "Person in Responsible for Project",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VERNR",
+   "key": true,
+   "data_element": "PS_VERNR",
+   "domain": "PS_VERNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the responsible person (project manager)",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "VERNA",
+   "key": false,
+   "data_element": "PS_VERNA",
+   "domain": "PS_VERNA",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Name of responsible person (Project manager)",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "S_USRNAM",
+   "key": false,
+   "data_element": "SO_USR_NAM",
+   "domain": "USERNAME",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "SAPoffice user name",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

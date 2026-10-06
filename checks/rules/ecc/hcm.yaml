@@ -1,0 +1,1330 @@
+module: hcm
+target_state: ECC_AND_S4HANA
+rules:
+- id: PA001
+  field: PA0001.ORGEH
+  check_class: null_check
+  grain: PA0001
+  applies_when: &id001
+    PA0001.ENDDA: &id002
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: critical
+  dimension: completeness
+  message: Active employee has no organisational unit
+  why_it_matters: The organisational unit places the employee in the company structure. Authorisation checks on structure (structural
+    authorisations), reporting lines, headcount reports and manager self-service all read it. An active employee without one is invisible
+    to every manager and every structural report.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employee does not appear in the organisational structure (PPOSE) or in headcount reports; structural authorisations cannot
+    select the record.
+  fix_map:
+    __blank__: Open PA30 > Organizational Assignment (0001) for the employee and assign the organisational unit, or maintain the assignment
+      through PA40 / PPOME.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no organisational unit. Assign one in PA30 infotype 0001 or
+    via PPOME.
+- id: PA002
+  field: PA0001.PLANS
+  check_class: null_check
+  grain: PA0001
+  applies_when: *id001
+  severity: critical
+  dimension: completeness
+  message: Active employee has no position
+  why_it_matters: 'With integration to Organisational Management the position is the anchor of the assignment: job, organisational unit,
+    cost centre and authorisation profile are inherited from it. An active employee with a blank position is outside the structure.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Position-based defaults (job, org unit, cost centre) are not derived; position holder reports and workflow routing skip
+    the employee.
+  fix_map:
+    __blank__: Assign the employee to a position in PA30 infotype 0001 (or PPOME > Assign holder).
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no position. Assign one in PA30 infotype 0001 or PPOME.
+- id: PA003
+  field: PA0001.STELL
+  check_class: null_check
+  grain: PA0001
+  applies_when: *id001
+  severity: medium
+  dimension: completeness
+  message: Active employee has no job
+  why_it_matters: The job classifies the work (grade, career path, job-based authorisations) and feeds compensation and workforce analytics.
+    A blank job on an active employee usually means the position has no job relationship.
+  rule_authority: best_practice
+  sap_impact: Job-based reports, evaluation paths and skills / appraisal selections omit the employee.
+  fix_map:
+    __blank__: Relate the position to a job in PPOME (relationship 'is described by'), then refresh the assignment in PA30 infotype
+      0001.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no job. Relate the position to a job in PPOME.
+- id: PA004
+  field: PA0001.ABKRS
+  check_class: null_check
+  grain: PA0001
+  applies_when: *id001
+  severity: critical
+  dimension: completeness
+  message: Active employee has no payroll area
+  why_it_matters: The payroll area decides which payroll run (PC00_Mxx_CALC) picks the employee up and on which period calendar. Without
+    it the employee is never paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll driver does not select the personnel number; salary is not calculated or paid; payroll-area based reports omit
+    the employee.
+  fix_map:
+    __blank__: Assign the payroll area in PA30 infotype 0001. Valid areas are in table T549A (SPRO > Personnel Administration > Organizational
+      Data > Payroll Area).
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no payroll area. Assign one in PA30 infotype 0001.
+- id: PA005
+  field: PA0001.ORGEH
+  check_class: exists_check
+  grain: PA0001
+  target_table: HRP1000
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - O
+    ISTAT:
+    - '1'
+  applies_when:
+    PA0001.ENDDA: *id002
+    PA0001.ORGEH:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Organisational unit of the assignment is missing or not active in the organisational plan
+  why_it_matters: The unit number on infotype 0001 must exist in HRP1000 as an organisational unit (object type O) with planning status
+    active. A unit that was deleted, delimited or never created leaves the assignment pointing at nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Structural reporting, manager self-service and workflow resolve the employee to a non-existent unit; PPOME cannot display
+    the employee.
+  fix_map:
+    __other__: Create or re-activate the organisational unit in PPOME (or OOOS), or move the employee to a valid unit in PA30 infotype
+      0001.
+  record_fix_template: Personnel number {PA0001.PERNR} is assigned to an organisational unit that is not an active unit in the plan.
+    Correct in PPOME or PA30.
+- id: PA006
+  field: PA0001.PLANS
+  check_class: exists_check
+  grain: PA0001
+  target_table: HRP1000
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - S
+    ISTAT:
+    - '1'
+  applies_when:
+    PA0001.ENDDA: *id002
+    PA0001.PLANS:
+      not_in:
+      - '99999999'
+  severity: high
+  dimension: consistency
+  message: Position of the assignment is missing or not active in the organisational plan
+  why_it_matters: The position on infotype 0001 must exist in HRP1000 as a position (object type S) with planning status active. A deleted
+    or delimited position breaks the inheritance of job, organisational unit and cost centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'Holder relationship and the assignment disagree: PPOME shows the position as vacant while the employee is paid from it;
+    position-based authorisations fail.'
+  fix_map:
+    __other__: Re-create or re-activate the position in PPOME (or S_AHR_61016509 to review), or reassign the employee in PA30 infotype
+      0001.
+  record_fix_template: Personnel number {PA0001.PERNR} sits on a position that is not an active position in the plan. Correct in PPOME
+    or PA30.
+- id: PA007
+  field: PA0001.STELL
+  check_class: exists_check
+  grain: PA0001
+  target_table: HRP1000
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - C
+    ISTAT:
+    - '1'
+  applies_when:
+    PA0001.ENDDA: *id002
+    PA0001.STELL:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Job of the assignment is missing or not active in the organisational plan
+  why_it_matters: The job on infotype 0001 must exist in HRP1000 as a job (object type C) with planning status active.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job-based evaluation and authorisation selections cannot resolve the job text or its attributes.
+  fix_map:
+    __other__: Create or re-activate the job in PPOME (job catalogue) or correct the assignment in PA30 infotype 0001.
+  record_fix_template: Personnel number {PA0001.PERNR} has a job that is not an active job in the plan. Correct in PPOME or PA30.
+- id: PA008
+  field: PA0001.KOSTL
+  check_class: exists_check
+  grain: PA0001
+  target_table: CSKS
+  target_fields:
+  - KOSTL
+  applies_when:
+    PA0001.ENDDA: *id002
+    PA0001.KOSTL:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Cost centre of the assignment does not exist in the cost centre master (CSKS)
+  why_it_matters: Payroll posts personnel cost to the cost centre on infotype 0001. A cost centre missing from CSKS (deleted, never
+    extended to the validity period, mistyped) makes the posting to Financial Accounting fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll posting run (PC00_M99_CIPE) ends with errors for the employee; personnel cost is held in the posting error queue
+    until the cost centre is corrected.
+  fix_map:
+    __other__: Correct the cost centre in PA30 infotype 0001, or create / extend it in KS01 / KS02 so it is valid for the assignment
+      period.
+  record_fix_template: Personnel number {PA0001.PERNR} is assigned to a cost centre that does not exist in CSKS. Correct in PA30 infotype
+    0001 or maintain the cost centre in KS02.
+- id: PA011
+  field: PA0001.BUKRS
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0001.BUKRS`.notna() & `T500P.BUKRS`.notna() & (`PA0001.BUKRS` != `T500P.BUKRS`)'
+  applies_when: &id003
+    PA0001.ENDDA: *id002
+  severity: high
+  dimension: consistency
+  message: Company code of the assignment differs from the company code of its personnel area
+  why_it_matters: The company code on infotype 0001 is derived from the personnel area (T500P). A different value means the company
+    code was overwritten or the personnel area was reassigned after the assignment was created.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll posting and legal reporting split the employee across the wrong legal entity.
+  fix_map:
+    __other__: Correct the personnel area in PA30 infotype 0001 so that the company code is re-derived, or fix the T500P assignment
+      in SPRO.
+  record_fix_template: Personnel number {PA0001.PERNR} has a company code that does not belong to its personnel area. Correct in PA30
+    infotype 0001.
+- id: PA012
+  field: PA0001.PERSG
+  check_class: exists_check
+  grain: PA0001
+  fields:
+  - PA0001.PERSG
+  - PA0001.PERSK
+  target_table: T503Z
+  target_fields:
+  - PERSG
+  - PERSK
+  applies_when: *id003
+  severity: high
+  dimension: validity
+  message: Employee group and subgroup combination is not allowed (T503Z)
+  why_it_matters: Each employee subgroup is valid only for specific employee groups per country grouping (T503Z). An unlisted pair has
+    no payroll or time-evaluation assignment and is rejected on maintenance.
+  rule_authority: sap_hard_constraint
+  sap_impact: Wage type, pay scale and time-evaluation derivations (ESG/CAP groupings) fail; payroll aborts for the employee.
+  fix_map:
+    __other__: Pick a valid group/subgroup pair in PA30 infotype 0001, or maintain the allowed pairs in SPRO > Personnel Management
+      > Personnel Administration > Organizational Data > Employee Subgroup Grouping.
+  record_fix_template: Personnel number {PA0001.PERNR} has an employee group and subgroup pair that is not in T503Z. Correct in PA30
+    infotype 0001.
+- id: PA013
+  field: PA0001.WERKS
+  check_class: exists_check
+  grain: PA0001
+  fields:
+  - PA0001.WERKS
+  - PA0001.BTRTL
+  target_table: T001P
+  target_fields:
+  - WERKS
+  - BTRTL
+  applies_when: *id003
+  severity: high
+  dimension: validity
+  message: Personnel area and subarea combination does not exist (T001P)
+  why_it_matters: A personnel subarea is defined per personnel area. A subarea that is not defined under the employee's area has no
+    work schedule, pay scale or holiday calendar groupings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Default derivations from the subarea (work schedule, pay scale groupings, holiday calendar) fail; the transaction rejects
+    further maintenance.
+  fix_map:
+    __other__: Choose a valid pair in PA30 infotype 0001, or define the subarea in SPRO > Personnel Management > Personnel Administration
+      > Organizational Data > Personnel Subarea.
+  record_fix_template: Personnel number {PA0001.PERNR} has a personnel subarea that is not defined under its personnel area. Correct
+    in PA30 infotype 0001.
+- id: PA014
+  field: PA0001.PLANS
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0001.ORGEH`.notna() & `HRP1001.SOBID`.notna() & (`PA0001.ORGEH` != `HRP1001.SOBID`)'
+  applies_when:
+    PA0001.ENDDA: *id002
+    PA0001.PLANS:
+      not_in:
+      - '99999999'
+  severity: high
+  dimension: consistency
+  message: Organisational unit on the assignment differs from the unit the position belongs to
+  why_it_matters: With integration the position decides the organisational unit. If infotype 0001 and the HRP1001 relationship 'belongs
+    to' disagree, the employee is reported in one unit and managed in another.
+  rule_authority: sap_hard_constraint
+  sap_impact: Headcount and cost reports differ between Personnel Administration and Organisational Management; manager self-service
+    shows the wrong team.
+  fix_map:
+    __other__: Run the integration consistency report RHINTECH or reassign the position in PPOME so both sides agree.
+  record_fix_template: Personnel number {PA0001.PERNR} has an organisational unit that differs from the unit of its position. Run RHINTECH
+    or reassign in PPOME.
+- id: PA015
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0002
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  severity: critical
+  dimension: completeness
+  message: Active employee has no personal data record (infotype 0002)
+  why_it_matters: Infotype 0002 holds the name, birth date and gender. Without it the employee cannot be displayed or paid and statutory
+    reports have no identity.
+  rule_authority: sap_hard_constraint
+  sap_impact: PA20 and PA30 refuse to show the employee; payroll and statutory returns abort.
+  fix_map:
+    __other__: Create infotype 0002 in PA30 (or re-run the hiring action in PA40).
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no personal data record (infotype 0002). Create it with PA30.
+- id: PA016
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0003
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  severity: critical
+  dimension: completeness
+  message: Active employee has no payroll control record (infotype 0003)
+  why_it_matters: Infotype 0003 is created by the hiring action and controls payroll status and retro-accounting. Records loaded without
+    it are never picked up by payroll.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll run skips the employee; retroactive accounting dates are unavailable.
+  fix_map:
+    __other__: Run the hiring action (PA40) or use report RPUPER00 / the support tool for creating infotype 0003.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no payroll control record (infotype 0003). Create it with PA30.
+- id: PA017
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0006
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  target_when:
+    SUBTY:
+    - '1'
+  severity: high
+  dimension: completeness
+  message: Active employee has no permanent residence address (infotype 0006 subtype 1)
+  why_it_matters: The permanent address is used for statutory tax returns, payslips by post and social-insurance reporting.
+  rule_authority: best_practice
+  sap_impact: Tax certificates and statutory returns lack an address; payslip distribution fails.
+  fix_map:
+    __other__: Create the address in PA30 infotype 0006, subtype 1 (Permanent residence).
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no permanent residence address (infotype 0006 subtype 1). Create
+    it with PA30.
+- id: PA018
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0007
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  severity: high
+  dimension: completeness
+  message: Active employee has no planned working time record (infotype 0007)
+  why_it_matters: Infotype 0007 carries the work schedule rule and employment percentage that time evaluation and payroll use to prorate
+    pay.
+  rule_authority: best_practice
+  sap_impact: Time evaluation (PT60) and payroll cannot derive the daily schedule; attendance and absence quotas are not generated.
+  fix_map:
+    __other__: Create infotype 0007 in PA30 with a valid work schedule rule.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no planned working time record (infotype 0007). Create it with
+    PA30.
+- id: PA019
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0008
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  severity: critical
+  dimension: completeness
+  message: Active employee has no basic pay record (infotype 0008)
+  why_it_matters: Infotype 0008 holds the pay scale assignment and basic wage types. Without it payroll has nothing to pay.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll run produces no gross pay for the employee, or aborts with a missing-infotype error.
+  fix_map:
+    __other__: Create infotype 0008 in PA30 (or run the pay-change action in PA40).
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no basic pay record (infotype 0008). Create it with PA30.
+- id: PA020
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0009
+  target_fields:
+  - PERNR
+  applies_when: *id001
+  target_when:
+    SUBTY:
+    - '0'
+  severity: critical
+  dimension: completeness
+  message: Active employee has no main bank details (infotype 0009 subtype 0)
+  why_it_matters: Bank transfer is the standard payment method. Payroll-relevant employees need the main bank details so the payment
+    run (DME / bank file) can pay them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll completes but the bank transfer is rejected; the employee's pay is withheld until bank details are maintained.
+  fix_map:
+    __other__: Create the main bank record in PA30 infotype 0009, subtype 0 (Main bank). For cheque payments set the payment method
+      instead.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no main bank details (infotype 0009 subtype 0). Create it with
+    PA30.
+- id: PA021
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  target_table: PA0000
+  target_fields:
+  - PERNR
+  applies_when: *id003
+  target_when:
+    ENDDA:
+    - '99991231'
+  severity: critical
+  dimension: consistency
+  message: Active employee has no current employment status record (infotype 0000)
+  why_it_matters: Every organisational assignment in force must be matched by an actions record in force; the status in infotype 0000
+    decides whether the employee is active, retired or withdrawn.
+  rule_authority: sap_hard_constraint
+  sap_impact: Status-based selection (PA0000-STAT2) cannot classify the employee; payroll and reports mis-handle the record.
+  fix_map:
+    __other__: Run the action that restores the status (PA40) or repair the validity of infotype 0000 in PA30.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has no current employment status record (infotype 0000). Create
+    it with PA30.
+- id: PA022
+  field: PA0008.BET01
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0008.BET01` <= 0'
+  applies_when: *id001
+  severity: high
+  dimension: accuracy
+  message: Active employee's basic pay is zero or negative
+  why_it_matters: A positive wage-type amount is the basis of the monthly salary. Zero or negative basic pay on an active employee means
+    the pay scale lookup failed or the amount was blanked during a mass change.
+  rule_authority: best_practice
+  sap_impact: Employee is paid nothing, or a negative gross is posted; the shortfall is found when the employee complains or the payroll
+    reconciliation is run.
+  fix_map:
+    __other__: Re-run the pay scale reclassification (RPITRF00) or enter the amount in PA30 infotype 0008.
+  record_fix_template: Personnel number {PA0001.PERNR} is active but has zero or negative basic pay. Correct in PA30 infotype 0008 or
+    re-run RPITRF00.
+- id: PA023
+  field: PA0008.BSGRD
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0008.BSGRD`.notna() & `PA0007.EMPCT`.notna() & (`PA0008.BSGRD` != `PA0007.EMPCT`)'
+  applies_when: *id001
+  severity: medium
+  dimension: consistency
+  message: Capacity utilisation level in basic pay differs from the employment percentage in planned working time
+  why_it_matters: Payroll prorates pay with PA0008-BSGRD while time evaluation prorates the schedule with PA0007-EMPCT. When they differ
+    the employee is paid for hours the schedule does not expect, or vice versa.
+  rule_authority: best_practice
+  sap_impact: Over- or underpayment relative to contractual hours; time balances and pay disagree.
+  fix_map:
+    __other__: Align the capacity utilisation level (PA30 infotype 0008) and the employment percentage (PA30 infotype 0007).
+  record_fix_template: Personnel number {PA0001.PERNR} has different capacity utilisation level and employment percentage. Align infotypes
+    0008 and 0007 in PA30.
+- id: PA024
+  field: PA0007.TEILK
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: ((`PA0007.TEILK` == 'X') & (`PA0007.EMPCT` >= 100)) | (`PA0007.TEILK`.isna() & (`PA0007.EMPCT` < 100))
+  applies_when: *id001
+  severity: medium
+  dimension: consistency
+  message: Part-time indicator and employment percentage contradict each other
+  why_it_matters: The part-time flag drives part-time reporting and legal rules (for example benefit eligibility). A part-time employee
+    at 100 percent, or a full-time flag at less than 100 percent, is contradictory.
+  rule_authority: best_practice
+  sap_impact: Part-time statistics, entitlement rules and statutory returns are wrong for the employee.
+  fix_map:
+    __other__: Correct the part-time indicator or the employment percentage in PA30 infotype 0007.
+  record_fix_template: Personnel number {PA0001.PERNR} has a part-time indicator that contradicts the employment percentage. Correct
+    in PA30 infotype 0007.
+- id: PA025
+  field: PA0009.BANKN
+  check_class: null_check
+  grain: PA0009
+  applies_when: &id004
+    PA0009.SUBTY:
+    - '0'
+    PA0009.ENDDA:
+    - '99991231'
+    PA0009.ZLSCH:
+      not_in:
+      - C
+  severity: high
+  dimension: completeness
+  message: Main bank record has no account number
+  why_it_matters: A bank-transfer payment needs bank country, bank key and account number. A record without the account number cannot
+    be paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment run produces a rejected line; the bank returns the file or the employee is not paid.
+  fix_map:
+    __blank__: Enter the account number (or IBAN) in PA30 infotype 0009, or change the payment method to cheque.
+  record_fix_template: 'Personnel number {PA0009.PERNR}: main bank record has no account number. Maintain in PA30 infotype 0009.'
+- id: PA026
+  field: PA0009.BANKL
+  check_class: null_check
+  grain: PA0009
+  applies_when: *id004
+  severity: high
+  dimension: completeness
+  message: Main bank record has no bank key
+  why_it_matters: The bank key identifies the bank (branch code). Without it, the payment cannot be routed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment run (bank file) cannot be generated for the employee.
+  fix_map:
+    __blank__: Enter the bank key in PA30 infotype 0009; maintain the bank in FI01 if it is not in the bank master.
+  record_fix_template: 'Personnel number {PA0009.PERNR}: main bank record has no bank key. Maintain in PA30 infotype 0009.'
+- id: PA027
+  field: PA0009.ZLSCH
+  check_class: null_check
+  grain: PA0009
+  applies_when:
+    PA0009.SUBTY:
+    - '0'
+    PA0009.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: completeness
+  message: Main bank record has no payment method
+  why_it_matters: The payment method (bank transfer, cheque, cash) decides how the net pay is paid. Without it, payroll relies on a
+    default that may not exist.
+  rule_authority: best_practice
+  sap_impact: Payroll uses the default payment method or leaves the transfer unpaid.
+  fix_map:
+    __blank__: Set the payment method in PA30 infotype 0009.
+  record_fix_template: 'Personnel number {PA0009.PERNR}: main bank record has no payment method. Set it in PA30 infotype 0009.'
+- id: PA028
+  field: PA0009.BANKL
+  check_class: exists_check
+  grain: PA0009
+  fields:
+  - PA0009.BANKS
+  - PA0009.BANKL
+  target_table: BNKA
+  target_fields:
+  - BANKS
+  - BANKL
+  applies_when:
+    PA0009.BANKL:
+      populated: true
+    PA0009.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: Bank country and bank key are not in the bank master (BNKA)
+  why_it_matters: Bank details on the employee should reference a bank in BNKA so that DME and bank-file formats find its name and routing
+    data.
+  rule_authority: best_practice
+  sap_impact: Bank file creation reports unknown bank; the transfer is rejected by the house bank.
+  fix_map:
+    __other__: Create the bank in FI01 or correct the bank key in PA30 infotype 0009.
+  record_fix_template: 'Personnel number {PA0009.PERNR}: bank country and key are not in BNKA. Maintain in FI01 or PA30 infotype 0009.'
+- id: PA029
+  field: PA0009.BANKN
+  check_class: uniqueness_check
+  grain: PA0009
+  fields:
+  - PA0009.BANKS
+  - PA0009.BANKL
+  - PA0009.BANKN
+  normalize: alnum
+  applies_when:
+    PA0009.BANKN:
+      populated: true
+    PA0009.SUBTY:
+    - '0'
+    PA0009.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: The same bank account is used by more than one personnel number
+  why_it_matters: Two employees paid into one account is the standard pattern of a ghost employee or a duplicate hire. Legitimate cases
+    (spouses, household accounts) exist but must be approved.
+  rule_authority: best_practice
+  sap_impact: Pay may be diverted; duplicated hires pay twice; audit findings on payroll controls.
+  fix_map:
+    __other__: Compare the personnel numbers in PA20. Confirm the shared account or end the duplicate employment (PA40).
+  record_fix_template: 'Personnel number {PA0009.PERNR}: bank account is shared with another personnel number. Review in PA20.'
+- id: PA030
+  field: PA0002.PERID
+  check_class: null_check
+  grain: PA0002
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no personnel ID number
+  why_it_matters: Many countries require a national or tax identity number on every employee for statutory reporting. A blank value
+    blocks year-end certificates and duplicate detection by ID.
+  rule_authority: regulatory
+  sap_impact: Statutory returns are incomplete; duplicate detection by ID (HCM021) has nothing to compare.
+  fix_map:
+    __blank__: Enter the personnel ID number in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} is active but has no personnel ID number. Maintain in PA30 infotype 0002.
+- id: PA031
+  field: PA0002.GESCH
+  check_class: null_check
+  grain: PA0002
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no gender key
+  why_it_matters: Gender is used by statutory equity reports, pension and some payroll rules, and the salutation default. It is mandatory
+    in the standard screen.
+  rule_authority: best_practice
+  sap_impact: Equity and demographic reports exclude the employee; gender-dependent payroll rules (retirement age) fall back to a default.
+  fix_map:
+    __blank__: Set the gender key in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} is active but has no gender key. Maintain in PA30 infotype 0002.
+- id: PA032
+  field: PA0002.GBDAT
+  check_class: cross_field_check
+  grain: PA0002
+  fail_when: ((@today - `PA0002.GBDAT`).dt.days < 5475) | ((@today - `PA0002.GBDAT`).dt.days > 36525)
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: high
+  dimension: validity
+  message: Active employee's birth date makes the employee younger than 15 or older than 100
+  why_it_matters: A birth date outside this range is almost always a placeholder (01.01.1900) or a typing error. It distorts age-based
+    payroll rules, benefits and child-labour compliance.
+  rule_authority: best_practice
+  sap_impact: Age-based entitlements and retirement planning are wrong; labour-law compliance reports flag the record.
+  fix_map:
+    __other__: Correct the date of birth in PA30 infotype 0002 using the identity document.
+  record_fix_template: Personnel number {PA0001.PERNR} has an implausible birth date. Correct it in PA30 infotype 0002.
+- id: PA033
+  field: PA0002.NACHN
+  check_class: regex_check
+  grain: PA0002
+  pattern: ^(?!.*(?i:\b(TEST|DUMMY|UNKNOWN|XXX+|N/A|TBD)\b))[^0-9]*$
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: validity
+  message: Last name is a placeholder or contains digits
+  why_it_matters: Names such as TEST, DUMMY, UNKNOWN or names with digits come from test loads or data-entry shortcuts. They reach payslips,
+    bank files and statutory returns.
+  rule_authority: best_practice
+  sap_impact: Payslips and bank transfers show a nonsense name; the bank rejects name-mismatched transfers.
+  fix_map:
+    __other__: Replace the name in PA30 infotype 0002 with the legal name from the identity document.
+  record_fix_template: 'Personnel number {PA0002.PERNR}: last name looks like a placeholder or contains digits. Correct in PA30 infotype
+    0002.'
+- id: PA034
+  field: PA0002.NACHN
+  check_class: similarity_check
+  grain: PA0002
+  block_by:
+  - PA0002.GBDAT
+  - PA0002.VORNA
+  threshold: 0.8
+  exact_rule: true
+  evidence_key: PA0002.PERNR
+  severity: medium
+  dimension: uniqueness
+  message: Two personnel numbers have the same first name and birth date and almost the same last name
+  why_it_matters: A typing error in the last name hides a duplicate person from the exact duplicate rule. Duplicate persons cause double
+    payment and split employment history.
+  rule_authority: best_practice
+  sap_impact: Duplicate payroll payments; split service history; double benefit enrolment.
+  fix_map:
+    __other__: Compare the two personnel numbers in PA20. If they are the same person, keep one and end the other (PA40).
+  record_fix_template: 'Personnel number {PA0002.PERNR}: another personnel number has almost the same name and birth date. Review in
+    PA20.'
+- id: PA035
+  field: PA0002.PERID
+  check_class: uniqueness_check
+  grain: PA0002
+  fields:
+  - PA0002.PERID
+  normalize: alnum
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: critical
+  dimension: uniqueness
+  message: The same personnel ID number is held by more than one personnel number (current records)
+  why_it_matters: One person with two personnel numbers means two payrolls. Matches the strongest duplicate signal available (the personal
+    ID).
+  rule_authority: best_practice
+  sap_impact: Double payroll payments and duplicated statutory returns.
+  fix_map:
+    __other__: Review the personnel numbers in PA20 and end the duplicate employment via PA40.
+  record_fix_template: 'Personnel number {PA0002.PERNR}: ID number is held by another personnel number. Review in PA20.'
+- id: PA036
+  field: PA0006.LAND1
+  check_class: referential_check
+  grain: PA0006
+  severity: medium
+  dimension: consistency
+  message: Country of the address is not a valid country key (T005)
+  why_it_matters: Addresses must use country keys defined in T005 for tax-reporting country and mail format determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address formatting and tax-reporting country determination fail.
+  fix_map:
+    __other__: Correct the country in PA30 infotype 0006.
+  record_fix_template: 'Personnel number {PA0006.PERNR}: address country is not a valid key. Correct in PA30 infotype 0006.'
+- id: PA037
+  field: PA0105.USRID
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: (`PA0000.STAT2` == '0') & `PA0105.USRID`.notna() & (`USR02.UFLAG` == 0) & (`USR02.GLTGB`.isna() | (`USR02.GLTGB` >= @today))
+  applies_when: *id003
+  severity: critical
+  dimension: consistency
+  message: Withdrawn employee still has an unlocked, unexpired SAP user (infotype 0105 subtype 0001)
+  why_it_matters: When an employee leaves, the linked SAP user must be locked or expired. A withdrawn employee with an open user is
+    a segregation-of-duties and access-control finding and a standard leaver-audit failure.
+  rule_authority: regulatory
+  sap_impact: A former employee can still sign on; audit finding on leaver access removal; role licences remain consumed.
+  fix_map:
+    __other__: Lock the user (SU01) or set its valid-to date, and delimit infotype 0105 subtype 0001 in PA30.
+  record_fix_template: Personnel number {PA0001.PERNR} is withdrawn but its linked SAP user is still open. Lock the user in SU01 and
+    delimit infotype 0105.
+- id: PA038
+  field: PA0105.USRID
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: (`PA0000.STAT2` == '0') & `PA0105.USRID`.notna()
+  applies_when: *id003
+  severity: high
+  dimension: consistency
+  message: Withdrawn employee still carries a system user assignment (infotype 0105 subtype 0001)
+  why_it_matters: The subtype 0001 record links the personnel number to its SAP user. Left in place after exit it keeps the user resolvable
+    by workflow, ESS and structural authorisations.
+  rule_authority: best_practice
+  sap_impact: Workflow items and notifications are routed to a user of a person who has left.
+  fix_map:
+    __other__: Delimit infotype 0105 subtype 0001 in PA30 at the leaving date and clean up the user in SU01.
+  record_fix_template: Personnel number {PA0001.PERNR} is withdrawn but still has a system user assigned. Delimit infotype 0105 subtype
+    0001.
+- id: PA039
+  field: PA0105.USRID
+  check_class: exists_check
+  grain: PA0105
+  target_table: USR02
+  target_fields:
+  - BNAME
+  applies_when:
+    PA0105.SUBTY:
+    - '0001'
+    PA0105.ENDDA:
+    - '99991231'
+    PA0105.USRID:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Active employee's assigned SAP user does not exist (USR02)
+  why_it_matters: The user on infotype 0105 subtype 0001 is the link used by ESS, MSS and workflow. A user that does not exist breaks
+    all self-service and approval routing for the employee.
+  rule_authority: sap_hard_constraint
+  sap_impact: Workflow tasks cannot be delivered; self-service sign-on does not map to the employee.
+  fix_map:
+    __other__: Correct the user name in PA30 infotype 0105 subtype 0001 or create the user in SU01.
+  record_fix_template: 'Personnel number {PA0105.PERNR}: assigned SAP user does not exist. Correct in PA30 infotype 0105.'
+- id: PA040
+  field: PA0105.USRID
+  check_class: regex_check
+  grain: PA0105
+  pattern: ^[A-Z0-9_$#&/.\-]{1,12}$
+  applies_when:
+    PA0105.SUBTY:
+    - '0001'
+    PA0105.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: validity
+  message: System user name does not follow the SAP user naming rule
+  why_it_matters: SAP user names are upper-case, up to 12 characters without spaces. A different value cannot match a user in USR02.
+  rule_authority: sap_hard_constraint
+  sap_impact: The user assignment never resolves to a user.
+  fix_map:
+    __other__: Use the exact user ID from SU01 in PA30 infotype 0105 subtype 0001.
+  record_fix_template: 'Personnel number {PA0105.PERNR}: user name format is invalid. Correct in PA30 infotype 0105.'
+- id: PA041
+  field: PA0003.ABRDT
+  check_class: freshness_check
+  grain: PA0001
+  max_age_hours: 2160
+  applies_when: *id001
+  severity: high
+  dimension: timeliness
+  message: Active employee has not been accounted in payroll for more than 90 days
+  why_it_matters: The accounted-to date moves forward every payroll run. A date older than three months on an active employee means
+    payroll skips them, the payroll area is closed or the record is locked.
+  rule_authority: best_practice
+  sap_impact: The employee is not paid; retroactive accounting and back-pay grow every period.
+  fix_map:
+    __other__: Check the personnel number lock (PA03 / ABRSP), the payroll area and run payroll (PC00_Mxx_CALC).
+  record_fix_template: Personnel number {PA0001.PERNR} has not been accounted in payroll for over 90 days. Check payroll area and lock
+    in PA03.
+- id: PA042
+  field: PA0003.ABRSP
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0003.ABRSP` == ''X'''
+  applies_when: *id001
+  severity: high
+  dimension: consistency
+  message: Active employee is locked for payroll
+  why_it_matters: The payroll lock excludes the employee from the payroll run. Locks are meant to be temporary; an active employee left
+    locked is not paid.
+  rule_authority: best_practice
+  sap_impact: The employee is skipped by payroll until the lock is removed.
+  fix_map:
+    __other__: Remove the lock in PA03 (Control record) after investigating the reason.
+  record_fix_template: Personnel number {PA0001.PERNR} is locked for payroll. Review in PA03.
+- id: PA043
+  field: PA0000.BEGDA
+  check_class: interval_check
+  grain: PA0000
+  group_by:
+  - PA0000.PERNR
+  start: PA0000.BEGDA
+  end: PA0000.ENDDA
+  severity: critical
+  dimension: consistency
+  message: Actions has overlapping validity periods (time constraint 1)
+  why_it_matters: Time constraint 1 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0000 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0000.PERNR}: infotype 0000 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA044
+  field: PA0001.BEGDA
+  check_class: interval_check
+  grain: PA0001
+  group_by:
+  - PA0001.PERNR
+  start: PA0001.BEGDA
+  end: PA0001.ENDDA
+  severity: critical
+  dimension: consistency
+  message: Organisational assignment has overlapping validity periods (time constraint 1)
+  why_it_matters: Time constraint 1 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0001 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0001.PERNR}: infotype 0001 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA045
+  field: PA0002.BEGDA
+  check_class: interval_check
+  grain: PA0002
+  group_by:
+  - PA0002.PERNR
+  start: PA0002.BEGDA
+  end: PA0002.ENDDA
+  severity: high
+  dimension: consistency
+  message: Personal data has overlapping validity periods (time constraint 1)
+  why_it_matters: Time constraint 1 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0002 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0002.PERNR}: infotype 0002 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA046
+  field: PA0007.BEGDA
+  check_class: interval_check
+  grain: PA0007
+  group_by:
+  - PA0007.PERNR
+  start: PA0007.BEGDA
+  end: PA0007.ENDDA
+  severity: high
+  dimension: consistency
+  message: Planned working time has overlapping validity periods (time constraint 1)
+  why_it_matters: Time constraint 1 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0007 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0007.PERNR}: infotype 0007 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA047
+  field: PA0008.BEGDA
+  check_class: interval_check
+  grain: PA0008
+  group_by:
+  - PA0008.PERNR
+  - PA0008.SUBTY
+  start: PA0008.BEGDA
+  end: PA0008.ENDDA
+  severity: high
+  dimension: consistency
+  message: Basic pay has overlapping validity periods (time constraint 1)
+  why_it_matters: Time constraint 1 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0008 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0008.PERNR}: infotype 0008 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA048
+  field: PA0006.BEGDA
+  check_class: interval_check
+  grain: PA0006
+  group_by:
+  - PA0006.PERNR
+  - PA0006.SUBTY
+  - PA0006.OBJPS
+  start: PA0006.BEGDA
+  end: PA0006.ENDDA
+  severity: high
+  dimension: consistency
+  message: Address has overlapping validity periods (time constraint 2)
+  why_it_matters: Time constraint 2 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0006 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0006.PERNR}: infotype 0006 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA049
+  field: PA0009.BEGDA
+  check_class: interval_check
+  grain: PA0009
+  group_by:
+  - PA0009.PERNR
+  - PA0009.SUBTY
+  start: PA0009.BEGDA
+  end: PA0009.ENDDA
+  severity: high
+  dimension: consistency
+  message: Bank details has overlapping validity periods (time constraint 2)
+  why_it_matters: Time constraint 2 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0009 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0009.PERNR}: infotype 0009 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA050
+  field: PA0105.BEGDA
+  check_class: interval_check
+  grain: PA0105
+  group_by:
+  - PA0105.PERNR
+  - PA0105.SUBTY
+  start: PA0105.BEGDA
+  end: PA0105.ENDDA
+  severity: high
+  dimension: consistency
+  message: Communication has overlapping validity periods (time constraint 2)
+  why_it_matters: Time constraint 2 allows only one record at a time. Overlaps appear after direct table loads or interrupted mass changes.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0105 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0105.PERNR}: infotype 0105 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA051
+  field: PA0000.BEGDA
+  check_class: interval_check
+  grain: PA0000
+  group_by:
+  - PA0000.PERNR
+  start: PA0000.BEGDA
+  end: PA0000.ENDDA
+  mode: continuous
+  severity: high
+  dimension: consistency
+  message: Actions has a gap in validity (time constraint 1)
+  why_it_matters: Time constraint 1 requires the records to follow each other without a gap, so every day of the employment is covered.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0000 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0000.PERNR}: infotype 0000 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA052
+  field: PA0001.BEGDA
+  check_class: interval_check
+  grain: PA0001
+  group_by:
+  - PA0001.PERNR
+  start: PA0001.BEGDA
+  end: PA0001.ENDDA
+  mode: continuous
+  severity: high
+  dimension: consistency
+  message: Organisational assignment has a gap in validity (time constraint 1)
+  why_it_matters: Time constraint 1 requires the records to follow each other without a gap, so every day of the employment is covered.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0001 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0001.PERNR}: infotype 0001 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA053
+  field: PA0002.BEGDA
+  check_class: interval_check
+  grain: PA0002
+  group_by:
+  - PA0002.PERNR
+  start: PA0002.BEGDA
+  end: PA0002.ENDDA
+  mode: continuous
+  severity: high
+  dimension: consistency
+  message: Personal data has a gap in validity (time constraint 1)
+  why_it_matters: Time constraint 1 requires the records to follow each other without a gap, so every day of the employment is covered.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0002 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0002.PERNR}: infotype 0002 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA054
+  field: PA0007.BEGDA
+  check_class: interval_check
+  grain: PA0007
+  group_by:
+  - PA0007.PERNR
+  start: PA0007.BEGDA
+  end: PA0007.ENDDA
+  mode: continuous
+  severity: high
+  dimension: consistency
+  message: Planned working time has a gap in validity (time constraint 1)
+  why_it_matters: Time constraint 1 requires the records to follow each other without a gap, so every day of the employment is covered.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0007 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0007.PERNR}: infotype 0007 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA055
+  field: PA0008.BEGDA
+  check_class: interval_check
+  grain: PA0008
+  group_by:
+  - PA0008.PERNR
+  - PA0008.SUBTY
+  start: PA0008.BEGDA
+  end: PA0008.ENDDA
+  mode: continuous
+  severity: high
+  dimension: consistency
+  message: Basic pay has a gap in validity (time constraint 1)
+  why_it_matters: Time constraint 1 requires the records to follow each other without a gap, so every day of the employment is covered.
+    Reports and payroll read one record per date, so they pick an arbitrary one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation read inconsistent data for the affected dates; PA30 may refuse to display the history.
+  fix_map:
+    __other__: Display the history in PA30 infotype 0008 and delimit or delete the extra record. Use RPUDELPA only for erroneous records.
+  record_fix_template: 'Personnel number {PA0008.PERNR}: infotype 0008 history is not consistent (overlap or gap). Review in PA30.'
+- id: PA056
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - S
+    RELAT:
+    - 008
+    RSIGN:
+    - A
+    ENDDA:
+    - '99991231'
+  applies_when: &id005
+    HRP1000.OTYPE:
+    - S
+    HRP1000.ENDDA: &id006
+    - '99991231'
+    HRP1000.ISTAT: &id007
+    - '1'
+    HRP1000.PLVAR: &id008
+    - '01'
+  severity: low
+  dimension: completeness
+  message: Active position has no holder (vacant)
+  why_it_matters: A vacant position is legitimate while recruiting, but long-lived vacancies inflate budgeted headcount and attract
+    planned cost. This rule lists vacancies for review.
+  rule_authority: best_practice
+  sap_impact: Headcount and budget reports show positions that nobody holds; recruitment workflows target obsolete positions.
+  fix_map:
+    __other__: Fill the position (PA40 hiring) or delimit it in PPOME / PO13.
+  record_fix_template: 'Position {HRP1000.OBJID}: no holder in the organisational plan. Fill or delimit in PPOME.'
+- id: PA057
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - S
+    RELAT:
+    - '003'
+    RSIGN:
+    - A
+    ENDDA:
+    - '99991231'
+  applies_when: *id005
+  severity: high
+  dimension: completeness
+  message: Active position is not assigned to an organisational unit
+  why_it_matters: A position must belong to an organisational unit (relationship 003). Without it the position and its holder are outside
+    the reporting structure.
+  rule_authority: sap_hard_constraint
+  sap_impact: The position is invisible in the organisational structure; holders are unreachable by structural authorisations and manager
+    reports.
+  fix_map:
+    __other__: Relate the position to an organisational unit in PPOME.
+  record_fix_template: 'Position {HRP1000.OBJID}: not assigned to an organisational unit. Relate it in PPOME.'
+- id: PA058
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - S
+    RELAT:
+    - '007'
+    RSIGN:
+    - A
+    ENDDA:
+    - '99991231'
+  applies_when: *id005
+  severity: medium
+  dimension: completeness
+  message: Active position has no job
+  why_it_matters: A position inherits its job description, grade and skill requirements from a job (relationship 007). A position without
+    a job has no profile.
+  rule_authority: best_practice
+  sap_impact: Job-based reporting, job evaluation and compensation structures are missing the position.
+  fix_map:
+    __other__: Relate the position to a job in PPOME.
+  record_fix_template: 'Position {HRP1000.OBJID}: not related to a job. Relate it in PPOME.'
+- id: PA059
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - O
+    RELAT:
+    - '012'
+    RSIGN:
+    - B
+    ENDDA:
+    - '99991231'
+  applies_when:
+    HRP1000.OTYPE:
+    - O
+    HRP1000.ENDDA: *id006
+    HRP1000.ISTAT: *id007
+    HRP1000.PLVAR: *id008
+  severity: medium
+  dimension: completeness
+  message: Active organisational unit has no manager position
+  why_it_matters: Each organisational unit needs a position flagged as chief (relationship 012) so approvals and manager self-service
+    route to someone.
+  rule_authority: best_practice
+  sap_impact: Workflows and MSS cannot determine the approver; reporting lines break at this unit.
+  fix_map:
+    __other__: Flag the manager position of the unit in PPOME (relationship 'is managed by').
+  record_fix_template: 'Organisational unit {HRP1000.OBJID}: no manager position. Maintain in PPOME.'
+- id: PA060
+  field: HRP1001.SOBID
+  check_class: exists_check
+  grain: HRP1001
+  target_table: PA0001
+  target_fields:
+  - PERNR
+  applies_when:
+    HRP1001.OTYPE:
+    - S
+    HRP1001.RELAT:
+    - 008
+    HRP1001.RSIGN:
+    - A
+    HRP1001.SCLAS:
+    - P
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: Position holder relationship points to a personnel number that does not exist
+  why_it_matters: The holder relationship (S 008 P) stores the personnel number in SOBID. A number that has no PA0001 record leaves
+    a phantom holder that fills the position.
+  rule_authority: sap_hard_constraint
+  sap_impact: The position appears occupied while no employee holds it; headcount is overstated.
+  fix_map:
+    __other__: Delimit the relationship in PPOME or correct the personnel number.
+  record_fix_template: 'Position {HRP1001.OBJID}: holder relationship points to a personnel number with no assignment. Correct in PPOME.'
+- id: PA061
+  field: HRP1001.PROZT
+  check_class: cross_field_check
+  grain: HRP1001
+  fail_when: (`HRP1001.PROZT` < 0) | (`HRP1001.PROZT` > 100)
+  applies_when:
+    HRP1001.RELAT:
+    - 008
+    HRP1001.RSIGN:
+    - A
+  severity: medium
+  dimension: validity
+  message: Holder relationship has a weighting percentage outside 0 to 100
+  why_it_matters: A position may be shared between holders by weighting; each share must lie between 0 and 100 percent.
+  rule_authority: sap_hard_constraint
+  sap_impact: Position staffing totals are wrong; planned cost distribution is distorted.
+  fix_map:
+    __other__: Correct the percentage in PPOME > relationship maintenance.
+  record_fix_template: 'Position {HRP1001.OBJID}: holder weighting is outside 0 to 100. Correct in PPOME.'
+- id: PA062
+  field: HRP1001.BEGDA
+  check_class: interval_check
+  grain: HRP1001
+  group_by:
+  - HRP1001.PLVAR
+  - HRP1001.OTYPE
+  - HRP1001.OBJID
+  - HRP1001.RSIGN
+  - HRP1001.RELAT
+  - HRP1001.SCLAS
+  - HRP1001.SOBID
+  start: HRP1001.BEGDA
+  end: HRP1001.ENDDA
+  severity: high
+  dimension: consistency
+  message: Same organisational relationship exists with overlapping validity
+  why_it_matters: An identical relationship (same objects, same direction) with overlapping periods duplicates the relationship and
+    double-counts holders and assignments.
+  rule_authority: sap_hard_constraint
+  sap_impact: Holders are counted twice; evaluation paths return duplicate rows.
+  fix_map:
+    __other__: Delimit one of the records in PPOME.
+  record_fix_template: 'Object {HRP1001.OBJID}: relationship has overlapping validity. Delimit in PPOME.'
+- id: PA063
+  field: HRP1000.BEGDA
+  check_class: interval_check
+  grain: HRP1000
+  group_by:
+  - HRP1000.PLVAR
+  - HRP1000.OTYPE
+  - HRP1000.OBJID
+  - HRP1000.LANGU
+  start: HRP1000.BEGDA
+  end: HRP1000.ENDDA
+  severity: high
+  dimension: consistency
+  message: Object has overlapping validity records in infotype 1000 (same language)
+  why_it_matters: Infotype 1000 allows one record per language at a time. Overlaps give an object two names for the same period.
+  rule_authority: sap_hard_constraint
+  sap_impact: Object text lookups pick an arbitrary record; PPOME shows duplicates.
+  fix_map:
+    __other__: Delimit the extra record in PPOME (PP02 / PO03).
+  record_fix_template: 'Object {HRP1000.OBJID}: overlapping infotype 1000 records. Delimit in PPOME.'
+- id: PA064
+  field: HRP1000.STEXT
+  check_class: null_check
+  grain: HRP1000
+  applies_when:
+    HRP1000.OTYPE:
+    - O
+    - S
+    - C
+    HRP1000.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: completeness
+  message: Active organisational object has no name
+  why_it_matters: Every organisational unit, job and position needs a name for reports, matchcodes and workflow descriptions.
+  rule_authority: best_practice
+  sap_impact: Reports and selection lists show blank rows; users cannot choose the object.
+  fix_map:
+    __blank__: Maintain the object name in PPOME.
+  record_fix_template: 'Object {HRP1000.OBJID}: no name. Maintain in PPOME.'
+- id: PA065
+  field: HRP1000.ISTAT
+  check_class: domain_value_check
+  grain: HRP1000
+  allowed_values:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  - '5'
+  valid_values_with_labels:
+    '1': Active
+    '2': Planned
+    '3': Submitted
+    '4': Approved
+    '5': Rejected
+  severity: medium
+  dimension: validity
+  message: Planning status is not one of the five SAP statuses
+  why_it_matters: Only 1 (active), 2 (planned), 3 (submitted), 4 (approved) and 5 (rejected) are defined. Anything else is invisible
+    to the standard evaluation paths.
+  rule_authority: sap_hard_constraint
+  sap_impact: The object is excluded from structural reports and integration checks.
+  fix_map:
+    __other__: Set a valid planning status in PPOME / PP01.
+  record_fix_template: 'Object {HRP1000.OBJID}: planning status is invalid. Correct in PPOME.'
+- id: PA066
+  field: HRP1001.BEGDA
+  check_class: cross_field_check
+  grain: HRP1001
+  fail_when: '`HRP1001.BEGDA` > `HRP1001.ENDDA`'
+  severity: medium
+  dimension: validity
+  message: Relationship validity ends before it starts
+  why_it_matters: A relationship whose end date is before its start date never applies, so the dependency the planner intended does
+    not exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Evaluation paths ignore the relationship; position holders or reporting lines silently vanish.
+  fix_map:
+    __other__: Correct the validity dates in PPOME.
+  record_fix_template: 'Object {HRP1001.OBJID}: relationship validity ends before it starts. Correct in PPOME.'

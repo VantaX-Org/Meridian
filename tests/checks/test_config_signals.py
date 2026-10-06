@@ -7,8 +7,8 @@ from checks.config_signals import extract_config_signals
 ALL_MODULES = [
     # ECC
     "business_partner", "material_master", "fi_gl", "accounts_payable",
-    "accounts_receivable", "asset_accounting", "controlling", "mm_purchasing",
-    "plant_maintenance", "production_planning", "quality_management", "sd_customer_master",
+    "accounts_receivable", "asset_accounting", "hcm", "controlling", "mm_purchasing",
+    "plant_maintenance", "production_planning", "project_system", "quality_management", "sd_customer_master",
     "sd_sales_orders",
     # SuccessFactors
     "employee_central", "compensation", "benefits", "payroll_integration",

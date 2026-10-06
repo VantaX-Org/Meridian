@@ -32,7 +32,8 @@ class SimilarityCheck(BaseCheck):
     default_dimension = "uniqueness"
 
     def columns(self) -> list[str]:
-        return [self.rule["field"]] + list(self.rule.get("block_by") or [])
+        ev = self.rule.get("evidence_key")
+        return [self.rule["field"]] + list(self.rule.get("block_by") or []) + ([ev] if ev else [])
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         r = self.rule
@@ -52,6 +53,7 @@ class SimilarityCheck(BaseCheck):
         scope = populated & (compact.str.len() >= 5)
         skipped_records = 0
         exact_elsewhere = bool(r.get("exact_rule"))
+        ev_col = r.get("evidence_key") or r["field"]  # evidence_key: show this column's values, not the compared (personal) field
         for _, idx in group[scope].groupby(group[scope]).groups.items():
             if len(idx) > max_block:
                 skipped += 1
@@ -65,6 +67,6 @@ class SimilarityCheck(BaseCheck):
                 if ka == kb or SequenceMatcher(None, key[a], key[b]).ratio() >= threshold:
                     failing[a] = failing[b] = True
                     if len(pairs) < 20:
-                        pairs.append([str(df.at[a, r["field"]]), str(df.at[b, r["field"]])])
+                        pairs.append([str(df.at[a, ev_col]), str(df.at[b, ev_col])])
         return Evaluation(scope, failing, {"near_duplicate_pairs": pairs, "blocks_skipped_too_large": skipped,
                                            "records_not_compared": skipped_records, "threshold": threshold})

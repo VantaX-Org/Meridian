@@ -1,0 +1,42 @@
+{
+ "domain": "PERBZ_LD",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": "PERBZ",
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "GES",
+   "high": null,
+   "text": "Full Settlement"
+  },
+  {
+   "low": "PER",
+   "high": null,
+   "text": "Periodic Settlement"
+  },
+  {
+   "low": "JHR",
+   "high": null,
+   "text": "Capitalization in AUC"
+  },
+  {
+   "low": "EPA",
+   "high": null,
+   "text": "Line Item Settlement"
+  },
+  {
+   "low": "VOR",
+   "high": null,
+   "text": "Periodic Settlement Before AUC Capitalization"
+  },
+  {
+   "low": "AUT",
+   "high": null,
+   "text": "Automatic Settlement"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

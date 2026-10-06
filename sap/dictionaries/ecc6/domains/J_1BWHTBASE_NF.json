@@ -1,0 +1,22 @@
+{
+ "domain": "J_1BWHTBASE_NF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Base in Standard FI Tables"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Base Stored in Nota Fiscal"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
