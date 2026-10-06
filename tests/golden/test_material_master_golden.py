@@ -213,6 +213,23 @@ def _frames() -> TableFrames:
         {**empty, "MARD.MATNR": m, "MARD.WERKS": w, "MARD.LGORT": lg}
         for m, w, lg in zip(marc["MARC.MATNR"], marc["MARC.WERKS"], marc["MARC.LGFSB"]) if lg and (m, w, lg) not in have
     ])], ignore_index=True)
+    # a plant row with the storage view (L) has at least one storage location row
+    located = set(mard["MARD.MATNR"] + "|" + mard["MARD.WERKS"])
+    bare = marc[marc["MARC.PSTAT"].str.contains("L") & ~(marc["MARC.MATNR"] + "|" + marc["MARC.WERKS"]).isin(located)]
+    mard = pd.concat([mard, pd.DataFrame([
+        {**empty, "MARD.MATNR": m, "MARD.WERKS": w, "MARD.LGORT": "0001"}
+        for m, w in zip(bare["MARC.MATNR"], bare["MARC.WERKS"])
+    ])], ignore_index=True)
+
+    # the valuated quantity covers the storage location stock (unrestricted, quality inspection, blocked)
+    def qty(s: str) -> float:
+        return 0.0 if s.endswith("-") else float(s)  # the seeded negative stock is a defect of its own (MM157)
+    stock: dict[tuple[str, str], float] = {}
+    for _, r in mard.iterrows():
+        k = (r["MARD.MATNR"], r["MARD.WERKS"])
+        stock[k] = stock.get(k, 0.0) + sum(qty(r[f"MARD.{c}"]) for c in ("LABST", "INSME", "SPEME"))
+    mbew["MBEW.LBKUM"] = [f"{stock[k]:.3f}" if stock.get(k, 0) > 1 else v
+                          for k, v in zip(zip(mbew["MBEW.MATNR"], mbew["MBEW.BWKEY"]), mbew["MBEW.LBKUM"])]
     return TableFrames({"MARA": mara, "MAKT": makt, "MARC": marc, "MBEW": mbew, "MVKE": mvke, "MARM": marm,
                         "MARD": mard}, D,
                        module="material_master")
@@ -260,6 +277,9 @@ def test_material_master_golden():
         "MM151": {"MATNR=000000000000500095|WERKS=1000"},        # price unit 0 in the accounting view
         "MM159": {"MATNR=000000000000400330"},                   # weights without a weight unit
         "MM157": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # negative quality-inspection stock
+        "MM380": {"MATNR=000000000000300099|WERKS=1000"},        # plant row active though the material is flagged for deletion
+        "MM399": {"MATNR=000000000000300010|WERKS=1100"},        # deleted plant row is still planned by MRP (PD)
+        "MM521": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # same defect as MM157: negative quality-inspection stock
         "MM171": {"MATNR=000000000000500097|WERKS=1000"},        # max stock 15 below reorder point 20 (HB)
         "MM182": {"MATNR=000000000000300050|WERKS=1000"},        # plant status Z9 not configured (T141)
     }, found

@@ -1,0 +1,62 @@
+{
+ "domain": "ATAUT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "User Input"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Action"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Selection Condition"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Value Assigned by Classification"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Constraint"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Value Assigned Internally (DDB)"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Value Assigned by Configuration"
+  },
+  {
+   "low": "7",
+   "high": null,
+   "text": "Procedure"
+  },
+  {
+   "low": "8",
+   "high": null,
+   "text": "Default Values"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "External System"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

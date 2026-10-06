@@ -1,0 +1,230 @@
+{
+ "table": "CKMLHD",
+ "description": "Material Ledger: Header Record",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "KALNR",
+   "key": true,
+   "data_element": "CK_KALNR",
+   "domain": "CK_KALNR",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Cost Estimate Number for Cost Est. w/o Qty Structure",
+   "check_table": "*"
+  },
+  {
+   "pos": 4,
+   "name": "MLAST",
+   "key": false,
+   "data_element": "CK_ML_ABST",
+   "domain": "CK_ML_ABST",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material Price Determination: Control",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XABRECH",
+   "key": false,
+   "data_element": "CK_XABRECH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Movements have Occurred Since the Last Price Determination",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ABRECHDAT",
+   "key": false,
+   "data_element": "CK_ABRDAT",
+   "domain": "SYDATS",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Last Successful Price Determination",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XABRERR",
+   "key": false,
+   "data_element": "CKML_D_NOTUSED_CHAR1",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Obsolete",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ABRECHUHR",
+   "key": false,
+   "data_element": "CK_ABRUHR",
+   "domain": "SYTIME",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Last Sucessful Price Determination",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 10,
+   "name": "BWKEY",
+   "key": false,
+   "data_element": "BWKEY",
+   "domain": "BWKEY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Valuation area",
+   "check_table": "T001K"
+  },
+  {
+   "pos": 11,
+   "name": "BWTAR",
+   "key": false,
+   "data_element": "BWTAR_D",
+   "domain": "BWTAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Valuation type",
+   "check_table": "T149D"
+  },
+  {
+   "pos": 12,
+   "name": "KZBWS",
+   "key": false,
+   "data_element": "KZBWS",
+   "domain": "KZBWS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Valuation of Special Stock",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "XOBEW",
+   "key": false,
+   "data_element": "XOBEW",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Vendor Stock Valuation Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "SOBKZ",
+   "key": false,
+   "data_element": "SOBKZ",
+   "domain": "SOBKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Special Stock Indicator",
+   "check_table": "*"
+  },
+  {
+   "pos": 15,
+   "name": "VBELN",
+   "key": false,
+   "data_element": "VBELN",
+   "domain": "VBELN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sales and Distribution Document Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 16,
+   "name": "POSNR",
+   "key": false,
+   "data_element": "POSNR",
+   "domain": "POSNR",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Item number of the SD document",
+   "check_table": "*"
+  },
+  {
+   "pos": 17,
+   "name": "PSPNR",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "*"
+  },
+  {
+   "pos": 18,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "LIFNR",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account Number of Vendor or Creditor",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BWKEY",
+   "foreign_table": "T001K",
+   "foreign_field": "BWKEY"
+  },
+  {
+   "field": "BWTAR",
+   "foreign_table": "T149D",
+   "foreign_field": "BWTAR"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  }
+ ]
+}

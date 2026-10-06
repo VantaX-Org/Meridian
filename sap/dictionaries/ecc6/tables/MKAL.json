@@ -1,0 +1,585 @@
+{
+ "table": "MKAL",
+ "description": "Production Versions of Material",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 3,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 4,
+   "name": "VERID",
+   "key": true,
+   "data_element": "VERID",
+   "domain": "VERID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Production Version",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BDATU",
+   "key": false,
+   "data_element": "BDATM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Run-time end: production version",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ADATU",
+   "key": false,
+   "data_element": "ADATM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-from date of production version",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "STLAL",
+   "key": false,
+   "data_element": "STALT",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Alternative BOM",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "STLAN",
+   "key": false,
+   "data_element": "STLAN",
+   "domain": "STLAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Usage",
+   "check_table": "T416"
+  },
+  {
+   "pos": 9,
+   "name": "PLNTY",
+   "key": false,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 10,
+   "name": "PLNNR",
+   "key": false,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ALNAL",
+   "key": false,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "BESKZ",
+   "key": false,
+   "data_element": "BESKZ",
+   "domain": "BESKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Procurement Type",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "SOBSL",
+   "key": false,
+   "data_element": "SOBSL",
+   "domain": "SOBSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Special procurement type",
+   "check_table": "T460A"
+  },
+  {
+   "pos": 14,
+   "name": "LOSGR",
+   "key": false,
+   "data_element": "CK_LOSGR",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Costing lot size",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "MDV01",
+   "key": false,
+   "data_element": "SA_LINE1",
+   "domain": "ARBPL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Production line for repetitive manufacturing",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "MDV02",
+   "key": false,
+   "data_element": "MDV",
+   "domain": "MDVXX",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Planning identification",
+   "check_table": "T437P"
+  },
+  {
+   "pos": 17,
+   "name": "TEXT1",
+   "key": false,
+   "data_element": "VERS_TEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short text on the production version",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "EWAHR",
+   "key": false,
+   "data_element": "CK_EWAHR",
+   "domain": "CK_EWAHR",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Usage Probability with Version Control",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VERTO",
+   "key": false,
+   "data_element": "SA_VERTO",
+   "domain": "SA_VERTL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Distribution key for quantity produced",
+   "check_table": "T437V"
+  },
+  {
+   "pos": 20,
+   "name": "SERKZ",
+   "key": false,
+   "data_element": "SA_VERSI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Repetitive manufacturing allowed for version",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "BSTMI",
+   "key": false,
+   "data_element": "SA_LOSVN",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Lower value of the lot-size interval",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "BSTMA",
+   "key": false,
+   "data_element": "SA_LOSBS",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Upper value of the lot-size interval",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "RGEKZ",
+   "key": false,
+   "data_element": "SA_RGEKZ",
+   "domain": "CO_RGEKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: backflush for RS header",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "ALORT",
+   "key": false,
+   "data_element": "ALORT",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Receiving storage location for repetitive manufacturing",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 25,
+   "name": "PLTYG",
+   "key": false,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 26,
+   "name": "PLNNG",
+   "key": false,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "ALNAG",
+   "key": false,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "PLTYM",
+   "key": false,
+   "data_element": "PLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 29,
+   "name": "PLNNM",
+   "key": false,
+   "data_element": "PLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "ALNAM",
+   "key": false,
+   "data_element": "PLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "CSPLT",
+   "key": false,
+   "data_element": "CSPLIT",
+   "domain": "CSPLIT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Apportionment structure",
+   "check_table": "MAKV"
+  },
+  {
+   "pos": 32,
+   "name": "MATKO",
+   "key": false,
+   "data_element": "MKAL_MATKO",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Other material for which BOM and task list are maintained",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 33,
+   "name": "ELPRO",
+   "key": false,
+   "data_element": "SA_ELPRO",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Proposed issue storage location for components",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 34,
+   "name": "PRVBE",
+   "key": false,
+   "data_element": "SA_PRVBE",
+   "domain": "PRVBE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Default supply area for components",
+   "check_table": "*"
+  },
+  {
+   "pos": 35,
+   "name": "PRFG_F",
+   "key": false,
+   "data_element": "PRFG_F",
+   "domain": "PRFG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check status of production version",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "PRDAT",
+   "key": false,
+   "data_element": "MKPRDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of last check of production version",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "MKSP",
+   "key": false,
+   "data_element": "MKSP",
+   "domain": "MKSP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Production version is locked",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "PRFG_R",
+   "key": false,
+   "data_element": "PRFG_R",
+   "domain": "PRFG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Rate-based planning - Check status of production version",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "PRFG_G",
+   "key": false,
+   "data_element": "PRFG_G",
+   "domain": "PRFG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Preliminary planning - Check status of production version",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "PRFG_S",
+   "key": false,
+   "data_element": "PRFG_S",
+   "domain": "PRFG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM - check status of production version",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "UCMAT",
+   "key": false,
+   "data_element": "VBOB_OB_RFMAT",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Reference Material for Original Batches",
+   "check_table": "*"
+  },
+  {
+   "pos": 43,
+   "name": "PPEGUID",
+   "key": false,
+   "data_element": "PVS_GUID",
+   "domain": "SYSUUID",
+   "type": "RAW",
+   "length": 16,
+   "decimals": 0,
+   "description": "Internal Identification for PVS Objects",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ALORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "CSPLT",
+   "foreign_table": "MAKV",
+   "foreign_field": "CSPLIT"
+  },
+  {
+   "field": "ELPRO",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATKO",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MDV02",
+   "foreign_table": "T437P",
+   "foreign_field": "PLAN_ID"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PLTYG",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PLTYM",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "SOBSL",
+   "foreign_table": "T460A",
+   "foreign_field": "SOBSL"
+  },
+  {
+   "field": "STLAN",
+   "foreign_table": "T416",
+   "foreign_field": "STLAN"
+  },
+  {
+   "field": "VERTO",
+   "foreign_table": "T437V",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

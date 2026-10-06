@@ -249,6 +249,15 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         # A and B report to each other, C reports to A (expected: 3 in scope, 2 failing)
         i, f = rule["id_field"], rule["field"]
         rows = [{i: "H1", f: "H2"}, {i: "H3", f: "H1"}, {i: "H2", f: "H1"}]
+        if rule.get("scope_field"):
+            rows = [{**r, rule["scope_field"]: "P1"} for r in rows]
+        if rule.get("max_depth") is not None:
+            # a loop plus a long chain: the loop pair fails, so does the head of the chain (expected: 8 in scope)
+            n = int(rule["max_depth"]) + 2
+            chain = [{i: f"C{k}", f: f"C{k + 1}"} for k in range(n)]
+            if rule.get("scope_field"):
+                chain = [{**r, rule["scope_field"]: "P1"} for r in chain]
+            return _verify(rule, dictionary, rows + chain, (3 + n, 2 + 2), live)
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "group_sum_check":
         return _prove_group_sum(rule, dictionary, cand, live)
@@ -385,7 +394,8 @@ def _prove_group_sum(rule, dictionary, cand, live) -> tuple[str, str]:
         child[f] = [str(cond[0])] * len(df)
     if rule.get("sign_field"):
         child[rule["sign_field"]] = ["S"] * len(df)
-    child[rule["amount"]] = ["150", "50"] if rule.get("compare") == ">=" else ["50", "500"]
+    child[rule["amount"]] = (["150", "50"] if rule.get("compare") == ">=" else
+                             ["100", "500"] if rule.get("compare") == "==" else ["50", "500"])
     frames.frames[t] = pd.DataFrame(child)
     _, r = run_rule(rule, frames, live or {})
     if r is None:
