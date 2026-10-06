@@ -60,7 +60,8 @@ _SENSITIVE_PREFIX = ("NAME", "ORT", "CITY", "POST_CODE", "TEL", "SMTP", "STCD", 
                      "STREET", "FIRSTNAME", "FIRST_NAME", "LASTNAME", "LAST_NAME", "EMAIL", "PHONE", "FAX")
 _SENSITIVE_EXACT = {"STRAS", "PSTLZ", "BANKN", "IBAN", "STCEG", "PERID", "ICNUM",
                     "BANKL", "SWIFT", "GBDAT", "GBORT", "NACHN", "VORNA", "NACH2", "MIDNM", "RUFNM",
-                    "KOINH", "EBPP_ACCNAME", "PFACH", "PSTL2", "QSZNR"}
+                    "BIRTHDT", "DEATHDT", "PFACH", "PSTL2", "BKONT",
+                    "KOINH", "EBPP_ACCNAME", "QSZNR"}
 
 
 def _sensitive_name(name: Optional[str]) -> bool:

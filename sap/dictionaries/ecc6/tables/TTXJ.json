@@ -1,0 +1,57 @@
+{
+ "table": "TTXJ",
+ "description": "Check Table for Tax Jurisdiction",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KALSM",
+   "key": true,
+   "data_element": "TAX_KALSM",
+   "domain": "TAX_KALSM",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Costing Sheet",
+   "check_table": "TTXD"
+  },
+  {
+   "pos": 3,
+   "name": "TXJCD",
+   "key": true,
+   "data_element": "TXJCD",
+   "domain": "TXJCD",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Tax Jurisdiction",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KALSM",
+   "foreign_table": "TTXD",
+   "foreign_field": "KALSM"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

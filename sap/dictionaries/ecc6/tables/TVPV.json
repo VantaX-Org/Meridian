@@ -1,0 +1,57 @@
+{
+ "table": "TVPV",
+ "description": "Contact Person: Decision Authority",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PARVO",
+   "key": true,
+   "data_element": "PARVO",
+   "domain": "PARVO",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Partner's power of attorney",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BU_PAAUTH",
+   "key": false,
+   "data_element": "BU_PAAUTH",
+   "domain": "BU_PAAUTH",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Partner's Authority",
+   "check_table": "TB914"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BU_PAAUTH",
+   "foreign_table": "TB914",
+   "foreign_field": "PAAUTH"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

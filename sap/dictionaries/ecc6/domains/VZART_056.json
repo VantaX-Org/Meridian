@@ -1,0 +1,27 @@
+{
+ "domain": "VZART_056",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "P",
+   "high": null,
+   "text": "Item Interest Calculation"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Balance Interest Calculation"
+  },
+  {
+   "low": "Z",
+   "high": null,
+   "text": "Penalty Interest Calculation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

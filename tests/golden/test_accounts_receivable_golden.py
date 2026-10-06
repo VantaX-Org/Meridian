@@ -297,6 +297,8 @@ def test_accounts_receivable_golden():
         "AR071": {_key(DEL, "0090012013")},                       # open item on a blocked customer
         # next credit review (20260310 / 20250101) passed long ago; OT runs at a zero limit
         "AR074": {f"KUNNR={k}" for k in CUSTOMERS if k not in (OT, DEL)},
+        "AR225": {f"KUNNR={DEL}|BUKRS=1000"},                     # deleted centrally, company code not flagged
+        "AR236": {f"KUNNR={D_DUP1}", f"KUNNR={D_DUP2}"},          # near-identical names in the same city
     }, found
     # DEL is flagged for deletion and OT is a one-time account: out of the population, counted
     name = next(r for r in results if r.check_id == "AR003")
