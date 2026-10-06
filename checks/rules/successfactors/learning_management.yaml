@@ -197,6 +197,7 @@ rules:
       cost reports are overstated.
     fix_map: {__blank__: Review duplicate assignments in Learning > Admin > Assignment Rules. Remove the duplicate
         assignment. Verify completion status on the surviving record.}
+    record_fix_template: "Employee {LEARNINGASSIGNMENT.USERID}, course {LEARNINGASSIGNMENT.COURSE_ID}: assigned more than once. Remove the duplicate assignment in the LMS admin."
 
   - id: LMS014
     field: LEARNINGASSIGNMENT.DUE_DATE

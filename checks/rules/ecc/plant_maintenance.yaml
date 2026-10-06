@@ -480,6 +480,7 @@ rules:
     Cost reporting doubles up.
   fix_map: {__blank__: Identify and merge duplicate equipment via IE02 or archive duplicates via OIEA. Reassign
       maintenance orders and notifications to the surviving record.}
+  record_fix_template: "Equipment {EQUI.EQUNR} appears more than once. Keep one record and flag the duplicate for deletion in IE02 after moving its history."
 
 
 - id: PM035
@@ -496,6 +497,7 @@ rules:
     __blank__: "Correct the equipment construction year via IE02 > General tab."
 
 # ── Internal consistency: dates, units, construction data ───────────────────
+  record_fix_template: "Equipment {EQUI.EQUNR}: construction year '{actual_value}' is invalid. Enter a 4-digit year between 1900 and 2099 in IE02 > Location/General data."
 - id: PM036
   field: EQUZ.DATAB
   check_class: cross_field_check

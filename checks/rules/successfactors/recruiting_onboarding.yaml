@@ -244,6 +244,7 @@ rules:
     unique applicants.
   fix_map: {__blank__: Merge duplicate candidates in Recruiting > Candidate Management > Merge Candidates. Preserve
       the record with the most complete application history.}
+  record_fix_template: "Candidate {JOBAPPLICATION.CANDIDATE_ID}: duplicate application for requisition {JOBAPPLICATION.JOB_REQ_ID}. Merge or remove the duplicate."
 
 - id: REC020
   field: ONBOARDINGCANDIDATEINFO.HIRE_DATE

@@ -203,6 +203,7 @@ rules:
   fix_map:
     __blank__: Identify duplicate review forms in Admin Center > Performance. Delete the incorrect form. Verify the correct
       form is routed in the current cycle.
+  record_fix_template: "Employee {PMREVIEWRESULT.USERID}: more than one review for period {PMREVIEWRESULT.REVIEW_PERIOD}. Keep the final review and remove the other."
 
 - id: PERF016
   field: GOALPLAN.GOAL_WEIGHT
