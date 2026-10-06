@@ -8,7 +8,8 @@
  */
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
 import { useQuery } from "@tanstack/react-query";
 import {
   Banner, DetailDrawer, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tabs, Tally, useDrawerParam, type Status,
@@ -42,8 +43,8 @@ export function ProcessMapPage() {
   const analysed = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const modules = useMemo(() => analysed.filter((m) => MAPPED.has(m)), [analysed]);
   const unmapped = analysed.filter((m) => !MAPPED.has(m));
-  const [module, setModule] = useState<string | null>(null);
-  const active = module ?? modules[0] ?? null;
+  const [module, setModule] = useUrlState("module");
+  const active = module || modules[0] || null;
 
   const graphQ = useQuery({
     queryKey: ["process.mining-graph", latest?.id, active],

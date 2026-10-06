@@ -153,14 +153,14 @@ const rule = {
     // Default values in function signatures (`cancelLabel = "Cancel"`) are
     // deliberately excluded — they're caught in code review, not here, to
     // keep the rule signal-high.
+    // Enum-valued props (`type="submit"`, `status="ok"`) are identifiers
+    // for code, never shown to users, so they are not copy.
+    const NON_COPY_ATTRS = new Set(["type", "status", "variant"]);
     const isJsxAttrValue = (node) => {
-      const parent = node.parent;
-      if (!parent) return false;
-      if (parent.type === "JSXAttribute") return true;
-      if (parent.type === "JSXExpressionContainer" && parent.parent?.type === "JSXAttribute") {
-        return true;
-      }
-      return false;
+      let attr = null;
+      if (node.parent?.type === "JSXAttribute") attr = node.parent;
+      else if (node.parent?.type === "JSXExpressionContainer" && node.parent.parent?.type === "JSXAttribute") attr = node.parent.parent;
+      return !!attr && !NON_COPY_ATTRS.has(attr.name?.name);
     };
 
     return {
