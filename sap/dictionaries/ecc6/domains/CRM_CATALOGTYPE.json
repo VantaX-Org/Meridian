@@ -1,0 +1,107 @@
+{
+ "domain": "CRM_CATALOGTYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "C",
+   "high": null,
+   "text": "Overview of Damage/Defects/Reasons"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Defect Locations/Object Parts"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Causes"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Activity Reason"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Status Reason (Activity)"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Status Reason (Opportunities)"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Status Reason (Lead)"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Tasks"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Codings"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Cancellation Reasons"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Customer Request"
+  },
+  {
+   "low": "M",
+   "high": null,
+   "text": "Investigation"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Decision"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Defect"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Effort"
+  },
+  {
+   "low": "Q",
+   "high": null,
+   "text": "Follow-Up Activity"
+  },
+  {
+   "low": "R",
+   "high": null,
+   "text": "Reason for Status (Financial Services)"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Output Category"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Status Reason (MDF)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

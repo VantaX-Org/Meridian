@@ -1481,3 +1481,917 @@ rules:
   fix_map:
     __other__: Extend the material to the plant (MM01).
   record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: material {QALS.MATNR} is not in plant {QALS.WERK}.'
+- id: QM079
+  field: QMAT.AUFNR_CO
+  check_class: exists_check
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    QMAT.AKTIV:
+    - X
+  severity: medium
+  dimension: consistency
+  message: Inspection setup posts inspection costs to an order that does not exist or is flagged for deletion
+  why_it_matters: The CO order on the inspection setup collects the cost of the inspection. If the order is gone or flagged
+    for deletion the costs cannot be posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection lots for the material fail to settle their inspection costs.
+  fix_map:
+    __other__: 'Assign an open CO order or clear the field in QM08 (S/4HANA: Fiori app Manage Inspection Setup).'
+  record_fix_template: 'Inspection setup {QMAT.MATNR} plant {QMAT.WERKS} type {QMAT.ART}: the CO order {QMAT.AUFNR_CO} is
+    missing or flagged for deletion.'
+- id: QM080
+  field: QMAT.MATNR
+  check_class: cross_field_check
+  fail_when: '`MARC.LVORM` == ''X'''
+  applies_when:
+    QMAT.AKTIV:
+    - X
+  severity: medium
+  dimension: consistency
+  message: Inspection type is active for a material flagged for deletion at the plant
+  why_it_matters: A material flagged for deletion at plant level no longer takes part in procurement or production, so an
+    active inspection setup keeps creating lots for stock that should be retired.
+  rule_authority: best_practice
+  sap_impact: Inspection lots keep being created for a retired plant material; deletion and archiving are blocked by the open
+    QM data.
+  fix_map:
+    __other__: Deactivate the inspection type in QM08 before the deletion flag is archived, or remove the deletion flag.
+  record_fix_template: 'Inspection setup {QMAT.MATNR} plant {QMAT.WERKS} type {QMAT.ART}: the plant material is flagged for
+    deletion but the inspection type is active.'
+- id: QM081
+  field: QINF.SPERRFKT
+  check_class: referential_check
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Blocked function on the quality info record is not defined in customizing
+  why_it_matters: The blocked function decides which purchasing function the info record stops. A value outside TQ04A is not
+    evaluated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchasing does not apply the block, so deliveries from the vendor are accepted.
+  fix_map:
+    __other__: Use a function defined in customizing (SPRO > Quality Management > QM in Procurement).
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: blocked function ''''{invalid_value}''''
+    is not defined.'
+- id: QM082
+  field: QINF.QSSYSFAM
+  check_class: referential_check
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Vendor QM system on the quality info record is not defined in customizing
+  why_it_matters: The vendor QM system family records the certification of the vendor. A family outside TQ02B cannot be matched
+    to the QM requirement of the material.
+  rule_authority: sap_hard_constraint
+  sap_impact: The QM system check in procurement cannot compare the vendor with the material requirement.
+  fix_map:
+    __other__: Use a QM system defined in customizing (SPRO > Quality Management > QM in Procurement > QM systems).
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: vendor QM system ''''{invalid_value}''''
+    is not defined.'
+- id: QM083
+  field: QINF.VARIABNAHM
+  check_class: referential_check
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Inspection type for source inspection on the quality info record is not defined in customizing
+  why_it_matters: The source inspection type opens lots with origin source inspection. A type outside TQ30 cannot create them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source inspection lots cannot be created for deliveries from the vendor.
+  fix_map:
+    __other__: Use an inspection type defined for source inspection in customizing.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: source inspection type ''''{invalid_value}''''
+    is not defined.'
+- id: QM084
+  field: QINF.NOINSP
+  check_class: domain_value_check
+  allowed_values:
+  - X
+  - '1'
+  - ''
+  valid_values_with_labels:
+    X: No inspection - inspection control set to skip
+    '1': Skip inspection - inspection control skip variant
+    '': Inspection control not set
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Inspection control on the quality info record has a value SAP does not define
+  why_it_matters: The control marks whether the vendor is exempt from incoming inspection. Only blank, X and 1 are defined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt reads an undefined control and may skip or force the inspection.
+  fix_map:
+    __other__: 'Set the control again in QI02 (S/4HANA: Fiori app Manage Quality Info Records).'
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: the inspection control value is not
+    one SAP defines.'
+- id: QM085
+  field: QINF.PLOS
+  check_class: exists_check
+  target_table: QALS
+  target_fields:
+  - PRUEFLOS
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Quality info record points at a current-status inspection lot that does not exist
+  why_it_matters: The info record keeps the lot that fixed its current and next release status. A lot that was archived or
+    never existed leaves the status without evidence.
+  rule_authority: sap_hard_constraint
+  sap_impact: The release status cannot be explained or recalculated from the lot.
+  fix_map:
+    __other__: Clear the lot reference or recreate the release status from a valid lot in QI02.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: the current status lot {QINF.PLOS}
+    does not exist.'
+- id: QM086
+  field: QINF.PLOS2
+  check_class: exists_check
+  target_table: QALS
+  target_fields:
+  - PRUEFLOS
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Quality info record points at a next-status inspection lot that does not exist
+  why_it_matters: The info record keeps the lot that fixed its current and next release status. A lot that was archived or
+    never existed leaves the status without evidence.
+  rule_authority: sap_hard_constraint
+  sap_impact: The release status cannot be explained or recalculated from the lot.
+  fix_map:
+    __other__: Clear the lot reference or recreate the release status from a valid lot in QI02.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: the next status lot {QINF.PLOS2} does
+    not exist.'
+- id: QM087
+  field: QINF.ME
+  check_class: cross_field_check
+  fail_when: '`QINF.ME` != `MARA.MEINS`'
+  applies_when:
+    QINF.ME:
+      populated: true
+    QINF.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Unit on the quality info record differs from the base unit of the material
+  why_it_matters: Release quantities on the record are held in its own unit. A unit that is not the material base unit makes
+    released and ordered quantities hard to compare.
+  rule_authority: best_practice
+  sap_impact: Release quantity checks compare quantities in different units unless a conversion exists.
+  fix_map:
+    __other__: Align the unit with the material base unit in QI02.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: unit {QINF.ME} differs from the material
+    base unit {MARA.MEINS}.'
+- id: QM088
+  field: QINF.AENDERDAT
+  check_class: cross_field_check
+  fail_when: '`QINF.AENDERDAT` < `QINF.ERSTELLDAT`'
+  severity: low
+  dimension: consistency
+  message: Quality info record was changed before it was created
+  why_it_matters: A change date earlier than the creation date means the record was loaded or edited outside the normal transaction.
+  rule_authority: best_practice
+  sap_impact: Audit trail and the release history cannot be trusted for the record.
+  fix_map:
+    __other__: Check how the record was loaded and correct the dates at the source.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: the change date is before the creation
+    date.'
+- id: QM089
+  field: QINF.QSSYSDAT
+  check_class: cross_field_check
+  fail_when: '`QINF.QSSYSDAT`.notna() & `QINF.QSSYSFAM`.isna()'
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Vendor QM certification date is set but no QM system is assigned
+  why_it_matters: A validity date for the vendor QM certificate means little without the system it certifies. Procurement
+    checks both together.
+  rule_authority: best_practice
+  sap_impact: The QM system check ignores the date, so an expired certification is never detected.
+  fix_map:
+    __other__: Enter the vendor QM system or clear the date in QI02.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: a certification date exists without
+    a QM system.'
+- id: QM090
+  field: QINF.LIEFERANT
+  check_class: exists_check
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  applies_when:
+    QINF.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: vendor on the quality info record has no business partner link'
+  why_it_matters: In S/4HANA the vendor exists only as a business partner with the supplier role. A quality info record for
+    a vendor that Customer/Vendor Integration has not linked loses its vendor on conversion (simplification item Business
+    Partner Approach).
+  rule_authority: s4hana_migration
+  sap_impact: The info record cannot be migrated against a business partner; QM release data for the vendor is rejected by
+    the migration pre-checks.
+  fix_map:
+    __other__: Run the CVI synchronisation for the vendor (transaction CVI_COCKPIT or MDS_LOAD_COCKPIT) before the conversion.
+  record_fix_template: 'Quality info record material {QINF.MATNR} counter {QINF.ZAEHL}: vendor {QINF.LIEFERANT} has no business
+    partner link.'
+- id: QM091
+  field: QALS.ENSTEHDAT
+  check_class: cross_field_check
+  fail_when: (`QALS.STAT35`.isna()) & ((@today - `QALS.ENSTEHDAT`).dt.days > 90)
+  severity: high
+  dimension: timeliness
+  message: Inspection lot has no usage decision 90 days after it was created
+  why_it_matters: Stock stays in quality inspection until the usage decision posts it. An old lot without a decision blocks
+    stock and, at conversion, an open lot cannot be closed by the migration.
+  rule_authority: best_practice
+  sap_impact: Stock stays in inspection, is not available for use, and open lots must be closed before the S/4HANA conversion.
+  fix_map:
+    __other__: 'Make the usage decision in QA11 (S/4HANA: Fiori app Make Usage Decision) or cancel the lot.'
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: no usage decision since the lot was created more than 90 days ago.'
+- id: QM092
+  field: QALS.STAT34
+  check_class: cross_field_check
+  fail_when: (`QALS.STAT35` == 'X') & (`QALS.STAT34`.isna()) & ((@today - `QALS.ENSTEHDAT`).dt.days > 30)
+  severity: high
+  dimension: consistency
+  message: Usage decision was made but the stock postings are not complete
+  why_it_matters: The usage decision posts the inspected quantity from inspection stock. A lot that carries a decision but
+    is not marked as posted still holds stock in quality inspection.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection stock remains in the material stock and distorts availability and valuation.
+  fix_map:
+    __other__: Post the stock in QA11 (Stock postings tab) or reset the usage decision.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: usage decision made, stock postings still open after more than 30
+    days.'
+- id: QM093
+  field: QALS.LOSMENGE
+  check_class: cross_field_check
+  fail_when: '`QALS.LOSMENGE` <= 0'
+  severity: medium
+  dimension: validity
+  message: Inspection lot quantity is zero or negative
+  why_it_matters: The lot quantity sizes the sample and the stock to post. A lot with no quantity inspects nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sample size and stock posting cannot be calculated for the lot.
+  fix_map:
+    __other__: Correct the lot quantity in QA02 or cancel the lot.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: the lot quantity is zero or negative.'
+- id: QM094
+  field: QALS.LMENGEPR
+  check_class: cross_field_check
+  fail_when: '`QALS.LMENGEPR` > `QALS.LMENGEIST`'
+  applies_when:
+    QALS.LMENGEIST:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Inspected quantity is larger than the actual lot quantity
+  why_it_matters: A lot cannot have more quantity inspected than the quantity it actually contains.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection statistics and the defect rate are overstated.
+  fix_map:
+    __other__: Correct the actual lot quantity or the inspected quantity in QA02.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: inspected quantity exceeds the actual lot quantity.'
+- id: QM095
+  field: QALS.LMENGESCH
+  check_class: cross_field_check
+  fail_when: '`QALS.LMENGESCH` > `QALS.LMENGEPR`'
+  severity: medium
+  dimension: consistency
+  message: Defective quantity is larger than the inspected quantity
+  why_it_matters: Defects are counted inside the inspected quantity. More defects than inspected pieces cannot be right.
+  rule_authority: sap_hard_constraint
+  sap_impact: Defect rates and vendor evaluation scores are wrong.
+  fix_map:
+    __other__: Correct the defective or the inspected quantity in QA02.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: defective quantity exceeds the inspected quantity.'
+- id: QM096
+  field: QALS.PAENDTERM
+  check_class: cross_field_check
+  fail_when: '`QALS.PAENDTERM` < `QALS.PASTRTERM`'
+  severity: low
+  dimension: consistency
+  message: Planned inspection end is before the planned start
+  why_it_matters: Scheduling of inspectors and the lot deadline use both dates in sequence.
+  rule_authority: best_practice
+  sap_impact: Deadline monitoring for the lot gives wrong overdue results.
+  fix_map:
+    __other__: Reschedule the lot in QA02.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: planned end is before planned start.'
+- id: QM097
+  field: QALS.ENSTEHDAT
+  check_class: cross_field_check
+  fail_when: (`QALS.ENSTEHDAT` - @today).dt.days > 0
+  severity: medium
+  dimension: validity
+  message: Inspection lot creation date is in the future
+  why_it_matters: A lot cannot be created tomorrow. A future date comes from a load or a clock error and breaks age-based
+    monitoring.
+  rule_authority: best_practice
+  sap_impact: Lot ageing reports and overdue lists skip the lot.
+  fix_map:
+    __other__: Correct the date at the source.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: the creation date is in the future.'
+- id: QM098
+  field: QALS.CHARG
+  check_class: exists_check
+  fields:
+  - QALS.MATNR
+  - QALS.CHARG
+  target_table: MCH1
+  target_fields:
+  - MATNR
+  - CHARG
+  severity: high
+  dimension: consistency
+  message: Inspection lot refers to a batch that does not exist
+  why_it_matters: Lots for batch-managed material carry the batch of the stock. A missing batch master means the stock cannot
+    be posted by the usage decision.
+  rule_authority: sap_hard_constraint
+  sap_impact: The usage decision cannot post stock to the batch.
+  fix_map:
+    __other__: Create the batch in MSC1N or correct the batch on the lot.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: material {QALS.MATNR} batch {QALS.CHARG} does not exist.'
+- id: QM099
+  field: QALS.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: medium
+  dimension: consistency
+  message: Inspection lot refers to a vendor that does not exist
+  why_it_matters: Goods receipt lots carry the vendor for the vendor evaluation. A missing vendor breaks the evaluation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor quality scores and complaints cannot be traced to the vendor.
+  fix_map:
+    __other__: Correct the vendor on the lot or restore the vendor master.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: vendor {QALS.LIFNR} does not exist.'
+- id: QM100
+  field: QALS.LIFNR
+  check_class: exists_check
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  applies_when:
+    QALS.STAT35:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open inspection lot is for a vendor with no business partner link'
+  why_it_matters: Open lots are carried into S/4HANA. Their vendor must exist as a business partner (simplification item Business
+    Partner Approach), otherwise the lot has no valid vendor after conversion.
+  rule_authority: s4hana_migration
+  sap_impact: The open lot cannot be converted with its vendor; the conversion pre-check reports the vendor as not synchronised.
+  fix_map:
+    __other__: Synchronise the vendor to a business partner with CVI, or close the lot first.
+  record_fix_template: 'Open inspection lot {QALS.PRUEFLOS}: vendor {QALS.LIFNR} has no business partner link.'
+- id: QM101
+  field: QALS.AUFNR
+  check_class: exists_check
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  severity: medium
+  dimension: consistency
+  message: Inspection lot refers to a production or process order that does not exist
+  why_it_matters: Lots from production carry the order. A missing order means the lot has lost its source.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipt from the order cannot be reconciled with the lot.
+  fix_map:
+    __other__: Correct the order number on the lot or cancel the lot.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: order {QALS.AUFNR} does not exist.'
+- id: QM102
+  field: QALS.EBELN
+  check_class: exists_check
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  severity: medium
+  dimension: consistency
+  message: Inspection lot refers to a purchase order that does not exist
+  why_it_matters: Goods receipt lots carry the purchase order. A missing order means the lot cannot be matched to its delivery.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor evaluation and invoice checks cannot use the lot.
+  fix_map:
+    __other__: Correct the purchase order on the lot.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: purchase order {QALS.EBELN} does not exist.'
+- id: QM103
+  field: QALS.PLNNR
+  check_class: exists_check
+  fields:
+  - QALS.PLNTY
+  - QALS.PLNNR
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    QALS.STAT35:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open inspection lot uses an inspection plan that is missing or flagged for deletion
+  why_it_matters: The lot copied its characteristics from a plan. Without the plan the results cannot be recorded against
+    the specification.
+  rule_authority: best_practice
+  sap_impact: Results recording for the open lot fails or runs without specification limits.
+  fix_map:
+    __other__: Reassign a valid plan in QA02 or cancel the lot.
+  record_fix_template: 'Open inspection lot {QALS.PRUEFLOS}: plan {QALS.PLNNR} is missing or flagged for deletion.'
+- id: QM104
+  field: QALS.PLNNR
+  check_class: cross_field_check
+  fail_when: (`QALS.STAT20` == 'X') & `QALS.PLNNR`.isna()
+  applies_when:
+    QALS.STAT35:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Lot requires an inspection plan but none is assigned
+  why_it_matters: The plan-required status means the lot waits for a plan. Without it the lot can neither be inspected nor
+    closed.
+  rule_authority: sap_hard_constraint
+  sap_impact: The lot stays open and its stock stays in inspection.
+  fix_map:
+    __other__: Assign an inspection plan in QA02 or create one in QP01.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: the lot requires an inspection plan and has none.'
+- id: QM105
+  field: QALS.ENSTEHDAT
+  check_class: cross_field_check
+  fail_when: (`QALS.STAT35` == 'X') & (`QALS.STAT34` == 'X') & ((@today - `QALS.ENSTEHDAT`).dt.days > 1095)
+  severity: info
+  dimension: timeliness
+  message: 'S/4HANA readiness: completed inspection lot older than three years'
+  why_it_matters: Lots with a usage decision and complete stock postings carry no open work. Keeping them multiplies the QM
+    data volume that the conversion must move.
+  rule_authority: s4hana_migration
+  sap_impact: Larger conversion volume and downtime for lots that nobody uses; archiving before conversion removes them.
+  fix_map:
+    __other__: Archive the lots with object QM_QUAL (SARA) before the conversion, subject to retention rules.
+  record_fix_template: 'Inspection lot {QALS.PRUEFLOS}: completed more than three years ago and still in the database.'
+- id: QM106
+  field: PLKO.QDYNREGEL
+  check_class: referential_check
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Dynamic modification rule of the inspection plan is not defined in customizing
+  why_it_matters: The rule tells SAP how the inspection scope changes with the quality level. A rule outside QDDR cannot be
+    applied.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lots created from the plan use no dynamic modification and are always inspected in full.
+  fix_map:
+    __other__: Use a rule defined in customizing (SPRO > Quality Management > Quality Planning).
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: dynamic modification rule ''''{invalid_value}''''
+    is not defined.'
+- id: QM107
+  field: PLKO.LOSVN
+  check_class: cross_field_check
+  fail_when: '`PLKO.LOSVN` > `PLKO.LOSBS`'
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+    PLKO.LOSBS:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Lot size range of the inspection plan starts above its end
+  why_it_matters: The plan is valid only for lots inside the size range. A range that starts above its end matches no lot.
+  rule_authority: sap_hard_constraint
+  sap_impact: The plan is never found for lot creation.
+  fix_map:
+    __other__: Correct the lot size range in QP02.
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: lot size from is above lot size to.'
+- id: QM108
+  field: PLKO.QVEGRUPPE
+  check_class: cross_field_check
+  fail_when: (`PLKO.QVEGRUPPE`.isna() & `PLKO.QVECODE`.notna()) | (`PLKO.QVEGRUPPE`.notna() & `PLKO.QVECODE`.isna())
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Automatic usage decision code group and code are not both filled
+  why_it_matters: The automatic usage decision needs the code and its group together. One without the other cannot be read.
+  rule_authority: sap_hard_constraint
+  sap_impact: The automatic usage decision fails and the lot waits for a manual decision.
+  fix_map:
+    __other__: Fill both the code group and the code in QP02, or clear both.
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: code group and code for the automatic usage
+    decision are not both filled.'
+- id: QM109
+  field: PLKO.VAGRP
+  check_class: referential_check
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Planner group of the inspection plan is not defined in customizing
+  why_it_matters: The planner group names the responsible planners. A group outside T024A cannot be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Responsibility reports and authorisation by planner group skip the plan.
+  fix_map:
+    __other__: Use a planner group defined for the plant in customizing.
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: planner group ''''{invalid_value}'''' is
+    not defined.'
+- id: QM110
+  field: PLKO.PLNME
+  check_class: referential_check
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Unit of the inspection plan is not defined in customizing
+  why_it_matters: The task list unit is the unit of the lot quantity range. A unit that is not defined cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lot size ranges cannot be compared with lot quantities.
+  fix_map:
+    __other__: Use a unit defined in customizing (CUNI).
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: unit ''''{invalid_value}'''' is not defined.'
+- id: QM111
+  field: PLKO.PLNNR
+  check_class: exists_check
+  fields:
+  - PLKO.PLNTY
+  - PLKO.PLNNR
+  target_table: PLPO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  applies_when:
+    PLKO.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Active inspection plan has no operation
+  why_it_matters: Characteristics hang under operations. A plan with no operation cannot hold a specification.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lots created from the plan have no operation to record results against.
+  fix_map:
+    __other__: Add an operation in QP02 or flag the plan for deletion.
+  record_fix_template: 'Inspection plan {PLKO.PLNNR} group counter {PLKO.PLNAL}: no operation is maintained.'
+- id: QM112
+  field: MAPL.PLNNR
+  check_class: exists_check
+  fields:
+  - MAPL.PLNTY
+  - MAPL.PLNNR
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  target_when:
+    LOEKZ:
+      blank: true
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Active material assignment points at an inspection plan that is flagged for deletion
+  why_it_matters: The assignment is what selects the plan for lot creation. A plan flagged for deletion should not stay selectable.
+  rule_authority: best_practice
+  sap_impact: New lots pick a retired plan or fail to find any plan.
+  fix_map:
+    __other__: Remove the assignment in QP02 or reactivate the plan.
+  record_fix_template: 'Plan assignment material {MAPL.MATNR} plant {MAPL.WERKS}: plan {MAPL.PLNNR} is flagged for deletion.'
+- id: QM113
+  field: MAPL.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Plan assignment refers to a vendor that does not exist
+  why_it_matters: A vendor-specific plan applies only to deliveries from that vendor. A missing vendor makes the assignment
+    unreachable.
+  rule_authority: sap_hard_constraint
+  sap_impact: The vendor-specific plan is never selected.
+  fix_map:
+    __other__: Correct the vendor in the plan assignment (QP02).
+  record_fix_template: 'Plan assignment material {MAPL.MATNR} plant {MAPL.WERKS}: vendor {MAPL.LIFNR} does not exist.'
+- id: QM114
+  field: MAPL.KUNR
+  check_class: exists_check
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Plan assignment refers to a customer that does not exist
+  why_it_matters: A customer-specific plan applies only to deliveries for that customer. A missing customer makes the assignment
+    unreachable.
+  rule_authority: sap_hard_constraint
+  sap_impact: The customer-specific plan is never selected.
+  fix_map:
+    __other__: Correct the customer in the plan assignment (QP02).
+  record_fix_template: 'Plan assignment material {MAPL.MATNR} plant {MAPL.WERKS}: customer {MAPL.KUNR} does not exist.'
+- id: QM115
+  field: PLPO.STEUS
+  check_class: referential_check
+  applies_when:
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: validity
+  message: Control key of the inspection operation is not defined in customizing
+  why_it_matters: The control key decides whether the operation is an inspection operation and how it is scheduled. A key
+    outside T430 is not recognised.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lots created from the plan cannot generate the operation.
+  fix_map:
+    __other__: Use a control key defined in customizing (OPJ8).
+  record_fix_template: 'Inspection plan {PLPO.PLNNR} operation {PLPO.PLNKN}: control key ''''{invalid_value}'''' is not defined.'
+- id: QM116
+  field: PLPO.WERKS
+  check_class: referential_check
+  applies_when:
+    PLPO.LOEKZ:
+      blank: true
+  severity: high
+  dimension: validity
+  message: Plant of the inspection operation is not defined in customizing
+  why_it_matters: Operations are planned in a plant. A plant that is not defined cannot schedule or cost the operation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Lots using the operation cannot be scheduled.
+  fix_map:
+    __other__: Use a defined plant.
+  record_fix_template: 'Inspection plan {PLPO.PLNNR} operation {PLPO.PLNKN}: plant ''''{invalid_value}'''' is not defined.'
+- id: QM117
+  field: PLPO.KTSCH
+  check_class: referential_check
+  applies_when:
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Standard text key of the inspection operation is not defined in customizing
+  why_it_matters: The standard text key fills the operation description from a catalogue. A key outside T435 gives no text.
+  rule_authority: sap_hard_constraint
+  sap_impact: The operation description stays blank on shop paper.
+  fix_map:
+    __other__: Use a key defined in customizing (OPSV).
+  record_fix_template: 'Inspection plan {PLPO.PLNNR} operation {PLPO.PLNKN}: standard text key ''''{invalid_value}'''' is
+    not defined.'
+- id: QM118
+  field: PLPO.LTXA1
+  check_class: null_check
+  applies_when:
+    PLPO.LOEKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Inspection operation has no description
+  why_it_matters: Inspectors identify the operation by its short text on the inspection document.
+  rule_authority: best_practice
+  sap_impact: Operation lists and results screens show an empty line.
+  fix_map:
+    __blank__: Enter a short text in QP02.
+  record_fix_template: 'Inspection plan {PLPO.PLNNR} operation {PLPO.PLNKN}: operation description is {actual_value}.'
+- id: QM119
+  field: PLMK.PRUEFQUALI
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Inspector qualification of the plan characteristic is not defined in customizing
+  why_it_matters: The qualification limits who may record the characteristic. A value outside TQ11 cannot be checked.
+  rule_authority: sap_hard_constraint
+  sap_impact: Qualification checks in results recording are skipped.
+  fix_map:
+    __other__: Use a qualification defined in customizing.
+  record_fix_template: 'Inspection plan {PLMK.PLNNR} characteristic {PLMK.MERKNR}: inspector qualification ''''{invalid_value}''''
+    is not defined.'
+- id: QM120
+  field: PLMK.TOLERANZSL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Tolerance key of the plan characteristic is not defined in customizing
+  why_it_matters: The tolerance key decides how limits are read. A key outside TQ29 gives undefined limit handling.
+  rule_authority: sap_hard_constraint
+  sap_impact: Results recording evaluates limits in an undefined way.
+  fix_map:
+    __other__: Use a tolerance key defined in customizing.
+  record_fix_template: 'Inspection plan {PLMK.PLNNR} characteristic {PLMK.MERKNR}: tolerance key ''''{invalid_value}'''' is
+    not defined.'
+- id: QM121
+  field: PLMK.MERKGEW
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Characteristic weighting of the plan characteristic is not defined in customizing
+  why_it_matters: The weighting classes a defect as critical, major or minor. A class outside TQ17A has no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Defect classification and quality scores ignore the characteristic.
+  fix_map:
+    __other__: Use a weighting defined in customizing.
+  record_fix_template: 'Inspection plan {PLMK.PLNNR} characteristic {PLMK.MERKNR}: weighting ''''{invalid_value}'''' is not
+    defined.'
+- id: QM122
+  field: PLMK.KURZTEXT
+  check_class: null_check
+  applies_when:
+    PLMK.QPMK_REF:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Own plan characteristic has no description
+  why_it_matters: A characteristic that does not copy a master characteristic carries its own text. Without it the inspector
+    cannot tell what to inspect.
+  rule_authority: best_practice
+  sap_impact: Results recording shows an unnamed characteristic.
+  fix_map:
+    __blank__: Enter a short text in QP02.
+  record_fix_template: 'Inspection plan {PLMK.PLNNR} characteristic {PLMK.MERKNR}: description is {actual_value}.'
+- id: QM123
+  field: PLMK.GRENZEOB1
+  check_class: cross_field_check
+  fail_when: '`PLMK.GRENZEOB1` < `PLMK.GRENZEUN1`'
+  applies_when:
+    PLMK.GRENZOB1NI:
+      blank: true
+    PLMK.GRENZUN1NI:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: 'Plan characteristic specification limit: upper limit below lower limit'
+  why_it_matters: The specification range runs from the lower to the upper limit. An inverted range rejects every result.
+  rule_authority: sap_hard_constraint
+  sap_impact: Every quantitative result is judged out of specification.
+  fix_map:
+    __other__: Correct the specification limits in QP02.
+  record_fix_template: 'Inspection plan {PLMK.PLNNR} characteristic {PLMK.MERKNR}: upper specification limit is below the
+    lower limit.'
+- id: QM124
+  field: QPMK.TOLERANZSL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Tolerance key of the master characteristic is not defined in customizing
+  why_it_matters: The tolerance key decides how limits are read. A key outside TQ29 gives undefined limit handling.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plans that copy the characteristic inherit the undefined handling.
+  fix_map:
+    __other__: Use a tolerance key defined in customizing.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: tolerance key ''''{invalid_value}'''' is
+    not defined.'
+- id: QM125
+  field: QPMK.MERKGEW
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Weighting of the master characteristic is not defined in customizing
+  why_it_matters: The weighting classes a defect. A class outside TQ17A has no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plans that copy the characteristic inherit an unusable class.
+  fix_map:
+    __other__: Use a weighting defined in customizing.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: weighting ''''{invalid_value}'''' is not
+    defined.'
+- id: QM126
+  field: QPMK.PRFQL
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Inspector qualification of the master characteristic is not defined in customizing
+  why_it_matters: The qualification limits who may record the characteristic. A value outside TQ11 cannot be checked.
+  rule_authority: sap_hard_constraint
+  sap_impact: Qualification checks are skipped for plans that copy the characteristic.
+  fix_map:
+    __other__: Use a qualification defined in customizing.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: qualification ''''{invalid_value}'''' is
+    not defined.'
+- id: QM127
+  field: QPMK.QAUTH
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Authorization group of the master characteristic is not defined in customizing
+  why_it_matters: The authorization group restricts who may change the characteristic. A group outside TQ01D cannot be evaluated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Authorisation checks on the master characteristic do not apply.
+  fix_map:
+    __other__: Use an authorization group defined in customizing.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: authorization group ''''{invalid_value}''''
+    is not defined.'
+- id: QM128
+  field: QPMK.WERKS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Plant of the master characteristic is not defined in customizing
+  why_it_matters: A plant-specific master characteristic is usable only in its plant. An undefined plant makes it unusable.
+  rule_authority: sap_hard_constraint
+  sap_impact: The characteristic cannot be selected in any plan.
+  fix_map:
+    __other__: Use a defined plant.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: plant ''''{invalid_value}'''' is not defined.'
+- id: QM129
+  field: QPMK.GRENZEOB1
+  check_class: cross_field_check
+  fail_when: '`QPMK.GRENZEOB1` < `QPMK.GRENZEUN1`'
+  severity: medium
+  dimension: consistency
+  message: 'Master characteristic specification limit: upper limit below lower limit'
+  why_it_matters: The specification range runs from the lower to the upper limit. An inverted range rejects every result.
+  rule_authority: sap_hard_constraint
+  sap_impact: Plans that copy the characteristic judge every result out of specification.
+  fix_map:
+    __other__: Correct the limits in QS23.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: upper specification limit is below the
+    lower limit.'
+- id: QM130
+  field: QPMK.PLAUSIOBEN
+  check_class: cross_field_check
+  fail_when: '`QPMK.PLAUSIOBEN` < `QPMK.PLAUSIUNTE`'
+  severity: low
+  dimension: consistency
+  message: Plausibility limits are inverted on the master characteristic
+  why_it_matters: Plausibility limits catch keying errors. Inverted limits reject every entry.
+  rule_authority: sap_hard_constraint
+  sap_impact: Results entry rejects every value as implausible.
+  fix_map:
+    __other__: Correct the plausibility limits in QS23.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: upper plausibility limit is below the lower
+    limit.'
+- id: QM131
+  field: QPMK.TOLERWAB
+  check_class: cross_field_check
+  fail_when: '`QPMK.TOLERWAB` > `QPMK.TOLERWBIS`'
+  severity: low
+  dimension: consistency
+  message: Tolerance range start is above its end on the master characteristic
+  why_it_matters: The range must run from low to high for the check to find any value inside it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The tolerance range matches no result.
+  fix_map:
+    __other__: Correct the range in QS23.
+  record_fix_template: 'Master characteristic {QPMK.MKMNR} version {QPMK.VERSION}: tolerance range start is above its end.'
+- id: QM132
+  field: QPGR.CODEGRUPPE
+  check_class: exists_check
+  fields:
+  - QPGR.KATALOGART
+  - QPGR.CODEGRUPPE
+  target_table: QPCD
+  target_fields:
+  - KATALOGART
+  - CODEGRUPPE
+  applies_when:
+    QPGR.INAKTIV:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Active code group has no codes
+  why_it_matters: A code group is only a container. With no codes it cannot be selected for a defect or a decision.
+  rule_authority: best_practice
+  sap_impact: Selection lists show an empty group.
+  fix_map:
+    __other__: Add codes in QS41 or deactivate the group.
+  record_fix_template: 'Catalog {QPGR.KATALOGART} code group {QPGR.CODEGRUPPE}: no codes exist.'
+- id: QM133
+  field: QPCD.CODE
+  check_class: cross_field_check
+  fail_when: (`QPGR.INAKTIV` == 'X') & `QPCD.INAKTIV`.isna()
+  severity: low
+  dimension: consistency
+  message: Active code sits in an inactive code group
+  why_it_matters: Codes inherit the group status in selection. An active code in an inactive group is never offered.
+  rule_authority: best_practice
+  sap_impact: The code looks usable in the data but cannot be selected.
+  fix_map:
+    __other__: Deactivate the code in QS41 or reactivate the group.
+  record_fix_template: 'Catalog {QPCD.KATALOGART} code group {QPCD.CODEGRUPPE} code {QPCD.CODE}: code is active in an inactive
+    group.'
