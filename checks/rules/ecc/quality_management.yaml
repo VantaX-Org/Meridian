@@ -1580,6 +1580,10 @@ rules:
   - X
   - '1'
   - ''
+  valid_values_with_labels:
+    X: No inspection - inspection control set to skip
+    '1': Skip inspection - inspection control skip variant
+    '': Inspection control not set
   applies_when:
     QINF.LOEKZ:
       blank: true

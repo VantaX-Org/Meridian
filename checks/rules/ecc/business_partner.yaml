@@ -1867,7 +1867,7 @@ rules:
   sap_impact: The CVI synchronisation of the address is rejected for the partner.
   fix_map:
     __blank__: Enter the region in the BP address.
-  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: region is {actual_value} for country {ADRC.COUNTRY}.'
+  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: region is missing for country {ADRC.COUNTRY}.'
 - id: BP244
   field: ADRC.NAME1
   check_class: null_check
@@ -1885,7 +1885,7 @@ rules:
   sap_impact: Customer or vendor creation by CVI fails with a missing name.
   fix_map:
     __blank__: Enter the name in the BP address.
-  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: name line is {actual_value}.'
+  record_fix_template: 'Business partner address {ADRC.ADDRNUMBER}: name line is missing.'
 - id: BP245
   field: BUT0BK.KOINH
   check_class: cross_field_check
@@ -1928,7 +1928,7 @@ rules:
   sap_impact: SEPA payment files for the partner fail validation.
   fix_map:
     __blank__: Enter the IBAN in BP, Payment transactions.
-  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: IBAN is {actual_value}.'
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: IBAN is missing.'
 - id: BP247
   field: BUT000.CHDAT
   check_class: cross_field_check
