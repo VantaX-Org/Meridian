@@ -178,7 +178,7 @@ const urlIsState = {
   },
 };
 
-export default {
+const plugin = {
   meta: { name: "aurora-structure", version: "1.0.0" },
   rules: {
     "tally-figure-href": tallyFigureHref,
@@ -192,3 +192,5 @@ export default {
     "url-is-state": urlIsState,
   },
 };
+
+export default plugin;

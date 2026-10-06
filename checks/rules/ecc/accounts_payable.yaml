@@ -478,6 +478,7 @@ rules:
     - SE
     - SI
     - SK
+  record_fix_template: "Vendor {LFA1.LIFNR}: VAT registration number '{actual_value}' is not valid. Start with the 2-letter country code (e.g. ZA, DE) and correct it in XK02 > Control data."
 
 - id: AP035
   field: LFA1.KTOKK

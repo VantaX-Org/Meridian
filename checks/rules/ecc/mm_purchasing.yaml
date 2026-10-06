@@ -652,6 +652,7 @@ rules:
   fix_map: {__blank__: 'Investigate the source of duplicate PO numbers. This is typically a data extract issue (duplicate
       rows from joined tables). If genuine duplicates exist in SAP, escalate to Basis — this indicates a number
       range collision.'}
+  record_fix_template: "Purchase order {EKKO.EBELN} appears more than once. Investigate the load or interface that created it; keep one document and reverse or delete the other via ME22N."
 
 - id: PUR043
   field: EKKO.BEDAT
@@ -697,6 +698,7 @@ rules:
       type (returns PO). If data error, correct the net price.'}
   fail_when: '`EKPO.NETPR` < 0'
   require_populated: true
+  record_fix_template: "Purchase order {EKPO.EBELN} item {EKPO.EBELP}: net price is {actual_value}. Correct the price in ME22N, or use a return item or credit memo for credits."
 
 - id: PUR045
   field: EKKO.BSART

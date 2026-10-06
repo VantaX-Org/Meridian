@@ -144,7 +144,7 @@ export default function SystemPage() {
 
       {tab === "overview" ? <Overview id={id} modules={modules} versions={versions} onRun={(v) => router.push(`/data/runs/${v}`)} /> : null}
       {tab === "objects" ? <Objects id={id} modules={modules} versions={versions} canSync={can("trigger_sync")} canAnalyse={can("analyse")} onChanged={refresh} /> : null}
-      {tab === "runs" ? <Runs id={id} versions={versions} loading={versionsQ.isLoading} /> : null}
+      {tab === "runs" ? <Runs versions={versions} loading={versionsQ.isLoading} /> : null}
       {tab === "health" ? <Health id={id} modules={modules} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} /> : null}
       {tab === "pilot" ? <PilotTab id={id} /> : null}
 
@@ -161,7 +161,7 @@ function Overview({ id, modules, versions, onRun }: { id: string; modules: Syste
   const router = useRouter();
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
-  const runCols = useMemo(() => runColumns(id), [id]);
+  const runCols = useMemo(() => runColumns(), []);
   return (
     <div className="ui-stack">
       <div className="mn-charts">
@@ -188,7 +188,7 @@ function Overview({ id, modules, versions, onRun }: { id: string; modules: Syste
   );
 }
 
-function runColumns(systemId: string): ColumnDef<SystemVersion, unknown>[] {
+function runColumns(): ColumnDef<SystemVersion, unknown>[] {
   return [
     { id: "run", header: "Run", meta: meta({ sticky: "start", width: 220 }), cell: ({ row }) => (
       <Link href={`/data/runs/${row.original.id}`} className="ui-link">
@@ -259,9 +259,9 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
-function Runs({ id, versions, loading }: { id: string; versions: SystemVersion[]; loading: boolean }) {
+function Runs({ versions, loading }: { versions: SystemVersion[]; loading: boolean }) {
   const router = useRouter();
-  const columns = useMemo(() => runColumns(id), [id]);
+  const columns = useMemo(() => runColumns(), []);
   if (loading) return <TableSkeleton rows={6} label="Loading runs" />;
   if (!versions.length) return <EmptyState>Nothing has been extracted from this system yet.</EmptyState>;
   return <DataTable columns={columns} data={versions} getRowId={(v) => v.id}

@@ -1,0 +1,571 @@
+module: controlling
+target_state: ECC_AND_S4HANA
+rules:
+- id: CO001
+  field: CSKS.KOKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area is mandatory on a cost centre
+  why_it_matters: KOKRS is the first key field of CSKS and the organisational unit every CO posting and report is read in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost centre cannot be selected in any CO report or posting.
+  fix_map:
+    __blank__: Assign the controlling area; the cost centre must be recreated in KS01 if the key is wrong.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: KOKRS is ''{actual_value}''. Correct it in KS02.'
+- id: CO002
+  field: CSKS.KOSTL
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Cost centre number is mandatory
+  why_it_matters: KOSTL is the key of the cost centre master. A record without it cannot be addressed by any posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and planning cannot reference the cost centre.
+  fix_map:
+    __blank__: Recreate the cost centre with a valid number in KS01.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: KOSTL is ''{actual_value}''. Correct it in KS02.'
+- id: CO003
+  field: CSKS.DATAB
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Cost centre validity start date is mandatory
+  why_it_matters: Cost centre master data is time-dependent. A blank start date leaves the validity interval undefined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings dated in the period cannot find a valid cost centre version.
+  fix_map:
+    __blank__: Set the valid-from date in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: DATAB is ''{actual_value}''. Correct it in KS02.'
+- id: CO004
+  field: CSKS.BUKRS
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: &id001
+    - '99991231'
+  severity: high
+  dimension: completeness
+  message: Company code is mandatory on a cost centre
+  why_it_matters: A cost centre belongs to exactly one company code. FI-CO real-time integration and the cost-centre line
+    item report use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings from FI to the cost centre fail or land in the wrong company code.
+  fix_map:
+    __blank__: Assign the company code in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: BUKRS is ''{actual_value}''. Correct it in KS02.'
+- id: CO005
+  field: CSKS.KOSAR
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: completeness
+  message: Cost centre category is mandatory
+  why_it_matters: The cost centre category controls which activity types and settings default and drives reporting by cost
+    centre type.
+  rule_authority: sap_hard_constraint
+  sap_impact: Reports by cost centre category and default settings are incomplete.
+  fix_map:
+    __blank__: Set the cost centre category in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: KOSAR is ''{actual_value}''. Correct it in KS02.'
+- id: CO006
+  field: CSKS.VERAK
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: completeness
+  message: Person responsible is mandatory on a cost centre
+  why_it_matters: The person responsible owns the budget and receives cost reports. SAP requires the field when the cost centre
+    is created.
+  rule_authority: sap_hard_constraint
+  sap_impact: No owner for approvals, variance follow-up and cost-centre review.
+  fix_map:
+    __blank__: Enter the person responsible in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: VERAK is ''{actual_value}''. Correct it in KS02.'
+- id: CO007
+  field: CSKS.WAERS
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: completeness
+  message: Cost centre currency is mandatory
+  why_it_matters: WAERS is the currency the cost centre is managed in. Allocation and planning convert to it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Currency translation of postings to the cost centre fails.
+  fix_map:
+    __blank__: Enter the currency in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: WAERS is ''{actual_value}''. Correct it in KS02.'
+- id: CO008
+  field: CSKS.PRCTR
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: completeness
+  message: Profit centre is mandatory on a cost centre
+  why_it_matters: The profit centre is the derivation target for profit-centre accounting. Costs posted without one land on
+    the dummy profit centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Profit-centre reports understate costs, and the dummy profit centre fills up.
+  fix_map:
+    __blank__: Assign the profit centre in KS02 (Basic data).
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: PRCTR is ''{actual_value}''. Correct it in KS02.'
+- id: CO009
+  field: CSKS.KHINR
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: medium
+  dimension: completeness
+  message: Cost centre standard hierarchy area is mandatory
+  why_it_matters: Every cost centre must hang under a node of the standard hierarchy of its controlling area so that reports
+    and allocations by group reach it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost centre is missing from standard-hierarchy reports and group-based allocations.
+  fix_map:
+    __blank__: Assign the cost centre to a hierarchy node in KS02 or OKEON.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: KHINR is ''{actual_value}''. Correct it in KS02.'
+- id: CO010
+  field: CSKS.OBJNR
+  check_class: null_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: completeness
+  message: Cost centre object number is mandatory
+  why_it_matters: OBJNR is the CO object number. It links the master record to the totals, status and line items of the cost
+    centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the cost centre cannot update CO totals.
+  fix_map:
+    __blank__: Recreate the cost centre in KS01; do not set OBJNR manually.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: OBJNR is ''{actual_value}''. Correct it in KS02.'
+- id: CO011
+  field: CSKS.DATAB
+  check_class: cross_field_check
+  fail_when: '`CSKS.DATAB` > `CSKS.DATBI`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Cost centre valid-from is after valid-to
+  why_it_matters: A validity interval must not end before it starts. SAP never produces this combination itself.
+  rule_authority: sap_hard_constraint
+  sap_impact: The version is never valid, so postings dated in it fail.
+  fix_map:
+    __other__: Correct the validity dates in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: Cost centre valid-from is after valid-to. Correct it in KS02.'
+- id: CO012
+  field: CSKS.KOSTL
+  check_class: uniqueness_check
+  fields:
+  - CSKS.KOKRS
+  - CSKS.KOSTL
+  - CSKS.DATBI
+  severity: high
+  dimension: uniqueness
+  message: Cost centre version is duplicated
+  why_it_matters: KOKRS, KOSTL and DATBI form the key of CSKS. Two versions with the same key point to a load that bypassed
+    the DDIC key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and reports select an arbitrary version.
+  fix_map:
+    __other__: Remove the duplicate version via KS02 / KS12.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: Cost centre version is duplicated. Correct it in KS02.'
+- id: CO013
+  field: CSKS.KOKRS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Controlling area does not exist
+  why_it_matters: KOKRS is checked against TKA01.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost centre belongs to no valid controlling area.
+  fix_map:
+    __other__: Use an existing controlling area (OKKP) or correct the key.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: KOKRS is ''{actual_value}''. Correct it in KS02.'
+- id: CO014
+  field: CSKS.BUKRS
+  check_class: referential_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: consistency
+  message: Company code does not exist
+  why_it_matters: BUKRS is checked against T001.
+  rule_authority: sap_hard_constraint
+  sap_impact: FI postings to the cost centre are rejected.
+  fix_map:
+    __other__: Use a defined company code (OX02) or correct it in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: BUKRS is ''{actual_value}''. Correct it in KS02.'
+- id: CO015
+  field: CSKS.WAERS
+  check_class: referential_check
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: consistency
+  message: Currency does not exist
+  why_it_matters: WAERS is checked against TCURC.
+  rule_authority: sap_hard_constraint
+  sap_impact: Currency translation for the cost centre fails.
+  fix_map:
+    __other__: Use a valid ISO currency (OY04) in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: WAERS is ''{actual_value}''. Correct it in KS02.'
+- id: CO016
+  field: CSKS.PRCTR
+  check_class: exists_check
+  fields:
+  - CSKS.KOKRS
+  - CSKS.PRCTR
+  grain: CSKS
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: high
+  dimension: consistency
+  message: Profit centre of the cost centre does not exist in the controlling area
+  why_it_matters: CSKS.PRCTR must point to a CEPC record of the same controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Derivation of the profit centre on postings fails and the posting is rejected or goes to the dummy.
+  fix_map:
+    __other__: Create the profit centre (KE51) or correct the assignment in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: Profit centre of the cost centre does not exist in the controlling
+    area. Correct it in KS02.'
+- id: CO017
+  field: CSKS.BKZKP
+  check_class: cross_field_check
+  fail_when: (`CSKS.BKZKP` == 'X') & (`CSKS.BKZKS` == 'X') & (`CSKS.BKZER` == 'X')
+  applies_when:
+    CSKS.DATBI: *id001
+  severity: medium
+  dimension: consistency
+  message: Current cost centre is locked for all actual postings
+  why_it_matters: A cost centre locked for primary, secondary and revenue postings can take no actual postings, yet it is
+    still valid until 31.12.9999.
+  rule_authority: best_practice
+  sap_impact: Postings and allocations to the cost centre are rejected.
+  fix_map:
+    __other__: Unlock it in KS02, or shorten its validity if it is retired.
+  record_fix_template: 'Cost centre {CSKS.KOKRS}/{CSKS.KOSTL}: Current cost centre is locked for all actual postings. Correct
+    it in KS02.'
+- id: CO018
+  field: CSKB.KOKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area is mandatory on a cost element
+  why_it_matters: KOKRS is the first key field of CSKB.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost element cannot be used in any CO posting.
+  fix_map:
+    __blank__: Recreate the cost element in KA01.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: KOKRS is ''{actual_value}''. Correct it in KA02.'
+- id: CO019
+  field: CSKB.KSTAR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Cost element number is mandatory
+  why_it_matters: KSTAR is the key of the cost element master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings cannot reference the cost element.
+  fix_map:
+    __blank__: Recreate the cost element in KA01.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: KSTAR is ''{actual_value}''. Correct it in KA02.'
+- id: CO020
+  field: CSKB.DATAB
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Cost element validity start date is mandatory
+  why_it_matters: Cost elements are time-dependent.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings cannot find a valid cost element version.
+  fix_map:
+    __blank__: Set the valid-from date in KA02.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: DATAB is ''{actual_value}''. Correct it in KA02.'
+- id: CO021
+  field: CSKB.KATYP
+  check_class: null_check
+  applies_when:
+    CSKB.DATBI: &id002
+    - '99991231'
+  severity: critical
+  dimension: completeness
+  message: Cost element category is mandatory
+  why_it_matters: KATYP decides which CO transactions may post to the cost element (primary costs, revenue, allocation, settlement).
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost element accepts no postings.
+  fix_map:
+    __blank__: Set the cost element category in KA02.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: KATYP is ''{actual_value}''. Correct it in KA02.'
+- id: CO022
+  field: CSKB.DATAB
+  check_class: cross_field_check
+  fail_when: '`CSKB.DATAB` > `CSKB.DATBI`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Cost element valid-from is after valid-to
+  why_it_matters: A validity interval must not end before it starts.
+  rule_authority: sap_hard_constraint
+  sap_impact: The version is never valid.
+  fix_map:
+    __other__: Correct the validity dates in KA02.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: Cost element valid-from is after valid-to. Correct it in KA02.'
+- id: CO023
+  field: CSKB.KSTAR
+  check_class: uniqueness_check
+  fields:
+  - CSKB.KOKRS
+  - CSKB.KSTAR
+  - CSKB.DATBI
+  severity: high
+  dimension: uniqueness
+  message: Cost element version is duplicated
+  why_it_matters: KOKRS, KSTAR and DATBI form the key of CSKB.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and reports select an arbitrary version.
+  fix_map:
+    __other__: Remove the duplicate version in KA02.
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: Cost element version is duplicated. Correct it in KA02.'
+- id: CO024
+  field: CSKB.KOKRS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Controlling area does not exist
+  why_it_matters: KOKRS is checked against TKA01.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost element belongs to no valid controlling area.
+  fix_map:
+    __other__: Use an existing controlling area (OKKP).
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: KOKRS is ''{actual_value}''. Correct it in KA02.'
+- id: CO025
+  field: CSKB.KSTAR
+  check_class: referential_check
+  applies_when:
+    CSKB.DATBI: *id002
+  severity: high
+  dimension: consistency
+  message: Cost element has no cost element master (CSKA)
+  why_it_matters: KSTAR is checked against CSKA, the chart-of-accounts level master.
+  rule_authority: sap_hard_constraint
+  sap_impact: The cost element has no chart-level definition; postings fail.
+  fix_map:
+    __other__: Create the G/L account or cost element chart-level record (FS00 / KA01).
+  record_fix_template: 'Cost element {CSKB.KOKRS}/{CSKB.KSTAR}: KSTAR is ''{actual_value}''. Correct it in KA02.'
+- id: CO026
+  field: CEPC.PRCTR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Profit centre number is mandatory
+  why_it_matters: PRCTR is the key of the profit centre master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Profit centre accounting cannot address the record.
+  fix_map:
+    __blank__: Recreate the profit centre in KE51.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: PRCTR is ''{actual_value}''. Correct it in KE52.'
+- id: CO027
+  field: CEPC.KOKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area is mandatory on a profit centre
+  why_it_matters: KOKRS is part of the key of CEPC.
+  rule_authority: sap_hard_constraint
+  sap_impact: The profit centre belongs to no controlling area.
+  fix_map:
+    __blank__: Recreate the profit centre in KE51.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: KOKRS is ''{actual_value}''. Correct it in KE52.'
+- id: CO028
+  field: CEPC.DATAB
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Profit centre validity start date is mandatory
+  why_it_matters: Profit centres are time-dependent.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings cannot find a valid profit centre version.
+  fix_map:
+    __blank__: Set the valid-from date in KE52.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: DATAB is ''{actual_value}''. Correct it in KE52.'
+- id: CO029
+  field: CEPC.VERAK
+  check_class: null_check
+  applies_when:
+    CEPC.DATBI: &id003
+    - '99991231'
+  severity: high
+  dimension: completeness
+  message: Person responsible is mandatory on a profit centre
+  why_it_matters: The person responsible owns the results of the profit centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: No owner for profit-centre reporting.
+  fix_map:
+    __blank__: Enter the person responsible in KE52.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: VERAK is ''{actual_value}''. Correct it in KE52.'
+- id: CO030
+  field: CEPC.KHINR
+  check_class: null_check
+  applies_when:
+    CEPC.DATBI: *id003
+  severity: medium
+  dimension: completeness
+  message: Profit centre standard hierarchy area is mandatory
+  why_it_matters: A profit centre must hang under a node of the standard hierarchy so that group reports include it.
+  rule_authority: sap_hard_constraint
+  sap_impact: The profit centre is missing from standard-hierarchy reports.
+  fix_map:
+    __blank__: Assign a hierarchy node in KE52 or KCH5N.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: KHINR is ''{actual_value}''. Correct it in KE52.'
+- id: CO031
+  field: CEPC.DATAB
+  check_class: cross_field_check
+  fail_when: '`CEPC.DATAB` > `CEPC.DATBI`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Profit centre valid-from is after valid-to
+  why_it_matters: A validity interval must not end before it starts.
+  rule_authority: sap_hard_constraint
+  sap_impact: The version is never valid.
+  fix_map:
+    __other__: Correct the validity dates in KE52.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: Profit centre valid-from is after valid-to. Correct it in
+    KE52.'
+- id: CO032
+  field: CEPC.PRCTR
+  check_class: uniqueness_check
+  fields:
+  - CEPC.KOKRS
+  - CEPC.PRCTR
+  - CEPC.DATBI
+  severity: high
+  dimension: uniqueness
+  message: Profit centre version is duplicated
+  why_it_matters: PRCTR, DATBI and KOKRS form the key of CEPC.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and reports select an arbitrary version.
+  fix_map:
+    __other__: Remove the duplicate version in KE52.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: Profit centre version is duplicated. Correct it in KE52.'
+- id: CO033
+  field: CEPC.LOCK_IND
+  check_class: cross_field_check
+  fail_when: '`CEPC.LOCK_IND` == ''X'''
+  applies_when:
+    CEPC.DATBI: *id003
+  severity: medium
+  dimension: consistency
+  message: Current profit centre is locked
+  why_it_matters: A locked profit centre takes no postings yet is valid until 31.12.9999.
+  rule_authority: best_practice
+  sap_impact: Postings that derive it are rejected.
+  fix_map:
+    __other__: Unlock it in KE52 or end its validity.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: Current profit centre is locked. Correct it in KE52.'
+- id: CO034
+  field: CEPC.KOKRS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Controlling area does not exist
+  why_it_matters: KOKRS is checked against TKA01.
+  rule_authority: sap_hard_constraint
+  sap_impact: The profit centre belongs to no valid controlling area.
+  fix_map:
+    __other__: Use an existing controlling area (OKKP).
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: KOKRS is ''{actual_value}''. Correct it in KE52.'
+- id: CO035
+  field: CEPC.WAERS
+  check_class: referential_check
+  applies_when:
+    CEPC.DATBI: *id003
+  severity: medium
+  dimension: consistency
+  message: Currency does not exist
+  why_it_matters: WAERS is checked against TCURC.
+  rule_authority: sap_hard_constraint
+  sap_impact: Currency translation for the profit centre fails.
+  fix_map:
+    __other__: Use a valid ISO currency in KE52.
+  record_fix_template: 'Profit centre {CEPC.KOKRS}/{CEPC.PRCTR}: WAERS is ''{actual_value}''. Correct it in KE52.'
+- id: CO036
+  field: TKA01.KOKRS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area key is mandatory
+  why_it_matters: KOKRS is the key of TKA01.
+  rule_authority: sap_hard_constraint
+  sap_impact: No CO organisation exists.
+  fix_map:
+    __blank__: Create the controlling area in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: KOKRS is ''{actual_value}''. Correct it in OKKP.'
+- id: CO037
+  field: TKA01.WAERS
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Controlling area currency is mandatory
+  why_it_matters: WAERS is the currency of the controlling area and the base of all CO reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: CO postings cannot convert to controlling area currency.
+  fix_map:
+    __blank__: Set the currency in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: WAERS is ''{actual_value}''. Correct it in OKKP.'
+- id: CO038
+  field: TKA01.KTOPL
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Chart of accounts is mandatory on a controlling area
+  why_it_matters: KTOPL ties cost elements to the chart of accounts.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost elements cannot be defined.
+  fix_map:
+    __blank__: Assign the chart of accounts in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: KTOPL is ''{actual_value}''. Correct it in OKKP.'
+- id: CO039
+  field: TKA01.LMONA
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Fiscal year variant is mandatory on a controlling area
+  why_it_matters: LMONA is the fiscal year variant of the controlling area; it drives posting periods.
+  rule_authority: sap_hard_constraint
+  sap_impact: CO postings cannot determine the period.
+  fix_map:
+    __blank__: Maintain the fiscal year variant in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: LMONA is ''{actual_value}''. Correct it in OKKP.'
+- id: CO040
+  field: TKA01.WAERS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Controlling area currency does not exist
+  why_it_matters: WAERS is checked against TCURC.
+  rule_authority: sap_hard_constraint
+  sap_impact: Translation into controlling area currency fails.
+  fix_map:
+    __other__: Use a valid currency in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: WAERS is ''{actual_value}''. Correct it in OKKP.'
+- id: CO041
+  field: TKA01.LMONA
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Fiscal year variant does not exist
+  why_it_matters: LMONA is checked against T009.
+  rule_authority: sap_hard_constraint
+  sap_impact: Period determination fails.
+  fix_map:
+    __other__: Use a defined fiscal year variant (OB29).
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: LMONA is ''{actual_value}''. Correct it in OKKP.'

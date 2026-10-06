@@ -341,6 +341,7 @@ rules:
       PAYRESULT.DELTA_FLAG:
         not_in:
         - X
+    record_fix_template: "Employee {PAYRESULT.USERID_PAY}: more than one payroll result for the same period and pay date. Check the replication log and remove the duplicate."
 
   - id: PAY017
     field: PAYRESULT.PAY_PERIOD

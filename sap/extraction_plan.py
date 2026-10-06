@@ -26,7 +26,7 @@ _WINDOWS = Path(__file__).resolve().parent / "dictionaries" / "extraction_window
 
 _ECC = ["business_partner", "material_master", "fi_gl", "accounts_payable", "accounts_receivable",
         "asset_accounting", "mm_purchasing", "plant_maintenance", "production_planning", "project_system",
-        "sd_customer_master", "sd_sales_orders"]
+        "sd_customer_master", "sd_sales_orders", "controlling"]
 _LOGISTICS = ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface",
               "fleet_management", "transport_management", "mdg_master_data", "grc_compliance",
               "interface_health"]

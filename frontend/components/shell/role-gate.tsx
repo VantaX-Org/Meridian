@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
-import type { Role } from "@/hooks/use-role";
 
 interface RoleGateProps {
   /** Minimum tier required to see children */
