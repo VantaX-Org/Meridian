@@ -1,0 +1,194 @@
+{
+ "table": "KSSK",
+ "description": "Allocation Table: Object to Class",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJEK",
+   "key": true,
+   "data_element": "OBJNUM",
+   "domain": "OBJEKT",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Key of object to be classified",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "MAFID",
+   "key": true,
+   "data_element": "KLMAF",
+   "domain": "KLMAF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Object/Class",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KLART",
+   "key": true,
+   "data_element": "KLASSENART",
+   "domain": "KLASSENART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Class Type",
+   "check_table": "TCLA"
+  },
+  {
+   "pos": 5,
+   "name": "CLINT",
+   "key": true,
+   "data_element": "CLINT",
+   "domain": "CLINT",
+   "type": "NUMC",
+   "length": 10,
+   "decimals": 0,
+   "description": "Internal Class Number",
+   "check_table": "KLAH"
+  },
+  {
+   "pos": 6,
+   "name": "ADZHL",
+   "key": true,
+   "data_element": "ADZHL",
+   "domain": "NUMC4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Internal counter for archiving objects via engin. chg. mgmt",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ZAEHL",
+   "key": false,
+   "data_element": "POSNUMMER",
+   "domain": "INT2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Sort position",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "STATU",
+   "key": false,
+   "data_element": "CLSTATUS",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Classification status",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "STDCL",
+   "key": false,
+   "data_element": "STDCLASS",
+   "domain": "STDCLASS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Standard Class",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "REKRI",
+   "key": false,
+   "data_element": "REKRI_CL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: BOM is recursive",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AENNR",
+   "key": false,
+   "data_element": "AENNR",
+   "domain": "AENNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Change Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 12,
+   "name": "DATUV",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "LKENZ",
+   "key": false,
+   "data_element": "LKENZ",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Deletion Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "DATUB",
+   "key": false,
+   "data_element": "DATUB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-to date",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLINT",
+   "foreign_table": "KLAH",
+   "foreign_field": "CLINT"
+  },
+  {
+   "field": "KLART",
+   "foreign_table": "TCLA",
+   "foreign_field": "KLART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

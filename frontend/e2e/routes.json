@@ -113,5 +113,15 @@
     "name": "contracts",
     "path": "/admin?tab=contracts",
     "heading": "Contracts"
+  },
+  {
+    "name": "finding-detail",
+    "path": "/analyse/finding/6d7b0459-08ca-4b11-90aa-c0524ae19064",
+    "heading": "Reconciliation account is not a vendor reconciliation account in this company code"
+  },
+  {
+    "name": "record",
+    "path": "/workbench/record/c6718ce8-8d5b-4432-933a-4df2b07ee9f0",
+    "heading": "fails 1 check"
   }
 ]

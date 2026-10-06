@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { copyToClipboard } from "@/lib/actions";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFinding, getFindings, type FindingDetailData } from "@/lib/api/findings";
@@ -69,6 +70,9 @@ function Body({ f }: { f: FindingDetailData }) {
   const router = useRouter();
   const qc = useQueryClient();
   const { can } = useRole();
+  const { user } = useAuth();
+  const search = useSearchParams();
+  const tab = search.get("tab");
   const rep = f.context;
   const anomaly = f.finding_type === "anomaly";
   const title = f.business_name ?? f.details?.message ?? f.check_id;
@@ -82,6 +86,22 @@ function Body({ f }: { f: FindingDetailData }) {
 
   const pct = f.pass_rate === null ? null : Math.round(f.pass_rate);
   const costDelta = f.cost_at_risk != null && prev?.cost_at_risk != null ? { value: Math.round(f.cost_at_risk - prev.cost_at_risk), good: "down" as const } : undefined;
+
+  // ?tab=records lands on the record table
+  useEffect(() => {
+    if (tab === "records") document.getElementById("sample")?.scrollIntoView({ block: "start" });
+  }, [tab]);
+
+  const assignAll = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in to take records");
+      const open = await getIssues({ check_id: f.check_id, module: f.module, status: "open", version_id: f.version_id, limit: 200 });
+      if (!open.items.length) throw new Error("No open records to assign");
+      return updateIssues({ ids: open.items.map((i) => i.id), assigned_to: user.id });
+    },
+    onSuccess: (r) => { toast.success(`${r.updated.toLocaleString()} records assigned to you`); void qc.invalidateQueries({ queryKey: ["issues"] }); },
+    onError: (e: Error) => toast.error("Could not assign records", { description: e.message }),
+  });
 
   const falsePositive = useMutation({
     mutationFn: async (note: string) => {
@@ -108,6 +128,8 @@ function Body({ f }: { f: FindingDetailData }) {
         actions={
           <>
             {f.affected_count > 0 ? <Button onClick={() => router.push(issuesHref)}>Work failing records</Button> : null}
+            {f.affected_count > 0 && can("assign") ? <Button variant="secondary" disabled={assignAll.isPending} onClick={() => assignAll.mutate()}>Assign all</Button> : null}
+            {f.affected_count > 0 ? <Button variant="secondary" onClick={() => router.push("/workbench?view=mine")}>Open in inbox</Button> : null}
             <Button variant="ghost" onClick={() => copyToClipboard(f.check_id, "Check id copied")}>Copy check id</Button>
             {can("approve") && f.affected_count > 0 ? (
               <ReasonButton label="False positive" prompt="Why are these records not an issue?" disabled={falsePositive.isPending}

@@ -7,16 +7,16 @@
  */
 
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FilterBar, KeyValue, Mono,
+  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, FieldChip, FilterBar, KeyValue, Mono,
   PageHeader, TableSkeleton, Tally, useDrawerParam, type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { getDedupCandidates, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
+import { getDedupCandidates, getDedupPreview, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -24,7 +24,20 @@ const BULK_MIN = 95;
 /** Scores are 0..100 once stored; a detector may still hand back 0..1. */
 const score = (s: number): number => Math.round(s <= 1 ? s * 100 : s);
 const matches = (c: DedupCandidate, q: string) => !q || [c.record_key_a, c.record_key_b, c.match_method, c.object_type].join(" ").toLowerCase().includes(q.toLowerCase());
-const signalsOf = (c: DedupCandidate) => Object.keys(c.match_fields ?? {}).map((s) => s.replace(/_/g, " "));
+const signalsOf = (c: DedupCandidate) => Object.keys(c.match_fields ?? {});
+type Preview = Record<string, { a: string; b: string; survivor: string }>;
+/** The business name of one side of a pair, read from the field that ends in NAME1 or NAME. */
+const nameOf = (p: Preview | undefined, side: "a" | "b"): string | null => {
+  const k = Object.keys(p ?? {}).find((f) => /(^|\.)NAME1?$/.test(f));
+  return (k && p?.[k][side]) || null;
+};
+/** The SAP number of one side, from the field that ends in LIFNR, KUNNR, MATNR or PARTNER. */
+const numberOf = (p: Preview | undefined, side: "a" | "b"): { field: string; value: string } | null => {
+  const k = Object.keys(p ?? {}).find((f) => /(LIFNR|KUNNR|MATNR|PARTNER)$/.test(f));
+  return k && p?.[k][side] ? { field: k.slice(k.lastIndexOf(".") + 1), value: p[k][side] } : null;
+};
+const PREVIEW_LIMIT = 50;
+const BULK_SHOWN = 5;
 
 export function DedupSurface() {
   const qc = useQueryClient();
@@ -43,6 +56,16 @@ export function DedupSurface() {
   const all = useMemo(() => q.data?.items ?? [], [q.data]);
   const objectTypes = useMemo(() => Array.from(new Set(all.map((c) => c.object_type))).sort(), [all]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["dedup.candidates"] });
+  // Names live on the merge preview, one call per pair; a failed call leaves the key.
+  const previews = useQueries({
+    queries: all.slice(0, PREVIEW_LIMIT).map((c) => ({
+      queryKey: ["dedup.preview", c.id],
+      queryFn: () => getDedupPreview({ record_key_a: c.record_key_a, record_key_b: c.record_key_b, object_type: c.object_type }),
+      retry: false, staleTime: 5 * 60_000, meta: { ignoreError: true },
+    })),
+  });
+  const previewOf = new Map<string, Preview>();
+  all.slice(0, PREVIEW_LIMIT).forEach((c, i) => { const d = previews[i]?.data; if (d) previewOf.set(c.id, d.merge_preview); });
 
   const merge = useMutation({
     mutationFn: (p: DedupCandidate) => mergeDedupCandidate({ candidate_id: p.id, survivor_key: survivorKey(p) }),
@@ -65,21 +88,26 @@ export function DedupSurface() {
   const mean = all.length ? Math.round(all.reduce((a, c) => a + score(c.match_score), 0) / all.length) : null;
   const selected = drawer.value ? all.find((c) => c.id === drawer.value) ?? null : null;
 
-  const columns = useMemo<ColumnDef<DedupCandidate, unknown>[]>(() => [
-    { id: "score", header: "Match", meta: meta({ sticky: "start", width: 80, align: "end", numeric: true }), cell: ({ row }) => `${score(row.original.match_score)}%` },
-    { id: "pair", header: "Records", meta: meta({ minWidth: 300 }), cell: ({ row }) => (
+  const side = (c: DedupCandidate, which: "a" | "b") => {
+    const pv = previewOf.get(c.id), name = nameOf(pv, which), no = numberOf(pv, which);
+    const key = which === "a" ? c.record_key_a : c.record_key_b;
+    return (
       <span className="ui-cell-stack">
-        <span className="ui-cell-stack__main"><Mono>{row.original.record_key_a}</Mono></span>
-        <span className="ui-cell-stack__sub"><Mono>{row.original.record_key_b}</Mono></span>
-      </span>) },
-    { id: "object", header: "Object", meta: meta({ width: 150 }), cell: ({ row }) => formatModuleName(row.original.object_type) },
-    { id: "method", header: "Method", meta: meta({ width: 130 }), cell: ({ row }) => <Mono>{row.original.match_method}</Mono> },
+        <span className="ui-cell-stack__main">{name ?? <Mono>{key}</Mono>}</span>
+        {name ? <span className="ui-cell-stack__sub">{no ? <><FieldChip field={no.field} /> <Mono>{no.value}</Mono></> : <Mono>{key}</Mono>}</span> : null}
+      </span>
+    );
+  };
+  const columns: ColumnDef<DedupCandidate, unknown>[] = [
+    { id: "left", header: "Left record", meta: meta({ sticky: "start", minWidth: 200 }), cell: ({ row }) => side(row.original, "a") },
+    { id: "right", header: "Right record", meta: meta({ minWidth: 200 }), cell: ({ row }) => side(row.original, "b") },
     { id: "signals", header: "Matched on", meta: meta({ minWidth: 200 }), cell: ({ row }) => {
       const s = signalsOf(row.original);
-      return s.length ? `${s.slice(0, 3).join(", ")}${s.length > 3 ? `, and ${s.length - 3} more` : ""}` : <span className="ui-micro">—</span>;
+      return s.length ? <span className="ui-filterbar__chips">{s.slice(0, 3).map((f) => <FieldChip key={f} field={f} />)}{s.length > 3 ? ` and ${s.length - 3} more` : ""}</span> : <span className="ui-micro">—</span>;
     } },
+    { id: "score", header: "Score", meta: meta({ width: 80, align: "end", numeric: true }), cell: ({ row }) => `${score(row.original.match_score)}%` },
     { id: "age", header: "Found", meta: meta({ width: 100, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
-  ], []);
+  ];
 
   return (
     <div className="ui-page">
@@ -101,7 +129,15 @@ export function DedupSurface() {
             <Button size="sm" variant="danger" onClick={() => bulk.mutate(highConfidence)} disabled={bulk.isPending}>{bulk.isPending ? "Merging" : "Merge pairs"}</Button>
             <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>Keep reviewing</Button>
           </div>}>
-          Each merge keeps the survivor chosen for that pair, record A unless you changed it, and retires the other record. Merges are undone one at a time, not in bulk.
+          <ul className="ui-plain-list">
+            {highConfidence.slice(0, BULK_SHOWN).map((c) => {
+              const pv = previewOf.get(c.id), keepA = (survivors[c.id] ?? "a") === "a";
+              const label = (w: "a" | "b") => nameOf(pv, w) ?? (w === "a" ? c.record_key_a : c.record_key_b);
+              return <li key={c.id}>Keep {label(keepA ? "a" : "b")}, retire {label(keepA ? "b" : "a")}, {score(c.match_score)}% match.</li>;
+            })}
+            {highConfidence.length > BULK_SHOWN ? <li>And {highConfidence.length - BULK_SHOWN} more pairs.</li> : null}
+          </ul>
+          Each merge keeps the survivor chosen for that pair, the left record unless you changed it, and retires the other record. Merges are undone one at a time, not in bulk. Nothing is written to SAP.
         </Banner>
       ) : null}
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search record keys" }}>
@@ -136,6 +172,7 @@ export function DedupSurface() {
                     <label key={side} className="ui-note" style={{ display: "flex", flexDirection: "column", gap: "var(--aurora-space-1)", padding: "var(--aurora-space-3)", border: `1px solid ${keep ? "var(--aurora-fg-primary)" : "var(--aurora-canvas-line)"}` }}>
                       <span><input type="radio" name={`survivor-${selected.id}`} checked={keep}
                         onChange={() => { setConfirmOne(null); setSurvivors((x) => ({ ...x, [selected.id]: side })); }} /> {keep ? "Survivor" : "Retired"}</span>
+                      {nameOf(previewOf.get(selected.id), side) ? <span>{nameOf(previewOf.get(selected.id), side)}</span> : null}
                       <Mono>{key}</Mono>
                     </label>
                   );

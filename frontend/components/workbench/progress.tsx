@@ -14,7 +14,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { getPredictiveAnalytics } from "@/lib/api/analytics";
 import { getIssues } from "@/lib/api/issues";
 import { getMetrics } from "@/lib/api/stewardship";
-import { getTriageMetrics } from "@/lib/api/triage";
+import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { formatModuleName } from "@/lib/format";
 
 const WEEKS = [{ value: "8", label: "8 weeks" }, { value: "12", label: "12 weeks" }, { value: "26", label: "26 weeks" }];
@@ -49,10 +49,7 @@ export function ProgressSurface() {
   }
 
   const loading = !m || !open;
-  const owners = [
-    ...(m && m.unassigned ? [{ label: "Unassigned", open: m.unassigned, breached: 0, href: "/workbench?assignee=unassigned" }] : []),
-    ...(m?.backlog_by_owner ?? []).map((o) => ({ label: o.email, open: o.open, breached: o.breached, href: `/workbench?assignee=${o.user_id}` })),
-  ];
+  const owners = ownerRungs(m);
   const types = Object.entries(typeQ.data?.avg_resolution_hours_by_type ?? {}).sort((a, b) => b[1] - a[1]);
   const risky = [...(forecastQ.data?.forecasts ?? [])].sort((a, b) => a.forecast_30d - b.forecast_30d).slice(0, 5);
 

@@ -55,6 +55,8 @@ export interface ReportSurfaceProps {
   eyebrow?: ReactNode;
   /** Display-sm verdict sentence. */
   title: ReactNode;
+  /** Heading element for the title. A page whose only heading is the report passes "h1". */
+  titleAs?: "h1" | "h2";
   /** Support line under the title. */
   support?: ReactNode;
   /** Header chip row — status, owner, last-updated. */
@@ -71,6 +73,7 @@ export interface ReportSurfaceProps {
 export function ReportSurface({
   eyebrow,
   title,
+  titleAs = "h2",
   support,
   chips,
   actions,
@@ -129,7 +132,7 @@ export function ReportSurface({
               {eyebrow}
             </Text>
           ) : null}
-          <Text variant="display-sm" className="aurora-report__title">
+          <Text as={titleAs} variant="display-sm" className="aurora-report__title">
             {title}
           </Text>
           {support ? (

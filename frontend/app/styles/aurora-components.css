@@ -2369,12 +2369,12 @@
   margin: 0;
 }
 .aurora-record-report__context-link {
-  color: var(--aurora-accent-400);
+  color: var(--aurora-accent-500);
   text-decoration: none;
   border-bottom: 1px dashed color-mix(in srgb, var(--aurora-accent-500) 40%, transparent);
 }
 .aurora-record-report__context-link:hover {
-  color: var(--aurora-accent-300);
+  text-decoration: underline;
 }
 
 .aurora-record-report__findings {
@@ -3525,6 +3525,8 @@
 .aurora-notifs__row[data-unread="true"] .aurora-notifs__title { font-weight: 600; }
 .aurora-notifs__text, .aurora-notifs__kind, .aurora-notifs__when { color: var(--aurora-fg-secondary); font-size: 13px; }
 .aurora-notifs__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; font: inherit; }
+.aurora-notifs__link { grid-column: 2 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--aurora-space-3); align-items: center; min-width: 0; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.aurora-notifs__link:hover .aurora-notifs__title { text-decoration: underline; }
 .aurora-notifs__body > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Settings: ways into each settings tab */

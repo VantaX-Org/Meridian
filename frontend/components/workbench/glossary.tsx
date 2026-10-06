@@ -74,12 +74,12 @@ export function GlossarySurface() {
         summary="The business name and definition behind each SAP field, and the rules that depend on it."
         actions={<Link href="/relationships" className="ui-link">Open the relationship graph</Link>}
       />
-      <Tally level={2} label="Glossary" figures={[
+      {!q.isLoading && !q.error && total === 0 && !narrowed ? null : <Tally level={2} label="Glossary" figures={[
         { label: "Terms", value: q.isLoading ? null : total, loading: q.isLoading, verdict: `Across ${domains.length} domain${domains.length === 1 ? "" : "s"}.`, href: "/glossary" },
         { label: "Linked to checks", value: q.isLoading ? null : termsLinked, loading: q.isLoading, verdict: termsLinked ? `${linked} rules depend on them.` : "No terms tied to checks yet.", href: "/glossary" },
         { label: "Under review", value: q.isLoading ? null : review, loading: q.isLoading, tone: review ? "warning" : undefined, verdict: review ? "Waiting for a steward to approve." : "Nothing waiting for approval.", href: "/glossary" },
         { label: "Approved", value: q.isLoading ? null : active, loading: q.isLoading, verdict: active ? "Definitions in force." : "No definitions approved yet.", href: "/glossary" },
-      ]} />
+      ]} />}
       <FilterBar
         search={{ value: search, onChange: setSearch, placeholder: "Search terms" }}
         onClear={narrowed ? () => { setSearch(""); setDomain("all"); } : undefined}
@@ -94,8 +94,8 @@ export function GlossarySurface() {
         : terms.length ? (
           <DataTable columns={columns} data={terms} getRowId={(t) => t.id} onRowActivate={(t) => drawer.open(t.id)} ariaLabel="Glossary terms" maxHeight="60vh" />
         ) : (
-          <EmptyState>
-            {narrowed ? "No terms match these filters." : "The glossary is empty. The glossary seed builds terms from the rule library, and stewards name, define and approve them here."}
+          <EmptyState action={narrowed ? undefined : <Link href="/admin?tab=rules" className="ui-link">Seed from the rule library</Link>}>
+            {narrowed ? "No terms match these filters." : "The glossary is empty. Terms are built from the rule library, and stewards name, define and approve them here."}
           </EmptyState>
         )}
       <DetailDrawer open={!!selected} onClose={drawer.close} ariaLabel="Term details"

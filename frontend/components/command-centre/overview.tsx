@@ -5,7 +5,7 @@
  * link to the rows behind it, and everything below answers one of them.
  *
  *  - Tally: DQS, failing checks, failing records, SAP features at risk, cost at risk.
- *  - Next step: the planner's top action, or the next step on the journey.
+ *  - Next step: the failing check with the most records, with a button to its records.
  *  - Charts: DQS per run, findings per object by severity, severity share.
  *  - Where this is heading: the 30-day forecast and early warnings.
  *  - Matrix: SAP object x DAMA dimension from each object's latest run.
@@ -13,7 +13,7 @@
  *  - Where the data lives: connected systems and their last extraction.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ import { GettingStarted } from "@/components/getting-started";
 import {
   Button,
   EmptyState,
+  FieldChip,
+  OwnerLadder,
   PageHeader,
   SectionCard,
   StatusBadge,
@@ -31,14 +33,15 @@ import {
 } from "@/components/ui-core";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
-import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
+import { getPredictiveAnalytics } from "@/lib/api/analytics";
+import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { compositeDqs, getFindings, getFindingsAggregate } from "@/lib/api/findings";
 import { getSettings } from "@/lib/api/settings";
 import { getMetrics } from "@/lib/api/stewardship";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
-import type { DimensionScores, DQSSummary, SystemType } from "@/types/api";
+import type { DimensionScores, DQSSummary, Finding, SystemType } from "@/types/api";
 
 const DISMISSED_KEY = "mn_arrival_dismissed";
 
@@ -98,18 +101,18 @@ function verdictSentence(input: {
   return `${movement} No critical or high-severity findings are open.`;
 }
 
-interface NextStep { text: string; action: string; href: string }
+interface NextStep { text: ReactNode; action: string; href: string }
 
 /** The single most useful thing to do now, walking the journey in order. */
 function nextStep(input: {
   systems: number | null; extracted: boolean; runs: number; critical: number;
-  topAction: { text: string; href: string } | null; backlog: number;
+  topFix: { text: ReactNode; n: number; href: string } | null; backlog: number;
 }): NextStep | null {
-  const { systems, extracted, runs, critical, topAction, backlog } = input;
+  const { systems, extracted, runs, critical, topFix, backlog } = input;
   if (systems === 0) return { text: "No SAP system is connected yet.", action: "Connect a system", href: "/data?tab=systems" };
   if (runs === 0 && !extracted) return { text: "A system is connected but nothing has been extracted.", action: "Run an extraction", href: "/data?tab=runs" };
   if (runs === 0) return { text: "Data is loaded but has not been analysed.", action: "Run an analysis", href: "/analyse?tab=analyses" };
-  if (critical > 0 && topAction) return { text: topAction.text, action: "Open finding", href: topAction.href };
+  if (topFix) return { text: topFix.text, action: `Fix ${topFix.n.toLocaleString()} records`, href: topFix.href };
   if (critical > 0) return { text: `${plural(critical, "critical finding")} ${critical === 1 ? "is" : "are"} open.`, action: "Open critical findings", href: "/analyse?tab=findings&severity=critical" };
   if (backlog > 0) return { text: `${plural(backlog, "record")} ${backlog === 1 ? "is" : "are"} waiting for a steward.`, action: "Open the inbox", href: "/workbench" };
   return { text: "Nothing critical is open. Re-run the analysis after the next extraction.", action: "Analysis runs", href: "/analyse?tab=analyses" };
@@ -130,8 +133,9 @@ export function CommandCentreOverview() {
     queryFn: () => getConfigImpact(latestVersion!.id), retry: false, meta: { ignoreError: true } });
   const forecast = useQuery({ queryKey: ["analytics.predictive"], queryFn: () => getPredictiveAnalytics(),
     retry: false, meta: { ignoreError: true } });
-  const planner = useQuery({ queryKey: ["analytics.prescriptive", { limit: 5 }],
-    queryFn: () => getPrescriptiveAnalytics({ limit: 5 }), retry: false, meta: { ignoreError: true } });
+  const all = useQuery({ queryKey: ["findings.list", { limit: 200, offset: 0 }], queryFn: () => getFindings({ limit: 200, offset: 0 }),
+    retry: false, meta: { ignoreError: true } });
+  const triage = useQuery({ queryKey: ["triage.metrics", 8], queryFn: () => getTriageMetrics(8), retry: false, meta: { ignoreError: true } });
   const top = useQuery({ queryKey: ["findings.top-impact"], queryFn: () => getFindings({ sort: "impact", limit: 5 }),
     retry: false, meta: { ignoreError: true } });
   const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings, retry: false, meta: { ignoreError: true } });
@@ -201,22 +205,26 @@ export function CommandCentreOverview() {
   };
 
   const empty = a && a.version_ids.length === 0 && !versions.isLoading && (versions.data?.versions.length ?? 0) === 0;
-  const actions = planner.data?.actions.slice(0, 5) ?? [];
-  const actionHref = (x: (typeof actions)[number]) =>
-    x.check_id ? findingsHref({ check_id: x.check_id, module: x.module }) : "/workbench";
 
   const lastSync = (systems.data ?? []).map((s) => s.last_sync_at).filter((t): t is string => !!t).sort().pop() ?? null;
   const backlog = inbox.data?.backlog_total ?? 0;
-  const best = actions[0];
-  const next = a && !versions.isLoading && !systems.isLoading ? nextStep({
+  const worst = (all.data?.findings ?? []).reduce<Finding | null>((m, f) => (f.affected_count > (m?.affected_count ?? 0) ? f : m), null);
+  const worstField = worst?.details?.field_checked ?? null;
+  const worstChip = worstField ? { table: worstField.split(".")[0], field: worstField.slice(worstField.lastIndexOf(".") + 1) } : null;
+  const next = a && !versions.isLoading && !systems.isLoading && !all.isLoading ? nextStep({
     systems: systems.data ? systems.data.length : null,
     extracted: !!lastSync,
     runs: versions.data?.versions.length ?? 0,
     critical: a.severity.critical,
-    topAction: best ? {
-      text: `Clear ${best.title}: ${plural(best.affected_count, "record")}, about ${Math.max(1, Math.round(best.effort_hours))} hours, `
-        + `worth ${best.impact_points.toFixed(1)} points of DQS.`,
-      href: actionHref(best),
+    topFix: worst ? {
+      text: (
+        <>
+          {worstChip ? <FieldChip {...worstChip} /> : worst.check_id} failing on {worst.affected_count.toLocaleString()}{" "}
+          {formatModuleName(worst.module)} records blocks {worst.severity === "critical" ? "go-live readiness" : "a clean score"}.
+        </>
+      ),
+      n: worst.affected_count,
+      href: `/analyse/finding/${worst.id}?tab=records&v=${worst.version_id}`,
     } : null,
     backlog,
   }) : null;
@@ -292,20 +300,21 @@ export function CommandCentreOverview() {
             loading: !!latestVersion && impact.isLoading,
             error: impact.isError ? { retry: () => { void impact.refetch(); } } : undefined,
             tone: impactSummary?.features_blocked ? "danger" : undefined,
-            verdict: impactSummary
-              ? `${impactSummary.features_blocked} blocked, ${impactSummary.features_degraded} degraded`
-              : "No SAP feature assessed yet.",
+            verdict: !impactSummary ? "No SAP feature assessed yet."
+              : atRisk === 0 ? `Config checks passed for ${plural(impactSummary.total_features_assessed, "feature")}.`
+              : `${impactSummary.features_blocked} blocked, ${impactSummary.features_degraded} degraded`,
           },
-          {
+          ...(cost ? [{
             label: "Cost at risk",
-            value: null, text: cost ? compact.format(cost) : undefined,
+            value: null, text: compact.format(cost),
             href: findingsHref({ sort: "impact" }),
             loading: agg.isLoading,
             error: agg.isError ? { retry: retryAgg } : undefined,
-            verdict: cost ? `this run, across ${plural(costObjects, "object")}` : "No cost formula configured.",
-          },
+            verdict: `this run, across ${plural(costObjects, "object")}`,
+          }] : []),
         ]}
       />
+      {!cost && a ? <Link href="/admin?tab=scoring" className="ui-link">Configure cost per failing record to see cost at risk.</Link> : null}
 
       {next ? (
         <SectionCard title="Next step">
@@ -350,6 +359,12 @@ export function CommandCentreOverview() {
           )}
         </SectionCard>
       </div>
+
+      {ownerRungs(triage.data).length ? (
+        <SectionCard title="Who holds the work" meta="Open tasks per steward">
+          <OwnerLadder rows={ownerRungs(triage.data)} ariaLabel="Open work by owner" />
+        </SectionCard>
+      ) : null}
 
       <div className="ui-columns">
         <div className="ui-stack">
