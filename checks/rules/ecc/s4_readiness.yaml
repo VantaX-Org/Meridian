@@ -65,6 +65,12 @@ areas:
     label: Production planning
     simplification_item: Production version mandatory for BOM selection
     related: {}
+  hcm:
+    label: HCM compatibility pack and employee Business Partner
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    related:
+      blocking: [PA015, PA036, PA060, PA084, PA111, EC046, EC108, EC109, EC110, EC111, EC112, EC113, EC114]
+      warning: [PA035, PA057, PA106, PA110, PA112, PA113, EC118]
 rules:
 - id: S4R-BP-KNA1-ADRNR
   field: KNA1.ADRNR
@@ -395,3 +401,183 @@ rules:
     __other__: Create a production version for the material and plant (C223 or MM02, MRP 4 view) that names the BOM
       alternative and the routing, before the conversion.
   record_fix_template: 'Material {MARC.MATNR} in plant {MARC.WERKS} has a BOM but no production version.'
+- id: S4R-HCM-NACHN
+  field: PA0002.NACHN
+  check_class: null_check
+  grain: PA0002
+  s4_area: hcm
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: critical
+  dimension: completeness
+  message: 'S/4HANA readiness: employee has no last name, which the employee Business Partner requires - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: Synchronising employees to Business Partners (HR integration to BP) builds the BP name from infotype 0002; a BP person needs a last name.
+  rule_authority: s4hana_migration
+  sap_impact: The employee Business Partner cannot be created, so employee vendor and travel integrations that depend on it fail.
+  fix_map:
+    __other__: Maintain the last name in PA30 infotype 0002 before the conversion.
+  record_fix_template: Personnel number {PA0002.PERNR} has no last name. Maintain it in PA30 infotype 0002.
+- id: S4R-HCM-LAND1
+  field: PA0006.LAND1
+  check_class: null_check
+  grain: PA0006
+  s4_area: hcm
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0006.ENDDA:
+    - '99991231'
+    PA0006.SUBTY:
+    - '1'
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: employee address has no country, which the Business Partner address requires - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The Business Partner address needs a country; the HR to BP synchronisation takes it from infotype 0006.
+  rule_authority: s4hana_migration
+  sap_impact: The employee Business Partner address cannot be created and synchronisation reports an error for the employee.
+  fix_map:
+    __other__: Maintain the country in PA30 infotype 0006.
+  record_fix_template: Personnel number {PA0006.PERNR} has an address without a country. Maintain it in PA30 infotype 0006.
+- id: S4R-HCM-ORT01
+  field: PA0006.ORT01
+  check_class: null_check
+  grain: PA0006
+  s4_area: hcm
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0006.ENDDA:
+    - '99991231'
+    PA0006.SUBTY:
+    - '1'
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: employee address has no city - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The Business Partner address carries a city; a blank city is accepted only with a warning by the synchronisation.
+  rule_authority: s4hana_migration
+  sap_impact: The employee Business Partner address is incomplete in the target.
+  fix_map:
+    __other__: Maintain the city in PA30 infotype 0006.
+  record_fix_template: Personnel number {PA0006.PERNR} has an address without a city. Maintain it in PA30 infotype 0006.
+- id: S4R-HCM-BANKS
+  field: PA0009.BANKS
+  check_class: null_check
+  grain: PA0009
+  s4_area: hcm
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+    PA0009.BANKN:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: bank account has no bank country, which the Business Partner bank detail requires - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: Bank details of the employee Business Partner are keyed by bank country and bank key.
+  rule_authority: s4hana_migration
+  sap_impact: The bank detail of the employee Business Partner cannot be created, so payments to the employee through the vendor side fail.
+  fix_map:
+    __blank__: Maintain the bank country in PA30 infotype 0009.
+  record_fix_template: Personnel number {PA0009.PERNR} has an account number but no bank country. Maintain it in PA30 infotype 0009.
+- id: S4R-HCM-SPRSL
+  field: PA0002.SPRSL
+  check_class: null_check
+  grain: PA0002
+  s4_area: hcm
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: employee has no communication language - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The Business Partner correspondence language defaults from infotype 0002.
+  rule_authority: s4hana_migration
+  sap_impact: The employee Business Partner gets a default language, which can send correspondence in the wrong language.
+  fix_map:
+    __other__: Maintain the communication language in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has no communication language. Maintain it in PA30 infotype 0002.
+- id: S4R-HCM-GESCH
+  field: PA0002.GESCH
+  check_class: null_check
+  grain: PA0002
+  s4_area: hcm
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: employee has no gender key - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The Business Partner person record maps the gender from infotype 0002.
+  rule_authority: s4hana_migration
+  sap_impact: The employee Business Partner is created with an unknown sex, which can fail statutory reporting that relies on it.
+  fix_map:
+    __other__: Maintain the gender key in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has no gender key. Maintain it in PA30 infotype 0002.
+- id: S4R-HCM-EMAIL
+  field: PA0001.PERNR
+  check_class: exists_check
+  grain: PA0001
+  s4_area: hcm
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  target_table: PA0105
+  target_fields:
+  - PERNR
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  target_when:
+    SUBTY:
+    - '0010'
+    ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: active employee has no e-mail address (infotype 0105 subtype 0010) - simplification item Business Partner Approach (SAP Note 2265093)'
+  why_it_matters: The Business Partner and the SAP Fiori and workflow notifications take the employee e-mail from infotype 0105.
+  rule_authority: s4hana_migration
+  sap_impact: Notifications and the employee Business Partner communication data are empty after the conversion.
+  fix_map:
+    __other__: Maintain subtype 0010 in PA30 infotype 0105.
+  record_fix_template: Personnel number {PA0001.PERNR} has no e-mail address in infotype 0105. Maintain it in PA30.
+- id: S4R-HCM-ARCHIVE
+  field: PA0001.PERNR
+  check_class: cross_field_check
+  grain: PA0001
+  s4_area: hcm
+  s4_impact: warning
+  simplification_item: HCM compatibility pack (S4TWL HCM)
+  baseline: s4_target
+  fail_when: (@today - `PA0000.BEGDA`).dt.days > 3650
+  require_populated: true
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: employee left more than 10 years ago and is still in the live HR data - simplification item HCM compatibility pack (S4TWL HCM)'
+  why_it_matters: Converting old leavers into S/4HANA HCM compatibility pack and the employee Business Partner adds records that no process uses.
+  rule_authority: s4hana_migration
+  sap_impact: Conversion and migration runtime grow and obsolete employee Business Partners are created; archive or exclude them first.
+  fix_map:
+    __other__: Archive the personnel number with the HR archiving objects (PA_CALC, PA_LDOC, PA_PIDX) or exclude it from the load.
+  record_fix_template: Personnel number {PA0001.PERNR} left more than 10 years ago. Archive or exclude it before the conversion.

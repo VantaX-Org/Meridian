@@ -224,6 +224,8 @@ def test_employee_central_golden():
         "EC072": {"PERSON_ID=100124|ADDRESS_TYPE=home"},
         "EC055": {"PERSON_ID=100125"},
         "EC052": {"PERSON_ID=100126"},
+        # EC115: the two leavers in the fixture (100104 left 2025, 100108 left 2024) keep their position
+        "EC115": {"USERID=100104", "USERID=100108"},
     }, found
     ran = {r.check_id for r in results}
     assert {"EC014", "EC019", "EC021", "EC032", "EC041", "EC043"} <= ran  # judged, and passed
@@ -362,6 +364,7 @@ def test_payroll_integration_golden():
     _, found = _run("payroll_integration", _frames("payroll_integration", {"PAYRESULT": rows}))
     assert found == {
         "PAY010": {"USERID=100109|PAY_PERIOD=202509"},
+        "PAY027": {"USERID=100109|PAY_PERIOD=202509"},   # same seeded net pay defect seen by the reconciliation rule
         "PAY004": {"USERID=100110|PAY_PERIOD=202509"},
         "PAY005": {"USERID=100111|PAY_PERIOD=202509"},
         "PAY016": {"USERID=100112|PAY_PERIOD=202509"},
@@ -597,6 +600,9 @@ def test_time_attendance_golden():
         "TIME017": {"USERID=100109|DATE=2026-09-21"},
         "TIME013": {"USERID=100110|DATE=2026-09-21"},
         "TIME014": {"USERID=100111|DATE=2026-09-21"},
+        # the same seeded defects also trip the day-total (26h) and overtime-over-hours (30h of 8h) rules
+        "TIME022": {"USERID=100110|DATE=2026-09-21", "USERID=100111|DATE=2026-09-21"},
+        "TIME023": {"USERID=100111|DATE=2026-09-21"},
         "TIME015": {"USERID=100112|DATE=2026-09-21"},
         "TIME016": {"USERID=100113|DATE=2026-09-21"},
     }, found

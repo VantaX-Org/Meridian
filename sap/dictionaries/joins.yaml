@@ -235,7 +235,7 @@ edges:
   - {parent: EMPEMPLOYMENT, child: LEARNINGASSIGNMENT, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
-  - {parent: EMPEMPLOYMENT, child: SUCCESSIONCANDIDATE, join: {USERID: NOMINEE_ID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: SUCCESSIONCANDIDATE, join: {NOMINEE_ID: USERID}, cardinality: many}
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
   # foundation objects and the position an employment points at (attributes of the employment)
   - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}

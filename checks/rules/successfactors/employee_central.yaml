@@ -2313,7 +2313,7 @@ rules:
   pattern: ^\d{1,8}$
   severity: medium
   dimension: validity
-  message: Person ID does not fit the a numeric personnel number of at most 8 digits (PA0000.PERNR) of the SAP target field
+  message: Person ID does not fit a numeric personnel number of at most 8 digits (PA0000.PERNR) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a numeric personnel number of at most 8 digits (PA0000.PERNR). A value outside that format is rejected or
     truncated, which breaks the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2327,7 +2327,7 @@ rules:
   pattern: ^[A-Za-z0-9]{1,4}$
   severity: medium
   dimension: validity
-  message: Company code does not fit the a company code of at most 4 characters (BUKRS) of the SAP target field
+  message: Company code does not fit a company code of at most 4 characters (BUKRS) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a company code of at most 4 characters (BUKRS). A value outside that format is rejected or truncated, which
     breaks the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2341,7 +2341,7 @@ rules:
   pattern: ^[A-Za-z0-9]{1,10}$
   severity: medium
   dimension: validity
-  message: Cost centre does not fit the a cost centre of at most 10 characters (KOSTL) of the SAP target field
+  message: Cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a cost centre of at most 10 characters (KOSTL). A value outside that format is rejected or truncated, which
     breaks the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2350,68 +2350,12 @@ rules:
     __other__: Change the value in Employee Central so that it fits a cost centre of at most 10 characters (KOSTL), or add a conversion in the integration mapping.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field. Correct in Employee Central.'
 - id: EC111
-  field: EMPEMPLOYMENT.LOCATION
-  check_class: regex_check
-  pattern: ^[A-Za-z0-9]{1,4}$
-  severity: low
-  dimension: validity
-  message: Location does not fit the a 4-character personnel area or subarea key (WERKS, BTRTL) of the SAP target field
-  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a 4-character personnel area or subarea key (WERKS, BTRTL). A value outside that format is rejected or truncated,
-    which breaks the key that links the employee to the SAP organisation.
-  rule_authority: best_practice
-  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
-  fix_map:
-    __other__: Change the value in Employee Central so that it fits a 4-character personnel area or subarea key (WERKS, BTRTL), or add a conversion in the integration mapping.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: location does not fit a 4-character personnel area or subarea key (WERKS, BTRTL) of the SAP target field. Correct in Employee Central.'
-- id: EC112
-  field: EMPEMPLOYMENT.POSITION
-  check_class: regex_check
-  pattern: ^\d{1,8}$
-  severity: medium
-  dimension: validity
-  message: Position code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
-  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
-    the key that links the employee to the SAP organisation.
-  rule_authority: best_practice
-  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
-  fix_map:
-    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: position code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
-- id: EC113
-  field: EMPEMPLOYMENT.DEPARTMENT
-  check_class: regex_check
-  pattern: ^\d{1,8}$
-  severity: medium
-  dimension: validity
-  message: Department code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
-  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
-    the key that links the employee to the SAP organisation.
-  rule_authority: best_practice
-  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
-  fix_map:
-    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: department code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
-- id: EC114
-  field: EMPEMPLOYMENT.JOB_CODE
-  check_class: regex_check
-  pattern: ^\d{1,8}$
-  severity: low
-  dimension: validity
-  message: Job code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
-  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
-    the key that links the employee to the SAP organisation.
-  rule_authority: best_practice
-  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
-  fix_map:
-    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
-- id: EC115
   field: FOCOMPANY.EXTERNAL_CODE
   check_class: regex_check
   pattern: ^[A-Za-z0-9]{1,4}$
   severity: medium
   dimension: validity
-  message: Legal entity code does not fit the a company code of at most 4 characters (BUKRS) of the SAP target field
+  message: Legal entity code does not fit a company code of at most 4 characters (BUKRS) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a company code of at most 4 characters (BUKRS). A value outside that format is rejected or truncated, which
     breaks the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2419,13 +2363,13 @@ rules:
   fix_map:
     __other__: Change the value in Employee Central so that it fits a company code of at most 4 characters (BUKRS), or add a conversion in the integration mapping.
   record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: legal entity code does not fit a company code of at most 4 characters (BUKRS) of the SAP target field. Correct in Employee Central.'
-- id: EC116
+- id: EC112
   field: FODEPARTMENT.EXTERNAL_CODE
   check_class: regex_check
   pattern: ^\d{1,8}$
   severity: medium
   dimension: validity
-  message: Department code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  message: Department code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
     the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2433,13 +2377,13 @@ rules:
   fix_map:
     __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
   record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: department code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
-- id: EC117
+- id: EC113
   field: FODEPARTMENT.COST_CENTER
   check_class: regex_check
   pattern: ^[A-Za-z0-9]{1,10}$
   severity: medium
   dimension: validity
-  message: Department cost centre does not fit the a cost centre of at most 10 characters (KOSTL) of the SAP target field
+  message: Department cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a cost centre of at most 10 characters (KOSTL). A value outside that format is rejected or truncated, which
     breaks the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2447,13 +2391,13 @@ rules:
   fix_map:
     __other__: Change the value in Employee Central so that it fits a cost centre of at most 10 characters (KOSTL), or add a conversion in the integration mapping.
   record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: department cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field. Correct in Employee Central.'
-- id: EC118
+- id: EC114
   field: POSITION.CODE
   check_class: regex_check
   pattern: ^\d{1,8}$
   severity: medium
   dimension: validity
-  message: Position code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  message: Position code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field
   why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
     the key that links the employee to the SAP organisation.
   rule_authority: best_practice
@@ -2461,7 +2405,7 @@ rules:
   fix_map:
     __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
   record_fix_template: 'Position {POSITION.CODE}: position code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
-- id: EC119
+- id: EC115
   field: EMPEMPLOYMENT.POSITION
   check_class: cross_field_check
   fail_when: '`EMPEMPLOYMENT.POSITION`.notna() & ((@today - `EMPEMPLOYMENT.END_DATE`).dt.days > 90)'
@@ -2478,7 +2422,7 @@ rules:
   fix_map:
     __other__: Remove the leaver from the position (Position Org Chart) or correct the termination.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: left more than 90 days ago but is still assigned to a position. Correct in Position Org Chart.'
-- id: EC120
+- id: EC116
   field: EMPEMPLOYMENT.MANAGER_ID
   check_class: cross_field_check
   fail_when: '`EMPEMPLOYMENT.MANAGER_ID` == `EMPEMPLOYMENT.USERID`'
@@ -2497,7 +2441,7 @@ rules:
   fix_map:
     __other__: Assign the correct manager in Employment Details.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager is the employee. Correct in Employment Details.'
-- id: EC121
+- id: EC117
   field: EMPEMPLOYMENT.EVENT_REASON
   check_class: null_check
   applies_when:
@@ -2513,7 +2457,7 @@ rules:
   fix_map:
     __blank__: Enter the termination reason on the employment record.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: terminated without an event reason. Correct the termination record.'
-- id: EC122
+- id: EC118
   field: EMPEMPLOYMENT.END_DATE
   check_class: cross_field_check
   fail_when: (@today - `EMPEMPLOYMENT.END_DATE`).dt.days > 3650
@@ -2530,7 +2474,7 @@ rules:
   fix_map:
     __other__: Confirm the retention period, then archive or exclude the record from the migration scope.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: left more than 10 years ago. Archive or exclude from the migration.'
-- id: EC123
+- id: EC119
   field: PERINFO.GENDER
   check_class: null_check
   grain: EMPEMPLOYMENT
@@ -2545,7 +2489,7 @@ rules:
   fix_map:
     __blank__: Enter the gender in Personal Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: active employee has no gender. Correct in Personal Information.'
-- id: EC124
+- id: EC120
   field: PERADDRESS.ADDRESS_LINE1
   check_class: null_check
   applies_when:
