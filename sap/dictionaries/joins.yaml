@@ -42,6 +42,10 @@ edges:
   # contact persons (KNVK holds both customer and vendor contacts)
   - {parent: KNA1, child: KNVK,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: LFA1, child: KNVK,  join: {LIFNR: LIFNR}, cardinality: many}
+  # sales-area partner functions, tax classification per country, unloading points
+  - {parent: KNA1, child: KNVP,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: KNVI,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: KNVA,  join: {KUNNR: KUNNR}, cardinality: many}
 
   # ── Business partner ───────────────────────────────────────────────────
   - {parent: BUT000, child: BUT020, join: {PARTNER: PARTNER}, cardinality: one}
@@ -51,6 +55,11 @@ edges:
   - {parent: BUT000, child: BUT0BK, join: {PARTNER: PARTNER}, cardinality: one}
   - {parent: BUT000, child: BUT0ID, join: {PARTNER: PARTNER}, cardinality: many}
   - {parent: BUT000, child: DFKKBPTAXNUM, join: {PARTNER: PARTNER}, cardinality: many}
+  # customer/vendor integration: the link row sits between the BP and the account
+  - {parent: BUT000, child: CVI_CUST_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
+  - {parent: KNA1,   child: CVI_CUST_LINK, join: {CUSTOMER: KUNNR}, cardinality: many}
+  - {parent: BUT000, child: CVI_VEND_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
+  - {parent: LFA1,   child: CVI_VEND_LINK, join: {VENDOR: LIFNR}, cardinality: many}
 
   # ── Material master ────────────────────────────────────────────────────
   - {parent: MARA, child: MAKT, join: {MATNR: MATNR}, cardinality: one, prefer: {SPRAS: "E"}}

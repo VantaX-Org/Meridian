@@ -1,0 +1,52 @@
+{
+ "table": "TB032",
+ "description": "BP Legal Entity",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "CLIENT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "LEGAL_ORG",
+   "key": true,
+   "data_element": "BU_LEGAL_ORG",
+   "domain": "BU_LEGAL_ORG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Legal Entity of Organization",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "ORG_PRIV",
+   "key": false,
+   "data_element": "BU_ORG_PRIV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator \"private law\"",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CLIENT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
