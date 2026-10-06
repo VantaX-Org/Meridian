@@ -26,7 +26,8 @@ _CATEGORIES = ("ecc", "successfactors", "warehouse", "concur", "ariba")
 
 
 @lru_cache(maxsize=1)
-def rule_catalogue() -> tuple[dict, ...]:
+def raw_rules() -> tuple[tuple[str, str, str, dict], ...]:
+    """Every shipped YAML rule as (category, yaml file, module, full rule dict)."""
     out = []
     for category in _CATEGORIES:
         for path in sorted((_ROOT / "checks" / "rules" / category).glob("*.yaml")):
@@ -35,19 +36,23 @@ def rule_catalogue() -> tuple[dict, ...]:
             doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             module = doc.get("module") or path.stem
             for r in doc.get("rules") or []:
-                if not isinstance(r, dict) or not r.get("id"):
-                    continue
-                out.append({
-                    "rid": str(r["id"]), "module": module, "category": category,
-                    "name": f"{r['id']}: {r.get('message', r['id'])}"[:255],
-                    "description": str(r.get("why_it_matters") or r.get("message") or "")[:1000],
-                    "severity": r.get("severity", "medium"),
-                    "conditions": json.dumps([{"field": r.get("field"), "check_class": r.get("check_class"),
-                                               "dimension": r.get("dimension"), "pattern": r.get("pattern"),
-                                               "domain_values": r.get("domain_values")}]),
-                    "source_yaml": f"{category}/{path.name}",
-                })
+                if isinstance(r, dict) and r.get("id"):
+                    out.append((category, f"{category}/{path.name}", module, r))
     return tuple(out)
+
+
+@lru_cache(maxsize=1)
+def rule_catalogue() -> tuple[dict, ...]:
+    return tuple({
+        "rid": str(r["id"]), "module": module, "category": category,
+        "name": f"{r['id']}: {r.get('message', r['id'])}"[:255],
+        "description": str(r.get("why_it_matters") or r.get("message") or "")[:1000],
+        "severity": r.get("severity", "medium"),
+        "conditions": json.dumps([{"field": r.get("field"), "check_class": r.get("check_class"),
+                                   "dimension": r.get("dimension"), "pattern": r.get("pattern"),
+                                   "domain_values": r.get("domain_values")}]),
+        "source_yaml": source_yaml,
+    } for category, source_yaml, module, r in raw_rules())
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,55 @@
+# Material master: MM01/MM02 maintenance view for each rule. Rules not listed fall back to
+# default_view_by_table (keyed on the table of the rule's field). Read by api/services/rule_coverage.py.
+module: material_master
+default_view_by_table: {MARA: basic_data, MAKT: basic_data, MEAN: basic_data, MARC: mrp, MBEW: accounting,
+  MVKE: sales, MLAN: sales, MARM: units, MARD: storage}
+views:
+- id: basic_data
+  label: Basic data and descriptions
+  rules: [MM317, MM319, MM320, MM321, MM322, MM324, MM325, MM326, MM327, MM328, MM329, MM330, MM331, MM332,
+    MM334, MM335, MM336, MM337, MM338, MM339, MM340, MM341, MM342, MM343, MM344, MM370, MM373, MM380,
+    MM439, MM440, MM445, MM447, MM448, MM449, MM450, MM451, MM452, MM453, MM455, MM457, MM458]
+- id: classification
+  label: Classification
+  rules: [MM346, MM347, MM348, MM349, MM350, MM351, MM352, MM353, MM354, MM355, MM446, MM465, MM466, MM467,
+    MM468, MM469, MM470, MM471, MM472, MM473]
+- id: sales
+  label: Sales
+  rules: [MM356, MM357, MM358, MM359, MM360, MM361, MM362, MM363, MM364, MM365, MM438, MM474, MM475, MM476,
+    MM477, MM478, MM479, MM480, MM481]
+- id: purchasing
+  label: Purchasing and foreign trade
+  rules: [MM318, MM323, MM366, MM368, MM369, MM371, MM372, MM374, MM375, MM376, MM377, MM378, MM379, MM405,
+    MM406, MM407, MM482, MM483, MM485, MM486, MM487, MM488, MM489, MM490]
+- id: mrp
+  label: MRP
+  rules: [MM333, MM367, MM381, MM382, MM383, MM384, MM386, MM387, MM388, MM389, MM390, MM391, MM392, MM393,
+    MM394, MM395, MM396, MM408, MM442, MM456, MM491, MM492, MM493, MM494, MM495, MM497, MM498, MM499]
+- id: work_scheduling
+  label: Work scheduling and production
+  rules: [MM385, MM397, MM400, MM401, MM402, MM403, MM404, MM409, MM484, MM496, MM500, MM501, MM502, MM503,
+    MM504, MM505, MM506, MM507, MM508, MM509, MM510]
+- id: storage
+  label: Storage and warehouse
+  rules: [MM428, MM429, MM430, MM431, MM432, MM433, MM434, MM435, MM436, MM437, MM521, MM522, MM523, MM524,
+    MM525, MM526, MM527, MM528, MM529, MM530, MM531, MM532, MM533, MM534]
+- id: quality
+  label: Quality (MM view level)
+  rules: [MM410, MM411, MM412, MM413, MM535, MM536, MM537, MM538, MM539]
+- id: accounting
+  label: Accounting and costing
+  rules: [MM414, MM415, MM416, MM417, MM418, MM419, MM420, MM421, MM422, MM423, MM424, MM425, MM426, MM427,
+    MM511, MM512, MM513, MM514, MM515, MM516, MM517, MM518, MM519, MM520]
+- id: batch
+  label: Batch management
+  rules: [MM459, MM460, MM461, MM462, MM463, MM464]
+- id: units
+  label: Units of measure
+  rules: [MM345, MM443, MM444]
+- id: supersession
+  label: Supersession and discontinuation
+  rules: [MM542, MM543, MM544, MM545, MM546, MM547, MM548, MM549, MM550, MM551, MM552, MM553, MM554, MM555,
+    MM556, MM557, MM558, MM559, MM560, MM561, MM562, MM563]
+- id: lifecycle
+  label: Lifecycle and cross-level
+  rules: [MM398, MM399, MM441, MM454, MM540, MM541]
