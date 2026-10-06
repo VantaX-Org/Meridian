@@ -1,0 +1,462 @@
+{
+ "table": "ANKB",
+ "description": "Asset class: depreciation area",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "ANLKL",
+   "key": true,
+   "data_element": "ANLKL",
+   "domain": "ANLKL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Asset Class",
+   "check_table": "ANKA"
+  },
+  {
+   "pos": 3,
+   "name": "AFAPL",
+   "key": true,
+   "data_element": "AFAPL",
+   "domain": "AFAPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of depreciaton for asset valuation",
+   "check_table": "T096"
+  },
+  {
+   "pos": 4,
+   "name": "AFABE",
+   "key": true,
+   "data_element": "AFABER",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Depreciation area real or derived",
+   "check_table": "T093"
+  },
+  {
+   "pos": 5,
+   "name": "BDATU",
+   "key": true,
+   "data_element": "BDATU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date validity ends",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ADATU",
+   "key": false,
+   "data_element": "ADATU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date for beginning of validity",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT_ANLA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "XSPEB",
+   "key": false,
+   "data_element": "XSPEB_ANKB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: lock asset class (chart of depreciation-specif.)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "XLOEV",
+   "key": false,
+   "data_element": "XLOEV_ANKB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Class/area marked for deletion",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "FELEI",
+   "key": false,
+   "data_element": "FELEI",
+   "domain": "FELEI",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Screen layout for Asset Accounting",
+   "check_table": "T082A"
+  },
+  {
+   "pos": 14,
+   "name": "KTOGR",
+   "key": false,
+   "data_element": "KTOGR",
+   "domain": "KTOGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Account determination",
+   "check_table": "T095A"
+  },
+  {
+   "pos": 15,
+   "name": "XNEGA",
+   "key": false,
+   "data_element": "XNEGA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Negative values allowed",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "XGWGK",
+   "key": false,
+   "data_element": "XGWGK",
+   "domain": "XGWGK",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Low-value asset amount and quantity check",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MINDJ",
+   "key": false,
+   "data_element": "MINDJ",
+   "domain": "JARAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Minimum useful life in years",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "MINDP",
+   "key": false,
+   "data_element": "MINDP",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Minimum useful life in periods",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "MAXDJ",
+   "key": false,
+   "data_element": "MAXDJ",
+   "domain": "JARAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maximum useful life in years",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "MAXDP",
+   "key": false,
+   "data_element": "MAXDP",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maximum useful life in periods",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "INVSL",
+   "key": false,
+   "data_element": "INVSL",
+   "domain": "INVSL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Investment support key",
+   "check_table": "T085"
+  },
+  {
+   "pos": 22,
+   "name": "AFASL",
+   "key": false,
+   "data_element": "AFASL",
+   "domain": "AFASL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Depreciation key",
+   "check_table": "T090NA"
+  },
+  {
+   "pos": 23,
+   "name": "NDJAR",
+   "key": false,
+   "data_element": "NDJAR",
+   "domain": "JARAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planned useful life in years",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "NDPER",
+   "key": false,
+   "data_element": "NDPER",
+   "domain": "PERAF",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planned useful life in periods",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "NAPRZ",
+   "key": false,
+   "data_element": "NAPRZ",
+   "domain": "AFPROZ",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Ordinary depreciation percentage rate",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "SAPRZ",
+   "key": false,
+   "data_element": "SAPRZ",
+   "domain": "AFPROZ",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Special depreciation percentage rate",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "WBIND",
+   "key": false,
+   "data_element": "WBIND",
+   "domain": "WBIND",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Index series for replacement values",
+   "check_table": "T094A"
+  },
+  {
+   "pos": 28,
+   "name": "ALIND",
+   "key": false,
+   "data_element": "ALIND",
+   "domain": "WBIND",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Index series for replacement values by age",
+   "check_table": "T094A"
+  },
+  {
+   "pos": 29,
+   "name": "APROP",
+   "key": false,
+   "data_element": "APROP",
+   "domain": "DEC3_4",
+   "type": "DEC",
+   "length": 7,
+   "decimals": 4,
+   "description": "Variable depreciation portion",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "XUNTA",
+   "key": false,
+   "data_element": "XUNTA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Depreciate main asset number totally",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "XAFBE",
+   "key": false,
+   "data_element": "XAFBE",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Depreciation area is deactivated",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "ANLGR",
+   "key": false,
+   "data_element": "ANLGR",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Group asset",
+   "check_table": "ANLH"
+  },
+  {
+   "pos": 33,
+   "name": "J_1AARVKEY",
+   "key": false,
+   "data_element": "J_1AARVKEY",
+   "domain": "J_1AARVKEY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Revaluation Key",
+   "check_table": "J_1AAA2"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "AFABE",
+   "foreign_table": "T093",
+   "foreign_field": "AFABER"
+  },
+  {
+   "field": "AFAPL",
+   "foreign_table": "T096",
+   "foreign_field": "AFAPL"
+  },
+  {
+   "field": "AFASL",
+   "foreign_table": "T090NA",
+   "foreign_field": "AFASL"
+  },
+  {
+   "field": "ALIND",
+   "foreign_table": "T094A",
+   "foreign_field": "WBIND"
+  },
+  {
+   "field": "ANLGR",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLKL",
+   "foreign_table": "ANKA",
+   "foreign_field": "ANLKL"
+  },
+  {
+   "field": "FELEI",
+   "foreign_table": "T082A",
+   "foreign_field": "FELEI"
+  },
+  {
+   "field": "INVSL",
+   "foreign_table": "T085",
+   "foreign_field": "INVSL"
+  },
+  {
+   "field": "J_1AARVKEY",
+   "foreign_table": "J_1AAA2",
+   "foreign_field": "J_1AARVKEY"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "WBIND",
+   "foreign_table": "T094A",
+   "foreign_field": "WBIND"
+  }
+ ]
+}

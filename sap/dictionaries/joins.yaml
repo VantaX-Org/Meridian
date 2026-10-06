@@ -42,6 +42,10 @@ edges:
   # contact persons (KNVK holds both customer and vendor contacts)
   - {parent: KNA1, child: KNVK,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: LFA1, child: KNVK,  join: {LIFNR: LIFNR}, cardinality: many}
+  # sales-area partner functions, tax classification per country, unloading points
+  - {parent: KNA1, child: KNVP,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: KNVI,  join: {KUNNR: KUNNR}, cardinality: many}
+  - {parent: KNA1, child: KNVA,  join: {KUNNR: KUNNR}, cardinality: many}
 
   # ── Business partner ───────────────────────────────────────────────────
   - {parent: BUT000, child: BUT020, join: {PARTNER: PARTNER}, cardinality: one}
@@ -51,6 +55,11 @@ edges:
   - {parent: BUT000, child: BUT0BK, join: {PARTNER: PARTNER}, cardinality: one}
   - {parent: BUT000, child: BUT0ID, join: {PARTNER: PARTNER}, cardinality: many}
   - {parent: BUT000, child: DFKKBPTAXNUM, join: {PARTNER: PARTNER}, cardinality: many}
+  # customer/vendor integration: the link row sits between the BP and the account
+  - {parent: BUT000, child: CVI_CUST_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
+  - {parent: KNA1,   child: CVI_CUST_LINK, join: {CUSTOMER: KUNNR}, cardinality: many}
+  - {parent: BUT000, child: CVI_VEND_LINK, join: {PARTNER_GUID: PARTNER_GUID}, cardinality: many}
+  - {parent: LFA1,   child: CVI_VEND_LINK, join: {VENDOR: LIFNR}, cardinality: many}
 
   # ── Material master ────────────────────────────────────────────────────
   - {parent: MARA, child: MAKT, join: {MATNR: MATNR}, cardinality: one, prefer: {SPRAS: "E"}}
@@ -71,14 +80,22 @@ edges:
   # ── General ledger ─────────────────────────────────────────────────────
   - {parent: SKA1, child: SKAT, join: {KTOPL: KTOPL, SAKNR: SAKNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: SKA1, child: SKB1, join: {SAKNR: SAKNR}, cardinality: many}
+  # chart of accounts and company code above the G/L master (chart-level and company-code-level settings)
+  - {parent: T004, child: SKA1, join: {KTOPL: KTOPL}, cardinality: many}
+  - {parent: T001, child: SKB1, join: {BUKRS: BUKRS}, cardinality: many}
   # cost elements under their controlling area (chart of accounts of the CO area)
   - {parent: TKA01, child: CSKB, join: {KOKRS: KOKRS}, cardinality: many}
+  # company codes assigned to the controlling area (OX19)
+  - {parent: TKA01, child: TKA02, join: {KOKRS: KOKRS}, cardinality: many}
   - {parent: BKPF, child: BSEG, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
   - {parent: SKB1, child: BSEG, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
 
   # ── Asset accounting ───────────────────────────────────────────────────
   - {parent: ANLA, child: ANLB, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
   - {parent: ANLA, child: ANLZ, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: one, filter: {BDATU: "99991231"}}
+  # company code and its asset accounting settings (chart of depreciation) above the asset
+  - {parent: T001, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}
+  - {parent: T093C, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}
 
   # ── Purchasing ─────────────────────────────────────────────────────────
   - {parent: EKKO, child: EKPO, join: {EBELN: EBELN}, cardinality: many}

@@ -1,0 +1,57 @@
+{
+ "table": "TSAB",
+ "description": "Contact persons: standard departments",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ABTNR",
+   "key": true,
+   "data_element": "ABTNR",
+   "domain": "ABTNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Department number",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BU_ABTNR",
+   "key": false,
+   "data_element": "BU_ABTNR",
+   "domain": "BU_ABTNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Department",
+   "check_table": "TB910"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BU_ABTNR",
+   "foreign_table": "TB910",
+   "foreign_field": "ABTNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -569,3 +569,426 @@ rules:
   fix_map:
     __other__: Use a defined fiscal year variant (OB29).
   record_fix_template: 'Controlling area {TKA01.KOKRS}: LMONA is ''{actual_value}''. Correct it in OKKP.'
+
+# ── Depth pass: cost centres, cost elements, activity types, profit centres, internal orders (CO042 onward) ──
+- id: CO042
+  field: CSKS.KOSAR
+  check_class: exists_check
+  target_table: TKA05
+  target_fields:
+  - KOSAR
+  applies_when:
+    CSKS.DATBI: ['99991231']
+  severity: high
+  dimension: validity
+  message: Cost centre category is not defined
+  why_it_matters: The cost centre category (OKA2, table TKA05) proposes the lock indicators, the functional area and the
+    activity types that may be planned on the cost centre. A category that is not defined was loaded or deleted after the
+    cost centre was created.
+  rule_authority: sap_hard_constraint
+  sap_impact: KS02 cannot save the cost centre until the category is valid; activity type checks (CSLA.KSTTY) and
+    derivations that read the category do not work.
+  fix_map:
+    __other__: Assign an existing cost centre category in KS02 (S/4 Manage Cost Centers F1443A) or define the category in
+      OKA2.
+  record_fix_template: 'Cost centre {CSKS.KOSTL} in controlling area {CSKS.KOKRS}: category {CSKS.KOSAR} is not defined.'
+
+- id: CO043
+  field: CSKS.BUKRS
+  fields:
+  - CSKS.BUKRS
+  - CSKS.KOKRS
+  check_class: exists_check
+  target_table: TKA02
+  target_fields:
+  - BUKRS
+  - KOKRS
+  applies_when:
+    CSKS.DATBI: ['99991231']
+  severity: critical
+  dimension: consistency
+  message: Cost centre's company code is not assigned to its controlling area
+  why_it_matters: A cost centre can only belong to a company code that is assigned to its controlling area (OX19, TKA02).
+    A cost centre whose company code moved to another controlling area, or was never assigned, cannot receive postings
+    from that company code.
+  rule_authority: sap_hard_constraint
+  sap_impact: FI postings with the cost centre fail with "company code not assigned to controlling area"; depreciation,
+    payroll and goods issue postings that derive the cost centre stop.
+  fix_map:
+    __other__: Assign the company code to the controlling area in OX19, or create the cost centre under the company code's
+      own controlling area and close this one.
+  record_fix_template: 'Cost centre {CSKS.KOSTL}: company code {CSKS.BUKRS} is not assigned to controlling area
+    {CSKS.KOKRS}.'
+
+- id: CO044
+  field: CSKS.WAERS
+  fields:
+  - CSKS.BUKRS
+  - CSKS.WAERS
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  - WAERS
+  applies_when:
+    CSKS.DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Cost centre currency is not the currency of its company code
+  why_it_matters: KS01 takes the cost centre currency from the company code (T001.WAERS). A different currency means the
+    cost centre was loaded around KS01 or the company code currency was changed afterwards, and the object currency
+    totals no longer match FI.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost centre reports in object currency (KSB1, S_ALR_87013611) disagree with FI; plan/actual comparisons and
+    assessments run in a currency the company code does not post in.
+  fix_map:
+    __other__: Correct the currency to the company code currency with a new validity period in KS02, or recreate the
+      cost centre.
+  record_fix_template: 'Cost centre {CSKS.KOSTL} in company code {CSKS.BUKRS}: currency {CSKS.WAERS} is not the company
+    code currency.'
+
+- id: CO045
+  field: CSKS.PRCTR
+  fields:
+  - CSKS.KOKRS
+  - CSKS.PRCTR
+  check_class: exists_check
+  negate: true
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  target_when:
+    DATBI: ['99991231']
+    LOCK_IND: {populated: true}
+  applies_when:
+    CSKS.DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Active cost centre points to a locked profit centre
+  why_it_matters: Every posting on a cost centre derives the profit centre of the cost centre. A locked profit centre
+    (CEPC.LOCK_IND) refuses postings, so the cost centre is effectively locked too while it looks open.
+  rule_authority: sap_hard_constraint
+  sap_impact: FI and MM postings with the cost centre fail with "profit centre is locked"; depreciation and payroll
+    postings stop for it.
+  fix_map:
+    __other__: Assign an active profit centre to the cost centre in KS02, or remove the lock in KE52 if the profit centre is
+      still in use.
+  record_fix_template: 'Cost centre {CSKS.KOSTL} in controlling area {CSKS.KOKRS}: profit centre {CSKS.PRCTR} is locked.'
+
+- id: CO046
+  field: CSKB.KSTAR
+  fields:
+  - TKA01.KTOPL
+  - CSKB.KSTAR
+  check_class: exists_check
+  negate: true
+  target_table: SKA1
+  target_fields:
+  - KTOPL
+  - SAKNR
+  target_when:
+    XBILK: {populated: true}
+  applies_when:
+    CSKB.KATYP: ['01', '03', '04', '11', '12', '22']
+    CSKB.DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Primary cost element is a balance sheet account
+  why_it_matters: Primary cost and revenue elements (categories 01, 03, 04, 11, 12, 22) must correspond to P&L accounts.
+    A primary cost element whose G/L account is a balance sheet account sends balance sheet postings into Controlling;
+    only category 90 is meant for balance sheet accounts.
+  rule_authority: sap_hard_constraint
+  sap_impact: Balance sheet postings appear as costs on cost centres and orders; CO and the P&L disagree, and the S/4HANA
+    cost element migration rejects the combination.
+  fix_map:
+    __other__: Delete the cost element (KA04) and, if a balance sheet account needs CO assignment, create it with category
+      90; or correct the G/L account type in FS00 if the account is really a P&L account.
+  record_fix_template: 'Cost element {CSKB.KSTAR} (category {CSKB.KATYP}) in controlling area {CSKB.KOKRS}: G/L account in
+    chart {TKA01.KTOPL} is a balance sheet account.'
+
+- id: CO047
+  field: CSKB.KSTAR
+  fields:
+  - TKA01.KTOPL
+  - CSKB.KSTAR
+  check_class: exists_check
+  negate: true
+  target_table: SKA1
+  target_fields:
+  - KTOPL
+  - SAKNR
+  target_when:
+    XBILK: {blank: true}
+  applies_when:
+    CSKB.KATYP: ['90']
+    CSKB.DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Cost element for balance sheet accounts (category 90) is a P&L account
+  why_it_matters: Category 90 is only for balance sheet accounts that should carry a CO assignment (asset acquisitions on
+    orders). On a P&L account it suppresses the normal primary cost posting logic.
+  rule_authority: sap_hard_constraint
+  sap_impact: Expenses on the account are treated as balance sheet values in CO; cost centre reports and settlement
+    exclude them.
+  fix_map:
+    __other__: Change the cost element category to the correct primary category in KA02 (S/4 Manage G/L Account Master
+      Data F0731), or correct the G/L account type in FS00.
+  record_fix_template: 'Cost element {CSKB.KSTAR} (category 90) in controlling area {CSKB.KOKRS}: G/L account in chart
+    {TKA01.KTOPL} is a P&L account.'
+
+- id: CO048
+  field: CSLA.VKSTA
+  fields:
+  - CSLA.KOKRS
+  - CSLA.VKSTA
+  check_class: exists_check
+  target_table: CSKB
+  target_fields:
+  - KOKRS
+  - KSTAR
+  target_when:
+    KATYP: ['43']
+    DATBI: ['99991231']
+  applies_when:
+    CSLA.DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Activity type's allocation cost element is not a category 43 cost element
+  why_it_matters: Internal activity allocation (KB21N, confirmations, overhead calculation) credits the sender cost centre
+    and debits the receiver on the activity type's allocation cost element. KL01 requires it to be a secondary cost
+    element of category 43 (internal activity allocation).
+  rule_authority: sap_hard_constraint
+  sap_impact: Activity allocations and production order confirmations with the activity type stop with a cost element
+    error; plan prices cannot be calculated (KSPI).
+  fix_map:
+    __other__: Create the secondary cost element with category 43 (KA06) or assign an existing one in KL02.
+  record_fix_template: 'Activity type {CSLA.LSTAR} in controlling area {CSLA.KOKRS}: allocation cost element {CSLA.VKSTA}
+    is not a category 43 cost element.'
+
+- id: CO049
+  field: CSLA.LEINH
+  check_class: null_check
+  applies_when:
+    CSLA.DATBI: ['99991231']
+  severity: high
+  dimension: completeness
+  message: Activity type has no activity unit
+  why_it_matters: The activity unit (CSLA.LEINH) is the unit in which quantities of the activity are planned, confirmed
+    and priced. KL01 requires it; a blank unit comes from a load.
+  rule_authority: sap_hard_constraint
+  sap_impact: Routings and confirmations cannot convert quantities; plan price calculation (KSPI) and activity allocation
+    (KB21N) fail.
+  fix_map:
+    __other__: Enter the activity unit in KL02 (S/4 Manage Activity Types).
+  record_fix_template: 'Activity type {CSLA.LSTAR} in controlling area {CSLA.KOKRS}: no activity unit.'
+
+- id: CO050
+  field: CSLA.VKSTA
+  check_class: null_check
+  applies_when:
+    CSLA.DATBI: ['99991231']
+    CSLA.LATYP: ['1']
+  severity: high
+  dimension: completeness
+  message: Manually allocated activity type has no allocation cost element
+  why_it_matters: An activity type of category 1 (manual entry, manual allocation) is allocated by direct activity
+    allocation, which posts on the allocation cost element. Without it, the allocation has no cost element to post on.
+  rule_authority: sap_hard_constraint
+  sap_impact: KB21N and order confirmations with the activity type stop; the activity type cannot be used in routings.
+  fix_map:
+    __other__: Assign a category 43 secondary cost element as allocation cost element in KL02.
+  record_fix_template: 'Activity type {CSLA.LSTAR} in controlling area {CSLA.KOKRS}: no allocation cost element.'
+
+- id: CO051
+  field: CSLA.DATAB
+  check_class: cross_field_check
+  fail_when: '`CSLA.DATAB` > `CSLA.DATBI`'
+  severity: high
+  dimension: validity
+  message: Activity type validity starts after it ends
+  why_it_matters: An activity type record whose valid-from date is after its valid-to date is never valid. It comes from a
+    load or a manual table change and hides the activity type for every period it was meant to cover.
+  rule_authority: sap_hard_constraint
+  sap_impact: The activity type is not found for planning, confirmation or allocation in the intended periods.
+  fix_map:
+    __other__: Correct the validity period in KL02, or delete the invalid record.
+  record_fix_template: 'Activity type {CSLA.LSTAR} in controlling area {CSLA.KOKRS}: valid from {CSLA.DATAB} after valid
+    to {CSLA.DATBI}.'
+
+- id: CO052
+  field: CEPC.SEGMENT
+  check_class: referential_check
+  applies_when:
+    CEPC.DATBI: ['99991231']
+  severity: high
+  dimension: validity
+  message: Profit centre's segment is not defined
+  why_it_matters: The segment (CEPC.SEGMENT, defined in FAGL_SEGM) is derived from the profit centre on every posting in
+    New G/L and drives segment reporting and document splitting. A segment that is not defined cannot be posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings on the profit centre fail segment derivation; document splitting by segment produces errors and
+    segment balance sheets are incomplete.
+  fix_map:
+    __other__: Define the segment in the IMG (Enterprise Structure > Definition > Financial Accounting > Define Segment)
+      or assign an existing segment in KE52.
+  record_fix_template: 'Profit centre {CEPC.PRCTR} in controlling area {CEPC.KOKRS}: segment {CEPC.SEGMENT} is not
+    defined.'
+
+- id: CO053
+  field: CEPC.SEGMENT
+  check_class: null_check
+  applies_when:
+    CEPC.DATBI: ['99991231']
+  severity: low
+  dimension: completeness
+  message: Profit centre has no segment
+  why_it_matters: Segment reporting (IFRS 8) and document splitting by segment derive the segment from the profit centre.
+    A profit centre without one sends its postings to the blank segment, which has to be cleaned up before segment
+    reporting or a S/4HANA conversion with segment splitting.
+  rule_authority: best_practice
+  sap_impact: Segment financial statements show the profit centre's values under a blank segment.
+  fix_map:
+    __other__: Assign the segment in KE52 (S/4 Manage Profit Centers F3516) before any postings in the new period.
+  record_fix_template: 'Profit centre {CEPC.PRCTR} in controlling area {CEPC.KOKRS}: no segment.'
+
+- id: CO054
+  field: CEPC.NPRCTR
+  fields:
+  - CEPC.KOKRS
+  - CEPC.NPRCTR
+  check_class: exists_check
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  severity: medium
+  dimension: consistency
+  message: Successor profit centre does not exist
+  why_it_matters: The successor profit centre (CEPC.NPRCTR) is where postings and master data are redirected once the
+    profit centre is retired. A successor that does not exist in the controlling area points the reorganisation nowhere.
+  rule_authority: sap_hard_constraint
+  sap_impact: Profit centre reorganisation and derivation rules that read the successor fail; the retired profit centre
+    keeps receiving postings.
+  fix_map:
+    __other__: Create the successor profit centre (KE51) or correct the successor in KE52.
+  record_fix_template: 'Profit centre {CEPC.PRCTR} in controlling area {CEPC.KOKRS}: successor {CEPC.NPRCTR} does not
+    exist.'
+
+- id: CO055
+  field: AUFK.OBJNR
+  check_class: exists_check
+  negate: true
+  target_table: COBRB
+  target_fields:
+  - OBJNR
+  applies_when:
+    AUFK.ASTKZ: ['X']
+  severity: low
+  dimension: consistency
+  message: Statistical order has a settlement rule
+  why_it_matters: A statistical order only collects values for reporting; the real posting goes to the cost centre or
+    other true object. It is never settled, so a settlement rule on it means the order was meant to be real or the flag
+    was set after the rule was created.
+  rule_authority: best_practice
+  sap_impact: KO88 skips the order and the rule never takes effect; users read the settlement rule and assume costs move
+    on.
+  fix_map:
+    __other__: Decide whether the order is statistical. If it is, delete the settlement rule in KO02; if not, remove the
+      statistical flag before postings start.
+  record_fix_template: 'Order {AUFK.AUFNR} (type {AUFK.AUART}): statistical but has a settlement rule.'
+
+- id: CO056
+  field: AUFK.KOSTL
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KOSTL
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI: ['99991231']
+  severity: high
+  dimension: consistency
+  message: Order's settlement cost centre does not exist in the controlling area
+  why_it_matters: The cost centre for basic settlement (AUFK.KOSTL) generates the default settlement rule of the order.
+    A cost centre that does not exist in the order's controlling area, or has no current validity, leaves the order
+    without a valid receiver.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement (KO88, KO8G) fails with "receiver does not exist"; the order keeps its costs at period end.
+  fix_map:
+    __other__: Assign a current cost centre of the order's controlling area in KO02 > Assignments, and regenerate the
+      settlement rule.
+  record_fix_template: 'Order {AUFK.AUFNR} in controlling area {AUFK.KOKRS}: settlement cost centre {AUFK.KOSTL} does not
+    exist.'
+
+- id: CO057
+  field: TKA01.KTOPL
+  fields:
+  - TKA01.KTOPL
+  check_class: exists_check
+  target_table: T004
+  target_fields:
+  - KTOPL
+  severity: critical
+  dimension: consistency
+  message: Controlling area's chart of accounts does not exist
+  why_it_matters: Cost elements are defined per chart of accounts of the controlling area (OKKP, TKA01.KTOPL). A chart
+    that does not exist leaves every cost element of the area without a G/L account.
+  rule_authority: sap_hard_constraint
+  sap_impact: No primary cost can flow from FI into the controlling area; KA01 cannot create cost elements.
+  fix_map:
+    __other__: Assign the chart of accounts of the controlling area's company codes in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: chart of accounts {TKA01.KTOPL} does not exist.'
+
+- id: CO058
+  field: TKA02.BUKRS
+  fields:
+  - TKA02.BUKRS
+  - TKA01.KTOPL
+  check_class: exists_check
+  grain: TKA02
+  target_table: T001
+  target_fields:
+  - BUKRS
+  - KTOPL
+  severity: critical
+  dimension: consistency
+  message: Company code uses a different chart of accounts than its controlling area
+  why_it_matters: A controlling area can only control company codes that use its chart of accounts (OKKP). A company code
+    whose chart differs was reassigned in OB62 after the OX19 assignment or loaded around the check.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost elements of the controlling area do not match the company code's G/L accounts; FI postings with CO
+    account assignment fail or post to the wrong cost element.
+  fix_map:
+    __other__: Align the chart of accounts of the company code (OB62) with the controlling area, or assign the company code
+      to a controlling area with its chart (OX19).
+  record_fix_template: 'Company code {TKA02.BUKRS} in controlling area {TKA02.KOKRS}: chart of accounts differs from
+    {TKA01.KTOPL}.'
+
+- id: CO059
+  field: TKA02.BUKRS
+  fields:
+  - TKA02.BUKRS
+  - TKA01.LMONA
+  check_class: exists_check
+  grain: TKA02
+  target_table: T001
+  target_fields:
+  - BUKRS
+  - PERIV
+  severity: critical
+  dimension: consistency
+  message: Company code uses a different fiscal year variant than its controlling area
+  why_it_matters: FI and CO post in the same periods only when the company code and the controlling area use the same
+    fiscal year variant (OKKP, OB37). A mismatch was introduced by a later change in OB37.
+  rule_authority: sap_hard_constraint
+  sap_impact: CO periods do not match FI posting periods; period-end allocations, settlement and the FI-CO reconciliation
+    run on different calendars.
+  fix_map:
+    __other__: Align the fiscal year variant of the company code (OB37) with the controlling area (OKKP) before the next
+      fiscal year.
+  record_fix_template: 'Company code {TKA02.BUKRS} in controlling area {TKA02.KOKRS}: fiscal year variant differs from
+    {TKA01.LMONA}.'

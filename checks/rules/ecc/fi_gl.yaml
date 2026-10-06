@@ -1591,3 +1591,473 @@ rules:
         the same number, before the conversion.
     record_fix_template: 'Secondary cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account {CSKB.KSTAR}
       already exists in chart of accounts {TKA01.KTOPL}.'
+
+  # ── Depth pass: chart of accounts, company code settings and account determination (GL207 onward) ──────────
+  - id: GL207
+    field: SKA1.KTOKS
+    fields:
+    - SKA1.KTOPL
+    - SKA1.KTOKS
+    check_class: exists_check
+    target_table: T077S
+    target_fields:
+    - KTOPL
+    - KTOKS
+    severity: high
+    dimension: consistency
+    message: G/L account group is not defined for the account's chart of accounts
+    why_it_matters: The account group (OBD4, table T077S) is defined per chart of accounts and controls the number range
+      and the field status of the chart-of-accounts and company-code segments. An account whose group is missing for its
+      chart was loaded around FS00 or its group was deleted afterwards.
+    rule_authority: sap_hard_constraint
+    sap_impact: FS00 cannot open the account for change without a valid account group; field status and number range
+      checks do not apply, and the account cannot be copied to a new company code with FS15/FS00.
+    fix_map:
+      __other__: Create the account group for the chart of accounts in OBD4, or move the account to an existing group in
+        FS00 (S/4 Manage G/L Account Master Data F0731).
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): account group {SKA1.KTOKS} is not defined for the
+      chart.'
+
+  - id: GL208
+    field: SKA1.BILKT
+    fields:
+    - T004.KKTPL
+    - SKA1.BILKT
+    check_class: exists_check
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    severity: medium
+    dimension: consistency
+    message: Group account number does not exist in the group chart of accounts
+    why_it_matters: When the chart of accounts is linked to a group chart (OB13, T004.KKTPL), every operational account
+      carries a group account number (SKA1.BILKT) that must be an account of that group chart. Consolidation and group
+      reporting roll the operational balances up through this number.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balances of the account do not reach the consolidation ledger (EC-CS/BCS) or land on an account that does
+      not exist there; group reporting is incomplete.
+    fix_map:
+      __other__: Create the group account in the group chart of accounts (FSP0) or correct the group account number in
+        FS00.
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): group account {SKA1.BILKT} is not in group chart
+      {T004.KKTPL}.'
+
+  - id: GL209
+    field: SKA1.BILKT
+    check_class: cross_field_check
+    fail_when: '`T004.KKTPL`.notna() & `SKA1.BILKT`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Chart of accounts has a group chart but the account has no group account number
+    why_it_matters: A chart of accounts linked to a group chart in OB13 makes the group account number a required field of
+      the chart-of-accounts segment. An account without one was created before the link or loaded around the field
+      check.
+    rule_authority: sap_hard_constraint
+    sap_impact: The account's balances are left out of consolidation and group reporting; FS00 will not save the account
+      until the group account number is filled.
+    fix_map:
+      __other__: Enter the group account number in FS00 > Type/Description, or mass-maintain it with OB_GLACC11 (chart of accounts data).
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): no group account number although the chart is linked
+      to group chart {T004.KKTPL}.'
+
+  - id: GL210
+    field: SKA1.SAKNR
+    fields:
+    - T004.DSPRA
+    - SKA1.KTOPL
+    - SKA1.SAKNR
+    check_class: exists_check
+    target_table: SKAT
+    target_fields:
+    - SPRAS
+    - KTOPL
+    - SAKNR
+    severity: medium
+    dimension: completeness
+    message: G/L account has no text in the maintenance language of its chart of accounts
+    why_it_matters: The maintenance language of the chart of accounts (OB13, T004.DSPRA) is the language FS00 and the
+      financial statement version show by default. An account without a text in that language appears blank in account
+      lists, F4 help and reports run in that language.
+    rule_authority: best_practice
+    sap_impact: Users cannot identify the account in FS00, FS10N and the financial statements; balance sheet and P&L items
+      print without a description.
+    fix_map:
+      __other__: Maintain the short and long text in the chart's maintenance language in FS00 > Type/Description, or
+        translate texts with OB_GLACC13.
+    record_fix_template: 'G/L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): no text in maintenance language {T004.DSPRA}.'
+
+  - id: GL211
+    field: SKB1.SAKNR
+    fields:
+    - T001.KTOPL
+    - SKB1.SAKNR
+    check_class: exists_check
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    severity: critical
+    dimension: consistency
+    message: Company code G/L account has no master record in the company code's chart of accounts
+    why_it_matters: A company code segment (SKB1) only exists under a chart-of-accounts segment (SKA1) in the chart of
+      accounts assigned to the company code (OB62, T001.KTOPL). An orphan company code segment came from a direct table
+      load, a changed chart assignment or an archived chart record.
+    rule_authority: sap_hard_constraint
+    sap_impact: The account cannot be displayed or changed in FS00, postings fail on the missing chart data (P&L or balance
+      sheet type), and balance carry-forward skips it.
+    fix_map:
+      __other__: Create the account in the company code's chart of accounts (FSP0) or remove the orphan company code
+        segment after clearing its balances.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: not in chart of accounts {T001.KTOPL} of
+      the company code.'
+
+  - id: GL212
+    field: SKB1.WAERS
+    check_class: cross_field_check
+    fail_when: '`SKB1.WAERS` != `T001.WAERS`'
+    applies_when:
+      SKB1.MITKZ: ['A', 'D', 'K']
+      SKB1.WAERS: {populated: true}
+    severity: high
+    dimension: consistency
+    message: Reconciliation account is not managed in the company code currency
+    why_it_matters: A reconciliation account for customers, vendors or assets collects every subledger posting in the
+      company code. When its account currency differs from the local currency, only documents in that one currency can be
+      posted to it, so every subledger posting in another currency is rejected.
+    rule_authority: best_practice
+    sap_impact: Invoices and payments in other currencies are rejected because the account accepts postings only in its own
+      currency; foreign currency valuation (FAGL_FCV) and the S/4HANA ledger conversion handle the account as a
+      special case.
+    fix_map:
+      __other__: Change the account currency to the company code currency in FS00 once the account has no balance, or move
+        the subledger accounts to a reconciliation account in local currency.
+    record_fix_template: 'Reconciliation account {SKB1.SAKNR} in company code {SKB1.BUKRS}: account currency {SKB1.WAERS},
+      company code currency {T001.WAERS}.'
+
+  - id: GL213
+    field: SKB1.XSALH
+    check_class: cross_field_check
+    fail_when: '`SKB1.WAERS` != `T001.WAERS`'
+    applies_when:
+      SKB1.XSALH: ['X']
+      SKB1.WAERS: {populated: true}
+    severity: high
+    dimension: consistency
+    message: Account manages balances only in local currency but its account currency is not the local currency
+    why_it_matters: The indicator "only balances in local currency" (SKB1.XSALH) is meant for clearing accounts in local
+      currency such as GR/IR and cash discount clearing. FS00 only allows it when the account currency equals the company
+      code currency; a combination with a foreign account currency comes from a load or a later currency change.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transaction figures are kept only in local currency while documents are entered in the account currency;
+      balances in the account currency cannot be reported, and open item clearing in foreign currency produces wrong
+      differences.
+    fix_map:
+      __other__: Set the account currency to the company code currency or remove the indicator in FS00 > Control Data,
+        after checking the balances with FS10N.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: balances only in local currency set, account
+      currency {SKB1.WAERS} vs company code currency {T001.WAERS}.'
+
+  - id: GL214
+    field: SKB1.WAERS
+    check_class: cross_field_check
+    fail_when: '`SKA1.SAKNR`.notna() & `SKA1.XBILK`.isna() & (`SKB1.WAERS` != `T001.WAERS`)'
+    applies_when:
+      SKB1.WAERS: {populated: true}
+    severity: medium
+    dimension: consistency
+    message: Profit and loss account is managed in a foreign currency
+    why_it_matters: A P&L account in a foreign account currency accepts only documents in that currency. Expenses and
+      revenues normally arrive in many currencies and are reported in local currency, so a foreign account currency on a
+      P&L account is almost always a copy error from another company code.
+    rule_authority: best_practice
+    sap_impact: Postings in any other currency are rejected; at year end the balance is carried forward
+      to retained earnings in local currency only.
+    fix_map:
+      __other__: Set the account currency to the company code currency in FS00 > Control Data (allowed once the account
+        has no postings in the old currency).
+    record_fix_template: 'P&L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: account currency {SKB1.WAERS}, company code
+      currency {T001.WAERS}.'
+
+  - id: GL215
+    field: SKB1.FSTAG
+    fields:
+    - T001.FSTVA
+    - SKB1.FSTAG
+    check_class: exists_check
+    target_table: T004F
+    target_fields:
+    - BUKRS
+    - FSTAG
+    severity: high
+    dimension: consistency
+    message: Field status group is not defined in the company code's field status variant
+    why_it_matters: The field status group (SKB1.FSTAG) is looked up in the field status variant assigned to the company
+      code (OBC5, T001.FSTVA; groups in T004F, OBC4). A group that the variant does not define leaves the entry screen
+      without field control.
+    rule_authority: sap_hard_constraint
+    sap_impact: FB01, FB50 and MIRO stop with "field status group not defined" when the account is posted; required fields
+      such as cost centre or assignment are not enforced.
+    fix_map:
+      __other__: Define the field status group in the company code's field status variant (OBC4) or assign an existing
+        group in FS00 > Create/bank/interest.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: field status group {SKB1.FSTAG} is not in
+      field status variant {T001.FSTVA}.'
+
+  - id: GL216
+    field: SKB1.SAKNR
+    fields:
+    - SKB1.BUKRS
+    - SKB1.SAKNR
+    check_class: exists_check
+    target_table: KNB1
+    target_fields:
+    - BUKRS
+    - AKONT
+    applies_when:
+      SKB1.MITKZ: ['D']
+    severity: low
+    dimension: consistency
+    message: Customer reconciliation account is not assigned to any customer in the company code
+    why_it_matters: A reconciliation account that no customer uses is either obsolete or was meant for customers that were
+      created with another account. Unused reconciliation accounts invite wrong assignments in XD01/BP and clutter the
+      migration mapping.
+    rule_authority: best_practice
+    sap_impact: No functional error; the account appears in the balance sheet mapping and in the S/4HANA reconciliation
+      account checks without carrying any subledger.
+    fix_map:
+      __other__: Block the account for posting (FS00, XSPEB) and flag it for deletion if it carries no balance, or assign
+        it to the customers it was intended for.
+    record_fix_template: 'Customer reconciliation account {SKB1.SAKNR} in company code {SKB1.BUKRS}: no customer uses it.'
+
+  - id: GL217
+    field: SKB1.SAKNR
+    fields:
+    - SKB1.BUKRS
+    - SKB1.SAKNR
+    check_class: exists_check
+    target_table: LFB1
+    target_fields:
+    - BUKRS
+    - AKONT
+    applies_when:
+      SKB1.MITKZ: ['K']
+    severity: low
+    dimension: consistency
+    message: Vendor reconciliation account is not assigned to any vendor in the company code
+    why_it_matters: A vendor reconciliation account that no vendor uses is either obsolete or was meant for vendors that
+      were created with another account. Unused reconciliation accounts invite wrong assignments in XK01/BP and clutter the
+      migration mapping.
+    rule_authority: best_practice
+    sap_impact: No functional error; the account appears in the balance sheet mapping and in the S/4HANA reconciliation
+      account checks without carrying any subledger.
+    fix_map:
+      __other__: Block the account for posting (FS00, XSPEB) and flag it for deletion if it carries no balance, or assign
+        it to the vendors it was intended for.
+    record_fix_template: 'Vendor reconciliation account {SKB1.SAKNR} in company code {SKB1.BUKRS}: no vendor uses it.'
+
+  - id: GL218
+    field: SKB1.ALTKT
+    fields:
+    - T001.KTOP2
+    - SKB1.ALTKT
+    check_class: exists_check
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    severity: medium
+    dimension: consistency
+    message: Alternative account number does not exist in the company code's country chart of accounts
+    why_it_matters: With a country chart of accounts assigned to the company code (OB62, T001.KTOP2), the alternative
+      account number (SKB1.ALTKT) maps the operational account to the statutory account. FS00 validates it against the
+      country chart; a number that is not there was loaded or survived a change of country chart.
+    rule_authority: sap_hard_constraint
+    sap_impact: Statutory financial statements built on the country chart (S_ALR_87012284 with the alternative account
+      number, local GAAP reports) miss the account's balance.
+    fix_map:
+      __other__: Create the account in the country chart (FSP0) or correct the alternative account number in FS00 >
+        Control Data.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: alternative account {SKB1.ALTKT} is not in
+      country chart {T001.KTOP2}.'
+
+  - id: GL219
+    field: SKB1.ALTKT
+    check_class: cross_field_check
+    fail_when: '`T001.KTOP2`.notna() & `SKB1.ALTKT`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Company code has a country chart of accounts but the account has no alternative account number
+    why_it_matters: Statutory reporting from the country chart of accounts reads the alternative account number of each
+      operational account. An account without one is invisible to the country chart.
+    rule_authority: best_practice
+    sap_impact: Local GAAP financial statements, statutory audit files (SAF-T, FEC) and tax reports that use the country
+      chart omit the account's balance.
+    fix_map:
+      __other__: Enter the alternative account number in FS00 > Control Data, or mass-maintain it with OB_GLACC12 (company code data).
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: no alternative account number although
+      country chart {T001.KTOP2} is assigned.'
+
+  - id: GL220
+    field: SKB1.ZUAWA
+    check_class: referential_check
+    severity: medium
+    dimension: validity
+    message: Sort key is not defined
+    why_it_matters: The sort key (SKB1.ZUAWA, table TZUN, OB16) defines how the assignment field of line items is filled
+      by default. A key that is not in TZUN leaves the assignment field empty or unpredictable.
+    rule_authority: sap_hard_constraint
+    sap_impact: Line items on the account get no default assignment, so open item clearing (F.13, F-03) cannot match them
+      automatically and line item lists sort without meaning.
+    fix_map:
+      __other__: Assign a standard sort key (for example 001 posting date, 000 assignment from the document) in FS00 >
+        Control Data, or define the key in OB16.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: sort key {SKB1.ZUAWA} is not defined.'
+
+  - id: GL221
+    field: T030.KONTS
+    fields:
+    - T030.KTOPL
+    - T030.KONTS
+    check_class: exists_check
+    grain: T030
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    target_when:
+      XBILK: {populated: true}
+    applies_when:
+      T030.KTOSL: ['BIL']
+    severity: critical
+    dimension: consistency
+    message: Retained earnings account is missing or is not a balance sheet account
+    why_it_matters: The retained earnings account (OB53, T030 transaction key BIL) receives the P&L result at balance carry
+      forward. It must be a balance sheet account of the same chart of accounts; a P&L or missing account makes the year-end
+      close impossible.
+    rule_authority: sap_hard_constraint
+    sap_impact: Balance carry-forward (FAGLGVTR, F.16) stops for the P&L statement account type; the opening balance of the
+      new fiscal year shows no retained earnings.
+    fix_map:
+      __other__: Assign an existing balance sheet account as retained earnings account in OB53.
+    record_fix_template: 'Chart of accounts {T030.KTOPL}, P&L statement account type {T030.KOMOK}: retained earnings account
+      {T030.KONTS} is missing or not a balance sheet account.'
+
+  - id: GL222
+    field: SKA1.GVTYP
+    fields:
+    - SKA1.KTOPL
+    - SKA1.GVTYP
+    check_class: exists_check
+    target_table: T030
+    target_fields:
+    - KTOPL
+    - KOMOK
+    target_when:
+      KTOSL: ['BIL']
+    severity: critical
+    dimension: consistency
+    message: P&L statement account type has no retained earnings account
+    why_it_matters: Every P&L account names a P&L statement account type (SKA1.GVTYP). Balance carry-forward looks up the
+      retained earnings account for that type in OB53 (T030, key BIL); a type without an entry has nowhere to carry the
+      result.
+    rule_authority: sap_hard_constraint
+    sap_impact: FAGLGVTR / F.16 ends with "no retained earnings account specified" and the year-end close cannot complete.
+    fix_map:
+      __other__: Define the retained earnings account for the P&L statement account type in OB53, or change the account's
+        P&L statement account type in FS00.
+    record_fix_template: 'P&L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): P&L statement account type {SKA1.GVTYP} has no
+      retained earnings account in OB53.'
+
+  - id: GL223
+    field: SKA1.SAKNR
+    fields:
+    - SKA1.KTOPL
+    - SKA1.SAKNR
+    check_class: exists_check
+    target_table: CSKA
+    target_fields:
+    - KTOPL
+    - KSTAR
+    applies_when:
+      SKA1.XBILK: {blank: true}
+    severity: medium
+    dimension: completeness
+    message: P&L account has no primary cost element
+    why_it_matters: Postings to a P&L account reach Controlling only through a primary cost element with the same number
+      (KA01, CSKA). Without it, costs and revenues on the account are invisible to cost centre, order and profitability
+      reporting. In S/4HANA the account must carry a G/L account type of primary cost or a non-operating type.
+    rule_authority: best_practice
+    sap_impact: Expenses are posted in FI without a CO line; cost centre reports (S_ALR_87013611) and the CO-FI
+      reconciliation show differences; the S/4HANA conversion classifies the account as non-operating.
+    fix_map:
+      __other__: Create the primary cost element (KA01, category 01 or 11) or confirm the account is non-operating and
+        document it.
+    record_fix_template: 'P&L account {SKA1.SAKNR} (chart {SKA1.KTOPL}): no primary cost element.'
+
+  - id: GL224
+    field: SKB1.SAKNR
+    fields:
+    - T001.SPRAS
+    - T001.KTOPL
+    - SKB1.SAKNR
+    check_class: exists_check
+    target_table: SKAT
+    target_fields:
+    - SPRAS
+    - KTOPL
+    - SAKNR
+    severity: low
+    dimension: completeness
+    message: G/L account has no text in the company code language
+    why_it_matters: Line item reports, correspondence and statutory reports in the company code use the company code
+      language (T001.SPRAS). An account without a text in that language prints without a description there.
+    rule_authority: best_practice
+    sap_impact: Local users see an empty account name in FS10N, FBL3N and the financial statements; statutory documents in
+      the local language show account numbers only.
+    fix_map:
+      __other__: Maintain the text in the company code language in FS00 > Type/Description, or translate texts with
+        OB_GLACC13.
+    record_fix_template: 'G/L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: no text in company code language
+      {T001.SPRAS}.'
+
+  - id: GL225
+    field: T001.KTOPL
+    fields:
+    - T001.KTOPL
+    check_class: exists_check
+    grain: T001
+    target_table: T004
+    target_fields:
+    - KTOPL
+    severity: critical
+    dimension: consistency
+    message: Company code's chart of accounts does not exist
+    why_it_matters: Every G/L account of a company code lives in the chart of accounts assigned to it in OB62. A chart that
+      does not exist (deleted, renamed or never transported) leaves the company code without valid G/L accounts.
+    rule_authority: sap_hard_constraint
+    sap_impact: No document can be posted in the company code; FS00 cannot create company code segments.
+    fix_map:
+      __other__: Transport or create the chart of accounts (OB13) or assign an existing chart in OB62.
+    record_fix_template: 'Company code {T001.BUKRS}: chart of accounts {T001.KTOPL} does not exist.'
+
+  - id: GL226
+    field: T001.KTOP2
+    fields:
+    - T001.KTOP2
+    check_class: exists_check
+    grain: T001
+    target_table: T004
+    target_fields:
+    - KTOPL
+    severity: high
+    dimension: consistency
+    message: Company code's country chart of accounts does not exist
+    why_it_matters: The country chart (OB62, T001.KTOP2) is the target of every alternative account number in the company
+      code. A country chart that does not exist cannot hold them.
+    rule_authority: sap_hard_constraint
+    sap_impact: FS00 rejects alternative account numbers for the company code and statutory reporting from the country chart
+      returns nothing.
+    fix_map:
+      __other__: Create the country chart of accounts (OB13) or correct the assignment in OB62.
+    record_fix_template: 'Company code {T001.BUKRS}: country chart of accounts {T001.KTOP2} does not exist.'
