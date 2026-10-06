@@ -148,7 +148,7 @@ def test_model_api(app_engine, monkeypatch):
         h = {"X-User-Role": "analyst"}
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
             ref = (await c.get(f"{base}/reference", headers=h)).json()
-            assert len(ref["l1"]) == 2
+            assert len(ref["l1"]) == 13
 
             r = await c.post(f"{base}/models", headers=h, json={"name": "Mine", "from": "reference"})
             assert r.status_code == 201 and r.json()["version_no"] == 1
