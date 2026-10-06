@@ -1,0 +1,685 @@
+{
+ "table": "AFIH",
+ "description": "Maintenance order header",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "AUFNR",
+   "key": true,
+   "data_element": "AUFNR",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order Number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 4,
+   "name": "ARTPR",
+   "key": false,
+   "data_element": "ARTPR",
+   "domain": "ARTPR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority Type",
+   "check_table": "T356A"
+  },
+  {
+   "pos": 5,
+   "name": "PRIOK",
+   "key": false,
+   "data_element": "PRIOK",
+   "domain": "PRIOK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": "T356"
+  },
+  {
+   "pos": 6,
+   "name": "EQUNR",
+   "key": false,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 7,
+   "name": "BAUTL",
+   "key": false,
+   "data_element": "BAUTL",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Assembly",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 8,
+   "name": "ILOAN",
+   "key": false,
+   "data_element": "ILOAN",
+   "domain": "ILOAN",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Location and account assignment for technical object",
+   "check_table": "ILOA"
+  },
+  {
+   "pos": 9,
+   "name": "ILOAI",
+   "key": false,
+   "data_element": "ILOAI",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ILOA Individual",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ANLZU",
+   "key": false,
+   "data_element": "ANLZU",
+   "domain": "ANLZU",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Syst.Condition",
+   "check_table": "T357M"
+  },
+  {
+   "pos": 11,
+   "name": "IWERK",
+   "key": false,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T399I"
+  },
+  {
+   "pos": 12,
+   "name": "INGPR",
+   "key": false,
+   "data_element": "INGRP",
+   "domain": "INGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planner Group for Customer Service and Plant Maintenance",
+   "check_table": "T024I"
+  },
+  {
+   "pos": 13,
+   "name": "APGRP",
+   "key": false,
+   "data_element": "VAGRP",
+   "domain": "VAGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Responsible planner group/department",
+   "check_table": "T024A"
+  },
+  {
+   "pos": 14,
+   "name": "PM_OBJTY",
+   "key": false,
+   "data_element": "PM_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type of CIM Resources for Work Center",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "GEWRK",
+   "key": false,
+   "data_element": "LGWID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the Work Center",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 16,
+   "name": "KUNUM",
+   "key": false,
+   "data_element": "KUNUM",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 17,
+   "name": "ANING",
+   "key": false,
+   "data_element": "ANING",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Reponsible for System",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "GAUZT",
+   "key": false,
+   "data_element": "GAUZT",
+   "domain": "FLTP",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Planned downtime in hours",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "GAUEH",
+   "key": false,
+   "data_element": "MAUEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for Breakdown Duration",
+   "check_table": "T006"
+  },
+  {
+   "pos": 20,
+   "name": "ANLBD",
+   "key": false,
+   "data_element": "ANLBD",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date until which the system is available",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "ANLVD",
+   "key": false,
+   "data_element": "ANLVD",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date from which the system is available",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "ANLBZ",
+   "key": false,
+   "data_element": "ANLBZ",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time until which the system is available",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "ANLVZ",
+   "key": false,
+   "data_element": "ANLVZ",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time from Which System is Available",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "INSPK",
+   "key": false,
+   "data_element": "INSPK",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Responsible for Technical Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "DATAN",
+   "key": false,
+   "data_element": "DATAN",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Technical Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "WARPL",
+   "key": false,
+   "data_element": "WARPL",
+   "domain": "WARPL",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Maintenance Plan",
+   "check_table": "MPLA"
+  },
+  {
+   "pos": 27,
+   "name": "ABNUM",
+   "key": false,
+   "data_element": "ABNUM",
+   "domain": "ABNUM",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Maintenance Plan Call Number",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "WAPOS",
+   "key": false,
+   "data_element": "WAPOS",
+   "domain": "POSNU",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Maintenance item",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "LAUFN",
+   "key": false,
+   "data_element": "LAUFN",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Order number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 30,
+   "name": "OBKNR",
+   "key": false,
+   "data_element": "OBJKNR",
+   "domain": "OBJKN",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Object list number",
+   "check_table": "SER00"
+  },
+  {
+   "pos": 31,
+   "name": "REVNR",
+   "key": false,
+   "data_element": "REVNI",
+   "domain": "REVNI",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Revision of Plant Maintenance and Customer Service",
+   "check_table": "T352R"
+  },
+  {
+   "pos": 32,
+   "name": "ADDAT",
+   "key": false,
+   "data_element": "ADDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "PM Order: Reference Date",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "ADUHR",
+   "key": false,
+   "data_element": "ADUHR",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Reference Date",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "IPHAS",
+   "key": false,
+   "data_element": "PM_PHASE",
+   "domain": "PM_PHASE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintenance Processing Phase",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "ILART",
+   "key": false,
+   "data_element": "ILA",
+   "domain": "ILART",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Maintenance activity type",
+   "check_table": "T353I"
+  },
+  {
+   "pos": 36,
+   "name": "QMNUM",
+   "key": false,
+   "data_element": "QMNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Message Number",
+   "check_table": "QMEL"
+  },
+  {
+   "pos": 37,
+   "name": "HISDA",
+   "key": false,
+   "data_element": "HISDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "PM request: History date",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "AKKNZ",
+   "key": false,
+   "data_element": "AKKNZ",
+   "domain": "AKKNZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Order Category Indicator Plant Maintenance",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "PLKNZ",
+   "key": false,
+   "data_element": "AUF_PLKNZ",
+   "domain": "AUF_PLKNZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Maintenance order planning indicator",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "SERIALNR",
+   "key": false,
+   "data_element": "GERNR",
+   "domain": "GERNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Serial Number",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "SERMAT",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 42,
+   "name": "DEVICEID",
+   "key": false,
+   "data_element": "DEVICEID",
+   "domain": "DEVICEID",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Additional Device Data",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "SCREENTY",
+   "key": false,
+   "data_element": "SCRTP",
+   "domain": "SCRTP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Scenario or Subscreen Category",
+   "check_table": "TQBT"
+  },
+  {
+   "pos": 44,
+   "name": "ADPSP",
+   "key": false,
+   "data_element": "ADDCOMPARE_CORE",
+   "domain": "ADDCOMPARE_CORE",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Reference Element PM/PS",
+   "check_table": "*"
+  },
+  {
+   "pos": 45,
+   "name": "RSUPG",
+   "key": false,
+   "data_element": "RSUPG",
+   "domain": "XFIELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Upgrade Order Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "/ISDFPS/OBJNR",
+   "key": false,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "*"
+  },
+  {
+   "pos": 48,
+   "name": "/ISDFPS/MEQUI",
+   "key": false,
+   "data_element": "/ISDFPS/MEQUI",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Master Equipment",
+   "check_table": "*"
+  },
+  {
+   "pos": 50,
+   "name": "UII",
+   "key": false,
+   "data_element": "UII_CHAR72",
+   "domain": "UII_CHAR72",
+   "type": "CHAR",
+   "length": 72,
+   "decimals": 0,
+   "description": "Unique Item Identifier",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ANLZU",
+   "foreign_table": "T357M",
+   "foreign_field": "ANLZU"
+  },
+  {
+   "field": "APGRP",
+   "foreign_table": "T024A",
+   "foreign_field": "FEVOR"
+  },
+  {
+   "field": "ARTPR",
+   "foreign_table": "T356A",
+   "foreign_field": "ARTPR"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BAUTL",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "GAUEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GEWRK",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "ILART",
+   "foreign_table": "T353I",
+   "foreign_field": "ILART"
+  },
+  {
+   "field": "ILOAN",
+   "foreign_table": "ILOA",
+   "foreign_field": "ILOAN"
+  },
+  {
+   "field": "INGPR",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "KUNUM",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBKNR",
+   "foreign_table": "SER00",
+   "foreign_field": "OBKNR"
+  },
+  {
+   "field": "PRIOK",
+   "foreign_table": "T356",
+   "foreign_field": "PRIOK"
+  },
+  {
+   "field": "QMNUM",
+   "foreign_table": "QMEL",
+   "foreign_field": "QMNUM"
+  },
+  {
+   "field": "REVNR",
+   "foreign_table": "T352R",
+   "foreign_field": "REVNR"
+  },
+  {
+   "field": "SCREENTY",
+   "foreign_table": "TQBT",
+   "foreign_field": "SCREENTY"
+  },
+  {
+   "field": "SERMAT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "WARPL",
+   "foreign_table": "MPLA",
+   "foreign_field": "WARPL"
+  }
+ ]
+}

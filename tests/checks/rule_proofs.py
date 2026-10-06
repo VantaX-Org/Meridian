@@ -371,8 +371,14 @@ def _prove_exists(rule, dictionary, cand, live) -> tuple[str, str]:
     for i, f in enumerate(rule["target_fields"]):
         target[f"{t}.{f}"] = [df.loc[0, refs[i]]]  # as placed: a join field carries a row suffix
     for f, cond in (rule.get("target_when") or {}).items():
-        target[f"{t}.{f}"] = ([str(float(cond["gt"]) + 1)] if "gt" in cond else ["" if cond.get("blank") else "X"]) \
-            if isinstance(cond, dict) else [str((cond or [""])[0])]
+        if isinstance(cond, dict) and "older_than_days" in cond:
+            target[f"{t}.{f}"] = ["20000101"]  # a date older than any threshold
+        elif isinstance(cond, dict) and "within_days" in cond:
+            target[f"{t}.{f}"] = [TODAY]
+        elif isinstance(cond, dict) and "gt" in cond:
+            target[f"{t}.{f}"] = [str(float(cond["gt"]) + 1)]
+        else:
+            target[f"{t}.{f}"] = ["" if cond.get("blank") else "X"] if isinstance(cond, dict) else [str((cond or [""])[0])]
     extra = pd.DataFrame(target)
     have = frames.frames.get(t)
     frames.frames[t] = extra if have is None else pd.concat([have, extra], ignore_index=True)

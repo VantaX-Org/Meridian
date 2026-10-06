@@ -1,0 +1,129 @@
+{
+ "table": "T370P",
+ "description": "Measuring Point Category",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MPTYP",
+   "key": true,
+   "data_element": "IMRC_MPTYP",
+   "domain": "IMRC_MPTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Measuring Point Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SUNIQ",
+   "key": false,
+   "data_element": "IMRC_SUNIQ",
+   "domain": "IMRC_SUNIQ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Uniqueness of Measuring Point Position Number",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "CODCT",
+   "key": false,
+   "data_element": "IMRC_CODCT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Measurement Reading Valuation Code",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 5,
+   "name": "MRMES",
+   "key": false,
+   "data_element": "IMRC_MRMES",
+   "domain": "IMRC_MSTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Online Message Category when Measurement Range Exceeded",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "TOLER",
+   "key": false,
+   "data_element": "IMRC_TOLER",
+   "domain": "INT4_NOS9",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Tolerance Period for a Measurement Time in the Future",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VALID",
+   "key": false,
+   "data_element": "XFELD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Checkbox",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "LFE_IND",
+   "key": false,
+   "data_element": "EAML_LFE_IND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Object Belongs to Linear Asset Management",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "COND_IND",
+   "key": false,
+   "data_element": "GHO_COND_IND",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator:Conditions Active for the Measurement Point Object",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "CODCT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

@@ -1,0 +1,228 @@
+{
+ "table": "IHPA",
+ "description": "Plant Maintenance: Partners",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJNR",
+   "key": true,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 3,
+   "name": "PARVW",
+   "key": true,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 4,
+   "name": "COUNTER",
+   "key": true,
+   "data_element": "I_COUNT",
+   "domain": "NUM6",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Counter for differentiation 6-digit",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "OBTYP",
+   "key": false,
+   "data_element": "J_OBTYP",
+   "domain": "J_OBTYP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Object Category",
+   "check_table": "TJ03"
+  },
+  {
+   "pos": 6,
+   "name": "PARNR",
+   "key": false,
+   "data_element": "I_PARNR",
+   "domain": "I_PARNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Partner",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "INHER",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ERZEIT",
+   "key": false,
+   "data_element": "ERZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time, at Which Record Was Added",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "AEZEIT",
+   "key": false,
+   "data_element": "AEZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Change",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "KZLOESCH",
+   "key": false,
+   "data_element": "KZLOESCH",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Delete Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "*"
+  },
+  {
+   "pos": 16,
+   "name": "TZONSP",
+   "key": false,
+   "data_element": "TZONSP",
+   "domain": "TZNZONE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time zone for partner",
+   "check_table": "TTZZ"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "OBTYP",
+   "foreign_table": "TJ03",
+   "foreign_field": "OBTYP"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "TZONSP",
+   "foreign_table": "TTZZ",
+   "foreign_field": "TZONE"
+  }
+ ]
+}

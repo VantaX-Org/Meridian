@@ -10,12 +10,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Banner, Button, Chip, DataTable, DetailDrawer, EmptyState, Field, Input, Mono, PageHeader, SectionCard, Select,
-  SegmentedControl, StatusBadge, TableSkeleton, Tally, type AuroraColumnMeta, type ChipTone,
+  Banner, Button, DataTable, DetailDrawer, EmptyState, Field, Input, PageHeader, SectionCard, Select,
+  SegmentedControl, TableSkeleton, Tally, ReasonButton, type AuroraColumnMeta,
 } from "@/components/ui-core";
+import { Menu, MenuItem } from "@/components/aurora";
+import { MoreHorizontal } from "lucide-react";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { downloadCsv } from "@/lib/actions";
-import { AuditLogTable, DestructiveConfirm } from "./parts";
+import { AuditLogTable } from "./parts";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getAuditEntries } from "@/lib/api/audit";
@@ -37,7 +39,6 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
 };
-const ROLE_TONE: Record<UserRole, ChipTone> = { admin: "danger", manager: "info", steward: "info", ai_reviewer: "warning", approver: "warning", analyst: "neutral", viewer: "neutral", auditor: "neutral" };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 const HREF = "/admin?tab=users";
 const WEEK = 7 * 24 * 3600 * 1000;
@@ -50,7 +51,6 @@ export function UsersSurface() {
   const [mountedAt] = useState(() => Date.now());
   const [invite, setInvite] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [deleting, setDeleting] = useState<User | null>(null);
 
   const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers, enabled: canManage });
   const matrix = useQuery({ queryKey: ["auth.roles"], queryFn: getRoleMatrix, enabled: view === "roles" });
@@ -65,7 +65,7 @@ export function UsersSurface() {
 
   const del = useMutation({
     mutationFn: (u: User) => deleteUser(u.id),
-    onSuccess: (_, u) => { toast.success(`${u.name} removed`); setDeleting(null); refresh(); },
+    onSuccess: (_, u) => { toast.success(`${u.name} removed`); setEditing(null); refresh(); },
     onError: (e) => toast.error((e as { response?: { status?: number } }).response?.status === 409
       ? "This user is referenced by audit or stewardship records. Deactivate them instead." : `Not removed. ${apiErrorMessage(e)}`),
   });
@@ -73,14 +73,15 @@ export function UsersSurface() {
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     { id: "user", header: "User", meta: meta({ sticky: "start", width: 260 }), cell: ({ row }) => (
       <span><strong>{row.original.name}</strong><div className="ui-micro">{row.original.email}</div></span>) },
-    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => <Chip tone={ROLE_TONE[row.original.role]}>{ROLE_META[row.original.role]?.label ?? row.original.role}</Chip> },
-    { id: "active", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={row.original.is_active ? "ok" : "idle"}>{row.original.is_active ? "Active" : "Inactive"}</StatusBadge> },
+    { id: "role", header: "Role", meta: meta({ width: 130 }), cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
+    { id: "active", header: "Status", meta: meta({ width: 110 }), cell: ({ row }) => <span>{row.original.is_active ? "Active" : "Suspended"}</span> },
     { id: "login", header: "Last sign-in", meta: meta({ width: 130 }), cell: ({ row }) => row.original.last_login ? relativeTime(row.original.last_login) : "Never" },
     { id: "since", header: "Member since", meta: meta({ width: 130 }), cell: ({ row }) => relativeTime(row.original.created_at) },
-    { id: "actions", header: "", meta: meta({ width: 190, align: "end" }), cell: ({ row }) => canManage ? (
-      <span className="ui-form__actions" style={{ justifyContent: "flex-end", flexWrap: "nowrap", paddingTop: 0 }}>
-        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(row.original); }}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleting(row.original); }}>Remove</Button>
+    { id: "actions", header: "", meta: meta({ width: 56, align: "end" }), cell: ({ row }) => canManage ? (
+      <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <Menu label={`Actions for ${row.original.name}`} trigger={<MoreHorizontal size={16} aria-hidden />} triggerClassName="aurora-topbar__icon aurora-focus-ring" width={160}>
+          <MenuItem onClick={() => setEditing(row.original)}>Edit</MenuItem>
+        </Menu>
       </span>) : null },
   ], [canManage]);
 
@@ -121,12 +122,7 @@ export function UsersSurface() {
         {invite ? <InviteForm onDone={() => { setInvite(false); refresh(); }} /> : null}
       </DetailDrawer>
       <DetailDrawer open={!!editing} onClose={() => setEditing(null)} ariaLabel="Edit user" header={editing ? <div className="ui-drawer-head"><h2 className="ui-drawer-head__title">{editing.name}</h2></div> : null}>
-        {editing ? <EditForm key={editing.id} user={editing} onDone={() => { setEditing(null); refresh(); }} /> : null}
-      </DetailDrawer>
-      <DetailDrawer open={!!deleting} onClose={() => setDeleting(null)} ariaLabel="Remove user">
-        {deleting ? <DestructiveConfirm title={`Remove ${deleting.name}`} expected={deleting.email}
-          body={<>Type <Mono>{deleting.email}</Mono> to remove this user. Their stewardship history stays attributed to them.</>}
-          confirmLabel="Remove user" cancelLabel="Keep" busy={del.isPending} onConfirm={() => del.mutate(deleting)} onCancel={() => setDeleting(null)} /> : null}
+        {editing ? <EditForm key={editing.id} user={editing} onDone={() => { setEditing(null); refresh(); }} onRemove={() => del.mutate(editing)} removing={del.isPending} /> : null}
       </DetailDrawer>
     </div>
   );
@@ -145,7 +141,7 @@ function RolesView({ matrix, users }: { matrix: Record<string, string[]> | undef
               <tbody>
                 {ROLES.map((r) => (
                   <tr key={r}>
-                    <td><Chip tone={ROLE_TONE[r]}>{ROLE_META[r].label}</Chip><div className="ui-micro">{ROLE_META[r].desc}</div></td>
+                    <td>{ROLE_META[r].label}<div className="ui-micro">{ROLE_META[r].desc}</div></td>
                     {actions.map((a) => <td key={a} style={{ textAlign: "center" }}>{matrix[r]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="ui-visually-hidden">Not allowed</span>}</td>)}
                   </tr>
                 ))}
@@ -184,7 +180,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function EditForm({ user, onDone }: { user: User; onDone: () => void }) {
+function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
   const [role, setRole] = useState<UserRole>(user.role); const [isActive, setActive] = useState(user.is_active);
   const m = useMutation({ mutationFn: () => updateUser(user.id, { role, is_active: isActive }),
     onSuccess: () => { toast.success(`${user.name} saved`); onDone(); }, onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`) });
@@ -197,6 +193,7 @@ function EditForm({ user, onDone }: { user: User; onDone: () => void }) {
         <span>Active. {isActive ? "This user can sign in." : "Sign-in is blocked."}</span>
       </label>
       <div className="ui-form__actions"><Button type="submit" disabled={m.isPending}>Save</Button><Button type="button" variant="ghost" onClick={onDone}>Close</Button></div>
+      <ReasonButton label="Remove user" prompt={`Why remove ${user.name}? Their stewardship history stays attributed to them.`} disabled={removing} onConfirm={onRemove} />
     </form>
   );
 }

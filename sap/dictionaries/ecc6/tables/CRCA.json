@@ -1,0 +1,390 @@
+{
+ "table": "CRCA",
+ "description": "Work Center Capacity Allocation",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJTY",
+   "key": true,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJID",
+   "key": true,
+   "data_element": "CR_OBJID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the resource",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 4,
+   "name": "CANUM",
+   "key": true,
+   "data_element": "CR_CAPNUM",
+   "domain": "NUM4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Capacity allocation number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ENDDA",
+   "key": false,
+   "data_element": "ENDDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "AEDAT_KAPA",
+   "key": false,
+   "data_element": "AEDTM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AENAM_KAPA",
+   "key": false,
+   "data_element": "USRNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "KAPID",
+   "key": false,
+   "data_element": "KAPID",
+   "domain": "KAPID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Capacity ID",
+   "check_table": "KAKO"
+  },
+  {
+   "pos": 10,
+   "name": "FORK1",
+   "key": false,
+   "data_element": "AP_FORM_K1",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula for setup capacity requirements",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 11,
+   "name": "FORK2",
+   "key": false,
+   "data_element": "AP_FORM_K2",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula for processing capacity requirements",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 12,
+   "name": "FORK3",
+   "key": false,
+   "data_element": "AP_FORM_K3",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula for teardown capacity requirements",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 13,
+   "name": "FORKN",
+   "key": false,
+   "data_element": "AP_FORM_KN",
+   "domain": "AP_FORMEL",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Formula for cap. reqmts. for other types of int. processing",
+   "check_table": "TC25"
+  },
+  {
+   "pos": 14,
+   "name": "PROZT",
+   "key": false,
+   "data_element": "AP_PROZ_KA",
+   "domain": "AWAHR",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Percentage share of available capacity",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "VERT1",
+   "key": false,
+   "data_element": "CR_VERT1",
+   "domain": "CR_VERTL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Distribution of capacity requirements (Planned/prod.order)",
+   "check_table": "TC29"
+  },
+  {
+   "pos": 16,
+   "name": "VERT2",
+   "key": false,
+   "data_element": "CR_VERT2",
+   "domain": "CR_VERTL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for distributing requirements over processing time",
+   "check_table": "TC29"
+  },
+  {
+   "pos": 17,
+   "name": "VERT3",
+   "key": false,
+   "data_element": "CR_VERT3",
+   "domain": "CR_VERTL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Distribution key for teardown requirements",
+   "check_table": "TC29"
+  },
+  {
+   "pos": 18,
+   "name": "VERTN",
+   "key": false,
+   "data_element": "CR_VERTN",
+   "domain": "CR_VERTL",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Distr.cap.reqmts (plant maint.,process order, network)",
+   "check_table": "TC29"
+  },
+  {
+   "pos": 19,
+   "name": "CAROL",
+   "key": false,
+   "data_element": "CR_CAPROLE",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Role of work center capacity",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "ISTBED_KZ",
+   "key": false,
+   "data_element": "CY_ISTBEDKZ",
+   "domain": "CY_ISTBEDKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Calculation of actual capacity requirements",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "VGWT1",
+   "key": false,
+   "data_element": "CY_VGWT1",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Actual requirements for operation segment setup",
+   "check_table": "*"
+  },
+  {
+   "pos": 22,
+   "name": "VGWT2",
+   "key": false,
+   "data_element": "CY_VGWT2",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Actual requirements for operation segment processing",
+   "check_table": "*"
+  },
+  {
+   "pos": 23,
+   "name": "VGWT3",
+   "key": false,
+   "data_element": "CY_VGWT3",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Actual capacity requirements for operation segment teardown",
+   "check_table": "*"
+  },
+  {
+   "pos": 24,
+   "name": "VGWTN",
+   "key": false,
+   "data_element": "CY_VGWTN",
+   "domain": "PARAMID",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Actual capacity requirements for in-house processing",
+   "check_table": "*"
+  },
+  {
+   "pos": 25,
+   "name": "CAP_BACKFLUSH_SU",
+   "key": false,
+   "data_element": "CAP_BACKFLUSH",
+   "domain": "CAP_BACKFLUSH",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control: Calc. of Remaining Req./Duration After Confirmation",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "CAP_BACKFLUSH_PR",
+   "key": false,
+   "data_element": "CAP_BACKFLUSH",
+   "domain": "CAP_BACKFLUSH",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control: Calc. of Remaining Req./Duration After Confirmation",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "CAP_BACKFLUSH_TD",
+   "key": false,
+   "data_element": "CAP_BACKFLUSH",
+   "domain": "CAP_BACKFLUSH",
+   "type": "NUMC",
+   "length": 1,
+   "decimals": 0,
+   "description": "Control: Calc. of Remaining Req./Duration After Confirmation",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FORK1",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORK2",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORK3",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "FORKN",
+   "foreign_table": "TC25",
+   "foreign_field": "IDENT"
+  },
+  {
+   "field": "KAPID",
+   "foreign_table": "KAKO",
+   "foreign_field": "KAPID"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "VERT1",
+   "foreign_table": "TC29",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "VERT2",
+   "foreign_table": "TC29",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "VERT3",
+   "foreign_table": "TC29",
+   "foreign_field": "VERTL"
+  },
+  {
+   "field": "VERTN",
+   "foreign_table": "TC29",
+   "foreign_field": "VERTL"
+  }
+ ]
+}

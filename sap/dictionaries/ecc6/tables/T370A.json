@@ -1,0 +1,98 @@
+{
+ "table": "T370A",
+ "description": "Activity Category for PM Lists",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TCODE",
+   "key": true,
+   "data_element": "TCODE",
+   "domain": "TCODE",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Transaction Code",
+   "check_table": "TSTC"
+  },
+  {
+   "pos": 3,
+   "name": "PROGRAMM",
+   "key": false,
+   "data_element": "PROGNAME",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "ABAP Program Name",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 4,
+   "name": "AKTYP",
+   "key": false,
+   "data_element": "AKTYP",
+   "domain": "AKTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Activity category in SAP transaction",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TABARG",
+   "key": false,
+   "data_element": "TABNAME",
+   "domain": "AS4TAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Table Name",
+   "check_table": "*"
+  },
+  {
+   "pos": 6,
+   "name": "TABNAME",
+   "key": false,
+   "data_element": "TABNAME",
+   "domain": "AS4TAB",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Table Name",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PROGRAMM",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  },
+  {
+   "field": "TCODE",
+   "foreign_table": "TSTC",
+   "foreign_field": "TCODE"
+  }
+ ]
+}

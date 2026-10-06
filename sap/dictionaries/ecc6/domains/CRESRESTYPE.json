@@ -1,0 +1,32 @@
+{
+ "domain": "CRESRESTYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "P",
+   "high": null,
+   "text": "Production"
+  },
+  {
+   "low": "T",
+   "high": null,
+   "text": "Shipment"
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Warehouse"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Handling unit"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

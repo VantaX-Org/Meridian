@@ -1,0 +1,319 @@
+{
+ "table": "STZU",
+ "description": "Permanent BOM data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "STLTY",
+   "key": true,
+   "data_element": "STLTY",
+   "domain": "STLTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Category",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "STLNR",
+   "key": true,
+   "data_element": "STNUM",
+   "domain": "STNUM",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bill of Material",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "STLAN",
+   "key": false,
+   "data_element": "STLAN",
+   "domain": "STLAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Usage",
+   "check_table": "T416"
+  },
+  {
+   "pos": 5,
+   "name": "EXSTL",
+   "key": false,
+   "data_element": "EXSTL",
+   "domain": "EXSTL",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "BOM group",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ALTST",
+   "key": false,
+   "data_element": "ALTST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Alternatives",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VARST",
+   "key": false,
+   "data_element": "VARST",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: variants",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KBAUS",
+   "key": false,
+   "data_element": "KBAUS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: configurable BOM",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "LTXSP",
+   "key": false,
+   "data_element": "LTXSP_CP",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Long Text Language, for Creation of a Change Document",
+   "check_table": "T002"
+  },
+  {
+   "pos": 10,
+   "name": "STLBE",
+   "key": false,
+   "data_element": "STLBE",
+   "domain": "BEGRU",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization group for bills of material",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "ZTEXT",
+   "key": false,
+   "data_element": "CSTEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "BOM text",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "WRKAN",
+   "key": false,
+   "data_element": "WRKAN",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant Where BOM or Alternative/Variant Created",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 13,
+   "name": "HISDT",
+   "key": false,
+   "data_element": "HISDT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: BOM with history (date)",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "HISSR",
+   "key": false,
+   "data_element": "HISSR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: BOM with history (technical status)",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "HISTK",
+   "key": false,
+   "data_element": "HISTK",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: BOM was changed with history",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "STUEZ",
+   "key": false,
+   "data_element": "STUEZ",
+   "domain": "CIM_COUNT",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Maximum number of counters in a BOM",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "MAXKN",
+   "key": false,
+   "data_element": "MAXKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Maximum number of nodes within a BOM",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "KZPLN",
+   "key": false,
+   "data_element": "KZPLN",
+   "domain": "CHAR01",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: BOM can only be changed from the routing",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "AENRL",
+   "key": false,
+   "data_element": "AENRL",
+   "domain": "AENNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Last change number",
+   "check_table": "*"
+  },
+  {
+   "pos": 20,
+   "name": "CLSMX",
+   "key": false,
+   "data_element": "CS_CLSMX",
+   "domain": "NUM8",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Maximum classification number",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "STLDT",
+   "key": false,
+   "data_element": "STLDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the BOM was last changed",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "STLTM",
+   "key": false,
+   "data_element": "CS_STLTM",
+   "domain": "UZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time when BOM was last changed",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "MAXKAN",
+   "key": false,
+   "data_element": "MAXKAN",
+   "domain": "STKAN",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Maximum edge",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "TSTMP",
+   "key": false,
+   "data_element": "CS_TSTAMP",
+   "domain": "TZNTSTMPS",
+   "type": "DEC",
+   "length": 15,
+   "decimals": 0,
+   "description": "Time Stamp: BOM Change Relevant to Explosion",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "LTXSP",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STLAN",
+   "foreign_table": "T416",
+   "foreign_field": "STLAN"
+  },
+  {
+   "field": "WRKAN",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

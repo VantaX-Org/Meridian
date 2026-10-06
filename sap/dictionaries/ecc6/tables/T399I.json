@@ -1,0 +1,91 @@
+{
+ "table": "T399I",
+ "description": "Planning plant parameters",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "IWERK",
+   "key": true,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "DTVOR",
+   "key": false,
+   "data_element": "DTVOR",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default current date for start/end dates in PM order",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "DAUNE",
+   "key": false,
+   "data_element": "DAUNORE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Normal duration/unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 5,
+   "name": "ARBEH",
+   "key": false,
+   "data_element": "ARBEITE",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit for work",
+   "check_table": "T006"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ARBEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "DAUNE",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

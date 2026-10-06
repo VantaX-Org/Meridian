@@ -1,0 +1,27 @@
+{
+ "domain": "PLMIPU",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "+",
+   "high": null,
+   "text": "Required entry"
+  },
+  {
+   "low": ".",
+   "high": null,
+   "text": "Optional entry"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "No entry"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

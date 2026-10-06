@@ -19,6 +19,7 @@ import {
   Tally, TableSkeleton, type AuroraColumnMeta, type Status,
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
+import { materialHref } from "@/lib/material-views";
 import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -143,8 +144,8 @@ function Body({ f }: { f: FindingDetailData }) {
         { label: "Records affected", value: f.affected_count, href: issuesHref, tone: f.severity === "critical" ? "danger" : f.severity === "high" ? "high" : undefined,
           verdict: f.affected_count === 0 ? "No record fails this check." : `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()} records fail.` },
         { label: "Of total", value: f.total_count, href: "#sample", verdict: "Records this check examined." },
-        { label: "Pass rate", value: pct, unit: "%", href: "#runs",
-          verdict: pct === null ? "No pass rate for this check." : `${(f.total_count - f.affected_count).toLocaleString()} of ${f.total_count.toLocaleString()} records pass.` },
+        { label: "Records passing", value: pct === null ? null : f.total_count - f.affected_count, unit: ` of ${f.total_count.toLocaleString()}`, href: "#runs",
+          verdict: pct === null ? "No pass rate for this check." : `${pct}% of records pass.` },
         { label: "Cost at risk", value: null, text: f.cost_at_risk == null ? undefined : money(f.cost_at_risk), href: "#remediation", delta: costDelta,
           verdict: f.cost_at_risk == null ? "No cost model for this check." : `${f.cost_formula ?? "Worked out from the records that fail."}${f.cost_formula?.endsWith(".") ? "" : "."}`.replace("..", ".") },
       ]} />
@@ -212,17 +213,21 @@ function RuleSection({ f, anomaly, fieldChecked }: { f: Finding; anomaly: boolea
     queryKey: ["rules.for-check", f.module, f.check_id], enabled: !anomaly, retry: false, meta: { ignoreError: true },
     queryFn: () => getRules({ module: f.module, search: f.check_id, limit: 10 }),
   });
-  const r = rule.data?.rules.find((x) => x.name.split(":")[0] === f.check_id);
+  const r = rule.data?.rules.find((x) => x.name.split(":")[0] === f.check_id || x.id === f.check_id);
   const invalid = Object.entries(d.distinct_invalid_values ?? {}).sort((a, b) => b[1] - a[1]);
   const labels = Object.entries(f.rule_context?.valid_values_with_labels ?? {});
   const conditions = r?.conditions == null ? [] : Array.isArray(r.conditions) ? r.conditions : [r.conditions];
+  const checkClass = f.check_class ?? (conditions as { check_class?: unknown }[]).map((c) => c?.check_class).find((v): v is string => typeof v === "string" && !!v) ?? null;
+  const heading = f.business_name ?? f.details?.message ?? f.check_id;
+  const expectedText = labels.length ? `One of ${labels.length.toLocaleString()} valid values`
+    : [r?.description, f.details?.message].find((t) => t && t !== heading) ?? "Every record passes this check";
   const rows: { k: string; v: ReactNode; mono?: boolean }[] = anomaly
     ? [{ k: "Measure", v: METRIC[d.metric ?? ""] ?? d.metric ?? "—" },
        { k: "Expected", v: d.expected && d.expected.low != null ? `${d.expected.low.toLocaleString()} to ${d.expected.high?.toLocaleString() ?? "—"}` : "Seen in earlier downloads" },
        { k: "Observed", v: typeof d.observed === "number" ? d.observed.toLocaleString() : Array.isArray(d.observed) ? `${d.observed.length.toLocaleString()} values` : "—" }]
-    : [{ k: "Check type", v: f.check_class ? <span title={f.check_class}>{checkClassLabel(f.check_class)}</span> : "—" },
+    : [{ k: "Check type", v: checkClass ? <span title={checkClass}>{checkClassLabel(checkClass)}</span> : "—" },
        { k: "Field", v: fieldChecked ? <FieldChip {...splitField(fieldChecked)} /> : "—" },
-       { k: "Expected", v: labels.length ? `One of ${labels.length.toLocaleString()} valid values` : (f.details?.message ?? "As the rule defines") },
+       { k: "Expected", v: expectedText },
        { k: "Observed", v: `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()} records fail` },
        ...(r ? [{ k: "Source", v: r.source === "yaml" ? (r.source_yaml ? `checks/rules/${r.source_yaml}` : "Shipped rule") : "Defined in HQ", mono: r.source === "yaml" }] : [])];
   return (
@@ -337,9 +342,12 @@ function Sample({ f, fieldChecked }: { f: Finding; fieldChecked: string | null }
   const isFailing = (c: string) => !!fieldChecked && fieldOf(c) === fieldOf(fieldChecked);
   const columns = useMemo<ColumnDef<SampleRow, unknown>[]>(() => [
     { id: "key", header: "Record", meta: meta({ sticky: "start", minWidth: 200, mono: true }), cell: ({ row }) => (
-      row.original.issueId
-        ? <Link className="ui-link" href={`/workbench/record/${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
-        : <Mono>{row.original.key}</Mono>) },
+      <>
+        {row.original.issueId
+          ? <Link className="ui-link" href={`/workbench/record/${row.original.issueId}`} onClick={(e) => e.stopPropagation()}><Mono>{row.original.key}</Mono></Link>
+          : <Mono>{row.original.key}</Mono>}
+        {materialHref(f.module, row.original.key) ? <> <Link className="ui-link" href={materialHref(f.module, row.original.key)!} onClick={(e) => e.stopPropagation()}>Material</Link></> : null}
+      </>) },
     ...cols.map((c): ColumnDef<SampleRow, unknown> => ({
       id: `f:${c}`, meta: meta({ minWidth: 120, mono: true }),
       header: () => <span title={isFailing(c) ? "The field this check judges" : undefined}><FieldChip {...splitField(c)} />{isFailing(c) ? <span className="ui-micro"> fails</span> : null}</span>,

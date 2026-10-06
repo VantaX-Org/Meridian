@@ -1,0 +1,32 @@
+{
+ "domain": "ACTXY",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Description of parameter from standard value key"
+  },
+  {
+   "low": "0",
+   "high": null,
+   "text": "No description"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Description of activity type"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Description of activity from Customizing"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

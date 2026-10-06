@@ -1,0 +1,122 @@
+{
+ "table": "CRTX",
+ "description": "Text for the Work Center or Production Resource/Tool",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "OBJTY",
+   "key": true,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJID",
+   "key": true,
+   "data_element": "CR_OBJID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the resource",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 4,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 5,
+   "name": "AEDAT_TEXT",
+   "key": false,
+   "data_element": "AEDTM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Changed on",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "AENAM_TEXT",
+   "key": false,
+   "data_element": "USRNAME",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Name",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "KTEXT",
+   "key": false,
+   "data_element": "CR_KTEXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short description",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KTEXT_UP",
+   "key": false,
+   "data_element": "CR_KTEXTUP",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Short description in capitals",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "OBJID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  }
+ ]
+}

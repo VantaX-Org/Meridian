@@ -1,0 +1,88 @@
+{
+ "table": "T417",
+ "description": "Material Provision Indicators",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BEIKZ",
+   "key": true,
+   "data_element": "BEIKZ",
+   "domain": "BEIKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Material Provision Indicators",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KZBKD",
+   "key": false,
+   "data_element": "KZBKD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Material to be Provided by Customer",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KZBLF",
+   "key": false,
+   "data_element": "KZBLF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Material to be Provided by Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KZBRS",
+   "key": false,
+   "data_element": "KZBRS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: A&D-Specific Material Provision",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ADSUB_DEFDLV",
+   "key": false,
+   "data_element": "ADSUB_DEFDLV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: forward exchange component (deferred delivery)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

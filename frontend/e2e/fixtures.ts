@@ -46,6 +46,7 @@ export const test = base.extend<{ app: Page }>({
     await page.route("**/api/v1/jobs/events", (r) => r.fulfill({ status: 204 }));
     await mockInbox(page);
     await mockSteward(page);
+    await mockMaterial(page);
     await provide(page);
   },
 });
@@ -117,6 +118,18 @@ async function mockSteward(page: Page) {
   await page.route("**/api/v1/dedup/preview", (r) => r.fulfill(json({
     merge_preview: { "LFA1.LIFNR": pair("V4", "V5"), "LFA1.NAME1": pair("Delta Supplies", "Epsilon Parts"), "LFA1.ORT01": pair("Cape Town", "Pretoria") },
   })));
+}
+
+/** Material 360 endpoints are not in the recording: two fictional materials, one with a supersession loop and one plain. */
+const MATERIAL = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "material-360.json"), "utf8")) as
+  Record<string, Record<string, unknown>>;
+
+async function mockMaterial(page: Page) {
+  await page.route(/\/api\/v1\/materials\/(\d+)(?:\/(findings|supersession|duplicates))?(?:\?|$)/, (r) => {
+    const [, id, sub] = /\/materials\/(\d+)(?:\/(\w+))?/.exec(new URL(r.request().url()).pathname) ?? [];
+    const body = MATERIAL[id]?.[sub ?? "material"];
+    return body ? r.fulfill(json(body)) : r.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"Not found"}' });
+  });
 }
 
 export { expect };
