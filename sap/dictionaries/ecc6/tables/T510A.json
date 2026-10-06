@@ -1,0 +1,81 @@
+{
+ "table": "T510A",
+ "description": "Pay Scale Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MOLGA",
+   "key": true,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 3,
+   "name": "TRFAR",
+   "key": true,
+   "data_element": "TRFAR",
+   "domain": "TRFAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay scale type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "TARTX",
+   "key": false,
+   "data_element": "TARTX",
+   "domain": "TEXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Name of pay scale type (Basic Pay infotype)",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ITRFA",
+   "key": false,
+   "data_element": "ITRFA",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Internal pay scale type",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  }
+ ]
+}

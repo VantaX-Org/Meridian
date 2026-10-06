@@ -1,0 +1,62 @@
+{
+ "domain": "AHBAS",
+ "type": "CHAR",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1AH",
+   "high": null,
+   "text": "Receipt / Import: Foreign Trade document - Import"
+  },
+  {
+   "low": "1LI",
+   "high": null,
+   "text": "Receipt/Import: Vendor Master"
+  },
+  {
+   "low": "1BE",
+   "high": null,
+   "text": "Receipt/Import: Purchase Order Document"
+  },
+  {
+   "low": "1LA",
+   "high": null,
+   "text": "Receipt/Import: Inbound Delivery"
+  },
+  {
+   "low": "1WE",
+   "high": null,
+   "text": "Receipt/Import: Goods Receipt Document"
+  },
+  {
+   "low": "2AH",
+   "high": null,
+   "text": "Dispatch / Export: Foreign Trade Document - Export"
+  },
+  {
+   "low": "2KU",
+   "high": null,
+   "text": "Dispatch/Export: Customer Master"
+  },
+  {
+   "low": "2VA",
+   "high": null,
+   "text": "Dispatch/Export: Sales Document"
+  },
+  {
+   "low": "2LI",
+   "high": null,
+   "text": "Dispatch/Export: Outbound Delivery Document"
+  },
+  {
+   "low": "2FA",
+   "high": null,
+   "text": "Dispatch/Export: Billing Document"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

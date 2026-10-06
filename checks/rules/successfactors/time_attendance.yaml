@@ -261,3 +261,64 @@ rules:
     fix_map:
       __other__: Reject the time sheet and ask the employee to record the hours on the day they were worked.
     record_fix_template: 'Employee {TIMESHEET.USERID}: approved working time on {TIMESHEET.DATE}, which is in the future.'
+  - id: TIME020
+    field: TIMESHEET.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: medium
+    dimension: consistency
+    message: Time record belongs to a user without employment
+    why_it_matters: A time record must belong to an employee. Orphaned time records cannot be loaded to the SAP time infotypes.
+    rule_authority: best_practice
+    sap_impact: The record is rejected by the load and hours are lost.
+    fix_map:
+      __other__: Link the record to an employee or archive it.
+    record_fix_template: Time record for user {TIMESHEET.USERID} has no employment record. Review.
+  - id: TIME021
+    field: TIMESHEET.COST_CENTER
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9]{1,10}$
+    severity: medium
+    dimension: validity
+    message: Time record cost centre does not fit the 10 characters of the SAP cost centre
+    why_it_matters: Time is allocated to cost centres in SAP controlling (KOSTL, 10 characters).
+    rule_authority: best_practice
+    sap_impact: The cost allocation of the hours is rejected in the replication.
+    fix_map:
+      __other__: Use a cost centre of at most 10 characters or add a mapping in the integration.
+    record_fix_template: 'Time record for user {TIMESHEET.USERID}: cost centre does not fit the SAP cost centre. Correct the record.'
+  - id: TIME022
+    field: TIMESHEET.HOURS
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.HOURS` + `TIMESHEET.OVERTIME_HOURS`) > 24
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Worked and overtime hours together exceed 24 on one day
+    why_it_matters: One calendar day has 24 hours. Worked time plus overtime above 24 is a data error.
+    rule_authority: best_practice
+    sap_impact: Payroll pays hours that cannot have been worked.
+    fix_map:
+      __other__: Correct the hours.
+    record_fix_template: 'Time record for user {TIMESHEET.USERID}: worked and overtime hours exceed 24 for one day. Correct the record.'
+  - id: TIME023
+    field: TIMESHEET.OVERTIME_HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.OVERTIME_HOURS` > `TIMESHEET.HOURS`'
+    require_populated: true
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Overtime hours exceed the total hours of the day
+    why_it_matters: Overtime is part of the hours worked, so it cannot be larger than the hours of the same day.
+    rule_authority: best_practice
+    sap_impact: Overtime pay is calculated on hours that were not worked.
+    fix_map:
+      __other__: Correct the hours or the overtime.
+    record_fix_template: 'Time record for user {TIMESHEET.USERID}: overtime exceeds the hours of the day. Correct the record.'

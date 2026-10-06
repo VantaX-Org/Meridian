@@ -187,6 +187,19 @@ class ConfigIntelligencePersistence:
         await db.commit()
         return len(variants)
 
+    async def save_derivation(self, db: AsyncSession, tenant_id: str, version_id: str, system_type: str,
+                              document: dict) -> None:
+        """Store the derived process model of a dataset version (idempotent upsert)."""
+        await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant_id)})
+        await db.execute(
+            text("INSERT INTO process_derivations (id, tenant_id, version_id, system_type, document) "
+                 "VALUES (:id, :tid, :vid, :st, CAST(:doc AS jsonb)) "
+                 "ON CONFLICT (tenant_id, version_id) DO UPDATE SET system_type = EXCLUDED.system_type, "
+                 "document = EXCLUDED.document, created_at = now()"),
+            {"id": str(uuid.uuid4()), "tid": str(tenant_id), "vid": str(version_id), "st": system_type,
+             "doc": json.dumps(document)})
+        await db.commit()
+
     async def save_drift(
         self,
         db: AsyncSession,

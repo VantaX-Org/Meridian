@@ -1,0 +1,331 @@
+{
+ "table": "T606",
+ "description": "Legal Control: License Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "GEGRU",
+   "key": true,
+   "data_element": "GEGRU",
+   "domain": "GEGRU",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Legal regulation for legal control",
+   "check_table": "T606G"
+  },
+  {
+   "pos": 3,
+   "name": "GEART",
+   "key": true,
+   "data_element": "GEART",
+   "domain": "GEART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "License type",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KNDSP",
+   "key": false,
+   "data_element": "KNDSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specific customers for Legal Control",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MATSP",
+   "key": false,
+   "data_element": "MATSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specif. export control class for Legal Control",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SEDSP",
+   "key": false,
+   "data_element": "SEDSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "AERP/SED: Relevance for AERP/SED message, NAFTA",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SEDIM",
+   "key": false,
+   "data_element": "SEDIM",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "AERP/SED: Official code for type of control master record",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "HWTSP",
+   "key": false,
+   "data_element": "HWTSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Legal Control: Max. Export License Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "LNDCO",
+   "key": false,
+   "data_element": "LNDCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specific ctries of destination for Legal Contrl",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "EXACO",
+   "key": false,
+   "data_element": "EXACO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specific bus.trans.type for Legal Control",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "EXTRA",
+   "key": false,
+   "data_element": "EXAKO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevance for EXTRASTAT Declaration",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "KOBRA",
+   "key": false,
+   "data_element": "KOBKO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevance for KOBRA Declaration",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "KURST",
+   "key": false,
+   "data_element": "KURST_CURR",
+   "domain": "KURST",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Exchange rate type",
+   "check_table": "TCURV"
+  },
+  {
+   "pos": 14,
+   "name": "TRMCO",
+   "key": false,
+   "data_element": "TRMCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity of specific term of payment for export control",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "TXTGR",
+   "key": false,
+   "data_element": "TXTGR",
+   "domain": "TXTGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Text Determination Procedure",
+   "check_table": "TTXG"
+  },
+  {
+   "pos": 16,
+   "name": "PRZCO",
+   "key": false,
+   "data_element": "PRZCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Max. value excess in percent for Legal Control",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ANZCO",
+   "key": false,
+   "data_element": "ANZCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Legal Control: Quantity update indicator",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "AMILI",
+   "key": false,
+   "data_element": "AMILI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator for exclusively military use",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "ADITI",
+   "key": false,
+   "data_element": "ADITI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Additive check for several partner functions",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "BELSP",
+   "key": false,
+   "data_element": "BELSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specific sales documents for export control",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "VBDSP",
+   "key": false,
+   "data_element": "VBDSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Valid only for affiliated companies for export",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "MATCO",
+   "key": false,
+   "data_element": "MATCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specific materials for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "COICO",
+   "key": false,
+   "data_element": "COICO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specif. import code nos for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "LIFCO",
+   "key": false,
+   "data_element": "LIFCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Validity for specif. vendors for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "SHCCO",
+   "key": false,
+   "data_element": "SHCCO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Active Special Characteristics Code for Goods",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "GEGRU",
+   "foreign_table": "T606G",
+   "foreign_field": "GEGRU"
+  },
+  {
+   "field": "KURST",
+   "foreign_table": "TCURV",
+   "foreign_field": "KURST"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "TXTGR",
+   "foreign_table": "TTXG",
+   "foreign_field": "TXTGR"
+  }
+ ]
+}

@@ -1,0 +1,527 @@
+{
+ "table": "T685B",
+ "description": "Condition Types: Additional Data for Sending Output",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KAPPL",
+   "key": true,
+   "data_element": "KAPPL",
+   "domain": "KAPPL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Application",
+   "check_table": "T681Z"
+  },
+  {
+   "pos": 3,
+   "name": "KSCHL",
+   "key": true,
+   "data_element": "NA_KSCHL",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Output Type",
+   "check_table": "T685"
+  },
+  {
+   "pos": 4,
+   "name": "PARAB",
+   "key": false,
+   "data_element": "NA_PARAB",
+   "domain": "NA_PARAB",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Output independent of partner",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "PRKEY",
+   "key": false,
+   "data_element": "NA_PRKEY",
+   "domain": "NA_PRKEY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Selection criteria for maintaining print parameters",
+   "check_table": "TNADP"
+  },
+  {
+   "pos": 6,
+   "name": "MAXTDNAME",
+   "key": false,
+   "data_element": "TDOBNAME",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Name",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VSZTP",
+   "key": false,
+   "data_element": "NA_VSZTP",
+   "domain": "NA_VSZTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dispatch time",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "NACHA",
+   "key": false,
+   "data_element": "NA_NACHA",
+   "domain": "NA_NACHA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message transmission medium",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TXTFL",
+   "key": false,
+   "data_element": "XFELD",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Checkbox",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TPROG",
+   "key": false,
+   "data_element": "NA_TPROG",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Program for creating or changing an output text",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 11,
+   "name": "TROUT",
+   "key": false,
+   "data_element": "NA_RONAM",
+   "domain": "NA_RONAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of routine to be called up in the processing program",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "PPROG",
+   "key": false,
+   "data_element": "NA_PPROG",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Program for deriving action parameters",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 13,
+   "name": "PROUT",
+   "key": false,
+   "data_element": "NA_RONAM",
+   "domain": "NA_RONAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of routine to be called up in the processing program",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "PARVW",
+   "key": false,
+   "data_element": "PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Role",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 15,
+   "name": "ERLV1",
+   "key": false,
+   "data_element": "NA_ERLV1",
+   "domain": "NA_ERLVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Timing 1 (periodic job) not allowed",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ERLV2",
+   "key": false,
+   "data_element": "NA_ERLV2",
+   "domain": "NA_ERLVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Timing 2 (job and time entry) not allowed",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "ERLV3",
+   "key": false,
+   "data_element": "NA_ERLV3",
+   "domain": "NA_ERLVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Timing 3 (application transaction) not allowed",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "ERLV4",
+   "key": false,
+   "data_element": "NA_ERLV4",
+   "domain": "NA_ERLVZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Timing 4 (immediate) not allowed",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "KNZUG",
+   "key": false,
+   "data_element": "NA_KNZUG",
+   "domain": "NA_KNZUG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Access to output conditions",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "NBEAR",
+   "key": false,
+   "data_element": "NA_NBEAR",
+   "domain": "NA_NBEAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Output cannot be changed manually",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "MEHRF",
+   "key": false,
+   "data_element": "NA_MEHRF",
+   "domain": "NA_MEHRF",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Multiple issuing of output",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "TDARMOD",
+   "key": false,
+   "data_element": "SYARMOD",
+   "domain": "SYARMOD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Print Archive Mode",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "ARCOBJART",
+   "key": false,
+   "data_element": "SAEOBJART",
+   "domain": "SADC10_DV",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Document type",
+   "check_table": "TOADV"
+  },
+  {
+   "pos": 24,
+   "name": "APROG",
+   "key": false,
+   "data_element": "NA_APROG",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Program for setting changed output indicator",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 25,
+   "name": "AROUT",
+   "key": false,
+   "data_element": "NA_RONAM",
+   "domain": "NA_RONAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Name of routine to be called up in the processing program",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "OBJNAM",
+   "key": false,
+   "data_element": "SO_OBJ_NAM",
+   "domain": "SO_OBJ_NAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of document, folder or distribution list",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "OBJPRI",
+   "key": false,
+   "data_element": "SO_OBJ_PRI",
+   "domain": "SO_OBJ_PRI",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document priority",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "OBJCP",
+   "key": false,
+   "data_element": "SO_OBJ_CP",
+   "domain": "SO_FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Document cannot be changed",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "FNDTIMPRG",
+   "key": false,
+   "data_element": "NA_TIMPRG",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Program for determining output timing",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 30,
+   "name": "FNDTIMRTN",
+   "key": false,
+   "data_element": "NA_TIMRTN",
+   "domain": "NA_RONAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "FORM routine for time determinatn (using VSDAT VSURA VSURB)",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "NOPROG",
+   "key": false,
+   "data_element": "NA_NOPROG",
+   "domain": "CHAR01",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No processing program necessary",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "SORTPRG",
+   "key": false,
+   "data_element": "NA_SORTPRG",
+   "domain": "PROGNAME",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Program for determining sort criteria in output control rec.",
+   "check_table": "TRDIR"
+  },
+  {
+   "pos": 33,
+   "name": "SORTRTN",
+   "key": false,
+   "data_element": "NA_SORTRTN",
+   "domain": "NA_RONAM",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "FORM routine for determining sort crit. in output cont. rec",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "NOPROTOCOL",
+   "key": false,
+   "data_element": "NA_NOPROT",
+   "domain": "SYST_FLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "WFMC: Flag: do not write a processing log",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "SORT1",
+   "key": false,
+   "data_element": "NA_SORTFLD",
+   "domain": "CHAR61",
+   "type": "CHAR",
+   "length": 61,
+   "decimals": 0,
+   "description": "WFMC: Field name in structure",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "SORT2",
+   "key": false,
+   "data_element": "NA_SORTFLD",
+   "domain": "CHAR61",
+   "type": "CHAR",
+   "length": 61,
+   "decimals": 0,
+   "description": "WFMC: Field name in structure",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "SORT3",
+   "key": false,
+   "data_element": "NA_SORTFLD",
+   "domain": "CHAR61",
+   "type": "CHAR",
+   "length": 61,
+   "decimals": 0,
+   "description": "WFMC: Field name in structure",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "STRATEGY",
+   "key": false,
+   "data_element": "CSTRATEGY",
+   "domain": "CSTRATEGY",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Communication strategy",
+   "check_table": "TCSTR"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "APROG",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  },
+  {
+   "field": "ARCOBJART",
+   "foreign_table": "TOADV",
+   "foreign_field": "AR_OBJECT"
+  },
+  {
+   "field": "FNDTIMPRG",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  },
+  {
+   "field": "KAPPL",
+   "foreign_table": "T681Z",
+   "foreign_field": "KAPPL"
+  },
+  {
+   "field": "KSCHL",
+   "foreign_table": "T685",
+   "foreign_field": "KSCHL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PPROG",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  },
+  {
+   "field": "PRKEY",
+   "foreign_table": "TNADP",
+   "foreign_field": "PRKEY"
+  },
+  {
+   "field": "SORTPRG",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  },
+  {
+   "field": "STRATEGY",
+   "foreign_table": "TCSTR",
+   "foreign_field": "STRATEGY"
+  },
+  {
+   "field": "TPROG",
+   "foreign_table": "TRDIR",
+   "foreign_field": "NAME"
+  }
+ ]
+}

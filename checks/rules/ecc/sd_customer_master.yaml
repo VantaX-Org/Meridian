@@ -1728,3 +1728,157 @@ rules:
     fix_map:
       __other__: Choose defined goods receiving hours (XD02 > Unloading points; customising OVL4).
     record_fix_template: 'Customer {KNVA.KUNNR}: goods receiving hours ID is not defined in TVWA.'
+  - id: SDCM243
+    field: KNVV.KKBER
+    check_class: exists_check
+    target_table: UKM_KKBER2SGM
+    target_fields:
+    - KKBER
+    grain: KNVV
+    s4_area: credit_management
+    s4_impact: blocking
+    simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: Sales area credit control area has no credit segment assigned in SAP Credit Management
+    why_it_matters: The credit control area of the sales area decides which credit segment the sales documents check against.
+      Without a segment assignment the check has no target after the conversion.
+    rule_authority: s4hana_migration
+    sap_impact: Sales orders for the customer fail or skip the credit check after the conversion.
+    fix_map:
+      __other__: Assign the credit control area to a credit segment (SPRO > Credit Management) or correct the sales area data
+        (XD02 > Sales).
+    record_fix_template: 'Customer {KNVV.KUNNR}, sales area {KNVV.VKORG}/{KNVV.VTWEG}/{KNVV.SPART}: credit control area {KNVV.KKBER}
+      has no credit segment.'
+  - id: SDCM244
+    field: KNVD.KUNNR
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Customer output master data belongs to a customer that does not exist
+    why_it_matters: Document output settings (KNVD) are keyed by customer. Rows for a customer that is gone are never read and
+      are not migrated to the output management of the business partner.
+    rule_authority: s4hana_migration
+    sap_impact: Orphan output settings stay behind and confuse the output migration.
+    fix_map:
+      __other__: Delete the orphan rows or recreate the customer.
+    record_fix_template: 'Customer {KNVD.KUNNR}: output master row for a customer that does not exist.'
+  - id: SDCM245
+    field: KNVD.KUNNR
+    check_class: exists_check
+    fields:
+    - KNVD.KUNNR
+    - KNVD.VKORG
+    - KNVD.VTWEG
+    - KNVD.SPART
+    target_table: KNVV
+    target_fields:
+    - KUNNR
+    - VKORG
+    - VTWEG
+    - SPART
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Customer output master data has no matching sales area
+    why_it_matters: Customer output settings are valid for one sales area. Without a customer sales area record they never apply.
+    rule_authority: s4hana_migration
+    sap_impact: Output settings are not used and are not migrated.
+    fix_map:
+      __other__: Create the sales area data (XD01 > Sales) or delete the output settings.
+    record_fix_template: 'Customer {KNVD.KUNNR}, sales area {KNVD.VKORG}/{KNVD.VTWEG}/{KNVD.SPART}: no sales area data.'
+  - id: SDCM246
+    field: KNVD.KUNNR
+    check_class: exists_check
+    target_table: KNA1
+    target_fields:
+    - KUNNR
+    target_when:
+      LOEVM: X
+    negate: true
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: Customer output master data belongs to a customer flagged for deletion
+    why_it_matters: Output settings of a customer flagged for deletion are dead weight; the output migration should not carry
+      them to the new output management.
+    rule_authority: s4hana_migration
+    sap_impact: Settings of dead customers are migrated.
+    fix_map:
+      __other__: Delete the output settings or remove the deletion flag of the customer.
+    record_fix_template: 'Customer {KNVD.KUNNR}: output master data for a customer flagged for deletion.'
+  - id: SDCM247
+    field: KNVD.NACHA
+    check_class: cross_field_check
+    fail_when: '`KNVD.NACHA` == ''4'''
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: medium
+    dimension: validity
+    message: Customer output master data uses telex
+    why_it_matters: Telex is not a channel of S/4HANA Output Management (print, e-mail and XML only).
+    rule_authority: s4hana_migration
+    sap_impact: Output to this customer has no channel after the conversion.
+    fix_map:
+      __other__: Change the transmission medium to e-mail or print (XD02 > Sales > Output).
+    record_fix_template: 'Customer {KNVD.KUNNR}, sales area {KNVD.VKORG}: output via telex.'
+  - id: SDCM248
+    field: KNVD.NACHA
+    check_class: cross_field_check
+    fail_when: '`KNVD.NACHA` == ''2'''
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: low
+    dimension: validity
+    message: Customer output master data uses fax
+    why_it_matters: Fax is not a channel of S/4HANA Output Management; fax output needs a third party fax server through print
+      or e-mail.
+    rule_authority: s4hana_migration
+    sap_impact: Output to this customer has no standard channel after the conversion.
+    fix_map:
+      __other__: Change the transmission medium to e-mail or print, or plan the fax gateway (XD02 > Sales > Output).
+    record_fix_template: 'Customer {KNVD.KUNNR}, sales area {KNVD.VKORG}: output via fax.'
+  - id: SDCM249
+    field: KNVD.NACHA
+    check_class: null_check
+    applies_when:
+      KNVD.DOANZ:
+        gt: 0
+    grain: KNVD
+    s4_area: output_management
+    s4_impact: warning
+    simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+    baseline: s4_target
+    severity: medium
+    dimension: completeness
+    message: Customer output master data asks for copies but names no transmission medium
+    why_it_matters: An output quantity above zero without a transmission medium produces no output and cannot be mapped to an
+      output channel.
+    rule_authority: s4hana_migration
+    sap_impact: The customer never receives the document.
+    fix_map:
+      __other__: Enter the transmission medium (XD02 > Sales > Output) or reset the number of copies.
+    record_fix_template: 'Customer {KNVD.KUNNR}, sales area {KNVD.VKORG}: copies requested, no transmission medium.'

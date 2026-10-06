@@ -1,0 +1,144 @@
+{
+ "table": "T510F",
+ "description": "Assign Pay Scale --> Currency",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MOLGA",
+   "key": true,
+   "data_element": "MOLGA",
+   "domain": "MOLGA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Country Grouping",
+   "check_table": "T500L"
+  },
+  {
+   "pos": 3,
+   "name": "TRFAR",
+   "key": true,
+   "data_element": "TRFAR",
+   "domain": "TRFAR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay scale type",
+   "check_table": "T510A"
+  },
+  {
+   "pos": 4,
+   "name": "TRFGB",
+   "key": true,
+   "data_element": "TRFGB",
+   "domain": "TRFGB",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Pay Scale Area",
+   "check_table": "T510G"
+  },
+  {
+   "pos": 5,
+   "name": "TRFKZ",
+   "key": true,
+   "data_element": "TRFKZ",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ES grouping for collective agreement provision",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ENDDA",
+   "key": true,
+   "data_element": "ENDDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "End Date",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "BEGDA",
+   "key": false,
+   "data_element": "BEGDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start Date",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ZEINH",
+   "key": false,
+   "data_element": "NUMCNUSED2",
+   "domain": "NUMC2",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Not used",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS_CURC",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOLGA",
+   "foreign_table": "T500L",
+   "foreign_field": "MOLGA"
+  },
+  {
+   "field": "TRFAR",
+   "foreign_table": "T510A",
+   "foreign_field": "TRFAR"
+  },
+  {
+   "field": "TRFGB",
+   "foreign_table": "T510G",
+   "foreign_field": "TRFGB"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}
