@@ -29,6 +29,7 @@ MODULE_REGISTRY: dict[str, dict[str, str]] = {
     "mm_purchasing": {"category": "ECC", "label": "MM Purchasing"},
     "plant_maintenance": {"category": "ECC", "label": "Plant Maintenance"},
     "production_planning": {"category": "ECC", "label": "Production Planning"},
+    "project_system": {"category": "ECC", "label": "Project System"},
     "sd_customer_master": {"category": "ECC", "label": "SD Customer Master"},
     "sd_sales_orders": {"category": "ECC", "label": "SD Sales Orders"},
     "interface_health": {"category": "ECC", "label": "Interface Health (IDoc)"},

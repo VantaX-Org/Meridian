@@ -1,0 +1,17 @@
+{
+ "domain": "DCJSTRUK",
+ "type": "NUMC",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": "5",
+   "text": "The project struc. ind. can be between 1 and 5 chars. long"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

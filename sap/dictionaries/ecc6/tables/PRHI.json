@@ -1,0 +1,130 @@
+{
+ "table": "PRHI",
+ "description": "Work Breakdown Structure, Edges (Hierarchy Pointer)",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "POSNR",
+   "key": true,
+   "data_element": "PS_POSNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "WBS Element",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 4,
+   "name": "PSPHI",
+   "key": false,
+   "data_element": "PS_PSPHI",
+   "domain": "PS_PSPNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Current number of the appropriate project",
+   "check_table": "PROJ"
+  },
+  {
+   "pos": 5,
+   "name": "UP",
+   "key": false,
+   "data_element": "PS_PHIUP",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the superior WBS element",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 6,
+   "name": "DOWN",
+   "key": false,
+   "data_element": "PS_PHIDO",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the 1. subordinate WBS element",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 7,
+   "name": "LEFT",
+   "key": false,
+   "data_element": "PS_PHILE",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the left adjacent position in WBS",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 8,
+   "name": "RIGHT",
+   "key": false,
+   "data_element": "PS_PHIRI",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the right adjacent position in WBS",
+   "check_table": "PRPS"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DOWN",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "LEFT",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "POSNR",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "PSPHI",
+   "foreign_table": "PROJ",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "RIGHT",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "UP",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  }
+ ]
+}

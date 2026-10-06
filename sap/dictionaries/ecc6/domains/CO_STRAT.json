@@ -1,0 +1,27 @@
+{
+ "domain": "CO_STRAT",
+ "type": "NUMC",
+ "length": 3,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "000",
+   "high": null,
+   "text": "Manual Setting of Tracing Factor"
+  },
+  {
+   "low": "005",
+   "high": null,
+   "text": "Delivery Value with Product Cost Collector"
+  },
+  {
+   "low": "010",
+   "high": null,
+   "text": "Settlement by Amount Fixed-Price Co-Product"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
