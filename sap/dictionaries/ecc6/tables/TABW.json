@@ -1,0 +1,394 @@
+{
+ "table": "TABW",
+ "description": "Asset transaction types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BWASL",
+   "key": true,
+   "data_element": "BWASL",
+   "domain": "BWASL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Asset Transaction Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "BWAGRP",
+   "key": false,
+   "data_element": "BWAGRP",
+   "domain": "BWAGRP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Transaction type group",
+   "check_table": "TABWG"
+  },
+  {
+   "pos": 4,
+   "name": "XVERGA",
+   "key": false,
+   "data_element": "XVERGA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Original transaction in past",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XAKTIV",
+   "key": false,
+   "data_element": "XAKTIV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Capitalize fixed asset",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "XDEAKT",
+   "key": false,
+   "data_element": "XDEAKT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Deactivate fixed asset",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XABGMM",
+   "key": false,
+   "data_element": "XABGMM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Post gain/loss from asset retirement automatically",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XERLOS",
+   "key": false,
+   "data_element": "XERLOS",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Asset retirement transaction type with revenue",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XAVERB",
+   "key": false,
+   "data_element": "XAVERB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Asset transfer between affiliated companies",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "XABUCH",
+   "key": false,
+   "data_element": "XABUCH",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Transaction type cannot be used manually",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "BWAKON",
+   "key": false,
+   "data_element": "AM_RMVCT",
+   "domain": "RMVCT",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Consolidation transaction type",
+   "check_table": "T856"
+  },
+  {
+   "pos": 12,
+   "name": "XPRJKT",
+   "key": false,
+   "data_element": "XPRJKT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Account assignment to project desired",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ANSHKZ",
+   "key": false,
+   "data_element": "ANSHKZ",
+   "domain": "SHKZV",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Default posting indicator",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "BWASLG",
+   "key": false,
+   "data_element": "BWASLG",
+   "domain": "BWASL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Trans. type offsetting entry for transfer",
+   "check_table": "TABW"
+  },
+  {
+   "pos": 15,
+   "name": "BLART",
+   "key": false,
+   "data_element": "BLGART",
+   "domain": "BLART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Default document type for transaction type",
+   "check_table": "T003"
+  },
+  {
+   "pos": 16,
+   "name": "XABINV",
+   "key": false,
+   "data_element": "XABINV",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind: Repay investment support during period of retention",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "BWASLN",
+   "key": false,
+   "data_element": "BWASLN",
+   "domain": "BWASL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Trans.type retirement/transfer curr-yr acquis. in same year",
+   "check_table": "TABW"
+  },
+  {
+   "pos": 18,
+   "name": "GITTGR",
+   "key": false,
+   "data_element": "GITTGR",
+   "domain": "GITTGR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Summariz. of trans. types for asset history sheet",
+   "check_table": "TABWQ"
+  },
+  {
+   "pos": 19,
+   "name": "XABGWG",
+   "key": false,
+   "data_element": "XABGWG",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator simulation of LVA ret. in asset hist sheet",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "XABIMM",
+   "key": false,
+   "data_element": "XABIMM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Ind. simulate ret. of intangible asset in asset hist sheet",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "XUSBWA",
+   "key": false,
+   "data_element": "XUSBWA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Call up a user-exit for this transaction type?",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "XUMBHI",
+   "key": false,
+   "data_element": "XUMBHI",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Transfer adopting dep. start date",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "XIFREL",
+   "key": false,
+   "data_element": "XIFREL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Post gain/loss to asset",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "XCOOBJ",
+   "key": false,
+   "data_element": "FM_XSAUF",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Relevant to budget",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "XCOPSP",
+   "key": false,
+   "data_element": "IM_XSPSP",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "not used (any longer)",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "XAVERBN",
+   "key": false,
+   "data_element": "XAVERBN",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Post with affiliated company indicator (net!)",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "XZUGBR",
+   "key": false,
+   "data_element": "XZUGBRUTTO",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Post acquisition gross (with depreciation)",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "XUMJA",
+   "key": false,
+   "data_element": "XUMJA",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Set the changeover year in the asset",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "RSN_CODE",
+   "key": false,
+   "data_element": "CHAR1_REASON_C",
+   "domain": "REASON_C",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Asset Transaction Category",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BLART",
+   "foreign_table": "T003",
+   "foreign_field": "BLART"
+  },
+  {
+   "field": "BWAGRP",
+   "foreign_table": "TABWG",
+   "foreign_field": "BWAGRP"
+  },
+  {
+   "field": "BWAKON",
+   "foreign_table": "T856",
+   "foreign_field": "TRTYP"
+  },
+  {
+   "field": "BWASLG",
+   "foreign_table": "TABW",
+   "foreign_field": "BWASL"
+  },
+  {
+   "field": "BWASLN",
+   "foreign_table": "TABW",
+   "foreign_field": "BWASL"
+  },
+  {
+   "field": "GITTGR",
+   "foreign_table": "TABWQ",
+   "foreign_field": "GITTGR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

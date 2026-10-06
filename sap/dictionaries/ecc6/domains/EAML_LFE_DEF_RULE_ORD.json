@@ -1,0 +1,37 @@
+{
+ "domain": "EAML_LFE_DEF_RULE_ORD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No defaulting of linear data in order operation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Default from reference object in order header"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Default from order header"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Default from technical object in operation only"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Default from tech. obj. in op. (preferably) or header"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,47 @@
+{
+ "domain": "PFKUR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Copy from sales order"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Price exchange rate = Accouting rate"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Exchange rate determination according to billing date"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Exchange rate determination according to pricing date"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Exchange rate determination according to current date"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Exch.rate determination accord.to date of services rendered"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": ""
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

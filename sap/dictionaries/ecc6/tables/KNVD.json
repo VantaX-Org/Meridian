@@ -1,0 +1,161 @@
+{
+ "table": "KNVD",
+ "description": "Customer master record sales request form",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KUNNR",
+   "key": true,
+   "data_element": "KUNNR",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 3,
+   "name": "VKORG",
+   "key": true,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 4,
+   "name": "VTWEG",
+   "key": true,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVTW"
+  },
+  {
+   "pos": 5,
+   "name": "SPART",
+   "key": true,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TSPA"
+  },
+  {
+   "pos": 6,
+   "name": "DOCTP",
+   "key": true,
+   "data_element": "NA_KSCHL",
+   "domain": "KSCHL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Output Type",
+   "check_table": "*"
+  },
+  {
+   "pos": 7,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "NA_SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message language",
+   "check_table": "T002"
+  },
+  {
+   "pos": 8,
+   "name": "DOANZ",
+   "key": false,
+   "data_element": "KNVD_ANZAL",
+   "domain": "KNVD_ANZAL",
+   "type": "DEC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Output quantity (original + copies)",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "DOVER",
+   "key": false,
+   "data_element": "NA_VSZTP",
+   "domain": "NA_VSZTP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dispatch time",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "NACHA",
+   "key": false,
+   "data_element": "NA_NACHA",
+   "domain": "NA_NACHA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Message transmission medium",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TSPA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVTW",
+   "foreign_field": "VTWEG"
+  }
+ ]
+}

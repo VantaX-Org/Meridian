@@ -1,0 +1,136 @@
+{
+ "table": "TBSL",
+ "description": "Posting Key",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BSCHL",
+   "key": true,
+   "data_element": "BSCHL",
+   "domain": "BSCHL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Posting Key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SHKZG",
+   "key": false,
+   "data_element": "SHKZG",
+   "domain": "SHKZG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Debit/Credit Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KOART",
+   "key": false,
+   "data_element": "KOART",
+   "domain": "KOART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Account type",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "XUMSW",
+   "key": false,
+   "data_element": "XUMSW_BSL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Sales-related item ?",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "FAUS1",
+   "key": false,
+   "data_element": "FAUS1",
+   "domain": "FA050",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Account/Posting Key Field Selection",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XZAHL",
+   "key": false,
+   "data_element": "XZAHL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is Posting Key Used in a Payment Transaction?",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "STBSL",
+   "key": false,
+   "data_element": "STBSL",
+   "domain": "BSCHL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Posting Key for Reversal/Reverse Entry",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "XSONU",
+   "key": false,
+   "data_element": "XSONU",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Posting key for special G/L transactions",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "FAUS2",
+   "key": false,
+   "data_element": "FAUS1",
+   "domain": "FA050",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Account/Posting Key Field Selection",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

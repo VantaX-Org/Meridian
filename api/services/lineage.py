@@ -187,18 +187,21 @@ def build_graph(model: dict, rules: list[tuple[str, dict]] | None = None) -> Gra
                                  fields, sorted(cfgs), "process_definitions")
                         g.edge(f"step:{act['id']}", f"process:{l4['id']}", "part_of", "process_definitions")
 
+    derived_steps = set(g.steps)
     for l1 in model.get("processes") or []:
         g.node(f"process:{l1['id']}", "process", l1["name"], level=1)
         for l2 in l1.get("l2", []):
             g.node(f"process:{l2['id']}", "process", l2["name"], level=2, l1=l1["id"])
             g.edge(f"process:{l2['id']}", f"process:{l1['id']}", "part_of", "model")
             for s in l2.get("steps", []):
-                _require(s["id"] not in g.steps, f"step {s['id']} defined twice")
+                # a curated step may restate one process_definitions already derived (same id): it adds its configs
+                _require(s["id"] not in g.steps or s["id"] in derived_steps, f"step {s['id']} defined twice")
                 for tf in s.get("fields", []):
                     _require(bool(_known_field(tf)), f"step {s['id']}: field {tf} is not in the SAP dictionary")
                 for c in s.get("configs", []) or []:
                     _require(c in configs, f"step {s['id']}: config {c} is not in configs")
-                add_step(s["id"], s["name"], l2["id"], l1["id"], s.get("tcode"), s.get("fields", []),
+                flds = list(dict.fromkeys([*g.steps.get(s["id"], {}).get("fields", []), *s.get("fields", [])]))
+                add_step(s["id"], s["name"], l2["id"], l1["id"], s.get("tcode"), flds,
                          s.get("configs", []) or [], "model")
 
     # Features: config_impact_rules (check -> feature) + model (step -> feature).

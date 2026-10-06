@@ -35,6 +35,8 @@ edges:
   - {parent: KNA1, child: KNB1,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: KNB1, child: KNB5,  join: {KUNNR: KUNNR, BUKRS: BUKRS}, cardinality: one}
   - {parent: KNA1, child: KNKK,  join: {KUNNR: KUNNR}, cardinality: one}
+  - {parent: KNA1, child: KNKA,  join: {KUNNR: KUNNR}, cardinality: one}
+  - {parent: KNA1, child: KNVD,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: KNA1, child: KNVV,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: KNA1, child: KNBK,  join: {KUNNR: KUNNR}, cardinality: one}
   - {parent: KNA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}

@@ -1,0 +1,137 @@
+{
+ "table": "T047",
+ "description": "Company Code Dunning Control",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "XMABE",
+   "key": false,
+   "data_element": "XMABE_047",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dunning by dunning area",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "XSTMV",
+   "key": false,
+   "data_element": "XSTMV_047",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Separate dunning notice for each dunning level?",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "RBUKM",
+   "key": false,
+   "data_element": "RBUKM",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reference Company Code for Dunning Notices",
+   "check_table": "T001"
+  },
+  {
+   "pos": 6,
+   "name": "SMHNK",
+   "key": false,
+   "data_element": "SMHNK",
+   "domain": "SRVAR_021M",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sorting variant accounts",
+   "check_table": "T021M"
+  },
+  {
+   "pos": 7,
+   "name": "SMHND",
+   "key": false,
+   "data_element": "SMHND",
+   "domain": "SRVAR_021M",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sorting variant items",
+   "check_table": "T021M"
+  },
+  {
+   "pos": 8,
+   "name": "MBUKRS",
+   "key": false,
+   "data_element": "MBUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Dunning company code",
+   "check_table": "T001"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MBUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "RBUKM",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "SMHND",
+   "foreign_table": "T021M",
+   "foreign_field": "SRVAR"
+  },
+  {
+   "field": "SMHNK",
+   "foreign_table": "T021M",
+   "foreign_field": "SRVAR"
+  }
+ ]
+}
