@@ -171,6 +171,13 @@ edges:
   - {parent: PA0001, child: PA0007, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
   - {parent: PA0001, child: PA0008, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
   - {parent: PA0001, child: PA0105, join: {PERNR: PERNR}, cardinality: one, filter: {SUBTY: "0001", ENDDA: "99991231"}}
+  # people depth: employment status beside later infotypes, and the action type beside the action record
+  - {parent: HRPY_RGDIR, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0009, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0014, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0015, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0185, child: PA0000, join: {PERNR: PERNR}, cardinality: one, filter: {ENDDA: "99991231"}}
+  - {parent: PA0000, child: T529A, join: {MASSN: MASSN}, cardinality: one}
   - {parent: PA0001, child: T500P, join: {PERSA: WERKS}, cardinality: one}
   - {parent: PA0105, child: USR02, join: {BNAME: USRID}, cardinality: one}
   - {parent: PA0001, child: HRP1001, join: {OBJID: PLANS}, cardinality: one, filter: {PLVAR: "01", OTYPE: S, RSIGN: A, RELAT: "003", ENDDA: "99991231"}}
@@ -236,6 +243,7 @@ edges:
   - {parent: EMPEMPLOYMENT, child: LEARNINGASSIGNMENT, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: SUCCESSIONCANDIDATE, join: {NOMINEE_ID: USERID}, cardinality: many}
   - {parent: JOBREQUISITION, child: JOBAPPLICATION, join: {JOB_REQ_ID: JOB_REQ_ID}, cardinality: many}
   # foundation objects and the position an employment points at (attributes of the employment)
   - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}

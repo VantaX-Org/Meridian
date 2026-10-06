@@ -1328,3 +1328,1100 @@ rules:
   fix_map:
     __other__: Correct the validity dates in PPOME.
   record_fix_template: 'Object {HRP1001.OBJID}: relationship validity ends before it starts. Correct in PPOME.'
+- id: PA067
+  field: PA0000.MASSG
+  check_class: exists_check
+  grain: PA0000
+  fields:
+  - PA0000.MASSN
+  - PA0000.MASSG
+  target_table: T530
+  target_fields:
+  - MASSN
+  - MASSG
+  applies_when:
+    PA0000.MASSG:
+      populated: true
+  severity: high
+  dimension: validity
+  message: Action reason is not defined for the action type
+  why_it_matters: The reason on the action record must exist in T530 for the same action type. A reason that belongs to a different action, or was deleted from configuration, breaks action statistics and
+    reason-driven workflow.
+  rule_authority: sap_hard_constraint
+  sap_impact: Action reports and statistics cannot decode the reason; PA40 refuses to re-save the action until the pair is valid.
+  fix_map:
+    __other__: Correct the reason in PA30 infotype 0000 or add the action and reason pair in table T530 (SPRO personnel actions, reasons for actions).
+  record_fix_template: Personnel number {PA0000.PERNR} has an action reason that does not belong to its action type. Correct in PA30 infotype 0000.
+- id: PA068
+  field: PA0000.STAT1
+  check_class: cross_field_check
+  grain: PA0000
+  fail_when: '`PA0000.STAT1` != `T529A.STAT1`'
+  require_populated: true
+  applies_when:
+    PA0000.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: consistency
+  message: The customer-specific status on the action record differs from the status the action type sets
+  why_it_matters: Table T529A defines which customer-specific status each action type sets. A stored value that differs means the record was changed by hand or the action configuration changed after the
+    action ran.
+  rule_authority: best_practice
+  sap_impact: Headcount, payroll eligibility and authorisation checks read the stored status, so they disagree with the action history.
+  fix_map:
+    __other__: Review the action in PA30 infotype 0000 and re-run it through PA40, or correct the action type status in T529A.
+  record_fix_template: Personnel number {PA0000.PERNR} carries a status that differs from the status of its action type. Review in PA30 infotype 0000.
+- id: PA069
+  field: PA0000.STAT2
+  check_class: cross_field_check
+  grain: PA0000
+  fail_when: '`PA0000.STAT2` != `T529A.STAT2`'
+  require_populated: true
+  applies_when:
+    PA0000.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: The employment status on the action record differs from the status the action type sets
+  why_it_matters: Table T529A defines which employment status each action type sets. A stored value that differs means the record was changed by hand or the action configuration changed after the action
+    ran.
+  rule_authority: best_practice
+  sap_impact: Headcount, payroll eligibility and authorisation checks read the stored status, so they disagree with the action history.
+  fix_map:
+    __other__: Review the action in PA30 infotype 0000 and re-run it through PA40, or correct the action type status in T529A.
+  record_fix_template: Personnel number {PA0000.PERNR} carries a status that differs from the status of its action type. Review in PA30 infotype 0000.
+- id: PA070
+  field: PA0000.STAT3
+  check_class: cross_field_check
+  grain: PA0000
+  fail_when: '`PA0000.STAT3` != `T529A.STAT3`'
+  require_populated: true
+  applies_when:
+    PA0000.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: The special payment status on the action record differs from the status the action type sets
+  why_it_matters: Table T529A defines which special payment status each action type sets. A stored value that differs means the record was changed by hand or the action configuration changed after the action
+    ran.
+  rule_authority: best_practice
+  sap_impact: Headcount, payroll eligibility and authorisation checks read the stored status, so they disagree with the action history.
+  fix_map:
+    __other__: Review the action in PA30 infotype 0000 and re-run it through PA40, or correct the action type status in T529A.
+  record_fix_template: Personnel number {PA0000.PERNR} carries a status that differs from the status of its action type. Review in PA30 infotype 0000.
+- id: PA071
+  field: PA0000.STAT3
+  check_class: cross_field_check
+  grain: PA0000
+  fail_when: (`PA0000.STAT2` == '3') & (`PA0000.STAT3` == '0')
+  require_populated: true
+  applies_when:
+    PA0000.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: Employee is active but the special payment status says withdrawn
+  why_it_matters: Employment status 3 (active) with special payment status 0 (withdrawn) means the person is treated as employed in the organisation but excluded from special payments such as bonuses.
+  rule_authority: best_practice
+  sap_impact: Bonus and special payment runs skip the employee while regular payroll pays them.
+  fix_map:
+    __other__: Correct the special payment status through a PA40 action that sets it to active.
+  record_fix_template: Personnel number {PA0000.PERNR} is active but has a withdrawn special payment status. Review in PA30 infotype 0000.
+- id: PA072
+  field: PA0000.STAT2
+  check_class: domain_value_check
+  grain: PA0000
+  allowed_values:
+  - '0'
+  - '1'
+  - '2'
+  - '3'
+  valid_values_with_labels:
+    '0': Withdrawn
+    '1': Inactive
+    '2': Retiree
+    '3': Active
+  severity: medium
+  dimension: validity
+  message: Employment status is not one of 0, 1, 2 or 3
+  why_it_matters: 'Employment status has four defined values: withdrawn, inactive, retiree and active. Anything else is unknown to payroll, authorisations and headcount reports.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Records with an undefined status fall out of every status-driven selection.
+  fix_map:
+    __other__: Correct the status through the action type configuration (T529A) and re-run the action in PA40.
+  record_fix_template: Personnel number {PA0000.PERNR} has an undefined employment status. Review the action type in T529A.
+- id: PA073
+  field: PA0000.PREAS
+  check_class: exists_check
+  grain: PA0000
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - '0000'
+  applies_when:
+    PA0000.ENDDA:
+    - '99991231'
+    PA0000.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0000 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0000.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA074
+  field: PA0001.PREAS
+  check_class: exists_check
+  grain: PA0001
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - '0001'
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0001.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0001 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0001.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA075
+  field: PA0002.PREAS
+  check_class: exists_check
+  grain: PA0002
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - '0002'
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0002.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0002 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0002.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA076
+  field: PA0006.PREAS
+  check_class: exists_check
+  grain: PA0006
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - '0006'
+  applies_when:
+    PA0006.ENDDA:
+    - '99991231'
+    PA0006.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0006 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0006.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA077
+  field: PA0008.PREAS
+  check_class: exists_check
+  grain: PA0008
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - 0008
+  applies_when:
+    PA0008.ENDDA:
+    - '99991231'
+    PA0008.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0008 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0008.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA078
+  field: PA0009.PREAS
+  check_class: exists_check
+  grain: PA0009
+  target_table: T530E
+  target_fields:
+  - PREAS
+  target_when:
+    INFTY:
+    - 0009
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+    PA0009.PREAS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Reason for change on infotype 0009 is not defined for this infotype
+  why_it_matters: The reason for changing an infotype record must exist in T530E for that infotype. Reasons are maintained per infotype, so a reason copied from another infotype is invalid.
+  rule_authority: best_practice
+  sap_impact: Change-reason reports and workflows that read T530E cannot decode the reason.
+  fix_map:
+    __other__: Correct the reason in PA30 or add the infotype and reason pair in table T530E.
+  record_fix_template: Personnel number {PA0009.PERNR} carries a change reason that is not defined for this infotype. Correct in PA30.
+- id: PA079
+  field: PA0001.KOKRS
+  check_class: null_check
+  grain: PA0001
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+    PA0001.KOSTL:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Active employee has a cost centre but no controlling area
+  why_it_matters: The cost centre is only unique inside a controlling area. A cost centre without the controlling area cannot be resolved to its master data, so personnel cost cannot be posted.
+  rule_authority: best_practice
+  sap_impact: Payroll posting to controlling fails or lands on the wrong cost object.
+  fix_map:
+    __blank__: Maintain the controlling area in PA30 infotype 0001 (it is derived from the company code when the record is saved again).
+  record_fix_template: Personnel number {PA0001.PERNR} has a cost centre without a controlling area. Correct in PA30 infotype 0001.
+- id: PA080
+  field: PA0001.SACHA
+  check_class: null_check
+  grain: PA0001
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no payroll administrator
+  why_it_matters: Payroll results, error worklists and master data change reports are routed by the payroll administrator. An active employee without one is nobody's responsibility.
+  rule_authority: best_practice
+  sap_impact: Work items and error messages for this employee reach no administrator.
+  fix_map:
+    __blank__: Assign the payroll administrator group in PA30 infotype 0001.
+  record_fix_template: Personnel number {PA0001.PERNR} has no payroll administrator. Assign in PA30 infotype 0001.
+- id: PA081
+  field: PA0001.SACHP
+  check_class: null_check
+  grain: PA0001
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no personnel administrator
+  why_it_matters: Personnel administration worklists and authorisations are routed by the personnel administrator group. An active employee without one is nobody's responsibility.
+  rule_authority: best_practice
+  sap_impact: Work items and error messages for this employee reach no administrator.
+  fix_map:
+    __blank__: Assign the personnel administrator group in PA30 infotype 0001.
+  record_fix_template: Personnel number {PA0001.PERNR} has no personnel administrator. Assign in PA30 infotype 0001.
+- id: PA082
+  field: PA0001.SACHZ
+  check_class: null_check
+  grain: PA0001
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no time administrator
+  why_it_matters: Time evaluation messages and approvals are routed by the time administrator. An active employee without one is nobody's responsibility.
+  rule_authority: best_practice
+  sap_impact: Work items and error messages for this employee reach no administrator.
+  fix_map:
+    __blank__: Assign the time administrator group in PA30 infotype 0001.
+  record_fix_template: Personnel number {PA0001.PERNR} has no time administrator. Assign in PA30 infotype 0001.
+- id: PA083
+  field: PA0001.ORGEH
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0001.ORGEH` == ''99999999'''
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to the default organisational unit
+  why_it_matters: The placeholder organisational unit 99999999 stands for no unit. Employees on it appear in no real part of the structure.
+  rule_authority: best_practice
+  sap_impact: Structural authorisations, manager self-service and headcount by unit exclude the employee.
+  fix_map:
+    __other__: Assign the real organisational unit through PA40 or PPOME.
+  record_fix_template: Personnel number {PA0001.PERNR} sits on the default organisational unit. Correct in PA30 or PPOME.
+- id: PA084
+  field: PA0001.BUKRS
+  check_class: exists_check
+  grain: PA0001
+  target_table: T001
+  target_fields:
+  - BUKRS
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0001.BUKRS:
+      populated: true
+  severity: high
+  dimension: validity
+  message: Company code of the assignment is not defined in configuration
+  why_it_matters: The company code on infotype 0001 must exist in T001. A deleted or mistyped company code leaves the employee outside the legal entity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll posting, tax reporting and cost allocation for the employee have no company code to use.
+  fix_map:
+    __other__: Correct the personnel area assignment or company code in PA30 infotype 0001.
+  record_fix_template: Personnel number {PA0001.PERNR} has a company code that is not defined. Correct in PA30 infotype 0001.
+- id: PA085
+  field: PA0002.FAMST
+  check_class: null_check
+  grain: PA0002
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0002.FAMDT:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Marital status date is set but the marital status is blank
+  why_it_matters: A date of marital status change only has meaning together with a status. Tax class, benefits and family allowances derive from the pair.
+  rule_authority: best_practice
+  sap_impact: Family-related payroll and benefit rules cannot decide which status applies from the date.
+  fix_map:
+    __blank__: Enter the marital status in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has a marital status date but no marital status. Correct in PA30 infotype 0002.
+- id: PA086
+  field: PA0002.FAMDT
+  check_class: cross_field_check
+  grain: PA0002
+  fail_when: '`PA0002.FAMDT` < `PA0002.GBDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Marital status date is before the date of birth
+  why_it_matters: A change of marital status cannot precede the birth of the person. The date was mistyped or copied from another record.
+  rule_authority: best_practice
+  sap_impact: Tax class and family benefit entitlements start from an impossible date.
+  fix_map:
+    __other__: Correct the marital status date in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has a marital status date before the date of birth. Correct in PA30 infotype 0002.
+- id: PA087
+  field: PA0002.GBDAT
+  check_class: cross_field_check
+  grain: PA0002
+  fail_when: '`PA0002.GBDAT` > @today'
+  severity: high
+  dimension: validity
+  message: Date of birth is in the future
+  why_it_matters: A birth date later than today is impossible and usually a typing error. Age-based rules (retirement, benefits, minimum age) all produce wrong results.
+  rule_authority: sap_hard_constraint
+  sap_impact: Age-driven payroll and benefit rules behave unpredictably.
+  fix_map:
+    __other__: Correct the date of birth in PA30 infotype 0002 against the identity document.
+  record_fix_template: Personnel number {PA0002.PERNR} has a date of birth in the future. Correct in PA30 infotype 0002.
+- id: PA088
+  field: PA0002.ANRED
+  check_class: cross_field_check
+  grain: PA0002
+  fail_when: ((`PA0002.ANRED` == '1') & (`PA0002.GESCH` == '2')) | ((`PA0002.ANRED` == '2') & (`PA0002.GESCH` == '1'))
+  require_populated: true
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+  severity: low
+  dimension: consistency
+  message: Form of address contradicts the gender
+  why_it_matters: Form of address 1 (Mr.) with gender 2 (female), or 2 (Ms.) with gender 1 (male), is almost always a data entry slip. Correspondence and statutory reports use the two fields separately.
+  rule_authority: best_practice
+  sap_impact: Letters and statutory gender reports disagree about the same person.
+  fix_map:
+    __other__: Confirm the correct form of address and gender in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has a form of address that contradicts the gender. Review in PA30 infotype 0002.
+- id: PA089
+  field: PA0002.SPRSL
+  check_class: null_check
+  grain: PA0002
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no communication language
+  why_it_matters: Employee letters, payslips and notifications are produced in the communication language.
+  rule_authority: best_practice
+  sap_impact: Output and reports that depend on the communication language fall back to a default or fail.
+  fix_map:
+    __blank__: Enter the communication language in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has no communication language. Enter in PA30 infotype 0002.
+- id: PA090
+  field: PA0002.NATIO
+  check_class: null_check
+  grain: PA0002
+  applies_when:
+    PA0002.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no nationality
+  why_it_matters: Nationality drives work permit checks and statutory reporting.
+  rule_authority: best_practice
+  sap_impact: Output and reports that depend on the nationality fall back to a default or fail.
+  fix_map:
+    __blank__: Enter the nationality in PA30 infotype 0002.
+  record_fix_template: Personnel number {PA0002.PERNR} has no nationality. Enter in PA30 infotype 0002.
+- id: PA091
+  field: PA0006.STRAS
+  check_class: null_check
+  grain: PA0006
+  applies_when:
+    PA0006.ENDDA:
+    - '99991231'
+    PA0006.SUBTY:
+    - '1'
+  severity: medium
+  dimension: completeness
+  message: Permanent residence has no street
+  why_it_matters: The permanent residence is used for statutory forms, tax reporting and correspondence. Its address must be complete.
+  rule_authority: best_practice
+  sap_impact: Statutory forms and mail to the employee cannot be addressed.
+  fix_map:
+    __blank__: Enter the street of the permanent residence in PA30 infotype 0006 subtype 1.
+  record_fix_template: Personnel number {PA0006.PERNR} has a permanent residence without street. Correct in PA30 infotype 0006.
+- id: PA092
+  field: PA0006.PSTLZ
+  check_class: null_check
+  grain: PA0006
+  applies_when:
+    PA0006.ENDDA:
+    - '99991231'
+    PA0006.SUBTY:
+    - '1'
+  severity: medium
+  dimension: completeness
+  message: Permanent residence has no postal code
+  why_it_matters: The permanent residence is used for statutory forms, tax reporting and correspondence. Its address must be complete.
+  rule_authority: best_practice
+  sap_impact: Statutory forms and mail to the employee cannot be addressed.
+  fix_map:
+    __blank__: Enter the postal code of the permanent residence in PA30 infotype 0006 subtype 1.
+  record_fix_template: Personnel number {PA0006.PERNR} has a permanent residence without postal code. Correct in PA30 infotype 0006.
+- id: PA093
+  field: PA0007.ARBST
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: '`PA0007.ARBST` > 24'
+  applies_when:
+    PA0007.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: validity
+  message: Daily working hours exceed 24
+  why_it_matters: Daily working hours above 24 are impossible. The value was entered in minutes or in the weekly field.
+  rule_authority: best_practice
+  sap_impact: Time evaluation and payroll hourly rate derivation use a wrong daily norm.
+  fix_map:
+    __other__: Correct the daily working hours in PA30 infotype 0007.
+  record_fix_template: Personnel number {PA0007.PERNR} has more than 24 daily working hours. Correct in PA30 infotype 0007.
+- id: PA094
+  field: PA0007.WOSTD
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: '`PA0007.ARBST` > `PA0007.WOSTD`'
+  require_populated: true
+  applies_when:
+    PA0007.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: consistency
+  message: Daily working hours exceed the weekly working hours
+  why_it_matters: Hours worked in one day cannot exceed hours worked in the week. The two fields were maintained independently.
+  rule_authority: best_practice
+  sap_impact: Hourly rate and absence valuation are computed from an inconsistent norm.
+  fix_map:
+    __other__: Correct the daily or weekly hours in PA30 infotype 0007.
+  record_fix_template: Personnel number {PA0007.PERNR} has daily hours above the weekly hours. Correct in PA30 infotype 0007.
+- id: PA095
+  field: PA0007.WKWDY
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: (`PA0007.WKWDY` < 0) | (`PA0007.WKWDY` > 7)
+  applies_when:
+    PA0007.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: validity
+  message: Working days per week is outside 0 to 7
+  why_it_matters: A week has seven days. A value above 7 is not a valid working week.
+  rule_authority: best_practice
+  sap_impact: Leave entitlement and absence valuation by working day are wrong.
+  fix_map:
+    __other__: Correct the working days per week in PA30 infotype 0007.
+  record_fix_template: Personnel number {PA0007.PERNR} has working days per week outside 0 to 7. Correct in PA30 infotype 0007.
+- id: PA096
+  field: PA0007.MOSTD
+  check_class: cross_field_check
+  grain: PA0007
+  fail_when: (`PA0007.MOSTD` - `PA0007.WOSTD` * 52 / 12).abs() > `PA0007.MOSTD` * 0.15
+  require_populated: true
+  applies_when:
+    PA0007.ENDDA:
+    - '99991231'
+  severity: low
+  dimension: consistency
+  message: Monthly working hours deviate more than 15 percent from the weekly hours
+  why_it_matters: Monthly hours should be close to weekly hours times 52 divided by 12. A larger deviation means one of the two fields is stale and hourly pay is derived from the wrong base.
+  rule_authority: best_practice
+  sap_impact: Hourly rate for salaried staff and overtime valuation use an inconsistent norm.
+  fix_map:
+    __other__: Recalculate the monthly hours in PA30 infotype 0007 from the weekly hours.
+  record_fix_template: Personnel number {PA0007.PERNR} has monthly hours inconsistent with weekly hours. Review in PA30 infotype 0007.
+- id: PA097
+  field: PA0007.ZTERF
+  check_class: null_check
+  grain: PA0007
+  applies_when:
+    PA0007.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: completeness
+  message: Active employee has no time management status
+  why_it_matters: The time management status decides whether the employee is evaluated in time evaluation or paid from planned hours. Blank means no time recording is defined.
+  rule_authority: best_practice
+  sap_impact: Time evaluation skips the employee and absences are not valued.
+  fix_map:
+    __blank__: Set the time management status in PA30 infotype 0007.
+  record_fix_template: Personnel number {PA0007.PERNR} has no time management status. Set in PA30 infotype 0007.
+- id: PA098
+  field: PA0009.BANKS
+  check_class: null_check
+  grain: PA0009
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+    PA0009.BANKN:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Bank details have an account number but no bank country
+  why_it_matters: A bank account is only identified by country, bank key and account number together. Without the bank country the key cannot be looked up in the bank master.
+  rule_authority: best_practice
+  sap_impact: Payment runs reject the account and the employee is not paid by transfer.
+  fix_map:
+    __blank__: Enter the bank country in PA30 infotype 0009.
+  record_fix_template: Personnel number {PA0009.PERNR} has bank details without a bank country. Correct in PA30 infotype 0009.
+- id: PA099
+  field: PA0009.BETRG
+  check_class: cross_field_check
+  grain: PA0009
+  fail_when: '`PA0009.BETRG` < 0'
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: validity
+  message: Bank transfer amount is negative
+  why_it_matters: A fixed bank transfer amount or percentage cannot be negative.
+  rule_authority: best_practice
+  sap_impact: The payroll bank transfer for the record is rejected or reversed.
+  fix_map:
+    __other__: Correct the amount in PA30 infotype 0009.
+  record_fix_template: Personnel number {PA0009.PERNR} has a negative transfer amount. Correct in PA30 infotype 0009.
+- id: PA100
+  field: PA0009.IBAN
+  check_class: cross_field_check
+  grain: PA0009
+  fail_when: '`PA0009.IBAN`.str.get(0) + `PA0009.IBAN`.str.get(1) != `PA0009.BANKS`'
+  require_populated: true
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+  severity: medium
+  dimension: consistency
+  message: IBAN country differs from the bank country
+  why_it_matters: The first two characters of an IBAN are the country of the account. A different bank country on the same record means one of the two was entered wrongly.
+  rule_authority: best_practice
+  sap_impact: Payment files route the transfer to the wrong country format and the bank rejects it.
+  fix_map:
+    __other__: Correct the bank country or the IBAN in PA30 infotype 0009.
+  record_fix_template: Personnel number {PA0009.PERNR} has an IBAN whose country differs from the bank country. Correct in PA30 infotype 0009.
+- id: PA101
+  field: PA0105.USRID_LONG
+  check_class: uniqueness_check
+  grain: PA0105
+  fields:
+  - PA0105.USRID_LONG
+  case_insensitive: true
+  applies_when:
+    PA0105.ENDDA:
+    - '99991231'
+    PA0105.SUBTY:
+    - '0010'
+  severity: high
+  dimension: uniqueness
+  message: Same e-mail address is held by more than one employee
+  why_it_matters: An e-mail address identifies one mailbox. Sharing it between personnel numbers sends payslips and notifications to the wrong person.
+  rule_authority: best_practice
+  sap_impact: Notifications, workflow and employee self-service mail reach several people.
+  fix_map:
+    __other__: Correct the e-mail address of one personnel number in PA30 infotype 0105 subtype 0010.
+  record_fix_template: Personnel number {PA0105.PERNR} shares its e-mail address with another employee. Correct in PA30 infotype 0105.
+- id: PA102
+  field: PA0185.EXPID
+  check_class: cross_field_check
+  grain: PA0185
+  fail_when: '`PA0185.EXPID` < @today'
+  applies_when:
+    PA0185.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '3'
+  severity: medium
+  dimension: timeliness
+  message: Identity document of an active employee has expired
+  why_it_matters: An expired identity or work permit document means the right to work or the identity proof must be renewed.
+  rule_authority: best_practice
+  sap_impact: Statutory identity checks fail and the employee may work without a valid permit.
+  fix_map:
+    __other__: Obtain the renewed document and update PA30 infotype 0185.
+  record_fix_template: Personnel number {PA0185.PERNR} has an expired identity document. Renew and update PA30 infotype 0185.
+- id: PA103
+  field: PA0185.EXPID
+  check_class: cross_field_check
+  grain: PA0185
+  fail_when: '`PA0185.EXPID` < `PA0185.FPDAT`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Identity document expires before it was issued
+  why_it_matters: The expiry date of a document cannot be earlier than its issue date.
+  rule_authority: best_practice
+  sap_impact: Document validity checks return the wrong answer.
+  fix_map:
+    __other__: Correct the issue or expiry date in PA30 infotype 0185.
+  record_fix_template: Personnel number {PA0185.PERNR} has an expiry date before the issue date. Correct in PA30 infotype 0185.
+- id: PA104
+  field: PA0003.ABRDT
+  check_class: cross_field_check
+  grain: PA0003
+  fail_when: '`PA0003.ABRDT` > @today'
+  severity: high
+  dimension: validity
+  message: Payroll accounted-to date is in the future
+  why_it_matters: Payroll can only be accounted up to the end of the current period. A later date means the control record was changed by hand or a run was posted on a wrong date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Retroactive accounting does not trigger for changes before the date and payroll results are skipped.
+  fix_map:
+    __other__: Reset the accounted-to date through a payroll reset (PU00 or PA03) after review.
+  record_fix_template: Personnel number {PA0003.PERNR} has an accounted-to date in the future. Review in PA03.
+- id: PA105
+  field: PA0003.ABRDT
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0003.ABRDT` < `PA0000.BEGDA`'
+  require_populated: true
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: high
+  dimension: timeliness
+  message: Leaver payroll was accounted only up to a date before the leaving date
+  why_it_matters: After a leaving action payroll must account the employee up to the leaving date once. An accounted-to date before the leaving date means the final settlement has not run yet or was never run.
+  rule_authority: best_practice
+  sap_impact: The leaver is not paid final salary, leave payout or deductions, and statutory year-end reports are wrong.
+  fix_map:
+    __other__: Run the final payroll for the personnel number (PC00_Mxx_CALC) and release the control record in PA03 if it is locked.
+  record_fix_template: Personnel number {PA0003.PERNR} is withdrawn but payroll is accounted only to a date before the leaving date. Run payroll.
+- id: PA106
+  field: PA0001.PLANS
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: (`PA0001.PLANS` != '99999999') & ((@today - `PA0000.BEGDA`).dt.days > 90)
+  require_populated: true
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: medium
+  dimension: consistency
+  message: Employee left more than 90 days ago but still holds a position
+  why_it_matters: A withdrawn employee should be delimited from the position. Holding it keeps the position counted as filled and blocks hiring.
+  rule_authority: best_practice
+  sap_impact: Headcount and vacancy reports show the position as occupied.
+  fix_map:
+    __other__: Move the leaver to the default position through the leaving action or delimit the relationship in PPOME.
+  record_fix_template: Personnel number {PA0001.PERNR} left more than 90 days ago but still holds a position. Delimit in PPOME.
+- id: PA107
+  field: PA0008.BEGDA
+  check_class: cross_field_check
+  grain: PA0001
+  fail_when: '`PA0008.BEGDA` > `PA0000.BEGDA`'
+  require_populated: true
+  applies_when:
+    PA0001.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: high
+  dimension: consistency
+  message: Basic pay starts after the leaving date
+  why_it_matters: A basic pay record that starts after the employee left means pay was maintained on a leaver, which payroll may still pay.
+  rule_authority: best_practice
+  sap_impact: Payroll pays a leaver or produces retroactive differences.
+  fix_map:
+    __other__: Delimit the basic pay record in PA30 infotype 0008.
+  record_fix_template: Personnel number {PA0001.PERNR} has basic pay starting after the leaving date. Delimit in PA30 infotype 0008.
+- id: PA108
+  field: PA0014.ENDDA
+  check_class: cross_field_check
+  grain: PA0014
+  fail_when: (@today - `PA0000.BEGDA`).dt.days > 90
+  applies_when:
+    PA0014.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: high
+  dimension: consistency
+  message: Leaver more than 90 days gone still has an open recurring payment
+  why_it_matters: A recurring payment or deduction that stays open after the employee left keeps being valued by payroll each period.
+  rule_authority: best_practice
+  sap_impact: Payments continue to be calculated and posted for a person who no longer works for the company.
+  fix_map:
+    __other__: Delimit the recurring payment in PA30 infotype 0014 to the leaving date.
+  record_fix_template: Personnel number {PA0014.PERNR} left more than 90 days ago but has an open recurring payment. Delimit in PA30 infotype 0014.
+- id: PA109
+  field: PA0015.BEGDA
+  check_class: cross_field_check
+  grain: PA0015
+  fail_when: '`PA0015.BEGDA` > `PA0000.BEGDA`'
+  require_populated: true
+  applies_when:
+    PA0015.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+  severity: high
+  dimension: consistency
+  message: Additional payment starts after the leaving date
+  why_it_matters: An additional payment dated after the leaving date is a payment to a leaver and is normally a data error.
+  rule_authority: best_practice
+  sap_impact: The payment is made to a leaver or blocked at payroll with an error message.
+  fix_map:
+    __other__: Correct or delete the additional payment in PA30 infotype 0015.
+  record_fix_template: Personnel number {PA0015.PERNR} has an additional payment starting after the leaving date. Correct in PA30 infotype 0015.
+- id: PA110
+  field: PA0009.BANKN
+  check_class: cross_field_check
+  grain: PA0009
+  fail_when: (@today - `PA0000.BEGDA`).dt.days > 365
+  applies_when:
+    PA0009.ENDDA:
+    - '99991231'
+    PA0000.STAT2:
+    - '0'
+    PA0009.BANKN:
+      populated: true
+  severity: low
+  dimension: timeliness
+  message: Bank details of a leaver are retained more than a year after leaving
+  why_it_matters: Personal bank details should not be held longer than needed after the final payroll. Data protection rules require deletion or blocking.
+  rule_authority: best_practice
+  sap_impact: Excess retention of financial personal data.
+  fix_map:
+    __other__: Delimit and archive or delete the bank record under the retention policy.
+  record_fix_template: Personnel number {PA0009.PERNR} left more than a year ago but bank details are still open. Archive per policy.
+- id: PA111
+  field: HRP1001.SOBID
+  check_class: exists_check
+  grain: HRP1001
+  fields:
+  - HRP1001.PLVAR
+  - HRP1001.SCLAS
+  - HRP1001.SOBID
+  target_table: HRP1000
+  target_fields:
+  - PLVAR
+  - OTYPE
+  - OBJID
+  applies_when:
+    HRP1001.SCLAS:
+    - O
+    - S
+    - C
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: Organisational relationship points at an object that does not exist
+  why_it_matters: The related object of an organisation, position or job relationship must exist in the plan. A dangling relationship comes from a deleted or never created object.
+  rule_authority: sap_hard_constraint
+  sap_impact: Structural evaluation paths and reporting trees break at the missing object.
+  fix_map:
+    __other__: Delimit the relationship in PPOME or create the missing object.
+  record_fix_template: Object {HRP1001.OBJID} has a relationship to an object that does not exist. Correct in PPOME.
+- id: PA112
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - O
+    RELAT:
+    - '011'
+    SCLAS:
+    - K
+    ENDDA:
+    - '99991231'
+  applies_when:
+    HRP1000.OTYPE:
+    - O
+    HRP1000.ENDDA:
+    - '99991231'
+    HRP1000.ISTAT:
+    - '1'
+    HRP1000.PLVAR:
+    - '01'
+  severity: medium
+  dimension: completeness
+  message: Active organisational unit has no cost centre assignment
+  why_it_matters: An organisational unit carries its cost centre through relationship A 011. Without it, personnel cost of the unit cannot be defaulted and cost reporting by unit has a gap.
+  rule_authority: best_practice
+  sap_impact: Position and employee cost default fails for the unit; the cost centre must be maintained by hand.
+  fix_map:
+    __other__: Assign the cost centre to the unit in PPOME.
+  record_fix_template: Organisational unit {HRP1000.OBJID} has no cost centre assignment. Assign in PPOME.
+- id: PA113
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - S
+    RELAT:
+    - '003'
+    RSIGN:
+    - A
+    ENDDA:
+    - '99991231'
+  applies_when:
+    HRP1000.OTYPE:
+    - S
+    HRP1000.ENDDA:
+    - '99991231'
+    HRP1000.ISTAT:
+    - '1'
+    HRP1000.PLVAR:
+    - '01'
+  severity: medium
+  dimension: completeness
+  message: Active position is not assigned to an organisational unit
+  why_it_matters: A position belongs to one organisational unit through relationship A 003. A position outside the structure is not part of any reporting line.
+  rule_authority: best_practice
+  sap_impact: The position and its holder are missing from the organisation chart and from structural authorisations.
+  fix_map:
+    __other__: Assign the position to its organisational unit in PPOME.
+  record_fix_template: Position {HRP1000.OBJID} has no organisational unit. Assign in PPOME.
+- id: PA114
+  field: HRP1000.OBJID
+  check_class: exists_check
+  grain: HRP1000
+  target_table: HRP1001
+  target_fields:
+  - OBJID
+  target_when:
+    OTYPE:
+    - O
+    RELAT:
+    - '002'
+    RSIGN:
+    - A
+    ENDDA:
+    - '99991231'
+  applies_when:
+    HRP1000.OTYPE:
+    - O
+    HRP1000.ENDDA:
+    - '99991231'
+    HRP1000.ISTAT:
+    - '1'
+    HRP1000.PLVAR:
+    - '01'
+  severity: low
+  dimension: completeness
+  message: Active organisational unit has no superior unit
+  why_it_matters: Every unit except the root reports to a superior unit through relationship A 002. A unit without one starts a second tree.
+  rule_authority: best_practice
+  sap_impact: The unit and everything below it is missing from the main organisation structure.
+  fix_map:
+    __other__: Assign the superior unit in PPOME.
+  record_fix_template: Organisational unit {HRP1000.OBJID} has no superior unit. Assign in PPOME.
+- id: PA115
+  field: HRP1001.RSIGN
+  check_class: domain_value_check
+  grain: HRP1001
+  allowed_values:
+  - A
+  - B
+  valid_values_with_labels:
+    A: Bottom-up
+    B: Top-down
+  severity: medium
+  dimension: validity
+  message: Relationship direction is not A or B
+  why_it_matters: Relationship direction is A (bottom-up) or B (top-down). Another value is unknown to every evaluation path.
+  rule_authority: sap_hard_constraint
+  sap_impact: Evaluation paths ignore the record.
+  fix_map:
+    __other__: Correct the relationship in PPOME.
+  record_fix_template: Object {HRP1001.OBJID} has an invalid relationship direction. Correct in PPOME.
+- id: PA116
+  field: HRP1001.SOBID
+  check_class: null_check
+  grain: HRP1001
+  applies_when:
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: completeness
+  message: Relationship has no related object
+  why_it_matters: A relationship needs the object it points to. A blank related object is a broken record.
+  rule_authority: best_practice
+  sap_impact: Evaluation paths stop at the record.
+  fix_map:
+    __blank__: Delimit or correct the relationship in PPOME.
+  record_fix_template: Object {HRP1001.OBJID} has a relationship without a related object. Correct in PPOME.
+- id: PA117
+  field: HRP1001.OBJID
+  check_class: cross_field_check
+  grain: HRP1001
+  fail_when: (`HRP1001.OBJID` == `HRP1001.SOBID`) & (`HRP1001.OTYPE` == `HRP1001.SCLAS`)
+  require_populated: true
+  applies_when:
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: consistency
+  message: Relationship points to its own object
+  why_it_matters: An object cannot report to itself. A relationship from an object to itself creates a loop in the structure.
+  rule_authority: best_practice
+  sap_impact: Structure walks never terminate or are cut off by the system.
+  fix_map:
+    __other__: Delimit the relationship in PPOME.
+  record_fix_template: Object {HRP1001.OBJID} has a relationship to itself. Delimit in PPOME.
+- id: PA118
+  field: HRP1001.OBJID
+  check_class: uniqueness_check
+  grain: HRP1001
+  fields:
+  - HRP1001.PLVAR
+  - HRP1001.OBJID
+  applies_when:
+    HRP1001.OTYPE:
+    - S
+    HRP1001.RSIGN:
+    - A
+    HRP1001.RELAT:
+    - '003'
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: Position belongs to more than one organisational unit
+  why_it_matters: A position belongs to exactly one organisational unit. Two open relationships double-count the position in both units.
+  rule_authority: best_practice
+  sap_impact: Headcount and cost are counted in two units; structural authorisations see the position twice.
+  fix_map:
+    __other__: Delimit the wrong relationship in PPOME.
+  record_fix_template: Position {HRP1001.OBJID} belongs to more than one organisational unit. Delimit one in PPOME.
+- id: PA119
+  field: HRP1001.OBJID
+  check_class: uniqueness_check
+  grain: HRP1001
+  fields:
+  - HRP1001.PLVAR
+  - HRP1001.OBJID
+  applies_when:
+    HRP1001.OTYPE:
+    - O
+    HRP1001.RSIGN:
+    - A
+    HRP1001.RELAT:
+    - '002'
+    HRP1001.ENDDA:
+    - '99991231'
+  severity: high
+  dimension: uniqueness
+  message: Organisational unit has more than one superior unit
+  why_it_matters: A unit has one superior. Two open A 002 relationships make the structure a network instead of a tree.
+  rule_authority: best_practice
+  sap_impact: Rolled-up headcount and cost double-count the unit; reporting-line resolution is ambiguous.
+  fix_map:
+    __other__: Delimit the wrong relationship in PPOME.
+  record_fix_template: Organisational unit {HRP1001.OBJID} has more than one superior unit. Delimit one in PPOME.
+- id: PA120
+  field: HRP1000.SHORT
+  check_class: null_check
+  grain: HRP1000
+  applies_when:
+    HRP1000.ENDDA:
+    - '99991231'
+    HRP1000.ISTAT:
+    - '1'
+  severity: medium
+  dimension: completeness
+  message: Active planning object has no short name
+  why_it_matters: The short name identifies the object in selection lists. Blank short names make PPOME and selection screens unreadable.
+  rule_authority: best_practice
+  sap_impact: Users cannot find the object by name.
+  fix_map:
+    __blank__: Maintain the short name in PPOME.
+  record_fix_template: Object {HRP1000.OBJID} has no short name. Maintain in PPOME.
