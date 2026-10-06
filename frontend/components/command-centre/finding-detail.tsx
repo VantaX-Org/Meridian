@@ -216,13 +216,16 @@ function RuleSection({ f, anomaly, fieldChecked }: { f: Finding; anomaly: boolea
   const invalid = Object.entries(d.distinct_invalid_values ?? {}).sort((a, b) => b[1] - a[1]);
   const labels = Object.entries(f.rule_context?.valid_values_with_labels ?? {});
   const conditions = r?.conditions == null ? [] : Array.isArray(r.conditions) ? r.conditions : [r.conditions];
+  const checkClass = f.check_class ?? (conditions as { check_class?: unknown }[]).map((c) => c?.check_class).find((v): v is string => typeof v === "string" && !!v) ?? null;
+  const expectedText = labels.length ? `One of ${labels.length.toLocaleString()} valid values`
+    : r?.description && r.description !== f.details?.message ? r.description : (f.details?.message ?? "As the rule defines");
   const rows: { k: string; v: ReactNode; mono?: boolean }[] = anomaly
     ? [{ k: "Measure", v: METRIC[d.metric ?? ""] ?? d.metric ?? "—" },
        { k: "Expected", v: d.expected && d.expected.low != null ? `${d.expected.low.toLocaleString()} to ${d.expected.high?.toLocaleString() ?? "—"}` : "Seen in earlier downloads" },
        { k: "Observed", v: typeof d.observed === "number" ? d.observed.toLocaleString() : Array.isArray(d.observed) ? `${d.observed.length.toLocaleString()} values` : "—" }]
-    : [{ k: "Check type", v: f.check_class ? <span title={f.check_class}>{checkClassLabel(f.check_class)}</span> : "—" },
+    : [{ k: "Check type", v: checkClass ? <span title={checkClass}>{checkClassLabel(checkClass)}</span> : "—" },
        { k: "Field", v: fieldChecked ? <FieldChip {...splitField(fieldChecked)} /> : "—" },
-       { k: "Expected", v: labels.length ? `One of ${labels.length.toLocaleString()} valid values` : (f.details?.message ?? "As the rule defines") },
+       { k: "Expected", v: expectedText },
        { k: "Observed", v: `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()} records fail` },
        ...(r ? [{ k: "Source", v: r.source === "yaml" ? (r.source_yaml ? `checks/rules/${r.source_yaml}` : "Shipped rule") : "Defined in HQ", mono: r.source === "yaml" }] : [])];
   return (

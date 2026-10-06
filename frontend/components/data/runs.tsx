@@ -80,7 +80,7 @@ export function RunsSurface() {
       cell: ({ row }) => (row.original.status === "failed" ? "—" : fmtDuration(jobTiming(row.original, nowSec).elapsed)) },
     { id: "rows", header: "Rows", meta: meta({ width: 110, numeric: true, align: "end" }),
       cell: ({ row }) => (row.original.rows_done ? fmtInt(row.original.rows_done) : "") },
-    { id: "note", header: "Note", meta: meta({ minWidth: 240, clamp: 2 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
+    { id: "note", header: "Note", meta: meta({ width: 260, clamp: 2 }), cell: ({ row }) => (row.original.error ? errorLabel(row.original.error) : row.original.message) },
   ], [systemName, nowSec]);
 
   const versionColumns = useMemo<ColumnDef<VersionRow, unknown>[]>(() => [

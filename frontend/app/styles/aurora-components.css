@@ -350,8 +350,8 @@
 }
 .aurora-field__helper {
   font-family: var(--aurora-font-ui);
-  font-size: 11px;
-  line-height: 14px;
+  font-size: 12px;
+  line-height: 16px;
   letter-spacing: 0.02em;
   color: var(--aurora-fg-muted);
 }
@@ -2222,6 +2222,7 @@
   gap: var(--aurora-space-8);
   align-items: start;
 }
+.aurora-report__grid[data-nav="false"] { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 960px) {
   .aurora-report__grid {
     grid-template-columns: 1fr;
@@ -2650,60 +2651,23 @@
   border-color: var(--aurora-status-danger-border);
 }
 
-.aurora-process-report__hierarchy {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--aurora-space-1);
+/* Hierarchy: one outline table, depth by left padding, hairlines between rows. */
+.aurora-process-report__outline { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px; }
+.aurora-process-report__outline th {
+  text-align: left; font-weight: 600; font-size: 12px; line-height: 16px; color: var(--aurora-fg-tertiary);
+  padding: var(--aurora-space-2) var(--aurora-space-3); border-bottom: 1px solid var(--aurora-canvas-line-strong);
 }
-.aurora-process-report__hierarchy .aurora-process-report__hierarchy {
-  padding-left: var(--aurora-space-5);
-  border-left: 1px solid var(--aurora-canvas-line);
-  margin-left: var(--aurora-space-2);
-  margin-top: var(--aurora-space-1);
+.aurora-process-report__outline td { padding: var(--aurora-space-2) var(--aurora-space-3); border-bottom: 1px solid var(--aurora-canvas-line); vertical-align: baseline; }
+.aurora-process-report__outline [data-num] { text-align: right; width: 112px; font-variant-numeric: tabular-nums; }
+.aurora-process-report__outline tr[data-level="1"] td { font-weight: 600; }
+.aurora-process-report__outline-label { display: flex; align-items: baseline; gap: var(--aurora-space-2); padding-left: calc((var(--depth, 1) - 1) * var(--aurora-space-5)); }
+.aurora-process-report__outline-toggle {
+  all: unset; cursor: pointer; display: inline-flex; width: 16px; justify-content: center; color: var(--aurora-fg-tertiary);
 }
-.aurora-process-report__hier-row {
-  display: flex;
-  align-items: center;
-  gap: var(--aurora-space-3);
-  padding: var(--aurora-space-2) var(--aurora-space-3);
-  border: 1px solid var(--aurora-canvas-line);
-  border-radius: var(--aurora-radius-control);
-  background: var(--aurora-canvas-raised);
-}
-.aurora-process-report__hier-level {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  min-width: 32px;
-  padding: 0 8px;
-  border-radius: var(--aurora-radius-sheet);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--aurora-fg-tertiary);
-  background: var(--aurora-canvas-elevated);
-  letter-spacing: 0.04em;
-}
-.aurora-process-report__hier-meta {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--aurora-space-2);
-}
-.aurora-process-report__hier-blocking {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: var(--aurora-radius-sheet);
-  font-size: 11px;
-  color: var(--aurora-status-danger-500);
-  background: var(--aurora-status-danger-bg);
-  border: 1px solid var(--aurora-status-danger-border);
-}
+.aurora-process-report__outline-toggle:focus-visible { outline: 2px solid var(--aurora-accent-500); outline-offset: 1px; }
+.aurora-process-report__outline-spacer { display: inline-block; width: 16px; }
+.aurora-process-report__hier-blocking { color: var(--aurora-status-danger-500); font-weight: 600; }
+.aurora-process-report__hier-level { color: var(--aurora-fg-tertiary); font-size: 12px; }
 
 .aurora-process-report__variants {
   list-style: none;
@@ -2948,6 +2912,7 @@
   padding: 0;
   justify-content: center;
 }
+.aurora-topbar__export { border-color: transparent; background: transparent; }
 .aurora-topbar__cmdk:hover,
 .aurora-topbar__icon:hover {
   color: var(--aurora-fg-primary);
@@ -2974,6 +2939,7 @@
   font-family: var(--aurora-font-mono);
   font-size: 12px;
 }
+.aurora-job-rail__label { font-size: 12px; }
 .aurora-job-rail__bar,
 .aurora-job-rail__progress {
   display: block;
@@ -3500,6 +3466,7 @@
 
 /* Import: drop zone beside the pipeline stepper */
 .aurora-import { display: grid; grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr); gap: var(--aurora-space-4); }
+.aurora-import[data-solo] { grid-template-columns: minmax(0, 1fr); }
 .aurora-import__drop {
   display: flex; align-items: center; justify-content: center; min-height: 220px; padding: var(--aurora-space-6);
   border: 1px dashed var(--aurora-canvas-line); border-radius: var(--aurora-radius-sheet); background: var(--aurora-canvas-raised);

@@ -24,7 +24,7 @@
 
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   EmptyState,
   ProcessGraph,
@@ -128,6 +128,10 @@ export interface ProcessReportProps {
   readinessHistory?: ReadonlyArray<ProcessReportReadinessPoint>;
   recommendations?: ReadonlyArray<ProcessReportRecommendation>;
 
+  /** The deepest expanded hierarchy node. Its ancestors are open too. Wire it to `?node=`. */
+  openNode?: string | null;
+  onOpenNode?: (id: string | null) => void;
+
   className?: string;
 }
 
@@ -165,7 +169,6 @@ export function ProcessReport({
   processName,
   verdict,
   support,
-  readiness,
   readinessSemantic,
   owner,
   lastUpdated,
@@ -177,6 +180,8 @@ export function ProcessReport({
   blockingFindings,
   readinessHistory,
   recommendations,
+  openNode,
+  onOpenNode,
   className,
 }: ProcessReportProps) {
   const sections: ReportSurfaceProps["sections"] = [
@@ -184,7 +189,7 @@ export function ProcessReport({
       id: "hierarchy",
       label: "Hierarchy",
       count: countHierarchy(hierarchy),
-      body: <HierarchySection nodes={hierarchy} />,
+      body: <HierarchySection nodes={hierarchy} openNode={openNode} onOpenNode={onOpenNode} />,
     },
     {
       id: "process-map",
@@ -235,9 +240,6 @@ export function ProcessReport({
             >
               {READINESS_LABEL[readinessSemantic]}
             </span>
-            <Text variant="text-small" numeric as="span">
-              {readiness.toFixed(0)} / 100
-            </Text>
             <Text variant="text-small" tone="tertiary" as="span">
               {processName}
             </Text>
@@ -255,7 +257,7 @@ export function ProcessReport({
         }
         actions={actions}
         sections={sections}
-        navLabel="Process report sections"
+        nav={false}
       />
     </div>
   );
@@ -280,9 +282,14 @@ function countHierarchy(
 
 function HierarchySection({
   nodes,
+  openNode,
+  onOpenNode,
 }: {
   nodes?: ReadonlyArray<ProcessReportHierarchyNode>;
+  openNode?: string | null;
+  onOpenNode?: (id: string | null) => void;
 }) {
+  const [localOpen, setLocalOpen] = useState<string | null>(null);
   if (!nodes || nodes.length === 0) {
     return (
       <EmptyState
@@ -291,65 +298,77 @@ function HierarchySection({
       />
     );
   }
+  const current = onOpenNode ? (openNode ?? null) : localOpen;
+  const setCurrent = onOpenNode ?? setLocalOpen;
+  // Open ids: the chosen node and every ancestor of it. Level 1 is always open.
+  const parent = new Map<string, string | null>();
+  const walk = (ns: ReadonlyArray<ProcessReportHierarchyNode>, up: string | null) => {
+    for (const n of ns) {
+      parent.set(n.id, up);
+      if (n.children) walk(n.children, n.id);
+    }
+  };
+  walk(nodes, null);
+  const open = new Set<string>(nodes.map((n) => n.id));
+  for (let id = current; id; id = parent.get(id) ?? null) open.add(id);
+  const rows: Array<{ node: ProcessReportHierarchyNode; expanded: boolean }> = [];
+  const emit = (ns: ReadonlyArray<ProcessReportHierarchyNode>) => {
+    for (const n of ns) {
+      const expanded = open.has(n.id);
+      rows.push({ node: n, expanded });
+      if (expanded && n.children) emit(n.children);
+    }
+  };
+  emit(nodes);
+  const toggle = (n: ProcessReportHierarchyNode, expanded: boolean) =>
+    setCurrent(expanded ? (parent.get(n.id) ?? null) : n.id);
   return (
-    <ol className="aurora-process-report__hierarchy" role="tree">
-      {nodes.map((n) => (
-        <HierarchyNode key={n.id} node={n} />
-      ))}
-    </ol>
-  );
-}
-
-function HierarchyNode({ node }: { node: ProcessReportHierarchyNode }) {
-  const hasChildren = Boolean(node.children && node.children.length > 0);
-  return (
-    <li
-      className="aurora-process-report__hier-node"
-      data-level={node.level}
-      role="treeitem"
-      aria-selected={false}
-      aria-level={node.level}
-      aria-expanded={hasChildren ? true : undefined}
-    >
-      <div className="aurora-process-report__hier-row">
-        <span
-          className="aurora-process-report__hier-level"
-          data-numeric="true"
-        >
-          L{node.level}
-        </span>
-        <Text variant="text-body" as="span">
-          {node.label}
-        </Text>
-        {node.module ? (
-          <Text variant="text-small" tone="tertiary" as="span">
-            {node.module}
-          </Text>
-        ) : null}
-        <span className="aurora-process-report__hier-meta">
-          {typeof node.score === "number" ? (
-            <Text variant="text-small" numeric as="span" tone="secondary">
-              {node.score.toFixed(0)}
-            </Text>
-          ) : null}
-          {typeof node.blocking === "number" && node.blocking > 0 ? (
-            <span
-              className="aurora-process-report__hier-blocking"
-              data-tone="danger"
-            >
-              {node.blocking.toLocaleString()} blocking
-            </span>
-          ) : null}
-        </span>
-      </div>
-      {node.children && node.children.length > 0 ? (
-        <ol className="aurora-process-report__hierarchy" role="group">
-          {node.children.map((child) => (
-            <HierarchyNode key={child.id} node={child} />
-          ))}
-        </ol>
-      ) : null}
-    </li>
+    <table className="aurora-process-report__outline">
+      <caption className="ui-visually-hidden">Process steps from level 1 to level 5</caption>
+      <thead>
+        <tr>
+          <th scope="col">Step</th>
+          <th scope="col">Object</th>
+          <th scope="col" data-num>Pass rate</th>
+          <th scope="col" data-num>Blocking</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ node, expanded }) => {
+          const hasChildren = Boolean(node.children && node.children.length > 0);
+          return (
+            <tr key={node.id} data-level={node.level}>
+              <td>
+                <div className="aurora-process-report__outline-label" style={{ "--depth": node.level } as React.CSSProperties}>
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      className="aurora-process-report__outline-toggle"
+                      aria-expanded={expanded}
+                      aria-label={`${expanded ? "Collapse" : "Expand"} ${typeof node.label === "string" ? node.label : `level ${node.level}`}`}
+                      onClick={() => toggle(node, expanded)}
+                    >
+                      {expanded ? "−" : "+"}
+                    </button>
+                  ) : (
+                    <span className="aurora-process-report__outline-spacer" aria-hidden />
+                  )}
+                  <span>{node.label}</span>
+                  <span className="aurora-process-report__hier-level">L{node.level}</span>
+                </div>
+              </td>
+              <td>{node.module ?? ""}</td>
+              <td data-num>{typeof node.score === "number" ? `${node.score.toFixed(0)}%` : ""}</td>
+              <td data-num>
+                {typeof node.blocking === "number" && node.blocking > 0 ? (
+                  <span className="aurora-process-report__hier-blocking">{node.blocking.toLocaleString()}</span>
+                ) : ""}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
