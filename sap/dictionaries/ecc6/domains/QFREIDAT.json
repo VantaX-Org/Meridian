@@ -1,0 +1,11 @@
+{
+ "domain": "QFREIDAT",
+ "type": "DATS",
+ "length": 8,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,580 @@
+{
+ "table": "QDQL",
+ "description": "Quality level",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "MATNR",
+   "key": true,
+   "data_element": "QMATNRQL",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 4,
+   "name": "PLNTY",
+   "key": true,
+   "data_element": "QPLNTYQL",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Task List Type",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 5,
+   "name": "PLNNR",
+   "key": true,
+   "data_element": "QPLNNRQL",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Key for Task List Group",
+   "check_table": "PLKO"
+  },
+  {
+   "pos": 6,
+   "name": "PLNAL",
+   "key": true,
+   "data_element": "QPLNALQL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group Counter",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PLNFL",
+   "key": true,
+   "data_element": "QPLNFLQL",
+   "domain": "PLNFOLGE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Sequence of Operations Within a Plan",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "PLNKN",
+   "key": true,
+   "data_element": "QPLNKNQL",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of Task List Node",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ZAEHLERQL",
+   "key": true,
+   "data_element": "QZAEHLERQL",
+   "domain": "QDYNANZ4",
+   "type": "INT4",
+   "length": 10,
+   "decimals": 0,
+   "description": "Sequential Counter for Different Quality Levels",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "LIFNR",
+   "key": false,
+   "data_element": "QELIFNQL",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Vendor Account Number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 11,
+   "name": "HERSTELLER",
+   "key": false,
+   "data_element": "QHERSTQL",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Manufacturer Account Number",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 12,
+   "name": "KUNNR",
+   "key": false,
+   "data_element": "QEKUNNQL",
+   "domain": "KUNNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Customer Account Number",
+   "check_table": "KNA1"
+  },
+  {
+   "pos": 13,
+   "name": "PRUEFART",
+   "key": false,
+   "data_element": "QPART",
+   "domain": "QPART",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inspection Type",
+   "check_table": "TQ30"
+  },
+  {
+   "pos": 14,
+   "name": "VORNR",
+   "key": false,
+   "data_element": "QVORNRD",
+   "domain": "VORNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Operation Number in the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "MERKNR",
+   "key": false,
+   "data_element": "QMERKNRD",
+   "domain": "QMERKNRP",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Characteristic Number in the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "VPLTY",
+   "key": false,
+   "data_element": "VPLNTY",
+   "domain": "PLNTY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Type of the referenced task list",
+   "check_table": "TCA01"
+  },
+  {
+   "pos": 17,
+   "name": "VPLNR",
+   "key": false,
+   "data_element": "VPLNNR",
+   "domain": "PLNNR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Group of the referenced task list",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "VPLAL",
+   "key": false,
+   "data_element": "VPLNAL",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Group counter of the referenced task list",
+   "check_table": null
+  },
+  {
+   "pos": 19,
+   "name": "VPLFL",
+   "key": false,
+   "data_element": "VPLBFL",
+   "domain": "PLNFOLGE",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Referenced sequence in routing",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "VPLNKN",
+   "key": false,
+   "data_element": "PLNKN",
+   "domain": "KNTNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Number of the task list node",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "AENDLOSA",
+   "key": false,
+   "data_element": "QAENDLOSA",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User who Last Changed the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "AENDLOSM",
+   "key": false,
+   "data_element": "QAENDLOSM",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User who Manually Changed the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "AEDATLOSA",
+   "key": false,
+   "data_element": "QAEDATLOSA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date of the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "AEDATLOSM",
+   "key": false,
+   "data_element": "QAEDATLOSM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Change Date (Manual) of the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "AEZEILOSA",
+   "key": false,
+   "data_element": "QAEZEILOSA",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Change Time of Q-Level",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "AEZEILOSM",
+   "key": false,
+   "data_element": "QAEZEILOSM",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Change Time (Manual) of Q-Level",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "PRUEFLOS",
+   "key": false,
+   "data_element": "QPLOSQL",
+   "domain": "NUMC12",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Number of the Last Inspection Lot with Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "BWLOS",
+   "key": false,
+   "data_element": "QBWLOS",
+   "domain": "QBEWERTUNG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Valuation (Usage Decision) of the Last Inspection Lot",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "BWLOSDYN",
+   "key": false,
+   "data_element": "QBWLOSDYN",
+   "domain": "QBEWERTUNG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modification Valuation of the Last Inspection Lot",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "STICHPRVER",
+   "key": false,
+   "data_element": "QSTPRVER",
+   "domain": "QSTPRVER",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Sampling Procedure",
+   "check_table": "QDSV"
+  },
+  {
+   "pos": 31,
+   "name": "DYNREGEL",
+   "key": false,
+   "data_element": "QDYNREGEL",
+   "domain": "QDYNREGEL",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Dynamic Modification Rule",
+   "check_table": "QDDR"
+  },
+  {
+   "pos": 32,
+   "name": "PRSTUFENAE",
+   "key": false,
+   "data_element": "QPRSTNAE",
+   "domain": "QPRSTUFE",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Inspection Stage for Next Inspection",
+   "check_table": "QDPS"
+  },
+  {
+   "pos": 33,
+   "name": "ANZLOSEOVE",
+   "key": false,
+   "data_element": "QANZLOSOVE",
+   "domain": "QDYNANZ2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Number of Inspection Lots Without Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "ANZPRAEN",
+   "key": false,
+   "data_element": "QANZPRAEN",
+   "domain": "QDYNANZ2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Number of Inspections Since Inspection Stage Change",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "ANZNIOAEN",
+   "key": false,
+   "data_element": "QANZNIOAEN",
+   "domain": "QDYNANZ2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "Number of Not-OK Inspections (Rejections) Since Stage Change",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "DBEWERTG",
+   "key": false,
+   "data_element": "QDDBEWERTG",
+   "domain": "QEEBEWERTG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dynamic Modification Valuation (Accept/Reject) of Char.",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "MBEWERTG",
+   "key": false,
+   "data_element": "QDMBEWERTG",
+   "domain": "QEEBEWERTG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Valuation of the Characteristic from Results Recording",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "PLOSOVE",
+   "key": false,
+   "data_element": "QPLOSQL1",
+   "domain": "NUMC12",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Number of Last Inspection Lot Without Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "DATLPRUEF",
+   "key": false,
+   "data_element": "QDATLPRUEF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Last Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "ANZPRSTOP",
+   "key": false,
+   "data_element": "QANZPRSTOP",
+   "domain": "QDYNANZ2",
+   "type": "INT2",
+   "length": 5,
+   "decimals": 0,
+   "description": "No. of Cancelled Inspections per Char. Since Last Inspection",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "DELDATUM",
+   "key": false,
+   "data_element": "QDELDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Deletion Date of the Quality Level",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "RESDATUM",
+   "key": false,
+   "data_element": "QRESDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Reset Date of Quality Level",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "DYNREGEL",
+   "foreign_table": "QDDR",
+   "foreign_field": "DYNREGEL"
+  },
+  {
+   "field": "HERSTELLER",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "KUNNR",
+   "foreign_table": "KNA1",
+   "foreign_field": "KUNNR"
+  },
+  {
+   "field": "LIFNR",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "PLNNR",
+   "foreign_table": "PLKO",
+   "foreign_field": "PLNNR"
+  },
+  {
+   "field": "PLNTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "PRSTUFENAE",
+   "foreign_table": "QDPS",
+   "foreign_field": "PRSTUFE"
+  },
+  {
+   "field": "PRUEFART",
+   "foreign_table": "TQ30",
+   "foreign_field": "ART"
+  },
+  {
+   "field": "STICHPRVER",
+   "foreign_table": "QDSV",
+   "foreign_field": "STICHPRVER"
+  },
+  {
+   "field": "VPLTY",
+   "foreign_table": "TCA01",
+   "foreign_field": "PLNTY"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

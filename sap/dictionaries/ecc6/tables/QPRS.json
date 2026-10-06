@@ -1,0 +1,651 @@
+{
+ "table": "QPRS",
+ "description": "Master record for phys. samples",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PHYNR",
+   "key": true,
+   "data_element": "QPHYSPRNR",
+   "domain": "QPHYSPRNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Physical Sample Number",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "OBJNR",
+   "key": false,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 4,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "QSTSMA_PRS",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile for Physical Samples",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 5,
+   "name": "PRART",
+   "key": false,
+   "data_element": "QPRART",
+   "domain": "QPRART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Physical-Sample Type",
+   "check_table": "TQ40"
+  },
+  {
+   "pos": 6,
+   "name": "PRTYP",
+   "key": false,
+   "data_element": "QPRTYP",
+   "domain": "QPRTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Sample Category",
+   "check_table": "TQ44"
+  },
+  {
+   "pos": 7,
+   "name": "PN_NR",
+   "key": false,
+   "data_element": "QPZNR",
+   "domain": "NUMC12",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Sample-Drawing Number",
+   "check_table": "QPRN"
+  },
+  {
+   "pos": 8,
+   "name": "XMANU",
+   "key": false,
+   "data_element": "QPRB_MAN",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Manually Created Sample",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "GBTYP",
+   "key": false,
+   "data_element": "QGEBINDET",
+   "domain": "QGEBINDET",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Physical-Sample Container",
+   "check_table": "TQ42"
+  },
+  {
+   "pos": 10,
+   "name": "MENGE",
+   "key": false,
+   "data_element": "QPHYSPRUM",
+   "domain": "QMENGEPLOS",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Size of the Physical Sample",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "MEINH",
+   "key": false,
+   "data_element": "QPHYSPRME",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measure for Physical Sample Size",
+   "check_table": "T006"
+  },
+  {
+   "pos": 12,
+   "name": "PLOS2",
+   "key": false,
+   "data_element": "QLOT_LATE",
+   "domain": "QPLOS",
+   "type": "NUMC",
+   "length": 12,
+   "decimals": 0,
+   "description": "Current or Last Inspection Lot for the Sample",
+   "check_table": "QALS"
+  },
+  {
+   "pos": 13,
+   "name": "MATNR",
+   "key": false,
+   "data_element": "MATNR",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material Number",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 14,
+   "name": "WERKS",
+   "key": false,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 15,
+   "name": "REVLV",
+   "key": false,
+   "data_element": "REVLV",
+   "domain": "REVLV",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Revision level",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "CHARG",
+   "key": false,
+   "data_element": "CHARG_D",
+   "domain": "CHARG",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Batch Number",
+   "check_table": "MCH1"
+  },
+  {
+   "pos": 17,
+   "name": "KTEXT",
+   "key": false,
+   "data_element": "QTEXT_PRS",
+   "domain": "TEXT80",
+   "type": "CHAR",
+   "length": 80,
+   "decimals": 0,
+   "description": "Short Text for Physical Sample",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "QAUTH",
+   "key": false,
+   "data_element": "QMATAUTH",
+   "domain": "QMATAUTH",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Material authorization group for activities in QM",
+   "check_table": "TQ01B"
+  },
+  {
+   "pos": 19,
+   "name": "PNVER",
+   "key": false,
+   "data_element": "QPRZIEHVER",
+   "domain": "QPRZIEHVER",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Sample-Drawing Procedure",
+   "check_table": "QPRVK"
+  },
+  {
+   "pos": 20,
+   "name": "PNVEV",
+   "key": false,
+   "data_element": "QVERSNPRZV",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version No. of the Sample-Drawing Procedure",
+   "check_table": "QPRVK"
+  },
+  {
+   "pos": 21,
+   "name": "PNPOS",
+   "key": false,
+   "data_element": "QZAEHLPRZV",
+   "domain": "NUM4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item Number in Sample-Drawing Procedure",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "GEBEH",
+   "key": false,
+   "data_element": "QGEBEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Lot Container",
+   "check_table": "T006"
+  },
+  {
+   "pos": 23,
+   "name": "TPBIS",
+   "key": false,
+   "data_element": "QPROBNRBIS",
+   "domain": "QPROBEPL",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Highest Partial Sample No. Valid for Instruction",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "LGORT",
+   "key": false,
+   "data_element": "LGORT_D",
+   "domain": "LGORT",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Storage location",
+   "check_table": "T001L"
+  },
+  {
+   "pos": 25,
+   "name": "ABORT",
+   "key": false,
+   "data_element": "QAUFBEWORT",
+   "domain": "QAUFBEWORT",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Storage Location for a Physical Sample",
+   "check_table": "TQ41"
+  },
+  {
+   "pos": 26,
+   "name": "ABDAU",
+   "key": false,
+   "data_element": "QAUFBDAUER",
+   "domain": "DEC5",
+   "type": "DEC",
+   "length": 5,
+   "decimals": 0,
+   "description": "Storage Duration of the Physical Sample in Days",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "ABDAT",
+   "key": false,
+   "data_element": "QAUFBDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Storage Deadline for Physical Sample",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "ABINF",
+   "key": false,
+   "data_element": "QAUFBINFO",
+   "domain": "TEXT80",
+   "type": "CHAR",
+   "length": 80,
+   "decimals": 0,
+   "description": "Storage Information for the Physical Sample",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "AENNA",
+   "key": false,
+   "data_element": "QPRS_AEN",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Last User who Changed the Physical-Sample Record",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "AENDT",
+   "key": false,
+   "data_element": "QPRS_AENDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date the Physical Sample Was Changed",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "AENZT",
+   "key": false,
+   "data_element": "QPRS_AENZT",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time at Which Physical-Sample Record Changed",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "VENUM",
+   "key": false,
+   "data_element": "VENUM",
+   "domain": "VENUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Internal Handling Unit Number",
+   "check_table": "*"
+  },
+  {
+   "pos": 33,
+   "name": "VEPOS",
+   "key": false,
+   "data_element": "VEPOS",
+   "domain": "VEPOS",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Handling Unit Item",
+   "check_table": "*"
+  },
+  {
+   "pos": 36,
+   "name": "ADDON_DUMMY",
+   "key": false,
+   "data_element": "QDUMMY",
+   "domain": "QDUMMY",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Dummy Field for ADDON Structures in QM",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "PRIMPACK",
+   "key": false,
+   "data_element": "QPRIMPACK",
+   "domain": "QPRIMPACK",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Primary Packaging (Stability Study)",
+   "check_table": "TQ45"
+  },
+  {
+   "pos": 39,
+   "name": "STABICON",
+   "key": false,
+   "data_element": "QSTABICON",
+   "domain": "QSTABICON",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Storage Condition",
+   "check_table": "TQ43"
+  },
+  {
+   "pos": 40,
+   "name": "EINGDT",
+   "key": false,
+   "data_element": "QST_EINGDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Receipt of Initial Sample for Stability Study",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "EINLDT",
+   "key": false,
+   "data_element": "QST_EINLDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Storage Date of Sample for Storage Condition",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "AUSLDT",
+   "key": false,
+   "data_element": "QST_AUSLDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Removal from Storage of Sample for Storage Condition",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "ENTORT",
+   "key": false,
+   "data_element": "QPRSENTORT",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Location of Sample Drawing (Functional Location)",
+   "check_table": "*"
+  },
+  {
+   "pos": 44,
+   "name": "INFEORT",
+   "key": false,
+   "data_element": "QPRSINFEORT",
+   "domain": "CHAR60",
+   "type": "CHAR",
+   "length": 60,
+   "decimals": 0,
+   "description": "Description of Sample-Drawing Location",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "ENTDATUM",
+   "key": false,
+   "data_element": "QPRSENTDATUM",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date of Sample Drawing",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "ENTZEIT",
+   "key": false,
+   "data_element": "QPRSENTZEIT",
+   "domain": "QZEIT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Sample Drawing",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "BEARBEITER",
+   "key": false,
+   "data_element": "QPRSBEARBEITER",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Processor Responsible for the Sample, Sample Taker",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "LABOR",
+   "key": false,
+   "data_element": "QLABOR",
+   "domain": "QPLEXT_PRPLATZ",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Center (Laboratory)",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABORT",
+   "foreign_table": "TQ41",
+   "foreign_field": "AUFBEWORT"
+  },
+  {
+   "field": "CHARG",
+   "foreign_table": "MCH1",
+   "foreign_field": "CHARG"
+  },
+  {
+   "field": "GBTYP",
+   "foreign_table": "TQ42",
+   "foreign_field": "GEBINDETYP"
+  },
+  {
+   "field": "GEBEH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "LGORT",
+   "foreign_table": "T001L",
+   "foreign_field": "LGORT"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MATNR",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "MEINH",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "PLOS2",
+   "foreign_table": "QALS",
+   "foreign_field": "PRUEFLOS"
+  },
+  {
+   "field": "PNVER",
+   "foreign_table": "QPRVK",
+   "foreign_field": "PRZIEHVERF"
+  },
+  {
+   "field": "PNVEV",
+   "foreign_table": "QPRVK",
+   "foreign_field": "VERSION"
+  },
+  {
+   "field": "PN_NR",
+   "foreign_table": "QPRN",
+   "foreign_field": "PN_NR"
+  },
+  {
+   "field": "PRART",
+   "foreign_table": "TQ40",
+   "foreign_field": "PRART"
+  },
+  {
+   "field": "PRIMPACK",
+   "foreign_table": "TQ45",
+   "foreign_field": "PRIMPACK"
+  },
+  {
+   "field": "PRTYP",
+   "foreign_table": "TQ44",
+   "foreign_field": "PRTYP"
+  },
+  {
+   "field": "QAUTH",
+   "foreign_table": "TQ01B",
+   "foreign_field": "QMATAUTH"
+  },
+  {
+   "field": "STABICON",
+   "foreign_table": "TQ43",
+   "foreign_field": "STABICON"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

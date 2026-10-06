@@ -1,0 +1,32 @@
+{
+ "domain": "LVS_STIKZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Still no activity in WM for inspection sample"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Inspection sample in WM transferred to sample storage bin"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Inspection sample in WM left in GR area"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Insp.sample in WM ignored; quantity in unknown storage bin"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1301,6 +1301,62 @@ project_system:
   "COBRB.PROZS": "COBRB.PROZS"
   "COBRB.PS_PSP_PNR": "COBRB.PS_PSP_PNR"
 # ─────────────────────────────────────────────────────────
+# MODULE: Quality Management (QMAT, QINF, QPMK, QPGR, QPCD, PLKO, PLMK, QMEL, QALS)
+# ─────────────────────────────────────────────────────────
+quality_management:
+  # ── QMAT — Inspection Setup ──
+  "QMAT_ART": "QMAT.ART"
+  "Inspection Type": "QMAT.ART"
+  "AKTIV": "QMAT.AKTIV"
+  "Inspection Type Active": "QMAT.AKTIV"
+  "SPROZ": "QMAT.SPROZ"
+  "Inspection Percentage": "QMAT.SPROZ"
+  "DYNREGEL": "QMAT.DYNREGEL"
+  "Dynamic Modification Rule": "QMAT.DYNREGEL"
+  # ── QINF — Quality Info Record ──
+  "LIEFERANT": "QINF.LIEFERANT"
+  "Q-Info Vendor": "QINF.LIEFERANT"
+  "FREI_DAT": "QINF.FREI_DAT"
+  "Release Valid To": "QINF.FREI_DAT"
+  "FREI_MNG": "QINF.FREI_MNG"
+  "Released Quantity": "QINF.FREI_MNG"
+  "SPERRFKT": "QINF.SPERRFKT"
+  "Blocked Function": "QINF.SPERRFKT"
+  # ── MARC — QM procurement ──
+  "SSQSS": "MARC.SSQSS"
+  "QM Control Key": "MARC.SSQSS"
+  "QMATV": "MARC.QMATV"
+  "QM Active for Material": "MARC.QMATV"
+  # ── QPMK / QPGR / QPCD — Characteristics and Catalogs ──
+  "MKMNR": "QPMK.MKMNR"
+  "Master Inspection Characteristic": "QPMK.MKMNR"
+  "Master Inspection Char": "QPMK.MKMNR"
+  "KATALOGART": "QPGR.KATALOGART"
+  "Catalog Type": "QPGR.KATALOGART"
+  "CODEGRUPPE": "QPGR.CODEGRUPPE"
+  "Code Group": "QPGR.CODEGRUPPE"
+  "CODE": "QPCD.CODE"
+  "Catalog Code": "QPCD.CODE"
+  # ── PLKO / PLMK — Inspection Plans ──
+  "PLNNR_Q": "PLKO.PLNNR"
+  "Inspection Plan Group": "PLKO.PLNNR"
+  "VERWMERKM": "PLMK.VERWMERKM"
+  "Referenced MIC": "PLMK.VERWMERKM"
+  # ── QMEL — Quality Notification ──
+  "QMNUM": "QMEL.QMNUM"
+  "Notification Number": "QMEL.QMNUM"
+  "QMART": "QMEL.QMART"
+  "Notification Type": "QMEL.QMART"
+  "QMDAT": "QMEL.QMDAT"
+  "Notification Date": "QMEL.QMDAT"
+  # ── QALS — Inspection Lot ──
+  "PRUEFLOS": "QALS.PRUEFLOS"
+  "Inspection Lot": "QALS.PRUEFLOS"
+  "HERKUNFT": "QALS.HERKUNFT"
+  "Inspection Lot Origin": "QALS.HERKUNFT"
+
+
+# ─────────────────────────────────────────────────────────
 # MODULE: HCM Personnel Administration (PA0000-PA0009, PA0105, HRP1000, HRP1001)
 # ─────────────────────────────────────────────────────────
 hcm:
@@ -1361,6 +1417,7 @@ hcm:
   "Accounted to": "PA0003.ABRDT"
   "ABRSP": "PA0003.ABRSP"
   "Payroll Lock": "PA0003.ABRSP"
+# ─────────────────────────────────────────────────────────
 # MODULE: Controlling (CSKS, CSKB, CEPC, TKA01)
 # ─────────────────────────────────────────────────────────
 controlling:

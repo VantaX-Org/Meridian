@@ -1,0 +1,404 @@
+{
+ "table": "QMUR",
+ "description": "Quality notification - causes",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QMNUM",
+   "key": true,
+   "data_element": "QMNUM",
+   "domain": "QMNUM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Message Number",
+   "check_table": "QMEL"
+  },
+  {
+   "pos": 3,
+   "name": "FENUM",
+   "key": true,
+   "data_element": "FELFD",
+   "domain": "FELFD",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Item Number in Item Record",
+   "check_table": "QMFE"
+  },
+  {
+   "pos": 4,
+   "name": "URNUM",
+   "key": true,
+   "data_element": "URNUM",
+   "domain": "NUM4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sequential Number for Cause",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "URTXT",
+   "key": false,
+   "data_element": "URSTX",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Cause Text",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "URKAT",
+   "key": false,
+   "data_element": "URKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Causes",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 11,
+   "name": "URGRP",
+   "key": false,
+   "data_element": "URGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group - Causes",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 12,
+   "name": "URCOD",
+   "key": false,
+   "data_element": "URCOD",
+   "domain": "QCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Reason Code",
+   "check_table": "*"
+  },
+  {
+   "pos": 13,
+   "name": "URVER",
+   "key": false,
+   "data_element": "QVERSNR",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "INDTX",
+   "key": false,
+   "data_element": "INDLTX",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Object Long Text Available",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "KZMLA",
+   "key": false,
+   "data_element": "KZMLA",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language indicator for text segment",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "ERZEIT",
+   "key": false,
+   "data_element": "ERZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time, at Which Record Was Added",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "AEZEIT",
+   "key": false,
+   "data_element": "AEZEIT",
+   "domain": "UHRZT",
+   "type": "TIMS",
+   "length": 6,
+   "decimals": 0,
+   "description": "Time of Change",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "VUKAT",
+   "key": false,
+   "data_element": "QVUKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Party Responsible",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 19,
+   "name": "VUGRP",
+   "key": false,
+   "data_element": "QVUGRP",
+   "domain": "QCODEGRP",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Code Group - Party Responsible",
+   "check_table": "QPGR"
+  },
+  {
+   "pos": 20,
+   "name": "VUCOD",
+   "key": false,
+   "data_element": "QVUCOD",
+   "domain": "QCODE",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Code for Party Responsible",
+   "check_table": "*"
+  },
+  {
+   "pos": 21,
+   "name": "PARVW",
+   "key": false,
+   "data_element": "QMUR_PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Function for Party Responsible",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 22,
+   "name": "PARNR",
+   "key": false,
+   "data_element": "QMUR_PARNR",
+   "domain": "I_PARNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Party Responsible for Cause (Partner Number)",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "BAUTL",
+   "key": false,
+   "data_element": "QMUR_BAUTL",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Cause Assembly",
+   "check_table": "*"
+  },
+  {
+   "pos": 24,
+   "name": "URMENGE",
+   "key": false,
+   "data_element": "QURMNG",
+   "domain": "MENGE",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Quantity",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "URMGEIN",
+   "key": false,
+   "data_element": "QMGEIN",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measure for Item",
+   "check_table": "T006"
+  },
+  {
+   "pos": 26,
+   "name": "KZLOESCH",
+   "key": false,
+   "data_element": "KZLOESCH",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Delete Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "QURNUM",
+   "key": false,
+   "data_element": "QURNUM",
+   "domain": "NUMC04",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sort Number for Cause",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "AUTKZ",
+   "key": false,
+   "data_element": "QAUTKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Record Created with Function 'Create with Copy Model'",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "INVOLVPERC",
+   "key": false,
+   "data_element": "QN8D_INVOLVPERC",
+   "domain": null,
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Involvment in Percentage",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "FENUM",
+   "foreign_table": "QMFE",
+   "foreign_field": "FENUM"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PARVW",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "QMNUM",
+   "foreign_table": "QMEL",
+   "foreign_field": "QMNUM"
+  },
+  {
+   "field": "URGRP",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "URKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "URMGEIN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "VUGRP",
+   "foreign_table": "QPGR",
+   "foreign_field": "CODEGRUPPE"
+  },
+  {
+   "field": "VUKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  }
+ ]
+}

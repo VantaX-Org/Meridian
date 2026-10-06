@@ -1,0 +1,37 @@
+{
+ "domain": "QMODUS_UD",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "UD using QM-IDI (interface)"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Automatic UD (job planning)"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Worklist (lists)"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "UD using BAPI"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Other UD mode"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

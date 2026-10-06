@@ -1,0 +1,37 @@
+{
+ "domain": "QM_PHASE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "1",
+   "high": null,
+   "text": "Outstanding"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Postponed"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "In Process"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Completed"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Deletion Flag"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

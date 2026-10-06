@@ -1,0 +1,77 @@
+{
+ "domain": "HERKZ",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "01",
+   "high": null,
+   "text": "General Notification"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Malfunction Report"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Activity Report"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Problem Notification"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Activity Report (Service)"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "General Notification (Service)"
+  },
+  {
+   "low": "Q1",
+   "high": null,
+   "text": "Customer Complaint"
+  },
+  {
+   "low": "Q2",
+   "high": null,
+   "text": "Complaint Against Vendor"
+  },
+  {
+   "low": "Q3",
+   "high": null,
+   "text": "Internal Problem Message"
+  },
+  {
+   "low": "R3",
+   "high": null,
+   "text": "R/3 Notification to SAP Support Line"
+  },
+  {
+   "low": "C1",
+   "high": null,
+   "text": "Internal Claim"
+  },
+  {
+   "low": "C2",
+   "high": null,
+   "text": "External Claim"
+  },
+  {
+   "low": "G1",
+   "high": null,
+   "text": "General Notification"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
