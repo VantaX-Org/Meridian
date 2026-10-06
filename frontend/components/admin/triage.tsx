@@ -234,13 +234,13 @@ function RuleForm({ rule, users, teams, onDone }: { rule: AssignmentRule | null;
   const qc = useQueryClient();
   const [ruleName, setRuleName] = useState(rule?.name ?? "");
   const [to, setTo] = useState(rule?.assign_team_id ? `team:${rule.assign_team_id}` : rule?.assign_user_id ? `user:${rule.assign_user_id}` : "");
-  const [severity, setSeverity] = useState<TriageSeverity[]>(rule?.match.severity ?? []);
+  const [matchSeverity, setMatchSeverity] = useState<TriageSeverity[]>(rule?.match.severity ?? []);
   const [fields, setFields] = useState<Record<ListField, string>>(
     () => Object.fromEntries(MATCH_FIELDS.map(([k]) => [k, (rule?.match[k] ?? []).join(", ")])) as Record<ListField, string>,
   );
   const save = useMutation({
     mutationFn: () => {
-      const match: RuleMatch = severity.length ? { severity } : {};
+      const match: RuleMatch = matchSeverity.length ? { severity: matchSeverity } : {};
       MATCH_FIELDS.forEach(([k]) => { const v = list(fields[k]); if (v.length) match[k] = v; });
       const body = {
         name: ruleName.trim(), match, enabled: rule?.enabled ?? true,
@@ -263,7 +263,7 @@ function RuleForm({ rule, users, teams, onDone }: { rule: AssignmentRule | null;
       <Stack gap={1}>
         <Text variant="text-small">Severity</Text>
         <Stack direction="row" gap={2} wrap>
-          {SEVERITIES.map((s) => <Chip key={s} selected={severity.includes(s)} onClick={() => setSeverity((xs) => toggled(xs, s, !xs.includes(s)))}>{s}</Chip>)}
+          {SEVERITIES.map((s) => <Chip key={s} selected={matchSeverity.includes(s)} onClick={() => setMatchSeverity((xs) => toggled(xs, s, !xs.includes(s)))}>{s}</Chip>)}
         </Stack>
       </Stack>
       {MATCH_FIELDS.map(([k, l]) => (
@@ -326,8 +326,8 @@ function PoliciesSection({ write }: { write: boolean }) {
 
 function PolicyForm({ policy, onDone }: { policy: SlaPolicy | null; onDone: () => void }) {
   const qc = useQueryClient();
-  const [severity, setSeverity] = useState<TriageSeverity>(policy?.severity ?? "high");
-  const [module, setModule] = useState(policy?.module ?? "");
+  const [policySeverity, setPolicySeverity] = useState<TriageSeverity>(policy?.severity ?? "high");
+  const [policyModule, setPolicyModule] = useState(policy?.module ?? "");
   const [ack, setAck] = useState(policy?.ack_minutes?.toString() ?? "");
   const [resolve, setResolve] = useState(policy?.resolve_minutes.toString() ?? "");
   const [risk, setRisk] = useState(String(policy?.at_risk_pct ?? 80));
@@ -335,7 +335,7 @@ function PolicyForm({ policy, onDone }: { policy: SlaPolicy | null; onDone: () =
   const valid = Number(resolve) > 0 && (ack === "" || Number(ack) > 0) && Number(risk) >= 1 && Number(risk) <= 99;
   const save = useMutation({
     mutationFn: () => saveSlaPolicy({
-      severity, module: module.trim() || null, ack_minutes: ack === "" ? null : Number(ack),
+      severity: policySeverity, module: policyModule.trim() || null, ack_minutes: ack === "" ? null : Number(ack),
       resolve_minutes: Number(resolve), at_risk_pct: Number(risk), business_hours: business,
     }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ["triage.sla"] }); toast.success("Policy saved"); onDone(); },
@@ -344,9 +344,9 @@ function PolicyForm({ policy, onDone }: { policy: SlaPolicy | null; onDone: () =
   return (
     <Stack gap={3}>
       <Field label="Severity" required>
-        {({ controlId }) => <Select id={controlId} options={SEVERITIES.map((s) => ({ value: s, label: s }))} value={severity} onValueChange={(v) => setSeverity(SEVERITIES.find((s) => s === v) ?? "high")} />}
+        {({ controlId }) => <Select id={controlId} options={SEVERITIES.map((s) => ({ value: s, label: s }))} value={policySeverity} onValueChange={(v) => setPolicySeverity(SEVERITIES.find((s) => s === v) ?? "high")} />}
       </Field>
-      <Field label="Module" helper="Module id such as material_master. Leave blank for all modules.">{({ controlId }) => <Input id={controlId} value={module} onChange={(e) => setModule(e.target.value)} />}</Field>
+      <Field label="Module" helper="Module id such as material_master. Leave blank for all modules.">{({ controlId }) => <Input id={controlId} value={policyModule} onChange={(e) => setPolicyModule(e.target.value)} />}</Field>
       <Field label="Acknowledge within (minutes)" helper="Leave blank for no acknowledge target.">{({ controlId }) => <Input id={controlId} type="number" min={1} value={ack} onChange={(e) => setAck(e.target.value)} />}</Field>
       <Field label="Resolve within (minutes)" required>{({ controlId }) => <Input id={controlId} type="number" min={1} value={resolve} onChange={(e) => setResolve(e.target.value)} />}</Field>
       <Field label="At risk after (% of window)">{({ controlId }) => <Input id={controlId} type="number" min={1} max={99} value={risk} onChange={(e) => setRisk(e.target.value)} />}</Field>

@@ -16,25 +16,25 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   // Aurora writing system (spec §11) — flags placeholder copy, glossary
-  // violations, and apologetic voice. Warns by default; ratchet to error
-  // after the initial clean-up sweep.
+  // violations, and apologetic voice. Every rule is an error; CI runs
+  // eslint with --max-warnings 0.
   {
     plugins: {
       "aurora-writing": auroraWriting,
       "aurora-structure": auroraStructure,
     },
     rules: {
-      "aurora-writing/no-forbidden-copy": "warn",
+      "aurora-writing/no-forbidden-copy": "error",
       "aurora-writing/no-forbidden-glyphs": "error",
       "aurora-structure/tally-figure-href": "error",
       "aurora-structure/one-tally": "error",
       "aurora-structure/tally-verdict": "error",
       "aurora-structure/chart-rules": "error",
       "aurora-structure/severity-via-badge": "error",
-      "aurora-structure/sap-name-in-chip": "warn",
+      "aurora-structure/sap-name-in-chip": "error",
       "aurora-structure/empty-state-no-media": "error",
       "aurora-structure/no-invented-progress": "error",
-      "aurora-structure/url-is-state": "warn",
+      "aurora-structure/url-is-state": "error",
     },
     // Scope: user-facing Aurora code and dashboard pages. Skip type
     // definitions, config, and the design playground (which intentionally
@@ -49,6 +49,13 @@ const eslintConfig = defineConfig([
       "**/*.test.{ts,tsx}",
       "**/*.spec.{ts,tsx}",
     ],
+  },
+  // TanStack Table's hook returns functions React Compiler cannot memoize.
+  // DataTable is the single wrapper around it and opts out with "use no memo",
+  // which this lint rule does not recognise.
+  {
+    files: ["components/aurora/data/table.tsx"],
+    rules: { "react-hooks/incompatible-library": "off" },
   },
 ]);
 

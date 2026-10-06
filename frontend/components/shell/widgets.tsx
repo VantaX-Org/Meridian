@@ -227,7 +227,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="ui-boot" role="status" aria-label="Loading"><span className="ui-update__spin" aria-hidden /></div>
+      <div className="ui-boot" role="status" aria-label="Loading Meridian"><span className="ui-update__spin" aria-hidden /></div>
     );
   }
   if (!user) return null;
