@@ -1,0 +1,81 @@
+{
+ "table": "T004F",
+ "description": "Field status definition groups",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "FSTVA",
+   "domain": "FSTVA",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Field Status Variant",
+   "check_table": "T004V"
+  },
+  {
+   "pos": 3,
+   "name": "FSTAG",
+   "key": true,
+   "data_element": "FSTAG",
+   "domain": "FSTAG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Field status group",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FAUS1",
+   "key": false,
+   "data_element": "FAUS1",
+   "domain": "FA050",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Account/Posting Key Field Selection",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "FAUS2",
+   "key": false,
+   "data_element": "FAUS1",
+   "domain": "FA050",
+   "type": "CHAR",
+   "length": 50,
+   "decimals": 0,
+   "description": "Account/Posting Key Field Selection",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BUKRS",
+   "foreign_table": "T004V",
+   "foreign_field": "FSTVA"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
