@@ -1,0 +1,187 @@
+{
+ "table": "TQ01B",
+ "description": "Material authorization groups in quality management",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QMATAUTH",
+   "key": true,
+   "data_element": "QMATAUTH",
+   "domain": "QMATAUTH",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Material authorization group for activities in QM",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "KZGENLOS",
+   "key": false,
+   "data_element": "QKZGENLOS",
+   "domain": "QKZGENLOS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Inspection Lot Approval",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "SIG_IL_RES",
+   "key": false,
+   "data_element": "SIG_IL_RES",
+   "domain": "SIG_IL_RES",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Digital Signature for Insp. Lot in Results Recording",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "SIG_IL_USA",
+   "key": false,
+   "data_element": "SIG_IL_USA",
+   "domain": "SIG_IL_USA",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Digital Signature for Insp. Lot when Usage Decision Made",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SIG_IL_SDR",
+   "key": false,
+   "data_element": "SIG_IL_SDR",
+   "domain": "SIG_IL_SDR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Digital Signature for Confirmation of Phys.-Sample Drawing",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SIGN_TYPE_RR",
+   "key": false,
+   "data_element": "SIGN_TYPE_RR",
+   "domain": "SIGN_TYPE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Signature Type: Inspection Lot Results Recording",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "SIGN_TYPE_UD",
+   "key": false,
+   "data_element": "SIGN_TYPE_UD",
+   "domain": "SIGN_TYPE_SINGLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Signature Type: Inspection Lot Usage Decision",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "SIGN_TYPE_SM",
+   "key": false,
+   "data_element": "SIGN_TYPE_SM",
+   "domain": "SIGN_TYPE_SINGLE",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Signature Type: Physical-Sample Drawing",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "SIGNSTRAT_RR",
+   "key": false,
+   "data_element": "SIGNSTRAT_RR",
+   "domain": "SIGNSTRAT",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Signature Strategy: Inspection Lot Results Recording",
+   "check_table": "TC85"
+  },
+  {
+   "pos": 11,
+   "name": "SIGNSTRAT_UD",
+   "key": false,
+   "data_element": "SIGNSTRAT_UD",
+   "domain": "SIGNSTRAT",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Signature Strategy with Individual Signature: Usage Decision",
+   "check_table": "TC85"
+  },
+  {
+   "pos": 12,
+   "name": "SIGNSTRAT_SM",
+   "key": false,
+   "data_element": "SIGNSTRAT_SM",
+   "domain": "SIGNSTRAT",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Signature Strategy w. Ind.Signature: Physical-Sample Drawing",
+   "check_table": "TC85"
+  },
+  {
+   "pos": 13,
+   "name": "REMARK_CHG",
+   "key": false,
+   "data_element": "SIGN_REMARK_CHG",
+   "domain": "SIGN_REMARK_CHG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Remark Can Be Changed",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "SIGNSTRAT_RR",
+   "foreign_table": "TC85",
+   "foreign_field": "SIGNSTRAT"
+  },
+  {
+   "field": "SIGNSTRAT_SM",
+   "foreign_table": "TC85",
+   "foreign_field": "SIGNSTRAT"
+  },
+  {
+   "field": "SIGNSTRAT_UD",
+   "foreign_table": "TC85",
+   "foreign_field": "SIGNSTRAT"
+  }
+ ]
+}

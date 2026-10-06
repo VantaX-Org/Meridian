@@ -141,6 +141,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/process", label: "Process map", icon: WorkflowIcon, keywords: "process mining flow" },
       { href: "/business-process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc" },
+      { href: "/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
       { href: "/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
       { href: "/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering" },
     ],

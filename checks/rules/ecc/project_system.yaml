@@ -1295,3 +1295,596 @@ rules:
   fix_map:
     __other__: Correct the receiver cost centre in the settlement rule (KO02 / CJ02) or create it (KS01).
   record_fix_template: 'Settlement rule {COBRB.OBJNR}/{COBRB.LFDNR}: receiver cost centre {actual_value} does not exist.'
+- id: PS081
+  field: PROJ.KALID
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Factory calendar of the project definition is not defined in customizing
+  why_it_matters: The factory calendar drives scheduling of the project dates. A calendar that is not defined cannot count
+    working days.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling in CJ20N runs on calendar days or fails.
+  fix_map:
+    __other__: Use a factory calendar defined in SCOW.
+  record_fix_template: 'Project {PROJ.PSPNR}: factory calendar ''''{invalid_value}'''' is not defined.'
+- id: PS082
+  field: PROJ.PWHIE
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: high
+  dimension: validity
+  message: WBS currency of the project definition is not defined in customizing
+  why_it_matters: The project currency is the default for planning and settlement. A currency outside TCURC cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost planning and commitments in the project cannot be valued.
+  fix_map:
+    __other__: Use a currency defined in OY04.
+  record_fix_template: 'Project {PROJ.PSPNR}: currency ''''{invalid_value}'''' is not defined.'
+- id: PS083
+  field: PROJ.WERKS
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+    PROJ.WERKS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Plant of the project definition is not defined in customizing
+  why_it_matters: The project plant is the default for activities and material components. An undefined plant cannot be defaulted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Networks created under the project fail on the plant default.
+  fix_map:
+    __other__: Use a defined plant.
+  record_fix_template: 'Project {PROJ.PSPNR}: plant ''''{invalid_value}'''' is not defined.'
+- id: PS084
+  field: PROJ.KOSTL
+  check_class: exists_check
+  fields:
+  - PROJ.VKOKR
+  - PROJ.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Project responsible cost centre does not exist in the controlling area
+  why_it_matters: The responsible cost centre is the owner for the project costs. A cost centre that is not in the project
+    controlling area cannot own them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost owner reports and authorisation by cost centre skip the project.
+  fix_map:
+    __other__: Assign a cost centre of the controlling area in CJ20N or create it in KS01.
+  record_fix_template: 'Project {PROJ.PSPNR}: cost centre {PROJ.KOSTL} does not exist in controlling area {PROJ.VKOKR}.'
+- id: PS085
+  field: PROJ.PLSEZ
+  check_class: cross_field_check
+  fail_when: '`PROJ.PLFAZ`.notna() & `PROJ.PLSEZ`.isna()'
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Project has a planned start but no planned finish
+  why_it_matters: Scheduling and the project timeline need both ends. A start without a finish leaves the project open ended.
+  rule_authority: best_practice
+  sap_impact: Overdue and milestone monitoring cannot judge the project.
+  fix_map:
+    __other__: Enter the planned finish in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPNR}: planned start is set and planned finish is empty.'
+- id: PS086
+  field: PROJ.ERDAT
+  check_class: cross_field_check
+  fail_when: (`PROJ.ERDAT` - @today).dt.days > 0
+  severity: medium
+  dimension: validity
+  message: Project definition created in the future
+  why_it_matters: A creation date after today comes from a load or a clock error and breaks age-based monitoring.
+  rule_authority: best_practice
+  sap_impact: Project ageing and archiving selection skip the project.
+  fix_map:
+    __other__: Correct the date at the source.
+  record_fix_template: 'Project {PROJ.PSPNR}: creation date is in the future.'
+- id: PS087
+  field: PROJ.AEDAT
+  check_class: cross_field_check
+  fail_when: '`PROJ.AEDAT` < `PROJ.ERDAT`'
+  severity: low
+  dimension: consistency
+  message: Project definition changed before it was created
+  why_it_matters: A change date before the creation date means the record was written outside the normal transaction.
+  rule_authority: best_practice
+  sap_impact: The audit trail of the project cannot be trusted.
+  fix_map:
+    __other__: Check the load that wrote the dates.
+  record_fix_template: 'Project {PROJ.PSPNR}: change date is before the creation date.'
+- id: PS088
+  field: PRPS.KALSM
+  check_class: referential_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Costing sheet of the WBS element is not defined in customizing
+  why_it_matters: The costing sheet drives overhead surcharges. A sheet outside T683 cannot be applied.
+  rule_authority: sap_hard_constraint
+  sap_impact: Overhead is not calculated on the WBS element.
+  fix_map:
+    __other__: Use a costing sheet defined in customizing (KZS2).
+  record_fix_template: 'WBS element {PRPS.POSID}: costing sheet ''''{invalid_value}'''' is not defined.'
+- id: PS089
+  field: PRPS.FABKL
+  check_class: referential_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Factory calendar of the WBS element is not defined in customizing
+  why_it_matters: The factory calendar drives scheduling of the WBS dates. A calendar that is not defined cannot count working
+    days.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling of the WBS element runs on calendar days or fails.
+  fix_map:
+    __other__: Use a factory calendar defined in SCOW.
+  record_fix_template: 'WBS element {PRPS.POSID}: factory calendar ''''{invalid_value}'''' is not defined.'
+- id: PS090
+  field: PRPS.PWPOS
+  check_class: referential_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: high
+  dimension: validity
+  message: WBS currency of the WBS element is not defined in customizing
+  why_it_matters: The WBS currency is the currency of planning and postings. A currency outside TCURC cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costs and commitments on the WBS element cannot be valued.
+  fix_map:
+    __other__: Use a currency defined in OY04.
+  record_fix_template: 'WBS element {PRPS.POSID}: currency ''''{invalid_value}'''' is not defined.'
+- id: PS091
+  field: PRPS.WERKS
+  check_class: referential_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+    PRPS.WERKS:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Plant of the WBS element is not defined in customizing
+  why_it_matters: The WBS plant is the default for procurement and activities. An undefined plant cannot be defaulted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase requisitions from the WBS element fail on the plant.
+  fix_map:
+    __other__: Use a defined plant.
+  record_fix_template: 'WBS element {PRPS.POSID}: plant ''''{invalid_value}'''' is not defined.'
+- id: PS092
+  field: PRPS.KOSTL
+  check_class: exists_check
+  fields:
+  - PRPS.PKOKR
+  - PRPS.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: WBS requesting cost centre does not exist in the controlling area
+  why_it_matters: The requesting cost centre is the owner in project reports. A cost centre outside the controlling area cannot
+    be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost owner reports skip the WBS element.
+  fix_map:
+    __other__: Assign a cost centre of the controlling area in CJ20N or create it in KS01.
+  record_fix_template: 'WBS element {PRPS.POSID}: cost centre {PRPS.KOSTL} does not exist in the controlling area.'
+- id: PS093
+  field: PRPS.AKSTL
+  check_class: exists_check
+  fields:
+  - PRPS.AKOKR
+  - PRPS.AKSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: WBS applicant cost centre does not exist in the controlling area
+  why_it_matters: The applicant cost centre is the owner in project reports. A cost centre outside the controlling area cannot
+    be resolved.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost owner reports skip the WBS element.
+  fix_map:
+    __other__: Assign a cost centre of the controlling area in CJ20N or create it in KS01.
+  record_fix_template: 'WBS element {PRPS.POSID}: cost centre {PRPS.AKSTL} does not exist in the controlling area.'
+- id: PS094
+  field: PRPS.MATNR
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: WBS element points at a material that does not exist
+  why_it_matters: The material on a WBS element names the project stock or the product. A missing material breaks the link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project stock and requirement planning cannot find the material.
+  fix_map:
+    __other__: Correct the material in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: material {PRPS.MATNR} does not exist.'
+- id: PS095
+  field: PRPS.EQUNR
+  check_class: exists_check
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: WBS element points at equipment that does not exist
+  why_it_matters: The equipment on a WBS element links the project to maintenance. A missing equipment breaks the link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment cost reports do not show the project.
+  fix_map:
+    __other__: Correct the equipment in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: equipment {PRPS.EQUNR} does not exist.'
+- id: PS096
+  field: PRPS.TPLNR
+  check_class: exists_check
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: WBS element points at a functional location that does not exist
+  why_it_matters: The functional location on a WBS element links the project to the plant structure. A missing location breaks
+    the link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Location cost reports do not show the project.
+  fix_map:
+    __other__: Correct the location in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: functional location {PRPS.TPLNR} does not exist.'
+- id: PS097
+  field: PRPS.PWPOS
+  check_class: cross_field_check
+  fail_when: '`PRPS.PWPOS` != `PROJ.PWHIE`'
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: WBS currency differs from the project currency
+  why_it_matters: WBS elements inherit the project currency. A different currency makes roll-up of plan and actual values
+    need conversion.
+  rule_authority: best_practice
+  sap_impact: Project totals mix currencies and rely on exchange rates.
+  fix_map:
+    __other__: Align the WBS currency with the project currency unless the difference is intended.
+  record_fix_template: 'WBS element {PRPS.POSID}: currency {PRPS.PWPOS} differs from the project currency {PROJ.PWHIE}.'
+- id: PS098
+  field: PRPS.PBUKR
+  check_class: cross_field_check
+  fail_when: '`PRPS.PBUKR` != `PRPS.ABUKR`'
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+    PRPS.ABUKR:
+      populated: true
+  severity: low
+  dimension: consistency
+  message: Requesting company code differs from the WBS company code
+  why_it_matters: A different requesting company code means the WBS element is settled across company codes, which needs intercompany
+    clearing.
+  rule_authority: best_practice
+  sap_impact: Cross-company settlement posts through clearing accounts.
+  fix_map:
+    __other__: Confirm the cross-company setup or align the codes in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: requesting company code {PRPS.ABUKR} differs from {PRPS.PBUKR}.'
+- id: PS099
+  field: PRPS.AEDAT
+  check_class: cross_field_check
+  fail_when: '`PRPS.AEDAT` < `PRPS.ERDAT`'
+  severity: low
+  dimension: consistency
+  message: WBS element changed before it was created
+  why_it_matters: A change date before the creation date means the record was written outside the normal transaction.
+  rule_authority: best_practice
+  sap_impact: The audit trail of the WBS element cannot be trusted.
+  fix_map:
+    __other__: Check the load that wrote the dates.
+  record_fix_template: 'WBS element {PRPS.POSID}: change date is before the creation date.'
+- id: PS100
+  field: PRPS.PSPNR
+  check_class: cross_field_check
+  fail_when: (`JEST.STAT` == 'I0046') & ((@today - `PRPS.AEDAT`).dt.days > 730)
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: info
+  dimension: timeliness
+  message: 'S/4HANA readiness: WBS element of a closed project untouched for two years and not flagged for deletion'
+  why_it_matters: Closed projects carry no open work. Keeping their WBS elements active adds to the data volume the conversion
+    must move (Simplification Item Project System data model).
+  rule_authority: s4hana_migration
+  sap_impact: Larger conversion volume; archiving before conversion removes closed projects.
+  fix_map:
+    __other__: Set the deletion flag and archive with PS_PROJECT (SARA) once settlement is done.
+  record_fix_template: 'WBS element {PRPS.POSID}: project is closed and the element has not changed for over two years.'
+- id: PS101
+  field: AUFK.AUFNR
+  check_class: cross_field_check
+  fail_when: '`JEST.STAT` == ''I0046'''
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PSPEL:
+      populated: true
+    AUFK.IDAT3:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Open order is assigned to a WBS element of a closed project
+  why_it_matters: Once a project is closed no further postings are allowed. An open order on its WBS element can no longer
+    settle.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order costs cannot settle to the closed project; the conversion pre-check lists the order as inconsistent.
+  fix_map:
+    __other__: Reassign the order or reopen the project in CJ20N.
+  record_fix_template: 'Order {AUFK.AUFNR}: still open on a WBS element whose project is closed.'
+- id: PS102
+  field: PROJ.AEDAT
+  check_class: cross_field_check
+  fail_when: (@today - `PROJ.AEDAT`).dt.days > 1825
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: info
+  dimension: timeliness
+  message: 'S/4HANA readiness: project definition unchanged for five years and not flagged for deletion'
+  why_it_matters: A project that nobody changed in five years is a candidate for closing and archiving before conversion.
+  rule_authority: s4hana_migration
+  sap_impact: Dormant projects add conversion volume and noise to the migration cockpit selection.
+  fix_map:
+    __other__: Close the project, settle it, set the deletion flag and archive.
+  record_fix_template: 'Project {PROJ.PSPNR}: unchanged for over five years and not flagged for deletion.'
+- id: PS103
+  field: AFKO.AUFNR
+  check_class: exists_check
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  grain: AFKO
+  severity: high
+  dimension: consistency
+  message: Order header has no order master record
+  why_it_matters: AFKO holds the scheduling header of an order or network. Without the AUFK master the header is orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be displayed; the conversion rejects the orphan header.
+  fix_map:
+    __other__: Remove the orphan through the SAP archiving or repair note process; do not patch tables.
+  record_fix_template: 'Order header {AFKO.AUFNR}: no order master exists.'
+- id: PS104
+  field: AFKO.PRONR
+  check_class: exists_check
+  target_table: PROJ
+  target_fields:
+  - PSPNR
+  severity: medium
+  dimension: consistency
+  message: Network points at a project definition that does not exist
+  why_it_matters: Networks under a project carry its number. A missing project breaks the hierarchy.
+  rule_authority: sap_hard_constraint
+  sap_impact: The network is not shown in project reports.
+  fix_map:
+    __other__: Correct the project assignment in CN22.
+  record_fix_template: 'Network {AFKO.AUFNR}: project {AFKO.PRONR} does not exist.'
+- id: PS105
+  field: AFKO.GSTRP
+  check_class: cross_field_check
+  fail_when: '`AFKO.GSTRP` > `AFKO.GLTRP`'
+  severity: medium
+  dimension: consistency
+  message: Basic start of the network is after the basic finish
+  why_it_matters: Scheduling reads start and finish in sequence. A start after the finish cannot be scheduled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity and deadline monitoring give wrong results.
+  fix_map:
+    __other__: Reschedule the network in CN22.
+  record_fix_template: 'Network {AFKO.AUFNR}: basic start is after basic finish.'
+- id: PS106
+  field: AFKO.GSTRS
+  check_class: cross_field_check
+  fail_when: '`AFKO.GSTRS` > `AFKO.GLTRS`'
+  severity: medium
+  dimension: consistency
+  message: Scheduled start of the order is after the scheduled finish
+  why_it_matters: Scheduling reads start and finish in sequence. A start after the finish cannot be scheduled.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity and deadline monitoring give wrong results.
+  fix_map:
+    __other__: Reschedule the order.
+  record_fix_template: 'Order header {AFKO.AUFNR}: scheduled start is after scheduled finish.'
+- id: PS107
+  field: AFKO.GSTRI
+  check_class: cross_field_check
+  fail_when: '`AFKO.GSTRI` > `AFKO.GETRI`'
+  severity: medium
+  dimension: consistency
+  message: Actual start of the order is after the actual finish
+  why_it_matters: Confirmations set the actual dates in sequence. A start after the finish points at a wrong confirmation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Actual lead time reports are wrong.
+  fix_map:
+    __other__: Correct the confirmation.
+  record_fix_template: 'Order header {AFKO.AUFNR}: actual start is after actual finish.'
+- id: PS108
+  field: AFVC.WERKS
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Plant of the order activity is not defined in customizing
+  why_it_matters: The activity plant decides where it is planned and costed. An undefined plant cannot schedule it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity planning and costing skip the activity.
+  fix_map:
+    __other__: Use a defined plant.
+  record_fix_template: 'Order activity {AFVC.VORNR}: plant ''''{invalid_value}'''' is not defined.'
+- id: PS109
+  field: AFVC.BUKRS
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Company code of the order activity is not defined in customizing
+  why_it_matters: The activity company code is the posting company code. An undefined code cannot post.
+  rule_authority: sap_hard_constraint
+  sap_impact: Confirmations and externally processed activities fail on the company code.
+  fix_map:
+    __other__: Use a defined company code.
+  record_fix_template: 'Order activity {AFVC.VORNR}: company code ''''{invalid_value}'''' is not defined.'
+- id: PS110
+  field: AFVC.PROJN
+  check_class: exists_check
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  target_when:
+    LOEVM:
+      blank: true
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Network activity is assigned to a WBS element that is missing or flagged for deletion
+  why_it_matters: Activity costs post to its WBS element. A missing or deleted element blocks the postings.
+  rule_authority: sap_hard_constraint
+  sap_impact: Confirmations and commitments for the activity fail.
+  fix_map:
+    __other__: Reassign the activity in CN22 or reactivate the WBS element.
+  record_fix_template: 'Order activity {AFVC.VORNR}: WBS element {AFVC.PROJN} is missing or flagged for deletion.'
+- id: PS111
+  field: AFVC.LIFNR
+  check_class: exists_check
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Externally processed activity points at a vendor that does not exist
+  why_it_matters: Externally processed activities create purchase requisitions for the vendor. A missing vendor blocks them.
+  rule_authority: sap_hard_constraint
+  sap_impact: The purchase requisition cannot be converted to an order.
+  fix_map:
+    __other__: Correct the vendor in CN22.
+  record_fix_template: 'Order activity {AFVC.VORNR}: vendor {AFVC.LIFNR} does not exist.'
+- id: PS112
+  field: AFVC.LIFNR
+  check_class: exists_check
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: activity vendor has no business partner link'
+  why_it_matters: In S/4HANA the vendor exists only as a business partner (simplification item Business Partner Approach).
+    An activity for an unsynchronised vendor loses its vendor on conversion.
+  rule_authority: s4hana_migration
+  sap_impact: Open externally processed activities cannot be converted with their vendor.
+  fix_map:
+    __other__: Synchronise the vendor to a business partner with CVI before conversion.
+  record_fix_template: 'Order activity {AFVC.VORNR}: vendor {AFVC.LIFNR} has no business partner link.'
+- id: PS113
+  field: AFVC.ANFKO
+  check_class: exists_check
+  fields:
+  - AFVC.ANFKOKRS
+  - AFVC.ANFKO
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Activity requesting cost centre does not exist in the controlling area
+  why_it_matters: The requesting cost centre owns the activity costs. A missing one cannot be charged.
+  rule_authority: sap_hard_constraint
+  sap_impact: Internal charges for the activity fail.
+  fix_map:
+    __other__: Assign a valid cost centre in CN22.
+  record_fix_template: 'Order activity {AFVC.VORNR}: requesting cost centre {AFVC.ANFKO} does not exist.'
+- id: PS114
+  field: AFVC.EBELN
+  check_class: exists_check
+  target_table: EKKO
+  target_fields:
+  - EBELN
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Activity refers to a purchase order that does not exist
+  why_it_matters: Externally processed activities keep the purchase order that procures them. A missing order breaks the link.
+  rule_authority: sap_hard_constraint
+  sap_impact: Commitment values of the activity are lost.
+  fix_map:
+    __other__: Correct the purchase order in CN22.
+  record_fix_template: 'Order activity {AFVC.VORNR}: purchase order {AFVC.EBELN} does not exist.'
+- id: PS115
+  field: AFVC.LTXA1
+  check_class: null_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Order activity has no description
+  why_it_matters: Planners and shop paper identify the activity by its short text.
+  rule_authority: best_practice
+  sap_impact: Activity lists show an empty line.
+  fix_map:
+    __blank__: Enter a short text in CN22.
+  record_fix_template: 'Order activity {AFVC.VORNR}: description is {actual_value}.'
