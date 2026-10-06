@@ -17,7 +17,7 @@ import {
   Banner, Button, Chip, CommandPalette, DataTable, Drawer, EmptyState, Field, Input, Panel, Select, Stack, Text, Textarea,
   useDrawerParam, type AuroraColumnMeta, type ChipTone, type CommandPaletteCommand,
 } from "@/components/aurora";
-import { Tally } from "@/components/ui-core";
+import { PageHeader, Tally } from "@/components/ui-core";
 import { copyToClipboard } from "@/lib/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -25,7 +25,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate, labelOf, formatModuleName } from "@/lib/format";
 import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -44,7 +44,7 @@ const VIEWS = [
 const SORTS = [{ value: "sla", label: "SLA due" }, { value: "priority", label: "Priority" }, { value: "age", label: "Oldest" }];
 const BULK_CONFIDENCE = 0.85;
 const isToday = (iso: string | null, now: number) => !!iso && new Date(iso).toDateString() === new Date(now).toDateString();
-const label = (s: string) => s.replace(/_/g, " ");
+const label = labelOf;
 const typeLabel = (t: string) => TYPE_LABEL[t] ?? label(t);
 
 /** 45m · 5h · 3d */
@@ -255,7 +255,7 @@ export function StewardInboxSurface() {
     { id: "sla", header: "SLA", meta: meta({ width: 120 }), cell: ({ row }) => { const s = slaOf(row.original, now); return <Chip tone={SLA_TONE[s.state]}>{slaText(s)}</Chip>; } },
     { id: "task", header: "Task", cell: ({ row }) => (
       <span><strong>{typeLabel(row.original.item_type)}</strong> <span className="aurora-number">{row.original.source_id}</span>
-        <Text variant="text-micro" tone="muted" as="div">{row.original.domain}, {row.original.id.slice(0, 8)}{row.original.ai_recommendation ? ", model suggestion" : ""}</Text></span>) },
+        <Text variant="text-micro" tone="muted" as="div">{formatModuleName(row.original.domain)}{row.original.ai_recommendation ? ", model suggestion" : ""}</Text></span>) },
     { id: "priority", header: "Priority", meta: meta({ width: 80 }), cell: ({ row }) => `P${row.original.priority}` },
     { id: "status", header: "Status", meta: meta({ width: 120 }), cell: ({ row }) => <Chip tone={STATUS_TONE[row.original.status]}>{label(row.original.status)}</Chip> },
     { id: "assignee", header: "Assignee", meta: meta({ width: 140 }), cell: ({ row }) => who(row.original.assigned_to) },
@@ -301,6 +301,7 @@ export function StewardInboxSurface() {
   const m = metricsQ.data;
   return (
     <Stack gap={5} className="aurora-page">
+      <PageHeader title="Steward inbox" summary="Tasks assigned to you and your team, most urgent first." />
       <Tally level={2} label="Steward inbox" figures={[
         { label: "Overdue", value: counts.breached, tone: counts.breached ? "danger" : undefined, loading, verdict: counts.breached ? "Past their due time." : "Nothing past due.", href: "/workbench?view=breached" },
         { label: "Due today", value: counts.today, tone: counts.today ? "warning" : undefined, loading, verdict: counts.today ? "Due before midnight." : "Nothing due today.", href: "/workbench?view=today" },
@@ -376,9 +377,9 @@ function TaskDetail({ task: t, now, who, canApprove, busy, assignees, me, onAppr
 }) {
   const s = slaOf(t, now);
   const rows: [string, string][] = [
-    ["Record", t.source_id], ["Domain", t.domain], ["Type", typeLabel(t.item_type)], ["Priority", `P${t.priority}`],
+    ["Record", t.source_id], ["Domain", formatModuleName(t.domain)], ["Type", typeLabel(t.item_type)], ["Priority", `P${t.priority}`],
     ["Assignee", who(t.assigned_to)], ["SLA", t.sla_hours ? `${t.sla_hours}h · ${slaText(s)}` : "no SLA"],
-    ["Due", t.due_at ? new Date(t.due_at).toLocaleString() : "—"], ["Raised", relativeTime(t.created_at)], ["Updated", relativeTime(t.updated_at)],
+    ["Due", t.due_at ? formatDate(t.due_at, "datetime") : "—"], ["Raised", relativeTime(t.created_at)], ["Updated", relativeTime(t.updated_at)],
   ];
   return (
     <Stack gap={4}>

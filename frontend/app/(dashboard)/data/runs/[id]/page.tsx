@@ -20,7 +20,7 @@ import { getVersionProfile } from "@/lib/api/field-profile";
 import { analyseVersion, getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { getSystems } from "@/lib/api/connectivity";
 import { compareVersions, getVersion } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate, labelOf } from "@/lib/format";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { useRole } from "@/hooks/use-role";
@@ -38,7 +38,7 @@ const meanDqs = (d: Record<string, number | null> | undefined) => {
   const x = Object.values(d ?? {}).filter((v): v is number => typeof v === "number");
   return x.length ? x.reduce((a, b) => a + b, 0) / x.length : null;
 };
-const clock = (sec: number | null | undefined) => (sec ? new Date(sec * 1000).toLocaleString() : "Not recorded");
+const clock = (sec: number | null | undefined) => (sec ? formatDate(sec * 1000, "datetime") : "Not recorded");
 
 interface ObjectRow { object: string; records: number; dqs: number | null }
 interface TableRow { table: string; status: string; rows: number | null; expected: number | null; detail: string }
@@ -81,7 +81,7 @@ export default function RunPage() {
 
   const version = versionQ.data;
   const systemName = systemsQ.data?.find((s) => s.id === systemId)?.name;
-  const title = version ? (version.label || version.metadata?.file_name || `Run of ${new Date(version.run_at).toLocaleDateString()}`) : "Run";
+  const title = version ? (version.label || version.metadata?.file_name || `Run of ${formatDate(version.run_at)}`) : "Run";
   const crumb = (
     <PageCrumb segments={[
       { level: "portfolio", label: "Portfolio", href: "/" },
@@ -147,12 +147,12 @@ export default function RunPage() {
         </>} />
 
       <Tally level={2} label="This run at a glance" figures={[
-        { label: "Status", value: RUN_LABEL[status] ?? status, href: `${here}?tab=log`, tone: RUN_STATUS[status] === "failed" ? "danger" : RUN_STATUS[status] === "ok" ? "success" : undefined,
+        { label: "Status", value: null, text: RUN_LABEL[status] ?? status, href: `${here}?tab=log`, tone: RUN_STATUS[status] === "failed" ? "danger" : RUN_STATUS[status] === "ok" ? "success" : undefined,
           verdict: job?.error ?? (version.metadata?.file_name || "See the log.") },
         { label: "Records read", value: rowsRead, href: `${here}?tab=tables`, verdict: job && job.rows_total > 0 && job.status === "running" ? `${fmtInt(job.rows_done)} of ${fmtInt(job.rows_total)} so far.` : `Across ${objectRows.length} objects.` },
         { label: "Tables", value: tableRows.length || (row ? row.coverage.read : 0), href: `${here}?tab=tables`, verdict: row ? `${row.coverage.read} read, ${row.coverage.issues.length} with a note.` : "Per table detail needs a system run." },
-        { label: "Duration", value: duration, href: `${here}?tab=log`, verdict: job ? `Started ${clock(job.started_at)}.` : "Timing is kept while the job is on the server." },
-        { label: "Score", value: dqs === null ? "Not analysed" : Math.round(dqs), href: `${here}?tab=summary`, unit: dqs === null ? undefined : "of 100",
+        { label: "Duration", value: null, text: job ? duration : undefined, href: `${here}?tab=log`, verdict: job ? `Started ${clock(job.started_at)}.` : "Timing is kept while the job is on the server." },
+        { label: "Score", value: dqs === null ? null : Math.round(dqs), href: `${here}?tab=summary`, unit: dqs === null ? undefined : "of 100",
           tone: capped ? "warning" : undefined, verdict: capped?.cap_reason ?? (dqs === null ? "Run Analyse to score it." : "Mean across objects.") },
       ]} />
 
@@ -174,7 +174,7 @@ export default function RunPage() {
                 <table className="ui-mini-table">
                   <thead><tr><th>Check</th><th>Object</th><th>Severity</th><th>Affected before</th><th>Affected now</th></tr></thead>
                   <tbody>{diffQ.data.checks.newly_failing.slice(0, 20).map((c) => (
-                    <tr key={`${c.module}${c.check_id}`}><td><Mono>{c.check_id}</Mono></td><td>{formatModuleName(c.module)}</td><td>{c.severity}</td><td>{fmtInt(c.v1_affected)}</td><td>{fmtInt(c.v2_affected)}</td></tr>
+                    <tr key={`${c.module}${c.check_id}`}><td><Mono>{c.check_id}</Mono></td><td>{formatModuleName(c.module)}</td><td>{labelOf(c.severity)}</td><td>{fmtInt(c.v1_affected)}</td><td>{fmtInt(c.v2_affected)}</td></tr>
                   ))}</tbody>
                 </table>
               ) : <EmptyState>No check started failing.</EmptyState>}
@@ -228,8 +228,8 @@ export default function RunPage() {
             </div>
           ) : (
             <KeyValue rows={[
-              { k: "Run at", v: new Date(version.run_at).toLocaleString() },
-              { k: "Analysed", v: row?.analysed_at ? new Date(row.analysed_at).toLocaleString() : "Not analysed" },
+              { k: "Run at", v: formatDate(version.run_at, "datetime") },
+              { k: "Analysed", v: row?.analysed_at ? formatDate(row.analysed_at, "datetime") : "Not analysed" },
               { k: "Status", v: version.status },
             ]} />
           )}

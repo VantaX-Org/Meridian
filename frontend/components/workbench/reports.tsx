@@ -21,7 +21,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { compositeDqs } from "@/lib/api/findings";
 import { getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExtractionReportUrl, getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { archiveVersions, getVersion, getVersions, restoreVersions } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { Version } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -29,7 +29,7 @@ const DONE = new Set(["complete", "agents_complete", "ai_enriched"]);
 const exportable = (v: Version) => DONE.has(v.status) && !!v.dqs_summary;
 const checks = (v: Version) => Object.values(v.dqs_summary ?? {}).reduce((a, m) => a + (m.total_checks ?? 0), 0);
 const name = (v: Version) => v.label ?? v.metadata?.file_name ?? `Analysis ${v.id.slice(0, 8)}`;
-const stamp = (iso: string) => new Date(iso).toLocaleString("en-ZA", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const stamp = (iso: string) => formatDate(iso, "datetime");
 type Kind = "pdf" | "analysis" | "extraction" | "compare" | "cleaning" | "json" | "config";
 const FILE: Record<Kind, { url: (id: string) => string; file: (id: string) => string; label: string }> = {
   pdf: { url: getReportDownloadUrl, file: (id) => `meridian_dq_report_${id.slice(0, 8)}.pdf`, label: "PDF report" },
@@ -108,7 +108,7 @@ export function ReportsSurface() {
       <Tally level={2} label="Reports" figures={[
         { label: "Reports", value: q.isLoading ? null : versions.length, loading: q.isLoading, verdict: versions.length ? "Completed analyses." : "No analysis has finished yet.", href: "/reports" },
         { label: "This week", value: q.isLoading ? null : week, loading: q.isLoading, verdict: week ? "Written in the last 7 days." : "Nothing written this week.", href: "/reports" },
-        { label: "Latest DQS", value: latestDqs === null ? (q.isLoading ? null : "None") : Math.round(latestDqs * 10) / 10, loading: q.isLoading,
+        { label: "Latest DQS", value: latestDqs === null ? null : Math.round(latestDqs * 10) / 10, loading: q.isLoading,
           tone: latestDqs !== null && latestDqs < 70 ? "danger" : latestDqs !== null && latestDqs < 90 ? "warning" : undefined,
           verdict: latest ? `Run ${relativeTime(latest.run_at)}.` : "No analysis has completed.", href: latest ? `/reports?report=${latest.id}` : "/reports" },
       ]} />

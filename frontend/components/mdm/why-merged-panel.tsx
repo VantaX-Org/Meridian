@@ -17,6 +17,7 @@ import {
   unmergeRecords,
   type PairExplanation,
 } from "@/lib/api/merge-explain";
+import { formatDate } from "@/lib/format";
 
 const pct = (v: number | null | undefined) => (v == null ? "n/a" : `${(v * 100).toFixed(1)}%`);
 const NONE = "None";
@@ -287,7 +288,7 @@ export function WhyMergedPanel({ recordId }: { recordId: string }) {
               <tbody>
                 {events_.map((e) => (
                   <tr key={e.id}>
-                    <td className="aurora-number">{new Date(e.created_at).toLocaleString()}</td>
+                    <td className="aurora-number">{formatDate(e.created_at, "datetime")}</td>
                     <td>{e.event_type}{e.reversed ? " (reversed)" : ""}</td>
                     <td><Mono>{e.member_keys.join(", ")}</Mono></td>
                     <td>{e.reason || NONE}</td>

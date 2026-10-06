@@ -30,7 +30,7 @@ import {
 } from "@/lib/api/issues";
 import { getAssignableUsers } from "@/lib/api/users";
 import { getTriageMetrics } from "@/lib/api/triage";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -365,7 +365,7 @@ function IssueDrawer({ id, onClose, canComment }: { id: string | null; onClose: 
                   <tbody>
                     {data.runs.map((r) => (
                       <tr key={r.version_id}>
-                        <td>{new Date(r.run_at).toLocaleString()}</td>
+                        <td>{formatDate(r.run_at, "datetime")}</td>
                         <td><StatusBadge status={r.failing ? "failed" : "ok"}>{r.failing ? "Fails" : "Passes"}</StatusBadge></td>
                       </tr>
                     ))}

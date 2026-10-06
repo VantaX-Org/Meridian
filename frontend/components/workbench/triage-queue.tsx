@@ -21,7 +21,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import type { SlaState } from "@/lib/api/issues";
 import { bulkTriage, getTeams, getTriageQueue, type BulkAction, type TriageBulkInput, type TriageQueueItem } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 const BUCKETS = [
@@ -37,7 +37,7 @@ type Payload = Omit<TriageBulkInput, "kind" | "ids">;
 const keyOf = (t: TriageQueueItem) => `${t.kind}:${t.id}`;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const label = (s: string) => s.replace(/_/g, " ");
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => formatDate(iso, "datetime");
 
 export function TriageQueueSurface() {
   const qc = useQueryClient();

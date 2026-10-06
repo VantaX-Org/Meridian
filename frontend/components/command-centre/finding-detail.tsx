@@ -26,7 +26,7 @@ import { getFinding, getFindings, type FindingDetailData } from "@/lib/api/findi
 import { getIssues, updateIssues } from "@/lib/api/issues";
 import { getRules } from "@/lib/api/rules";
 import { getFindingRecords } from "@/lib/api/versions";
-import { checkClassLabel, formatModuleName } from "@/lib/format";
+import { checkClassLabel, formatModuleName, formatDate } from "@/lib/format";
 import type { AnomalySample, Finding } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -124,7 +124,7 @@ function Body({ f }: { f: FindingDetailData }) {
         { label: "Of total", value: f.total_count, href: "#sample", verdict: "Records this check examined." },
         { label: "Pass rate", value: pct, unit: "%", href: "#runs",
           verdict: pct === null ? "No pass rate for this check." : `${(f.total_count - f.affected_count).toLocaleString()} of ${f.total_count.toLocaleString()} records pass.` },
-        { label: "Cost at risk", value: f.cost_at_risk == null ? null : money(f.cost_at_risk), href: "#remediation", delta: costDelta,
+        { label: "Cost at risk", value: null, text: f.cost_at_risk == null ? undefined : money(f.cost_at_risk), href: "#remediation", delta: costDelta,
           verdict: f.cost_at_risk == null ? "No cost model for this check." : `${f.cost_formula ?? "Worked out from the records that fail."}${f.cost_formula?.endsWith(".") ? "" : "."}`.replace("..", ".") },
       ]} />
 
@@ -254,7 +254,7 @@ function Runs({ f, history, loading }: { f: Finding; history: Finding[]; loading
   const points = [...history].reverse().filter((r) => r.pass_rate !== null).map((r) => ({ at: r.created_at.slice(0, 10), rate: Math.round((r.pass_rate ?? 0) * 10) / 10 }));
   const columns = useMemo<ColumnDef<Finding, unknown>[]>(() => [
     { id: "at", header: "Run", meta: meta({ width: 180 }), cell: ({ row }) => (
-      <span>{new Date(row.original.created_at).toLocaleString()}{row.original.id === f.id ? <span className="ui-micro"> this run</span> : null}</span>) },
+      <span>{formatDate(row.original.created_at, "datetime")}{row.original.id === f.id ? <span className="ui-micro"> this run</span> : null}</span>) },
     { id: "affected", header: "Records affected", meta: meta({ align: "end", numeric: true }), cell: ({ row }) => `${row.original.affected_count.toLocaleString()} of ${row.original.total_count.toLocaleString()}` },
     { id: "pass", header: "Pass rate", meta: meta({ width: 110, align: "end", numeric: true }), cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${row.original.pass_rate.toFixed(1)}%`) },
   ], [f.id]);

@@ -15,6 +15,7 @@ import { getDoctor } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { isItemVisible, SETTINGS_ITEMS } from "@/lib/nav";
 import { DoctorCard } from "./parts";
+import { formatDate, labelOf } from "@/lib/format";
 
 const TABS: Record<string, { tab: string; blurb: string }> = {
   "/settings/rules": { tab: "rules", blurb: "Built-in and custom checks; enable or disable per tenant." },
@@ -34,7 +35,7 @@ export function SettingsSurface() {
   return (
     <div className="ui-page">
       <PageHeader title="Settings" summary="The way into each setting, and whether this deployment is healthy." />
-      {l?.valid === false ? <Banner tone="danger" title="The licence is not valid">Meridian HQ reports status “{l.status}”. Analyses still run; module entitlements may be restricted until the licence is renewed.</Banner> : null}
+      {l?.valid === false ? <Banner tone="danger" title="The licence is not valid">Meridian HQ reports status “{labelOf(l.status)}”. Analyses still run; module entitlements may be restricted until the licence is renewed.</Banner> : null}
       <ul className="ui-linklist">
         {items.map((i) => (
           <li key={i.href}><Link href={`/admin?tab=${TABS[i.href].tab}`}><strong>{i.label}</strong><span className="ui-micro">{TABS[i.href].blurb}</span></Link></li>
@@ -43,7 +44,7 @@ export function SettingsSurface() {
         <li><Link href="/admin?tab=scoring"><strong>Scoring and alerts</strong><span className="ui-micro">DQS weights, alert thresholds and planner assumptions.</span></Link></li>
       </ul>
       {can("manage_system") && doctor.data ? (
-        <DoctorCard items={doctor.data.items} lastChecked={new Date(doctor.data.last_checked).toLocaleTimeString()} onRefresh={() => doctor.refetch()} />
+        <DoctorCard items={doctor.data.items} lastChecked={formatDate(doctor.data.last_checked, "datetime")} onRefresh={() => doctor.refetch()} />
       ) : null}
       {l?.llm_config ? (
         <SectionCard title="Language-model tier on this licence" action={<Chip>tier {l.llm_config.tier}</Chip>}>

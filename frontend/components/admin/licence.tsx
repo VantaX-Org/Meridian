@@ -12,7 +12,7 @@ import { useAuth } from "@/context/auth-context";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate, labelOf } from "@/lib/format";
 
 const HREF = "/admin?tab=licence";
 
@@ -28,20 +28,20 @@ export function LicenceSurface() {
     <div className="ui-page">
       <PageHeader title="Licence" summary="Granted by Meridian HQ. Plan changes and invoices are managed there." />
       <Tally level={4} label="Licence" figures={[
-        { label: "Tier", value: l ? l.tier ?? "Unknown" : null, loading: q.isLoading, tone: l?.valid === false ? "danger" : l?.valid ? "success" : undefined, verdict: l?.valid ? "Licence is valid." : l?.valid === false ? "Licence is not valid." : "Not validated yet.", href: HREF },
-        { label: "Seats", value: l ? seats || "Unlimited" : null, loading: q.isLoading, verdict: "Users this licence allows.", href: HREF },
-        { label: "Modules", value: l ? (all ? "All" : modules.length) : null, loading: q.isLoading, verdict: all ? "Every SAP module." : "Enabled on this licence.", href: HREF },
-        { label: "Days remaining", value: l ? days ?? "Unknown" : null, loading: q.isLoading, tone: days !== undefined && days < 30 ? "warning" : undefined, verdict: l?.expiry_date ? `Renews ${l.expiry_date}.` : "No renewal date set.", href: HREF },
+        { label: "Tier", value: null, text: l?.tier ? labelOf(l.tier) : undefined, loading: q.isLoading, tone: l?.valid === false ? "danger" : l?.valid ? "success" : undefined, verdict: l?.valid ? "Licence is valid." : l?.valid === false ? "Licence is not valid." : "Not validated yet.", href: HREF },
+        { label: "Seats", value: l && seats ? seats : null, text: l && !seats ? "Unlimited" : undefined, loading: q.isLoading, verdict: "Users this licence allows.", href: HREF },
+        { label: "Modules", value: l && !all ? modules.length : null, text: l && all ? "All" : undefined, loading: q.isLoading, verdict: all ? "Every SAP module." : "Enabled on this licence.", href: HREF },
+        { label: "Days remaining", value: l ? days ?? null : null, loading: q.isLoading, tone: days !== undefined && days < 30 ? "warning" : undefined, verdict: l?.expiry_date ? `Renews ${formatDate(l.expiry_date)}.` : days === undefined || days === null ? "Not validated yet." : "No renewal date set.", href: HREF },
       ]} />
-      {l?.valid === false ? <Banner tone="danger" title="The licence is not valid">Meridian HQ reports status “{l.status}”. Renew it in Meridian HQ; this deployment keeps its data either way.</Banner> : null}
-      {l?.valid === null && l?.status ? <Banner tone="info" title="Licence not yet validated">Status “{l.status}”. The deployment validates with Meridian HQ on a schedule; defaults apply until then.</Banner> : null}
+      {l?.valid === false ? <Banner tone="danger" title="The licence is not valid">Meridian HQ reports status “{labelOf(l.status)}”. Renew it in Meridian HQ; this deployment keeps its data either way.</Banner> : null}
+      {l?.valid === null && l?.status ? <Banner tone="info" title="Not validated yet">The deployment validates with Meridian HQ on a schedule; defaults apply until the next check.</Banner> : null}
       {q.isLoading ? <TableSkeleton rows={4} label="Reading the licence" /> : null}
       {l ? (
         <SectionCard title="Licence detail">
           <KeyValue rows={[
-            { k: "Tenant", v: l.company_name ?? "Not set" }, { k: "Tier", v: l.tier ?? "Unknown" }, { k: "Status", v: l.status },
-            { k: "Seats", v: seats ? String(seats) : "Unlimited" }, { k: "Renews", v: l.expiry_date ?? "Not set" },
-            { k: "Last validated", v: l.last_validated ?? "Never" }, { k: "Language-model tier", v: l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set" },
+            { k: "Tenant", v: l.company_name ?? "Not set" }, { k: "Tier", v: l.tier ? labelOf(l.tier) : "Not validated yet" }, { k: "Status", v: labelOf(l.status) },
+            { k: "Seats", v: seats ? String(seats) : "Unlimited" }, { k: "Renews", v: l.expiry_date ? formatDate(l.expiry_date) : "Not set" },
+            { k: "Last validated", v: l.last_validated ? formatDate(l.last_validated, "datetime") : "Not validated yet" }, { k: "Language-model tier", v: l.llm_config ? `tier ${l.llm_config.tier}, ${l.llm_config.model}` : "Not set" },
           ]} />
         </SectionCard>
       ) : null}

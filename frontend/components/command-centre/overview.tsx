@@ -22,6 +22,7 @@ import { GettingStarted } from "@/components/getting-started";
 import {
   Button,
   EmptyState,
+  PageHeader,
   SectionCard,
   StatusBadge,
   Tally,
@@ -36,7 +37,7 @@ import { compositeDqs, getFindings, getFindingsAggregate } from "@/lib/api/findi
 import { getSettings } from "@/lib/api/settings";
 import { getMetrics } from "@/lib/api/stewardship";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { DimensionScores, DQSSummary, SystemType } from "@/types/api";
 
 const DISMISSED_KEY = "mn_arrival_dismissed";
@@ -115,7 +116,7 @@ function nextStep(input: {
 }
 
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return formatDate(iso);
 }
 
 const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
@@ -231,6 +232,7 @@ export function CommandCentreOverview() {
 
   return (
     <div className="ui-page">
+      <PageHeader title="Overview" summary="Where the estate stands today and what needs attention first." />
       {arrivedJob ? (
         <div className="ui-notice" role="status">
           <span>{arrivedJob.label} finished. {arrivedJob.message}</span>
@@ -257,7 +259,7 @@ export function CommandCentreOverview() {
         figures={[
           {
             label: "DQS",
-            value: dqs === null ? null : dqs.toFixed(1),
+            value: dqs === null ? null : Number(dqs.toFixed(1)),
             href: "/analyse?tab=analyses",
             loading: agg.isLoading,
             error: agg.isError ? { retry: retryAgg } : undefined,
@@ -296,7 +298,7 @@ export function CommandCentreOverview() {
           },
           {
             label: "Cost at risk",
-            value: cost ? compact.format(cost) : null,
+            value: null, text: cost ? compact.format(cost) : undefined,
             href: findingsHref({ sort: "impact" }),
             loading: agg.isLoading,
             error: agg.isError ? { retry: retryAgg } : undefined,

@@ -16,6 +16,19 @@ for (const r of ROUTES) {
     await expect(app.getByRole("navigation", { name: "Workspaces" })).toBeVisible();
     await expect(app.getByRole("button", { name: /jobs/i })).toBeVisible();
     expect(errors).toEqual([]);
+    // no snake_case identifier leaks into visible copy, except inside Mono and FieldChip
+    const leaks = await app.evaluate(() => {
+      const found: string[] = [];
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const el = n.parentElement;
+        if (!el || el.closest(".ui-mono, .ui-field, code, script, style, [hidden]")) continue;
+        const hit = (n.textContent ?? "").match(/\b[a-z]+_[a-z]+\b/);
+        if (hit) found.push(hit[0]);
+      }
+      return found;
+    });
+    expect(leaks).toEqual([]);
   });
 }
 
@@ -26,7 +39,7 @@ test("Home shows the verdict for the latest run", async ({ app }) => {
 
 test("the Runs tab lists the recorded jobs with their outcome", async ({ app }) => {
   await app.goto("/data?tab=runs", { waitUntil: "load" });
-  await expect(app.getByRole("heading", { level: 1, name: "Connect & load" })).toBeVisible();
+  await expect(app.getByRole("heading", { level: 1, name: "Jobs" })).toBeVisible();
   await expect(app.getByRole("main").getByText(/analysis|download/i).first()).toBeVisible();
 });
 

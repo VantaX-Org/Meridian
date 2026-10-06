@@ -10,12 +10,12 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, EmptyState, Mono, SectionCard, StatusBadge, Tally, Verdict, type Status } from "@/components/ui-core";
+import { Button, EmptyState, Mono, PageHeader, SectionCard, StatusBadge, Tally, Verdict, type Status } from "@/components/ui-core";
 import { getPredictiveAnalytics, getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate } from "@/lib/format";
 
 const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const WEIGHTS: Record<string, number> = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
@@ -23,7 +23,7 @@ const IMPACT: Record<string, Status> = { blocked: "critical", degraded: "medium"
 const SIGNAL: Record<string, Status> = { red: "critical", amber: "medium", green: "ok" };
 const TREND: Record<string, Status> = { improving: "ok", stable: "idle", declining: "medium", critical: "critical" };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
+const day = (iso: string) => formatDate(iso);
 const pct = (n: number | null | undefined) => (n == null ? "—" : `${n.toFixed(1)}%`);
 const band = (v: number) => (v >= 90 ? undefined : v >= 70 ? "warn" : "fail");
 
@@ -69,6 +69,7 @@ export function ExecutiveReport() {
 
   return (
     <div className="ui-page">
+      <PageHeader title="Executive report" summary="A one page read of data quality across the estate." />
       <div className="ui-report__bar">
         <Verdict>{sentence}</Verdict>
         <div className="ui-report__actions" data-print="hide">
@@ -80,7 +81,7 @@ export function ExecutiveReport() {
       {a && dqs !== null ? (
         <>
           <Tally level={2} label="Estate" as_of={day(new Date().toISOString())} figures={[
-            { label: "Composite DQS", value: dqs.toFixed(1), href: "/analyse?tab=findings", tone: dqs < 70 ? "danger" : dqs < 90 ? "warning" : undefined,
+            { label: "Composite DQS", value: Number(dqs.toFixed(1)), href: "/analyse?tab=findings", tone: dqs < 70 ? "danger" : dqs < 90 ? "warning" : undefined,
               delta: a.previous_dqs != null ? { value: Number((dqs - a.previous_dqs).toFixed(1)), unit: " points", good: "up" } : undefined,
               verdict: dqs >= 90 ? "At or above the go-live line of 90." : "Below the go-live line of 90." },
             { label: "Failing records", value: a.affected_records, href: "/analyse?tab=findings", verdict: `${a.total.toLocaleString()} findings across ${Object.keys(a.dqs.modules).length} object${Object.keys(a.dqs.modules).length === 1 ? "" : "s"}.` },

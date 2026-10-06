@@ -7,7 +7,7 @@ import { Button, Chip, Input, Panel, Select, Stack, Text } from "@/components/au
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
 const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)]";
@@ -91,7 +91,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                       : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
                   </td>
                   <td className={td}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
-                  <td className={td}>{p.active && p.next_run_at ? new Date(p.next_run_at).toLocaleString() : "—"}</td>
+                  <td className={td}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
                   <td className={td}><Chip tone={p.active ? "success" : "neutral"}>{p.active ? "active" : "paused"}</Chip></td>
                   <td className={td}>
                     {canManage && (

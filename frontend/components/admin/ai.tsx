@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Banner, Button, Chip, Field, Input, PageHeader, SectionCard, Select, Tally } from "@/components/ui-core";
 import { useRole } from "@/hooks/use-role";
 import { getLLMConfig, getLLMProviders, testLLMConnection, updateLLMConfig, type LLMConfig, type LLMConfigUpdate, type LLMProvider } from "@/lib/api/llm-settings";
+import { formatDate } from "@/lib/format";
 
 export function AISurface() {
   const { can } = useRole();
@@ -28,9 +29,11 @@ export function AISurface() {
     <div className="ui-page">
       <PageHeader title="AI" summary="The language model that writes narrative and remediation proposals." />
       <Tally level={4} label="Language model" figures={[
-        { label: "Provider", value: loading ? null : provider ?? "Not set", loading, tone: c && !c.provider ? "warning" : undefined, verdict: provider ? "Writes the narrative." : "Choose a provider below.", href: "/admin?tab=ai" },
-        { label: "Model", value: loading ? null : c?.model || "Not set", loading, verdict: c?.model ? "Used for every request." : "Pick a model below.", href: "/admin?tab=ai" },
-        { label: "API key", value: loading ? null : c?.has_api_key ? "Stored" : "Not set", loading, tone: c?.has_api_key ? "success" : undefined, verdict: c?.has_api_key ? "Kept on the server." : "Some providers need no key.", href: "/admin?tab=ai" },
+        { label: "Provider", value: null, text: loading ? undefined : provider ?? undefined, loading, tone: c && !c.provider ? "warning" : undefined, verdict: provider ? "Writes the narrative." : "Choose a provider below.", href: "/admin?tab=ai" },
+        { label: "Model", value: null, text: loading ? undefined : c?.model || undefined, loading, verdict: c?.model ? "Used for every request." : "Pick a model below.", href: "/admin?tab=ai" },
+        ...(c && providers.data?.[c.provider]?.requires_api_key === false ? [] : [
+          { label: "API key", value: null, text: loading ? undefined : c?.has_api_key ? "Stored" : undefined, loading, tone: c?.has_api_key ? "success" as const : undefined, verdict: c?.has_api_key ? "Kept on the server." : "Not stored. Add one below.", href: "/admin?tab=ai" },
+        ]),
       ]} />
       <Banner tone="info" title="The model never sees SAP data">It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.</Banner>
       {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="ui-note">Reading the language-model settings.</p>}
@@ -85,7 +88,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
           <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{test.isPending ? "Testing…" : "Test connection"}</Button>
           <Button disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Save settings"}</Button>
         </div>
-        {config.updated_at ? <p className="ui-micro">Last changed {new Date(config.updated_at).toLocaleString()} by {config.updated_by ?? "—"}</p> : null}
+        {config.updated_at ? <p className="ui-micro">Last changed {formatDate(config.updated_at, "datetime")} by {config.updated_by ?? "—"}</p> : null}
       </div>
     </SectionCard>
   );

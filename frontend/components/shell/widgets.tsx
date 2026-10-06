@@ -15,7 +15,7 @@ import { getVersions } from "@/lib/api/versions";
 import { getReportDownloadUrl, getReportJsonExportUrl } from "@/lib/api/reports";
 import { getConfigMatchesExportUrl } from "@/lib/api/config-matches";
 import { getNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead } from "@/lib/api/notifications";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate } from "@/lib/format";
 import type { Notification as NotifType } from "@/types/api";
 
 export function LocalUserButton() {
@@ -76,7 +76,7 @@ export function HeaderExportMenu() {
   const latestLabel = latestComplete?.label
     ? `“${latestComplete.label}”`
     : latestComplete
-      ? new Date(latestComplete.run_at).toLocaleString()
+      ? formatDate(latestComplete.run_at, "datetime")
       : null;
 
   const download = async (url: string, filename: string, done: string, failed: string) => {
@@ -227,7 +227,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="ui-boot" role="status" aria-label="Loading"><span className="ui-update__spin" aria-hidden /></div>
+      <div className="ui-boot" role="status" aria-label="Loading page"><span className="ui-update__spin" aria-hidden /></div>
     );
   }
   if (!user) return null;

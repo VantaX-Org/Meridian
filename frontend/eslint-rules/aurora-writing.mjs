@@ -112,6 +112,8 @@ function classify(raw) {
   return null;
 }
 
+const COPY_ATTRS = /^(label|title|placeholder|aria-label|alt|description|summary|verdict|message|hint|text|heading|subtitle|tooltip|emptyLabel)$/;
+
 const rule = {
   meta: {
     type: "suggestion",
@@ -156,11 +158,9 @@ const rule = {
     const isJsxAttrValue = (node) => {
       const parent = node.parent;
       if (!parent) return false;
-      if (parent.type === "JSXAttribute") return true;
-      if (parent.type === "JSXExpressionContainer" && parent.parent?.type === "JSXAttribute") {
-        return true;
-      }
-      return false;
+      // Only attributes that carry copy. type="submit" and status="ok" are enums.
+      const a = parent.type === "JSXAttribute" ? parent : parent.type === "JSXExpressionContainer" ? parent.parent : null;
+      return a?.type === "JSXAttribute" && COPY_ATTRS.test(String(a.name?.name));
     };
 
     return {
@@ -181,8 +181,10 @@ const rule = {
   },
 };
 
-// DESIGN.md rule 15: no arrow glyphs, no middle-dot separators.
+// DESIGN.md rule 15: no arrow glyphs, no middle-dot separators, no ampersand.
+// "&" in a label is a glyph too: write "and". Spaced only, so URLs and entities pass.
 const GLYPHS = /[→←↑↓]| · /;
+const AMP = / & /;
 const glyphRule = {
   meta: {
     type: "problem",
@@ -190,14 +192,68 @@ const glyphRule = {
     messages: { glyph: "No arrow glyphs or middle-dot separators in copy (DESIGN.md rule 15): '{{value}}'." },
   },
   create(context) {
-    const check = (node, raw) => {
-      if (typeof raw === "string" && GLYPHS.test(raw)) context.report({ node, messageId: "glyph", data: { value: raw.trim().slice(0, 40) } });
+    // lib/ and components/ hold label data (nav, workspaces), so "&" is checked in every string there.
+    const anywhere = /\/(lib|components)\//.test(context.filename.replaceAll("\\", "/"));
+    const check = (node, raw, inJsx) => {
+      if (typeof raw !== "string") return;
+      if ((inJsx && GLYPHS.test(raw)) || ((inJsx || anywhere) && AMP.test(raw))) context.report({ node, messageId: "glyph", data: { value: raw.trim().slice(0, 40) } });
     };
     const inJsx = (n) => n.parent?.type === "JSXAttribute" || n.parent?.type === "JSXExpressionContainer";
     return {
-      JSXText(node) { check(node, node.value); },
-      Literal(node) { if (inJsx(node)) check(node, node.value); },
-      TemplateLiteral(node) { if (inJsx(node)) node.quasis.forEach((q) => check(node, q.value.cooked)); },
+      JSXText(node) { check(node, node.value, true); },
+      Literal(node) { check(node, node.value, inJsx(node)); },
+      TemplateLiteral(node) { node.quasis.forEach((q) => check(node, q.value.cooked, inJsx(node))); },
+    };
+  },
+};
+
+// DESIGN.md rule 19: dates and times go through formatDate in lib/format.ts.
+const formatDateOnly = {
+  meta: { type: "problem", schema: [], messages: { date: "Format dates with formatDate from lib/format.ts, not {{name}}. toLocaleString is for numbers." } },
+  create(context) {
+    if (context.filename.replaceAll("\\", "/").endsWith("/lib/format.ts")) return {};
+    const DATEISH = /^(date|time|d|ts|when)$|(Date|Time|At|_at|_date|_time)$|^(date|time)[A-Z_]/;
+    const dateLike = (o) =>
+      (o.type === "NewExpression" && o.callee.name === "Date") ||
+      (o.type === "Identifier" && DATEISH.test(o.name)) ||
+      (o.type === "MemberExpression" && !o.computed && DATEISH.test(o.property.name ?? ""));
+    return {
+      CallExpression(node) {
+        const c = node.callee;
+        if (c.type !== "MemberExpression" || c.computed) return;
+        const name = c.property.name;
+        if (name === "toLocaleDateString" || name === "toLocaleTimeString") context.report({ node, messageId: "date", data: { name } });
+        else if (name === "toLocaleString" && (dateLike(c.object) || node.arguments.some((a) => a.type === "ObjectExpression" && a.properties.some((p) => /^(date|time|month|weekday|year|day|hour)/.test(p.key?.name ?? ""))))) {
+          context.report({ node, messageId: "date", data: { name } });
+        }
+      },
+    };
+  },
+};
+
+// DESIGN.md rule 18: a backend id or enum never shows as copy. Wrap it in a label helper or Mono.
+const RAW_PROP = /^(domain|module|status|item_type|severity|check_id|system_type|provider|tier)$/;
+const WRAPPERS = new Set(["Mono", "FieldChip", "StatusBadge", "Badge", "Chip", "Link", "Text"]);
+const noRawId = {
+  meta: { type: "problem", schema: [], messages: { raw: "{{src}} is a backend value. Wrap it in labelOf, formatModuleName or Mono.", slice: "No sliced ids as copy. Show a name, or put the id in Mono." } },
+  create(context) {
+    const inWrapper = (n) => {
+      for (let a = n.parent; a; a = a.parent) {
+        if (a.type === "JSXElement" && WRAPPERS.has(a.openingElement.name.name)) return true;
+        if (a.type === "JSXAttribute") return true; // props are judged by their component
+      }
+      return false;
+    };
+    return {
+      JSXExpressionContainer(node) {
+        const e = node.expression;
+        if (node.parent.type !== "JSXElement" || inWrapper(node)) return;
+        if (e.type === "MemberExpression" && !e.computed && RAW_PROP.test(e.property.name)) {
+          context.report({ node, messageId: "raw", data: { src: context.sourceCode.getText(e) } });
+        } else if (e.type === "CallExpression" && e.callee.type === "MemberExpression" && e.callee.property.name === "slice" && e.callee.object.type === "MemberExpression" && /^(id|[a-z]+_id)$/.test(e.callee.object.property.name ?? "")) {
+          context.report({ node, messageId: "slice" });
+        }
+      },
     };
   },
 };
@@ -207,6 +263,8 @@ const plugin = {
   rules: {
     "no-forbidden-copy": rule,
     "no-forbidden-glyphs": glyphRule,
+    "format-date-only": formatDateOnly,
+    "no-raw-id": noRawId,
   },
 };
 

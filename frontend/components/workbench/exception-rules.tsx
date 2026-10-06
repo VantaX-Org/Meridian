@@ -74,9 +74,9 @@ export function ExceptionRulesSurface() {
     <div className="ui-page">
       <PageHeader title="Exception rules" summary="Each active rule raises an exception when records match its condition." />
       <Tally level={4} label="Rules" figures={[
-        { label: "Rules", value: rules.isLoading ? null : rows.length || "None", loading: rules.isLoading, verdict: rows.length ? "Defined for this tenant." : "No rule is defined yet.", href: HREF },
-        { label: "Active", value: rules.isLoading ? null : nActive || "None", loading: rules.isLoading, verdict: nActive ? "Raising exceptions now." : "No rule is switched on.", href: HREF },
-        { label: "Critical", value: rules.isLoading ? null : nCritical || "None", loading: rules.isLoading, tone: nCritical ? "danger" : undefined, verdict: nCritical ? "Active at critical severity." : "No critical rule is active.", href: HREF },
+        { label: "Rules", value: rules.isLoading ? null : rows.length, loading: rules.isLoading, verdict: rows.length ? "Defined for this tenant." : "No rule is defined yet.", href: HREF },
+        { label: "Active", value: rules.isLoading ? null : nActive, loading: rules.isLoading, verdict: nActive ? "Raising exceptions now." : "No rule is switched on.", href: HREF },
+        { label: "Critical", value: rules.isLoading ? null : nCritical, loading: rules.isLoading, tone: nCritical ? "danger" : undefined, verdict: nCritical ? "Active at critical severity." : "No critical rule is active.", href: HREF },
       ]} />
       {!write ? <Banner tone="info" title="Read only">Changing exception rules needs the manage rules permission.</Banner> : null}
       <FilterBar onClear={severity ? () => setSeverity("") : undefined}

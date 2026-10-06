@@ -7,7 +7,7 @@
  * a nav entry carry their own `anyOf`.
  *
  *   ⌘1 Home            — where things stand
- *   ⌘2 Connect & load  — systems, extractions, imports
+ *   ⌘2 Connect and load  — systems, extractions, imports
  *   ⌘3 Analyse         — findings and the runs behind them
  *   ⌘4 Fix             — work the records
  *   ⌘5 Process         — process and configuration impact
@@ -50,10 +50,10 @@ export const WORKSPACES: readonly Workspace[] = [
     ],
   },
   {
-    id: "data", label: "Connect & load", hint: "Bring SAP data in", href: "/data", shortcut: "⌘2",
+    id: "data", label: "Connect and load", hint: "Bring SAP data in", href: "/data", shortcut: "⌘2",
     tabs: [
       { id: "systems", label: "Systems", href: "/systems" },
-      { id: "runs", label: "Extractions", href: "/sync" },
+      { id: "runs", label: "Jobs", href: "/sync" },
       { id: "import", label: "Import files", href: "/upload" },
       { id: "migration", label: "Migration", href: "/migration" },
     ],
@@ -96,10 +96,10 @@ export const WORKSPACES: readonly Workspace[] = [
   {
     id: "admin", label: "Admin", hint: "Users, rules, licence", href: "/admin", shortcut: "⌘6",
     tabs: [
-      { id: "users", label: "Users & audit", href: "/admin" },
+      { id: "users", label: "Users and audit", href: "/admin" },
       { id: "settings", label: "Settings", href: "/settings" },
       { id: "rules", label: "Check rules", href: "/settings/rules" },
-      { id: "scoring", label: "Scoring & alerts", href: "/settings/scoring", anyOf: ["view"] },
+      { id: "scoring", label: "Scoring and alerts", href: "/settings/scoring", anyOf: ["view"] },
       { id: "triage", label: "Triage routing", href: "/admin/triage" },
       { id: "exception-rules", label: "Exception rules", href: "/exceptions/rules", anyOf: ["approve", "assign", "manage_rules"] },
       { id: "match-rules", label: "Match rules", href: "/match-rules" },

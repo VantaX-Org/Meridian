@@ -28,7 +28,7 @@ import { EMPTY_MINING_SUMMARY, getMiningPatterns, getMiningSummary, type MiningP
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSystems } from "@/lib/api/systems";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { RecordRelationship } from "@/types/api";
 
 type Lens = "links" | "dependencies" | "patterns";
@@ -235,7 +235,7 @@ function Dependencies() {
           options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
           onValueChange={(v) => { setSystemId(v); setVersionId(""); setObject(""); }} />
         <Select aria-label="Version" value={vid}
-          options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? `, ${v.label}` : ""}` }))}
+          options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
           onValueChange={(v) => { setVersionId(v); setObject(""); }} />
         <Select aria-label="Object" value={obj}
           options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}

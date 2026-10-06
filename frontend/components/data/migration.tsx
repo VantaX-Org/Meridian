@@ -477,7 +477,7 @@ function RunResult({ run, targetType, canEdit, canExport }: {
         </Banner>
       )}
       <Tally level={2} label="Transfer readiness" figures={[
-        { label: "Verdict", value: r.readiness_verdict ? VERDICT[r.readiness_verdict].label : "None",
+        { label: "Verdict", value: null, text: r.readiness_verdict ? VERDICT[r.readiness_verdict].label : undefined,
           tone: r.readiness_verdict === "no-go" ? "danger" : r.readiness_verdict === "conditional" ? "warning" : r.readiness_verdict === "go" ? "success" : undefined,
           verdict: "Overall call for this run.", href: MIGRATION_HREF },
         { label: "Records transfer-ready", value: ready, verdict: `Of ${r.records_total.toLocaleString()} analysed.`, href: MIGRATION_HREF },

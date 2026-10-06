@@ -122,7 +122,7 @@ export function ImportSurface() {
   return (
     <div className="ui-page">
       <PageHeader
-        title="Import a file"
+        title="Import"
         summary="Drop an extract, check how its columns map to standard SAP fields, then run the analysis. Every import becomes a version."
       />
       {systemsQ.data?.length ? (
@@ -134,8 +134,8 @@ export function ImportSurface() {
       <Tally level={4} label="Imports" figures={[
         { label: "Files imported", value: versions.length, href: "/data?tab=import", loading: recent.isLoading, verdict: versions.length ? "Each one is a run you can open." : "Nothing imported yet." },
         { label: "Records imported", value: rowsImported, href: "/data?tab=import", loading: recent.isLoading, verdict: "Across all imported files." },
-        { label: "Last import", value: versions[0] ? relativeTime(versions[0].run_at) : "Never", href: versions[0] ? `/data/runs/${versions[0].id}` : "/data?tab=import", loading: recent.isLoading,
-          verdict: versions[0]?.metadata?.file_name ?? "Drop a file below to start." },
+        { label: "Last import", value: null, text: versions[0] ? relativeTime(versions[0].run_at) : undefined, href: versions[0] ? `/data/runs/${versions[0].id}` : "/data?tab=import", loading: recent.isLoading,
+          verdict: versions[0]?.metadata?.file_name ?? "Never imported. Drop a file below to start." },
       ]} />
 
       <div className="aurora-import">

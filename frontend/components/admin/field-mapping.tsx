@@ -80,7 +80,7 @@ export function FieldMappingSettings() {
         summary="Imported files are matched on these customer columns. A standard field with no customer column is skipped by every check that needs it." />
       <Tally level={4} label="Mapping coverage" figures={[
         { label: "Mapped", value: all.isLoading ? null : mapped, loading: all.isLoading, tone: "success", verdict: `Of ${shown.length} standard fields.`, href: HREF },
-        { label: "Unmapped", value: all.isLoading ? null : shown.length - mapped || "None", loading: all.isLoading, tone: shown.length - mapped ? "warning" : undefined, verdict: shown.length - mapped ? "Skipped by checks that need them." : "Every field has a customer column.", href: HREF },
+        { label: "Unmapped", value: all.isLoading ? null : shown.length - mapped, loading: all.isLoading, tone: shown.length - mapped ? "warning" : undefined, verdict: shown.length - mapped ? "Skipped by checks that need them." : "Every field has a customer column.", href: HREF },
       ]} />
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search fields" }}
         onClear={object || search ? () => { setObject(""); setSearch(""); } : undefined}
@@ -88,7 +88,7 @@ export function FieldMappingSettings() {
           <>
             <span className="ui-micro">Reset {scope} to the shipped mappings?</span>
             <Button size="sm" variant="danger" disabled={reset.isPending} onClick={() => reset.mutate()}>Reset</Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Keep mappings</Button>
           </>
         ) : <Button size="sm" variant="secondary" onClick={() => setConfirmReset(true)}>Reset {object ? formatModuleName(object) : "all"} to defaults</Button>) : null}>
         <Select placeholder="All objects" aria-label="Object" value={object} options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}
