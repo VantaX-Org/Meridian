@@ -1,0 +1,52 @@
+{
+ "domain": "RSTYP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Asset"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Stock transfer"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Without account assignment"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Cost Center"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Project"
+  },
+  {
+   "low": "V",
+   "high": null,
+   "text": "Sales and Distribution Document"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Order"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "Network"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,7 +1,7 @@
 """Process mining-graph API — activity-level data for the Process workspace.
 
-This exposes L4-step-level nodes, transitions between consecutive steps,
-and L3-level variants — giving the Aurora Process workspace real
+This exposes L5-activity-level nodes, transitions that follow each L4
+diagram's flows, and L4-level variants — giving the Aurora Process workspace real
 activity-level data to render instead of synthesising a tree from the
 L1 hierarchy on the frontend.
 
@@ -31,8 +31,8 @@ logger = logging.getLogger("meridian.process_mining")
 class MiningActivity(BaseModel):
     id: str
     label: str
-    l3_id: str
-    l3_name: str
+    l4_id: str
+    l4_name: str
     tcode: str | None = None
     step_status: str = Field(description="green | amber | red")
     affected_records: int = 0
@@ -54,7 +54,7 @@ class MiningVariant(BaseModel):
     label: str
     tcode: str | None = None
     activity_count: int
-    coverage: float = Field(description="L3 share of module, in [0,1]")
+    coverage: float = Field(description="L4 share of module, in [0,1]")
     readiness: str = Field(description="green | amber | red")
     quality: int = Field(description="0-100 score derived from readiness")
     activity_ids: list[str]
@@ -78,6 +78,39 @@ def _quality_from_readiness(readiness: str) -> int:
     return 25
 
 
+def _collapse(l4_id: str) -> list[tuple[str, str]]:
+    from sap.process_definitions import PROCESS_DEFINITIONS
+
+    diagram = next((l4["diagram"] for l1 in PROCESS_DEFINITIONS for l2 in l1["l2"] for l3 in l2["l3"]
+                    for l4 in l3["l4"] if l4["id"] == l4_id), None)
+    if not diagram:
+        return []
+    nodes = {n["id"]: n for n in diagram["nodes"]}
+    out: dict[str, list[str]] = {}
+    for f in diagram["flows"]:
+        out.setdefault(f["source"], []).append(f["target"])
+
+    def next_tasks(node_id: str, seen: frozenset[str]) -> list[str]:
+        found: list[str] = []
+        for t in out.get(node_id, []):
+            n = nodes.get(t)
+            if n is None or t in seen:
+                continue
+            if n["type"] == "task":
+                found.append(n["activity_id"])
+            elif n["type"] != "endEvent":
+                found.extend(next_tasks(t, seen | {t}))
+        return found
+
+    edges: list[tuple[str, str]] = []
+    for n in diagram["nodes"]:
+        if n["type"] == "task":
+            for dst in next_tasks(n["id"], frozenset({n["id"]})):
+                if (n["activity_id"], dst) not in edges:
+                    edges.append((n["activity_id"], dst))
+    return edges
+
+
 def _build_activities_and_transitions(
     processes: list[dict[str, Any]],
 ) -> tuple[list[MiningActivity], list[MiningTransition]]:
@@ -88,84 +121,54 @@ def _build_activities_and_transitions(
     for l1 in processes:
         for l2 in l1.get("l2_groups", []):
             for l3 in l2.get("l3_processes", []):
-                l4_ids_in_order: list[str] = []
-                for l4 in l3.get("l4_steps", []):
-                    l4_id = l4.get("l4_id") or l4.get("id") or ""
-                    if not l4_id or l4_id in seen_ids:
-                        # Duplicate L4 across L3s is unusual; skip to keep node set clean.
-                        continue
-                    seen_ids.add(l4_id)
-
-                    l5_fields = l4.get("l5_fields", [])
-                    affected = sum(int(f.get("affected_count", 0) or 0) for f in l5_fields)
-                    finding_count = sum(
-                        1 for f in l5_fields if (f.get("affected_count") or 0) > 0
-                    )
-                    pass_rates = [
-                        float(f.get("pass_rate"))
-                        for f in l5_fields
-                        if f.get("pass_rate") is not None
-                    ]
-                    avg_pass = (
-                        sum(pass_rates) / len(pass_rates) if pass_rates else None
-                    )
-
-                    activities.append(
-                        MiningActivity(
-                            id=l4_id,
-                            label=l4.get("l4_name") or l4.get("name") or l4_id,
-                            l3_id=l3.get("l3_id") or "",
-                            l3_name=l3.get("l3_name") or "",
-                            tcode=l3.get("tcode") or None,
-                            step_status=l4.get("step_status", "green"),
-                            affected_records=affected,
-                            finding_count=finding_count,
-                            avg_pass_rate=avg_pass,
+                for l4 in l3.get("l4_subprocesses", []):
+                    l4_id = l4.get("l4_id") or ""
+                    by_id: dict[str, MiningActivity] = {}
+                    for act in l4.get("activities", []):
+                        l5_id = act.get("l5_id") or ""
+                        if not l5_id or l5_id in seen_ids:
+                            continue
+                        seen_ids.add(l5_id)
+                        fields = act.get("fields", [])
+                        pass_rates = [float(f["pass_rate"]) for f in fields if f.get("pass_rate") is not None]
+                        item = MiningActivity(
+                            id=l5_id,
+                            label=act.get("l5_name") or l5_id,
+                            l4_id=l4_id,
+                            l4_name=l4.get("l4_name") or "",
+                            tcode=act.get("tcode") or l4.get("tcode") or None,
+                            step_status=act.get("activity_status", "green"),
+                            affected_records=sum(int(f.get("affected_count", 0) or 0) for f in fields),
+                            finding_count=sum(1 for f in fields if (f.get("affected_count") or 0) > 0),
+                            avg_pass_rate=sum(pass_rates) / len(pass_rates) if pass_rates else None,
                         )
-                    )
-                    l4_ids_in_order.append(l4_id)
-
-                # Sequential edges between consecutive L4 steps within the L3.
-                for a, b in zip(l4_ids_in_order, l4_ids_in_order[1:]):
-                    # Weight = affected records at the source node, floored to 1
-                    # so empty-affected edges still render.
-                    src_activity = next(act for act in activities if act.id == a)
-                    transitions.append(
-                        MiningTransition(
-                            **{
-                                "from": a,
-                                "to": b,
-                                "weight": max(src_activity.affected_records, 1),
-                            }
-                        )
-                    )
+                        activities.append(item)
+                        by_id[l5_id] = item
+                    for src, dst in _collapse(l4_id):
+                        if src in by_id and dst in by_id:
+                            # weight = affected records at the source node, floored to 1 so empty edges still render
+                            transitions.append(MiningTransition(
+                                **{"from": src, "to": dst, "weight": max(by_id[src].affected_records, 1)}))
 
     return activities, transitions
 
 
 def _build_variants(processes: list[dict[str, Any]]) -> list[MiningVariant]:
+    """One variant per L4 sub-process (a t-code path through its activities)."""
+    all_l4: list[dict[str, Any]] = [
+        l4 for l1 in processes for l2 in l1.get("l2_groups", []) for l3 in l2.get("l3_processes", [])
+        for l4 in l3.get("l4_subprocesses", [])
+    ]
+    total = len(all_l4) or 1
     variants: list[MiningVariant] = []
-    all_l3: list[dict[str, Any]] = []
-    for l1 in processes:
-        for l2 in l1.get("l2_groups", []):
-            for l3 in l2.get("l3_processes", []):
-                all_l3.append(l3)
-
-    total = len(all_l3) or 1
-
-    for l3 in all_l3:
-        l4_steps = l3.get("l4_steps", [])
-        activity_ids = [
-            l4.get("l4_id") or l4.get("id") or ""
-            for l4 in l4_steps
-            if (l4.get("l4_id") or l4.get("id"))
-        ]
-        readiness = l3.get("overall_readiness", "green")
+    for l4 in all_l4:
+        activity_ids = [a["l5_id"] for a in l4.get("activities", []) if a.get("l5_id")]
+        readiness = l4.get("step_status", "green")
         variants.append(
             MiningVariant(
-                id=l3.get("l3_id") or "",
-                label=l3.get("l3_name") or l3.get("tcode") or "",
-                tcode=l3.get("tcode") or None,
+                id=l4.get("l4_id") or "",
+                label=l4.get("l4_name") or l4.get("tcode") or "",
+                tcode=l4.get("tcode") or None,
                 activity_count=len(activity_ids),
                 coverage=round(1.0 / total, 4),
                 readiness=readiness,
@@ -173,7 +176,6 @@ def _build_variants(processes: list[dict[str, Any]]) -> list[MiningVariant]:
                 activity_ids=activity_ids,
             )
         )
-
     return variants
 
 
@@ -187,8 +189,8 @@ async def get_mining_graph(
     """Build the activity-level process graph for a version + module.
 
     Uses the existing L1–L5 business-process generator, then projects
-    each L4 step into a mining activity with aggregated finding counts
-    and consecutive-step transitions.
+    each L5 activity into a mining node with aggregated finding counts
+    and flow-following transitions.
     """
     await db.execute(text(f"SET app.tenant_id = '{str(tenant.id)}'"))
 

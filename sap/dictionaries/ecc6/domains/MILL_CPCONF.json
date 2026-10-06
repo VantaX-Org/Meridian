@@ -1,0 +1,37 @@
+{
+ "domain": "MILL_CPCONF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Do not copy characteristics"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Copy only classification characteristics"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Copy only configuration characteristics"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Characteristics frm configuration (prio) and classification"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Characteristics frm classification (prio) and configuration"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

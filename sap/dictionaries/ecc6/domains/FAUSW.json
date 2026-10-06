@@ -1,0 +1,32 @@
+{
+ "domain": "FAUSW",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Entry in this Field is Optional"
+  },
+  {
+   "low": "+",
+   "high": null,
+   "text": "Entry in this Field is Required"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Field is Suppressed"
+  },
+  {
+   "low": ".",
+   "high": null,
+   "text": "Entry in this Field is Optional"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
