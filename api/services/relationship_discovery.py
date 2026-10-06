@@ -83,7 +83,7 @@ ALL_DOMAINS = [
     "material_plant", "fi_gl", "gl_company_code",
     "accounts_payable", "accounts_receivable", "asset_accounting", "controlling",
     "mm_purchasing", "plant_maintenance", "sd_customer_master",
-    "sd_sales_orders", "production_planning",
+    "sd_sales_orders", "production_planning", "project_system",
     "ewms_stock", "batch_management",
     "fleet_management", "transport_management", "wm_interface", "mdg_master_data",
 ]
