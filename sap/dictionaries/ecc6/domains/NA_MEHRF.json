@@ -1,0 +1,22 @@
+{
+ "domain": "NA_MEHRF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No multiple sending of output"
+  },
+  {
+   "low": "X",
+   "high": null,
+   "text": "Multiple sending of output"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -3546,3 +3546,631 @@ rules:
   fix_map:
     __other__: Correct the currency (OB45).
   record_fix_template: 'Credit control area {T014.KKBER}: currency ''{actual_value}'' is not in TCURC.'
+- id: SDSO312
+  field: KONA.KNUMA
+  check_class: cross_field_check
+  fail_when: (`KONA.DATBI` < @today) & ~`KONA.BOSTA`.isin(['D'])
+  applies_when: &id001
+    KONA.KAPPL:
+    - V
+  grain: KONA
+  s4_area: sales
+  s4_impact: blocking
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: high
+  dimension: timeliness
+  message: Rebate agreement is past its end date but not finally settled
+  why_it_matters: Settlement Management replaces rebate processing. Open settlement of an expired agreement must be completed
+    in ECC (final settlement) because agreements are not migrated with their settlement history.
+  rule_authority: s4hana_migration
+  sap_impact: Accrued rebate is lost or must be settled manually after the conversion.
+  fix_map:
+    __other__: Carry out the final settlement (VBO3 / VBOF) and close the agreement before the conversion.
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: expired, final settlement not carried out.'
+- id: SDSO313
+  field: KONA.KNUMA
+  check_class: cross_field_check
+  fail_when: (`KONA.DATBI` >= @today) & ~`KONA.BOSTA`.isin(['D'])
+  applies_when: *id001
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Rebate agreement is still active and has to be moved to a condition contract
+  why_it_matters: Each active agreement is replaced by a condition contract. The conversion does not migrate agreements automatically;
+    this lists the agreements that need a decision before cut-over.
+  rule_authority: s4hana_migration
+  sap_impact: Active rebates stop accruing after the conversion unless a contract is created.
+  fix_map:
+    __other__: 'Decide per agreement: settle and close it, or create the condition contract in the target system.'
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: active, not finally settled.'
+- id: SDSO314
+  field: KONA.KNUMA
+  check_class: cross_field_check
+  fail_when: '`KONA.BOSTA`.isin([''A'', ''C''])'
+  applies_when: *id001
+  grain: KONA
+  s4_area: sales
+  s4_impact: blocking
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Rebate agreement has a settlement in progress
+  why_it_matters: Status A (checked manually) or C (settlement created) means a settlement document is not yet posted. The
+    conversion must not run while it is open.
+  rule_authority: s4hana_migration
+  sap_impact: A half posted settlement document is lost or posted twice after the conversion.
+  fix_map:
+    __other__: Complete or reverse the open settlement (VBO1 / VBOF) before the conversion.
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: settlement in progress.'
+- id: SDSO315
+  field: KONA.DATAB
+  check_class: cross_field_check
+  fail_when: '`KONA.DATAB` > `KONA.DATBI`'
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Rebate agreement starts after it ends
+  why_it_matters: A start date after the end date makes the agreement invalid; it never accrues and cannot become a condition
+    contract.
+  rule_authority: sap_hard_constraint
+  sap_impact: No rebate accrues; the contract creation fails.
+  fix_map:
+    __other__: Correct the validity dates of the agreement (VBO2).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: valid-from after valid-to.'
+- id: SDSO316
+  field: KONH.KNUMA_BO
+  check_class: exists_check
+  target_table: KONA
+  target_fields:
+  - KNUMA
+  grain: KONH
+  s4_area: sales
+  s4_impact: blocking
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Condition record points to a rebate agreement that does not exist
+  why_it_matters: Rebate condition records belong to an agreement. A record whose agreement is gone cannot be assigned to
+    a condition contract.
+  rule_authority: s4hana_migration
+  sap_impact: The rebate condition is dropped by the conversion and the accrual is lost.
+  fix_map:
+    __other__: Delete the orphan condition record or recreate the agreement.
+  record_fix_template: 'Condition record {KONH.KNUMH}: agreement {KONH.KNUMA_BO} does not exist.'
+- id: SDSO317
+  field: KONA.BONEM
+  check_class: exists_check
+  applies_when: *id001
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  grain: KONA
+  s4_area: sales
+  s4_impact: blocking
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Rebate recipient is not a customer master record
+  why_it_matters: The payee of the rebate becomes the business partner of the condition contract. A recipient that is not
+    in the customer master has no business partner.
+  rule_authority: s4hana_migration
+  sap_impact: The settlement of the rebate has no payee.
+  fix_map:
+    __other__: Correct the rebate recipient (VBO2) or create the customer.
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: recipient {KONA.BONEM} does not exist.'
+- id: SDSO318
+  field: KONA.BONEM
+  check_class: exists_check
+  applies_when: *id001
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  target_when:
+    LOEVM: X
+  negate: true
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Rebate agreement pays a customer flagged for deletion
+  why_it_matters: A payee flagged for deletion is not migrated as an active business partner, so the settlement would be created
+    for a dead account.
+  rule_authority: s4hana_migration
+  sap_impact: Rebate is settled to an account that is deleted or blocked after the conversion.
+  fix_map:
+    __other__: Change the rebate recipient or remove the deletion flag (XD06).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: recipient {KONA.BONEM} is flagged for deletion.'
+- id: SDSO319
+  field: KONA.BONEM
+  check_class: exists_check
+  applies_when: *id001
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  target_when:
+    SPERR: X
+  negate: true
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Rebate agreement pays a customer with a central posting block
+  why_it_matters: A posting block on the payee prevents the credit memo of the settlement. The business partner keeps the
+    block.
+  rule_authority: s4hana_migration
+  sap_impact: The settlement credit memo cannot be posted after the conversion.
+  fix_map:
+    __other__: Lift the block or change the recipient (XD05, VBO2).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: recipient {KONA.BONEM} has a central posting block.'
+- id: SDSO320
+  field: KONA.WAERS
+  check_class: null_check
+  applies_when: *id001
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: Rebate agreement has no currency
+  why_it_matters: The condition contract is created in a currency. An agreement without one has no base for settlement amounts.
+  rule_authority: s4hana_migration
+  sap_impact: The condition contract cannot be created from the agreement.
+  fix_map:
+    __other__: Enter the currency of the agreement (VBO2).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: no currency.'
+- id: SDSO321
+  field: KONA.VKORG
+  check_class: exists_check
+  applies_when: *id001
+  target_table: TVKO
+  target_fields:
+  - VKORG
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Rebate agreement belongs to a sales organization that does not exist
+  why_it_matters: The sales organization of the agreement becomes that of the condition contract. An unknown sales organization
+    cannot be mapped.
+  rule_authority: s4hana_migration
+  sap_impact: The agreement cannot be moved to a condition contract.
+  fix_map:
+    __other__: Correct the sales organization of the agreement (VBO2).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: sales organization {KONA.VKORG} does not exist.'
+- id: SDSO322
+  field: KONA.ZTERM
+  check_class: exists_check
+  applies_when: *id001
+  target_table: T052
+  target_fields:
+  - ZTERM
+  grain: KONA
+  s4_area: sales
+  s4_impact: warning
+  simplification_item: SD Rebate Processing replaced by Settlement Management
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: Rebate agreement payment terms are not defined
+  why_it_matters: The payment terms of the settlement credit memo come from the agreement and become part of the contract.
+  rule_authority: s4hana_migration
+  sap_impact: The settlement credit memo gets no valid terms.
+  fix_map:
+    __other__: Correct the terms in the agreement (VBO2) or define them (OBB8).
+  record_fix_template: 'Rebate agreement {KONA.KNUMA}: payment terms {KONA.ZTERM} do not exist.'
+- id: SDSO323
+  field: VBAK.KKBER
+  check_class: exists_check
+  target_table: UKM_KKBER2SGM
+  target_fields:
+  - KKBER
+  grain: VBAK
+  s4_area: credit_management
+  s4_impact: blocking
+  simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Sales order uses a credit control area without a credit segment in SAP Credit Management
+  why_it_matters: Credit exposure of open orders moves to the credit segment of the area. An order in an area without a segment
+    has nowhere to be counted.
+  rule_authority: s4hana_migration
+  sap_impact: Open orders are not counted in the exposure after the conversion and the credit check releases too much.
+  fix_map:
+    __other__: Assign the credit control area to a credit segment (SPRO > Credit Management).
+  record_fix_template: 'Sales order {VBAK.VBELN}: credit control area {VBAK.KKBER} has no credit segment.'
+- id: SDSO324
+  field: VBAK.VBELN
+  check_class: exists_check
+  fields:
+  - VBAK.KUNNR
+  - VBAK.VKORG
+  - VBAK.VTWEG
+  - VBAK.SPART
+  target_table: KNVV
+  target_fields:
+  - KUNNR
+  - VKORG
+  - VTWEG
+  - SPART
+  target_when:
+    LOEVM: X
+  negate: true
+  grain: VBAK
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Sales order is placed in a customer sales area flagged for deletion
+  why_it_matters: A sales area flagged for deletion is not migrated as an active customer role. Open orders in it keep running
+    on a dead role.
+  rule_authority: s4hana_migration
+  sap_impact: Follow-on documents of the order fail after the conversion.
+  fix_map:
+    __other__: Remove the deletion flag of the sales area (XD05) or reassign the order.
+  record_fix_template: 'Sales order {VBAK.VBELN}: customer {VBAK.KUNNR} sales area flagged for deletion.'
+- id: SDSO325
+  field: NAST.KSCHL
+  check_class: exists_check
+  fields:
+  - NAST.KSCHL
+  - NAST.NACHA
+  - NAST.KAPPL
+  target_table: TNAPR
+  target_fields:
+  - KSCHL
+  - NACHA
+  - KAPPL
+  grain: NAST
+  s4_area: output_management
+  s4_impact: blocking
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Output record uses an output type and medium without a processing program
+  why_it_matters: Output control without an entry in the processing routines (TNAPR) cannot be processed or migrated to output
+    management.
+  rule_authority: s4hana_migration
+  sap_impact: The output record can never be processed and is lost in the conversion.
+  fix_map:
+    __other__: Maintain the processing routines for the output type and medium (SPRO > Output Control) or delete the record.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}, medium {NAST.NACHA}: no processing program.'
+- id: SDSO326
+  field: NAST.NACHA
+  check_class: cross_field_check
+  fail_when: '`NAST.NACHA` == ''4'''
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: high
+  dimension: validity
+  message: Output record is sent by telex
+  why_it_matters: Telex is not a channel of S/4HANA Output Management (print, e-mail and XML only).
+  rule_authority: s4hana_migration
+  sap_impact: Output has no channel after the conversion.
+  fix_map:
+    __other__: Change the output condition record to e-mail or print.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: transmission medium telex.'
+- id: SDSO327
+  field: NAST.NACHA
+  check_class: cross_field_check
+  fail_when: '`NAST.NACHA` == ''2'''
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: medium
+  dimension: validity
+  message: Output record is sent by fax
+  why_it_matters: Fax is not a channel of S/4HANA Output Management; it needs a third party fax server behind print or e-mail.
+  rule_authority: s4hana_migration
+  sap_impact: Output has no standard channel after the conversion.
+  fix_map:
+    __other__: Change the output to e-mail or print, or plan a fax gateway.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: transmission medium fax.'
+- id: SDSO328
+  field: NAST.ERDAT
+  check_class: freshness_check
+  max_age_hours: 2160
+  applies_when:
+    NAST.VSTAT:
+    - '0'
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: medium
+  dimension: timeliness
+  message: Output record still unprocessed after 90 days
+  why_it_matters: Output that has not been sent for three months will not be sent. It must be sent or deleted, since the conversion
+    does not carry the output queue.
+  rule_authority: s4hana_migration
+  sap_impact: Documents are never sent, or are sent late after the conversion.
+  fix_map:
+    __other__: Process or delete the output (RSNAST00, V.-chain) before the conversion.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: not processed for over 90 days.'
+- id: SDSO329
+  field: NAST.ERDAT
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    NAST.VSTAT:
+    - '2'
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: medium
+  dimension: timeliness
+  message: Output record still in error after 30 days
+  why_it_matters: Output with processing errors that has not been repaired for a month is abandoned. It must be fixed or deleted
+    before the conversion.
+  rule_authority: s4hana_migration
+  sap_impact: Failed output is lost silently after the conversion.
+  fix_map:
+    __other__: Repair or delete the output (RSNAST00, error log in the document).
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: in error for over 30 days.'
+- id: SDSO330
+  field: NAST.ERDAT
+  check_class: freshness_check
+  max_age_hours: 8760
+  applies_when:
+    NAST.VSTAT:
+    - '1'
+  grain: NAST
+  s4_area: business_partner
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'Processed output record is older than 12 months: candidate for deletion'
+  why_it_matters: Processed output status records are not needed after a year. Deleting them (RSCLNAST) cuts the volume the
+    conversion has to move.
+  rule_authority: best_practice
+  sap_impact: The output table grows the conversion downtime.
+  fix_map:
+    __other__: Delete processed output records with report RSCLNAST or archive the documents.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: processed more than 12 months ago.'
+- id: SDSO331
+  field: NAST.PARNR
+  check_class: exists_check
+  applies_when:
+    NAST.PARVW:
+    - AG
+    - RE
+    - RG
+    - WE
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Output record is addressed to a customer that does not exist
+  why_it_matters: A partner that is missing in the customer master has no business partner to receive the output.
+  rule_authority: s4hana_migration
+  sap_impact: The output cannot be mapped to a recipient after the conversion.
+  fix_map:
+    __other__: Correct the partner or delete the record.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: partner {NAST.PARNR} does not exist.'
+- id: SDSO332
+  field: NAST.PARNR
+  check_class: exists_check
+  applies_when:
+    NAST.PARVW:
+    - AG
+    - RE
+    - RG
+    - WE
+    NAST.VSTAT:
+    - '0'
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  target_when:
+    LOEVM: X
+  negate: true
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Unprocessed output is addressed to a customer flagged for deletion
+  why_it_matters: Output waiting for a customer that is flagged for deletion will never be sent and the customer is not migrated
+    as an active partner.
+  rule_authority: s4hana_migration
+  sap_impact: The document is never sent.
+  fix_map:
+    __other__: Delete the output record or remove the deletion flag of the customer.
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: partner {NAST.PARNR} is flagged for deletion.'
+- id: SDSO333
+  field: NAST.LDEST
+  check_class: null_check
+  applies_when:
+    NAST.NACHA:
+    - '1'
+  grain: NAST
+  s4_area: output_management
+  s4_impact: warning
+  simplification_item: Output Management - NAST output control replaced by S/4HANA Output Management
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: Print output has no output device
+  why_it_matters: Print output without a device falls back to the user default, which does not exist for background users.
+    Output management needs the printer set per output.
+  rule_authority: s4hana_migration
+  sap_impact: Print output is not produced.
+  fix_map:
+    __other__: Enter the output device in the condition record (or the user default).
+  record_fix_template: 'Output type {NAST.KSCHL}, application {NAST.KAPPL}: print output without a device.'
+- id: SDSO334
+  field: EIKP.ALAND
+  check_class: exists_check
+  target_table: T005
+  target_fields:
+  - LAND1
+  grain: EIKP
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: Foreign trade document has a destination country that does not exist
+  why_it_matters: GTS needs a valid destination country for customs declaration.
+  rule_authority: s4hana_migration
+  sap_impact: The foreign trade document cannot be migrated.
+  fix_map:
+    __other__: Correct the destination country (VX02).
+  record_fix_template: 'Foreign trade document {EIKP.EXNUM}: destination country {EIKP.ALAND} does not exist.'
+- id: SDSO335
+  field: EIPO.EXNUM
+  check_class: exists_check
+  target_table: EIKP
+  target_fields:
+  - EXNUM
+  grain: EIPO
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Foreign trade item has no header
+  why_it_matters: An item without header (EIKP) cannot be moved as part of a document.
+  rule_authority: s4hana_migration
+  sap_impact: The item is lost.
+  fix_map:
+    __other__: Delete the orphan item or recreate the header.
+  record_fix_template: 'Foreign trade document {EIPO.EXNUM}: item {EIPO.EXPOS} has no header.'
+- id: SDSO336
+  field: EIPO.STAWN
+  check_class: null_check
+  grain: EIPO
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: Foreign trade item has no commodity code
+  why_it_matters: GTS declarations are built from the commodity code. An item without one cannot be declared.
+  rule_authority: s4hana_migration
+  sap_impact: The customs declaration cannot be created for the item.
+  fix_map:
+    __other__: Enter the commodity code (VX02).
+  record_fix_template: 'Foreign trade document {EIPO.EXNUM}, item {EIPO.EXPOS}: no commodity code.'
+- id: SDSO337
+  field: EIPO.HERKL
+  check_class: null_check
+  grain: EIPO
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: Foreign trade item has no country of origin
+  why_it_matters: The country of origin is needed for the declaration and for preference.
+  rule_authority: s4hana_migration
+  sap_impact: The declaration cannot be created for the item.
+  fix_map:
+    __other__: Enter the country of origin (VX02).
+  record_fix_template: 'Foreign trade document {EIPO.EXNUM}, item {EIPO.EXPOS}: no country of origin.'
+- id: SDSO338
+  field: LIKP.EXNUM
+  check_class: exists_check
+  target_table: EIKP
+  target_fields:
+  - EXNUM
+  grain: LIKP
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Delivery points to a foreign trade document that does not exist
+  why_it_matters: The link from the delivery to its export document is lost when the document is gone.
+  rule_authority: s4hana_migration
+  sap_impact: The delivery loses its customs data.
+  fix_map:
+    __other__: Recreate the export document or clear the link.
+  record_fix_template: 'Delivery {LIKP.VBELN}: foreign trade document {LIKP.EXNUM} does not exist.'
+- id: SDSO339
+  field: VBKD.RRREL
+  check_class: cross_field_check
+  fail_when: '`VBKD.RRREL`.notna()'
+  grain: VBKD
+  s4_area: revenue_recognition
+  s4_impact: blocking
+  simplification_item: SD Revenue Recognition replaced by Revenue Accounting and Reporting
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: Sales document item uses classic revenue recognition
+  why_it_matters: Revenue recognition in SD (VF44) is replaced by Revenue Accounting and Reporting. Items with a revenue recognition
+    category must be migrated as RAR contracts.
+  rule_authority: s4hana_migration
+  sap_impact: Deferred revenue and unbilled receivables are not carried forward without a contract migration.
+  fix_map:
+    __other__: Plan the RAR contract migration; complete open revenue recognition (VF44) before cut-over.
+  record_fix_template: 'Sales document {VBKD.VBELN}, item {VBKD.POSNR}: classic revenue recognition.'
+- id: SDSO340
+  field: VBKD.REVSP
+  check_class: cross_field_check
+  fail_when: '`VBKD.REVSP`.notna()'
+  grain: VBKD
+  s4_area: revenue_recognition
+  s4_impact: warning
+  simplification_item: SD Revenue Recognition replaced by Revenue Accounting and Reporting
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: Sales document item has a revenue distribution type
+  why_it_matters: A revenue distribution type steers the classic revenue recognition. It must be mapped to the RAR performance
+    obligation.
+  rule_authority: s4hana_migration
+  sap_impact: The distribution of revenue differs after the conversion.
+  fix_map:
+    __other__: Map the distribution type in the RAR design.
+  record_fix_template: 'Sales document {VBKD.VBELN}, item {VBKD.POSNR}: revenue distribution type set.'

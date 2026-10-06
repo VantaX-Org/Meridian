@@ -1,0 +1,1327 @@
+{
+ "table": "EIPO",
+ "description": "Foreign Trade: Export/Import: Item Data",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EXNUM",
+   "key": true,
+   "data_element": "EXNUM",
+   "domain": "EXNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Number of foreign trade data in MM and SD documents",
+   "check_table": "EIKP"
+  },
+  {
+   "pos": 3,
+   "name": "EXPOS",
+   "key": true,
+   "data_element": "EXPOS",
+   "domain": "EXPOS",
+   "type": "NUMC",
+   "length": 6,
+   "decimals": 0,
+   "description": "Internal item number for foreign trade data in MM and SD",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "STAWN",
+   "key": false,
+   "data_element": "STAWN",
+   "domain": "STAWN",
+   "type": "CHAR",
+   "length": 17,
+   "decimals": 0,
+   "description": "Commodity Code/Import Code Number for Foreign Trade",
+   "check_table": "T604"
+  },
+  {
+   "pos": 5,
+   "name": "EXPRF",
+   "key": false,
+   "data_element": "EXPRF",
+   "domain": "EXPRF",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Export/Import Procedure for Foreign Trade",
+   "check_table": "T616"
+  },
+  {
+   "pos": 6,
+   "name": "EXART",
+   "key": false,
+   "data_element": "EXART",
+   "domain": "EXART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Business Transaction Type for Foreign Trade",
+   "check_table": "T605"
+  },
+  {
+   "pos": 7,
+   "name": "HERKL",
+   "key": false,
+   "data_element": "HERKL",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country of origin of the material",
+   "check_table": "T005"
+  },
+  {
+   "pos": 8,
+   "name": "HERKR",
+   "key": false,
+   "data_element": "HERKR",
+   "domain": "REGIO",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Region of origin of material (non-preferential origin)",
+   "check_table": "*"
+  },
+  {
+   "pos": 9,
+   "name": "GRWRT",
+   "key": false,
+   "data_element": "GRWRT",
+   "domain": "GRWRT",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Statistical value for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "PREFPACOD",
+   "key": false,
+   "data_element": "PREFPACOD",
+   "domain": "PREFPACOD",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Preference code for foreign trade (decl.to author., import)",
+   "check_table": "T604C"
+  },
+  {
+   "pos": 11,
+   "name": "SEGAL",
+   "key": false,
+   "data_element": "SEGAL",
+   "domain": "SEGAL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Exclusion/Inclusion indicator for declara. to authorities",
+   "check_table": "T609A"
+  },
+  {
+   "pos": 12,
+   "name": "MOWNR",
+   "key": false,
+   "data_element": "MOWNR",
+   "domain": "MOWNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "CAP: Number of CAP products list",
+   "check_table": "T618M"
+  },
+  {
+   "pos": 13,
+   "name": "MOGRU",
+   "key": false,
+   "data_element": "MOGRU",
+   "domain": "MOGRU",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Common Agricultural Policy: CAP products group-Foreign Trade",
+   "check_table": "T618G"
+  },
+  {
+   "pos": 14,
+   "name": "GPNUM",
+   "key": false,
+   "data_element": "GPNUM",
+   "domain": "GPNUM",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Production statistics: PRODCOM number for foreign trade",
+   "check_table": "T609G"
+  },
+  {
+   "pos": 15,
+   "name": "CASNR",
+   "key": false,
+   "data_element": "CASNR",
+   "domain": "CASNR",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "CAS number for pharmaceutical products in foreign trade",
+   "check_table": "T610C"
+  },
+  {
+   "pos": 16,
+   "name": "STEUC",
+   "key": false,
+   "data_element": "STEUC",
+   "domain": "STEUC",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Control code for consumption taxes in foreign trade",
+   "check_table": "T604F"
+  },
+  {
+   "pos": 17,
+   "name": "WZOLL",
+   "key": false,
+   "data_element": "WZOLL",
+   "domain": "GRWRT",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Customs val. in doc.currency in imp.procg for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 18,
+   "name": "VERLD",
+   "key": false,
+   "data_element": "VERLD",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country of dispatch for Foreign Trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 19,
+   "name": "HANLD",
+   "key": false,
+   "data_element": "HANLD",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Trading country for foreign trade",
+   "check_table": "T005"
+  },
+  {
+   "pos": 20,
+   "name": "TEXT1",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "TEXT2",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "TEXT3",
+   "key": false,
+   "data_element": "TXTFT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Comments: Text for foreign trade processing",
+   "check_table": null
+  },
+  {
+   "pos": 23,
+   "name": "COKON",
+   "key": false,
+   "data_element": "COKON",
+   "domain": "COKON",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Customs quota code for import processing in foreign trade",
+   "check_table": "T610K"
+  },
+  {
+   "pos": 24,
+   "name": "COPHA",
+   "key": false,
+   "data_element": "COPHA",
+   "domain": "COPHA",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Pharmaceutical products code (Foreign Trade)",
+   "check_table": "T610D"
+  },
+  {
+   "pos": 25,
+   "name": "COADI",
+   "key": false,
+   "data_element": "COADI",
+   "domain": "COADI",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Anti-dumping code for import processing in foreign trade",
+   "check_table": "T610A"
+  },
+  {
+   "pos": 26,
+   "name": "PRONU",
+   "key": false,
+   "data_element": "PRONU",
+   "domain": "PRONU",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Invoice: Number of invoice document for import processing",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "PRODA",
+   "key": false,
+   "data_element": "PRODA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Invoice: Date of invoice document for import processing",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "VORPA",
+   "key": false,
+   "data_element": "VORPA",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preliminary document: Document type for foreign trade procg",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 29,
+   "name": "VORNU",
+   "key": false,
+   "data_element": "VORNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preliminary document: No. of preliminary doc.f.import procg",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "VORDA",
+   "key": false,
+   "data_element": "VORDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preliminary document: Date of preliminary doc.f.import procg",
+   "check_table": null
+  },
+  {
+   "pos": 31,
+   "name": "BEHOE",
+   "key": false,
+   "data_element": "VOHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preliminary doc.: Issuing authority of relevant prelim.doc.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 32,
+   "name": "KENNU",
+   "key": false,
+   "data_element": "KENNU",
+   "domain": "CHAR06",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Preliminary document: Customs office/ID number for import",
+   "check_table": null
+  },
+  {
+   "pos": 33,
+   "name": "VOISO",
+   "key": false,
+   "data_element": "VOISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Prelim. doc.: ISO code of ctry issuing the preliminary doc.",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "PREFA",
+   "key": false,
+   "data_element": "PREFA",
+   "domain": "PREFA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Preference type for foreign trade",
+   "check_table": "T610PA"
+  },
+  {
+   "pos": 35,
+   "name": "PREFN",
+   "key": false,
+   "data_element": "PREFN",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preference: Official number of preference document - Import",
+   "check_table": null
+  },
+  {
+   "pos": 36,
+   "name": "PREDU",
+   "key": false,
+   "data_element": "PREDU",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preference: Date of preference document for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "PRISO",
+   "key": false,
+   "data_element": "PRISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Preference: ISO code of country issuing the preference doc.",
+   "check_table": null
+  },
+  {
+   "pos": 38,
+   "name": "PRHOE",
+   "key": false,
+   "data_element": "PRHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Issuing authoritiy for relevant preference doc.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 39,
+   "name": "PRUEL",
+   "key": false,
+   "data_element": "PRUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Preference: Validity date of preference document for import",
+   "check_table": null
+  },
+  {
+   "pos": 40,
+   "name": "NACAR",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 41,
+   "name": "NACNU",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "NACDA",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "NAISO",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "NAHOE",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 45,
+   "name": "NAUEL",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "NACA2",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 47,
+   "name": "NACN2",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "NACD2",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "NAIS2",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "NAHO2",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 51,
+   "name": "NAUE2",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "NACA3",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 53,
+   "name": "NACN3",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "NACD3",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "NAIS3",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "NAHO3",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 57,
+   "name": "NAUE3",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "NACA4",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 59,
+   "name": "NACN4",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "NACD4",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "NAIS4",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "NAHO4",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 63,
+   "name": "NAUE4",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "NACA5",
+   "key": false,
+   "data_element": "NACAR",
+   "domain": "NACAR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Type of certificate for import",
+   "check_table": "T610NA"
+  },
+  {
+   "pos": 65,
+   "name": "NACN5",
+   "key": false,
+   "data_element": "NACNU",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Verification docs: Official no. of verific. doc. - Import",
+   "check_table": null
+  },
+  {
+   "pos": 66,
+   "name": "NACD5",
+   "key": false,
+   "data_element": "NACDA",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification documents: Date of verif.doc. for import procg",
+   "check_table": null
+  },
+  {
+   "pos": 67,
+   "name": "NAIS5",
+   "key": false,
+   "data_element": "NAISO",
+   "domain": "INTCA",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Verification doc: ISO code of ctry supplying verific.doc.",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "NAHO5",
+   "key": false,
+   "data_element": "NAHOE",
+   "domain": "BEHOE",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Verification documents: Issuing authority for relev. verif.",
+   "check_table": "T610O"
+  },
+  {
+   "pos": 69,
+   "name": "NAUE5",
+   "key": false,
+   "data_element": "NAUEL",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Verification docs: Validity date of verific.doc. for import",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "EXDAR",
+   "key": false,
+   "data_element": "EXDAR",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Export document: Export document type for foreign trade",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 71,
+   "name": "EXDAA",
+   "key": false,
+   "data_element": "EXDAA",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Export document: Official number of export document",
+   "check_table": null
+  },
+  {
+   "pos": 72,
+   "name": "EXDAB",
+   "key": false,
+   "data_element": "EXDAB",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Export document: Valid-to number of export document",
+   "check_table": null
+  },
+  {
+   "pos": 73,
+   "name": "EXDTA",
+   "key": false,
+   "data_element": "EXDTA",
+   "domain": "VORPA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "T document: Type of T document for foreign trade",
+   "check_table": "T610VA"
+  },
+  {
+   "pos": 74,
+   "name": "EXDT2",
+   "key": false,
+   "data_element": "EXDT2",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "T document: Official number of T document for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "EXDTB",
+   "key": false,
+   "data_element": "EXDTB",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "T doc.: Official no. for next page of T doc. f.foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 76,
+   "name": "EXDPA",
+   "key": false,
+   "data_element": "EXDPA",
+   "domain": "PREFA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Preference: Preference type for foreign trade",
+   "check_table": "T610PA"
+  },
+  {
+   "pos": 77,
+   "name": "EXPRE",
+   "key": false,
+   "data_element": "EXPRE",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Preference: Official number of preference document - Export",
+   "check_table": null
+  },
+  {
+   "pos": 78,
+   "name": "EXDT5",
+   "key": false,
+   "data_element": "EXDT5",
+   "domain": "CHAR25",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "CAP: Official number of T5 document for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 79,
+   "name": "AUSOK",
+   "key": false,
+   "data_element": "AUSOK",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status: Document data in foreign trade complete (system)",
+   "check_table": null
+  },
+  {
+   "pos": 80,
+   "name": "COIMP",
+   "key": false,
+   "data_element": "COIMP",
+   "domain": "STAWN",
+   "type": "CHAR",
+   "length": 17,
+   "decimals": 0,
+   "description": "Code number for import processing in foreign trade",
+   "check_table": "T604"
+  },
+  {
+   "pos": 81,
+   "name": "HERSE",
+   "key": false,
+   "data_element": "HERSE",
+   "domain": "LIFNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Manufacturer number for import processing in foreign trade",
+   "check_table": "LFA1"
+  },
+  {
+   "pos": 82,
+   "name": "COBLD",
+   "key": false,
+   "data_element": "COBLD",
+   "domain": "STAWN",
+   "type": "CHAR",
+   "length": 17,
+   "decimals": 0,
+   "description": "Import code no. in destination country for foreign trade",
+   "check_table": "T604"
+  },
+  {
+   "pos": 83,
+   "name": "EIOKW",
+   "key": false,
+   "data_element": "EIOKW",
+   "domain": "EIOKW",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status: Complete document data in foreign trade (user)",
+   "check_table": null
+  },
+  {
+   "pos": 84,
+   "name": "EIOKA",
+   "key": false,
+   "data_element": "EIOKA",
+   "domain": "EIOKW",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "EDI: Export/Import customs tariff number for foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 85,
+   "name": "GBNUM",
+   "key": false,
+   "data_element": "GB_NR",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Foreign Trade:Customs declaration list no. for Foreign Trade",
+   "check_table": null
+  },
+  {
+   "pos": 86,
+   "name": "RGNNR",
+   "key": false,
+   "data_element": "RG_NR",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Registration number for import processing in foreign trade",
+   "check_table": null
+  },
+  {
+   "pos": 87,
+   "name": "PRENC",
+   "key": false,
+   "data_element": "PRENC",
+   "domain": "PRENC",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Exemption certificate: Indicator for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 88,
+   "name": "PRENO",
+   "key": false,
+   "data_element": "PRENN",
+   "domain": "PRENN",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Exemption certificate number for legal control",
+   "check_table": null
+  },
+  {
+   "pos": 89,
+   "name": "PREND",
+   "key": false,
+   "data_element": "PREND",
+   "domain": "PREND",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Exemption certificate: Issue date of exemption certificate",
+   "check_table": null
+  },
+  {
+   "pos": 90,
+   "name": "KTNUM",
+   "key": false,
+   "data_element": "KTPLN",
+   "domain": "KTPLN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Quota or Ceiling Number for Import Processing",
+   "check_table": "T610KP"
+  },
+  {
+   "pos": 91,
+   "name": "PLNUM",
+   "key": false,
+   "data_element": "KTPLN",
+   "domain": "KTPLN",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Quota or Ceiling Number for Import Processing",
+   "check_table": "T610KP"
+  },
+  {
+   "pos": 92,
+   "name": "POSAR",
+   "key": false,
+   "data_element": "POSAR",
+   "domain": "POSAR",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Item type",
+   "check_table": null
+  },
+  {
+   "pos": 93,
+   "name": "PSTYV",
+   "key": false,
+   "data_element": "PSTYV",
+   "domain": "PSTYV",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales document item category",
+   "check_table": "*"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "BEHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "CASNR",
+   "foreign_table": "T610C",
+   "foreign_field": "CASNR"
+  },
+  {
+   "field": "COADI",
+   "foreign_table": "T610A",
+   "foreign_field": "COADI"
+  },
+  {
+   "field": "COBLD",
+   "foreign_table": "T604",
+   "foreign_field": "STAWN"
+  },
+  {
+   "field": "COIMP",
+   "foreign_table": "T604",
+   "foreign_field": "STAWN"
+  },
+  {
+   "field": "COKON",
+   "foreign_table": "T610K",
+   "foreign_field": "COKON"
+  },
+  {
+   "field": "COPHA",
+   "foreign_table": "T610D",
+   "foreign_field": "COPHA"
+  },
+  {
+   "field": "EXART",
+   "foreign_table": "T605",
+   "foreign_field": "EXART"
+  },
+  {
+   "field": "EXDAR",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  },
+  {
+   "field": "EXDPA",
+   "foreign_table": "T610PA",
+   "foreign_field": "PREFA"
+  },
+  {
+   "field": "EXDTA",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  },
+  {
+   "field": "EXNUM",
+   "foreign_table": "EIKP",
+   "foreign_field": "EXNUM"
+  },
+  {
+   "field": "EXPRF",
+   "foreign_table": "T616",
+   "foreign_field": "EXPRF"
+  },
+  {
+   "field": "GPNUM",
+   "foreign_table": "T609G",
+   "foreign_field": "GPNUM"
+  },
+  {
+   "field": "HANLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "HERKL",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "HERSE",
+   "foreign_table": "LFA1",
+   "foreign_field": "LIFNR"
+  },
+  {
+   "field": "KTNUM",
+   "foreign_table": "T610KP",
+   "foreign_field": "KTPLN"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MOGRU",
+   "foreign_table": "T618G",
+   "foreign_field": "MOGRU"
+  },
+  {
+   "field": "MOWNR",
+   "foreign_table": "T618M",
+   "foreign_field": "MOWNR"
+  },
+  {
+   "field": "NACA2",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NACA3",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NACA4",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NACA5",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NACAR",
+   "foreign_table": "T610NA",
+   "foreign_field": "NACAR"
+  },
+  {
+   "field": "NAHO2",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "NAHO3",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "NAHO4",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "NAHO5",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "NAHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "PLNUM",
+   "foreign_table": "T610KP",
+   "foreign_field": "KTPLN"
+  },
+  {
+   "field": "PREFA",
+   "foreign_table": "T610PA",
+   "foreign_field": "PREFA"
+  },
+  {
+   "field": "PREFPACOD",
+   "foreign_table": "T604C",
+   "foreign_field": "PREFPACOD"
+  },
+  {
+   "field": "PRHOE",
+   "foreign_table": "T610O",
+   "foreign_field": "BEHOE"
+  },
+  {
+   "field": "SEGAL",
+   "foreign_table": "T609A",
+   "foreign_field": "SEGAL"
+  },
+  {
+   "field": "STAWN",
+   "foreign_table": "T604",
+   "foreign_field": "STAWN"
+  },
+  {
+   "field": "STEUC",
+   "foreign_table": "T604F",
+   "foreign_field": "STEUC"
+  },
+  {
+   "field": "VERLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "VORPA",
+   "foreign_table": "T610VA",
+   "foreign_field": "VORPA"
+  }
+ ]
+}
