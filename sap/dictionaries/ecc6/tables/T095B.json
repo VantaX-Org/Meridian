@@ -1,0 +1,414 @@
+{
+ "table": "T095B",
+ "description": "G/L accounts value adjustment",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 3,
+   "name": "KTOGR",
+   "key": true,
+   "data_element": "KTOGR",
+   "domain": "KTOGR",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Account determination",
+   "check_table": "T095A"
+  },
+  {
+   "pos": 4,
+   "name": "AFABE",
+   "key": true,
+   "data_element": "AFABE_D",
+   "domain": "AFABE",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Real depreciation area",
+   "check_table": "*"
+  },
+  {
+   "pos": 5,
+   "name": "KTNAFB",
+   "key": false,
+   "data_element": "KTNAFB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Accumulated depreciation account for ordinary depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 6,
+   "name": "KTNAFG",
+   "key": false,
+   "data_element": "KTNAFG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for ordinary depreciation to book val. 0",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 7,
+   "name": "KTNAFU",
+   "key": false,
+   "data_element": "KTNAFU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for ordinary depreciation below zero",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 8,
+   "name": "KTSAFB",
+   "key": false,
+   "data_element": "KTSAFB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Accumulated depreciation account for special depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 9,
+   "name": "KTSAFG",
+   "key": false,
+   "data_element": "KTSAFG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for special depreciation up to book value 0",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 10,
+   "name": "KTSAFU",
+   "key": false,
+   "data_element": "KTSAFU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for special depreciation below zero",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 11,
+   "name": "KTAAFB",
+   "key": false,
+   "data_element": "KTAAFB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Balance sheet account for unplanned depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 12,
+   "name": "KTAAFG",
+   "key": false,
+   "data_element": "KTAAFG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for unplanned depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 13,
+   "name": "KTAAFU",
+   "key": false,
+   "data_element": "KTAAFU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for unplanned depreciation below zero",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 14,
+   "name": "KTZINB",
+   "key": false,
+   "data_element": "KTZINB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Contra account for posting interest",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 15,
+   "name": "KTZING",
+   "key": false,
+   "data_element": "KTZING",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account for interest over zero",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 16,
+   "name": "KTZINU",
+   "key": false,
+   "data_element": "KTZINU",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Expense account: Interest below zero",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 17,
+   "name": "KTMAFB",
+   "key": false,
+   "data_element": "KTMAFB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Value adjustment account for transferred reserves",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 18,
+   "name": "KTMAFG",
+   "key": false,
+   "data_element": "KTMAFG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Contra account for transferring reserves",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 19,
+   "name": "KTAUNB",
+   "key": false,
+   "data_element": "KTAUNB",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Accumulated depreciation account: Revaluation of ord.deprec.",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 20,
+   "name": "KTAUNG",
+   "key": false,
+   "data_element": "KTAUNG",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Offsetting account: Revaluation of ordinary depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 21,
+   "name": "KTNZUS",
+   "key": false,
+   "data_element": "KTNZUS",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Revenue account for write-up on ordinary depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 22,
+   "name": "KTSZUS",
+   "key": false,
+   "data_element": "KTSZUS",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Revenue account for write-up to special depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 23,
+   "name": "KTAZUS",
+   "key": false,
+   "data_element": "KTAZUS",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Revenue account for write-up on unplanned depreciation",
+   "check_table": "SKA1"
+  },
+  {
+   "pos": 24,
+   "name": "KTMZUS",
+   "key": false,
+   "data_element": "KTMZUS",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Rev. account: Write-up on transfer of reserves",
+   "check_table": "SKA1"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KTAAFB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAAFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAAFU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUNB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAUNG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTAZUS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMAFB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMAFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTMZUS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNAFB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNAFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNAFU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTNZUS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTOGR",
+   "foreign_table": "T095A",
+   "foreign_field": "KTOGR"
+  },
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "KTSAFB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTSAFG",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTSAFU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTSZUS",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTZINB",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTZING",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "KTZINU",
+   "foreign_table": "SKA1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

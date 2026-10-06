@@ -1,0 +1,134 @@
+{
+ "table": "FAGL_011ZC",
+ "description": "Fin. Statement Structure: Assignment FS Items - G/L Account",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "VERSN",
+   "key": true,
+   "data_element": "VERSN_011",
+   "domain": "VERSN_011",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Financial Statement Version",
+   "check_table": "T011"
+  },
+  {
+   "pos": 3,
+   "name": "ERGSL",
+   "key": true,
+   "data_element": "ERGSL",
+   "domain": "ERGSL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Financial Statement Item",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KTOPL",
+   "key": true,
+   "data_element": "KTOPL",
+   "domain": "KTOPL",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Chart of Accounts",
+   "check_table": "T004"
+  },
+  {
+   "pos": 5,
+   "name": "VONKT",
+   "key": true,
+   "data_element": "VONKT_011Z",
+   "domain": "BILKT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account interval lower limit",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BISKT",
+   "key": false,
+   "data_element": "BISKT_011Z",
+   "domain": "BILKT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Account interval upper limit",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "XSOLL",
+   "key": false,
+   "data_element": "XSOLL_F02E",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is entry relevant if there is a debit balance?",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "XHABN",
+   "key": false,
+   "data_element": "XHABN_F02E",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Is entry relevant if there is a credit balance ?",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "XVERD",
+   "key": false,
+   "data_element": "XVERD_011Z",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Group balance decides on allocation",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "KTOPL",
+   "foreign_table": "T004",
+   "foreign_field": "KTOPL"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "VERSN",
+   "foreign_table": "T011",
+   "foreign_field": "VERSN"
+  }
+ ]
+}
