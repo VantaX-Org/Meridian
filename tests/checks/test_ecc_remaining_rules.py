@@ -21,9 +21,9 @@ EXPECTED_COUNTS = {
     "sd_customer_master": 91,
     "sd_sales_orders": 179,
     "production_planning": 278,
-    "project_system": 80,
+    "project_system": 115,
     "plant_maintenance": 188,
-    "quality_management": 78,
+    "quality_management": 133,
     "s4_readiness": 21,
     "banking_tax": 77,
 }
@@ -141,7 +141,7 @@ def test_total_new_ecc_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1692, f"Expected 1692 total ECC rules, got {total}"
+    assert total == 1782, f"Expected 1782 total ECC rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

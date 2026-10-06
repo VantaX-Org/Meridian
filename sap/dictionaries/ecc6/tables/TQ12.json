@@ -1,0 +1,94 @@
+{
+ "table": "TQ12",
+ "description": "Ind. external numbering for test units in results recording",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "EXTNUM",
+   "key": true,
+   "data_element": "QEXTNUM",
+   "domain": "QEXTNUM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External Numbering of Units to be Inspected",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "NOSERIAL",
+   "key": false,
+   "data_element": "QKZNOSER",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No External Numbering of Units to Be Inspected",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "KASERIAL",
+   "key": false,
+   "data_element": "QKZKASER",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External Numbering of Units to Be Inspected is Optional",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "MUSERIAL",
+   "key": false,
+   "data_element": "QKZMUSER",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "External Numbering of Units to Be Inspected is required",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "EQUIPMENT",
+   "key": false,
+   "data_element": "QKZEQUI",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check of External Number Against Equipment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "EINDEUTIG",
+   "key": false,
+   "data_element": "QKZEINDTG",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Check External Numbering to Ensure Uniqueness",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

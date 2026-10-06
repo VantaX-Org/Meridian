@@ -1,0 +1,22 @@
+{
+ "domain": "OCM_OBJ_TYPE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "+",
+   "high": null,
+   "text": "Object created"
+  },
+  {
+   "low": "-",
+   "high": null,
+   "text": "Object is to be deleted"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

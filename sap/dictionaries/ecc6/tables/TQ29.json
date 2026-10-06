@@ -1,0 +1,172 @@
+{
+ "table": "TQ29",
+ "description": "Defaults for target value and tolerances for characteristics",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "TOLERANZSL",
+   "key": true,
+   "data_element": "QTOLERANZ",
+   "domain": "QTOLERANZ",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Tolerance Key",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "STELLEN",
+   "key": false,
+   "data_element": "QSTELLEN",
+   "domain": "QSTELLEN",
+   "type": "INT1",
+   "length": 3,
+   "decimals": 0,
+   "description": "Number of Places to the Right of a Decimal Point (Accuracy)",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "EINHEIT",
+   "key": false,
+   "data_element": "QMASSEH",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Unit of Measurement, in Which Quantitative Data Is Stored",
+   "check_table": "T006"
+  },
+  {
+   "pos": 5,
+   "name": "KZSOLLWERT",
+   "key": false,
+   "data_element": "QKZSOLLW",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Copy Target Value",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SOLLWERT",
+   "key": false,
+   "data_element": "QSOLLWERTE",
+   "domain": "QSOLLWERTE",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Target Value for a Quantitative Characteristic",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "SOLLWNI",
+   "key": false,
+   "data_element": "QNINITIAL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Value Not Initial if Set",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "KZTOLREL",
+   "key": false,
+   "data_element": "QKZTOLREL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Specification Limits Are Relative Values for Target Value",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "TOLERANZOB",
+   "key": false,
+   "data_element": "QTOLOB",
+   "domain": "QSOLLWERTE",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Upper Specification Limit",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TOLOBNI",
+   "key": false,
+   "data_element": "QNINITIAL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Value Not Initial if Set",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TOLERANZUN",
+   "key": false,
+   "data_element": "QTOLUN",
+   "domain": "QSOLLWERTE",
+   "type": "FLTP",
+   "length": 16,
+   "decimals": 16,
+   "description": "Lower Tolerance Limit",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "TOLUNNI",
+   "key": false,
+   "data_element": "QNINITIAL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Value Not Initial if Set",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "TOLSOLL",
+   "key": false,
+   "data_element": "QTOLSOLL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Target Value-Dependent Specification Limits",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EINHEIT",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  }
+ ]
+}
