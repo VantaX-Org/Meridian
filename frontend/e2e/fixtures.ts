@@ -45,6 +45,7 @@ export const test = base.extend<{ app: Page }>({
     // recording; the 15 s poll covers the rail
     await page.route("**/api/v1/jobs/events", (r) => r.fulfill({ status: 204 }));
     await mockInbox(page);
+    await mockSteward(page);
     await provide(page);
   },
 });
@@ -72,6 +73,49 @@ async function mockInbox(page: Page) {
     weeks: 8, backlog_by_owner: [], backlog_by_team: [], unassigned: 3, resolved_in_sla: 9, resolved_total: 10, sla_attainment_pct: 90,
     mtta_hours: 2, mttr_hours: 9, breach_count: 1,
     weekly: [{ week: "2026-09-28", opened: 5, resolved: 4, resolved_in_sla: 4, breached: 0 }],
+  })));
+}
+
+/** The failing check and record the finding-detail and record routes open (ids as in the recording). */
+const FINDING_ID = "6d7b0459-08ca-4b11-90aa-c0524ae19064";
+const ISSUE_ID = "c6718ce8-8d5b-4432-933a-4df2b07ee9f0";
+const VERSION_ID = "65988d5a-0243-4f9b-bdff-52779e71c6ed";
+const MESSAGE = "Reconciliation account is not a vendor reconciliation account in this company code";
+const FINDING = {
+  id: FINDING_ID, version_id: VERSION_ID, module: "accounts_payable", check_id: "XREC001", severity: "critical", dimension: "consistency",
+  affected_count: 1, total_count: 6, pass_rate: 83.33,
+  details: {
+    message: MESSAGE, field_checked: "LFB1.AKONT",
+    sample_failing_records: [{ "LFB1.AKONT": "0000113100", "LFB1.BUKRS": "1000", "LFB1.LIFNR": "V3", record_key: "LIFNR=V3|BUKRS=1000" }],
+  },
+  remediation_text: null,
+  rule_context: { sap_impact: "Postings fail or land on the wrong G/L account.", rule_authority: "sap_hard_constraint", why_it_matters: "Every posting to the vendor is mirrored to the reconciliation account in the general ledger." },
+  value_fix_map: {}, record_fixes: [], created_at: "2026-10-02T05:09:21.146324+00:00", business_name: null, glossary_term_id: null, business_definition: null,
+};
+const ISSUE = {
+  id: ISSUE_ID, scope: "e2e", module: "accounts_payable", check_id: "XREC001", record_key: "LIFNR=V3|BUKRS=1000", grain: "LFB1", severity: "critical",
+  status: "open", resolution: null, assigned_to: null, assignee_email: null, first_seen_version: VERSION_ID, last_seen_version: VERSION_ID,
+  resolved_version: null, first_seen_at: "2026-10-02T05:08:57Z", last_seen_at: "2026-10-02T11:54:16Z", resolved_at: null, reopened_count: 0,
+  message: MESSAGE, field: "LFB1.AKONT",
+};
+const pair = (a: string, b: string) => ({ a, b, survivor: a });
+
+/** Steward endpoints that are not in the recording: one failing check with its record, one duplicate pair preview. */
+async function mockSteward(page: Page) {
+  await page.route(`**/api/v1/findings/${FINDING_ID}/report-context`, (r) =>
+    r.fulfill(json({ finding_id: FINDING_ID, check_id: FINDING.check_id, module: FINDING.module, report_context: null })));
+  await page.route(/\/api\/v1\/findings\?/, (r) =>
+    new URL(r.request().url()).searchParams.get("check_id")
+      ? r.fulfill(json({ findings: [FINDING], total: 1, filters_applied: {} }))
+      : r.fallback());
+  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/[^/]+\/records/, (r) =>
+    r.fulfill(json({ version_id: VERSION_ID, check_id: FINDING.check_id, total: 1, records: [{ record_key: ISSUE.record_key, grain: "LFB1", module: FINDING.module, field_values: { "LFB1.AKONT": "0000113100", "LFB1.LIFNR": "V3" } }] })));
+  await page.route(`**/api/v1/issues/${ISSUE_ID}`, (r) =>
+    r.fulfill(json({ issue: ISSUE, events: [], runs: [{ version_id: VERSION_ID, run_at: "2026-10-02T11:54:16Z", failing: true }] })));
+  await page.route(/\/api\/v1\/issues\?/, (r) =>
+    new URL(r.request().url()).searchParams.get("search") ? r.fulfill(json({ items: [ISSUE], total: 1 })) : r.fallback());
+  await page.route("**/api/v1/dedup/preview", (r) => r.fulfill(json({
+    merge_preview: { "LFA1.LIFNR": pair("V4", "V5"), "LFA1.NAME1": pair("Delta Supplies", "Epsilon Parts"), "LFA1.ORT01": pair("Cape Town", "Pretoria") },
   })));
 }
 

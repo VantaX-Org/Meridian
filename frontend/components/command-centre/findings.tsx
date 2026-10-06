@@ -13,12 +13,13 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Banner, RowHoverPreview } from "@/components/aurora";
+import { Banner, Menu, MenuItem, MenuLabel, MenuSeparator, RowHoverPreview } from "@/components/aurora";
 import {
   Button, Chip, DataTable, EmptyState, FilterBar, Input, Mono, Pager, PageHeader, Select, StatusBadge, Tally, TableSkeleton,
   type AuroraColumnMeta,
 } from "@/components/ui-core";
 import { deleteSavedView, getFindings, getFindingsAggregate, listSavedViews, saveNamedView } from "@/lib/api/findings";
+type SavedView = Awaited<ReturnType<typeof listSavedViews>>[number];
 import { checkClassLabel, formatModuleName, relativeTime } from "@/lib/format";
 import type { Dimension, Finding } from "@/types/api";
 
@@ -43,6 +44,8 @@ const matches = (f: Finding, q: string) =>
   !q || [f.check_id, f.module, title(f), f.dimension, f.details?.field_checked ?? ""].join(" ").toLowerCase().includes(q.toLowerCase());
 const plural = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
 
+const sameFilter = (a: Record<string, string>, b: Filter) => FILTER_KEYS.every((k) => (a[k] ?? "") === (b[k] ?? ""));
+
 export function FindingsSurface() {
   const params = useSearchParams();
   const router = useRouter();
@@ -54,6 +57,9 @@ export function FindingsSurface() {
   }, [params]);
   const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState("");
+  const [passing, setPassing] = useState(false);
+  const { data: views = [] } = useQuery({ queryKey: ["saved-views", "findings"], queryFn: () => listSavedViews("findings") });
+  const currentView = views.find((v) => sameFilter(v.filters, filter));
 
   const hrefWith = (patch: Filter) => {
     const next = new URLSearchParams(params.toString());
@@ -78,7 +84,7 @@ export function FindingsSurface() {
   const aggFilter = useMemo(() => Object.fromEntries(AGG_KEYS.filter((k) => filter[k] && k !== "severity").map((k) => [k, filter[k]])), [filter]);
   const agg = useQuery({ queryKey: ["findings.aggregate", aggFilter], queryFn: () => getFindingsAggregate(aggFilter), placeholderData: keepPreviousData });
   const total = q.data?.total ?? findings.length;
-  const visible = findings.filter((f) => matches(f, search));
+  const visible = findings.filter((f) => matches(f, search) && (passing || f.affected_count > 0));
   const hasCost = findings.some((f) => f.cost_at_risk != null);
   // the aggregate ignores baseline and type: its counts describe the slice only when neither is set
   const counted = !!agg.data && !filter.type && !filter.baseline;
@@ -86,6 +92,7 @@ export function FindingsSurface() {
   const records = agg.data?.affected_records ?? 0;
   const issuesHref = `/issues?${new URLSearchParams({ ...(filter.module ? { module: filter.module } : {}), ...(filter.version_id ? { version_id: filter.version_id } : {}), status: "open" })}`;
   const figErr = agg.error ? { retry: () => void agg.refetch() } : undefined;
+  const objects = agg.data?.by_module.length ?? 0;
   const fig = (s: Sev, tone?: "danger" | "high") => ({
     label: cap(s), value: counted ? sevCount[s] : null, tone, loading: agg.isLoading, error: figErr,
     href: hrefWith({ severity: filter.severity === s ? undefined : s }),
@@ -118,6 +125,16 @@ export function FindingsSurface() {
     { id: "pass", header: "Pass rate", meta: meta({ width: 92, align: "end", numeric: true }),
       cell: ({ row }) => (row.original.pass_rate === null ? "—" : `${Math.round(row.original.pass_rate)}%`) },
     { id: "age", header: "Found", meta: meta({ width: 84, align: "end" }), cell: ({ row }) => relativeTime(row.original.created_at) },
+    { id: "fix", header: "Fix", meta: meta({ width: 190 }), cell: ({ row }) => {
+      const f = row.original;
+      const href = `/analyse/finding/${f.id}?tab=records&v=${f.version_id}`;
+      return (
+        <span className="ui-cell-stack__sub" onClick={(e) => e.stopPropagation()}>
+          {f.affected_count > 0 ? <Link className="ui-link" href={href}>Open {plural(f.affected_count, "record")}</Link> : <span className="ui-micro">Passing</span>}
+          {f.affected_count > 0 && (f.severity === "critical" || f.severity === "high") ? <Link className="ui-link" href={`${href}&assign=1`}>Assign</Link> : null}
+        </span>
+      );
+    } },
   ], [hasCost]);
 
   const searching = active.length > 0 || search !== "";
@@ -126,15 +143,16 @@ export function FindingsSurface() {
   return (
     <div className="ui-page">
       <PageHeader title="Findings"
-        summary={q.data ? `${plural(total, "failing check")}${active.length ? " in this slice" : ""}, shown ${PAGE} at a time.` : undefined}
-        actions={<SavedViews filter={filter} onApply={(f) => set(Object.fromEntries(FILTER_KEYS.map((k) => [k, f[k]])) as Filter)} />} />
+        summary={q.data ? `${plural(total, "failing check")}${active.length ? " in this slice" : ""}${total > PAGE ? `, shown ${Math.min(PAGE, total)}` : ""}.${currentView ? ` Showing view '${currentView.name}'.` : ""}` : undefined}
+        actions={<SavedViews views={views} current={currentView} filter={filter} onApply={(f) => set(Object.fromEntries(FILTER_KEYS.map((k) => [k, f[k]])) as Filter)} />} />
 
       <Tally level={2} label="Findings by severity" figures={[
-        { label: "Failing checks", value: counted ? agg.data?.total ?? 0 : q.data ? total : null, href: hrefWith({ severity: undefined }), loading: agg.isLoading, error: figErr,
-          verdict: filter.severity ? "Select to show every severity." : "Checks that fail in the latest runs." },
-        fig("critical", "danger"), fig("high", "high"), fig("medium"), fig("low"),
-        { label: "Records affected", value: counted ? records : null, href: issuesHref, loading: agg.isLoading, error: figErr,
+        { ...fig("critical", "danger"), verdict: sevCount.critical >= 2 ? "Cap the score at 70." : sevCount.critical === 1 ? "Cap the score at 85." : "No cap." },
+        fig("high", "high"),
+        { label: "Records failing", value: counted ? records : null, href: issuesHref, loading: agg.isLoading, error: figErr,
           verdict: `${plural(records, "record")} fail at least one check.` },
+        { label: "Objects affected", value: counted ? objects : null, href: hrefWith({ module: undefined }), loading: agg.isLoading, error: figErr,
+          verdict: `Across ${plural(objects, "object")}.` },
       ]} />
 
       <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search findings" }} onClear={active.length ? clearAll : undefined}
@@ -147,6 +165,7 @@ export function FindingsSurface() {
               options={DIMENSIONS.map((d) => ({ value: d, label: cap(d) }))} onValueChange={(d) => set({ dimension: d || undefined })} />
           </>
         }>
+        <Chip selected={passing} onClick={() => setPassing((v) => !v)}>Include passing checks</Chip>
         <Chip selected={filter.type === "anomaly"} onClick={() => set({ type: filter.type === "anomaly" ? undefined : "anomaly" })}>Anomalies</Chip>
         <Chip selected={filter.type === "rule"} onClick={() => set({ type: filter.type === "rule" ? undefined : "rule" })}>Rules</Chip>
         <Chip selected={filter.baseline === "sap_standard"} onClick={() => set({ baseline: filter.baseline === "sap_standard" ? undefined : "sap_standard" })}>Baseline only</Chip>
@@ -181,16 +200,12 @@ export function FindingsSurface() {
   );
 }
 
-const sameFilter = (a: Record<string, string>, b: Filter) => FILTER_KEYS.every((k) => (a[k] ?? "") === (b[k] ?? ""));
-
-/** The user's named filter sets, stored server-side. */
-function SavedViews({ filter, onApply }: { filter: Filter; onApply: (f: Record<string, string>) => void }) {
+/** The user's named filter sets, stored server-side, as a menu chip. */
+function SavedViews({ views, current, filter, onApply }: { views: SavedView[]; current?: SavedView; filter: Filter; onApply: (f: Record<string, string>) => void }) {
   const qc = useQueryClient();
   const key = ["saved-views", "findings"];
-  const { data: views = [] } = useQuery({ queryKey: key, queryFn: () => listSavedViews("findings") });
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
-  const current = views.find((v) => sameFilter(v.filters, filter));
   const save = useMutation({
     mutationFn: () => saveNamedView("findings", name.trim(), filter as Record<string, string>),
     onSuccess: (v) => { toast.success(`View “${v.name}” saved`); setNaming(false); setName(""); void qc.invalidateQueries({ queryKey: key }); },
@@ -211,14 +226,12 @@ function SavedViews({ filter, onApply }: { filter: Filter; onApply: (f: Record<s
     );
   }
   return (
-    <>
-      {views.length ? (
-        <Select aria-label="Saved views" placeholder="Saved views" style={{ width: 180 }} value={current?.id ?? ""}
-          options={views.map((v) => ({ value: v.id, label: v.name }))}
-          onValueChange={(id) => { const v = views.find((x) => x.id === id); if (v) onApply(v.filters); }} />
-      ) : null}
-      {current ? <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(current.id)}>Delete view</Button> : null}
-      <Button variant="secondary" onClick={() => { setName(current?.name ?? ""); setNaming(true); }}>Save view</Button>
-    </>
+    <Menu label="Saved views" trigger="Saved views" triggerClassName="aurora-chip" width={260}>
+      {views.length ? <MenuLabel>Views</MenuLabel> : null}
+      {views.map((v) => <MenuItem key={v.id} aria-current={v.id === current?.id} onClick={() => onApply(v.filters)}>{v.name}</MenuItem>)}
+      {views.length ? <MenuSeparator /> : null}
+      <MenuItem onClick={() => { setName(current?.name ?? ""); setNaming(true); }}>Save current filters as a view</MenuItem>
+      {current ? <MenuItem disabled={remove.isPending} onClick={() => remove.mutate(current.id)}>Delete view</MenuItem> : null}
+    </Menu>
   );
 }

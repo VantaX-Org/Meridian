@@ -250,3 +250,12 @@ export async function getTriageSettings(): Promise<TriageSettings> {
 export async function saveTriageSettings(body: TriageSettings): Promise<TriageSettings> {
   return (await apiClient.put<TriageSettings>(`${BASE}/settings`, body)).data;
 }
+
+/** Owners ranked for an OwnerLadder: the unassigned pool first, then each steward by email. */
+export function ownerRungs(m: TriageMetrics | undefined) {
+  if (!m) return [];
+  return [
+    ...(m.unassigned ? [{ label: "Unassigned", open: m.unassigned, breached: 0, href: "/workbench?assignee=unassigned" }] : []),
+    ...m.backlog_by_owner.map((o) => ({ label: o.email, open: o.open, breached: o.breached, href: `/workbench?assignee=${o.user_id}` })),
+  ];
+}
