@@ -24,6 +24,8 @@ class Evidence(BaseModel):
     table: str
     keys: dict[str, str] = {}
     value: str = ""
+    spro_path: Optional[str] = None  # IMG menu path of the table (ECC / S/4HANA on-premise), sap/spro_paths.yaml
+    tcode: Optional[str] = None      # transaction that maintains it
 
 
 class FieldRef(BaseModel):
