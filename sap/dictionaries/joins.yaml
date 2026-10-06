@@ -159,6 +159,7 @@ edges:
   - {parent: COBRA, child: COBRB, join: {OBJNR: OBJNR}, cardinality: many}
   - {parent: IFLOT, child: IFLOTX, join: {TPLNR: TPLNR}, cardinality: one, prefer: {SPRAS: "E"}}
   - {parent: IFLOT, child: ILOA,  join: {ILOAN: ILOAN}, cardinality: one}
+  - {parent: MPLA, child: MPOS, join: {WARPL: WARPL}, cardinality: many}
 
   # ── Production planning ────────────────────────────────────────────────
   - {parent: MAST, child: STKO, join: {STLNR: STLNR, STLAL: STLAL}, cardinality: one, filter: {STLTY: "M"}}

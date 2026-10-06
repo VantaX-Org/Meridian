@@ -1,0 +1,47 @@
+{
+ "domain": "PM_PHASE",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Outstanding"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Postponed (currently not used)"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Released"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Technically completed"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Manual deletion indicator set"
+  },
+  {
+   "low": "5",
+   "high": null,
+   "text": "Historical order"
+  },
+  {
+   "low": "6",
+   "high": null,
+   "text": "Completed for business (from 4.6)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

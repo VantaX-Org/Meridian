@@ -1,0 +1,32 @@
+{
+ "domain": "BZGSART",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "No reference"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Technical reference object can be specified"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Technical reference object must be specified"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Technical reference object is automatically created"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

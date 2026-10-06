@@ -1,0 +1,37 @@
+{
+ "domain": "MSGAR",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "S",
+   "high": null,
+   "text": "Message on next screen"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Information"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Cancel"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Error"
+  },
+  {
+   "low": "W",
+   "high": null,
+   "text": "Warning"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,115 @@
+{
+ "table": "T356",
+ "description": "Priorities",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "ARTPR",
+   "key": true,
+   "data_element": "ARTPR",
+   "domain": "ARTPR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority Type",
+   "check_table": "T356A"
+  },
+  {
+   "pos": 3,
+   "name": "PRIOK",
+   "key": true,
+   "data_element": "PRIOK",
+   "domain": "PRIOK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Priority",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "TAGBN",
+   "key": false,
+   "data_element": "TAGBN",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Relative Start Date for Task/Notification in Days",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "EHTBG",
+   "key": false,
+   "data_element": "EHTBG",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Relative Start Date Unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 6,
+   "name": "TAGEN",
+   "key": false,
+   "data_element": "TAGEN",
+   "domain": "NUM02",
+   "type": "NUMC",
+   "length": 2,
+   "decimals": 0,
+   "description": "Relative End Date for Task/Notification in Days",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "EHTEN",
+   "key": false,
+   "data_element": "EHTEN",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Relative End Date Unit",
+   "check_table": "T006"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ARTPR",
+   "foreign_table": "T356A",
+   "foreign_field": "ARTPR"
+  },
+  {
+   "field": "EHTBG",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "EHTEN",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

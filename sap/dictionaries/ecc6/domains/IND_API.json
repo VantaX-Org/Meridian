@@ -1,0 +1,27 @@
+{
+ "domain": "IND_API",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "C",
+   "high": null,
+   "text": "Business Object Was Created by API (Created)"
+  },
+  {
+   "low": "U",
+   "high": null,
+   "text": "Business Object Was Changed by API (Update)"
+  },
+  {
+   "low": "CU",
+   "high": null,
+   "text": "Business Object Was Created/Changed by API"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

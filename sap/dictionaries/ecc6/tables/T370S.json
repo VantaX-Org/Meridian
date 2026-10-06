@@ -1,0 +1,64 @@
+{
+ "table": "T370S",
+ "description": "Functional Location Structure Indicators",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TPLKZ",
+   "key": true,
+   "data_element": "TPLKZ",
+   "domain": "TPLKZ",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Functional location structure indicators",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "EDITM",
+   "key": false,
+   "data_element": "ILOM_EDITM",
+   "domain": "ILOM_STRNO",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Functional location edit mask",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "STUFM",
+   "key": false,
+   "data_element": "ILOM_HIERA",
+   "domain": "ILOM_STRNO",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Functional Location Hierarchy Levels",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

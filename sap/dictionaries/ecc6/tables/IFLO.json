@@ -1,0 +1,1502 @@
+{
+ "table": "IFLO",
+ "description": "Generated Table for View",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "TPLNR",
+   "key": true,
+   "data_element": "TPLNR",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Functional Location",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "SPRAS",
+   "key": true,
+   "data_element": "SPRAS",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Language Key",
+   "check_table": "T002"
+  },
+  {
+   "pos": 4,
+   "name": "PLTXT",
+   "key": false,
+   "data_element": "PLTXT",
+   "domain": "TEXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Description of functional location",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "KZLTX",
+   "key": false,
+   "data_element": "ILOM_KZLTX",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Long text exists",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KZMLA",
+   "key": false,
+   "data_element": "KZMLA",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language indicator for text segment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PLTXU",
+   "key": false,
+   "data_element": "ILOM_PLTXU",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Description of functional location in capital letters",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "MLANG",
+   "key": false,
+   "data_element": "MLANG",
+   "domain": "SPRAS",
+   "type": "LANG",
+   "length": 1,
+   "decimals": 0,
+   "description": "Primary language for object texts",
+   "check_table": "T002"
+  },
+  {
+   "pos": 9,
+   "name": "TPLKZ",
+   "key": false,
+   "data_element": "TPLKZ",
+   "domain": "TPLKZ",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Functional location structure indicators",
+   "check_table": "T370S"
+  },
+  {
+   "pos": 10,
+   "name": "FLTYP",
+   "key": false,
+   "data_element": "FLTYP",
+   "domain": "FLTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Functional Location Category",
+   "check_table": "T370F"
+  },
+  {
+   "pos": 11,
+   "name": "TPLMA",
+   "key": false,
+   "data_element": "TPLMA",
+   "domain": "TPLNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Superior functional location",
+   "check_table": "IFLOT"
+  },
+  {
+   "pos": 12,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ICRDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Object Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ICRNA",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Object",
+   "check_table": null
+  },
+  {
+   "pos": 14,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "IUPDT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the object was last changed",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "IUPNA",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of the User Who Last Changed the Object",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "DATAB",
+   "key": false,
+   "data_element": "ILOM_DATAB",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Start-up Date of the Technical Object",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "BEGRU",
+   "key": false,
+   "data_element": "IAUTG",
+   "domain": "IAUTG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Authorization Group for Technical Object",
+   "check_table": "T370B"
+  },
+  {
+   "pos": 18,
+   "name": "TRPNR",
+   "key": false,
+   "data_element": "TRPNR",
+   "domain": "TRPNR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Reference functional location",
+   "check_table": "IRLOT"
+  },
+  {
+   "pos": 19,
+   "name": "PSTAE",
+   "key": false,
+   "data_element": "RESERVE_CHAR_004",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "SAP Development reserve: Format CHAR, length 4",
+   "check_table": null
+  },
+  {
+   "pos": 20,
+   "name": "STNAM",
+   "key": false,
+   "data_element": "RESERVE_CHAR_012",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 12",
+   "check_table": null
+  },
+  {
+   "pos": 21,
+   "name": "LVORM",
+   "key": false,
+   "data_element": "RESERVE_CHAR_001",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 1",
+   "check_table": null
+  },
+  {
+   "pos": 22,
+   "name": "SUBMT",
+   "key": false,
+   "data_element": "SUBMT",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Construction Type Material of the Object",
+   "check_table": "MARA"
+  },
+  {
+   "pos": 23,
+   "name": "SUBMTI",
+   "key": false,
+   "data_element": "INH_SUBMTI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for construction type field",
+   "check_table": null
+  },
+  {
+   "pos": 24,
+   "name": "MAPAR",
+   "key": false,
+   "data_element": "MAPAR",
+   "domain": "MAPAR",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer part number",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "MAPARI",
+   "key": false,
+   "data_element": "RESERVE_CHAR_001",
+   "domain": "CHAR1",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Format CHAR, Length 1",
+   "check_table": null
+  },
+  {
+   "pos": 26,
+   "name": "IEQUI",
+   "key": false,
+   "data_element": "IEQUI",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Installation of equipment allowed at the functional location",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "IEQUII",
+   "key": false,
+   "data_element": "INH_IEQUII",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for equip. inst. allowed field",
+   "check_table": null
+  },
+  {
+   "pos": 28,
+   "name": "EINZL",
+   "key": false,
+   "data_element": "EINZL",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Single equipment installation at functional location",
+   "check_table": null
+  },
+  {
+   "pos": 29,
+   "name": "EINZLI",
+   "key": false,
+   "data_element": "INH_BEGRUI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for authorization group field",
+   "check_table": null
+  },
+  {
+   "pos": 30,
+   "name": "IWERK",
+   "key": false,
+   "data_element": "IWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Planning Plant",
+   "check_table": "T399I"
+  },
+  {
+   "pos": 31,
+   "name": "IWERKI",
+   "key": false,
+   "data_element": "INH_IWERKI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for planning plant field",
+   "check_table": null
+  },
+  {
+   "pos": 32,
+   "name": "INGRP",
+   "key": false,
+   "data_element": "INGRP",
+   "domain": "INGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Planner Group for Customer Service and Plant Maintenance",
+   "check_table": "T024I"
+  },
+  {
+   "pos": 33,
+   "name": "INGRPI",
+   "key": false,
+   "data_element": "INH_INGRPI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for maintenance planner group field",
+   "check_table": null
+  },
+  {
+   "pos": 34,
+   "name": "PM_OBJTY",
+   "key": false,
+   "data_element": "PM_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object Type of CIM Resources for Work Center",
+   "check_table": null
+  },
+  {
+   "pos": 35,
+   "name": "LGWID",
+   "key": false,
+   "data_element": "LGWID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of the Work Center",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 36,
+   "name": "LGWIDI",
+   "key": false,
+   "data_element": "INH_LGWIDI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Origin for the Field 'Work Center'",
+   "check_table": null
+  },
+  {
+   "pos": 37,
+   "name": "RBNR",
+   "key": false,
+   "data_element": "RBNR",
+   "domain": "RBNR",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Report layout",
+   "check_table": "T352B"
+  },
+  {
+   "pos": 38,
+   "name": "RBNR_I",
+   "key": false,
+   "data_element": "INH_RBNR_I",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for maintenance catalog field",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "OBJNR",
+   "key": false,
+   "data_element": "J_OBJNR",
+   "domain": "J_OBJNR",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "Object number",
+   "check_table": "ONR00"
+  },
+  {
+   "pos": 40,
+   "name": "POSNR",
+   "key": false,
+   "data_element": "ILOM_POSNR",
+   "domain": "CHAR4",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Position in superior technical object",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "ISTYP",
+   "key": false,
+   "data_element": "ILOM_ISTYP",
+   "domain": "ILOM_ISTYP",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Object category for Industry Solutions (IS)",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "PREMS",
+   "key": false,
+   "data_element": "ILOM_PREMS",
+   "domain": "CHAR10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Premise",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "EQART",
+   "key": false,
+   "data_element": "EQART",
+   "domain": "EQART",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Type of Technical Object",
+   "check_table": "T370K"
+  },
+  {
+   "pos": 44,
+   "name": "INVNR",
+   "key": false,
+   "data_element": "INVNR",
+   "domain": "INVNR_ANLA",
+   "type": "CHAR",
+   "length": 25,
+   "decimals": 0,
+   "description": "Inventory number",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "GROES",
+   "key": false,
+   "data_element": "GROSS",
+   "domain": "GROES",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Size/dimension",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "BRGEW",
+   "key": false,
+   "data_element": "BRGEW",
+   "domain": "MENG13",
+   "type": "QUAN",
+   "length": 13,
+   "decimals": 3,
+   "description": "Gross weight",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "GEWEI",
+   "key": false,
+   "data_element": "GEWEI",
+   "domain": "MEINS",
+   "type": "UNIT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Weight Unit",
+   "check_table": "T006"
+  },
+  {
+   "pos": 48,
+   "name": "ANSWT",
+   "key": false,
+   "data_element": "ANSWT",
+   "domain": "WERT",
+   "type": "CURR",
+   "length": 13,
+   "decimals": 2,
+   "description": "Acquisition Value",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 50,
+   "name": "ANSDT",
+   "key": false,
+   "data_element": "ANDTI",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Acquisition date",
+   "check_table": null
+  },
+  {
+   "pos": 51,
+   "name": "HERST",
+   "key": false,
+   "data_element": "HERST",
+   "domain": "TEXT30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer of asset",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "HERLD",
+   "key": false,
+   "data_element": "HERLD",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Country of manufacture",
+   "check_table": "T005"
+  },
+  {
+   "pos": 53,
+   "name": "BAUJJ",
+   "key": false,
+   "data_element": "BAUJJ",
+   "domain": "CJAHR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Year of construction",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "BAUMM",
+   "key": false,
+   "data_element": "BAUMM",
+   "domain": "BAUMM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Month of construction",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "TYPBZ",
+   "key": false,
+   "data_element": "TYPBZ",
+   "domain": "TYPBZ",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Manufacturer model number",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "EMATN",
+   "key": false,
+   "data_element": "EMATN",
+   "domain": "MATNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Material number corresponding to manufacturer part number",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "SERGE",
+   "key": false,
+   "data_element": "SERGE",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Manufacturer serial number",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "HANDLE",
+   "key": false,
+   "data_element": "ITOBTMP_TSEGGUID",
+   "domain": "SYSUUID_22",
+   "type": "CHAR",
+   "length": 22,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Integration of Date Segment (Key)",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "TSEGTP",
+   "key": false,
+   "data_element": "ITOBTMP_TSEGTEMPLA",
+   "domain": "TSEGTEMPLA",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "SAP Development Reserve: Integration Date Segment (Template)",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "FLLB_DUTY",
+   "key": false,
+   "data_element": "DIACL_DUTY",
+   "domain": "XFLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Logbook Duty",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "FLLB_HIDE",
+   "key": false,
+   "data_element": "DIACL_HIDE",
+   "domain": "XFLAG",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Hide Logbook Display",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "ILOAN",
+   "key": false,
+   "data_element": "ILOAN",
+   "domain": "ILOAN",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Location and account assignment for technical object",
+   "check_table": null
+  },
+  {
+   "pos": 63,
+   "name": "ABCKZ",
+   "key": false,
+   "data_element": "ABCKZ",
+   "domain": "ABCKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "ABC Indicator for Technical Object",
+   "check_table": "T370C"
+  },
+  {
+   "pos": 64,
+   "name": "ABCKZI",
+   "key": false,
+   "data_element": "INH_ABCKZI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for ABC indicator field",
+   "check_table": null
+  },
+  {
+   "pos": 65,
+   "name": "EQFNR",
+   "key": false,
+   "data_element": "EQFNR",
+   "domain": "CHAR30",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Sort Field",
+   "check_table": null
+  },
+  {
+   "pos": 66,
+   "name": "EQFNRI",
+   "key": false,
+   "data_element": "INH_EQFNRI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for sort field",
+   "check_table": null
+  },
+  {
+   "pos": 67,
+   "name": "SWERK",
+   "key": false,
+   "data_element": "SWERK",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Maintenance Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 68,
+   "name": "SWERKI",
+   "key": false,
+   "data_element": "INH_SWERKI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for maintenance plant field",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "STORT",
+   "key": false,
+   "data_element": "PMLOC",
+   "domain": "AP_STAND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Location of maintenance object",
+   "check_table": "T499S"
+  },
+  {
+   "pos": 70,
+   "name": "STORTI",
+   "key": false,
+   "data_element": "INH_STORTI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for location field",
+   "check_table": null
+  },
+  {
+   "pos": 71,
+   "name": "MSGRP",
+   "key": false,
+   "data_element": "RAUMNR",
+   "domain": "CHAR8",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Room",
+   "check_table": null
+  },
+  {
+   "pos": 72,
+   "name": "MSGRPI",
+   "key": false,
+   "data_element": "INH_MSGRPI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for room number field",
+   "check_table": null
+  },
+  {
+   "pos": 73,
+   "name": "BEBER",
+   "key": false,
+   "data_element": "BEBER",
+   "domain": "BEBER",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Organizational Area",
+   "check_table": "T357"
+  },
+  {
+   "pos": 74,
+   "name": "BEBERI",
+   "key": false,
+   "data_element": "INH_BEBERI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for company area field",
+   "check_table": null
+  },
+  {
+   "pos": 75,
+   "name": "CR_OBJTY",
+   "key": false,
+   "data_element": "CR_OBJTY",
+   "domain": "CR_OBJTY",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Object types of the CIM resource",
+   "check_table": null
+  },
+  {
+   "pos": 76,
+   "name": "PPSID",
+   "key": false,
+   "data_element": "PPSID",
+   "domain": "CR_OBJID",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Object ID of PP work center",
+   "check_table": "CRID"
+  },
+  {
+   "pos": 77,
+   "name": "PPSIDI",
+   "key": false,
+   "data_element": "INH_PPSIDI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for PP work center field",
+   "check_table": null
+  },
+  {
+   "pos": 78,
+   "name": "GSBER",
+   "key": false,
+   "data_element": "GSBER",
+   "domain": "GSBER",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Business Area",
+   "check_table": "TGSB"
+  },
+  {
+   "pos": 79,
+   "name": "GSBERI",
+   "key": false,
+   "data_element": "INH_GSBERI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for business area field",
+   "check_table": null
+  },
+  {
+   "pos": 80,
+   "name": "KOKRS",
+   "key": false,
+   "data_element": "KOKRS",
+   "domain": "CACCD",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Controlling Area",
+   "check_table": "TKA01"
+  },
+  {
+   "pos": 81,
+   "name": "KOKRSI",
+   "key": false,
+   "data_element": "INH_KOKRSI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for controlling area field",
+   "check_table": null
+  },
+  {
+   "pos": 82,
+   "name": "KOSTL",
+   "key": false,
+   "data_element": "KOSTL",
+   "domain": "KOSTL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Cost Center",
+   "check_table": "CSKS"
+  },
+  {
+   "pos": 83,
+   "name": "KOSTLI",
+   "key": false,
+   "data_element": "INH_KOSTLI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for cost center field",
+   "check_table": null
+  },
+  {
+   "pos": 84,
+   "name": "PROID",
+   "key": false,
+   "data_element": "PS_PSP_PNR",
+   "domain": "PS_POSNR",
+   "type": "NUMC",
+   "length": 8,
+   "decimals": 0,
+   "description": "Work Breakdown Structure Element (WBS Element)",
+   "check_table": "PRPS"
+  },
+  {
+   "pos": 85,
+   "name": "PROIDI",
+   "key": false,
+   "data_element": "INH_PROIDI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for WBS element field",
+   "check_table": null
+  },
+  {
+   "pos": 86,
+   "name": "BUKRS",
+   "key": false,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 87,
+   "name": "BUKRSI",
+   "key": false,
+   "data_element": "INH_BUKRSI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for company code field",
+   "check_table": null
+  },
+  {
+   "pos": 88,
+   "name": "ANLNR",
+   "key": false,
+   "data_element": "ANLN1",
+   "domain": "ANLN1",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Main Asset Number",
+   "check_table": "ANLH"
+  },
+  {
+   "pos": 89,
+   "name": "ANLNRI",
+   "key": false,
+   "data_element": "INH_ANLNRI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for asset main no./sub-no. fields",
+   "check_table": null
+  },
+  {
+   "pos": 90,
+   "name": "ANLUN",
+   "key": false,
+   "data_element": "ANLN2",
+   "domain": "ANLN2",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Asset Subnumber",
+   "check_table": "ANLA"
+  },
+  {
+   "pos": 91,
+   "name": "ANLUNI",
+   "key": false,
+   "data_element": "INHER",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin indicator",
+   "check_table": null
+  },
+  {
+   "pos": 92,
+   "name": "DAUFN",
+   "key": false,
+   "data_element": "DAUFN",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Standing order number",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 93,
+   "name": "DAUFNI",
+   "key": false,
+   "data_element": "INH_DAUFNI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin of standing order number field",
+   "check_table": null
+  },
+  {
+   "pos": 94,
+   "name": "AUFNR",
+   "key": false,
+   "data_element": "ILOM_ORDST",
+   "domain": "AUFNR",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Settlement order",
+   "check_table": "AUFK"
+  },
+  {
+   "pos": 95,
+   "name": "AUFNRI",
+   "key": false,
+   "data_element": "INH_AUFNRI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for settlement order field",
+   "check_table": null
+  },
+  {
+   "pos": 96,
+   "name": "VKORG",
+   "key": false,
+   "data_element": "VKORG",
+   "domain": "VKORG",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Organization",
+   "check_table": "TVKO"
+  },
+  {
+   "pos": 97,
+   "name": "VKORGI",
+   "key": false,
+   "data_element": "INH_VKORGI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for sales organization field",
+   "check_table": null
+  },
+  {
+   "pos": 98,
+   "name": "VTWEG",
+   "key": false,
+   "data_element": "VTWEG",
+   "domain": "VTWEG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Distribution Channel",
+   "check_table": "TVKOV"
+  },
+  {
+   "pos": 99,
+   "name": "VTWEGI",
+   "key": false,
+   "data_element": "INH_VTWEGI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin of distribution channel field",
+   "check_table": null
+  },
+  {
+   "pos": 100,
+   "name": "SPART",
+   "key": false,
+   "data_element": "SPART",
+   "domain": "SPART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Division",
+   "check_table": "TVTA"
+  },
+  {
+   "pos": 101,
+   "name": "SPARTI",
+   "key": false,
+   "data_element": "INH_SPARTI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for division field",
+   "check_table": null
+  },
+  {
+   "pos": 102,
+   "name": "ADRNR",
+   "key": false,
+   "data_element": "AD_ADDRNUM",
+   "domain": "AD_ADDRNUM",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Address number",
+   "check_table": "ADRC"
+  },
+  {
+   "pos": 103,
+   "name": "ADRNRI",
+   "key": false,
+   "data_element": "INH_ADRNRI",
+   "domain": "INHER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data origin for address field",
+   "check_table": null
+  },
+  {
+   "pos": 104,
+   "name": "OWNER",
+   "key": false,
+   "data_element": "ILOM_OWNER",
+   "domain": "ILOM_OWNER",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Object reference indicator",
+   "check_table": null
+  },
+  {
+   "pos": 105,
+   "name": "VKBUR",
+   "key": false,
+   "data_element": "VKBUR",
+   "domain": "VKBUR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales office",
+   "check_table": "TVKBZ"
+  },
+  {
+   "pos": 106,
+   "name": "VKGRP",
+   "key": false,
+   "data_element": "VKGRP",
+   "domain": "VKGRP",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Sales group",
+   "check_table": "TVBVK"
+  },
+  {
+   "pos": 107,
+   "name": "IFLOT_SRTYPE",
+   "key": false,
+   "data_element": "ILOM_SR_SRTYPE",
+   "domain": null,
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Shift Report Type for Object",
+   "check_table": null
+  },
+  {
+   "pos": 108,
+   "name": "IFLOT_SNTYPE",
+   "key": false,
+   "data_element": "ILOM_SN_SNTYPE",
+   "domain": "QMART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Notification Type for Shift Note for Object",
+   "check_table": "TQ80"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABCKZ",
+   "foreign_table": "T370C",
+   "foreign_field": "ABCKZ"
+  },
+  {
+   "field": "ADRNR",
+   "foreign_table": "ADRC",
+   "foreign_field": "ADDRNUMBER"
+  },
+  {
+   "field": "ANLNR",
+   "foreign_table": "ANLH",
+   "foreign_field": "ANLN1"
+  },
+  {
+   "field": "ANLUN",
+   "foreign_table": "ANLA",
+   "foreign_field": "ANLN2"
+  },
+  {
+   "field": "AUFNR",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "BEBER",
+   "foreign_table": "T357",
+   "foreign_field": "BEBER"
+  },
+  {
+   "field": "BEGRU",
+   "foreign_table": "T370B",
+   "foreign_field": "BEGRU"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "DAUFN",
+   "foreign_table": "AUFK",
+   "foreign_field": "AUFNR"
+  },
+  {
+   "field": "EQART",
+   "foreign_table": "T370K",
+   "foreign_field": "EQART"
+  },
+  {
+   "field": "FLTYP",
+   "foreign_table": "T370F",
+   "foreign_field": "FLTYP"
+  },
+  {
+   "field": "GEWEI",
+   "foreign_table": "T006",
+   "foreign_field": "MSEHI"
+  },
+  {
+   "field": "GSBER",
+   "foreign_table": "TGSB",
+   "foreign_field": "GSBER"
+  },
+  {
+   "field": "HERLD",
+   "foreign_table": "T005",
+   "foreign_field": "LAND1"
+  },
+  {
+   "field": "IFLOT_SNTYPE",
+   "foreign_table": "TQ80",
+   "foreign_field": "QMART"
+  },
+  {
+   "field": "INGRP",
+   "foreign_table": "T024I",
+   "foreign_field": "INGRP"
+  },
+  {
+   "field": "IWERK",
+   "foreign_table": "T399I",
+   "foreign_field": "IWERK"
+  },
+  {
+   "field": "KOKRS",
+   "foreign_table": "TKA01",
+   "foreign_field": "KOKRS"
+  },
+  {
+   "field": "KOSTL",
+   "foreign_table": "CSKS",
+   "foreign_field": "KOSTL"
+  },
+  {
+   "field": "LGWID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MLANG",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "OBJNR",
+   "foreign_table": "ONR00",
+   "foreign_field": "OBJNR"
+  },
+  {
+   "field": "PPSID",
+   "foreign_table": "CRID",
+   "foreign_field": "OBJID"
+  },
+  {
+   "field": "PROID",
+   "foreign_table": "PRPS",
+   "foreign_field": "PSPNR"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "SPART",
+   "foreign_table": "TVTA",
+   "foreign_field": "SPART"
+  },
+  {
+   "field": "SPRAS",
+   "foreign_table": "T002",
+   "foreign_field": "SPRAS"
+  },
+  {
+   "field": "STORT",
+   "foreign_table": "T499S",
+   "foreign_field": "STAND"
+  },
+  {
+   "field": "SUBMT",
+   "foreign_table": "MARA",
+   "foreign_field": "MATNR"
+  },
+  {
+   "field": "SWERK",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  },
+  {
+   "field": "TPLKZ",
+   "foreign_table": "T370S",
+   "foreign_field": "TPLKZ"
+  },
+  {
+   "field": "TPLMA",
+   "foreign_table": "IFLOT",
+   "foreign_field": "TPLNR"
+  },
+  {
+   "field": "TRPNR",
+   "foreign_table": "IRLOT",
+   "foreign_field": "TRPNR"
+  },
+  {
+   "field": "VKBUR",
+   "foreign_table": "TVKBZ",
+   "foreign_field": "VKBUR"
+  },
+  {
+   "field": "VKGRP",
+   "foreign_table": "TVBVK",
+   "foreign_field": "VKGRP"
+  },
+  {
+   "field": "VKORG",
+   "foreign_table": "TVKO",
+   "foreign_field": "VKORG"
+  },
+  {
+   "field": "VTWEG",
+   "foreign_table": "TVKOV",
+   "foreign_field": "VTWEG"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  }
+ ]
+}

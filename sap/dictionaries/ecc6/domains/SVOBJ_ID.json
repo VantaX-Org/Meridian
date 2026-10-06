@@ -1,0 +1,47 @@
+{
+ "domain": "SVOBJ_ID",
+ "type": "CHAR",
+ "length": 2,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "00",
+   "high": null,
+   "text": "Free search term (no check)"
+  },
+  {
+   "low": "01",
+   "high": null,
+   "text": "Service material"
+  },
+  {
+   "low": "02",
+   "high": null,
+   "text": "Functional location"
+  },
+  {
+   "low": "03",
+   "high": null,
+   "text": "Equipment"
+  },
+  {
+   "low": "04",
+   "high": null,
+   "text": "Serial number"
+  },
+  {
+   "low": "05",
+   "high": null,
+   "text": "Assembly"
+  },
+  {
+   "low": "06",
+   "high": null,
+   "text": "Service material for maintenance plan"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

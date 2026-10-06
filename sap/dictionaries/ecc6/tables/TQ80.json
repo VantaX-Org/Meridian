@@ -1,0 +1,1205 @@
+{
+ "table": "TQ80",
+ "description": "Notification Types",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QMART",
+   "key": true,
+   "data_element": "QMART",
+   "domain": "QMART",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Message Type",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "QMTYP",
+   "key": false,
+   "data_element": "QMTYP",
+   "domain": "QMTYP",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Message Category",
+   "check_table": "TQ8T"
+  },
+  {
+   "pos": 4,
+   "name": "RBNR",
+   "key": false,
+   "data_element": "RBNR",
+   "domain": "RBNR",
+   "type": "CHAR",
+   "length": 9,
+   "decimals": 0,
+   "description": "Report layout",
+   "check_table": "T352B"
+  },
+  {
+   "pos": 5,
+   "name": "HERKZ",
+   "key": false,
+   "data_element": "HERKZ",
+   "domain": "HERKZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Origin Indicator for Notification",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BEZZT",
+   "key": false,
+   "data_element": "BEZZT",
+   "domain": "BEZZT",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "PM Notification Reference Date/Time",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "QMNUK",
+   "key": false,
+   "data_element": "QMNUK",
+   "domain": "NUMKR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Number Range for Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "AUART",
+   "key": false,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": "T003O"
+  },
+  {
+   "pos": 9,
+   "name": "HSCRTP",
+   "key": false,
+   "data_element": "HSCRTP",
+   "domain": "SCRTP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Type - Header",
+   "check_table": "TQBT"
+  },
+  {
+   "pos": 10,
+   "name": "OSCRTP",
+   "key": false,
+   "data_element": "OSCRTP",
+   "domain": "SCRTP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Category - Object",
+   "check_table": "TQBT"
+  },
+  {
+   "pos": 11,
+   "name": "PSCRTP",
+   "key": false,
+   "data_element": "PSCRTP",
+   "domain": "SCRTP",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Type - Partner",
+   "check_table": "TQBT"
+  },
+  {
+   "pos": 12,
+   "name": "PARGR",
+   "key": false,
+   "data_element": "PARGR",
+   "domain": "PARGR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Partner Determination Procedure",
+   "check_table": "TVPG"
+  },
+  {
+   "pos": 13,
+   "name": "STSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 14,
+   "name": "SMSTSMA",
+   "key": false,
+   "data_element": "J_STSMA",
+   "domain": "J_STSMA",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Status Profile",
+   "check_table": "TJ20"
+  },
+  {
+   "pos": 15,
+   "name": "ARTPR",
+   "key": false,
+   "data_element": "ARTPR",
+   "domain": "ARTPR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Priority Type",
+   "check_table": "T356A"
+  },
+  {
+   "pos": 16,
+   "name": "SDAUART",
+   "key": false,
+   "data_element": "AUART",
+   "domain": "AUART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Sales Document Type",
+   "check_table": "TVAK"
+  },
+  {
+   "pos": 17,
+   "name": "COAUART",
+   "key": false,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": "T003O"
+  },
+  {
+   "pos": 18,
+   "name": "PARVW_KUND",
+   "key": false,
+   "data_element": "PARVW_KUND",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Customer",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 19,
+   "name": "PARVW_AP",
+   "key": false,
+   "data_element": "PARVW_AP",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Contact Person",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 20,
+   "name": "PARVW_INT",
+   "key": false,
+   "data_element": "PARVW_INT",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Implementation (Department)",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 21,
+   "name": "PARVW_LIEF",
+   "key": false,
+   "data_element": "PARVW_LIEF",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Vendor",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 22,
+   "name": "PARVW_HER",
+   "key": false,
+   "data_element": "PARVW_HER",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Manufacturer",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 23,
+   "name": "PARVW_VERA",
+   "key": false,
+   "data_element": "PARVW_VERA",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function: Person/Department Responsible",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 24,
+   "name": "PARVW_AUTO",
+   "key": false,
+   "data_element": "PARVW_AUTO",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Author of Notification",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 25,
+   "name": "PARVW_QMSM",
+   "key": false,
+   "data_element": "QMSM_PARVW",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Function of Person Responsible for Task",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 26,
+   "name": "KLAKT",
+   "key": false,
+   "data_element": "KLAKT",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Classification Active Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 27,
+   "name": "INFO_WIND",
+   "key": false,
+   "data_element": "I_INFOWIND",
+   "domain": "I_INFOWIND",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Parameter ID Object Info",
+   "check_table": "TQ80O"
+  },
+  {
+   "pos": 28,
+   "name": "SERWI",
+   "key": false,
+   "data_element": "I_SERWI",
+   "domain": "I_SERWI",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Service Profile",
+   "check_table": "T355R"
+  },
+  {
+   "pos": 29,
+   "name": "ESCAL",
+   "key": false,
+   "data_element": "I_ESCAL",
+   "domain": "I_ESCAL",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Response Profile",
+   "check_table": "T355E"
+  },
+  {
+   "pos": 30,
+   "name": "FEKAT",
+   "key": false,
+   "data_element": "FEKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Problems",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 31,
+   "name": "URKAT",
+   "key": false,
+   "data_element": "URKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Causes",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 32,
+   "name": "MAKAT",
+   "key": false,
+   "data_element": "MAKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Tasks",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 33,
+   "name": "MFKAT",
+   "key": false,
+   "data_element": "MFKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Actions",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 34,
+   "name": "OTKAT",
+   "key": false,
+   "data_element": "OTKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Object Parts",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 35,
+   "name": "SAKAT",
+   "key": false,
+   "data_element": "SAKAT",
+   "domain": "QKATART",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Catalog Type - Coding",
+   "check_table": "TQ15"
+  },
+  {
+   "pos": 36,
+   "name": "STAFO",
+   "key": false,
+   "data_element": "STAFO",
+   "domain": "STAFO",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Update group for statistics update",
+   "check_table": "TMCB"
+  },
+  {
+   "pos": 37,
+   "name": "QMWAERS",
+   "key": false,
+   "data_element": "QMWAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Unit of Estimated Nonconformity Costs",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 38,
+   "name": "QMWERT",
+   "key": false,
+   "data_element": "QMWERT",
+   "domain": "WERT11",
+   "type": "CURR",
+   "length": 11,
+   "decimals": 2,
+   "description": "Valuation of Average Noncomformity Costs",
+   "check_table": null
+  },
+  {
+   "pos": 39,
+   "name": "FBS_CREATE",
+   "key": false,
+   "data_element": "QFBSQM01",
+   "domain": "FUNCNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Function Module \"Create Notification\"",
+   "check_table": "TFDIR"
+  },
+  {
+   "pos": 40,
+   "name": "FBS_DYNNR",
+   "key": false,
+   "data_element": "QFBSDYNNR",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Number of Initial Screen",
+   "check_table": null
+  },
+  {
+   "pos": 41,
+   "name": "TDFORMAT",
+   "key": false,
+   "data_element": "QTDFORMAT",
+   "domain": "TDELEMSTYL",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Format Column for Long Text Lines on Notification Screen",
+   "check_table": null
+  },
+  {
+   "pos": 42,
+   "name": "KZEILE",
+   "key": false,
+   "data_element": "KZEILE",
+   "domain": "X",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Formatting Applies to Each Single Long Text Line",
+   "check_table": null
+  },
+  {
+   "pos": 43,
+   "name": "USERSCR1",
+   "key": false,
+   "data_element": "QMUSRSCR",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Number for Customer Screen Area \"Notif. Header\"",
+   "check_table": null
+  },
+  {
+   "pos": 44,
+   "name": "USERSCR2",
+   "key": false,
+   "data_element": "QMUSRSCR1",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Number for Customer Screen Area Notification Item",
+   "check_table": null
+  },
+  {
+   "pos": 45,
+   "name": "USERSCR3",
+   "key": false,
+   "data_element": "QMUSRSCR2",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Subscreen Number for Customer Screen Area 'Cause'",
+   "check_table": null
+  },
+  {
+   "pos": 46,
+   "name": "USERSCR4",
+   "key": false,
+   "data_element": "QMUSRSCR3",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Screen Area Number for Customer Screen Area \"Task\"",
+   "check_table": null
+  },
+  {
+   "pos": 47,
+   "name": "USERSCR5",
+   "key": false,
+   "data_element": "QMUSRSCR4",
+   "domain": "DYNNR",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Screen Area Number for Customer Screen Area \"Activity\"",
+   "check_table": null
+  },
+  {
+   "pos": 48,
+   "name": "QMLTXT01",
+   "key": false,
+   "data_element": "QMLTXT01",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Log Line for Long Text Change",
+   "check_table": null
+  },
+  {
+   "pos": 49,
+   "name": "QMLTXT02",
+   "key": false,
+   "data_element": "QMLTXT02",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No Changes to Existing Long Text",
+   "check_table": null
+  },
+  {
+   "pos": 50,
+   "name": "AUART2",
+   "key": false,
+   "data_element": "AUFART",
+   "domain": "AUFART",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Order Type",
+   "check_table": "T003O"
+  },
+  {
+   "pos": 51,
+   "name": "EARLY_NUM",
+   "key": false,
+   "data_element": "EARLY_NUM",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Early Number Assignment",
+   "check_table": null
+  },
+  {
+   "pos": 52,
+   "name": "AUTOM_CONT",
+   "key": false,
+   "data_element": "AUTOM_CONT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Automatic Contract Determination",
+   "check_table": null
+  },
+  {
+   "pos": 53,
+   "name": "MATKZ",
+   "key": false,
+   "data_element": "QNMATKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material",
+   "check_table": null
+  },
+  {
+   "pos": 54,
+   "name": "KUKZ",
+   "key": false,
+   "data_element": "QNKUKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Customer",
+   "check_table": null
+  },
+  {
+   "pos": 55,
+   "name": "MATKUKZ",
+   "key": false,
+   "data_element": "QNMATKUKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material/Customer",
+   "check_table": null
+  },
+  {
+   "pos": 56,
+   "name": "LIKZ",
+   "key": false,
+   "data_element": "QNLIKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Vendor Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 57,
+   "name": "MATLIKZ",
+   "key": false,
+   "data_element": "QNMATLIKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material/Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 58,
+   "name": "MATCHKZ",
+   "key": false,
+   "data_element": "QNMATCHKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material and Batch",
+   "check_table": null
+  },
+  {
+   "pos": 59,
+   "name": "MATCHKUKZ",
+   "key": false,
+   "data_element": "QNMATCHKUKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material/Batch and Customer",
+   "check_table": null
+  },
+  {
+   "pos": 60,
+   "name": "MATCHLIKZ",
+   "key": false,
+   "data_element": "QNMATCHLIKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for Material/Batch and Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 61,
+   "name": "FEGRPKZ",
+   "key": false,
+   "data_element": "QNFEGRPKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for \"Defect Type\" Code Group",
+   "check_table": null
+  },
+  {
+   "pos": 62,
+   "name": "FECODKZ",
+   "key": false,
+   "data_element": "QNFECODKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for \"Defect Type\" Code",
+   "check_table": null
+  },
+  {
+   "pos": 63,
+   "name": "FOGRPKZ",
+   "key": false,
+   "data_element": "QNFOGRPKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for \"Defect Location\" Code Group",
+   "check_table": null
+  },
+  {
+   "pos": 64,
+   "name": "FOCODKZ",
+   "key": false,
+   "data_element": "QNFOCODKZ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Search for Notifications for \"Defect Location\" Code",
+   "check_table": null
+  },
+  {
+   "pos": 65,
+   "name": "MOD",
+   "key": false,
+   "data_element": "QNMOD",
+   "domain": "QKZMOD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Display Mode for Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 66,
+   "name": "ICON1",
+   "key": false,
+   "data_element": "QNICON1",
+   "domain": "SCRPICON_N",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "No Outstanding Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 67,
+   "name": "ICON2",
+   "key": false,
+   "data_element": "QNICON2",
+   "domain": "SCRPICON_N",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Outstanding Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 68,
+   "name": "VERS",
+   "key": false,
+   "data_element": "QNVERS",
+   "domain": "QKZVERS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Variants for Determining Existence of Notifications",
+   "check_table": null
+  },
+  {
+   "pos": 69,
+   "name": "ZEITRAUM",
+   "key": false,
+   "data_element": "QNZEIT",
+   "domain": "NUMC4",
+   "type": "NUMC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Number of Days",
+   "check_table": null
+  },
+  {
+   "pos": 70,
+   "name": "TDOBJECT",
+   "key": false,
+   "data_element": "TDOBJECT",
+   "domain": "TDOBJECT",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Texts: application object",
+   "check_table": "TTXOB"
+  },
+  {
+   "pos": 71,
+   "name": "TDNAME",
+   "key": false,
+   "data_element": "TDOBNAME",
+   "domain": "TDOBNAME",
+   "type": "CHAR",
+   "length": 70,
+   "decimals": 0,
+   "description": "Name",
+   "check_table": "STXH"
+  },
+  {
+   "pos": 72,
+   "name": "TDID",
+   "key": false,
+   "data_element": "TDID",
+   "domain": "TDID",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Text ID",
+   "check_table": "TTXID"
+  },
+  {
+   "pos": 73,
+   "name": "CMCHECK_SM",
+   "key": false,
+   "data_element": "CMCHECK_SM",
+   "domain": "CMCHECK_SM",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Credit Limit Check for CS Processing",
+   "check_table": null
+  },
+  {
+   "pos": 74,
+   "name": "CMGRA",
+   "key": false,
+   "data_element": "CMGRA",
+   "domain": "CRMGR_CM",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Credit Group for Sales Order",
+   "check_table": "T691D"
+  },
+  {
+   "pos": 75,
+   "name": "PARVW_PAGE",
+   "key": false,
+   "data_element": "PARVW_PAGE",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Paging",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 76,
+   "name": "CUA_FBS",
+   "key": false,
+   "data_element": "Q_CUA_FBS",
+   "domain": "FUNCNAME",
+   "type": "CHAR",
+   "length": 30,
+   "decimals": 0,
+   "description": "Function Module that Sets CUA Menu",
+   "check_table": "TFDIR"
+  },
+  {
+   "pos": 77,
+   "name": "ROLE_VERA",
+   "key": false,
+   "data_element": "QSTROLE",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Standard Role for Partner Determination: Notif. Processor",
+   "check_table": null
+  },
+  {
+   "pos": 78,
+   "name": "PERMIT",
+   "key": false,
+   "data_element": "QPERMIT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Notification Type with Approval Procedure",
+   "check_table": null
+  },
+  {
+   "pos": 79,
+   "name": "PARVW_GEH",
+   "key": false,
+   "data_element": "PARVW_GEH",
+   "domain": "PARVW",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Partner Function for Approver (Person/Department)",
+   "check_table": "TPAR"
+  },
+  {
+   "pos": 80,
+   "name": "ROLE_GEH",
+   "key": false,
+   "data_element": "QSTROLE2",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Standard Role for Partner Determination: Approver",
+   "check_table": null
+  },
+  {
+   "pos": 81,
+   "name": "ROLE_QMSM",
+   "key": false,
+   "data_element": "QSTROLE3",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Standard Role for Partner Determination: Task Processor",
+   "check_table": null
+  },
+  {
+   "pos": 82,
+   "name": "PROCESS",
+   "key": false,
+   "data_element": "QMPROCESS",
+   "domain": "NUMC3",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "QM Process",
+   "check_table": "TQ80_PR"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ARTPR",
+   "foreign_table": "T356A",
+   "foreign_field": "ARTPR"
+  },
+  {
+   "field": "AUART",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "AUART2",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "CMGRA",
+   "foreign_table": "T691D",
+   "foreign_field": "CRMGR_CM"
+  },
+  {
+   "field": "COAUART",
+   "foreign_table": "T003O",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "CUA_FBS",
+   "foreign_table": "TFDIR",
+   "foreign_field": "FUNCNAME"
+  },
+  {
+   "field": "ESCAL",
+   "foreign_table": "T355E",
+   "foreign_field": "ESCAL"
+  },
+  {
+   "field": "FBS_CREATE",
+   "foreign_table": "TFDIR",
+   "foreign_field": "FUNCNAME"
+  },
+  {
+   "field": "FEKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "HSCRTP",
+   "foreign_table": "TQBT",
+   "foreign_field": "SCREENTY"
+  },
+  {
+   "field": "INFO_WIND",
+   "foreign_table": "TQ80O",
+   "foreign_field": "INFO_WIND"
+  },
+  {
+   "field": "MAKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MFKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "OSCRTP",
+   "foreign_table": "TQBT",
+   "foreign_field": "SCREENTY"
+  },
+  {
+   "field": "OTKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "PARGR",
+   "foreign_table": "TVPG",
+   "foreign_field": "PARGR"
+  },
+  {
+   "field": "PARVW_AP",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_AUTO",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_GEH",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_HER",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_INT",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_KUND",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_LIEF",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_PAGE",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_QMSM",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PARVW_VERA",
+   "foreign_table": "TPAR",
+   "foreign_field": "PARVW"
+  },
+  {
+   "field": "PROCESS",
+   "foreign_table": "TQ80_PR",
+   "foreign_field": "PROCESS"
+  },
+  {
+   "field": "PSCRTP",
+   "foreign_table": "TQBT",
+   "foreign_field": "SCREENTY"
+  },
+  {
+   "field": "QMTYP",
+   "foreign_table": "TQ8T",
+   "foreign_field": "QMTYP"
+  },
+  {
+   "field": "QMWAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "RBNR",
+   "foreign_table": "T352B",
+   "foreign_field": "RBNR"
+  },
+  {
+   "field": "SAKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  },
+  {
+   "field": "SDAUART",
+   "foreign_table": "TVAK",
+   "foreign_field": "AUART"
+  },
+  {
+   "field": "SERWI",
+   "foreign_table": "T355R",
+   "foreign_field": "SERWI"
+  },
+  {
+   "field": "SMSTSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "STAFO",
+   "foreign_table": "TMCB",
+   "foreign_field": "STAFO"
+  },
+  {
+   "field": "STSMA",
+   "foreign_table": "TJ20",
+   "foreign_field": "STSMA"
+  },
+  {
+   "field": "TDID",
+   "foreign_table": "TTXID",
+   "foreign_field": "TDID"
+  },
+  {
+   "field": "TDNAME",
+   "foreign_table": "STXH",
+   "foreign_field": "TDNAME"
+  },
+  {
+   "field": "TDOBJECT",
+   "foreign_table": "TTXOB",
+   "foreign_field": "TDOBJECT"
+  },
+  {
+   "field": "URKAT",
+   "foreign_table": "TQ15",
+   "foreign_field": "KATALOGART"
+  }
+ ]
+}
