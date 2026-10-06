@@ -1,0 +1,58 @@
+{
+ "table": "TQ17A",
+ "description": "Characteristic weightings",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "MERKKLASSE",
+   "key": true,
+   "data_element": "QMERKKLAS",
+   "domain": "QMERKKLAS",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Weighting of the Characteristic",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "GEWICHTUNG",
+   "key": false,
+   "data_element": "QGFAKTOR",
+   "domain": "QGFAKTOR",
+   "type": "DEC",
+   "length": 4,
+   "decimals": 0,
+   "description": "Weighting Factor for Evaluations",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "NOSKIP",
+   "key": false,
+   "data_element": "QNOSKIP",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "No Skip Allowed",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

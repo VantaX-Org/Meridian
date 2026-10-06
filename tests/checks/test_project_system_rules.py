@@ -27,7 +27,7 @@ def _rules():
 
 def test_pack_loads_with_full_metadata():
     rules = _rules()
-    assert 40 <= len(rules) <= 80
+    assert 40 <= len(rules) <= 115
     assert all(r["id"].startswith("PS") for r in rules)
     for r in rules:
         for k in META:

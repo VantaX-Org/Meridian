@@ -1,0 +1,82 @@
+{
+ "table": "TQ04A",
+ "description": "Functions that can be blocked",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "SPERRFKT",
+   "key": true,
+   "data_element": "QSPERRFKT",
+   "domain": "QSPERRFKT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Function That Will Be Blocked",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "BESTELLUNG",
+   "key": false,
+   "data_element": "QBESTELL",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Purchase Order Blocking Function",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "ANFRAGE",
+   "key": false,
+   "data_element": "QANFRAGE",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocking Function for Quotation Request",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BZGQUELLE",
+   "key": false,
+   "data_element": "QBZGQ",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Blocked for Source Determination",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "WESPERR",
+   "key": false,
+   "data_element": "QWESPERR",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Goods Receipt Is Blocked",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

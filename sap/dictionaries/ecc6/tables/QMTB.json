@@ -1,0 +1,235 @@
+{
+ "table": "QMTB",
+ "description": "Inspection method master record",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "Q_METH_PLANT",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant for Inspection Method",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "PMTNR",
+   "key": true,
+   "data_element": "QPMETHODE",
+   "domain": "QPMETHODE",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Inspection Method",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "VERSION",
+   "key": true,
+   "data_element": "QVERSNRPM",
+   "domain": "QVERSNR",
+   "type": "CHAR",
+   "length": 6,
+   "decimals": 0,
+   "description": "Version Number of the Inspection Method",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "GUELTIGAB",
+   "key": false,
+   "data_element": "DATUV",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Valid-From Date",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "SORTFELD",
+   "key": false,
+   "data_element": "QSORTFELD",
+   "domain": "CHAR40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Search Field",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "AUTOR",
+   "key": false,
+   "data_element": "QERSTELLER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User Who Created the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "DATES",
+   "key": false,
+   "data_element": "QDATUMERST",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which the Data Record Was Created",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AEAUT",
+   "key": false,
+   "data_element": "QAENDERER",
+   "domain": "QAENDERER",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of User who Most Recently Changed the Data Record",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "DATAE",
+   "key": false,
+   "data_element": "QDATUMAEND",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on Which Data Record Was Changed",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "LOEKZ",
+   "key": false,
+   "data_element": "QLOESCHKZ",
+   "domain": "QLOESCHKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Status of Master Record",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "LSPER",
+   "key": false,
+   "data_element": "QVERW",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Data Record is Being Used",
+   "check_table": null
+  },
+  {
+   "pos": 13,
+   "name": "PRFQL",
+   "key": false,
+   "data_element": "QPRQUALIF",
+   "domain": "QPRQUALIF",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Inspector Qualification",
+   "check_table": "TQ11"
+  },
+  {
+   "pos": 14,
+   "name": "DUMMY10",
+   "key": false,
+   "data_element": "QTXT10",
+   "domain": "QTXT10",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Text Line for Additional Information",
+   "check_table": null
+  },
+  {
+   "pos": 15,
+   "name": "DUMMY20",
+   "key": false,
+   "data_element": "QTXT20",
+   "domain": "QTXT20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Text Line for Additional Information",
+   "check_table": null
+  },
+  {
+   "pos": 16,
+   "name": "DUMMY40",
+   "key": false,
+   "data_element": "QTXT40",
+   "domain": "QTXT40",
+   "type": "CHAR",
+   "length": 40,
+   "decimals": 0,
+   "description": "Text Line for Additional Information",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "QAUTH",
+   "key": false,
+   "data_element": "QMASTAUTH",
+   "domain": "QMASTAUTH",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Authorization Group QM Basic Data",
+   "check_table": "TQ01D"
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "PRFQL",
+   "foreign_table": "TQ11",
+   "foreign_field": "PRFQL"
+  },
+  {
+   "field": "QAUTH",
+   "foreign_table": "TQ01D",
+   "foreign_field": "QMASTAUTH"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

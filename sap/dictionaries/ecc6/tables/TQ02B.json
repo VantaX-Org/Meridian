@@ -1,0 +1,64 @@
+{
+ "table": "TQ02B",
+ "description": "QM system",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "QSSYSFAM",
+   "key": true,
+   "data_element": "QSSYSFAM",
+   "domain": "QSSYSFAM",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Actual QM System of Vendor",
+   "check_table": null
+  },
+  {
+   "pos": 3,
+   "name": "QSSYSZERT",
+   "key": false,
+   "data_element": "QSSYSZERT",
+   "domain": "QKZ",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Certified QM System - Skip",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "QSSYSBEW",
+   "key": false,
+   "data_element": "QSSYSBEW",
+   "domain": "QSSYSBEW",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Valuation of Vendor QM System",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}
