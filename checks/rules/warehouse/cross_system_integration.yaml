@@ -460,11 +460,11 @@ rules:
   - id: XSYS032
     field: XSYS.BUDAT
     check_class: cross_field_check
-    fail_when: (`XSYS.BLDAT` > `XSYS.BUDAT`) & (`XSYS.OBJECT_TYPE` == 'FI_DOCUMENT')
+    fail_when: (`XSYS.BLDAT`.dt.year > `XSYS.BUDAT`.dt.year) & (`XSYS.OBJECT_TYPE` == 'FI_DOCUMENT')
     severity: low
     dimension: consistency
-    message: Document date is later than posting date
-    why_it_matters: SAP allows this only through special settings. Mostly it is a mapping error.
+    message: Document date is in a later year than the posting date
+    why_it_matters: A document dated in a later year than its posting date is almost always a date mapping error. A difference within the same year is normal at period end.
     rule_authority: best_practice
     sap_impact: Aging reports are distorted.
     fix_map:

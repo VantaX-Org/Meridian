@@ -706,16 +706,16 @@ rules:
   - id: FLEET040
     field: FLEET.GROSS_WGT
     check_class: cross_field_check
-    fail_when: (`FLEET.GROSS_WGT` <= 0)
+    fail_when: (`FLEET.LOAD_WGT` > 0) & (`FLEET.GROSS_WGT` <= 0)
     applies_when:
       EQUI.S_FLEET:
       - X
-      FLEET.GROSS_WGT:
+      FLEET.LOAD_WGT:
         populated: true
     severity: medium
     dimension: validity
-    message: Vehicle gross weight is zero or negative
-    why_it_matters: A gross weight of zero or less cannot be used for load limits.
+    message: Vehicle has a payload but no permissible total weight
+    why_it_matters: A payload with a zero or negative total weight is contradictory and cannot be used for load limits.
     rule_authority: sap_hard_constraint
     sap_impact: Load planning and permits use a wrong limit.
     fix_map:

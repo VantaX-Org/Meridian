@@ -658,6 +658,9 @@ rules:
     check_class: cross_field_check
     grain: MCH1
     fail_when: (`MARA.MHDHB` > 0) & `MCH1.VFDAT`.isna()
+    applies_when:
+      MCH1.LWEDT:
+        populated: true
     severity: medium
     dimension: completeness
     message: Shelf-life material batch has no expiry date

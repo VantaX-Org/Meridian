@@ -659,6 +659,9 @@ rules:
     allowed_values:
     - ''
     - X
+    valid_values_with_labels:
+      '': Not generated
+      X: Generated at action level
     severity: low
     dimension: validity
     message: Risk action-level generation flag has an invalid value
@@ -675,6 +678,9 @@ rules:
     allowed_values:
     - ''
     - X
+    valid_values_with_labels:
+      '': Not generated
+      X: Generated at permission level
     severity: low
     dimension: validity
     message: Risk permission-level generation flag has an invalid value

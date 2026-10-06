@@ -714,7 +714,7 @@ rules:
   - id: TM041
     field: VTTK.DPTEN
     check_class: freshness_check
-    max_age_hours: 0
+    max_age_hours: 24
     applies_when:
       VTTK.STTRG:
         not_in:
@@ -857,6 +857,8 @@ rules:
     check_class: domain_value_check
     allowed_values:
     - '8'
+    valid_values_with_labels:
+      '8': Shipment
     severity: medium
     dimension: validity
     message: Shipment has an unexpected document category
