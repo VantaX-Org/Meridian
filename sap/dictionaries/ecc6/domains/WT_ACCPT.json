@@ -1,0 +1,92 @@
+{
+ "domain": "WT_ACCPT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "No accumulation"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Per calendar year"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Per quarter"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Per month"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 01"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 02"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 03"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 04"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 05"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 06"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 07"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 08"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 09"
+  },
+  {
+   "low": "J",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 10"
+  },
+  {
+   "low": "K",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 11"
+  },
+  {
+   "low": "L",
+   "high": null,
+   "text": "Accumulation per Year Beginning with Month 12"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

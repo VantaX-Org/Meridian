@@ -23,6 +23,9 @@ edges:
   # the customer account a vendor is linked to (clearing between vendor and customer)
   - {parent: KNA1, child: LFA1,  join: {KUNNR: KUNNR}, cardinality: many}
   - {parent: LFB1, child: LFB5,  join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: one}
+  - {parent: LFB1, child: LFBW, join: {LIFNR: LIFNR, BUKRS: BUKRS}, cardinality: many}
+  - {parent: T012, child: T012K, join: {BUKRS: BUKRS, HBKID: HBKID}, cardinality: many}
+  - {parent: SKB1, child: T012K, join: {BUKRS: BUKRS, HKONT: SAKNR}, cardinality: many}
   - {parent: LFA1, child: LFBK,  join: {LIFNR: LIFNR}, cardinality: one}
   - {parent: LFA1, child: LFM1,  join: {LIFNR: LIFNR}, cardinality: many}
   - {parent: LFA1, child: ADRC,  join: {ADDRNUMBER: ADRNR}, cardinality: one}
