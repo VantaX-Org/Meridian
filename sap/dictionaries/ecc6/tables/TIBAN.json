@@ -1,0 +1,142 @@
+{
+ "table": "TIBAN",
+ "description": "IBAN",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "*"
+  },
+  {
+   "pos": 2,
+   "name": "BANKS",
+   "key": true,
+   "data_element": "BANKS",
+   "domain": "LAND1",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Bank country key",
+   "check_table": "*"
+  },
+  {
+   "pos": 3,
+   "name": "BANKL",
+   "key": true,
+   "data_element": "BANKK",
+   "domain": "BANKK",
+   "type": "CHAR",
+   "length": 15,
+   "decimals": 0,
+   "description": "Bank Keys",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "BANKN",
+   "key": true,
+   "data_element": "BANKN35",
+   "domain": "BANKN35",
+   "type": "CHAR",
+   "length": 35,
+   "decimals": 0,
+   "description": "Bank account number",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BKONT",
+   "key": true,
+   "data_element": "BKONT",
+   "domain": "BKONT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Bank Control Key",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "IBAN",
+   "key": false,
+   "data_element": "IBAN",
+   "domain": "IBAN",
+   "type": "CHAR",
+   "length": 34,
+   "decimals": 0,
+   "description": "IBAN (International Bank Account Number)",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "VALID_FROM",
+   "key": false,
+   "data_element": "IBAN_VALFR",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Validity start of IBAN",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ERNAM",
+   "key": false,
+   "data_element": "ERNAM_BF",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of person who created the object",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "ERDAT",
+   "key": false,
+   "data_element": "ERDAT_BF",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date on which the record was created",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "TABNAME",
+   "key": false,
+   "data_element": "TABNAME16",
+   "domain": "DBOBJ_NAME",
+   "type": "CHAR",
+   "length": 16,
+   "decimals": 0,
+   "description": "Table name, 16 characters",
+   "check_table": null
+  },
+  {
+   "pos": 11,
+   "name": "TABKEY",
+   "key": false,
+   "data_element": "IBAN_ORKEY",
+   "domain": "CHAR24",
+   "type": "CHAR",
+   "length": 24,
+   "decimals": 0,
+   "description": "IBAN origin: Key to table of bank details",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": []
+}

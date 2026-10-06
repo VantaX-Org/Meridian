@@ -1,0 +1,357 @@
+{
+ "table": "T012K",
+ "description": "House Bank Accounts",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "BUKRS",
+   "key": true,
+   "data_element": "BUKRS",
+   "domain": "BUKRS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Company Code",
+   "check_table": "T001"
+  },
+  {
+   "pos": 3,
+   "name": "HBKID",
+   "key": true,
+   "data_element": "HBKID",
+   "domain": "HBKID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Short key for a house bank",
+   "check_table": "T012"
+  },
+  {
+   "pos": 4,
+   "name": "HKTID",
+   "key": true,
+   "data_element": "HKTID",
+   "domain": "HKTID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "ID for account details",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "BANKN",
+   "key": false,
+   "data_element": "BANKN",
+   "domain": "BANKN",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Bank account number",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "BKONT",
+   "key": false,
+   "data_element": "BKONT",
+   "domain": "BKONT",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Bank Control Key",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "WAERS",
+   "key": false,
+   "data_element": "WAERS",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Currency Key",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 8,
+   "name": "REFZL",
+   "key": false,
+   "data_element": "REFZL",
+   "domain": "CHAR27",
+   "type": "CHAR",
+   "length": 27,
+   "decimals": 0,
+   "description": "Reference Information",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "DTAAI",
+   "key": false,
+   "data_element": "DTAAI",
+   "domain": "CHAR5",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "DME Sold-To Party Identification (Switzerland)",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "BNKN2",
+   "key": false,
+   "data_element": "BNKN2",
+   "domain": "BNKN2",
+   "type": "CHAR",
+   "length": 24,
+   "decimals": 0,
+   "description": "Alternative Bank Acct Number (for Ambiguous Acct Number)",
+   "check_table": null
+  },
+  {
+   "pos": 12,
+   "name": "FDGRP",
+   "key": false,
+   "data_element": "FDGRP",
+   "domain": "FDGRP",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Planning Group",
+   "check_table": "T035"
+  },
+  {
+   "pos": 13,
+   "name": "ABWAE",
+   "key": false,
+   "data_element": "ABWAE",
+   "domain": "WAERS",
+   "type": "CUKY",
+   "length": 5,
+   "decimals": 0,
+   "description": "Settlement currency for bank transfers",
+   "check_table": "TCURC"
+  },
+  {
+   "pos": 14,
+   "name": "HKONT",
+   "key": false,
+   "data_element": "HKONT",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "General Ledger Account",
+   "check_table": "SKB1"
+  },
+  {
+   "pos": 15,
+   "name": "WEKON",
+   "key": false,
+   "data_element": "WEKON",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Subaccount for bill of exchange presentation for discounting",
+   "check_table": "SKB1"
+  },
+  {
+   "pos": 16,
+   "name": "MINDT",
+   "key": false,
+   "data_element": "MINDT",
+   "domain": "NUM03",
+   "type": "NUMC",
+   "length": 3,
+   "decimals": 0,
+   "description": "Minimum days until due date when presenting for collection",
+   "check_table": null
+  },
+  {
+   "pos": 17,
+   "name": "HBID1",
+   "key": false,
+   "data_element": "HBID1_012K",
+   "domain": "HBKID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Alternative house bnk for bill/exch. presentation debit memo",
+   "check_table": "T012"
+  },
+  {
+   "pos": 18,
+   "name": "HKID1",
+   "key": false,
+   "data_element": "HKID1_012K",
+   "domain": "HKTID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Account details for debit memo from bill/exch. presentation",
+   "check_table": "T012K"
+  },
+  {
+   "pos": 19,
+   "name": "HBID2",
+   "key": false,
+   "data_element": "HBID2_012K",
+   "domain": "HBKID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Alternative house bank for failed bill/exch. receivable",
+   "check_table": "T012"
+  },
+  {
+   "pos": 20,
+   "name": "HKID2",
+   "key": false,
+   "data_element": "HKID2_012K",
+   "domain": "HKTID",
+   "type": "CHAR",
+   "length": 5,
+   "decimals": 0,
+   "description": "Account details for debit memo from bill/exch. presentation",
+   "check_table": "T012K"
+  },
+  {
+   "pos": 21,
+   "name": "WKKON",
+   "key": false,
+   "data_element": "WKKON_012K",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Bk act to be debited with amount from returned bill payable",
+   "check_table": "SKB1"
+  },
+  {
+   "pos": 22,
+   "name": "WIKON",
+   "key": false,
+   "data_element": "WIKON_012K",
+   "domain": "SAKNR",
+   "type": "CHAR",
+   "length": 10,
+   "decimals": 0,
+   "description": "Subaccount for bill of exchange collection",
+   "check_table": "SKB1"
+  },
+  {
+   "pos": 24,
+   "name": "BROLL",
+   "key": false,
+   "data_element": "PRQ_BROLL",
+   "domain": "CHAR2",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Attribute for use by house banks in PRQ payment program",
+   "check_table": null
+  },
+  {
+   "pos": 25,
+   "name": "XTPRB",
+   "key": false,
+   "data_element": "PRQ_XTPRB",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Flag for determining whether transit or principal bank",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "ABWAE",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "BUKRS",
+   "foreign_table": "T001",
+   "foreign_field": "BUKRS"
+  },
+  {
+   "field": "FDGRP",
+   "foreign_table": "T035",
+   "foreign_field": "GRUPP"
+  },
+  {
+   "field": "HBID1",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "HBID2",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "HBKID",
+   "foreign_table": "T012",
+   "foreign_field": "HBKID"
+  },
+  {
+   "field": "HKID1",
+   "foreign_table": "T012K",
+   "foreign_field": "HKTID"
+  },
+  {
+   "field": "HKID2",
+   "foreign_table": "T012K",
+   "foreign_field": "HKTID"
+  },
+  {
+   "field": "HKONT",
+   "foreign_table": "SKB1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WAERS",
+   "foreign_table": "TCURC",
+   "foreign_field": "WAERS"
+  },
+  {
+   "field": "WEKON",
+   "foreign_table": "SKB1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "WIKON",
+   "foreign_table": "SKB1",
+   "foreign_field": "SAKNR"
+  },
+  {
+   "field": "WKKON",
+   "foreign_table": "SKB1",
+   "foreign_field": "SAKNR"
+  }
+ ]
+}

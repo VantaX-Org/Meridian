@@ -654,6 +654,7 @@ rules:
   - PA0002.VORNA
   threshold: 0.8
   exact_rule: true
+  evidence_key: PA0002.PERNR
   severity: medium
   dimension: uniqueness
   message: Two personnel numbers have the same first name and birth date and almost the same last name

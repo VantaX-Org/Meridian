@@ -82,3 +82,42 @@ def test_history_gap_fails_continuous_rule():
         df[f"PA0001.{c}"] = pd.to_datetime(df[f"PA0001.{c}"], format="%Y%m%d", errors="coerce")
     ev = _run("PA052", df)
     assert ev.failing.sum() > 0 and not ev.failing.iloc[2:].any()
+
+
+def _blob(res) -> str:
+    return repr(res.details)
+
+
+def test_similarity_evidence_has_no_names():
+    rule = {**BY_ID["PA034"]}
+    df = pd.DataFrame({
+        "PA0002.PERNR": ["100", "101"],
+        "PA0002.NACHN": ["Ramaphosaxyz", "Ramaphosaxzy"],
+        "PA0002.VORNA": ["Thabo", "Thabo"],
+        "PA0002.GBDAT": ["19800101", "19800101"],
+    })
+    res = REGISTRY[rule["check_class"]](rule).run(df, key_cols=["PA0002.PERNR"], grain="PA0002")
+    assert res.details["near_duplicate_pairs"] == [["100", "101"]]
+    for secret in ("Ramaphosa", "Thabo", "19800101"):
+        assert secret not in _blob(res)
+
+
+@pytest.mark.parametrize("rid", ["PA033", "PA040"])
+def test_regex_on_personal_field_leaks_no_values(rid):
+    rule = {**BY_ID[rid]}
+    f = rule["field"]
+    df = pd.DataFrame({"PA0002.PERNR": ["1"], f: ["Smith99SECRET" if rid == "PA033" else "bad user!SECRET"]})
+    res = REGISTRY[rule["check_class"]](rule).run(df, key_cols=["PA0002.PERNR"], grain="PA0002")
+    assert res is not None and "SECRET" not in _blob(res)
+
+
+def test_no_value_echoing_classes_on_personal_fields():
+    """referential/domain/format details list raw values; similarity needs evidence_key."""
+    sensitive = {"NACHN", "VORNA", "GBDAT", "PERID", "BANKN", "BANKL", "USRID", "STRAS", "ORT01", "PSTLZ"}
+    for r in RULES:
+        cols = {r["field"], *(r.get("fields") or []), *(r.get("block_by") or [])}
+        if not any(c.split(".")[-1] in sensitive for c in cols):
+            continue
+        assert r["check_class"] not in ("referential_check", "domain_value_check", "format_check"), r["id"]
+        if r["check_class"] == "similarity_check":
+            assert r.get("evidence_key", "").endswith(".PERNR"), r["id"]
