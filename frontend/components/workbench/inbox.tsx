@@ -24,11 +24,11 @@ import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getIssues } from "@/lib/api/issues";
-import { assignItem, bulkApprove, escalateItem, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
+import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
 import { relativeTime, formatDate, labelOf, formatModuleName, humanizeIds } from "@/lib/format";
-import type { StewardshipQueueItem, StewardshipStatus } from "@/types/api";
+import type { StewardshipMetrics, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 const HOUR = 3_600_000;
@@ -112,6 +112,7 @@ export function StewardInboxSurface() {
     })),
   });
   const weekQ = useQuery({ queryKey: ["triage.metrics", 8], queryFn: () => getTriageMetrics(8), refetchInterval: 60_000 });
+  const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, refetchInterval: 60_000 });
   // What each task is about, read from the open record issues it points at.
   const issuesQ = useQuery({ queryKey: ["issues.list", { status: "open", limit: 100, offset: 0 }], queryFn: () => getIssues({ status: "open", limit: 100, offset: 0 }), retry: false, meta: { ignoreError: true } });
   const about = useMemo(() => {
@@ -355,7 +356,7 @@ export function StewardInboxSurface() {
         : items.length ? <DataTable columns={columns} data={items} getRowId={(t) => t.id} onRowFocus={(t) => setFocusedId(t?.id ?? null)} onRowActivate={(t) => drawer.open(t.id)} ariaLabel="Steward inbox" maxHeight="60vh" sort={sort} onSortChange={setSort} />
         : <EmptyState title={all.length ? "No tasks in this view." : "Inbox zero."} body={all.length ? "Change the view or clear the search." : "Merge decisions, golden-record reviews, writebacks and exceptions land here when they need a steward."} />}
 
-      {canSeeTeam ? <TeamPanel metrics={weekQ.data} /> : null}
+      {canSeeTeam ? <TeamPanel week={weekQ.data} metrics={metricsQ.data} /> : null}
 
       <Drawer open={!!detail} onClose={drawer.close} ariaLabel="Task details"
         header={detail ? <Stack direction="row" gap={2} align="center"><Chip tone={STATUS_TONE[detail.status]}>{label(detail.status)}</Chip><Text variant="text-lead">{typeLabel(detail.item_type)}: {humanizeIds(detail.source_id)}</Text></Stack> : null}>
@@ -434,15 +435,25 @@ function RejectForm({ count, pending, onSubmit, onCancel }: { count: number; pen
 }
 
 /** Who holds the open work, and how fast it closes. */
-function TeamPanel({ metrics }: { metrics?: import("@/lib/api/triage").TriageMetrics }) {
-  const rungs = ownerRungs(metrics);
-  const resolved = metrics?.weekly.at(-1)?.resolved;
-  const mttr = metrics?.mttr_hours;
+function TeamPanel({ week, metrics }: { week?: import("@/lib/api/triage").TriageMetrics; metrics?: StewardshipMetrics }) {
+  const rungs = ownerRungs(week);
+  const resolved = week?.weekly.at(-1)?.resolved;
+  const mttr = week?.mttr_hours;
   return (
     <Panel title="Who holds the work">
       <Stack gap={3}>
         {rungs.length ? <OwnerLadder rows={rungs} ariaLabel="Open work by owner" /> : <Text variant="text-small" tone="muted">Nobody holds open work.</Text>}
-        {metrics ? <Text variant="text-small" tone="secondary">{resolved != null ? `${plural(resolved, "task")} resolved this week` : "Nothing resolved this week"}{mttr != null ? `, ${Math.round(mttr * 10) / 10} h on average to resolve.` : "."}</Text> : null}
+        {week ? <Text variant="text-small" tone="secondary">{resolved != null ? `${plural(resolved, "task")} resolved this week` : "Nothing resolved this week"}{mttr != null ? `, ${Math.round(mttr * 10) / 10} h on average to resolve.` : "."}</Text> : null}
+        {metrics?.ai_acceptance_rate != null ? <Text variant="text-small" tone="secondary">Suggestion acceptance {Math.round(metrics.ai_acceptance_rate * 100)} %</Text> : null}
+        {metrics?.steward_breakdown?.length ? (
+          <table className="ui-mini-table">
+            <thead><tr><th>Steward</th><th>Resolved</th><th>Avg to resolve</th></tr></thead>
+            <tbody>{metrics.steward_breakdown.map((s) => (
+              <tr key={s.steward_name}><td>{s.steward_name}</td><td className="aurora-number">{s.resolved} / {s.total}</td>
+                <td className="aurora-number">{s.avg_resolution_hours != null ? `${s.avg_resolution_hours} h` : "—"}</td></tr>
+            ))}</tbody>
+          </table>
+        ) : null}
       </Stack>
     </Panel>
   );
