@@ -235,8 +235,7 @@ rules:
     fix_map:
       __blank__: Review the employee's salary against their pay grade range. Either adjust the salary to fall within range or
         update the pay grade to match the current salary level. Update via Admin Center > Compensation Import.
-    record_fix_template: 'Employee {COMPINFO.USERID}: annualised salary (compa-ratio {COMPINFO.COMPA_RATIO} x midpoint {COMPINFO.PAY_RANGE_MID})
-      is outside the pay range (min: {COMPINFO.PAY_RANGE_MIN}, max: {COMPINFO.PAY_RANGE_MAX}). Review via Admin Center > Compensation.'
+    record_fix_template: 'Employee {COMPINFO.USERID}: Salary falls outside the pay range for the assigned grade. Correct the record.'
     fail_when: ((`COMPINFO.COMPA_RATIO` + 0.005) * `COMPINFO.PAY_RANGE_MID` < `COMPINFO.PAY_RANGE_MIN`) | ((`COMPINFO.COMPA_RATIO`
       - 0.005) * `COMPINFO.PAY_RANGE_MID` > `COMPINFO.PAY_RANGE_MAX`)
     require_populated: true
@@ -355,7 +354,7 @@ rules:
     fix_map:
       __blank__: Correct the pay range minimum/maximum in Admin Center > Manage Organization, Pay and Job Structures > Pay
         Range.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay range min {COMPINFO.PAY_RANGE_MIN} exceeds max {COMPINFO.PAY_RANGE_MAX}.'
+    record_fix_template: 'Employee {COMPINFO.USERID}: Pay range minimum is greater than its maximum. Correct the record.'
     applies_when:
       COMPINFO.PAY_RANGE_MID:
         blank: true
@@ -462,3 +461,74 @@ rules:
     fix_map:
       __blank__: Set the pay group in Compensation Information.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay group is blank.'
+  - id: COMP026
+    field: COMPINFO.SALARY
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.SALARY` < 0'
+    severity: high
+    dimension: validity
+    message: Salary is negative
+    why_it_matters: A salary below zero is impossible and is usually a sign reversal in an import.
+    rule_authority: best_practice
+    sap_impact: Payroll integration and compensation planning take a negative base pay.
+    fix_map:
+      __other__: Correct the salary in Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: salary is negative. Correct in Compensation Information.'
+  - id: COMP027
+    field: COMPINFO.SALARY
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.SALARY` == 0'
+    applies_when:
+      EMPEMPLOYMENT.STATUS:
+      - A
+      - U
+      - P
+      - S
+    severity: medium
+    dimension: validity
+    message: Active employee has a salary of zero
+    why_it_matters: An active employee with a pay type and a salary of zero is paid nothing, which is rarely intended and blocks the pay scale check on the receiving side.
+    rule_authority: best_practice
+    sap_impact: The employee gets no basic pay in the integration to SAP payroll.
+    fix_map:
+      __other__: Enter the salary or end the compensation record.
+    record_fix_template: 'Employee {COMPINFO.USERID}: active employee has a salary of zero. Correct in Compensation Information.'
+  - id: COMP028
+    field: COMPINFO.PAY_RANGE_MAX
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.PAY_RANGE_MAX`.isna() & (`COMPINFO.SALARY` > 0)'
+    severity: medium
+    dimension: completeness
+    message: Salary is set but the pay range of the grade has no maximum
+    why_it_matters: Compa-ratio and range penetration need the full range of the grade. A salary without a range maximum cannot be checked against the grade.
+    rule_authority: best_practice
+    sap_impact: Over-grade salaries are not detected and merit budgets are not capped.
+    fix_map:
+      __other__: Maintain the pay range of the grade.
+    record_fix_template: 'Employee {COMPINFO.USERID}: salary is set but the pay range has no maximum. Maintain the pay range.'
+  - id: COMP029
+    field: COMPINFO.PAY_GROUP
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9]{1,2}$
+    severity: medium
+    dimension: validity
+    message: Pay group does not fit the 2 characters of the SAP payroll area
+    why_it_matters: The pay group is mapped to the payroll area (PA0001.ABKRS), a 2-character key. A longer value cannot be replicated.
+    rule_authority: best_practice
+    sap_impact: The payroll area assignment fails in the replication and the employee is not selected for payroll.
+    fix_map:
+      __other__: Use a pay group code of at most 2 characters or add a mapping in the integration.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay group does not fit the 2-character payroll area. Correct in Compensation Information.'
+  - id: COMP030
+    field: COMPINFO.PAY_GRADE
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9]{1,8}$
+    severity: medium
+    dimension: validity
+    message: Pay grade does not fit the 8 characters of the SAP pay scale group
+    why_it_matters: The pay grade is mapped to the pay scale group (PA0008.TRFGR), an 8-character key.
+    rule_authority: best_practice
+    sap_impact: The pay scale group is truncated or rejected in the replication, so scale pay cannot be determined.
+    fix_map:
+      __other__: Use a pay grade of at most 8 characters or add a mapping in the integration.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade does not fit the 8-character pay scale group. Correct in Compensation Information.'

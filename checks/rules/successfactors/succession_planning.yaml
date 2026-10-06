@@ -220,3 +220,42 @@ rules:
       __other__: Remove the nomination in the Succession Org Chart and nominate an active employee.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID} is not an
       active employee.'
+  - id: SUC015
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: regex_check
+    pattern: ^\d{1,8}$
+    severity: medium
+    dimension: validity
+    message: Succession position does not fit the 8 digits of the SAP object ID
+    why_it_matters: The position is mapped to an HR object ID (HRP1000.OBJID, 8 digits).
+    rule_authority: best_practice
+    sap_impact: The succession link to the SAP position is lost in the replication.
+    fix_map:
+      __other__: Use a position code of at most 8 digits or add a mapping.
+    record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: position does not fit the SAP object ID. Correct the nomination.'
+  - id: SUC016
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NOMINATED_DATE` > @today'
+    severity: low
+    dimension: validity
+    message: Nomination date lies in the future
+    why_it_matters: A nomination cannot be dated after today.
+    rule_authority: best_practice
+    sap_impact: Nomination ageing reports are wrong.
+    fix_map:
+      __other__: Correct the nomination date.
+    record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: nomination date is in the future. Correct the date.'
+  - id: SUC017
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: cross_field_check
+    fail_when: '`EMPEMPLOYMENT.STATUS`.isin([''T'',''R''])'
+    severity: high
+    dimension: consistency
+    message: Nominee has already left the company
+    why_it_matters: A succession slate that names a terminated or retired employee leaves the position without a real successor.
+    rule_authority: best_practice
+    sap_impact: Succession coverage and bench strength are overstated.
+    fix_map:
+      __other__: Remove the nominee and nominate an active employee.
+    record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: the nominee has left. Remove the nominee.'

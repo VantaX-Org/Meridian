@@ -892,8 +892,7 @@ rules:
   fix_map:
     __blank__: Verify the date of birth (People Profile > Personal Information) and the hire date (Employment Details) against
       the employee's ID document and contract; correct the wrong one.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: start date {EMPEMPLOYMENT.START_DATE} is not after date of birth
-    {PERINFO.DATE_OF_BIRTH}.'
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: Employment start date is on or before the person''s date of birth. Correct the record.'
 - id: EC060
   field: EMPEMPLOYMENT.END_DATE
   check_class: null_check
@@ -1769,8 +1768,7 @@ rules:
   fix_map:
     __other__: Verify the date of birth (Personal Information) and the hire date (Employment Details) against the ID
       document and contract; correct the wrong one.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: born {PERINFO.DATE_OF_BIRTH}, hired {EMPEMPLOYMENT.START_DATE}
-    (under 15).'
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: Employee was younger than 15 on the employment start date. Correct the record.'
 - id: EC080
   field: PERINFO.DATE_OF_BIRTH
   check_class: cross_field_check
@@ -1790,8 +1788,7 @@ rules:
   sap_impact: Pension, retirement and benefit age bands, and age-based statutory reports, use a wrong age.
   fix_map:
     __other__: Verify the date of birth against the employee's ID document and correct it in Personal Information.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: date of birth {PERINFO.DATE_OF_BIRTH} gives an age outside 15 to
-    75.'
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: Active employee is younger than 15 or older than 75 today. Correct the record.'
 - id: EC081
   field: EMPEMPLOYMENT.END_DATE
   check_class: cross_field_check
@@ -1853,8 +1850,7 @@ rules:
   fix_map:
     __other__: Confirm whether both records are the same person. If they are, keep one person and move the employment to it
       (rehire with the existing person ID), then inactivate the duplicate.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: {PERINFO.FIRSTNAME} {PERINFO.LASTNAME}, born {PERINFO.DATE_OF_BIRTH},
-    exists more than once.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Two persons share the same first name, last name and date of birth. Correct the record.'
 - id: EC084
   field: PERINFO.LASTNAME
   check_class: similarity_check
@@ -1872,8 +1868,7 @@ rules:
   sap_impact: Duplicate payments and benefit enrolments; split employment history; headcount counted twice.
   fix_map:
     __other__: Compare the two persons' ID documents. If they are the same person, keep one and move the employment to it.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: last name {PERINFO.LASTNAME} is close to another person with the same
-    first name and date of birth.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Two persons with the same first name and date of birth have almost the same last name. Correct the record.'
 - id: EC085
   field: EMPEMPLOYMENT.START_DATE
   check_class: interval_check
@@ -1908,8 +1903,7 @@ rules:
   sap_impact: Emergency contact, two-factor and SMS notifications fail; the number cannot be used in integrations.
   fix_map:
     __other__: Enter one complete number with country code (for example +27 11 555 1234) in Contact Information.
-  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number ''{PERPHONE.PHONE_NUMBER}'' has an invalid number of
-    digits.'
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: Phone number has fewer than 6 or more than 15 digits. Correct the record.'
 - id: EC087
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -1926,7 +1920,7 @@ rules:
   sap_impact: Form W-2 and payroll tax filing are rejected; employment eligibility (E-Verify) checks fail.
   fix_map:
     __other__: Correct the SSN from the employee's Social Security card in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: SSN ''{PERINFO.NATIONAL_ID}'' is not a valid SSN format.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: US Social Security Number is not in the 9-digit SSN format. Correct the record.'
 - id: EC088
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -1943,7 +1937,7 @@ rules:
   sap_impact: IRP5 and EMP501 tax certificates are rejected by SARS; UIF declarations fail.
   fix_map:
     __other__: Correct the ID number from the employee's ID document in National ID Information (digits only).
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' is not 13 digits.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number is not 13 digits. Correct the record.'
 - id: EC089
   field: PERINFO.NATIONAL_ID
   check_class: format_check
@@ -1960,7 +1954,7 @@ rules:
   sap_impact: IRP5 and EMP501 tax certificates are rejected by SARS; UIF declarations fail.
   fix_map:
     __other__: Re-enter the ID number from the employee's ID document in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' fails the check digit.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number fails its check digit. Correct the record.'
 - id: EC090
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -1976,7 +1970,7 @@ rules:
   sap_impact: T4 slips and Record of Employment filings are rejected.
   fix_map:
     __other__: Correct the SIN from the employee's SIN confirmation letter in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: SIN ''{PERINFO.NATIONAL_ID}'' is not 9 digits.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Canadian Social Insurance Number is not 9 digits. Correct the record.'
 - id: EC091
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -1993,7 +1987,7 @@ rules:
   sap_impact: RTI Full Payment Submissions to HMRC are rejected or matched to the wrong person.
   fix_map:
     __other__: Correct the NINO from HMRC correspondence or the payslip in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: NINO ''{PERINFO.NATIONAL_ID}'' is not a valid format.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: UK National Insurance number is not in the NINO format. Correct the record.'
 - id: EC092
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2009,7 +2003,7 @@ rules:
   sap_impact: eSocial events and payroll tax filings are rejected.
   fix_map:
     __other__: Correct the CPF from the employee's documents in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: CPF ''{PERINFO.NATIONAL_ID}'' is not 11 digits.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Brazilian CPF is not 11 digits. Correct the record.'
 - id: EC093
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2025,7 +2019,7 @@ rules:
   sap_impact: Payroll tax returns to the Belastingdienst are rejected.
   fix_map:
     __other__: Correct the BSN from the employee's ID document in National ID Information (digits only).
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: BSN ''{PERINFO.NATIONAL_ID}'' is not 9 digits.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Dutch BSN is not 9 digits. Correct the record.'
 - id: EC094
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2042,7 +2036,7 @@ rules:
   sap_impact: Social security (Sistema RED) and tax (Modelo 111/190) filings are rejected.
   fix_map:
     __other__: Correct the DNI or NIE from the employee's ID document in National ID Information (no spaces or dashes).
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: DNI/NIE ''{PERINFO.NATIONAL_ID}'' is not a valid format.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Spanish DNI or NIE is not in the official format. Correct the record.'
 - id: EC095
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2058,7 +2052,7 @@ rules:
   sap_impact: Individual income tax and social insurance filings are rejected.
   fix_map:
     __other__: Correct the ID number from the employee's resident identity card in National ID Information.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: ID number ''{PERINFO.NATIONAL_ID}'' is not 18 characters.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID number is not 18 characters. Correct the record.'
 - id: EC096
   field: EMPEMPLOYMENT.COMPANY
   check_class: cross_field_check
@@ -2313,3 +2307,256 @@ rules:
   fix_map:
     __blank__: Set the job classification on the position (Position Org Chart or Manage Positions).
   record_fix_template: 'Position {POSITION.CODE}: job classification is blank.'
+- id: EC108
+  field: EMPEMPLOYMENT.PERSON_ID
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: medium
+  dimension: validity
+  message: Person ID does not fit the a numeric personnel number of at most 8 digits (PA0000.PERNR) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a numeric personnel number of at most 8 digits (PA0000.PERNR). A value outside that format is rejected or
+    truncated, which breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a numeric personnel number of at most 8 digits (PA0000.PERNR), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person id does not fit a numeric personnel number of at most 8 digits (PA0000.PERNR) of the SAP target field. Correct in Employee Central.'
+- id: EC109
+  field: EMPEMPLOYMENT.COMPANY
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9]{1,4}$
+  severity: medium
+  dimension: validity
+  message: Company code does not fit the a company code of at most 4 characters (BUKRS) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a company code of at most 4 characters (BUKRS). A value outside that format is rejected or truncated, which
+    breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a company code of at most 4 characters (BUKRS), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: company code does not fit a company code of at most 4 characters (BUKRS) of the SAP target field. Correct in Employee Central.'
+- id: EC110
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9]{1,10}$
+  severity: medium
+  dimension: validity
+  message: Cost centre does not fit the a cost centre of at most 10 characters (KOSTL) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a cost centre of at most 10 characters (KOSTL). A value outside that format is rejected or truncated, which
+    breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a cost centre of at most 10 characters (KOSTL), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field. Correct in Employee Central.'
+- id: EC111
+  field: EMPEMPLOYMENT.LOCATION
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9]{1,4}$
+  severity: low
+  dimension: validity
+  message: Location does not fit the a 4-character personnel area or subarea key (WERKS, BTRTL) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a 4-character personnel area or subarea key (WERKS, BTRTL). A value outside that format is rejected or truncated,
+    which breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a 4-character personnel area or subarea key (WERKS, BTRTL), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: location does not fit a 4-character personnel area or subarea key (WERKS, BTRTL) of the SAP target field. Correct in Employee Central.'
+- id: EC112
+  field: EMPEMPLOYMENT.POSITION
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: medium
+  dimension: validity
+  message: Position code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
+    the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: position code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
+- id: EC113
+  field: EMPEMPLOYMENT.DEPARTMENT
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: medium
+  dimension: validity
+  message: Department code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
+    the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: department code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
+- id: EC114
+  field: EMPEMPLOYMENT.JOB_CODE
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: low
+  dimension: validity
+  message: Job code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
+    the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
+- id: EC115
+  field: FOCOMPANY.EXTERNAL_CODE
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9]{1,4}$
+  severity: medium
+  dimension: validity
+  message: Legal entity code does not fit the a company code of at most 4 characters (BUKRS) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a company code of at most 4 characters (BUKRS). A value outside that format is rejected or truncated, which
+    breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a company code of at most 4 characters (BUKRS), or add a conversion in the integration mapping.
+  record_fix_template: 'Legal entity {FOCOMPANY.EXTERNAL_CODE}: legal entity code does not fit a company code of at most 4 characters (BUKRS) of the SAP target field. Correct in Employee Central.'
+- id: EC116
+  field: FODEPARTMENT.EXTERNAL_CODE
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: medium
+  dimension: validity
+  message: Department code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
+    the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: department code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
+- id: EC117
+  field: FODEPARTMENT.COST_CENTER
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9]{1,10}$
+  severity: medium
+  dimension: validity
+  message: Department cost centre does not fit the a cost centre of at most 10 characters (KOSTL) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with a cost centre of at most 10 characters (KOSTL). A value outside that format is rejected or truncated, which
+    breaks the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits a cost centre of at most 10 characters (KOSTL), or add a conversion in the integration mapping.
+  record_fix_template: 'Department {FODEPARTMENT.EXTERNAL_CODE}: department cost centre does not fit a cost centre of at most 10 characters (KOSTL) of the SAP target field. Correct in Employee Central.'
+- id: EC118
+  field: POSITION.CODE
+  check_class: regex_check
+  pattern: ^\d{1,8}$
+  severity: medium
+  dimension: validity
+  message: Position code does not fit the an 8-digit object ID (HRP1000.OBJID) of the SAP target field
+  why_it_matters: Replication to the SAP HCM or S/4HANA system maps this value into a field with an 8-digit object ID (HRP1000.OBJID). A value outside that format is rejected or truncated, which breaks
+    the key that links the employee to the SAP organisation.
+  rule_authority: best_practice
+  sap_impact: The replication or migration load rejects the record or links it to the wrong object in the SAP system.
+  fix_map:
+    __other__: Change the value in Employee Central so that it fits an 8-digit object ID (HRP1000.OBJID), or add a conversion in the integration mapping.
+  record_fix_template: 'Position {POSITION.CODE}: position code does not fit an 8-digit object ID (HRP1000.OBJID) of the SAP target field. Correct in Employee Central.'
+- id: EC119
+  field: EMPEMPLOYMENT.POSITION
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.POSITION`.notna() & ((@today - `EMPEMPLOYMENT.END_DATE`).dt.days > 90)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: medium
+  dimension: timeliness
+  message: Leaver still sits on a position more than 90 days after leaving
+  why_it_matters: A terminated or retired employee must be removed from the position. Staying on it keeps the position counted as filled and carries a stale relationship into the replication to SAP.
+  rule_authority: best_practice
+  sap_impact: Vacancy and headcount reports show the position as occupied; the SAP organisation keeps a holder relationship for a person who has left.
+  fix_map:
+    __other__: Remove the leaver from the position (Position Org Chart) or correct the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: left more than 90 days ago but is still assigned to a position. Correct in Position Org Chart.'
+- id: EC120
+  field: EMPEMPLOYMENT.MANAGER_ID
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.MANAGER_ID` == `EMPEMPLOYMENT.USERID`'
+  applies_when:
+    EMPEMPLOYMENT.STATUS: &id001
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is their own manager
+  why_it_matters: The manager relationship must point to another person. A self reference makes the approval and reporting hierarchy loop.
+  rule_authority: best_practice
+  sap_impact: Workflow approvals, organisation charts and manager self service cannot resolve the employee.
+  fix_map:
+    __other__: Assign the correct manager in Employment Details.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: manager is the employee. Correct in Employment Details.'
+- id: EC121
+  field: EMPEMPLOYMENT.EVENT_REASON
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: medium
+  dimension: completeness
+  message: Terminated employee has no event reason
+  why_it_matters: The event reason of the termination drives leaver reporting, notice handling and the mapping to the SAP action reason (PA0000.MASSG).
+  rule_authority: best_practice
+  sap_impact: The replication cannot derive the action reason; turnover analysis cannot split voluntary from involuntary exits.
+  fix_map:
+    __blank__: Enter the termination reason on the employment record.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: terminated without an event reason. Correct the termination record.'
+- id: EC122
+  field: EMPEMPLOYMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: (@today - `EMPEMPLOYMENT.END_DATE`).dt.days > 3650
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: low
+  dimension: timeliness
+  message: Employee left more than 10 years ago and is still held in the system
+  why_it_matters: Employment records that ended more than ten years ago are candidates to archive. Carrying them into a conversion or replication adds volume and legacy keys without business value.
+  rule_authority: best_practice
+  sap_impact: Larger migration volume and longer load times; obsolete persons appear in reports and in person searches.
+  fix_map:
+    __other__: Confirm the retention period, then archive or exclude the record from the migration scope.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: left more than 10 years ago. Archive or exclude from the migration.'
+- id: EC123
+  field: PERINFO.GENDER
+  check_class: null_check
+  grain: EMPEMPLOYMENT
+  applies_when:
+    EMPEMPLOYMENT.STATUS: *id001
+  severity: medium
+  dimension: completeness
+  message: Active employee has no gender
+  why_it_matters: The gender of a person is a standard field of the business partner that the employee becomes in S/4HANA, and it selects the salutation and statutory reporting.
+  rule_authority: best_practice
+  sap_impact: The person is created without gender in the SAP system; the salutation is derived wrongly and statutory reports fall back to unknown.
+  fix_map:
+    __blank__: Enter the gender in Personal Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: active employee has no gender. Correct in Personal Information.'
+- id: EC124
+  field: PERADDRESS.ADDRESS_LINE1
+  check_class: null_check
+  applies_when:
+    PERADDRESS.CITY:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Person address has no street line
+  why_it_matters: The business partner address in S/4HANA is built from the street, city and country. An address with a country but no street cannot be used for correspondence.
+  rule_authority: best_practice
+  sap_impact: The address is replicated incomplete and mail to the person cannot be delivered.
+  fix_map:
+    __blank__: Complete the address in Personal Information.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address has a city but no street. Correct in Personal Information.'
