@@ -44,6 +44,7 @@ from api.routes.relationships import router as relationships_router
 from api.routes.stewardship import router as stewardship_router
 from api.routes.mdm_metrics import router as mdm_metrics_router
 from api.routes.sync_trigger import router as sync_trigger_router
+from api.routes.rule_depth import router as rule_depth_router
 from api.routes.rules import router as rules_router
 from api.routes.field_mappings import router as field_mappings_router
 from api.routes.licence import router as licence_router
@@ -300,6 +301,7 @@ app.include_router(relationships_router)
 app.include_router(stewardship_router)
 app.include_router(mdm_metrics_router)
 app.include_router(sync_trigger_router)
+app.include_router(rule_depth_router)  # before rules_router: /rules/coverage vs /rules/{rule_id}
 app.include_router(rules_router)
 app.include_router(field_mappings_router)
 app.include_router(licence_router)

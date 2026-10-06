@@ -847,3 +847,23 @@ button.ui-state-toggle:focus-visible { outline: var(--aurora-focus-ring-width) s
 .ui-notif__body > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-notif__dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--aurora-accent-500); }
 .ui-boot { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: var(--aurora-canvas-base); }
+
+/* Rule coverage: a plain count matrix, no colour scale */
+.ui-cov { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px; }
+.ui-cov th, .ui-cov td { padding: var(--aurora-space-2) var(--aurora-space-3); border-bottom: 1px solid var(--aurora-canvas-line); white-space: nowrap; }
+.ui-cov thead th { color: var(--aurora-fg-secondary); font-weight: 600; text-align: right; }
+.ui-cov thead th:first-child, .ui-cov tbody th { text-align: left; }
+.ui-cov tbody th { font-weight: 500; }
+.ui-cov td { text-align: right; font-variant-numeric: tabular-nums; }
+.ui-cov td[data-thin] a { color: var(--aurora-fg-tertiary); }
+.ui-cov td[data-zero] { color: var(--aurora-fg-tertiary); }
+.ui-cov__sort { padding: 0; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.ui-cov__sort[aria-pressed="true"] { text-decoration: underline; }
+.ui-cov__tables { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); justify-content: flex-end; white-space: normal; }
+.ui-cov__expand { padding: 0; font: inherit; font-weight: 500; color: var(--aurora-fg-primary); text-align: left; background: none; border: 0; cursor: pointer; }
+.ui-cov__rules td { text-align: left; white-space: normal; background: var(--aurora-canvas-sunken, transparent); }
+.ui-cov__rules ul { display: grid; gap: var(--aurora-space-1); margin: 0; padding: 0; list-style: none; }
+
+/* Rule page */
+.ui-rule-sql { display: flex; gap: var(--aurora-space-2); align-items: flex-start; }
+.ui-rule-sql pre { flex: 1; margin: 0; }

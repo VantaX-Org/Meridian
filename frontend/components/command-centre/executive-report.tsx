@@ -16,10 +16,11 @@ import { getLicenceManifest } from "@/lib/api/licence";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { compositeDqs, getFindingsAggregate } from "@/lib/api/findings";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, formatDate, humanizeIds } from "@/lib/format";
+import { DIMENSIONS, formatModuleName, formatDate, humanizeIds } from "@/lib/format";
 
-const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 const WEIGHTS: Record<string, number> = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
+/** The score weighs six dimensions; lifecycle and freshness are reported in the rule matrix only. */
+const SCORED = Object.keys(WEIGHTS).filter((d) => DIMENSIONS.some((x) => x.id === d));
 const IMPACT: Record<string, Status> = { blocked: "critical", degraded: "medium", ok: "ok" };
 const SIGNAL: Record<string, Status> = { red: "critical", amber: "medium", green: "ok" };
 const TREND: Record<string, Status> = { improving: "ok", stable: "idle", declining: "medium", critical: "critical" };
@@ -108,7 +109,7 @@ export function ExecutiveReport() {
           <table className="ui-mini-table">
             <thead><tr><th>Dimension</th><th className="ui-num">Weight</th><th className="ui-num">Score</th><th><span className="ui-visually-hidden">Bar</span></th></tr></thead>
             <tbody>
-              {DIMENSIONS.map((d) => {
+              {SCORED.map((d) => {
                 const v = a!.dqs.dimension_scores[d];
                 return (
                   <tr key={d}>

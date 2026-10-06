@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
 import routes from "./routes.json";
+import depth from "./fixtures/depth.json";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
@@ -46,6 +47,7 @@ export const test = base.extend<{ app: Page }>({
     await page.route("**/api/v1/jobs/events", (r) => r.fulfill({ status: 204 }));
     await mockInbox(page);
     await mockSteward(page);
+    await mockDepth(page);
     await mockMaterial(page);
     await provide(page);
   },
@@ -105,16 +107,23 @@ const pair = (a: string, b: string) => ({ a, b, survivor: a });
 async function mockSteward(page: Page) {
   await page.route(`**/api/v1/findings/${FINDING_ID}/report-context`, (r) =>
     r.fulfill(json({ finding_id: FINDING_ID, check_id: FINDING.check_id, module: FINDING.module, report_context: null })));
-  await page.route(/\/api\/v1\/findings\?/, (r) =>
-    new URL(r.request().url()).searchParams.get("check_id")
-      ? r.fulfill(json({ findings: [FINDING], total: 1, filters_applied: {} }))
-      : r.fallback());
+  await page.route(/\/api\/v1\/findings\?/, (r) => {
+    const check = new URL(r.request().url()).searchParams.get("check_id");
+    return check ? r.fulfill(json({ findings: check === FINDING.check_id ? [FINDING] : [], total: check === FINDING.check_id ? 1 : 0, filters_applied: {} })) : r.fallback();
+  });
   await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/[^/]+\/records/, (r) =>
     r.fulfill(json({ version_id: VERSION_ID, check_id: FINDING.check_id, total: 1, records: [{ record_key: ISSUE.record_key, grain: "LFB1", module: FINDING.module, field_values: { "LFB1.AKONT": "0000113100", "LFB1.LIFNR": "V3" } }] })));
   await page.route(`**/api/v1/issues/${ISSUE_ID}`, (r) =>
     r.fulfill(json({ issue: ISSUE, events: [], runs: [{ version_id: VERSION_ID, run_at: "2026-10-02T11:54:16Z", failing: true }] })));
-  await page.route(/\/api\/v1\/issues\?/, (r) =>
-    new URL(r.request().url()).searchParams.get("search") ? r.fulfill(json({ items: [ISSUE], total: 1 })) : r.fallback());
+  await page.route(/\/api\/v1\/issues\?/, (r) => {
+    const q = new URL(r.request().url()).searchParams;
+    if (q.get("search")) return r.fulfill(json({ items: [ISSUE], total: 1 }));
+    if (q.get("check_id")) {
+      const mine = q.get("check_id") === ISSUE.check_id ? [ISSUE] : [];
+      return r.fulfill(json({ items: mine, total: mine.length, counts: { open: mine.length } }));
+    }
+    return r.fallback();
+  });
   await page.route("**/api/v1/dedup/preview", (r) => r.fulfill(json({
     merge_preview: { "LFA1.LIFNR": pair("V4", "V5"), "LFA1.NAME1": pair("Delta Supplies", "Epsilon Parts"), "LFA1.ORT01": pair("Cape Town", "Pretoria") },
   })));
@@ -133,3 +142,14 @@ async function mockMaterial(page: Page) {
 }
 
 export { expect };
+
+/** Rule depth endpoints, answered from the shipped catalogue (e2e/fixtures/depth.json, built with api/services/rule_coverage.py). */
+async function mockDepth(page: Page) {
+  await page.route(/\/api\/v1\/rules\/coverage\/material_master/, (r) => r.fulfill(json(depth.mm)));
+  await page.route(/\/api\/v1\/rules\/coverage(\?|$)/, (r) => r.fulfill(json(depth.matrix)));
+  await page.route(/\/api\/v1\/rules\/by-code\/XREC001/, (r) => r.fulfill(json({ ...depth.XREC001, latest_finding_id: FINDING_ID, latest_version_id: VERSION_ID })));
+  await page.route(/\/api\/v1\/rules\/by-code\/MM551/, (r) => r.fulfill(json(depth.MM551)));
+  await page.route(/\/api\/v1\/ddic\/fields/, (r) => r.fulfill(json({ fields: [
+    { table: "LFB1", field: "AKONT", description: "Reconciliation account in general ledger", data_element: "AKONT", domain: "SAKNR", type: "CHAR", length: 10,
+      check_table: "SKB1", check_field: "SAKNR", check_table_description: "G/L account master (company code)", missing: false }] })));
+}

@@ -26,9 +26,9 @@ import { useRole } from "@/hooks/use-role";
 import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFinding, getFindings, type FindingDetailData } from "@/lib/api/findings";
 import { getIssues, updateIssues } from "@/lib/api/issues";
-import { getRules } from "@/lib/api/rules";
+import { getRuleByCode, getRules } from "@/lib/api/rules";
 import { getFindingRecords } from "@/lib/api/versions";
-import { checkClassLabel, formatModuleName, formatDate } from "@/lib/format";
+import { checkClassLabel, failsWhen, formatModuleName, formatDate } from "@/lib/format";
 import type { AnomalySample, Finding } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -131,6 +131,7 @@ function Body({ f }: { f: FindingDetailData }) {
             {f.affected_count > 0 ? <Button onClick={() => router.push(issuesHref)}>Work failing records</Button> : null}
             {f.affected_count > 0 && can("assign") ? <Button variant="secondary" disabled={assignAll.isPending} onClick={() => assignAll.mutate()}>Assign all</Button> : null}
             {f.affected_count > 0 ? <Button variant="secondary" onClick={() => router.push("/workbench?view=mine")}>Open in inbox</Button> : null}
+            {anomaly ? null : <Button variant="ghost" onClick={() => router.push(`/analyse/rule/${encodeURIComponent(f.check_id)}?module=${encodeURIComponent(f.module)}`)}>About this rule</Button>}
             <Button variant="ghost" onClick={() => copyToClipboard(f.check_id, "Check id copied")}>Copy check id</Button>
             {can("approve") && f.affected_count > 0 ? (
               <ReasonButton label="False positive" prompt="Why are these records not an issue?" disabled={falsePositive.isPending}
@@ -214,20 +215,22 @@ function RuleSection({ f, anomaly, fieldChecked }: { f: Finding; anomaly: boolea
     queryFn: () => getRules({ module: f.module, search: f.check_id, limit: 10 }),
   });
   const r = rule.data?.rules.find((x) => x.name.split(":")[0] === f.check_id || x.id === f.check_id);
+  const yaml = useQuery({
+    queryKey: ["rule.by-code", f.check_id, f.module], enabled: !anomaly, retry: false, meta: { ignoreError: true },
+    queryFn: () => getRuleByCode(f.check_id, f.module),
+  });
   const invalid = Object.entries(d.distinct_invalid_values ?? {}).sort((a, b) => b[1] - a[1]);
   const labels = Object.entries(f.rule_context?.valid_values_with_labels ?? {});
   const conditions = r?.conditions == null ? [] : Array.isArray(r.conditions) ? r.conditions : [r.conditions];
   const checkClass = f.check_class ?? (conditions as { check_class?: unknown }[]).map((c) => c?.check_class).find((v): v is string => typeof v === "string" && !!v) ?? null;
-  const heading = f.business_name ?? f.details?.message ?? f.check_id;
-  const expectedText = labels.length ? `One of ${labels.length.toLocaleString()} valid values`
-    : [r?.description, f.details?.message].find((t) => t && t !== heading) ?? "Every record passes this check";
+  const fails = failsWhen(yaml.data ?? { check_class: checkClass, field: fieldChecked, message: f.details?.message });
   const rows: { k: string; v: ReactNode; mono?: boolean }[] = anomaly
     ? [{ k: "Measure", v: METRIC[d.metric ?? ""] ?? d.metric ?? "—" },
        { k: "Expected", v: d.expected && d.expected.low != null ? `${d.expected.low.toLocaleString()} to ${d.expected.high?.toLocaleString() ?? "—"}` : "Seen in earlier downloads" },
        { k: "Observed", v: typeof d.observed === "number" ? d.observed.toLocaleString() : Array.isArray(d.observed) ? `${d.observed.length.toLocaleString()} values` : "—" }]
-    : [{ k: "Check type", v: checkClass ? <span title={checkClass}>{checkClassLabel(checkClass)}</span> : "—" },
+    : [{ k: "Check type", v: (yaml.data?.check_class ?? checkClass) ? <span title={yaml.data?.check_class ?? checkClass ?? undefined}>{checkClassLabel((yaml.data?.check_class ?? checkClass)!)}</span> : "As the rule defines" },
        { k: "Field", v: fieldChecked ? <FieldChip {...splitField(fieldChecked)} /> : "—" },
-       { k: "Expected", v: expectedText },
+       { k: "Fails when", v: fails },
        { k: "Observed", v: `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()} records fail` },
        ...(r ? [{ k: "Source", v: r.source === "yaml" ? (r.source_yaml ? `checks/rules/${r.source_yaml}` : "Shipped rule") : "Defined in HQ", mono: r.source === "yaml" }] : [])];
   return (

@@ -89,6 +89,88 @@ export function humanizeIds(text: string): string {
   return text.replace(/\b[a-z]+(?:_[a-z]+)+\b/g, formatModuleName);
 }
 
+/** The eight DAMA-style dimensions the rule library is organised by, in matrix order. */
+export const DIMENSIONS = [
+  { id: "completeness", label: "Completeness" },
+  { id: "consistency", label: "Consistency" },
+  { id: "validity", label: "Validity" },
+  { id: "accuracy", label: "Accuracy" },
+  { id: "uniqueness", label: "Uniqueness" },
+  { id: "timeliness", label: "Timeliness" },
+  { id: "lifecycle", label: "Lifecycle" },
+  { id: "freshness", label: "Freshness" },
+] as const;
+
+/** Where a rule's authority comes from, as a sentence. */
+export const AUTHORITY_SENTENCE: Record<string, string> = {
+  sap_hard_constraint: "SAP hard constraint: SAP itself rejects or breaks on this.",
+  sap_standard: "SAP standard: SAP itself requires or enforces this.",
+  sap_documented: "SAP documented: SAP documentation recommends this.",
+  best_practice: "Best practice: not enforced by SAP, but widely expected.",
+  industry_best_practice: "Industry best practice: not enforced by SAP, but widely expected.",
+  regulatory: "Regulatory: a legal or tax rule requires this.",
+  iso_standard: "ISO standard: an international standard requires this.",
+  s4hana_migration: "S/4HANA migration: this must be clean before the move to S/4HANA.",
+  customer_configured: "Customer configured: your own organisation defined this rule.",
+};
+
+/** A check-engine expression with its backticks and operators put into words. */
+const plainExpr = (s: string) => s.replace(/`/g, "").replace(/\s*&\s*/g, " and ").replace(/\s*\|\s*/g, " or ")
+  .replace(/\.isna\(\)/g, " is blank").replace(/\.notna\(\)/g, " is filled").replace(/==/g, "equals");
+
+const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)]);
+const some = (xs: string[], n = 6) => (xs.length > n ? `${xs.slice(0, n).join(", ")} and ${xs.length - n} more` : xs.join(", "));
+
+/** The condition under which a rule fails a record, in a sentence. Falls back to the rule's own message. */
+export function failsWhen(rule: {
+  check_class?: string | null; field?: string | null; fail_when?: unknown; allowed_values?: unknown; pattern?: string | null;
+  reference_table?: string | null; reference_field?: string | null; max_age_hours?: number | null; target_table?: string | null;
+  target_fields?: unknown; group_by?: unknown; message?: string | null; extra?: Record<string, unknown>;
+}): string {
+  const f = rule.field ?? "the field";
+  const e = rule.extra ?? {};
+  if (typeof rule.fail_when === "string" && rule.fail_when.trim()) return `Fails when ${plainExpr(rule.fail_when)}.`;
+  switch (rule.check_class) {
+    case "null_check": return `Fails when ${f} is blank.`;
+    case "regex_check": return rule.pattern ? `Fails when ${f} does not match the pattern ${rule.pattern}.` : `Fails when ${f} has the wrong format.`;
+    case "domain_value_check": {
+      const v = list(rule.allowed_values);
+      return v.length ? `Fails when ${f} is not one of ${some(v)}.` : `Fails when ${f} holds a value outside the allowed list.`;
+    }
+    case "referential_check":
+      return rule.reference_table ? `Fails when ${f} has no entry in ${rule.reference_table}${rule.reference_field ? `.${rule.reference_field}` : ""}.`
+        : `Fails when ${f} is not in the reference list.`;
+    case "freshness_check": return rule.max_age_hours != null ? `Fails when ${f} is older than ${rule.max_age_hours.toLocaleString()} hours.` : `Fails when ${f} is too old.`;
+    case "uniqueness_check": {
+      const g = list(e.fields ?? rule.group_by);
+      return g.length ? `Fails when more than one record has the same ${some(g)}.` : `Fails when more than one record has the same ${f}.`;
+    }
+    case "exists_check": {
+      const t = list(rule.target_fields);
+      return rule.target_table ? `Fails when no ${rule.target_table} record${t.length ? ` matches on ${some(t)}` : " exists"}.` : "Fails when the linked record is missing.";
+    }
+    default: break;
+  }
+  return rule.message ? `Fails when the record breaks this rule: ${rule.message}` : "The rule has no stated condition.";
+}
+
+/** "MATNR=100|WERKS=1000" -> [{ key: "MATNR", value: "100" }, ...] */
+export function recordKeyParts(key: string): { key: string; value: string }[] {
+  return key.split("|").map((p) => {
+    const i = p.indexOf("=");
+    return i < 0 ? { key: "", value: p } : { key: p.slice(0, i), value: p.slice(i + 1) };
+  }).filter((p) => p.value !== "" || p.key !== "");
+}
+
+const OBJECT_NOUN: Record<string, string> = {
+  material_master: "Material", business_partner: "Business partner", customer_master: "Customer", vendor_master: "Vendor",
+  gl_account: "G/L account", cost_center: "Cost centre", profit_center: "Profit centre", equipment: "Equipment",
+};
+/** Singular noun for one record of a module: "material_master" -> "Material". */
+export function objectNoun(module: string): string {
+  return OBJECT_NOUN[module] ?? formatModuleName(module).replace(/ (Master|Data)$/, "");
+}
+
 const KEY_LABEL: Record<string, string> = { LIFNR: "vendor", KUNNR: "customer", MATNR: "material", BUKRS: "company code", WERKS: "plant", EKORG: "purchasing org", VKORG: "sales org", VTWEG: "distribution channel", SPART: "division", LGORT: "storage location", KOKRS: "controlling area", KOSTL: "cost centre", SAKNR: "account", EBELN: "purchase order", VBELN: "document" };
 
 /** "LIFNR=V3|BUKRS=1000" becomes "Vendor V3, company code 1000". A key that is not field=value pairs is returned as is. */

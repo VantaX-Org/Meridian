@@ -9,6 +9,7 @@
  * analysed version, then save (source 'custom').
  */
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -22,7 +23,8 @@ import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
-import { checkClassLabel, formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { MM_VIEWS } from "@/lib/material-views";
 
 const HREF = "/admin?tab=rules";
 const meta = (m: AuroraColumnMeta) => m;
@@ -30,7 +32,6 @@ const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "Su
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
 const AUTHORING: CheckClass[] = ["null_check", "domain_value_check", "regex_check", "cross_field_check", "dependency_check", "uniqueness_check"];
 const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"];
 const SEV_RANK: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 /** Shipped rule names start with their code ("AP001: Vendor number is mandatory"); the code gets its own column. */
 const CODE_PREFIX = /^([A-Z][A-Z0-9]*\d):\s+/;
@@ -39,6 +40,14 @@ const codeOf = (r: Rule) => r.name.match(CODE_PREFIX)?.[1] ?? (UUID.test(r.id) ?
 const nameOf = (r: Rule) => r.name.replace(CODE_PREFIX, "");
 const sev = (s: string) => (s === "critical" || s === "high" || s === "low" ? s : "medium");
 const authority = (r: Rule) => (r.source === "mined" || r.source === "custom" ? "customer" : "shipped");
+/** The SAP table a rule is anchored on: the prefix of its first condition's field. */
+const tableOf = (r: Rule) => {
+  const f = conditionList(r)[0]?.field;
+  return typeof f === "string" && f.includes(".") ? f.slice(0, f.indexOf(".")) : "";
+};
+/** Material master only: a rule is in a view when the view lists its table. A heuristic; the coverage page has the authoritative map. */
+const inView = (r: Rule, module: string, view: string) =>
+  (!module || module === "material_master") && (MM_VIEWS.find((v) => v.id === view)?.tables as readonly string[] | undefined)?.includes(tableOf(r)) === true;
 /** Shipped rules carry a list of conditions; mined/custom rules one rule object. */
 const conditionList = (r: Rule) => (Array.isArray(r.conditions) ? r.conditions : r.conditions ? [r.conditions] : []);
 const valuesOf = (r: Rule, key: "check_class" | "dimension") =>
@@ -69,6 +78,8 @@ export function RulesSurface() {
   const [auth, setAuth] = useUrlState("authority", "");
   const [source, setSource] = useUrlState("source", "");
   const [sort, setSort] = useUrlState("sort");
+  const [table, setTable] = useUrlState("table", "");
+  const [view, setView] = useUrlState("view", "");
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const drawer = useDrawerParam("rule");
@@ -88,11 +99,13 @@ export function RulesSurface() {
     severity: (r) => !severity || r.severity === severity,
     authority: (r) => !auth || authority(r) === auth,
     source: (r) => !source || r.source === source,
+    table: (r) => !table || tableOf(r) === table,
+    view: (r) => !view || inView(r, module, view),
   };
   const passing = (r: Rule, skip?: string) => matches(r, search) && Object.entries(tests).every(([k, t]) => k === skip || t(r));
   const visible = rules.filter((r) => passing(r));
-  const filtered = !!(search || module || check || dimension || severity || auth || source || category !== "all");
-  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setCategory("all"); };
+  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || category !== "all");
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setCategory("all"); };
   /** Options for one menu chip, each counted over the rules the other filters leave. */
   const group = (id: string, label: string, value: string, onChange: (v: string) => void, values: string[], format: (v: string) => string, allLabel: string) => ({
     id, label, value, onChange, allLabel,
@@ -189,6 +202,7 @@ export function RulesSurface() {
               <section className="ui-detail-part"><h3 className="ui-detail-part__title">Thresholds</h3>
                 <pre className="ui-code">{JSON.stringify(selected.thresholds, null, 2)}</pre></section>
             ) : null}
+            {codeOf(selected) ? <p className="ui-note"><Link className="ui-link" href={`/analyse/rule/${encodeURIComponent(codeOf(selected))}?module=${encodeURIComponent(selected.module)}`}>Open rule page</Link></p> : null}
             {canManage ? (
               <div className="ui-form__actions">
                 <Button variant={selected.enabled ? "danger" : "primary"} onClick={() => toggle.mutate({ id: selected.id, enabled: !selected.enabled })} disabled={toggle.isPending}>
@@ -290,7 +304,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
           </Field>
           <Field label="Dimension">
             {({ controlId }) => <Select id={controlId} value={draft.dimension ?? ""}
-              options={[{ value: "", label: "Default for the check type" }, ...DIMENSIONS.map((d) => ({ value: d, label: d }))]} onValueChange={(d) => setDraft({ dimension: d })} />}
+              options={[{ value: "", label: "Default for the check type" }, ...DIMENSIONS.map((d) => ({ value: d.id, label: d.label }))]} onValueChange={(d) => setDraft({ dimension: d })} />}
           </Field>
         </div>
         <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this object yet" : undefined}>
