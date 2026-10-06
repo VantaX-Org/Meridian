@@ -77,6 +77,17 @@ class L5(BaseModel):
         return self.model_copy(update={"check_ids": ids, "sap_tables": tables})
 
 
+class DocFlowEdge(BaseModel):
+    """One configured copy-control path between two document types (order, delivery or billing), config keys only."""
+    source_type: str
+    source_kind: Literal["order", "delivery", "billing"]
+    target_type: str
+    target_kind: Literal["order", "delivery", "billing"]
+    item_categories: list[str] = []
+    client_specific: bool = False  # a Z/Y type on either end
+    evidence: list[Evidence] = []
+
+
 class VariantRef(BaseModel):
     sap_table: str
     sap_field: str
@@ -99,6 +110,7 @@ class L4(BaseModel):
     status: Optional[NodeStatus] = None
     evidence: list[Evidence] = []
     config_variants: list[Evidence] = []  # configured document/order/movement types (config keys)
+    document_flow: list[DocFlowEdge] = []  # OTC: order -> delivery -> billing paths from copy control
     next_l4: list[str] = []  # derived sequence: L4 ids that follow this one (copy control)
 
 

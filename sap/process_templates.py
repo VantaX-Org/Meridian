@@ -320,8 +320,21 @@ _EXISTING_PROBES: dict[str, Probe] = {
 _EXISTING_VARIANTS: dict[str, tuple[Probe, ...]] = {
     "OTC-SO-VA01": (P("TVAP", "PSTYV"), P("T184", "AUART MTPOS VWPOS UEPST PSTYV", code="PSTYV"), P("TVEP", "ETTYP")),
     "PTP-PO-ME21N": (P("T163", "PSTYP", alt="T163Y"),),
+    # T156 has no follow-on movement type field; XSTBW flags the reversal movement types
+    "PTP-GR-MIGO": (P("T156", "BWART XSTBW", code="BWART", where={"XSTBW": "X"}),),
     "PTP-IV-MIRO": (P("T052", "ZTERM ZTAGG", code="ZTERM"),),
 }
+
+# Copy-control tables behind the OTC document flow: table -> fields read (see process_flow_derivation).
+DOC_FLOW_TABLES: dict[str, tuple[str, ...]] = {
+    "TVAK": ("AUART", "LFARV", "FKARV", "FKARA"),
+    "TVLK": ("LFART",),
+    "TVFK": ("FKART",),
+    "TVCPA": ("AUARN", "AUARV", "PSTYV", "PSTYN"),
+    "TVCPL": ("LFARN", "AUARV", "PSTYV"),
+    "TVCPF": ("FKARN", "AUARV", "LFARV", "FKARV", "PSTYV"),
+}
+DOC_FLOW_L4 = "OTC-SO-VA01"
 
 # Reference-model nodes (L4 id -> L1 id) that BP replaces on S/4HANA.
 S4_BP_L4 = {"PTP-VM-FK01": "BP", "OTC-CM-FD01": "BP"}

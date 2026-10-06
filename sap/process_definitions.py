@@ -620,9 +620,14 @@ def get_all_tcodes() -> set[str]:
 
 def flow_config_tables() -> dict[str, tuple[set[str], set[str]]]:
     """Config tables the flow derivation reads: table -> (fields, modules whose extraction needs it)."""
-    from sap.process_templates import PROBES, VARIANT_PROBES
+    from sap.process_templates import DOC_FLOW_TABLES, PROBES, VARIANT_PROBES
 
     out: dict[str, tuple[set[str], set[str]]] = {}
+    otc = next(x for x in PROCESS_DEFINITIONS if x["id"] == "OTC")
+    for t, cols in DOC_FLOW_TABLES.items():
+        f, m = out.setdefault(t, (set(), set()))
+        f |= set(cols)
+        m |= set(otc["modules"])
     for l1 in PROCESS_DEFINITIONS:
         for l4 in get_l4_subprocesses(l1["id"]):
             probes = [PROBES.get(l4["id"]), *VARIANT_PROBES.get(l4["id"], ()),

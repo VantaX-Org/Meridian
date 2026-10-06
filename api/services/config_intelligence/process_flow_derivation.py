@@ -20,13 +20,14 @@ import pandas as pd
 
 from api.models.process_model import ProcessModelDocument
 from sap.process_definitions import PROCESS_DEFINITIONS, _diagram
-from sap.process_templates import PROBES, VARIANT_PROBES, Probe
+from sap.process_templates import DOC_FLOW_L4, PROBES, VARIANT_PROBES, Probe
 
 S4_SYSTEMS = {"s4hana_onprem", "s4hana_cloud"}
 BP_REPLACED = {"FK01": "vendor", "XK01": "vendor", "FD01": "customer", "XD01": "customer", "VD01": "customer"}
 MAX_EVIDENCE = 10
 MAX_VARIANTS = 25
 MAX_CLIENT_SPECIFIC = 10
+MAX_FLOW_EDGES = 200
 
 
 def _frame(tables: Mapping[str, pd.DataFrame], probe: Probe, s4: bool) -> tuple[Optional[pd.DataFrame], str]:
@@ -142,6 +143,12 @@ def _derive_l4(l4: dict[str, Any], tables: Mapping[str, pd.DataFrame], s4: bool)
             touched = True
     if s4 and l4["tcode"] in BP_REPLACED:
         _to_business_partner(l4, BP_REPLACED[l4["tcode"]])
+    if l4["id"] == DOC_FLOW_L4:
+        edges = _document_flow(tables)
+        if edges:
+            l4["document_flow"] = edges
+            l4["source"] = "config"
+            touched = True
     if l4.get("source") == "config":
         l4["diagram"] = _diagram(l4)
     return touched
@@ -154,3 +161,74 @@ def _to_business_partner(l4: dict[str, Any], role: str) -> None:
     l4["description"] = f"S/4HANA replaces the {role} master transaction by the Business Partner (BP)."
     for a in l4["activities"]:
         a["tcode"] = "BP"
+
+
+def _typed(tables: Mapping[str, pd.DataFrame], name: str, cols: tuple[str, ...]) -> Optional[list[dict[str, str]]]:
+    """Distinct rows (stripped strings) of an extracted config table; None when it or a column is missing."""
+    df = tables.get(name)
+    if df is None or any(_col(df, name, c) is None for c in cols):
+        return None
+    sub = pd.DataFrame({c: _col(df, name, c).astype(str).str.strip() for c in cols}).drop_duplicates()
+    return sub.to_dict("records")
+
+
+def _document_flow(tables: Mapping[str, pd.DataFrame]) -> list[dict[str, Any]]:
+    """Order -> order/delivery/billing edges from copy control (TVCPA/TVCPL/TVCPF) and the TVAK defaults.
+
+    An edge needs both ends to be configured document types (TVAK, TVLK, TVFK when extracted) and a copy-control
+    row (when that table was extracted). With no copy-control table, the TVAK default (LFARV, FKARV, FKARA)
+    alone supports order -> delivery and order -> billing. Item categories come from the copy-control rows.
+    """
+    from sap.process_templates import DOC_FLOW_TABLES
+
+    tvak = _typed(tables, "TVAK", DOC_FLOW_TABLES["TVAK"][:1])
+    if tvak is None:
+        return []
+    defaults = _typed(tables, "TVAK", DOC_FLOW_TABLES["TVAK"]) or [{**r, "LFARV": "", "FKARV": "", "FKARA": ""} for r in tvak]
+    known = {"order": {r["AUART"] for r in tvak}}
+    for kind, t, col in (("delivery", "TVLK", "LFART"), ("billing", "TVFK", "FKART")):
+        rows = _typed(tables, t, (col,))
+        known[kind] = {r[col] for r in rows} if rows is not None else None  # None: not extracted, no check
+    cpa, cpl, cpf = (_typed(tables, t, DOC_FLOW_TABLES[t]) for t in ("TVCPA", "TVCPL", "TVCPF"))
+
+    edges: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+
+    def add(sk: str, st: str, tk: str, tt: str, table: str, keys: dict[str, str]) -> None:
+        if not st or not tt or st not in (known[sk] if known[sk] is not None else {st}) \
+                or tt not in (known[tk] if known[tk] is not None else {tt}):
+            return
+        e = edges.setdefault((sk, st, tk, tt), {
+            "source_type": st, "source_kind": sk, "target_type": tt, "target_kind": tk, "item_categories": [],
+            "client_specific": _client_specific(st) or _client_specific(tt), "evidence": []})
+        keys = {k: v for k, v in keys.items() if v}
+        if keys.get("PSTYV") and keys["PSTYV"] not in e["item_categories"]:
+            e["item_categories"].append(keys["PSTYV"])
+        ev = {"table": table, "keys": keys, "value": f"{st}>{tt}"}
+        if ev not in e["evidence"] and len(e["evidence"]) < MAX_EVIDENCE:
+            e["evidence"].append(ev)
+
+    for d in defaults:
+        o = d["AUART"]
+        if o not in known["order"]:
+            continue
+        # TVAK default alone, only when the matching copy-control table is not extracted
+        if cpl is None and d["LFARV"]:
+            add("order", o, "delivery", d["LFARV"], "TVAK", {"AUART": o, "LFARV": d["LFARV"]})
+        if cpf is None and d["FKARA"]:
+            add("order", o, "billing", d["FKARA"], "TVAK", {"AUART": o, "FKARA": d["FKARA"]})
+        if cpf is None and d["FKARV"] and d["LFARV"]:
+            add("delivery", d["LFARV"], "billing", d["FKARV"], "TVAK", {"AUART": o, "LFARV": d["LFARV"], "FKARV": d["FKARV"]})
+        # copy-control rows count only where TVAK names the target as the order type's default
+        for r in cpl or []:
+            if r["AUARV"] in (o, "") and r["LFARN"] == d["LFARV"]:
+                add("order", o, "delivery", r["LFARN"], "TVCPL", {"LFARN": r["LFARN"], "AUARV": r["AUARV"], "PSTYV": r["PSTYV"]})
+        for r in cpf or []:
+            if r["FKARN"] == d["FKARA"] and r["AUARV"] in (o, "") and not r["LFARV"]:
+                add("order", o, "billing", r["FKARN"], "TVCPF", {k: r[k] for k in ("FKARN", "AUARV", "PSTYV")})
+            if d["LFARV"] and r["FKARN"] == d["FKARV"] and r["LFARV"] == d["LFARV"] and r["AUARV"] in (o, ""):
+                add("delivery", d["LFARV"], "billing", r["FKARN"], "TVCPF",
+                    {k: r[k] for k in ("FKARN", "LFARV", "AUARV", "PSTYV")})
+    for r in cpa or []:  # order -> order / contract / quotation
+        if r["AUARV"] != r["AUARN"]:
+            add("order", r["AUARV"], "order", r["AUARN"], "TVCPA", {k: r[k] for k in ("AUARV", "AUARN", "PSTYV", "PSTYN")})
+    return sorted(edges.values(), key=lambda e: (e["source_kind"], e["source_type"], e["target_type"]))[:MAX_FLOW_EDGES]
