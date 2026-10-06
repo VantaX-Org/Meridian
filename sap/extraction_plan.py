@@ -48,6 +48,18 @@ _CONFIG_DELIVERY_CLASSES = {"C", "G", "E", "S"}
 CONFIG_MAX_ROWS = 50_000
 
 
+# Process-discovery reads (api/services/config_intelligence/variant_discovery.py):
+# document type + date columns of the transactional headers and the config tables
+# that list which types are configured. Keys come from the DDIC; windows from
+# extraction_windows.yaml. Added for any plan that already reads sales/purchasing/FI.
+DISCOVERY_MODULE = "process_discovery"
+DISCOVERY_DATA = {"VBAK": {"AUART", "ERDAT"}, "VBRK": {"FKART", "FKDAT"}, "LIKP": {"LFART", "ERDAT"},
+                  "MKPF": {"BLART", "VGART", "BUDAT"}, "RBKP": {"BLART", "BUDAT"},
+                  "EKKO": {"BSART", "BEDAT"}, "EBAN": {"BSART", "BADAT"}}
+DISCOVERY_CONFIG = {"TVAK": {"AUART"}, "T156": {"BWART"}, "TVLK": {"LFART"}, "TVFK": {"FKART"}}
+_DISCOVERY_TRIGGER = {"sd_sales_orders", "mm_purchasing", "accounts_payable", "accounts_receivable", "fi_gl"}
+
+
 @dataclass
 class TablePlan:
     table: str
@@ -199,6 +211,12 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     for module in modules:
         for t, fields in live_tables(module, dictionary).items():
             add(t, set(fields), module)
+
+    if _DISCOVERY_TRIGGER & set(modules):
+        for t, cols in DISCOVERY_DATA.items():
+            add(t, set(cols), DISCOVERY_MODULE)
+        for t, cols in DISCOVERY_CONFIG.items():
+            add(t, set(cols), DISCOVERY_MODULE, purpose="config")
 
     # the tables population exclusions look values up in (JEST status, T370T category)
     from checks.population import policy

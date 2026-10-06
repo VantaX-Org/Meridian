@@ -8,8 +8,8 @@ Colour coding:
   amber  — check has warnings (pass_rate 70-95% or severity=medium)
   red    — check failed (pass_rate < 70% or severity=critical/high)
 
-Overall L3 transaction readiness is the worst status from its child L4 steps.
-Overall L4 step readiness is the worst status from its child L5 fields.
+Overall L3 process readiness is the worst status from its child L4 sub-processes.
+L4 readiness is the worst of its L5 activities; an activity is the worst of its fields.
 """
 
 import copy
@@ -108,7 +108,7 @@ def _enrich_l1(
 
     worst_l1 = "green"
 
-    for l2 in l1.get("l2_processes", []):
+    for l2 in l1.get("l2", []):
         enriched_l2 = _enrich_l2(l2, findings_by_check, spro_config, impact_index)
         result["l2_groups"].append(enriched_l2)
         worst_l1 = _worst_status(worst_l1, enriched_l2.get("readiness", "green"))
@@ -123,7 +123,7 @@ def _enrich_l2(
     spro_config: dict[str, Any],
     impact_index: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    """Enrich an L2 sub-process."""
+    """Enrich an L2 process area."""
     result = {
         "l2_id": l2["id"],
         "l2_name": l2["name"],
@@ -133,7 +133,7 @@ def _enrich_l2(
 
     worst_l2 = "green"
 
-    for l3 in l2.get("l3_transactions", []):
+    for l3 in l2.get("l3", []):
         enriched_l3 = _enrich_l3(l3, findings_by_check, spro_config, impact_index)
         result["l3_processes"].append(enriched_l3)
         worst_l2 = _worst_status(worst_l2, enriched_l3.get("overall_readiness", "green"))
@@ -148,21 +148,20 @@ def _enrich_l3(
     spro_config: dict[str, Any],
     impact_index: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    """Enrich an L3 transaction. Readiness = worst status from L4 steps."""
+    """Enrich an L3 process. Readiness = worst status from its L4 sub-processes."""
     result = {
         "l3_id": l3["id"],
         "l3_name": l3["name"],
-        "tcode": l3.get("tcode", ""),
         "description": l3.get("description", ""),
-        "l4_steps": [],
+        "l4_subprocesses": [],
         "overall_readiness": "green",
     }
 
     worst_l3 = "green"
 
-    for l4 in l3.get("l4_steps", []):
+    for l4 in l3.get("l4", []):
         enriched_l4 = _enrich_l4(l4, findings_by_check, spro_config, impact_index)
-        result["l4_steps"].append(enriched_l4)
+        result["l4_subprocesses"].append(enriched_l4)
         worst_l3 = _worst_status(worst_l3, enriched_l4.get("step_status", "green"))
 
     result["overall_readiness"] = worst_l3
@@ -175,25 +174,85 @@ def _enrich_l4(
     spro_config: dict[str, Any],
     impact_index: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    """Enrich an L4 step. Readiness = worst status from L5 fields."""
+    """Enrich an L4 sub-process. Readiness = worst status from its L5 activities."""
     result = {
         "l4_id": l4["id"],
         "l4_name": l4["name"],
+        "tcode": l4.get("tcode") or "",
         "description": l4.get("description", ""),
-        "config_dependency": None,
-        "l5_fields": [],
+        "config_dependency": l4.get("config_dependency"),
+        "activities": [],
         "step_status": "green",
     }
 
     worst_l4 = "green"
 
-    for l5 in l4.get("l5_fields", []):
-        enriched_l5 = _enrich_l5(l5, findings_by_check, spro_config, impact_index)
-        result["l5_fields"].append(enriched_l5)
-        worst_l4 = _worst_status(worst_l4, enriched_l5["dq_status"])
+    for act in l4.get("activities", []):
+        enriched = _enrich_l5_activity(act, findings_by_check, spro_config, impact_index)
+        result["activities"].append(enriched)
+        worst_l4 = _worst_status(worst_l4, enriched["activity_status"])
 
     result["step_status"] = worst_l4
     return result
+
+
+def _enrich_l5_activity(
+    act: dict[str, Any],
+    findings_by_check: dict[str, dict[str, Any]],
+    spro_config: dict[str, Any],
+    impact_index: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    """Enrich an L5 activity. Status = worst status of its fields."""
+    fields = [_enrich_l5(f, findings_by_check, spro_config, impact_index) for f in act.get("fields", [])]
+    worst = "green"
+    for f in fields:
+        worst = _worst_status(worst, f["dq_status"])
+    check_ids = list(dict.fromkeys([*act.get("check_ids", []), *(f["check_id"] for f in fields if f["check_id"])]))
+    return {
+        "l5_id": act["id"],
+        "l5_name": act["name"],
+        "tcode": act.get("tcode") or "",
+        "description": act.get("description", ""),
+        "fields": fields,
+        "check_ids": check_ids,
+        "activity_status": worst,
+    }
+
+
+def activity_statuses(
+    document: Any,
+    findings_by_check: dict[str, dict[str, Any]],
+    spro_config: dict[str, Any],
+    config_impact: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """DQ colouring per L5 activity of any ``ProcessModelDocument`` (shipped or tenant-edited).
+
+    Returns ``{l5_id: {dq_status, pass_rate, affected_count, finding_count}}`` with the
+    thresholds of ``generate_process_document``: the designer overlay and the readiness
+    page share this one colouring. ``pass_rate`` is the lowest among the activity's checks;
+    ``affected_count`` sums distinct checks; ``finding_count`` counts checks with a finding.
+    """
+    impact_index: dict[str, list[dict[str, Any]]] = {}
+    for item in config_impact:
+        if item.get("check_id"):
+            impact_index.setdefault(item["check_id"], []).append(item)
+    out: dict[str, dict[str, Any]] = {}
+    for l4 in document.all_l4():
+        for act in l4.activities:
+            enriched = _enrich_l5_activity(act.model_dump(), findings_by_check, spro_config, impact_index)
+            seen: set[str] = set()
+            rates: list[float] = []
+            affected = 0
+            for f in enriched["fields"]:
+                cid = f["check_id"]
+                if cid and cid in findings_by_check and cid not in seen:
+                    seen.add(cid)
+                    affected += int(f["affected_count"] or 0)
+                    if f["pass_rate"] is not None:
+                        rates.append(float(f["pass_rate"]))
+            out[act.id] = {"dq_status": enriched["activity_status"], "pass_rate": min(rates) if rates else None,
+                           "affected_count": affected, "finding_count": len(seen)}
+    return out
 
 
 def _enrich_l5(
@@ -203,8 +262,8 @@ def _enrich_l5(
     impact_index: dict[str, list[dict[str, Any]]],
 ) -> dict[str, Any]:
     """Enrich a single L5 field with DQ status and config dependency."""
-    check_id = l5.get("check_id", "")
-    config_source = l5.get("config_source", "")
+    check_id = l5.get("check_id") or ""
+    config_source = l5.get("config_source") or ""
 
     result: dict[str, Any] = {
         "field": l5.get("field", ""),

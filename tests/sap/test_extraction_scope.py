@@ -48,3 +48,14 @@ def test_default_window_has_a_wider_fallback():
     assert plan_modules(["fi_gl"], D)["BKPF"].wide_where.startswith("BUDAT >= '")
     dated = normalise_scope({"date_from": "2026-01-01"})
     assert plan_modules(["fi_gl"], D, dated)["BKPF"].wide_where is None  # the user's range is never widened
+
+
+def test_process_discovery_tables_planned_with_12_month_windows():
+    plans = plan_modules(["sd_sales_orders", "mm_purchasing"], D)
+    for t, col in {"VBRK": "FKDAT", "LIKP": "ERDAT", "MKPF": "BUDAT", "EBAN": "BADAT"}.items():
+        assert plans[t].where.startswith(f"{col} >= '") and plans[t].purpose == "data"
+        assert plans[t].keys  # DDIC key always read
+    assert {"BLART", "BUDAT"} <= plans["RBKP"].fields
+    for t, f in {"TVAK": "AUART", "T156": "BWART", "TVLK": "LFART", "TVFK": "FKART"}.items():
+        assert plans[t].purpose == "config" and f in plans[t].fields and plans[t].where is None
+    assert "BKPF" not in plan_modules(["sd_sales_orders"], D) and "MSEG" not in plans

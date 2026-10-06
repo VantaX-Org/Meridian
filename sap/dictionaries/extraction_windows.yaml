@@ -29,6 +29,11 @@ BSAK:  {where: "AUGDT >= '{months_ago:12}'"}
 BSAD:  {where: "AUGDT >= '{months_ago:12}'"}
 EKBE:  {via: EKPO}
 RBKP:  {where: "BUDAT >= '{months_ago:24}'"}
+# process discovery (counts + recency of document types): last 12 months of each header
+VBRK:  {where: "FKDAT >= '{months_ago:12}'"}
+LIKP:  {where: "ERDAT >= '{months_ago:12}'"}
+MKPF:  {where: "BUDAT >= '{months_ago:12}'"}
+EBAN:  {where: "BADAT >= '{months_ago:12}'"}
 RSEG:  {via: RBKP}
 # condition records still valid today or later (expired prices cannot be used)
 KONH:  {where: "DATBI >= '{months_ago:0}'"}

@@ -48,3 +48,54 @@ def test_engines_run_on_flattened_frames():
     z = ZObjectIntelligenceEngine().analyze(records, None, None)
     names = {o.object_name for o in z.detection.detected_objects}
     assert "ZK" in names and "ZZREGION" in names
+
+
+def test_variant_discovery_failure_does_not_fail_the_task(monkeypatch):
+    """Discovery is best effort: the config run still completes and persists."""
+    import contextlib
+    from types import SimpleNamespace
+
+    import api.services.config_intelligence.variant_discovery as vd
+    import api.services.source_design as sd
+    import workers.dataset as ds
+    import workers.tasks.run_config_intelligence as task
+
+    class _Result:
+        def fetchone(self):
+            return ({},)
+
+    class _Session(contextlib.AbstractContextManager):
+        def __init__(self, *_a, **_k):
+            pass
+
+        def __exit__(self, *_a):
+            return None
+
+        def execute(self, *_a, **_k):
+            return _Result()
+
+    frames = SimpleNamespace(frames=_frames(), unsplittable=[])
+    monkeypatch.setattr(task, "Session", _Session)
+    monkeypatch.setattr(task, "get_sync_engine", lambda: None)
+    monkeypatch.setattr(sd, "dictionary_for", lambda *_a, **_k: None)
+    monkeypatch.setattr(ds, "load_dataset", lambda *_a, **_k: (frames, None, 5, None))
+
+    async def _z(_tenant):
+        raise RuntimeError("skip z")
+
+    persisted: list[str] = []
+
+    async def _persist(*_a, **_k):
+        persisted.append("config")
+        return {"drift": 0}
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("discovery broke")
+
+    monkeypatch.setattr(task, "_z_context", _z)
+    monkeypatch.setattr(task, "_persist", _persist)
+    monkeypatch.setattr(vd, "discover_variants", _boom)
+
+    out = task.run_config_intelligence.run("00000000-0000-0000-0000-0000000000aa",
+                                           "00000000-0000-0000-0000-000000000001", "x")
+    assert out["status"] == "complete" and out["process_variants"] == 0 and persisted == ["config"]

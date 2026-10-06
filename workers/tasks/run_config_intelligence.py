@@ -111,6 +111,18 @@ async def _persist(tenant_id: str, run_id: str, config_result, z_result) -> dict
     return out
 
 
+async def _persist_variants(tenant_id: str, version_id: str, variants) -> int:
+    from api.services.config_intelligence.persistence import ConfigIntelligencePersistence
+
+    engine = create_async_engine(_async_url(), pool_pre_ping=True)
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with maker() as db:
+            return await ConfigIntelligencePersistence().save_variants(db, tenant_id, version_id, variants)
+    finally:
+        await engine.dispose()
+
+
 async def _z_context(tenant_id: str):
     from api.services.z_object_intelligence.persistence import ZObjectPersistence
 
@@ -144,6 +156,11 @@ def run_config_intelligence(self, version_id: str, tenant_id: str, parquet_path:
                               {"vid": version_id}).fetchone()
         metadata = (row[0] if row else None) or {}
         dictionary = dictionary_for(session, metadata.get("system_id"))
+        try:
+            from workers.tasks.run_checks import snapshot_as_of
+            as_of = snapshot_as_of(session, metadata)
+        except Exception:  # discovery falls back to the wall clock
+            as_of = None
 
     frames, flat, row_count, _ = load_dataset(parquet_path, dictionary, None)
     tables = dict(frames.frames)
@@ -168,11 +185,19 @@ def run_config_intelligence(self, version_id: str, tenant_id: str, parquet_path:
     except Exception as e:  # Z profiling must never cost the config run
         logger.warning("Z-object analysis skipped for %s: %s", version_id, e)
 
+    variants_stored = 0
+    try:
+        from api.services.config_intelligence.variant_discovery import discover_variants
+        variants_stored = asyncio.run(_persist_variants(tenant_id, version_id, discover_variants(tables, as_of)))
+    except Exception as e:  # variant discovery must never cost the config run
+        logger.warning("Process variant discovery skipped for %s: %s", version_id, e)
+
     stored = asyncio.run(_persist(tenant_id, version_id, config_result, z_result))
     summary = {
         "version_id": version_id, "status": "complete", "records": len(records), "rows": row_count,
         "config_elements": len(config_result.config_inventory), "processes": len(config_result.processes),
         "alignment_findings": len(config_result.alignment_findings), "drift": stored["drift"],
+        "process_variants": variants_stored,
         "z_objects": z_result.total_z_objects if z_result else 0,
         "z_anomalies": z_result.total_anomalies if z_result else 0,
     }

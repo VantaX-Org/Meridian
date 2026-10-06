@@ -1,0 +1,27 @@
+{
+ "domain": "XKOKO",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "X",
+   "high": null,
+   "text": "Cost element accounting"
+  },
+  {
+   "low": "N",
+   "high": null,
+   "text": "No cost element accounting"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Cost element accounting for delivery"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

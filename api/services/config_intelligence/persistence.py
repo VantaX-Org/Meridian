@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import date
 from typing import Optional
 
 from sqlalchemy import text
@@ -167,6 +168,24 @@ class ConfigIntelligencePersistence:
             )
 
         await db.commit()
+
+    async def save_variants(self, db: AsyncSession, tenant_id: str, version_id: str, variants) -> int:
+        """Replace the version's process variants (idempotent: delete, then insert)."""
+        await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant_id)})
+        await db.execute(text("DELETE FROM process_variants WHERE tenant_id = :tid AND version_id = :rid"),
+                         {"tid": str(tenant_id), "rid": str(version_id)})
+        for v in variants:
+            await db.execute(
+                text("INSERT INTO process_variants (id, tenant_id, version_id, process_id, l4_id, sap_table, "
+                     "sap_field, value, doc_count, first_seen, last_seen, classification, config_table, evidence) "
+                     "VALUES (:id, :tid, :rid, :pid, :l4, :tbl, :fld, :val, :n, :first, :last, :cls, :cfg, :ev)"),
+                {"id": str(uuid.uuid4()), "tid": str(tenant_id), "rid": str(version_id), "pid": v.process_id,
+                 "l4": v.l4_id, "tbl": v.sap_table, "fld": v.sap_field, "val": v.value, "n": v.doc_count,
+                 "first": date.fromisoformat(v.first_seen) if v.first_seen else None,
+                 "last": date.fromisoformat(v.last_seen) if v.last_seen else None,
+                 "cls": v.classification, "cfg": v.config_table, "ev": v.evidence})
+        await db.commit()
+        return len(variants)
 
     async def save_drift(
         self,

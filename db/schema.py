@@ -974,6 +974,62 @@ class RemediationEvent(Base):
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
 
+class ProcessModel(Base):
+    """Named, versioned process model (L1-L5 with BPMN diagrams) — see migration 062."""
+    __tablename__ = "process_models"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="draft")  # draft|published
+    current_version = Column(Integer, nullable=False, server_default="0")
+    created_by = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_process_models_name"),)
+
+
+class ProcessModelVersion(Base):
+    __tablename__ = "process_model_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    model_id = Column(UUID(as_uuid=True), ForeignKey("process_models.id", ondelete="CASCADE"), nullable=False)
+    version_no = Column(Integer, nullable=False)
+    document = Column(JSONB, nullable=False)
+    note = Column(Text, nullable=True)
+    created_by = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("model_id", "version_no", name="uq_process_model_versions"),)
+
+
+class ProcessVariant(Base):
+    """Discovery output: counts and dates per (table, field, value), never record values."""
+    __tablename__ = "process_variants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), nullable=False)
+    process_id = Column(Text, nullable=False)
+    l4_id = Column(Text, nullable=True)
+    sap_table = Column(Text, nullable=False)
+    sap_field = Column(Text, nullable=False)
+    value = Column(Text, nullable=False)
+    doc_count = Column(BigInteger, nullable=False)
+    first_seen = Column(Date, nullable=True)
+    last_seen = Column(Date, nullable=True)
+    classification = Column(Text, nullable=False)  # implemented|dormant|configured_not_used|customer_specific
+    config_table = Column(Text, nullable=True)
+    evidence = Column(Text, nullable=False, server_default="extracted")  # extracted|not_extracted
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "version_id", "sap_table", "sap_field", "value", name="uq_process_variants"),
+    )
+
+
 class FieldProfile(Base):
     """Profile of one TABLE.FIELD in one analysed version and object — see migration 051."""
     __tablename__ = "field_profiles"
