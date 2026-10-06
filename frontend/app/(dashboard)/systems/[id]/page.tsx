@@ -18,7 +18,8 @@ import {
 import { EmptyState, KeyValue, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally, type Status } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
-import { getSystemModules, getSystems, syncConfig, testConnection } from "@/lib/api/connectivity";
+import { ConfigLoadButton, ConfigLoadCard, configStatus, hasNoConfig, useConfigLoad } from "@/components/data/config-load";
+import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
@@ -145,7 +146,7 @@ export default function SystemPage() {
       {tab === "overview" ? <Overview id={id} modules={modules} versions={versions} onRun={(v) => router.push(`/data/runs/${v}`)} /> : null}
       {tab === "objects" ? <Objects id={id} modules={modules} versions={versions} canSync={can("trigger_sync")} canAnalyse={can("analyse")} onChanged={refresh} /> : null}
       {tab === "runs" ? <Runs versions={versions} loading={versionsQ.isLoading} /> : null}
-      {tab === "health" ? <Health id={id} modules={modules} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} /> : null}
+      {tab === "health" ? <Health id={id} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} /> : null}
       {tab === "pilot" ? <PilotTab id={id} /> : null}
 
       <Drawer open={drawer.value === "edit"} onClose={drawer.close} ariaLabel="Edit system" header={<Text variant="text-lead">Edit {alias}</Text>}>
@@ -213,6 +214,10 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
 }) {
   const router = useRouter();
   const latest = latestDqs(versions).version;
+  const sysType = useQuery({ queryKey: ["systems"], queryFn: getSystems }).data?.find((s) => s.id === id)?.system_type;
+  const cfg = useConfigLoad(id);
+  const cfgStatus = sysType ? configStatus(cfg.load, cfg.running, sysType) : "not_loaded";
+  const cfgLabel = cfgStatus === "not_available" ? "Not available" : cfgStatus === "loaded" || cfgStatus === "gaps" ? "Loaded" : cfgStatus === "loading" ? "Loading" : "Not loaded";
   const again = useMutation({
     mutationFn: (module: string) => startDownload(id, { objects: [module], scope: {}, analyse: false }),
     onSuccess: () => { toast.success("Extraction started"); onChanged(); },
@@ -229,7 +234,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
     { id: "enabled", header: "Enabled", meta: meta({ width: 90 }), cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
     { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }), cell: ({ row }) => row.original.row_count.toLocaleString() },
     { id: "synced", header: "Last synced", meta: meta({ width: 130 }), cell: ({ row }) => when(row.original.last_synced_at) },
-    { id: "config", header: "Config synced", meta: meta({ width: 120 }), cell: ({ row }) => (row.original.config_synced ? "Yes" : "No") },
+    { id: "config", header: "Configuration", meta: meta({ width: 120 }), cell: () => cfgLabel },
     { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }), cell: ({ row }) => {
       const d = latest?.dqs?.[row.original.module];
       return typeof d === "number" ? d.toFixed(1) : "—";
@@ -246,7 +251,7 @@ function Objects({ id, modules, versions, canSync, canAnalyse, onChanged }: {
         </Stack>
       );
     } },
-  ], [again, run, canSync, canAnalyse, latest, versions]);
+  ], [again, run, canSync, canAnalyse, latest, versions, cfgLabel]);
   return (
     <div className="ui-stack">
       {canSync ? <ScopePicker id={id} onDownloaded={onChanged} /> : null}
@@ -270,8 +275,8 @@ function Runs({ versions, loading }: { versions: SystemVersion[]; loading: boole
 
 /* ── Health ────────────────────────────────────────────────────────────── */
 
-function Health({ id, modules, canSync, canManage, onChanged }: {
-  id: string; modules: SystemModule[]; canSync: boolean; canManage: boolean; onChanged: () => void;
+function Health({ id, canSync, canManage, onChanged }: {
+  id: string; canSync: boolean; canManage: boolean; onChanged: () => void;
 }) {
   const systemsQ = useQuery({ queryKey: ["systems"], queryFn: getSystems });
   const system = systemsQ.data?.find((s) => s.id === id);
@@ -291,11 +296,7 @@ function Health({ id, modules, canSync, canManage, onChanged }: {
     onError: (e) => toast.error((e as Error).message || "Connection test failed"),
   });
   const testState: ConnectionTestState = test.isPending ? "testing" : test.isError ? "error" : test.data ? (test.data.status === "healthy" ? "success" : "error") : "idle";
-  const sync = useMutation({
-    mutationFn: () => syncConfig(id, modules.filter((m) => m.enabled).map((m) => m.module)),
-    onSuccess: () => { toast.success("Configuration sync started"); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Configuration sync refused"),
-  });
+  const cfg = useConfigLoad(id);
   const discover = useMutation({
     mutationFn: () => discoverSystem(id),
     onSuccess: () => { toast.success("Discovery started"); onChanged(); },
@@ -311,7 +312,7 @@ function Health({ id, modules, canSync, canManage, onChanged }: {
     <div className="ui-stack">
       <SectionCard title="Connection" action={<Stack direction="row" gap={2}>
         {canSync ? <ConnectionTestButton state={testState} onTest={() => test.mutate()} /> : null}
-        {canSync ? <Button size="sm" variant="secondary" disabled={sync.isPending || !modules.some((m) => m.enabled)} onClick={() => sync.mutate()}>Sync config</Button> : null}
+        {canSync && !hasNoConfig(system.system_type) ? <ConfigLoadButton running={cfg.running} loaded={!!cfg.load} onClick={() => cfg.start.mutate()} /> : null}
         {canSync ? <Button size="sm" variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>
           {running ? "Discovering" : snap ? "Discover again" : "Discover design"}</Button> : null}
       </Stack>}>
@@ -319,13 +320,13 @@ function Health({ id, modules, canSync, canManage, onChanged }: {
         <KeyValue rows={[
           { k: "Health", v: <StatusBadge status={system.health_status === "healthy" ? "ok" : system.health_status === "unknown" ? "idle" : "failed"}>{HEALTH_LABEL[system.health_status]}</StatusBadge> },
           { k: "Last health check", v: when(system.last_health_check, "Never") },
-          { k: "Configuration last synced", v: when(system.config_last_synced_at, "Never") },
-          { k: "Configuration sync status", v: system.config_sync_status ?? "Never run" },
           { k: "Discovery status", v: design?.discovery_status ?? system.discovery_status ?? "Never run" },
           { k: "SAP release", v: design?.sap_release ?? "Unknown", mono: true },
         ]} />
         {snap?.error ? <Banner tone="warning" title={`Discovery ${snap.status}`}>{snap.error}</Banner> : null}
       </SectionCard>
+
+      <ConfigLoadCard systemId={id} systemType={system.system_type} canLoad={canSync} />
 
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}

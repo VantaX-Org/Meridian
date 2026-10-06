@@ -21,6 +21,8 @@ import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { registerSystem, testDraftConnection, triggerSync } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
+import { startConfigLoad } from "@/lib/api/config-load";
+import { ConfigLoadChoice } from "@/components/data/config-load";
 import type { HealthStatus, SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -203,6 +205,7 @@ export function SystemsSurface() {
 function ConnectForm({ onDone }: { onDone: (id: string) => void }) {
   const [d, setD] = useState<Draft>(EMPTY);
   const [tested, setTested] = useState<{ connected: boolean; message: string } | null>(null);
+  const [skipLoad, setSkipLoad] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => { setD((p) => ({ ...p, [k]: v })); setTested(null); };
   const rfc = isRfc(d.system_type);
   const authSelectable = !rfc && AUTH_SELECTABLE.includes(d.system_type);
@@ -213,7 +216,11 @@ function ConnectForm({ onDone }: { onDone: (id: string) => void }) {
 
   const test = useMutation({ mutationFn: () => testDraftConnection(connectBody(d)), onSuccess: setTested, onError: (e) => toast.error((e as Error).message || "Test failed") });
   const create = useMutation({ mutationFn: () => registerSystem(connectBody(d)),
-    onSuccess: (s) => { toast.success(`${s.name} connected`); onDone(s.id); }, onError: (e) => toast.error((e as Error).message || "Not connected") });
+    onSuccess: (s) => {
+      toast.success(`${s.name} connected`);
+      if (!skipLoad && s.system_type !== "btp") startConfigLoad(s.id).catch(() => toast.error("Configuration not loaded. Load it from the system page."));
+      onDone(s.id);
+    }, onError: (e) => toast.error((e as Error).message || "Not connected") });
 
   const text = (k: keyof Draft, label: string, props: Partial<React.ComponentProps<typeof Input>> = {}, helper?: string) => (
     <Field label={label} helper={helper} required={!!props.required}>
@@ -257,6 +264,7 @@ function ConnectForm({ onDone }: { onDone: (id: string) => void }) {
         {text("description", "Description", { placeholder: "What this system is for" }, "Optional")}
         <Text variant="text-micro" tone="muted">Credentials are encrypted at rest in this deployment and never leave it.</Text>
         {tested ? <Banner tone={tested.connected ? "success" : "danger"} title={tested.connected ? "Connection succeeded" : "Connection failed"}>{tested.message}</Banner> : null}
+        {tested?.connected ? <ConfigLoadChoice systemType={d.system_type} skipped={skipLoad} onChange={setSkipLoad} /> : null}
         <Stack direction="row" gap={2}>
           <Button type="button" variant="secondary" onClick={() => test.mutate()} disabled={!valid || test.isPending}>{test.isPending ? "Testing…" : "Test connection"}</Button>
           <Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Connecting…" : "Connect"}</Button>
