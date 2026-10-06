@@ -13,14 +13,15 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EmptyState, FilterBar, PageHeader, TableSkeleton, Tally } from "@/components/ui-core";
+import { EmptyState, FilterBar, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally } from "@/components/ui-core";
 import { FeaturesTable } from "@/components/process/features";
 import { useFindingHref } from "@/components/process/shared";
 import {
-  ProcessReport, Select, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
+  ProcessReport, Select, Text, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
   type ProcessReportReadiness, type ProcessReportRecommendation,
 } from "@/components/aurora";
-import { getBusinessProcess, getConfigImpact } from "@/lib/api/connectivity";
+import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
+import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally } from "@/lib/api/config-load";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, formatDate } from "@/lib/format";
 import type { BusinessProcessL1, BusinessProcessL4, BusinessProcessL5Field, Version } from "@/types/api";
@@ -38,6 +39,42 @@ const red = (fs: BusinessProcessL5Field[]) => fs.filter((f) => f.dq_status === "
 const semantic = (pct: number, blocking: number): ProcessReportReadiness => (blocking ? "blocked" : pct >= 90 ? "ready" : "at-risk");
 const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" => (f.mandatory ? "critical" : (f.pass_rate ?? 100) < 50 ? "high" : "medium");
 
+const fmt1 = (n: number) => n.toFixed(1);
+const badge = (sv: string) => (sv === "critical" || sv === "high" || sv === "medium" || sv === "low" ? sv : sv === "warning" ? "medium" : "low");
+const records = (n: number) => `${n.toLocaleString()} ${n === 1 ? "record" : "records"}`;
+
+function RulesBlock({ title, t, findingHref, nested }: {
+  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined; nested?: boolean;
+}) {
+  const failing = t.applicable - t.passes;
+  return (
+    <div className="ui-stack">
+      <Text as={nested ? "h4" : "h3"} variant="text-body" tone="primary">{title}</Text>
+      <Text variant="text-small" tone="secondary">
+        {t.score === null ? "No rules apply" : `${fmt1(t.score)}, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
+      </Text>
+      {t.top_failing.length ? (
+        <ul className="ui-ranked" aria-label={`Top failing rules, ${title}`}>
+          {t.top_failing.slice(0, 5).map((f) => (
+            <li key={f.check_id}>
+              <Link href={findingHref(f.module, f.check_id) ?? "/analyse"}>
+                <StatusBadge status={badge(f.severity)} />
+                <span className="ui-ranked__title"><Mono>{f.check_id}</Mono></span>
+                <span className="ui-ranked__num aurora-number">{records(f.affected_count)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {t.not_applicable ? (
+        <Text variant="text-small" tone="secondary">
+          Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
+        </Text>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProcessReadiness() {
   const versions = useQuery({ queryKey: ["versions.list", { limit: 20 }], queryFn: () => getVersions({ limit: 20 }) });
   const latest = useMemo(() => versions.data?.versions.find(isComplete), [versions.data]);
@@ -49,6 +86,10 @@ export function ProcessReadiness() {
   const impact = useQuery({ queryKey: ["config-impact", latest?.id], enabled: !!latest, retry: false,
     queryFn: () => getConfigImpact(latest!.id), meta: { ignoreError: true } });
   const findingHref = useFindingHref(latest?.id);
+  const systems = useQuery({ queryKey: ["systems"], queryFn: getSystems, meta: { ignoreError: true } });
+  const [systemChoice, setSystem] = useState<string>("all");
+  const aware = useQuery({ queryKey: ["config-aware-score", latest?.id, systemChoice], enabled: !!latest, retry: false, meta: { ignoreError: true },
+    queryFn: () => getConfigAwareScore({ version_id: latest!.id, system_id: systemChoice === "all" ? undefined : systemChoice }) });
   const [l1Choice, setL1] = useState<string>("");
   const router = useRouter();
   const pathname = usePathname();
@@ -93,6 +134,12 @@ export function ProcessReadiness() {
   const pct = score(all);
   const passing = all.filter((f) => f.dq_status === "green").length;
   const blocking = red(all);
+  const awareL1: ConfigAwareL1 | undefined = aware.data?.processes.find((p) => p.l1 === l1.l1_id || p.name === l1.l1_name);
+  const loaded = !!aware.data?.config_load;
+  const tallyScope = awareL1 ?? aware.data?.config_aware;
+  const awareScore = tallyScope?.score ?? null;
+  const awareTone = awareScore === null ? undefined : awareScore < 70 ? "danger" : awareScore < 85 ? "warning" : undefined;
+  const firstSystem = systems.data?.[0];
   const checkIds = new Set(all.filter((f) => f.check_id).map((f) => f.check_id as string));
 
   const hierarchy: ProcessReportHierarchyNode[] = [{
@@ -158,12 +205,23 @@ export function ProcessReadiness() {
       <PageHeader title="Readiness" summary="How ready each process step is, given the data behind it." />
       <FilterBar actions={versionNote}>
         {objectPicker}
+        {(systems.data?.length ?? 0) > 1 ? (
+          <Select aria-label="System" value={systemChoice}
+            options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((x) => ({ value: x.id, label: x.name }))]}
+            onValueChange={setSystem} />
+        ) : null}
         {processes.length > 1 ? (
           <Select aria-label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
       </FilterBar>
       <Tally level={2} label={`${l1.l1_name} readiness`} figures={[
-        { label: "Fields passing", value: passing, unit: `of ${all.length.toLocaleString()}`, href: "/process?tab=readiness",
+        tallyScope ? {
+          label: "Passing applicable rules", value: tallyScope.passes, unit: `of ${tallyScope.applicable.toLocaleString()}`,
+          href: loaded || !firstSystem ? "#applicability" : `/systems/${firstSystem.id}?tab=health`, tone: loaded ? awareTone : undefined,
+          verdict: loaded
+            ? `${awareScore === null ? "No rules apply" : `${fmt1(awareScore)} of applicable rules pass`}, ${tallyScope.not_applicable.toLocaleString()} rules do not apply.`
+            : `All ${tallyScope.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.`,
+        } : { label: "Fields passing", value: passing, unit: `of ${all.length.toLocaleString()}`, href: "/process?tab=readiness",
           tone: blocking ? "danger" : pct >= 90 ? "success" : "warning",
           verdict: pct >= 90 ? `${pct}%, at or above the 90% line.` : `${pct}%, below the 90% line.` },
         { label: "Blocking fields", value: blocking, href: "/process?tab=readiness", tone: blocking ? "danger" : undefined,
@@ -173,6 +231,9 @@ export function ProcessReadiness() {
         { label: "Records failing", value: failing, href: "/process?tab=readiness",
           verdict: failing ? "Behind the blocking fields." : "No records fail these fields." },
       ]} />
+      <Text variant="text-small" tone="secondary">
+        DQS weighs six dimensions and caps on critical findings. Passing applicable rules counts only rules this system&apos;s configuration switches on. The two move together but are not the same number.
+      </Text>
       <ProcessReport
         processName={l1.l1_name}
         verdict={verdict}
@@ -187,6 +248,20 @@ export function ProcessReadiness() {
         blockingFindings={blockingFindings}
         recommendations={recommendations}
       />
+      {awareL1 ? (
+        <div id="applicability"><SectionCard title="Rules by process step">
+          <div className="ui-stack">
+            {!loaded ? (
+              <Text variant="text-small" tone="secondary">
+                All {awareL1.applicable.toLocaleString()} rules apply by default.{" "}
+                {firstSystem ? <>Load configuration for <Link className="ui-link" href={`/systems/${firstSystem.id}?tab=health`}>{firstSystem.name}</Link> to narrow this.</> : "Load configuration to narrow this."}
+              </Text>
+            ) : null}
+            <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
+            {awareL1.l2.map((l2) => <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} nested />)}
+          </div>
+        </SectionCard></div>
+      ) : null}
       {impact.data ? <FeaturesTable results={impact.data.results} versionId={latest.id} /> : null}
     </div>
   );
