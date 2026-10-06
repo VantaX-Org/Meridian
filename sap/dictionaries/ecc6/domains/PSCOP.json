@@ -1,0 +1,32 @@
+{
+ "domain": "PSCOP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Carry out new product selection"
+  },
+  {
+   "low": "A",
+   "high": null,
+   "text": "Copy result of product selection"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Like A, but product selection is never cancelled afterwards"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Reserve"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

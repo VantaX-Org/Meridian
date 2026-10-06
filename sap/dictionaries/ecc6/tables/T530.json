@@ -1,0 +1,117 @@
+{
+ "table": "T530",
+ "description": "Reasons for Actions",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "MASSN",
+   "key": true,
+   "data_element": "MASSN",
+   "domain": "MASSN",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Action Type",
+   "check_table": "T529A"
+  },
+  {
+   "pos": 3,
+   "name": "MASSG",
+   "key": true,
+   "data_element": "MASSG",
+   "domain": "MASSG",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Reason for Action",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "DUEVO",
+   "key": false,
+   "data_element": "P014_DUMAS",
+   "domain": "P014_DUMAS",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "DEUEV Action Indicator",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "ABKGD",
+   "key": false,
+   "data_element": "P014_DKABK",
+   "domain": "P014_DKABK",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "DEUEV Indicator for Miners' Reason for Abandonment",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "KUNBZ",
+   "key": false,
+   "data_element": "KUNBZ",
+   "domain": "KUNBZ",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Indicator for Irregular Payment",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "PERSP",
+   "key": false,
+   "data_element": "PERS3",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Period split for payroll accounting",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "OM_USED",
+   "key": false,
+   "data_element": "PA_OM_EVENT",
+   "domain": "XFELD",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "Indicator: Use of the action type in Organizational Mgt.",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "MASSN",
+   "foreign_table": "T529A",
+   "foreign_field": "MASSN"
+  }
+ ]
+}

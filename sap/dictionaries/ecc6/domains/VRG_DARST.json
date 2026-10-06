@@ -1,0 +1,27 @@
+{
+ "domain": "VRG_DARST",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "0",
+   "high": null,
+   "text": "Operation is displayed as large node in graphics"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Operation is displayed as medium node in graphics"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Operation is displayed as small node in graphics"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

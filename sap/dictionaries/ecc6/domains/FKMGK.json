@@ -1,0 +1,57 @@
+{
+ "domain": "FKMGK",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Order quantity less invoiced quantity"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Delivery quantity less invoiced quantity"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Order quantity"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Delivery quantity"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Goods receipt quantity less invoiced quantity"
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Invoice receipt quantity less invoiced quantity"
+  },
+  {
+   "low": "G",
+   "high": null,
+   "text": "Cumulative batch quantity minus invoiced quantity"
+  },
+  {
+   "low": "H",
+   "high": null,
+   "text": "Cumul.batch quantity"
+  },
+  {
+   "low": "I",
+   "high": null,
+   "text": "Purchase quantity minus quantity already billed"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,32 @@
+{
+ "domain": "COPY_CON",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Copy configuration / do not fix"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Copy / fix configuration"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Copy configuration /automatically fixed"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "No particular control"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

@@ -1,0 +1,37 @@
+{
+ "domain": "KZVBP",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "W mess. only issued in the case of non-availability"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "E mess. only issued in the case of non-availability"
+  },
+  {
+   "low": "E",
+   "high": null,
+   "text": "Message in any case: W mess. for non-avail., otherw. S mess."
+  },
+  {
+   "low": "F",
+   "high": null,
+   "text": "Message in any case: E mess. for non-avail., otherw. S mess."
+  },
+  {
+   "low": "S",
+   "high": null,
+   "text": "Availability check only with simulation"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
