@@ -18,13 +18,13 @@ import { copyToClipboard } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { activateContract, createContract, getContracts } from "@/lib/api/contracts";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import type { Contract, ContractStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
 const STATUS_TONE: Record<ContractStatus, ChipTone> = { active: "success", draft: "neutral", pending_approval: "warning", expired: "danger" };
 const STATUSES: ("all" | ContractStatus)[] = ["all", "active", "pending_approval", "draft", "expired"];
-const label = (s: string) => s.replace(/_/g, " ");
+const label = labelOf;
 const breached = (c: Contract) => c.status === "active" && c.latest_compliant === false;
 const matches = (c: Contract, q: string) => !q || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(q.toLowerCase());
 const TERMS: [keyof Contract, string][] = [["schema_contract", "Schema"], ["quality_contract", "Quality"], ["freshness_contract", "Freshness"], ["volume_contract", "Volume"]];
@@ -100,7 +100,7 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
         { k: "Checked", v: c.last_checked ? relativeTime(c.last_checked) : "Never" },
         { k: "Created", v: `${relativeTime(c.created_at)}${c.created_by ? ` by ${c.created_by}` : ""}` },
         { k: "Activated", v: c.activated_at ? `${relativeTime(c.activated_at)}${c.approved_by ? ` by ${c.approved_by}` : ""}` : "Not yet" },
-        { k: "Expires", v: c.expires_at ? new Date(c.expires_at).toLocaleDateString() : "Never" },
+        { k: "Expires", v: c.expires_at ? formatDate(c.expires_at) : "Never" },
       ]} />
       {terms.length ? terms.map(([k, title]) => (
         <div key={k} className="ui-detail-part"><h3 className="ui-detail-part__title">{title} terms</h3><pre className="ui-code">{JSON.stringify(c[k], null, 2)}</pre></div>

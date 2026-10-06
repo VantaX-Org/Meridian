@@ -25,6 +25,10 @@ const eslintConfig = defineConfig([
     },
     rules: {
       "aurora-writing/no-forbidden-copy": "error",
+      "aurora-writing/format-date-only": "error",
+      "aurora-writing/no-raw-id": "error",
+      "aurora-structure/one-h1": "error",
+      "aurora-structure/tally-figure-numeric": "error",
       "aurora-writing/no-forbidden-glyphs": "error",
       "aurora-structure/tally-figure-href": "error",
       "aurora-structure/one-tally": "error",

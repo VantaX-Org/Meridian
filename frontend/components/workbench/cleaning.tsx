@@ -21,7 +21,7 @@ import {
   approveCleaning, bulkApprove, downloadCleaningExport, getCleaningExportOptions, getCleaningQueue, rejectCleaning, rollbackCleaning,
   type CleaningQueueItem, type ExportFormat,
 } from "@/lib/api/cleaning";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 /** Confidence is 0..1 from the detector and 0..100 once stored; show one scale. */
@@ -200,7 +200,7 @@ function JobDetail({ item: i, canApprove, canApply, busy, onApprove, onReject, o
         { k: "Priority", v: String(i.priority) },
         { k: "Detected", v: relativeTime(i.detected_at) },
         { k: "Applied", v: i.applied_at ? relativeTime(i.applied_at) : "—" },
-        { k: "Roll back until", v: i.rollback_deadline ? new Date(i.rollback_deadline).toLocaleString() : "—" },
+        { k: "Roll back until", v: i.rollback_deadline ? formatDate(i.rollback_deadline, "datetime") : "—" },
         { k: "Rule", v: i.rule_id ?? "—", mono: !!i.rule_id },
         { k: "Golden record", v: i.golden_record_exists ? i.golden_record_id ?? "Exists" : "None", mono: !!i.golden_record_id },
       ]} />

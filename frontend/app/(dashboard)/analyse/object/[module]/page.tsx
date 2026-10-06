@@ -26,7 +26,7 @@ import { getConfigImpact } from "@/lib/api/connectivity";
 import { getFindings } from "@/lib/api/findings";
 import { getTriageMetrics } from "@/lib/api/triage";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import type { DimensionScores, Finding } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -76,7 +76,7 @@ export default function Object360Page() {
 
   const list: Finding[] = findings.data?.findings ?? [];
   const trend = [...runs].reverse().map((r) => ({
-    run: new Date(r.at).toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+    run: formatDate(r.at),
     dqs: Math.round(r.s.composite_score * 10) / 10,
   }));
 

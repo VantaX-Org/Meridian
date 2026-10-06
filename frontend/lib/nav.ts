@@ -100,7 +100,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    group: "Systems & data",
+    group: "Systems and data",
     items: [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
       { href: "/upload", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
@@ -137,11 +137,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    group: "Process & impact",
+    group: "Process and impact",
     items: [
       { href: "/process", label: "Process map", icon: WorkflowIcon, keywords: "process mining flow" },
       { href: "/business-process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc" },
-      { href: "/lineage", label: "Lineage & impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
+      { href: "/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
       { href: "/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering" },
     ],
   },
@@ -154,7 +154,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Admin",
     items: [
-      { href: "/admin", label: "Users & audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
       { href: "/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
@@ -169,7 +169,7 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/match-rules/constraints": "Pair constraints",
   "/exceptions/rules": "Exception rules",
   "/settings/exception-billing": "Exception billing",
-  "/settings/scoring": "Scoring & alerts",
+  "/settings/scoring": "Scoring and alerts",
   "/workbench/record": "Record report",
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",

@@ -71,9 +71,9 @@ export function TriageAdminSurface() {
     <div className="ui-page">
       <PageHeader title="Triage" summary="Who gets new issues, how long they have, and the calendar the clocks run on." />
       <Tally level={4} label="Triage setup" figures={[
-        { label: "Teams", value: teams.isLoading ? null : teams.data?.length || "None", loading: teams.isLoading, verdict: teams.data?.length ? "Rules can route to a team." : "No team to route to yet.", href: HREF },
-        { label: "Assignment rules", value: ruleQ.isLoading ? null : ruleQ.data?.length || "None", loading: ruleQ.isLoading, tone: idle ? "warning" : undefined, verdict: idle ? `${idle} switched off.` : ruleQ.data?.length ? "Every rule is active." : "Items go to the fallback user.", href: HREF },
-        { label: "SLA policies", value: sla.isLoading ? null : custom || "None", loading: sla.isLoading, verdict: custom ? "Saved by you." : "Defaults apply.", href: HREF },
+        { label: "Teams", value: teams.isLoading ? null : teams.data?.length ?? 0, loading: teams.isLoading, verdict: teams.data?.length ? "Rules can route to a team." : "No team to route to yet.", href: HREF },
+        { label: "Assignment rules", value: ruleQ.isLoading ? null : ruleQ.data?.length ?? 0, loading: ruleQ.isLoading, tone: idle ? "warning" : undefined, verdict: idle ? `${idle} switched off.` : ruleQ.data?.length ? "Every rule is active." : "Items go to the fallback user.", href: HREF },
+        { label: "SLA policies", value: sla.isLoading ? null : custom, loading: sla.isLoading, verdict: custom ? "Saved by you." : "Defaults apply.", href: HREF },
       ]} />
       {!rules && !settings ? <Banner tone="info" title="Read only">Changing triage needs the manage rules or manage settings permission.</Banner> : null}
       <TeamsSection write={rules} />

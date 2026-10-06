@@ -65,10 +65,10 @@ export function PilotTab({ id }: { id: string }) {
   return (
     <div className="ui-stack">
       <Tally level={4} label="Pilot scorecard" figures={[
-        { label: "Precision", value: pct(p?.precision ?? null), href: `${here}#rules`,
+        { label: "Precision", value: p?.precision == null ? null : Math.round(p.precision * 1000) / 10, unit: p?.precision == null ? undefined : "percent", href: `${here}#rules`,
           tone: p?.precision != null && p.precision < (p.target ?? 0.9) ? "warning" : undefined,
           verdict: p ? `${n(p.reviewed - p.false_positives)} of ${n(p.reviewed)} reviewed issues were real.` : "No issues reviewed yet." },
-        { label: "Recall", value: pct(rec?.recall ?? null), href: `${here}#missed`,
+        { label: "Recall", value: rec?.recall == null ? null : Math.round(rec.recall * 1000) / 10, unit: rec?.recall == null ? undefined : "percent", href: `${here}#missed`,
           verdict: rec?.known ? `${n(rec.caught)} of ${n(rec.known)} known issues were caught.` : "No known issues uploaded." },
         { label: "Rules to tune", value: tuning, href: `${here}#rules`, tone: tuning ? "warning" : undefined,
           verdict: tuning ? `${n(tuning)} of ${n(data?.rules.length ?? 0)} rules are below target.` : "No rule is below target." },

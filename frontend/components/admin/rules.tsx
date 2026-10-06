@@ -22,7 +22,7 @@ import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
-import { checkClassLabel, formatModuleName } from "@/lib/format";
+import { checkClassLabel, formatModuleName, formatDate, labelOf } from "@/lib/format";
 
 const HREF = "/admin?tab=rules";
 const meta = (m: AuroraColumnMeta) => m;
@@ -113,7 +113,7 @@ export function RulesSurface() {
     { id: "state", header: "State", meta: meta({ sticky: "start", width: 110 }), cell: ({ row }) => (
       <Chip tone={row.original.enabled ? "success" : "neutral"} selected={row.original.enabled}
         onClick={canManage ? () => toggle.mutate({ id: row.original.id, enabled: !row.original.enabled }) : undefined}
-        aria-label={`${row.original.enabled ? "Disable" : "Enable"} ${row.original.name}`}>{row.original.enabled ? "enabled" : "disabled"}</Chip>) },
+        aria-label={`${row.original.enabled ? "Disable" : "Enable"} ${row.original.name}`}>{labelOf(row.original.enabled ? "enabled" : "disabled")}</Chip>) },
     { id: "rule", header: "Rule", cell: ({ row }) => (
       <span className="ui-cell-stack">
         <span className="ui-cell-stack__main"><strong>{row.original.name}</strong></span>
@@ -124,7 +124,7 @@ export function RulesSurface() {
     { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{row.original.severity}</StatusBadge> },
     { id: "source", header: "Source", meta: meta({ width: 90 }), cell: ({ row }) => SOURCE_LABEL[row.original.source] ?? row.original.source },
     { id: "pass", header: "Last pass rate", meta: meta({ width: 120, align: "end" }), cell: ({ row }) => (
-      <span className="ui-num" title={row.original.last_run_at ? `Last run ${new Date(row.original.last_run_at).toLocaleString()}` : "Not run yet"}>
+      <span className="ui-num" title={row.original.last_run_at ? `Last run ${formatDate(row.original.last_run_at, "datetime")}` : "Not run yet"}>
         {row.original.last_pass_rate != null ? pct(row.original.last_pass_rate) : "—"}</span>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [canManage, toggle.isPending]);
@@ -137,7 +137,7 @@ export function RulesSurface() {
       <Tally level={4} label="Rule library" figures={[
         { label: "Rules", value: summary.isLoading ? null : totals.yaml + totals.other || rules.length, loading: summary.isLoading, verdict: `${totals.yaml.toLocaleString()} built in, ${totals.other.toLocaleString()} HQ, mined or custom.`, href: HREF },
         { label: "Enabled", value: summary.isLoading ? null : totals.enabled, loading: summary.isLoading, tone: "success", verdict: "Run on every analysis.", href: HREF },
-        { label: "Disabled", value: summary.isLoading ? null : totals.disabled || "None", loading: summary.isLoading, tone: totals.disabled ? "warning" : undefined, verdict: totals.disabled ? "Skipped by analyses." : "Every rule is active.", href: HREF },
+        { label: "Disabled", value: summary.isLoading ? null : totals.disabled, loading: summary.isLoading, tone: totals.disabled ? "warning" : undefined, verdict: totals.disabled ? "Skipped by analyses." : "Every rule is active.", href: HREF },
       ]} />
       <div className="ui-stack" style={{ gap: "var(--aurora-space-2)" }}>
         <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Filter rules" }} onClear={filtered ? clearFilters : undefined}
@@ -169,8 +169,8 @@ export function RulesSurface() {
               { k: "Source", v: selected.source === "yaml" ? `built-in${selected.source_yaml ? `, ${selected.source_yaml}` : ""}` : SOURCE_LABEL[selected.source] ?? selected.source },
               { k: "Authority", v: authority(selected) === "shipped" ? "SAP standard (shipped)" : "Customer configured" },
               { k: "State", v: <StatusBadge status={selected.enabled ? "ok" : "idle"}>{selected.enabled ? "enabled" : "disabled"}</StatusBadge> },
-              { k: "Updated", v: new Date(selected.updated_at).toLocaleString() },
-              { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${new Date(selected.last_run_at).toLocaleString()}` : ""}` : "not run yet" },
+              { k: "Updated", v: formatDate(selected.updated_at, "datetime") },
+              { k: "Last run", v: selected.last_pass_rate != null ? `${pct(selected.last_pass_rate)} pass${selected.last_run_at ? `, ${formatDate(selected.last_run_at, "datetime")}` : ""}` : "not run yet" },
               ...(valuesOf(selected, "check_class").length
                 ? [{ k: "Check", v: valuesOf(selected, "check_class").map((c, i) => <span key={c} title={c}>{i ? ", " : ""}{checkClassLabel(c)}</span>) }]
                 : []),
@@ -274,7 +274,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
           </Field>
         )}
         {cls === "cross_field_check" && (
-          <Field label="Fails when" helper="Backtick columns; use == != < > & | ~ and .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' & `LFA1.STCD1`.isna()">
+          <Field label="Fails when" helper="Backtick columns; use == != < > and, or, not, .isna() / .notna(), e.g. `LFA1.LAND1` == 'ZA' and `LFA1.STCD1`.isna()">
             {({ controlId }) => <Textarea id={controlId} rows={3} className="ui-mono" value={draft.fail_when ?? ""} onChange={(e) => setDraft({ fail_when: e.target.value })} />}
           </Field>
         )}
@@ -291,7 +291,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         <Field label="Dry run against" helper={draft.module && versions.data?.length === 0 ? "No analysed version holds this object yet" : undefined}>
           {({ controlId }) => <Select id={controlId} placeholder={draft.module ? "Choose a version" : "Choose an object first"}
             value={draft.version_id ?? ""} disabled={!versions.data?.length}
-            options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${new Date(v.run_at).toLocaleString()}${v.label ? `, ${v.label}` : ""}` }))}
+            options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
             onValueChange={(v) => setDraft({ version_id: v })} />}
         </Field>
         {error ? <Banner tone="danger" title="Not valid yet">{error}</Banner> : null}

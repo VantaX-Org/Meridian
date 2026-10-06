@@ -13,7 +13,7 @@
   flex-direction: column;
   gap: var(--aurora-space-6);
   min-width: 0;
-  padding: var(--aurora-space-6);
+  padding: var(--aurora-space-4) var(--aurora-space-6) var(--aurora-space-6);
 }
 
 .ui-page-header {

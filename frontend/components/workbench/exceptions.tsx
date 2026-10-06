@@ -19,7 +19,7 @@ import { copyToClipboard } from "@/lib/actions";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createException, escalateException, getExceptionMetrics, getExceptions, resolveException } from "@/lib/api/exceptions";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate } from "@/lib/format";
 import type { Exception, ExceptionStatus } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -71,7 +71,7 @@ export function ExceptionsSurface() {
     { id: "title", header: "Exception", meta: meta({ minWidth: 280 }), cell: ({ row }) => (
       <span className="ui-cell-stack">
         <span className="ui-cell-stack__main">{row.original.title}</span>
-        <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{row.original.category}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
+        <span className="ui-cell-stack__sub"><span>{label(row.original.type)}</span><span>{label(row.original.category)}</span>{row.original.source_system ? <Mono>{row.original.source_system}</Mono> : null}</span>
       </span>) },
     { id: "severity", header: "Severity", meta: meta({ width: 110 }), cell: ({ row }) => <StatusBadge status={sev(row.original.severity)}>{label(sev(row.original.severity))}</StatusBadge> },
     { id: "tier", header: "Tier", meta: meta({ width: 70, align: "end", numeric: true }), cell: ({ row }) => row.original.escalation_tier },
@@ -90,7 +90,7 @@ export function ExceptionsSurface() {
           { label: "Past SLA", value: m ? m.overdue_count : null, loading: mq.isLoading, tone: m?.overdue_count ? "danger" : undefined, verdict: m?.overdue_count ? "Open beyond their deadline." : "Nothing past due.", href: "/exceptions?status=open" },
           { label: "Resolved, last 7 days", value: m ? m.resolved_count : null, loading: mq.isLoading, verdict: m?.resolved_count ? "Settled this week." : "Nothing settled this week.", href: "/exceptions?status=resolved" },
           /* With nothing resolved yet the endpoint returns 0 h and 100 %; show a plain word, not made-up figures. */
-          { label: "Mean time to resolve", value: m ? (resolvedAny ? Math.round(m.avg_resolution_hours * 10) / 10 : "None") : null, unit: resolvedAny ? "h" : undefined, loading: mq.isLoading,
+          { label: "Mean time to resolve", value: m ? (resolvedAny ? Math.round(m.avg_resolution_hours * 10) / 10 : null) : null, unit: resolvedAny ? "h" : undefined, loading: mq.isLoading,
             tone: resolvedAny && m.sla_compliance_pct < 90 ? "warning" : undefined,
             verdict: resolvedAny ? `${Math.round(m.sla_compliance_pct)}% resolved within SLA.` : "Nothing resolved yet.", href: "/exceptions?status=resolved" },
         ]} />
@@ -140,10 +140,10 @@ function ExceptionDetail({ exception: e, canApprove, onChanged }: { exception: E
     <div className="ui-detail">
       <p className="ui-note">{e.description}</p>
       <KeyValue rows={[
-        { k: "Type", v: label(e.type) }, { k: "Category", v: e.category }, { k: "Severity", v: label(e.severity) },
+        { k: "Type", v: label(e.type) }, { k: "Category", v: label(e.category) }, { k: "Severity", v: label(e.severity) },
         { k: "Source", v: e.source_system ?? "—", mono: !!e.source_system }, { k: "Reference", v: e.source_reference ?? "—", mono: !!e.source_reference },
         { k: "Assigned", v: e.assigned_to ?? "—" }, { k: "Escalation tier", v: String(e.escalation_tier) },
-        { k: "SLA", v: e.sla_deadline ? new Date(e.sla_deadline).toLocaleString() : "—" },
+        { k: "SLA", v: e.sla_deadline ? formatDate(e.sla_deadline, "datetime") : "—" },
         { k: "Raised", v: relativeTime(e.created_at) }, { k: "Resolved", v: e.resolved_at ? relativeTime(e.resolved_at) : "—" },
         { k: "Root cause", v: e.root_cause_category ? label(e.root_cause_category) : "—" }, { k: "Resolution", v: e.resolution_type ? label(e.resolution_type) : "—" },
       ]} />

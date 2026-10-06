@@ -12,7 +12,7 @@ import {
   getDesignTable,
   getDesignTables,
 } from "@/lib/api/source-design";
-import { relativeTime } from "@/lib/format";
+import { relativeTime, formatDate } from "@/lib/format";
 
 const PAGE = 100;
 const STATUS_TONE: Record<string, ChipTone> = {
@@ -207,7 +207,7 @@ export function SnapshotsTab({ id }: { id: string }) {
   const a = from || done[1]?.id || "";
   const b = to || done[0]?.id || "";
   const { data: diff } = useQuery({ queryKey: ["design-diff", id, a, b], queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
-  const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? new Date(s.started_at).toLocaleString() : s.id}, ${s.tables} tables` }));
+  const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
   return (
     <Stack gap={4}>
       <table className="w-full text-[13px]">
@@ -216,7 +216,7 @@ export function SnapshotsTab({ id }: { id: string }) {
         <tbody>
           {snaps.map((s) => (
             <tr key={s.id}>
-              <td className={td}>{s.started_at ? new Date(s.started_at).toLocaleString() : "—"}</td>
+              <td className={td}>{s.started_at ? formatDate(s.started_at, "datetime") : "—"}</td>
               <td className={td}><span title={s.error ?? undefined}><Chip tone={tone(s.status)}>{s.status}</Chip></span></td>
               <td className={`${td} text-right aurora-number`}>{s.tables}</td>
               <td className={`${td} text-right aurora-number`}>{s.customer_tables}</td>

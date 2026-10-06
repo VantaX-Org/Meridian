@@ -178,6 +178,47 @@ const urlIsState = {
   },
 };
 
+// Rule 16: one h1 per route, and PageHeader (or AuthFrame) owns it.
+const oneH1 = mk({ h1: "Only PageHeader renders the h1. Use PageHeader, or a lower heading level." }, (context) => {
+  const f = norm(context.filename);
+  if (f.endsWith("/components/ui-core/index.tsx") || f.endsWith("/components/auth/auth-frame.tsx")) return {};
+  const lit = (a) => (a?.value?.type === "Literal" ? a.value.value : a?.value?.expression?.value);
+  return {
+    JSXOpeningElement(node) {
+      const n = jsxName(node.name);
+      const as = lit(attr(node, "as"));
+      if (n === "h1" || as === "h1" || (n === "Text" && !as && lit(attr(node, "variant")) === "display-lg")) context.report({ node, messageId: "h1" });
+    },
+  };
+});
+
+// Rule 17: a figure is a number. Words go in `text`, absence is null with a verdict.
+const tallyFigureNumeric = mk(
+  { str: "A figure's value is a number or null. Put a word or formatted figure in `text`.", fallback: "No string fallback in a figure. Use null and say why in the verdict." },
+  (context) => {
+    const bad = (n, node) => {
+      if (n?.type === "Literal" && typeof n.value === "string") context.report({ node, messageId: "str" });
+      else if (n?.type === "TemplateLiteral" && n.expressions.length === 0) context.report({ node, messageId: "str" });
+      else if (n?.type === "LogicalExpression" && n.right.type === "Literal" && typeof n.right.value === "string") context.report({ node, messageId: "fallback" });
+      else if (n?.type === "ConditionalExpression") { bad(n.consequent, node); bad(n.alternate, node); }
+    };
+    return {
+      JSXOpeningElement(node) {
+        if (!["Tally", "TallyFigure"].includes(jsxName(node.name))) return;
+        const v = attr(node, "value")?.value;
+        if (v?.type === "JSXExpressionContainer") bad(v.expression, node);
+        else if (v?.type === "Literal") context.report({ node, messageId: "str" });
+      },
+      ObjectExpression(node) {
+        const keys = new Set(node.properties.map(keyName));
+        if (!(keys.has("label") && keys.has("value") && keys.has("href")) || keys.has("id")) return;
+        const p = node.properties.find((q) => keyName(q) === "value");
+        bad(p.value, p);
+      },
+    };
+  },
+);
+
 const plugin = {
   meta: { name: "aurora-structure", version: "1.0.0" },
   rules: {
@@ -190,6 +231,8 @@ const plugin = {
     "empty-state-no-media": emptyStateNoMedia,
     "no-invented-progress": noInventedProgress,
     "url-is-state": urlIsState,
+    "one-h1": oneH1,
+    "tally-figure-numeric": tallyFigureNumeric,
   },
 };
 

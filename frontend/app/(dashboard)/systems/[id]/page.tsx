@@ -23,7 +23,7 @@ import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import type { SystemModule } from "@/types/api";
@@ -125,12 +125,12 @@ export default function SystemPage() {
       ) : null}
 
       <Tally level={2} label={`${alias} at a glance`} figures={[
-        { label: "Health", value: HEALTH_LABEL[system.health_status], href: `${here}?tab=health`,
+        { label: "Health", value: null, text: HEALTH_LABEL[system.health_status], href: `${here}?tab=health`,
           tone: system.health_status === "healthy" ? "success" : system.health_status === "unknown" ? undefined : "danger",
           verdict: system.last_health_check ? `Last checked ${relativeTime(system.last_health_check)}.` : "The connection has not been tested." },
         modules.length && loaded
           ? { label: "Objects", value: loaded, unit: `of ${modules.length}`, href: `${here}?tab=objects`, loading: modulesQ.isLoading, verdict: `${loaded} of ${modules.length} objects have rows.` }
-          : { label: "Objects", value: "Never extracted", href: `${here}?tab=objects`, loading: modulesQ.isLoading, verdict: "No object has rows yet." },
+          : { label: "Objects", value: null, href: `${here}?tab=objects`, loading: modulesQ.isLoading, verdict: "Never extracted. Download from the source." },
         { label: "Latest DQS", value: dqs === null ? null : Number(dqs.toFixed(1)), href: latest ? findingsHref(latest.id) : `${here}?tab=runs`,
           loading: versionsQ.isLoading, verdict: latest ? `Mean over ${Object.values(latest.dqs).filter((d) => d !== null).length} objects, ${relativeTime(latest.analysed_at ?? latest.run_at)}.` : "Not analysed yet." },
         { label: "Open findings", value: latest ? aggQ.data?.total ?? null : null, href: latest ? findingsHref(latest.id) : `${here}?tab=runs`,
@@ -167,7 +167,7 @@ function Overview({ id, modules, versions, onRun }: { id: string; modules: Syste
       <div className="mn-charts">
         <SectionCard title="Score per run" meta={scored.length ? `${scored.length} runs` : undefined}>
           {scored.length < 2 ? <EmptyState>Two analysed runs are needed to draw a trend.</EmptyState> : (
-            <LineChart data={scored.map((v) => ({ run: new Date(v.run_at).toLocaleDateString(), dqs: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
+            <LineChart data={scored.map((v) => ({ run: formatDate(v.run_at), dqs: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
               xKey="run" series={[{ key: "dqs", label: "DQS" }]} height={240} ariaLabel="Score per run"
               onPointClick={(i) => router.push(findingsHref(scored[i].id))} />
           )}
@@ -192,7 +192,7 @@ function runColumns(): ColumnDef<SystemVersion, unknown>[] {
   return [
     { id: "run", header: "Run", meta: meta({ sticky: "start", width: 220 }), cell: ({ row }) => (
       <Link href={`/data/runs/${row.original.id}`} className="ui-link">
-        {row.original.label ?? new Date(row.original.run_at).toLocaleString()}
+        {row.original.label ?? formatDate(row.original.run_at, "datetime")}
       </Link>) },
     { id: "status", header: "Status", meta: meta({ width: 120 }),
       cell: ({ row }) => <StatusBadge status={RUN_STATUS[row.original.status] ?? "idle"}>{row.original.status}</StatusBadge> },

@@ -19,7 +19,7 @@ import type { ChipTone } from "@/components/aurora";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { approveProposedRule, getMatchRules, getProposedRules, rejectProposedRule } from "@/lib/api/match-rules";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate } from "@/lib/format";
 import type { AIProposedRule, MatchRule } from "@/types/api";
 
 type Status = AIProposedRule["status"];
@@ -115,7 +115,7 @@ export function AiRulesSurface() {
   const nOk = approved.data?.rules.length ?? null;
   const nNo = rejected.data?.rules.length ?? null;
   const decided = (nOk ?? 0) + (nNo ?? 0);
-  const rate = nOk === null || nNo === null ? null : decided ? Math.round((nOk / decided) * 100) : "None";
+  const rate = nOk === null || nNo === null ? null : decided ? Math.round((nOk / decided) * 100) : null;
   const loading = pending.isLoading || approved.isLoading || rejected.isLoading;
 
   return (
@@ -168,8 +168,8 @@ export function AiRulesSurface() {
               { k: "Corrections", v: `${open.supporting_correction_count} (${confidence(open.supporting_correction_count).label.toLowerCase()} confidence)` },
               { k: "Rationale", v: open.rationale || "No rationale recorded." },
               { k: "If approved", v: impact(open, rules) },
-              { k: "Proposed", v: new Date(open.created_at).toLocaleString() },
-              ...(open.reviewed_at ? [{ k: `Reviewed (${open.status})`, v: new Date(open.reviewed_at).toLocaleString() }] : []),
+              { k: "Proposed", v: formatDate(open.created_at, "datetime") },
+              ...(open.reviewed_at ? [{ k: `Reviewed (${open.status})`, v: formatDate(open.reviewed_at, "datetime") }] : []),
             ]} />
           </div>
         ) : null}

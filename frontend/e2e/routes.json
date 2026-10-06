@@ -2,116 +2,116 @@
   {
     "name": "command-centre",
     "path": "/",
-    "heading": "Home"
+    "heading": "Overview"
   },
   {
     "name": "executive-report",
     "path": "/?tab=report",
-    "heading": "Home"
+    "heading": "Executive report"
   },
   {
     "name": "systems",
     "path": "/data?tab=systems",
-    "heading": "Connect & load"
+    "heading": "Systems"
   },
   {
     "name": "runs",
     "path": "/data?tab=runs",
-    "heading": "Connect & load"
+    "heading": "Jobs"
   },
   {
     "name": "import",
     "path": "/data?tab=import",
-    "heading": "Connect & load"
+    "heading": "Import"
   },
   {
     "name": "analyses",
     "path": "/analyse?tab=analyses",
-    "heading": "Analyse"
+    "heading": "Analysis runs"
   },
   {
     "name": "workbench",
     "path": "/workbench",
-    "heading": "Fix"
+    "heading": "Steward inbox"
   },
   {
     "name": "process",
     "path": "/process?tab=readiness",
-    "heading": "Process"
+    "heading": "Readiness"
   },
   {
     "name": "admin",
     "path": "/admin?tab=scoring",
-    "heading": "Admin"
+    "heading": "Scoring and alerts"
   },
   {
     "name": "users",
     "path": "/admin?tab=users",
-    "heading": "Admin"
+    "heading": "Users and audit"
   },
   {
     "name": "findings",
     "path": "/analyse?tab=findings",
-    "heading": "Analyse"
+    "heading": "Findings"
   },
   {
     "name": "cleaning",
     "path": "/workbench?tab=cleaning",
-    "heading": "Fix"
+    "heading": "Cleaning"
   },
   {
     "name": "exceptions",
     "path": "/workbench?tab=exceptions",
-    "heading": "Fix"
+    "heading": "Exceptions"
   },
   {
     "name": "dedup",
     "path": "/workbench?tab=dedup",
-    "heading": "Fix"
+    "heading": "Duplicates"
   },
   {
     "name": "golden",
     "path": "/workbench?tab=golden",
-    "heading": "Fix"
+    "heading": "Golden records"
   },
   {
     "name": "glossary",
     "path": "/workbench?tab=glossary",
-    "heading": "Fix"
+    "heading": "Glossary"
   },
   {
     "name": "reports",
     "path": "/analyse?tab=reports",
-    "heading": "Analyse"
+    "heading": "Reports"
   },
   {
     "name": "notifications",
     "path": "/?tab=notifications",
-    "heading": "Home"
+    "heading": "Notifications"
   },
   {
     "name": "settings",
     "path": "/admin?tab=settings",
-    "heading": "Admin"
+    "heading": "Settings"
   },
   {
     "name": "rules",
     "path": "/admin?tab=rules",
-    "heading": "Admin"
+    "heading": "Rules"
   },
   {
     "name": "ai",
     "path": "/admin?tab=ai",
-    "heading": "Admin"
+    "heading": "AI"
   },
   {
     "name": "licence",
     "path": "/admin?tab=licence",
-    "heading": "Admin"
+    "heading": "Licence"
   },
   {
     "name": "contracts",
     "path": "/admin?tab=contracts",
-    "heading": "Admin"
+    "heading": "Contracts"
   }
 ]

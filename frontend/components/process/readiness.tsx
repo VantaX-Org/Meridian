@@ -12,7 +12,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { EmptyState, FilterBar, TableSkeleton, Tally } from "@/components/ui-core";
+import { EmptyState, FilterBar, PageHeader, TableSkeleton, Tally } from "@/components/ui-core";
 import { FeaturesTable } from "@/components/process/features";
 import { useFindingHref } from "@/components/process/shared";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/components/aurora";
 import { getBusinessProcess, getConfigImpact } from "@/lib/api/connectivity";
 import { getVersions } from "@/lib/api/versions";
-import { formatModuleName } from "@/lib/format";
+import { formatModuleName, formatDate } from "@/lib/format";
 import type { BusinessProcessL1, BusinessProcessL5Field, Version } from "@/types/api";
 
 const COMPLETE = new Set(["complete", "agents_running", "agents_complete", "agents_failed", "ai_enriching", "ai_enriched"]);
@@ -65,7 +65,7 @@ export function ProcessReadiness() {
     <Select aria-label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
       onValueChange={(m) => { setObject(m); setL1(""); }} />
   );
-  const versionNote = <span className="ui-micro">Version {latest.label ?? latest.id.slice(0, 8)}, run {new Date(latest.run_at).toLocaleString()}</span>;
+  const versionNote = <span className="ui-micro">Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}</span>;
   if (!l1) {
     return (
       <div className="ui-page">
@@ -142,6 +142,7 @@ export function ProcessReadiness() {
 
   return (
     <div className="ui-page">
+      <PageHeader title="Readiness" summary="How ready each process step is, given the data behind it." />
       <FilterBar actions={versionNote}>
         {objectPicker}
         {processes.length > 1 ? (
@@ -164,7 +165,7 @@ export function ProcessReadiness() {
         support={l1.l1_description}
         readiness={pct}
         readinessSemantic={semantic(pct, blocking)}
-        lastUpdated={new Date(latest.run_at).toLocaleDateString("en-GB")}
+        lastUpdated={formatDate(latest.run_at)}
         hierarchy={hierarchy}
         configAlignment={configAlignment}
         blockingFindings={blockingFindings}

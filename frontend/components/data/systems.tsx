@@ -55,8 +55,11 @@ export function latestDqs(versions: SystemVersion[]): { dqs: number | null; vers
 
 type Row = {
   system: SAPSystemExtended; modules: SystemModule[] | undefined; versions: SystemVersion[] | undefined;
-  loadedObjects: number; rows: number; lastExtraction: string | null; dqs: number | null;
+  loadedObjects: number; rows: number; lastExtraction: string | null; dqs: number | null; loading: boolean;
 };
+
+const NONE_YET = <span title="No extraction yet">—</span>;
+const PENDING = <span className="ui-skeleton__row" style={{ display: "block", width: 48 }} aria-hidden="true" />;
 
 type Draft = {
   name: string; system_type: SystemType; environment: string; description: string;
@@ -121,7 +124,7 @@ export function SystemsSurface() {
       system, modules, versions,
       loadedObjects: (modules ?? []).filter((m) => m.enabled && m.row_count > 0).length,
       rows: (modules ?? []).reduce((a, m) => a + (m.row_count || 0), 0),
-      lastExtraction: last, dqs: versions ? latestDqs(versions).dqs : null,
+      lastExtraction: last, dqs: versions ? latestDqs(versions).dqs : null, loading: !!modulesQ[i]?.isLoading,
     };
   });
 
@@ -140,15 +143,15 @@ export function SystemsSurface() {
         <span className="ui-cell-stack__sub">{row.original.system.environment}</span></span> },
     { id: "health", header: "Health", meta: meta({ width: 170 }), cell: ({ row }) => <HealthBadge s={row.original.system.health_status} /> },
     { id: "objects", header: "Objects", meta: meta({ numeric: true, width: 90 }),
-      cell: ({ row }) => row.original.modules ? `${row.original.loadedObjects} of ${row.original.modules.length}` : "…" },
+      cell: ({ row }) => row.original.modules ? `${row.original.loadedObjects} of ${row.original.modules.length}` : row.original.loading ? PENDING : NONE_YET },
     { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }),
-      cell: ({ row }) => row.original.modules ? row.original.rows.toLocaleString() : "…" },
+      cell: ({ row }) => row.original.modules ? row.original.rows.toLocaleString() : row.original.loading ? PENDING : NONE_YET },
     { id: "extraction", header: "Last extraction", meta: meta({ width: 140 }),
-      cell: ({ row }) => row.original.lastExtraction ? relativeTime(row.original.lastExtraction) : "Never" },
+      cell: ({ row }) => row.original.lastExtraction ? relativeTime(row.original.lastExtraction) : <span title="Never extracted">—</span> },
     { id: "analysis", header: "Last analysis", meta: meta({ width: 140 }),
-      cell: ({ row }) => row.original.system.last_analysis_at ? relativeTime(row.original.system.last_analysis_at) : "Never" },
+      cell: ({ row }) => row.original.system.last_analysis_at ? relativeTime(row.original.system.last_analysis_at) : <span title="Never analysed">—</span> },
     { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }),
-      cell: ({ row }) => row.original.dqs === null ? "—" : row.original.dqs.toFixed(1) },
+      cell: ({ row }) => row.original.dqs === null ? NONE_YET : <span title="From the latest file import">{row.original.dqs.toFixed(1)}</span> },
   ], []);
 
   const addButton = (
@@ -175,8 +178,8 @@ export function SystemsSurface() {
               verdict: `${objectsLoaded} of ${objectsOffered} objects have rows.` },
             { label: "Rows loaded", value: rowsLoaded, href: "/sync", loading: modulesLoading,
               verdict: "Rows held across every loaded object." },
-            { label: "Last extraction", value: lastAny ? relativeTime(lastAny) : "Never", href: "/sync", loading: modulesLoading,
-              verdict: lastAny ? "Most recent extraction on any system." : "Nothing has been extracted yet." },
+            { label: "Last extraction", value: null, text: lastAny ? relativeTime(lastAny) : undefined, href: "/sync", loading: modulesLoading,
+              verdict: lastAny ? "Most recent extraction on any system." : "Never extracted. Download from the source." },
           ]} />
           <div className="ui-table-stacked">
             <DataTable columns={columns} data={rows} getRowId={(r) => r.system.id}

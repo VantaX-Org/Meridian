@@ -17,7 +17,7 @@ import {
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getDedupCandidates, mergeDedupCandidate, type DedupCandidate } from "@/lib/api/cleaning";
-import { formatModuleName, relativeTime } from "@/lib/format";
+import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 
 const meta = (m: AuroraColumnMeta) => m;
 const BULK_MIN = 95;
@@ -147,7 +147,7 @@ export function DedupSurface() {
               { k: "Match score", v: `${score(selected.match_score)}%` },
               { k: "Method", v: selected.match_method, mono: true },
               { k: "Object", v: formatModuleName(selected.object_type) },
-              { k: "Found", v: new Date(selected.created_at).toLocaleString() },
+              { k: "Found", v: formatDate(selected.created_at, "datetime") },
             ]} />
             {signalsOf(selected).length ? (
               <section className="ui-detail-part">
