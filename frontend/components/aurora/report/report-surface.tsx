@@ -67,6 +67,8 @@ export interface ReportSurfaceProps {
   sections: ReadonlyArray<ReportSurfaceSection>;
   /** ARIA label for the anchored scroll nav. */
   navLabel?: string;
+  /** false drops the side nav; a report whose sections are few reads better without it. */
+  nav?: boolean;
   className?: string;
 }
 
@@ -79,6 +81,7 @@ export function ReportSurface({
   actions,
   sections,
   navLabel = "Report sections",
+  nav = true,
   className,
 }: ReportSurfaceProps) {
   const [activeId, setActiveId] = useState<string | null>(
@@ -145,7 +148,7 @@ export function ReportSurface({
         </Stack>
       </header>
 
-      <div className="aurora-report__grid">
+      <div className="aurora-report__grid" data-nav={nav ? undefined : "false"}>
         <div
           className="aurora-report__body"
           ref={bodyRef}
@@ -155,7 +158,7 @@ export function ReportSurface({
           ))}
         </div>
 
-        <nav
+        {nav ? <nav
           className="aurora-report__nav"
           aria-label={navLabel}
         >
@@ -187,7 +190,7 @@ export function ReportSurface({
               );
             })}
           </ol>
-        </nav>
+        </nav> : null}
       </div>
     </article>
   );

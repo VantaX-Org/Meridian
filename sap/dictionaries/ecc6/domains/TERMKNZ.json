@@ -1,0 +1,37 @@
+{
+ "domain": "TERMKNZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "",
+   "high": null,
+   "text": "Time"
+  },
+  {
+   "low": "1",
+   "high": null,
+   "text": "Time - key date"
+  },
+  {
+   "low": "2",
+   "high": null,
+   "text": "Time - factory calendar"
+  },
+  {
+   "low": "3",
+   "high": null,
+   "text": "Performance-based"
+  },
+  {
+   "low": "4",
+   "high": null,
+   "text": "Multiple counter"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

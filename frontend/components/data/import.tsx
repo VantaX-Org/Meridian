@@ -126,19 +126,21 @@ export function ImportSurface() {
         summary="Drop an extract, check how its columns map to standard SAP fields, then run the analysis. Every import becomes a version."
       />
       {systemsQ.data?.length ? (
-        <Banner tone="info" title={`${systemsQ.data.length} SAP ${systemsQ.data.length === 1 ? "system is" : "systems are"} connected`}
-          action={<Link href="/data?tab=systems" className="ui-link">Download from the source</Link>}>
-          Pulling objects straight from a connected system keeps versions comparable run to run. File imports suit one-off assessments.
-        </Banner>
+        <p className="ui-note ui-prose">
+          {systemsQ.data.length} SAP {systemsQ.data.length === 1 ? "system is" : "systems are"} connected. Pulling objects straight from a system keeps versions comparable run to run. File imports suit one-off assessments.{" "}
+          <Link href="/data?tab=systems" className="ui-link">Download from the source</Link>
+        </p>
       ) : null}
+      {versions.length > 0 ? (
       <Tally level={4} label="Imports" figures={[
         { label: "Files imported", value: versions.length, href: "/data?tab=import", loading: recent.isLoading, verdict: versions.length ? "Each one is a run you can open." : "Nothing imported yet." },
         { label: "Records imported", value: rowsImported, href: "/data?tab=import", loading: recent.isLoading, verdict: "Across all imported files." },
         { label: "Last import", value: null, text: versions[0] ? relativeTime(versions[0].run_at) : undefined, href: versions[0] ? `/data/runs/${versions[0].id}` : "/data?tab=import", loading: recent.isLoading,
           verdict: versions[0]?.metadata?.file_name ?? "Never imported. Drop a file below to start." },
       ]} />
+      ) : null}
 
-      <div className="aurora-import">
+      <div className="aurora-import" data-solo={file || job ? undefined : "true"}>
         <label className={`aurora-import__drop${dragging ? " is-over" : ""}${file ? " has-file" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
           onDrop={(e) => { e.preventDefault(); setDragging(false); if (canUpload) pick(e.dataTransfer.files?.[0] ?? null); }}>
@@ -148,13 +150,13 @@ export function ImportSurface() {
             <span className="ui-note">{file ? fileNote : "CSV, TSV, XLSX, XLS, JSON or Parquet, up to 2 GB"}</span>
           </div>
         </label>
-        <div className="aurora-import__side">
+        {file || job ? <div className="aurora-import__side">
           <StageStepper stages={stages} />
           {job && job.status !== "completed" && job.status !== "failed" ? <p className="ui-note">{cap(job.step.replace(/_/g, " "))}</p> :
             run.isPending && !job ? <ProgressBar percent={uploadPct} live label={`Uploading ${uploadPct} of 100 percent`} /> : null}
           {job?.error ? <Banner tone="danger" title="Analysis failed">{job.error}</Banner> : null}
           {job?.status === "completed" ? <Link href={`/data/runs/${job.versionId}`} className="ui-link">Open the run</Link> : null}
-        </div>
+        </div> : null}
       </div>
 
       {match ? (

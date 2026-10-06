@@ -1,0 +1,32 @@
+{
+ "domain": "BEZZT",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "A",
+   "high": null,
+   "text": "Malfunction Start"
+  },
+  {
+   "low": "B",
+   "high": null,
+   "text": "Notification Receipt"
+  },
+  {
+   "low": "C",
+   "high": null,
+   "text": "Malfunction End"
+  },
+  {
+   "low": "D",
+   "high": null,
+   "text": "Notification Completion"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

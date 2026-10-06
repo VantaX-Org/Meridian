@@ -1,0 +1,81 @@
+{
+ "table": "T357",
+ "description": "Plant Section",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 3,
+   "name": "BEBER",
+   "key": true,
+   "data_element": "BEBER",
+   "domain": "BEBER",
+   "type": "CHAR",
+   "length": 3,
+   "decimals": 0,
+   "description": "Organizational Area",
+   "check_table": null
+  },
+  {
+   "pos": 4,
+   "name": "FING",
+   "key": false,
+   "data_element": "FING",
+   "domain": "TEXT14",
+   "type": "CHAR",
+   "length": 14,
+   "decimals": 0,
+   "description": "Person Responsible for Company Area",
+   "check_table": null
+  },
+  {
+   "pos": 5,
+   "name": "TELE",
+   "key": false,
+   "data_element": "TELE",
+   "domain": "CHAR12",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Phone number of person responsible for company area",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

@@ -1,0 +1,151 @@
+{
+ "table": "EQST",
+ "description": "Equipment to BOM Link",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "EQUNR",
+   "key": true,
+   "data_element": "EQUNR",
+   "domain": "EQUNR",
+   "type": "CHAR",
+   "length": 18,
+   "decimals": 0,
+   "description": "Equipment Number",
+   "check_table": "EQUI"
+  },
+  {
+   "pos": 3,
+   "name": "WERKS",
+   "key": true,
+   "data_element": "WERKS_D",
+   "domain": "WERKS",
+   "type": "CHAR",
+   "length": 4,
+   "decimals": 0,
+   "description": "Plant",
+   "check_table": "T001W"
+  },
+  {
+   "pos": 4,
+   "name": "STLAN",
+   "key": true,
+   "data_element": "STLAN",
+   "domain": "STLAN",
+   "type": "CHAR",
+   "length": 1,
+   "decimals": 0,
+   "description": "BOM Usage",
+   "check_table": "T416"
+  },
+  {
+   "pos": 5,
+   "name": "STLNR",
+   "key": true,
+   "data_element": "STNUM",
+   "domain": "STNUM",
+   "type": "CHAR",
+   "length": 8,
+   "decimals": 0,
+   "description": "Bill of Material",
+   "check_table": null
+  },
+  {
+   "pos": 6,
+   "name": "STLAL",
+   "key": true,
+   "data_element": "STALT",
+   "domain": "ALTNR",
+   "type": "CHAR",
+   "length": 2,
+   "decimals": 0,
+   "description": "Alternative BOM",
+   "check_table": null
+  },
+  {
+   "pos": 7,
+   "name": "ANDAT",
+   "key": false,
+   "data_element": "ANDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Date Record Created on",
+   "check_table": null
+  },
+  {
+   "pos": 8,
+   "name": "ANNAM",
+   "key": false,
+   "data_element": "ANNAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "User Who Created Record",
+   "check_table": null
+  },
+  {
+   "pos": 9,
+   "name": "AEDAT",
+   "key": false,
+   "data_element": "AEDAT",
+   "domain": "DATUM",
+   "type": "DATS",
+   "length": 8,
+   "decimals": 0,
+   "description": "Last Changed On",
+   "check_table": null
+  },
+  {
+   "pos": 10,
+   "name": "AENAM",
+   "key": false,
+   "data_element": "AENAM",
+   "domain": "USNAM",
+   "type": "CHAR",
+   "length": 12,
+   "decimals": 0,
+   "description": "Name of Person Who Changed Object",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "EQUNR",
+   "foreign_table": "EQUI",
+   "foreign_field": "EQUNR"
+  },
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  },
+  {
+   "field": "STLAN",
+   "foreign_table": "T416",
+   "foreign_field": "STLAN"
+  },
+  {
+   "field": "WERKS",
+   "foreign_table": "T001W",
+   "foreign_field": "WERKS"
+  }
+ ]
+}

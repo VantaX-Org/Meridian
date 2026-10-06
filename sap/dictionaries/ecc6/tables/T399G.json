@@ -1,0 +1,40 @@
+{
+ "table": "T399G",
+ "description": "Maintenance Plan Sort Field",
+ "category": "",
+ "delivery_class": "",
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)",
+ "fields": [
+  {
+   "pos": 1,
+   "name": "MANDT",
+   "key": true,
+   "data_element": "MANDT",
+   "domain": "MANDT",
+   "type": "CLNT",
+   "length": 3,
+   "decimals": 0,
+   "description": "Client",
+   "check_table": "T000"
+  },
+  {
+   "pos": 2,
+   "name": "PLAN_SORT",
+   "key": true,
+   "data_element": "PLAN_SORT",
+   "domain": "CHAR20",
+   "type": "CHAR",
+   "length": 20,
+   "decimals": 0,
+   "description": "Sort field for maintenance plans",
+   "check_table": null
+  }
+ ],
+ "foreign_keys": [
+  {
+   "field": "MANDT",
+   "foreign_table": "T000",
+   "foreign_field": "MANDT"
+  }
+ ]
+}

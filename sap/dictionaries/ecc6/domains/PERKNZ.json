@@ -1,0 +1,22 @@
+{
+ "domain": "PERKNZ",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "E",
+   "high": null,
+   "text": "Onetime performance of a maintenance package"
+  },
+  {
+   "low": "P",
+   "high": null,
+   "text": "Periodic performance of a maintenance package"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}

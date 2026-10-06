@@ -1,0 +1,27 @@
+{
+ "domain": "MCP_SF",
+ "type": "CHAR",
+ "length": 1,
+ "decimals": 0,
+ "conversion_exit": null,
+ "lowercase": false,
+ "value_table": null,
+ "fixed_values": [
+  {
+   "low": "N",
+   "high": null,
+   "text": "New Multiple Counter Plan ( Release >= ERP2005, EHP5)"
+  },
+  {
+   "low": "O",
+   "high": null,
+   "text": "Old MCP (Rel <ERP2005, EHP5, Converted to New Function)"
+  },
+  {
+   "low": "",
+   "high": null,
+   "text": "Old MCP (Rel <ERP2005, EHP5, Not Converted to New Function)"
+  }
+ ],
+ "source": "sapdatasheet.org (SAP ECC 6.0 standard DDIC)"
+}
