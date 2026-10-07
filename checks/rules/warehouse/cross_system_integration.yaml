@@ -470,3 +470,284 @@ rules:
     fix_map:
       __other__: Check the date mapping of the extract.
     record_fix_template: 'Document row {XSYS.OBJECT_KEY}: document date {XSYS.BLDAT}, posting date {XSYS.BUDAT}.'
+
+  # ── Depth: plant, cost centre and personnel keys; system/object domain lists ──
+
+  - id: XSYS033
+    field: XSYS.SOURCE_SYSTEM
+    check_class: domain_value_check
+    allowed_values: [ECC_PRD, ECC_QAS, ECC_DEV, S4_PRD, S4_QAS, S4_DEV, EWM_PRD, EWM_QAS, EWM_DEV,
+      ARIBA_PRD, MDG_PRD, CRM_PRD, BW_PRD, SF_PRD]
+    valid_values_with_labels:
+      ECC_PRD: ECC production
+      ECC_QAS: ECC quality assurance
+      ECC_DEV: ECC development
+      S4_PRD: S/4HANA production
+      S4_QAS: S/4HANA quality assurance
+      S4_DEV: S/4HANA development
+      EWM_PRD: Decentralized EWM production
+      EWM_QAS: Decentralized EWM quality assurance
+      EWM_DEV: Decentralized EWM development
+      ARIBA_PRD: SAP Ariba production
+      MDG_PRD: Master Data Governance production
+      CRM_PRD: CRM production
+      BW_PRD: BW/BI production
+      SF_PRD: SuccessFactors Employee Central production
+    severity: medium
+    dimension: validity
+    message: Source system id is not one of the systems connected to the integration landscape
+    why_it_matters: The reconciliation extract is only ever produced by connecting to the systems configured in the
+      integration landscape. A source system outside that list points to a mis-tagged extract, a decommissioned
+      system still feeding data, or a new connection no one has registered — any of which means the row cannot be
+      trusted during reconciliation.
+    rule_authority: best_practice
+    sap_impact: Rows from an unrecognized source system are reconciled against the wrong counterpart system or
+      silently excluded from landscape-wide reporting.
+    fix_map:
+      __other__: Correct the system id in the extract job, or add the new system to the integration landscape
+        configuration if it is a legitimate addition.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY}: source system ''{actual_value}'' is not a connected system.'
+
+  - id: XSYS034
+    field: XSYS.OBJECT_TYPE
+    check_class: domain_value_check
+    allowed_values: [MATERIAL, VENDOR, CUSTOMER, FI_DOCUMENT, PLANT, COST_CENTER, EMPLOYEE,
+      PURCHASE_ORDER, SALES_ORDER, GL_ACCOUNT]
+    valid_values_with_labels:
+      MATERIAL: Material master
+      VENDOR: Vendor / supplier master
+      CUSTOMER: Customer master
+      FI_DOCUMENT: Accounting document
+      PLANT: Plant master
+      COST_CENTER: Cost centre master
+      EMPLOYEE: Employee / personnel record
+      PURCHASE_ORDER: Purchase order
+      SALES_ORDER: Sales order
+      GL_ACCOUNT: General ledger account
+    severity: medium
+    dimension: validity
+    message: Object type is not one of the reconciled object types
+    why_it_matters: Every downstream rule in this module selects its population by OBJECT_TYPE. An object type outside
+      the known set means none of the type-specific rules evaluate it, so a real defect on that row is silently never
+      checked.
+    rule_authority: best_practice
+    sap_impact: Rows with an unrecognized object type are invisible to every type-specific reconciliation rule.
+    fix_map:
+      __other__: Correct the object type in the extract mapping, or add the new type to this rule's allowed values
+        if it is a legitimate new reconciled object.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): object type ''{actual_value}'' is not
+      reconciled by this module.'
+
+  - id: XSYS035
+    field: XSYS.WERKS
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['PLANT']
+    severity: critical
+    dimension: completeness
+    message: Plant master row has no plant code
+    why_it_matters: A PLANT row exists to reconcile one plant (WERKS) across systems. Without the plant code itself
+      the row cannot be matched to its counterpart and is indistinguishable from any other plant's row.
+    rule_authority: sap_hard_constraint
+    sap_impact: The plant cannot be reconciled across systems; plant master sync gaps go undetected.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the plant code (T001W-WERKS) is carried with every
+        plant row.
+    record_fix_template: 'Plant row {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no plant code.'
+
+  - id: XSYS036
+    field: XSYS.KOSTL
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['COST_CENTER']
+    severity: critical
+    dimension: completeness
+    message: Cost centre master row has no cost centre number
+    why_it_matters: A COST_CENTER row exists to reconcile one cost centre (KOSTL) across systems. Without the cost
+      centre number itself the row cannot be matched to its counterpart in the controlling area of the other system.
+    rule_authority: sap_hard_constraint
+    sap_impact: The cost centre cannot be reconciled across systems; controlling master data sync gaps go undetected.
+    fix_map:
+      __blank__: Correct the extract or interface mapping so the cost centre number (CSKS-KOSTL) is carried with
+        every cost centre row.
+    record_fix_template: 'Cost centre row {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no cost centre number.'
+
+  - id: XSYS037
+    field: XSYS.PERNR
+    check_class: null_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['EMPLOYEE']
+    severity: critical
+    dimension: completeness
+    message: Employee row has no personnel number
+    why_it_matters: An EMPLOYEE row exists to reconcile one employee (PERNR) between HCM/payroll and the replicating
+      system (SuccessFactors Employee Central, finance). Without the personnel number the row cannot be matched to
+      an employee in either system.
+    rule_authority: sap_hard_constraint
+    sap_impact: The employee record cannot be reconciled across HR, payroll and finance systems.
+    fix_map:
+      __blank__: Correct the extract or replication mapping so the personnel number (PA0001-PERNR) is carried with
+        every employee row.
+    record_fix_template: 'Employee row {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): no personnel number.'
+
+  - id: XSYS038
+    field: XSYS.WERKS
+    check_class: regex_check
+    pattern: '^[A-Z0-9]{4}$'
+    severity: medium
+    dimension: validity
+    message: Plant code is not a 4-character SAP plant code
+    why_it_matters: The SAP plant (WERKS) is a fixed 4-character alphanumeric code. A value of a different length or
+      with lower-case letters never matches the same plant in the other system's extract.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system plant matching fails; stock and plant master comparisons report false gaps.
+    fix_map:
+      __other__: Correct the plant code in the extract or interface mapping to the 4-character SAP format.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): plant ''{actual_value}'' is not a valid
+      4-character plant code.'
+
+  - id: XSYS039
+    field: XSYS.KOSTL
+    check_class: regex_check
+    pattern: '^[A-Z0-9]{4,10}$'
+    severity: medium
+    dimension: validity
+    message: Cost centre number is not in SAP's internal format
+    why_it_matters: SAP stores the cost centre (KOSTL) as up to 10 alphanumeric characters, numeric values carrying
+      leading zeros. A value outside this format never matches the same cost centre in the other system.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system cost centre matching fails; controlling master data comparisons report false gaps.
+    fix_map:
+      __other__: Apply the internal cost centre format (leading zeros for numeric ids) in the extract or interface
+        mapping.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): cost centre ''{actual_value}'' is not in
+      internal format.'
+
+  - id: XSYS040
+    field: XSYS.BUKRS
+    check_class: regex_check
+    pattern: '^[A-Z0-9]{4}$'
+    severity: medium
+    dimension: validity
+    message: Company code is not a 4-character SAP company code
+    why_it_matters: The SAP company code (BUKRS) is a fixed 4-character alphanumeric code. A value of a different
+      length or with lower-case letters never matches the same company code in the other system's extract.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system company code matching fails; postings are compared against the wrong or no company
+      code in the other system.
+    fix_map:
+      __other__: Correct the company code in the extract or interface mapping to the 4-character SAP format.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): company code ''{actual_value}'' is not a
+      valid 4-character company code.'
+
+  - id: XSYS041
+    field: XSYS.WERKS
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.WERKS]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['PLANT']
+    severity: high
+    dimension: uniqueness
+    message: The same plant appears more than once in one system
+    why_it_matters: A plant exists exactly once per system. The same plant twice in one system's extract means the
+      extract or a key mapping duplicates it, so plant-level reconciliation across systems is double-counted.
+    rule_authority: best_practice
+    sap_impact: Cross-system plant reconciliation double-counts the plant; genuine mismatches are hidden.
+    fix_map:
+      __other__: Remove the duplicate from the extract; check the object key mapping for the plant.
+    record_fix_template: 'Plant {XSYS.WERKS} appears more than once in {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS042
+    field: XSYS.KOSTL
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.KOSTL, XSYS.BUKRS]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['COST_CENTER']
+    severity: high
+    dimension: uniqueness
+    message: The same cost centre and company code appear more than once in one system
+    why_it_matters: A cost centre's controlling-area data exists once per company code. The same cost centre and
+      company code twice in one system's extract means the extract or a key mapping duplicates it.
+    rule_authority: best_practice
+    sap_impact: Cross-system cost centre reconciliation double-counts the cost centre; mismatches are hidden.
+    fix_map:
+      __other__: Remove the duplicate from the extract; check the object key mapping for the cost centre.
+    record_fix_template: 'Cost centre {XSYS.KOSTL} / company code {XSYS.BUKRS} appears more than once in
+      {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS043
+    field: XSYS.PERNR
+    check_class: uniqueness_check
+    fields: [XSYS.SOURCE_SYSTEM, XSYS.PERNR]
+    applies_when:
+      XSYS.OBJECT_TYPE: ['EMPLOYEE']
+    severity: high
+    dimension: uniqueness
+    message: The same personnel number appears more than once in one system
+    why_it_matters: A personnel number exists exactly once per system. The same employee twice in one system's
+      extract means the extract or a key mapping duplicates it, so headcount reconciliation across HR, payroll and
+      finance is double-counted.
+    rule_authority: best_practice
+    sap_impact: Cross-system headcount reconciliation double-counts the employee; genuine mismatches are hidden.
+    fix_map:
+      __other__: Remove the duplicate from the extract; check the object key mapping for the employee.
+    record_fix_template: 'Personnel number {XSYS.PERNR} appears more than once in {XSYS.SOURCE_SYSTEM}.'
+
+  - id: XSYS044
+    field: XSYS.BELNR
+    check_class: regex_check
+    pattern: '^\d{10}$'
+    severity: medium
+    dimension: validity
+    message: Accounting document number is not a 10-digit SAP document number
+    why_it_matters: SAP stores the accounting document number (BELNR) as 10 numeric digits with leading zeros. A
+      value of a different length or containing non-digits never matches the same document in the other system.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cross-system document matching fails; the document is reported as missing in the other system.
+    fix_map:
+      __other__: Apply the 10-digit internal document number format (leading zeros) in the extract or interface
+        mapping.
+    record_fix_template: 'Record {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): document number ''{actual_value}'' is not
+      a valid 10-digit document number.'
+
+  - id: XSYS045
+    field: XSYS.GJAHR
+    check_class: cross_field_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
+    fail_when: '`XSYS.BUDAT`.dt.year.astype(''Int64'').astype(''string'') != `XSYS.GJAHR`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Fiscal year does not match the calendar year of the posting date
+    why_it_matters: Outside special periods, the fiscal year (GJAHR) of an accounting document is the calendar year
+      of its posting date (BUDAT). A mismatch almost always means the fiscal year or the posting date was mapped
+      from the wrong field during extraction, not a genuine year-end special-period posting.
+    rule_authority: best_practice
+    sap_impact: Period- and year-based reconciliation places the document in the wrong fiscal year, misstating
+      year-end totals on one side of the comparison.
+    fix_map:
+      __other__: Check the fiscal year and posting date mapping of the extract for this document.
+    record_fix_template: 'Document row {XSYS.OBJECT_KEY}: fiscal year {XSYS.GJAHR} does not match posting date
+      {XSYS.BUDAT}.'
+
+  - id: XSYS046
+    field: XSYS.WERKS
+    check_class: cross_field_check
+    applies_when:
+      XSYS.OBJECT_TYPE: ['PLANT']
+    fail_when: '`XSYS.WERKS`.notna() & `XSYS.BUKRS`.isna()'
+    severity: high
+    dimension: consistency
+    message: Plant row has a plant code but no company code
+    why_it_matters: Every SAP plant is assigned to exactly one company code. A plant row carrying a plant code but no
+      company code cannot be placed in the enterprise structure, so it cannot be reconciled against the other
+      system's plant-to-company-code assignment.
+    rule_authority: sap_hard_constraint
+    sap_impact: The plant's financial assignment cannot be verified across systems; postings for the plant may be
+      reconciled against the wrong company code.
+    fix_map:
+      __other__: Correct the extract or interface mapping so the assigned company code is carried with every plant
+        row.
+    record_fix_template: 'Plant row {XSYS.OBJECT_KEY} ({XSYS.SOURCE_SYSTEM}): plant {XSYS.WERKS} has no company
+      code.'

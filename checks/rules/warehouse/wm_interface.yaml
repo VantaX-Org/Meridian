@@ -621,3 +621,208 @@ rules:
     fix_map:
       __other__: Delete the storage type or define the warehouse.
     record_fix_template: 'Storage type {T301.LGTYP}: warehouse {T301.LGNUM} not in T300.'
+
+  # ── Second depth pass: block/RF flags, storage-unit vs bin capacity, movement type config ──
+
+  - id: WMI037
+    field: MLGN.BLOCK
+    check_class: domain_value_check
+    allowed_values: ['', '01', '02']
+    valid_values_with_labels:
+      '': No placement or removal block
+      '01': Stock placement blocked for this material in the warehouse
+      '02': Stock removal blocked for this material in the warehouse
+    severity: medium
+    dimension: validity
+    message: Stock placement/removal block indicator is not a valid SAP value
+    why_it_matters: >-
+      MLGN.BLOCK blocks putaway or picking for the material in this warehouse outside of the
+      normal storage type or bin locks. An undefined value is not recognised by the WM
+      transaction logic, so the block may be silently ignored or the material treated as
+      unexpectedly restricted.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Transfer order creation cannot reliably evaluate whether the material is blocked;
+      putaway or picking may proceed for material that should be locked, or be refused
+      for material that should be available.
+    fix_map:
+      __other__: >-
+        Block indicator '{invalid_value}' is not a valid value. Correct via MM02 >
+        Warehouse Management 1 view.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: block indicator '{actual_value}' is
+      not a valid value.
+
+  - id: WMI038
+    field: MLGN.KZMBF
+    check_class: domain_value_check
+    allowed_values: ['', 'X']
+    valid_values_with_labels:
+      '': Not relevant for mobile data entry (RF)
+      'X': Relevant for mobile data entry (RF)
+    severity: low
+    dimension: validity
+    message: Mobile data entry relevance flag is not a valid SAP value
+    why_it_matters: >-
+      MLGN.KZMBF tells RF/mobile transactions whether this material's warehouse movements
+      must be confirmed through mobile data entry. A value outside the blank/X domain is
+      not a recognised flag state and RF presentation logic cannot evaluate it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      RF transactions cannot determine whether mobile confirmation is required for the
+      material; movements may bypass mandatory RF confirmation or be unexpectedly blocked
+      from it.
+    fix_map:
+      __other__: >-
+        Mobile data entry flag '{invalid_value}' is not valid. Correct via MM02 >
+        Warehouse Management 1 view.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: mobile data entry flag
+      '{actual_value}' is not valid.
+
+  - id: WMI039
+    field: MLGT.MAMNG
+    check_class: cross_field_check
+    fail_when: '(`MLGT.MAMNG` > 0) & (`MLGT.LPMAX` > 0) & (`MLGT.MAMNG` > `MLGT.LPMAX`)'
+    severity: medium
+    dimension: consistency
+    message: Maximum storage unit quantity exceeds the bin's maximum quantity
+    why_it_matters: >-
+      MLGT.MAMNG caps how much of the material one storage unit (pallet/container) may
+      hold in this storage type; MLGT.LPMAX caps how much the fixed bin itself may hold.
+      A storage unit quantity above the bin maximum means a single putaway unit can never
+      fit into the fixed bin it is supposed to be stored in.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Putaway of a full storage unit into the fixed bin is rejected or split unexpectedly;
+      the storage unit strategy and the fixed-bin strategy contradict each other.
+    fix_map:
+      __other__: >-
+        Correct the maximum storage unit quantity or the bin maximum in the material's
+        storage type view (MM02 > Warehouse Management 2).
+    record_fix_template: >-
+      Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: storage unit maximum {MLGT.MAMNG}
+      exceeds bin maximum {MLGT.LPMAX}.
+
+  - id: WMI040
+    field: T333.BETYP
+    check_class: domain_value_check
+    allowed_values: ['', '1', '2']
+    valid_values_with_labels:
+      '': No fixed confirmation requirement for the movement type
+      '1': Single-step confirmation required
+      '2': Two-step confirmation required
+    severity: medium
+    dimension: validity
+    message: Movement type confirmation type is not a valid SAP value
+    why_it_matters: >-
+      T333.BETYP tells the transfer order which confirmation steps the movement type
+      requires. A value outside the defined domain cannot be interpreted by the
+      confirmation logic, so the system falls back to an undefined confirmation behaviour.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Transfer orders of this movement type cannot be confirmed through the normal LT12 /
+      RF confirmation step; open transfer orders accumulate.
+    fix_map:
+      __other__: >-
+        Confirmation type '{invalid_value}' is not valid. Correct the movement type
+        configuration (SPRO > LE-WM > Activities > Transfers > Define Movement Types).
+    record_fix_template: >-
+      Movement type {T333.BWLVS} in {T333.LGNUM}: confirmation type '{actual_value}' is
+      not valid.
+
+  - id: WMI041
+    field: T333.SQUIT
+    check_class: cross_field_check
+    fail_when: "(`T333.SQUIT` == 'X') & (`T333.TBMAN` == 'X')"
+    severity: medium
+    dimension: consistency
+    message: Movement type requires immediate system confirmation and manual transfer order creation at once
+    why_it_matters: >-
+      T333.SQUIT forces the system to confirm the transfer order immediately on creation,
+      while T333.TBMAN requires the transfer order to be created manually by a user. The
+      two settings contradict each other — a transfer order that must be manually created
+      cannot also be immediately, automatically confirmed before anyone has created it.
+    rule_authority: best_practice
+    sap_impact: >-
+      Movement type configuration is internally inconsistent; manual transfer order
+      creation for the movement type behaves unpredictably with respect to confirmation.
+    fix_map:
+      __other__: >-
+        Review the movement type configuration and disable either immediate confirmation
+        or manual creation (SPRO > LE-WM > Activities > Transfers > Define Movement Types).
+    record_fix_template: >-
+      Movement type {T333.BWLVS} in {T333.LGNUM}: immediate confirmation and manual
+      creation are both set.
+
+  - id: WMI042
+    field: T333.BWLVS
+    check_class: regex_check
+    pattern: "^[0-9]{3}$"
+    severity: high
+    dimension: validity
+    message: Movement type code must be exactly 3 digits
+    why_it_matters: >-
+      SAP WM movement types (BWLVS) are always a 3-digit numeric code (e.g. 101, 601).
+      A non-conforming code cannot be assigned consistently to IM movement types and
+      will not be found by the transfer order creation logic that looks up T333 by this key.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Movement type lookup in T333 fails. Transfer orders for IM movements mapped to this
+      code are not created.
+    fix_map:
+      __other__: >-
+        Movement type code '{invalid_value}' is not a valid 3-digit code. Correct via
+        SPRO > LE-WM > Activities > Transfers > Define Movement Types.
+    record_fix_template: >-
+      Movement type '{actual_value}' in {T333.LGNUM} is not a valid 3-digit code.
+
+  - id: WMI043
+    field: MLGT.KOBER
+    check_class: domain_value_check
+    allowed_values: ['', 'X']
+    valid_values_with_labels:
+      '': Capacity check at bin level is not active for the storage type data
+      'X': Capacity check at bin level is active for the storage type data
+    severity: low
+    dimension: validity
+    message: Bin capacity check indicator is not a valid SAP value
+    why_it_matters: >-
+      MLGT.KOBER switches on capacity checking against the fixed bin for this material in
+      the storage type. A value outside the blank/X domain cannot be evaluated by the
+      capacity check, so putaway silently skips or always triggers the check.
+    rule_authority: best_practice
+    sap_impact: >-
+      Capacity-based putaway decisions for the material's fixed bin cannot be relied on.
+    fix_map:
+      __other__: >-
+        Capacity check indicator '{invalid_value}' is not valid. Correct via MM02 >
+        Warehouse Management 2 > storage type data.
+    record_fix_template: >-
+      Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: capacity check indicator
+      '{actual_value}' is not valid.
+
+  - id: WMI044
+    field: MARA.LVORM
+    check_class: cross_field_check
+    grain: MLGN
+    fail_when: "(`MARA.LVORM` == 'X') & (`MLGN.LGNUM`.notna())"
+    severity: medium
+    dimension: consistency
+    message: Warehouse management view still exists for a material flagged for central deletion
+    why_it_matters: >-
+      MARA.LVORM marks the material for deletion across the whole client, but the
+      warehouse management view (MLGN) for this material and warehouse has not been
+      removed. The IM-WM interface keeps evaluating putaway and picking strategy data for
+      a material that is supposed to be retired.
+    rule_authority: best_practice
+    sap_impact: >-
+      The material cannot be archived while WM data remains; WM continues to apply
+      putaway/picking strategies to a material that should no longer move.
+    fix_map:
+      __other__: >-
+        Delete the warehouse management view (MM06/MM02) before or as part of archiving
+        the material, or reset the central deletion flag if the material is still in use.
+    record_fix_template: >-
+      Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: warehouse view still exists while
+      flagged for deletion in MARA.

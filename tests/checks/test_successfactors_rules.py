@@ -14,12 +14,12 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 EXPECTED_COUNTS = {
     "employee_central": 142,
     "compensation": 40,
-    "recruiting_onboarding": 21,
-    "learning_management": 22,
-    "performance_goals": 19,
+    "recruiting_onboarding": 40,
+    "learning_management": 40,
+    "performance_goals": 40,
     "succession_planning": 12,
-    "time_attendance": 17,
-    "benefits": 15,
+    "time_attendance": 40,
+    "benefits": 40,
     "payroll_integration": 59,
 }
 
@@ -144,7 +144,7 @@ def test_total_sf_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 347, f"Expected 347 total SF rules, got {total}"
+    assert total == 453, f"Expected 453 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----
