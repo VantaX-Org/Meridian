@@ -256,6 +256,8 @@ rules:
   applies_when:
     ANLA.AKTIV:
       populated: true
+    ANLB.AFASL:
+      not_in: ['0000']
 - id: AA018
   field: ANLZ.STORT
   check_class: null_check
@@ -1660,3 +1662,367 @@ rules:
   fix_map:
     __other__: Reclassify the assets (ABUMN) or remove the deletion flag from the class.
   record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): class {ANLA.ANLKL} is flagged for deletion.'
+
+# Depth pass 3: group assets, class/company-code config gaps, down payments, time-interval gaps (AA247 onward)
+- id: AA247
+  field: T001.BUKRS
+  check_class: exists_check
+  target_table: T093C
+  target_fields:
+  - BUKRS
+  severity: critical
+  dimension: completeness
+  message: Company code has no chart of depreciation assigned (no T093C entry)
+  why_it_matters: >-
+    Every company code with Asset Accounting active must be assigned a chart of depreciation (OAOB,
+    T093C). Without the assignment the company code has no valuation areas at all, so no asset can be
+    created for it.
+  rule_authority: sap_hard_constraint
+  sap_impact: AS01 refuses to create an asset for the company code; the depreciation run (AFAB) has no
+    company code to process.
+  fix_map:
+    __other__: Assign the chart of depreciation for the company code in OAOB (T093C), then define its
+      depreciation areas in EC08.
+  record_fix_template: 'Company code {T001.BUKRS}: no chart of depreciation assigned in T093C.'
+
+- id: AA248
+  field: ANKA.KTOGR
+  check_class: null_check
+  applies_when:
+    ANKA.XLOEV:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Asset class has no account determination assigned
+  why_it_matters: >-
+    The account determination on the asset class (OAOA, ANKA.KTOGR) is inherited by every asset
+    created in the class and is required to find the balance sheet and depreciation accounts. A class
+    without one cannot be used to create assets.
+  rule_authority: sap_hard_constraint
+  sap_impact: AS01 fails with "account determination missing" for every attempt to create an asset in
+    the class; existing assets of the class (if any) cannot post.
+  fix_map:
+    __other__: Assign the account determination for the class in OAOA; it is required before any asset
+      of the class can post acquisitions or depreciation.
+  record_fix_template: 'Asset class {ANKA.ANLKL}: no account determination (KTOGR) assigned.'
+
+- id: AA249
+  field: ANLB.ANLGR
+  check_class: exists_check
+  grain: ANLB
+  fields:
+  - ANLB.BUKRS
+  - ANLB.ANLGR
+  target_table: ANLH
+  target_fields:
+  - BUKRS
+  - ANLN1
+  applies_when:
+    ANLB.ANLGR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Asset's group asset reference does not exist
+  why_it_matters: >-
+    The group asset (ANLB.ANLGR) consolidates several individual assets for tax reporting or group
+    depreciation. A reference to a group asset number that has no main asset record in ANLH points to
+    a group asset that was never created or was deleted.
+  rule_authority: best_practice
+  sap_impact: Group asset reports (tax group depreciation) cannot find the group asset; the member
+    asset is excluded from group-level depreciation and disclosures.
+  fix_map:
+    __other__: Create the missing group asset (AS01, asset class flagged as group asset) or correct the
+      group asset number on the member asset's depreciation area in AS02 > Depreciation areas.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} (company code {ANLB.BUKRS}, area {ANLB.AFABE}):
+    group asset {ANLB.ANLGR} does not exist.'
+
+- id: AA250
+  field: ANLB.AFABG
+  check_class: cross_field_check
+  grain: ANLB
+  fail_when: (`ANLB.AFASL` == '0000') & `ANLB.AFABG`.notna()
+  severity: low
+  dimension: consistency
+  message: Depreciation start date is set on an area using the no-depreciation key (0000)
+  why_it_matters: >-
+    Depreciation key 0000 tells the depreciation run never to calculate depreciation for the area.
+    A start date maintained on such an area is meaningless and usually signals the key was changed
+    to 0000 after the area was already set up, or that 0000 was assigned by mistake to an area that
+    should depreciate.
+  rule_authority: best_practice
+  sap_impact: AFAB ignores the start date for the area; reports that list depreciation start dates
+    show a date that will never produce a posting.
+  fix_map:
+    __other__: Confirm the depreciation key is correct for the area in AS02 > Depreciation areas;
+      remove the start date if the area genuinely does not depreciate, or assign the correct
+      depreciation key.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: depreciation start date
+    {ANLB.AFABG} set with no-depreciation key.'
+
+- id: AA251
+  field: ANLB.SAFBG
+  check_class: cross_field_check
+  grain: ANLB
+  fail_when: '`ANLB.SAFBG`.notna() & (`ANLB.SAPRZ`.fillna(0) == 0)'
+  severity: low
+  dimension: consistency
+  message: Special depreciation start date is set but the special depreciation rate is zero
+  why_it_matters: >-
+    A special depreciation start date without a rate cannot produce any special depreciation; the
+    two fields are set together when an area carries investment incentives or tax-driven special
+    depreciation. A start date alone is a leftover from removed special depreciation terms.
+  rule_authority: best_practice
+  sap_impact: The depreciation run calculates no special depreciation for the area despite a start
+    date on record, which misleads reviewers of the depreciation terms.
+  fix_map:
+    __other__: Either enter the special depreciation rate in AS02 > Depreciation areas, or clear the
+      special depreciation start date if special depreciation no longer applies.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: special depreciation start
+    {ANLB.SAFBG} with zero rate.'
+
+- id: AA252
+  field: ANLA.MEINS
+  check_class: cross_field_check
+  fail_when: '`ANLA.MEINS`.notna() & (`ANLA.MENGE`.fillna(0) == 0)'
+  severity: low
+  dimension: consistency
+  message: Asset has a unit of measure but no quantity
+  why_it_matters: >-
+    A unit of measure without a quantity cannot be used in any physical inventory or low-value asset
+    quantity check; it is the mirror case of a quantity without a unit and comes from the same kind
+    of partial data entry or migration mapping gap.
+  rule_authority: best_practice
+  sap_impact: Quantity-based asset reports and physical inventory (AR31/AR32) show a unit with no
+    count to apply it to.
+  fix_map:
+    __other__: Enter the quantity next to the unit of measure in AS02 > General tab, or clear the unit
+      if the asset is not tracked by quantity.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2}: unit of measure {ANLA.MEINS} without a
+    quantity.'
+
+- id: AA253
+  field: ANLC.KAUFW
+  check_class: cross_field_check
+  grain: ANLC
+  fail_when: >-
+    (`ANLC.KAUFW`.fillna(0) + `ANLC.AUFWB`.fillna(0) + `ANLC.AUFWV`.fillna(0) + `ANLC.AUFWL`.fillna(0)) < -0.01
+  severity: medium
+  dimension: accuracy
+  message: Down payments capitalised on the asset are negative
+  why_it_matters: >-
+    The down payment balance capitalised on an asset under construction (ANLC down payment fields)
+    is reduced when the down payment is cleared against the final invoice, but the balance for the
+    year should not go below zero — a negative value means more was cleared than was ever paid in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The asset history sheet's down payment column does not reconcile to the vendor down
+    payment account in FI; year-end closing (AJAB) carries forward an impossible balance.
+  fix_map:
+    __other__: Review the down payment postings in AW01N and FBL1N; correct the clearing (ABAVN /
+      F-54) that overcleared the down payment.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE},
+    year {ANLC.GJAHR}): capitalised down payments are negative.'
+
+- id: AA254
+  field: ANLC.KINVZ
+  check_class: cross_field_check
+  grain: ANLC
+  fail_when: >-
+    ((`ANLC.KINVZ`.fillna(0) + `ANLC.INVZM`.fillna(0) + `ANLC.INVZV`.fillna(0) + `ANLC.INVZL`.fillna(0)).abs() > 0.01) &
+    ((`ANLC.KINVZ`.fillna(0) + `ANLC.INVZM`.fillna(0) + `ANLC.INVZV`.fillna(0) + `ANLC.INVZL`.fillna(0)) >
+    (`ANLC.KANSW`.fillna(0) + `ANLC.ANSWL`.fillna(0)))
+  severity: medium
+  dimension: accuracy
+  message: Investment support (subsidy) posted on the asset exceeds its acquisition value
+  why_it_matters: >-
+    Investment support reduces the depreciation base but cannot exceed the acquisition and
+    production cost it is granted against. A larger investment support balance than APC means the
+    grant was posted twice or the APC was reduced by a retirement without reducing the support
+    proportionally.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation base calculated by AFAB goes negative for the area; the asset history
+    sheet shows a subsidy larger than the asset it was granted for.
+  fix_map:
+    __other__: Review the investment support postings in AW01N; correct the posting (ABZU/ABAVN) so
+      the support does not exceed the acquisition value.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE},
+    year {ANLC.GJAHR}): investment support exceeds acquisition value.'
+
+- id: AA255
+  field: ANLB.BDATU
+  check_class: cross_field_check
+  grain: ANLB
+  fail_when: '(`ANLB.BDATU` < @today) & `ANLA.DEAKT`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Active asset's depreciation terms interval has already ended
+  why_it_matters: >-
+    Depreciation terms are kept in time intervals (ANLB valid-from/valid-to). An active asset whose
+    only interval already ended has no depreciation terms in force today, so the depreciation run has
+    nothing current to read for the area.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB uses outdated or no depreciation terms for the current period; the asset explorer
+    (AW01N) shows the terms as historical for an asset that is still in use.
+  fix_map:
+    __other__: Maintain a new, currently valid depreciation terms interval in AS02 > Depreciation
+      areas (S/4HANA Fiori app F2747).
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: depreciation terms interval
+    ended {ANLB.BDATU}, asset still active.'
+
+- id: AA256
+  field: ANLZ.BDATU
+  check_class: cross_field_check
+  grain: ANLA
+  fail_when: '`ANLZ.BDATU`.isna() & `ANLA.DEAKT`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Active asset's time-dependent assignment interval has already ended
+  why_it_matters: >-
+    Cost centre, plant, location and profit centre are kept in time intervals (ANLZ valid-from/valid-to).
+    An active asset whose only interval already ended has no current organisational assignment, so
+    depreciation has nowhere current to post.
+  rule_authority: sap_hard_constraint
+  sap_impact: AFAB cannot derive a current cost centre or profit centre for the asset; cost centre and
+    plant based reports as of today omit the asset.
+  fix_map:
+    __other__: Maintain a new, currently valid time-dependent interval in AS02 > Time-dependent tab
+      (S/4HANA Fiori app F2747).
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): no currently
+    valid time-dependent interval, asset still active.'
+
+- id: AA257
+  field: ANLC.KNAFA
+  check_class: cross_field_check
+  grain: ANLC
+  fail_when: '`ANLC.KNAFA`.fillna(0) < -0.01'
+  severity: medium
+  dimension: accuracy
+  message: Ordinary depreciation posted for the year is negative
+  why_it_matters: >-
+    The posted ordinary depreciation for the fiscal year (ANLC.KNAFA) is a cumulative posting and
+    should not go below zero within the year; a negative balance means a reversal posted more than
+    the original depreciation, usually from a duplicated write-up or a manual correction entered with
+    the wrong sign.
+  rule_authority: best_practice
+  sap_impact: The depreciation expense account for the period shows a credit instead of a charge; the
+    asset history sheet's depreciation column does not reconcile with the P&L.
+  fix_map:
+    __other__: Review the depreciation postings in AW01N; correct the manual depreciation (ABMA) or
+      write-up (ABZU) that caused the negative balance.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE},
+    year {ANLC.GJAHR}): posted depreciation is negative.'
+
+- id: AA258
+  field: ANKB.NDJAR
+  check_class: cross_field_check
+  grain: ANKB
+  fail_when: >-
+    `ANKB.NDJAR`.fillna('').str.lstrip('0') == ''
+  applies_when:
+    ANKB.AFASL:
+      not_in: ['0000', 'GWG', 'LVA', 'NULL']
+  severity: medium
+  dimension: validity
+  message: Asset class default useful life is zero years for a depreciation key that needs one
+  why_it_matters: >-
+    New assets created in the class inherit the class default useful life (OAYD, ANKB.NDJAR). A zero
+    default for a life-based depreciation key means every new asset of the class starts with no
+    useful life and depreciates at zero until someone corrects it on AS01/AS02.
+  rule_authority: best_practice
+  sap_impact: New assets of the class are created with a depreciation base of zero; mass asset
+    creation (AS01 with reference) propagates the gap to every new asset.
+  fix_map:
+    __other__: Set the class default useful life in OAYD, or assign a percentage-based depreciation
+      key if the class is not meant to use a life-based method.
+  record_fix_template: 'Asset class {ANKB.ANLKL} area {ANKB.AFABE}: default useful life is zero years
+    for depreciation key {ANKB.AFASL}.'
+
+- id: AA259
+  field: ANLA.XLOEV
+  check_class: domain_value_check
+  allowed_values: ['X', '']
+  severity: medium
+  dimension: validity
+  message: Asset deletion flag holds a value other than X or blank
+  why_it_matters: >-
+    ANLA.XLOEV is a single-character deletion flag; SAP only ever sets it to 'X' or leaves it blank.
+    Any other value comes from a data load that wrote a different flag convention (for example 'Y' or
+    '1') into the field, which is not recognised by the archiving run.
+  rule_authority: sap_hard_constraint
+  sap_impact: Archiving (AM_ASSET) and the deletion-flag checks elsewhere in this rule pack (AA202,
+    AA225, AA246) treat the asset as not flagged, silently skipping a record that was meant to be
+    marked for deletion.
+  valid_values_with_labels:
+    'X': Flagged for deletion
+    '': Not flagged
+  fix_map:
+    __other__: "Deletion flag '{invalid_value}' is not a valid SAP value. Correct it to 'X' or blank\
+      \ via AS02, or investigate the data load that wrote it."
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): deletion flag
+    ''{actual_value}'' is not X or blank.'
+
+- id: AA260
+  field: ANLC.GJAHR
+  check_class: cross_field_check
+  grain: ANLC
+  applies_when:
+    ANLA.DEAKT:
+      populated: true
+  fail_when: >-
+    (`ANLC.GJAHR`.str.extract(r'(\d+)', expand=False).fillna('0').astype('int64') > `ANLA.DEAKT`.dt.year) &
+    ((`ANLC.KNAFA`.fillna(0) + `ANLC.NAFAG`.fillna(0) + `ANLC.SAFAG`.fillna(0) + `ANLC.AAFAG`.fillna(0)).abs() > 0.01)
+  severity: high
+  dimension: accuracy
+  message: Depreciation was posted for a fiscal year after the asset was deactivated
+  why_it_matters: >-
+    Once an asset is deactivated (ANLA.DEAKT) it should carry no further depreciation. Non-zero
+    depreciation posted for a fiscal year after the deactivation year means the deactivation date was
+    set after the fact without reversing depreciation already posted, or depreciation was posted in
+    error on an asset that should no longer be active.
+  rule_authority: sap_hard_constraint
+  sap_impact: The asset history sheet and the general ledger carry depreciation expense for an asset
+    the business considers retired; the reconciliation between FI-AA and FI-GL (ABST2) shows a
+    difference.
+  fix_map:
+    __other__: Review the depreciation postings in AW01N for the year after deactivation; reverse the
+      incorrect depreciation with ABMA, or correct the deactivation date if it was set wrongly.
+  record_fix_template: 'Asset {ANLC.ANLN1}-{ANLC.ANLN2} (company code {ANLC.BUKRS}, area {ANLC.AFABE},
+    year {ANLC.GJAHR}): depreciation posted after deactivation on {ANLA.DEAKT}.'
+
+- id: AA261
+  field: ANLB.NAPRZ
+  check_class: cross_field_check
+  fail_when: '`ANLB.NAPRZ` < 0'
+  severity: high
+  dimension: validity
+  message: Ordinary depreciation percentage rate is negative
+  why_it_matters: >-
+    The ordinary depreciation percentage rate is a share of the depreciation base and cannot be
+    negative; a negative value usually comes from a sign error during a data load or a manual
+    correction entered the wrong way.
+  rule_authority: sap_hard_constraint
+  sap_impact: The depreciation run (AFAB) would write up instead of depreciate the asset, overstating
+    its net book value.
+  fix_map:
+    __other__: Correct the depreciation percentage rate in AS02 > Depreciation areas.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} area {ANLB.AFABE}: rate is negative.'
+
+- id: AA262
+  field: ANLA.IVDAT
+  check_class: cross_field_check
+  fail_when: '`ANLA.IVDAT` > @today'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Last physical inventory date is in the future
+  why_it_matters: >-
+    The last physical inventory date records when the asset was last counted and cannot be later
+    than today; a future value is a typing error in the year or a faulty data load, the same class of
+    problem already checked for the capitalisation, retirement and first acquisition dates.
+  rule_authority: best_practice
+  sap_impact: Physical inventory ageing reports (AA045) understate how overdue the asset's next count
+    is, since a future date reads as recently inventoried.
+  fix_map:
+    __other__: Correct the physical inventory date in AS02 > General tab, or re-perform the count if
+      the asset was never actually inventoried.
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): physical inventory
+    date {ANLA.IVDAT} is in the future.'
