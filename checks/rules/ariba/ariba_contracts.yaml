@@ -128,3 +128,99 @@ rules:
   fix_map:
     __blank__: Assign a contract owner in Contract Management.
   record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: owner is {actual_value}.'
+- id: ARC010
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: (`ARIBA_CONTRACT.EXPIRATION_DATE` < @today)
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: medium
+  dimension: timeliness
+  message: Active Ariba contract is past its expiry date
+  why_it_matters: A contract still active after expiry gives no guaranteed terms.
+  rule_authority: best_practice
+  sap_impact: Spend runs off contract.
+  fix_map:
+    __other__: Renew the contract or set it to expired.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: expired {actual_value}.'
+- id: ARC011
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.EXPIRATION_DATE`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Ariba contract has no expiry date
+  why_it_matters: Without an expiry the renewal cannot be planned.
+  rule_authority: best_practice
+  sap_impact: The contract is never reviewed.
+  fix_map:
+    __other__: Set the expiry date.
+  record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no expiry date.
+- id: ARC012
+  field: ARIBA_CONTRACT.EFFECTIVE_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.EFFECTIVE_DATE`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Ariba contract has no effective date
+  why_it_matters: The effective date starts the validity of the terms.
+  rule_authority: best_practice
+  sap_impact: Release orders cannot be checked against the contract period.
+  fix_map:
+    __other__: Set the effective date.
+  record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no effective date.
+- id: ARC013
+  field: ARIBA_CONTRACT.CURRENCY_CODE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.CURRENCY_CODE`.isna() & (`ARIBA_CONTRACT.CONTRACT_AMOUNT` > 0)'
+  severity: high
+  dimension: completeness
+  message: Ariba contract has an amount but no currency
+  why_it_matters: An amount without a currency cannot be converted or compared.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contract consumption is unreliable.
+  fix_map:
+    __other__: Set the currency.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: amount {ARIBA_CONTRACT.CONTRACT_AMOUNT} has no currency.'
+- id: ARC014
+  field: ARIBA_CONTRACT.SUPPLIER
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.SUPPLIER`.isna()'
+  severity: high
+  dimension: completeness
+  message: Ariba contract has no supplier
+  why_it_matters: A contract is an agreement with a named supplier.
+  rule_authority: sap_hard_constraint
+  sap_impact: Spend cannot be attributed to the contract.
+  fix_map:
+    __other__: Set the supplier.
+  record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no supplier.
+- id: ARC015
+  field: ARIBA_CONTRACT.OWNER
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.OWNER`.isna()'
+  severity: low
+  dimension: completeness
+  message: Ariba contract has no owner
+  why_it_matters: The owner manages renewals and disputes.
+  rule_authority: best_practice
+  sap_impact: Nobody is accountable for the contract.
+  fix_map:
+    __other__: Assign an owner.
+  record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no owner.
+- id: ARC016
+  field: ARIBA_CONTRACT.COMPLIANCE_STATUS
+  check_class: cross_field_check
+  fail_when: '`ARIBA_CONTRACT.COMPLIANCE_STATUS`.isna()'
+  severity: low
+  dimension: completeness
+  message: Ariba contract has no compliance status
+  why_it_matters: Compliance status shows whether spend follows the terms.
+  rule_authority: best_practice
+  sap_impact: Maverick spend is not reported.
+  fix_map:
+    __other__: Run compliance evaluation for the contract.
+  record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no compliance status.

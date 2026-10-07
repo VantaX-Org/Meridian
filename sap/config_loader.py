@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from functools import lru_cache
 from datetime import date, timedelta
 from typing import Any, Callable, Optional
 
@@ -192,6 +193,26 @@ def load_cloud(conn, system_type: str, progress: Progress = None, max_rows: int 
     if progress:
         progress(len(jobs), len(jobs), "")
     return snap
+
+
+@lru_cache(maxsize=16)
+def planned_objects(system_type: str) -> tuple[str, ...]:
+    """Every config object a load of this system type reads or reports, known before the load starts."""
+    return tuple(_planned(system_type))
+
+
+def _planned(system_type: str) -> list[str]:
+    if system_type in ABAP_TYPES:
+        return sorted(abap_objects(system_type))
+    if system_type == "successfactors":
+        from sap.extraction_registry import SYSTEM_EXTRACTIONS, get_extraction_targets
+
+        cfg = {t.source for m in SYSTEM_EXTRACTIONS["successfactors"]
+               for t in get_extraction_targets(system_type, m, include_config=True) if t.is_config}
+        return [*sorted(cfg), "PickListValueV2", "ODATA_ENTITY", *_SF_NOT_WIRED]
+    if system_type == "concur":
+        return list(_CONCUR_OBJECTS)
+    return []
 
 
 def not_available_history(reason: str) -> dict[str, Any]:

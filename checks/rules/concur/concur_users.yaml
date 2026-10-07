@@ -129,3 +129,82 @@ rules:
   fix_map:
     __blank__: Maintain the name in the user profile or the HR feed.
   record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name is {actual_value}.'
+- id: CNU010
+  field: CONCUR_USER.COST_CENTER
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.COST_CENTER`.isna()'
+  applies_when:
+    CONCUR_USER.ACTIVE:
+    - 'true'
+  severity: medium
+  dimension: completeness
+  message: Active Concur user has no cost centre
+  why_it_matters: The cost centre is the default cost object for the employee expenses. It maps to S/4HANA controlling.
+  rule_authority: best_practice
+  sap_impact: Expenses post to a wrong or missing cost object.
+  fix_map:
+    __other__: Maintain the cost centre in the user profile or HR feed.
+  record_fix_template: Concur user {CONCUR_USER.LOGIN_ID} has no cost centre.
+- id: CNU011
+  field: CONCUR_USER.ORG_UNIT
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.ORG_UNIT`.isna()'
+  applies_when:
+    CONCUR_USER.ACTIVE:
+    - 'true'
+  severity: medium
+  dimension: completeness
+  message: Active Concur user has no organisation unit
+  why_it_matters: The organisation unit maps the employee to a company code.
+  rule_authority: best_practice
+  sap_impact: Expenses cannot be mapped to a company code.
+  fix_map:
+    __other__: Maintain the organisation unit.
+  record_fix_template: Concur user {CONCUR_USER.LOGIN_ID} has no organisation unit.
+- id: CNU012
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.EMPLOYEE_ID`.isna()'
+  applies_when:
+    CONCUR_USER.ACTIVE:
+    - 'true'
+  severity: high
+  dimension: completeness
+  message: Active Concur user has no employee ID
+  why_it_matters: The employee ID links the user to HR master data and the S/4HANA business partner.
+  rule_authority: best_practice
+  sap_impact: The user cannot be mapped to an employee vendor for payment.
+  fix_map:
+    __other__: Maintain the employee ID.
+  record_fix_template: Concur user {CONCUR_USER.LOGIN_ID} has no employee ID.
+- id: CNU013
+  field: CONCUR_USER.ACTIVE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.EMPLOYEE_ID`.isna() & `CONCUR_USER.COST_CENTER`.isna()'
+  applies_when:
+    CONCUR_USER.ACTIVE:
+    - 'false'
+  severity: low
+  dimension: consistency
+  message: Inactive Concur user has no employee ID or cost centre (archive candidate)
+  why_it_matters: Inactive users with nothing to link are safe to archive before migration.
+  rule_authority: best_practice
+  sap_impact: Dead users are carried into the new system.
+  fix_map:
+    __other__: Archive or delete the user.
+  record_fix_template: Concur user {CONCUR_USER.LOGIN_ID} is inactive and unlinked.
+- id: CNU014
+  field: CONCUR_USER.ACTIVE
+  check_class: domain_value_check
+  allowed_values:
+  - 'true'
+  - 'false'
+  severity: high
+  dimension: validity
+  message: Concur user active flag is not true or false
+  why_it_matters: The flag is a boolean string.
+  rule_authority: sap_hard_constraint
+  sap_impact: User checks misjudge the status.
+  fix_map:
+    __other__: Correct the flag.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: active flag is {actual_value}.'
