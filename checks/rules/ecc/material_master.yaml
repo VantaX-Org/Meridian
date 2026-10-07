@@ -537,6 +537,11 @@ rules:
       use Fiori F1602.'
   record_fix_template: 'Material {MARA.MATNR}: VPRSV is ''{actual_value}''. Set to S (standard price) or V (moving average)
     via MM02 (ECC) or Fiori F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM035
   field: MBEW.BKLAS
   check_class: null_check
@@ -577,6 +582,11 @@ rules:
   applies_when:
     MBEW.BWKEY:
       populated: true
+  auto_fix:
+    steps:
+    - op: set
+      value: 1
+    confidence: low
 - id: MM038
   field: MVKE.DWERK
   check_class: null_check
@@ -1176,6 +1186,14 @@ rules:
   record_fix_template: 'Record is missing MVKE.MTPOS. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
   fail_when: '`MVKE.MTPOS`.isna() & `MARA.MTPOS_MARA`.isna()'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: T134
+      match:
+        MTART: MARA.MTART
+      value: VMTPO
+    confidence: medium
 - id: MM135
   field: MVKE.PRODH
   check_class: null_check
@@ -1190,6 +1208,11 @@ rules:
     __blank__: 'In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage Product Master Data).'
   record_fix_template: 'Record is missing MVKE.PRODH. In ECC: Set via MM02. In S/4HANA: Use MM02 or Fiori app F1602 (Manage
     Product Master Data).'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MARA.PRDHA
+    confidence: medium
 - id: MM138
   field: MARA.MATNR
   check_class: uniqueness_check
@@ -1283,6 +1306,14 @@ rules:
   applies_when:
     MBEW.BWKEY:
       populated: true
+  auto_fix:
+    steps:
+    - op: lookup
+      table: T134
+      match:
+        MTART: MARA.MTART
+      value: VPRSV
+    confidence: medium
 - id: MM150
   field: MARM.MEINH
   check_class: cross_field_check
@@ -1319,6 +1350,11 @@ rules:
       Fiori F1602 Manage Product Master Data (S/4HANA). If stock exists, correct the price together with the unit through
       MR21 so the stock value stays right.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: price unit is {actual_value}; it must be at least 1.'
+  auto_fix:
+    steps:
+    - op: set
+      value: 1
+    confidence: low
 - id: MM152
   field: MBEW.VERPR
   check_class: cross_field_check
@@ -1896,6 +1932,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVAS).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: distribution-chain-specific material
     status ''{actual_value}'' is not configured (TVMS).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM185
   field: MARC.DISPO
   check_class: referential_check
@@ -2223,6 +2264,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVK5).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: account assignment group (material)
     ''{actual_value}'' is not configured (TVKM).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM206
   field: MVKE.MTPOS
   check_class: referential_check
@@ -2239,6 +2285,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVS9).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: item category group (sales) ''{actual_value}''
     is not configured (TPTM).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM207
   field: MVKE.DWERK
   check_class: referential_check
@@ -2255,6 +2306,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVX6).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: delivering plant ''{actual_value}''
     is not configured (TVKWZ).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM208
   field: MVKE.VRKME
   check_class: referential_check
@@ -2271,6 +2327,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (CUNI).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: sales unit ''{actual_value}'' is not
     configured (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM209
   field: MVKE.PRODH
   check_class: referential_check
@@ -2287,6 +2348,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (V/76).'
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}/{MVKE.VTWEG}: product hierarchy (sales) ''{actual_value}''
     is not configured (T179).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM210
   field: MARM.MEINH
   check_class: referential_check
@@ -2361,6 +2427,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TVKO. Remove the sales view or create the sales organisation in customizing
       (OVX5).'
   record_fix_template: 'Material {MVKE.MATNR}: sales organisation ''{actual_value}'' is not configured (TVKO).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM215
   field: MVKE.VTWEG
   check_class: referential_check
@@ -2375,6 +2446,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TVTW. Remove the sales view or create the distribution channel in customizing
       (OVXI).'
   record_fix_template: 'Material {MVKE.MATNR}: distribution channel ''{actual_value}'' is not configured (TVTW).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM216
   field: MARC.PRCTR
   check_class: exists_check
@@ -3848,6 +3924,11 @@ rules:
     __other__: Set the deletion flag in MM06 for the sales row, or remove the client-level flag.
   record_fix_template: 'Material {MVKE.MATNR}, sales org {MVKE.VKORG}, distribution channel {MVKE.VTWEG}: client-level deletion
     flag {MARA.LVORM} but sales row is not flagged.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
 - id: MM366
   field: MARA.EKWSL
   check_class: referential_check
@@ -4786,6 +4867,11 @@ rules:
     __other__: Set the deletion flag in MM06 on the valuation row or remove it on the plant row.
   record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}: plant row flagged for deletion but valuation row
     is not.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
 - id: MM425
   field: MBEW.LBKUM
   check_class: group_sum_check
@@ -5484,6 +5570,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T005. Correct the value in MM02 or create the entry in table T005 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: HERKL ''{actual_value}'' is not configured in T005.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM465
   field: KLAH.CLASS
   check_class: null_check
@@ -6661,6 +6752,11 @@ rules:
     __other__: Correct the value in QA08; the allowed values are those of domain QKZ.
   record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: AKTIV is ''{actual_value}'',
     which is not a value of domain QKZ.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM536
   field: QMAT.SPROZ
   check_class: cross_field_check
@@ -6743,6 +6839,11 @@ rules:
     __other__: Set the deletion flag on the warehouse view (MM06) or remove the client-level flag.
   record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: warehouse view is active, client-level deletion flag
     is set.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
 - id: MM541
   field: MLGT.LVORM
   check_class: cross_field_check
@@ -6761,6 +6862,11 @@ rules:
     __other__: Set the deletion flag on the storage type data (MM06).
   record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: storage type data is active,
     warehouse deletion flag is set.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
 - id: MM542
   field: MARC.NFMAT
   check_class: cross_field_check
@@ -7228,3 +7334,1748 @@ rules:
     __blank__: Enter the discontinuation group in CS02 or clear the follow-up indicator.
   record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: follow-up item has no discontinuation
     group.'
+# --- valuation / sales / WM depth (mm-valuation) ---
+- id: MM800
+  field: MBEW.VPRSV
+  check_class: exists_check
+  grain: MBEW
+  applies_when:
+    MBEW.VPRSV:
+    - S
+  fields:
+  - MARA.MTART
+  target_table: T134
+  target_fields:
+  - MTART
+  target_when:
+    KZVPR:
+    - X
+    VPRSV:
+    - V
+  negate: true
+  severity: high
+  dimension: consistency
+  message: Valuation uses standard price although the material type forces moving average price
+  why_it_matters: The material type (T134) can make its price control mandatory (KZVPR). When it is mandatory and set to V,
+    a valuation record under standard price breaks the configured valuation policy for that type.
+  rule_authority: sap_hard_constraint
+  sap_impact: MM02 rejects changes to the accounting view until the price control matches the material type; goods movements
+    are valued with a price the policy does not allow.
+  fix_map:
+    __other__: Change the price control to V with MR21/MM02 (move stock out first if required).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': price control
+    {actual_value} but the material type requires V.'
+  auto_fix:
+    steps:
+    - op: set
+      value: V
+    confidence: medium
+- id: MM801
+  field: MBEW.VPRSV
+  check_class: exists_check
+  grain: MBEW
+  applies_when:
+    MBEW.VPRSV:
+    - V
+  fields:
+  - MARA.MTART
+  target_table: T134
+  target_fields:
+  - MTART
+  target_when:
+    KZVPR:
+    - X
+    VPRSV:
+    - S
+  negate: true
+  severity: high
+  dimension: consistency
+  message: Valuation uses moving average price although the material type forces standard price
+  why_it_matters: When the material type makes price control S mandatory (T134-KZVPR), a moving-average valuation breaks the
+    configured policy. Product costing and actual costing expect standard price for these types.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost estimates cannot be released to the material; MM02 rejects changes to the accounting view.
+  fix_map:
+    __other__: Release a standard cost estimate and change the price control to S (MR21/CK24).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': price control
+    {actual_value} but the material type requires S.'
+  auto_fix:
+    steps:
+    - op: set
+      value: S
+    confidence: medium
+- id: MM802
+  field: MBEW.MLMAA
+  check_class: exists_check
+  grain: MBEW
+  applies_when:
+    MBEW.MLMAA:
+      blank: true
+  fields:
+  - MBEW.BWKEY
+  target_table: T001K
+  target_fields:
+  - BWKEY
+  target_when:
+    MLBWA:
+    - X
+  negate: true
+  severity: critical
+  dimension: consistency
+  message: Material ledger is active in the valuation area but not on the material
+  why_it_matters: When the material ledger is active for a valuation area (T001K-MLBWA), every material there must carry the
+    material ledger flag. In S/4HANA the material ledger is mandatory for all valuated materials.
+  rule_authority: sap_hard_constraint
+  sap_impact: Actual costing and multiple currencies/valuations miss this material; the S/4HANA conversion (ML migration step)
+    stops with errors for it.
+  fix_map:
+    __blank__: Run the ML production start-up (CKMSTART) for the material or valuation area.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': material ledger
+    flag is blank in an ML-active valuation area.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: high
+- id: MM803
+  field: CKMLHD.MLAST
+  check_class: exists_check
+  grain: CKMLHD
+  fields:
+  - CKMLHD.MATNR
+  - CKMLHD.BWKEY
+  - CKMLHD.MLAST
+  target_table: MBEW
+  target_fields:
+  - MATNR
+  - BWKEY
+  - MLAST
+  severity: high
+  dimension: consistency
+  message: Material ledger header price determination differs from the valuation record
+  why_it_matters: The price determination (2 = transaction-based, 3 = single-/multilevel) is stored on the valuation record
+    and on the material ledger header. Both must agree, or the period closing reads a different setting than goods movements.
+  rule_authority: sap_hard_constraint
+  sap_impact: Actual costing (CKMLCP) skips or errors on the material; periodic unit prices are not calculated.
+  fix_map:
+    __other__: Correct the price determination with CKMMS so both records agree.
+  record_fix_template: 'Material ledger header {CKMLHD.KALNR} (material {CKMLHD.MATNR}, valuation area {CKMLHD.BWKEY}): price
+    determination {actual_value} does not match the valuation record.'
+- id: MM804
+  field: MBEW.VPRSV
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.MLAST` == '3') & (`MBEW.VPRSV` == 'V')
+  severity: high
+  dimension: consistency
+  message: Single-/multilevel price determination is set on a moving-average-priced material
+  why_it_matters: Price determination 3 (single-/multilevel actual costing) needs standard price control. SAP allows price
+    determination 3 only with price control S.
+  rule_authority: sap_hard_constraint
+  sap_impact: The actual costing run cannot settle the material; MM02 rejects the combination.
+  fix_map:
+    __other__: Set price control S, or set price determination 2 with CKMMS.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': price control
+    {actual_value} with price determination 3.'
+- id: MM805
+  field: MBEW.KALN1
+  check_class: null_check
+  grain: MBEW
+  applies_when:
+    MBEW.MLMAA:
+    - X
+  severity: high
+  dimension: completeness
+  message: Material ledger is active on the valuation but it has no cost estimate number
+  why_it_matters: Every material ledger valuation is linked to its material ledger header through the cost estimate number
+    (KALN1 = CKMLHD-KALNR). Without it the ML documents cannot be posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements raise ML errors; the ML header and period records cannot be read.
+  fix_map:
+    __blank__: Run CKMSTART for the material or repair the link with the ML consistency report.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': material ledger
+    active but no cost estimate number.'
+- id: MM806
+  field: MBEW.KALN1
+  check_class: exists_check
+  grain: MBEW
+  target_table: CKMLHD
+  target_fields:
+  - KALNR
+  severity: high
+  dimension: consistency
+  message: Cost estimate number of the valuation does not exist as a material ledger header
+  why_it_matters: The cost estimate number (KALN1) points to the material ledger header (CKMLHD). A number with no header
+    is an orphaned link left by a failed migration or deletion.
+  rule_authority: sap_hard_constraint
+  sap_impact: ML postings and actual costing fail for the material.
+  fix_map:
+    __other__: Repair the ML header with the ML consistency report (MLHELP / CKMLMV).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': cost estimate
+    number {actual_value} has no material ledger header.'
+- id: MM807
+  field: CKMLHD.BWKEY
+  check_class: exists_check
+  grain: CKMLHD
+  target_table: T001K
+  target_fields:
+  - BWKEY
+  target_when:
+    MLBWA:
+    - X
+  severity: medium
+  dimension: consistency
+  message: Material ledger header exists in a valuation area where the material ledger is not active
+  why_it_matters: Material ledger headers are only created for valuation areas with the material ledger active (T001K-MLBWA).
+    A header elsewhere is left over from a deactivation or a copy.
+  rule_authority: best_practice
+  sap_impact: The S/4HANA ML migration reports inconsistencies and may need manual clean-up.
+  fix_map:
+    __other__: Activate the material ledger for the valuation area or remove the orphaned header.
+  record_fix_template: 'Material ledger header {CKMLHD.KALNR} (material {CKMLHD.MATNR}, valuation area {CKMLHD.BWKEY}): valuation
+    area {actual_value} has no active material ledger.'
+- id: MM808
+  field: MBEW.EKALR
+  check_class: null_check
+  grain: MBEW
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - X
+    MBEW.VPRSV:
+    - S
+  severity: medium
+  dimension: completeness
+  message: In-house produced material under standard price is not costed with quantity structure
+  why_it_matters: A produced material (procurement type E or X) under price control S gets its standard price from a cost
+    estimate with quantity structure (BOM and routing). Without the indicator, CK11N/CK40N skip it.
+  rule_authority: best_practice
+  sap_impact: The standard price is not updated by the costing run; production variances are distorted.
+  fix_map:
+    __blank__: Set 'With qty structure' in MM02 > Costing 1.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': produced under
+    standard price but not costed with quantity structure.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
+- id: MM809
+  field: MBEW.VERPR
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MBEW.MLMAA:
+    - X
+    MBEW.VPRSV:
+    - S
+    MBEW.LBKUM:
+      gt: 0
+  fail_when: ~(`MBEW.VERPR`.fillna(0) > 0)
+  severity: medium
+  dimension: accuracy
+  message: Standard-priced material with stock and material ledger has no periodic unit price
+  why_it_matters: With the material ledger active, MBEW-VERPR holds the periodic unit price for standard-priced materials.
+    A zero value with stock means actual costing has never run or the ML values are broken.
+  rule_authority: best_practice
+  sap_impact: Inventory at actual cost is understated; S/4HANA ML migration shows inconsistent values.
+  fix_map:
+    __other__: Run the actual costing / ML closing (CKMLCP) or check the ML values with CKM3.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': periodic unit
+    price {actual_value} with stock under price control S.'
+- id: MM810
+  field: MBEW.ZKDAT
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: '`MBEW.ZKDAT`.notna() & ~(`MBEW.ZKPRS`.fillna(0) > 0)'
+  severity: low
+  dimension: consistency
+  message: Future price valid-from date is set without a future price
+  why_it_matters: The future price date (ZKDAT) belongs to the future price (ZKPRS). A date on its own is left over after
+    the price was cleared and confuses price change runs (MR21 / CK24).
+  rule_authority: best_practice
+  sap_impact: Price change reports list a planned change that does not exist.
+  fix_map:
+    __other__: Clear the future price date or enter the future price in MM02 > Accounting 1.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': future price
+    date {actual_value} without a future price.'
+- id: MM811
+  field: MBEW.VMSTP
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.VMVPR` == 'S') & (`MBEW.VMKUM` > 0) & ~(`MBEW.VMSTP`.fillna(0) > 0)
+  severity: medium
+  dimension: accuracy
+  message: Previous period standard price is zero although the previous period had stock
+  why_it_matters: The previous period values (VM*) are used for postings into the previous period and for reports. Stock under
+    price control S with no standard price in the previous period cannot be valued.
+  rule_authority: best_practice
+  sap_impact: Postings into the previous period fail or post at zero value.
+  fix_map:
+    __other__: Check the period history with MR21 / MBEWH and correct with a price change in the previous period.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': previous period
+    standard price {actual_value} with previous period stock.'
+- id: MM812
+  field: MBEW.VMVER
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.VMVPR` == 'V') & (`MBEW.VMKUM` > 0) & ~(`MBEW.VMVER`.fillna(0) > 0)
+  severity: medium
+  dimension: accuracy
+  message: Previous period moving average price is zero although the previous period had stock
+  why_it_matters: Under moving average price control, the previous period's stock is valued at the previous period's moving
+    average price. Zero with stock means the period values are inconsistent.
+  rule_authority: best_practice
+  sap_impact: Postings into the previous period are valued at zero; balance sheet values differ from stock.
+  fix_map:
+    __other__: Check MBEWH and correct with a price change (MR21) in the previous period.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': previous period
+    moving average price {actual_value} with previous period stock.'
+- id: MM813
+  field: MBEW.VMPEI
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: ((`MBEW.VMKUM` > 0) & ~(`MBEW.VMPEI`.fillna(0) > 0)) | ((`MBEW.VJKUM` > 0) & ~(`MBEW.VJPEI`.fillna(0) > 0))
+  severity: medium
+  dimension: validity
+  message: Previous period or previous year price unit is not positive although stock existed
+  why_it_matters: Every price is stored per price unit. A zero price unit makes the price meaningless and division by zero
+    occurs when SAP values stock of that period.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings into the previous period or previous year terminate or are valued wrongly.
+  fix_map:
+    __other__: Correct the period history (MBEWH) with SAP support; check the period closing program.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': previous period
+    price unit {actual_value} with stock.'
+- id: MM814
+  field: MBEW.LFGJA
+  check_class: null_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWKEY:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Valuation record has no current fiscal year
+  why_it_matters: The current period (LFGJA/LFMON) of the valuation record decides into which period goods movements post.
+    A blank year means the record was never initialised by the period closing (MMPV/MMRV).
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements for the material fail with a posting period error.
+  fix_map:
+    __blank__: Initialise the period with MMPI/MMPV for the company code.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': no current fiscal
+    year.'
+- id: MM815
+  field: MBEW.LVORM
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MBEW.LVORM:
+    - X
+  fail_when: (abs(`MBEW.LBKUM`) > 0) | (abs(`MBEW.SALK3`) >= 0.01)
+  severity: high
+  dimension: consistency
+  message: Valuation record is flagged for deletion but still carries stock or stock value
+  why_it_matters: A deletion flag is the first step to archiving. While the record still holds quantity or value, it cannot
+    be archived and the stock is still on the balance sheet.
+  rule_authority: best_practice
+  sap_impact: Archiving (MM_MATNR) fails; stock remains valued under a material marked as gone.
+  fix_map:
+    __other__: Post the stock out (MI07/MB1A) or remove the deletion flag in MM06.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': flagged for deletion
+    with stock quantity {MBEW.LBKUM}.'
+- id: MM816
+  field: MBEW.BWTTY
+  check_class: exists_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWTTY:
+      populated: true
+    MBEW.BWTAR:
+      blank: true
+  fields:
+  - MBEW.MATNR
+  - MBEW.BWKEY
+  target_table: MBEW
+  target_fields:
+  - MATNR
+  - BWKEY
+  target_when:
+    BWTAR:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Split-valuated material has no valuation type records
+  why_it_matters: With split valuation, the header record (valuation type blank) only sums up the valuation types. Stock is
+    posted to valuation type records. A header without any type record cannot receive stock.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts fail because no valuation type can be found for the material.
+  fix_map:
+    __other__: Create the valuation types in MM01 (accounting view per valuation type).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': valuation category
+    {actual_value} but no valuation type records.'
+- id: MM817
+  field: MBEW.BWTAR
+  check_class: exists_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWTAR:
+      populated: true
+  fields:
+  - MBEW.MATNR
+  - MBEW.BWKEY
+  target_table: MBEW
+  target_fields:
+  - MATNR
+  - BWKEY
+  target_when:
+    BWTAR:
+      blank: true
+  severity: critical
+  dimension: consistency
+  message: Valuation type record exists without a split-valuation header record
+  why_it_matters: Every valuation type record belongs to a header record (valuation type blank) for the same material and
+    valuation area. Without the header, stock totals and price control are missing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Stock reports and the S/4HANA ML migration show inconsistent valuation data.
+  fix_map:
+    __other__: Repair the header record with SAP support (MM consistency check MBEWH / RM07MBWE).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': valuation type
+    {actual_value} has no header record.'
+- id: MM818
+  field: MBEW.BWTTY
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWTAR:
+      blank: true
+  fail_when: (`MBEW.BWTTY`.notna() != `MARC.BWTTY`.notna()) | (`MBEW.BWTTY` != `MARC.BWTTY`)
+  severity: high
+  dimension: consistency
+  message: Valuation category of the accounting view differs from the plant view
+  why_it_matters: SAP keeps the valuation category on the valuation header (MBEW) and on the plant (MARC). Both must agree.
+    A mismatch is a broken conversion or a direct table change.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts determine valuation types inconsistently; MM02 raises errors on the accounting view.
+  fix_map:
+    __other__: Align the valuation category in MM02 (accounting view) and check the plant view.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': valuation category
+    ''{actual_value}'' but plant view has ''{MARC.BWTTY}''.'
+- id: MM819
+  field: MBEW.BWTTY
+  check_class: null_check
+  grain: MBEW
+  applies_when:
+    MBEW.BWTAR:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Valuation type record has no valuation category
+  why_it_matters: A valuation type record belongs to a valuation category (for example by origin or by batch). Without the
+    category, SAP cannot check which valuation types are allowed.
+  rule_authority: best_practice
+  sap_impact: Valuation type determination at goods receipt is inconsistent.
+  fix_map:
+    __blank__: Maintain the valuation category on the header record in MM02.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': valuation type
+    record with no valuation category.'
+- id: MM820
+  field: MBEW.BWPRS
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.BWPRS` < 0) | (`MBEW.BWPRH` < 0)
+  severity: medium
+  dimension: validity
+  message: Tax or commercial valuation price is negative
+  why_it_matters: The tax-based (BWPRS) and commercial (BWPRH) prices are used for balance sheet valuation (lowest value).
+    A negative price is never valid.
+  rule_authority: best_practice
+  sap_impact: Balance sheet valuation (MRN0/MRN1) gives wrong devaluations.
+  fix_map:
+    __other__: Correct the valuation prices in MM02 > Accounting 2.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': tax price {actual_value},
+    commercial price {MBEW.BWPRH}.'
+- id: MM821
+  field: MBEW.ZPLD2
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.ZPLD1`.notna() & `MBEW.ZPLD2`.notna() & (`MBEW.ZPLD2` < `MBEW.ZPLD1`)) | (`MBEW.ZPLD2`.notna() & `MBEW.ZPLD3`.notna()
+    & (`MBEW.ZPLD3` < `MBEW.ZPLD2`))
+  severity: low
+  dimension: consistency
+  message: Planned price dates are not in ascending order
+  why_it_matters: Planned prices 1, 2 and 3 are steps in time. Product costing uses them in date order; a later step with
+    an earlier date than the step before is a typing error.
+  rule_authority: best_practice
+  sap_impact: Cost estimates with planned prices pick the wrong price step.
+  fix_map:
+    __other__: Correct the planned price dates in MM02 > Costing 2.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': planned price
+    date 2 {actual_value} is before date 1 {MBEW.ZPLD1}.'
+- id: MM822
+  field: MBEW.ZPLPR
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.ZPLPR` < 0) | (`MBEW.LPLPR` < 0) | (`MBEW.VPLPR` < 0)
+  severity: medium
+  dimension: validity
+  message: Future, current or previous planned price is negative
+  why_it_matters: Planned prices feed the standard cost estimate. A negative price is never valid and produces negative costs
+    in the cost estimate.
+  rule_authority: best_practice
+  sap_impact: Standard cost estimates are wrong; standard prices released from them are wrong.
+  fix_map:
+    __other__: Correct the planned prices in MM02 > Costing 2.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': planned price
+    {actual_value} is negative.'
+- id: MM823
+  field: MBEW.MYPOL
+  check_class: null_check
+  grain: MBEW
+  applies_when:
+    MBEW.XLIFO:
+    - X
+  severity: medium
+  dimension: completeness
+  message: LIFO-relevant material is not assigned to a LIFO pool
+  why_it_matters: LIFO valuation (MRL*) values materials per pool. A LIFO-relevant material with no pool is skipped.
+  rule_authority: best_practice
+  sap_impact: Year-end LIFO valuation is incomplete.
+  fix_map:
+    __blank__: Assign the LIFO pool in MM02 > Accounting 2.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': LIFO-relevant
+    but no LIFO pool.'
+- id: MM824
+  field: MBEW.XLIFO
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: '`MBEW.MYPOL`.notna() & `MBEW.XLIFO`.isna()'
+  severity: low
+  dimension: consistency
+  message: Material is assigned to a LIFO pool but is not LIFO-relevant
+  why_it_matters: The LIFO pool only takes effect when the LIFO indicator is set. A pool without the indicator is a half-finished
+    setup.
+  rule_authority: best_practice
+  sap_impact: The material is left out of LIFO valuation although a pool is maintained.
+  fix_map:
+    __other__: Set the LIFO indicator or remove the pool in MM02 > Accounting 2.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': LIFO pool {MBEW.MYPOL}
+    but not LIFO-relevant.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: low
+- id: MM825
+  field: MBEW.STPRS
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.VPRSV` == 'S') & ~(`MBEW.STPRS`.fillna(0) > 0) & ~(`MBEW.LBKUM`.fillna(0) > 0)
+  severity: medium
+  dimension: accuracy
+  message: Standard-priced valuation without stock has no standard price
+  why_it_matters: Under price control S the standard price values every goods movement. A zero price on a valuation that has
+    no stock yet means the first goods receipt is valued at zero and the full amount goes to price differences.
+  rule_authority: best_practice
+  sap_impact: The first receipt posts the whole value as a price difference; inventory is valued at zero.
+  fix_map:
+    __other__: Release a standard cost estimate (CK24) or enter the standard price (MR21) before the first receipt.
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': standard price
+    {actual_value} without stock.'
+- id: MM826
+  field: MBEW.LBKUM
+  check_class: cross_field_check
+  grain: MBEW
+  fail_when: (`MBEW.SALK3` <= -0.01) & (`MBEW.LBKUM` == 0)
+  severity: high
+  dimension: consistency
+  message: Valuated stock value is negative with zero or negative quantity
+  why_it_matters: A negative stock value can only arise with negative stock allowed, and then the quantity is negative too.
+    Negative value with zero quantity is a valuation inconsistency.
+  rule_authority: best_practice
+  sap_impact: The balance sheet shows negative inventory value; ML migration flags the material.
+  fix_map:
+    __other__: Analyse the valuation with MB5L / CKM3 and correct with a price change or debit/credit (MR22).
+  record_fix_template: 'Material {MBEW.MATNR}, valuation area {MBEW.BWKEY}, valuation type ''{MBEW.BWTAR}'': stock quantity
+    {actual_value} with stock value {MBEW.SALK3}.'
+- id: MM827
+  field: MVKE.DWERK
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.VKORG
+  - MVKE.VTWEG
+  - MVKE.DWERK
+  target_table: TVKWZ
+  target_fields:
+  - VKORG
+  - VTWEG
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Delivering plant is not assigned to the sales organisation and distribution channel
+  why_it_matters: A delivering plant must be allowed for the sales organisation and distribution channel (TVKWZ). The plant
+    can exist and still not belong to this sales area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders reject the proposed plant; the item has no delivering plant.
+  fix_map:
+    __other__: Choose a plant assigned to the sales area in MM02 > Sales org. 1, or extend the assignment (OVX6).
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: delivering plant {actual_value} is not
+    assigned to the sales area.'
+- id: MM828
+  field: MVKE.DWERK
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.MATNR
+  - MVKE.DWERK
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Delivering plant on the sales view is flagged for deletion for the material
+  why_it_matters: The delivering plant is proposed into every sales order. If the material's plant view is flagged for deletion
+    there, orders are proposed from a plant that will be archived.
+  rule_authority: best_practice
+  sap_impact: Orders and deliveries are created from a closed plant; availability check finds no stock.
+  fix_map:
+    __other__: Change the delivering plant in MM02 > Sales org. 1 or remove the plant deletion flag.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: delivering plant {actual_value} is flagged
+    for deletion for the material.'
+- id: MM829
+  field: MVKE.SCHME
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.MATNR
+  - MVKE.SCHME
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: medium
+  dimension: consistency
+  message: Delivery unit has no unit-of-measure conversion for the material
+  why_it_matters: The delivery unit (SCHME) rounds delivered quantities. Without a conversion to the base unit (MARM), SAP
+    cannot apply it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order quantities cannot be rounded to the delivery unit; the sales order raises a unit error.
+  fix_map:
+    __other__: Add the unit in MM02 > Additional data > Units of measure, or clear the delivery unit.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: delivery unit {actual_value} has no conversion.'
+- id: MM830
+  field: MVKE.LFMAX
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: (`MVKE.LFMAX` > 0) & (`MVKE.LFMNG` > 0) & (`MVKE.LFMAX` < `MVKE.LFMNG`)
+  severity: medium
+  dimension: consistency
+  message: Maximum delivery quantity is below the minimum delivery quantity
+  why_it_matters: The maximum delivery quantity (LFMAX) must be at least the minimum delivery quantity (LFMNG). Otherwise
+    no delivery quantity is valid.
+  rule_authority: best_practice
+  sap_impact: Every delivery raises a quantity warning or block.
+  fix_map:
+    __other__: Correct the delivery quantities in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: maximum delivery quantity {actual_value}
+    below minimum {MVKE.LFMNG}.'
+- id: MM831
+  field: MVKE.LFMAX
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: (`MVKE.LFMAX` > 0) & (`MVKE.AUMNG` > 0) & (`MVKE.LFMAX` < `MVKE.AUMNG`)
+  severity: medium
+  dimension: consistency
+  message: Maximum delivery quantity is below the minimum order quantity
+  why_it_matters: An order at the minimum order quantity (AUMNG) could never be delivered in one delivery if the maximum delivery
+    quantity is smaller.
+  rule_authority: best_practice
+  sap_impact: Minimum-size orders are split into several deliveries or blocked.
+  fix_map:
+    __other__: Correct the order and delivery quantities in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: maximum delivery quantity {actual_value}
+    below minimum order quantity {MVKE.AUMNG}.'
+- id: MM832
+  field: MVKE.EFMNG
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: (`MVKE.EFMNG` < 0) | (`MVKE.LFMAX` < 0)
+  severity: medium
+  dimension: validity
+  message: Minimum make-to-order or maximum delivery quantity is negative
+  why_it_matters: Quantities on the sales view are limits. A negative limit has no meaning and is a typing error.
+  rule_authority: best_practice
+  sap_impact: Quantity checks in sales orders behave unpredictably.
+  fix_map:
+    __other__: Correct the quantities in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: minimum make-to-order quantity {actual_value},
+    maximum delivery quantity {MVKE.LFMAX}.'
+- id: MM833
+  field: MVKE.SCMNG
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: (`MVKE.SCMNG` > 0) & (`MVKE.LFMAX` > 0) & (`MVKE.SCMNG` > `MVKE.LFMAX`)
+  severity: low
+  dimension: consistency
+  message: Delivery rounding quantity is above the maximum delivery quantity
+  why_it_matters: Quantities are rounded up to multiples of the rounding quantity (SCMNG). If one rounding step is above the
+    maximum delivery quantity, every rounded delivery breaks the maximum.
+  rule_authority: best_practice
+  sap_impact: Rounded deliveries always exceed the maximum and are split or blocked.
+  fix_map:
+    __other__: Correct the rounding or maximum delivery quantity in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: rounding quantity {actual_value} above
+    maximum delivery quantity {MVKE.LFMAX}.'
+- id: MM834
+  field: MVKE.AUMNG
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: (`MVKE.SCMNG` > 0) & (`MVKE.AUMNG` > 0) & ((`MVKE.AUMNG` % `MVKE.SCMNG`).abs() > 0.0005)
+  severity: low
+  dimension: consistency
+  message: Minimum order quantity is not a multiple of the delivery rounding quantity
+  why_it_matters: Orders are rounded to multiples of the rounding quantity. A minimum order quantity that is not a multiple
+    is always rounded up, so the real minimum is higher than maintained.
+  rule_authority: best_practice
+  sap_impact: Customers are quoted a minimum that the system never delivers.
+  fix_map:
+    __other__: Align the minimum order quantity with the rounding quantity in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: minimum order quantity {actual_value}
+    is not a multiple of rounding quantity {MVKE.SCMNG}.'
+- id: MM835
+  field: MVKE.PMATN
+  check_class: cross_field_check
+  grain: MVKE
+  fail_when: '`MVKE.PMATN` == `MVKE.MATNR`'
+  severity: low
+  dimension: consistency
+  message: Material is its own pricing reference material
+  why_it_matters: A pricing reference material (PMATN) points to another material whose prices are used. Pointing at itself
+    does nothing and hides that no reference was meant.
+  rule_authority: best_practice
+  sap_impact: Pricing behaves as without a reference; the field misleads users.
+  fix_map:
+    __other__: Clear the pricing reference material in MM02 > Sales org. 2.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: pricing reference material {actual_value}
+    is the material itself.'
+- id: MM836
+  field: MVKE.PMATN
+  check_class: exists_check
+  grain: MVKE
+  fields:
+  - MVKE.PMATN
+  - MVKE.VKORG
+  - MVKE.VTWEG
+  target_table: MVKE
+  target_fields:
+  - MATNR
+  - VKORG
+  - VTWEG
+  severity: medium
+  dimension: consistency
+  message: Pricing reference material has no sales view in the same sales area
+  why_it_matters: Condition records are read for the pricing reference material in the order's sales area. If the reference
+    material is not sold there, it has no prices to give.
+  rule_authority: best_practice
+  sap_impact: Sales order pricing finds no price; items are incomplete for billing.
+  fix_map:
+    __other__: Extend the reference material to the sales area or choose another reference material.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: pricing reference material {actual_value}
+    has no sales view in this sales area.'
+- id: MM837
+  field: MVKE.VMSTD
+  check_class: null_check
+  grain: MVKE
+  applies_when:
+    MVKE.VMSTA:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Distribution-chain status is set without a valid-from date
+  why_it_matters: The sales status (VMSTA) takes effect from its valid-from date (VMSTD). Without a date the status applies
+    at once and its history cannot be read.
+  rule_authority: best_practice
+  sap_impact: Order blocking cannot be traced; status changes are undocumented.
+  fix_map:
+    __blank__: Enter the valid-from date in MM02 > Sales org. 1.
+  record_fix_template: 'Material {MVKE.MATNR}, sales area {MVKE.VKORG}/{MVKE.VTWEG}: status {MVKE.VMSTA} without a valid-from
+    date.'
+- id: MM838
+  field: MLGN.LETY1
+  check_class: cross_field_check
+  grain: MLGN
+  fail_when: ((`MLGN.LHMG1` > 0) & `MLGN.LETY1`.isna()) | ((`MLGN.LHMG2` > 0) & `MLGN.LETY2`.isna()) | ((`MLGN.LHMG3` > 0)
+    & `MLGN.LETY3`.isna())
+  severity: medium
+  dimension: completeness
+  message: Palletisation quantity is entered without a storage unit type
+  why_it_matters: WM palletisation (LHMG / LHME / LETY) splits receipts into storage units. Without the storage unit type,
+    putaway cannot find bins of the right type.
+  rule_authority: best_practice
+  sap_impact: Putaway (LT0A) proposes no bin or the wrong bin type; transfer orders are created manually.
+  fix_map:
+    __other__: Enter the storage unit type next to each palletisation quantity in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: palletisation quantity {MLGN.LHMG1} without a storage
+    unit type.'
+- id: MM839
+  field: MLGN.LHMG1
+  check_class: cross_field_check
+  grain: MLGN
+  fail_when: (`MLGN.LETY1`.notna() & ~(`MLGN.LHMG1`.fillna(0) > 0)) | (`MLGN.LETY2`.notna() & ~(`MLGN.LHMG2`.fillna(0) > 0))
+    | (`MLGN.LETY3`.notna() & ~(`MLGN.LHMG3`.fillna(0) > 0))
+  severity: medium
+  dimension: completeness
+  message: Storage unit type is entered without a palletisation quantity
+  why_it_matters: The storage unit type only works together with the quantity per storage unit. A type with no quantity leaves
+    putaway without a split rule.
+  rule_authority: best_practice
+  sap_impact: Goods receipts are put away as one storage unit, overloading bins.
+  fix_map:
+    __other__: Enter the quantity per storage unit in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: storage unit type {MLGN.LETY1} without a palletisation
+    quantity.'
+- id: MM840
+  field: MLGN.LHME1
+  check_class: exists_check
+  grain: MLGN
+  fields:
+  - MLGN.MATNR
+  - MLGN.LHME1
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: medium
+  dimension: consistency
+  message: Palletisation unit is not a unit of the material
+  why_it_matters: The loading equipment quantity is in the palletisation unit (LHME1). SAP converts it to the base unit through
+    MARM. A unit without conversion cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway quantities cannot be calculated; transfer orders raise unit errors.
+  fix_map:
+    __other__: Add the unit to the material (MM02 > Units of measure) or choose another unit.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: palletisation unit {actual_value} has no conversion.'
+- id: MM841
+  field: MLGN.BEZME
+  check_class: exists_check
+  grain: MLGN
+  fields:
+  - MLGN.MATNR
+  - MLGN.BEZME
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: low
+  dimension: consistency
+  message: Capacity consumption unit is not a unit of the material
+  why_it_matters: Bin capacity checks convert quantities to the capacity consumption unit (BEZME). Without a MARM conversion,
+    the capacity check cannot run.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity checks for putaway fail or are skipped; bins overflow.
+  fix_map:
+    __other__: Add the unit to the material (MM02 > Units of measure) or clear the capacity unit.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: capacity consumption unit {actual_value} has no conversion.'
+- id: MM842
+  field: MLGN.PLKPT
+  check_class: exists_check
+  grain: MLGN
+  fields:
+  - MLGN.MATNR
+  - MLGN.LGNUM
+  - MLGN.PLKPT
+  target_table: MLGT
+  target_fields:
+  - MATNR
+  - LGNUM
+  - LGTYP
+  severity: medium
+  dimension: consistency
+  message: Picking storage type has no storage type data for the material
+  why_it_matters: The picking storage type (PLKPT) is used for rough-cut and detailed planning of picks. If the material has
+    no storage type view (MLGT) for it, there is no fixed bin or bin limits to plan with.
+  rule_authority: best_practice
+  sap_impact: Replenishment planning for the picking area skips the material.
+  fix_map:
+    __other__: Create the storage type view (MM02 > Warehouse management 2, storage type) or clear the picking storage type.
+  record_fix_template: 'Material {MLGN.MATNR}, warehouse {MLGN.LGNUM}: picking storage type {actual_value} has no storage
+    type data.'
+- id: MM843
+  field: MLGT.LGPLA
+  check_class: exists_check
+  grain: MLGT
+  fields:
+  - MLGT.LGNUM
+  - MLGT.LGTYP
+  - MLGT.LGPLA
+  target_table: LAGP
+  target_fields:
+  - LGNUM
+  - LGTYP
+  - LGPLA
+  severity: high
+  dimension: consistency
+  message: Fixed bin of the material does not exist in the warehouse
+  why_it_matters: The fixed bin (MLGT-LGPLA) must be a bin of the storage type (LAGP). A bin that does not exist cannot receive
+    stock.
+  rule_authority: sap_hard_constraint
+  sap_impact: Putaway and replenishment transfer orders to the fixed bin fail.
+  fix_map:
+    __other__: Create the bin (LS01N) or assign an existing bin in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: fixed bin {actual_value}
+    does not exist.'
+- id: MM844
+  field: MLGT.LGPLA
+  check_class: exists_check
+  grain: MLGT
+  fields:
+  - MLGT.LGNUM
+  - MLGT.LGTYP
+  - MLGT.LGPLA
+  target_table: LAGP
+  target_fields:
+  - LGNUM
+  - LGTYP
+  - LGPLA
+  target_when:
+    SKZUE:
+    - X
+  negate: true
+  severity: medium
+  dimension: consistency
+  message: Fixed bin of the material is blocked for putaway
+  why_it_matters: Replenishment always goes to the fixed bin. If the bin carries a user putaway block, every replenishment
+    fails.
+  rule_authority: best_practice
+  sap_impact: Replenishment transfer orders cannot be confirmed; picking runs out of stock.
+  fix_map:
+    __other__: Remove the putaway block (LS02N) or assign another fixed bin.
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: fixed bin {actual_value}
+    is blocked for putaway.'
+- id: MM845
+  field: MLGT.LGTYP
+  check_class: exists_check
+  grain: MLGT
+  fields:
+  - MLGT.LGNUM
+  - MLGT.LGTYP
+  target_table: T301
+  target_fields:
+  - LGNUM
+  - LGTYP
+  severity: high
+  dimension: consistency
+  message: Storage type is not defined for the warehouse
+  why_it_matters: A storage type is defined per warehouse number (T301). The type may exist in another warehouse and still
+    be undefined here.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfer orders for this storage type fail in the warehouse.
+  fix_map:
+    __other__: Correct the storage type in MM02 > Warehouse management 2 or define it in the warehouse (SPRO).
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: storage type {actual_value}
+    is not defined in warehouse {MLGT.LGNUM}.'
+- id: MM846
+  field: MLGT.NSMNG
+  check_class: cross_field_check
+  grain: MLGT
+  fail_when: (`MLGT.LPMAX` > 0) & (`MLGT.NSMNG` > `MLGT.LPMAX`)
+  severity: medium
+  dimension: consistency
+  message: Replenishment quantity is above the maximum bin quantity
+  why_it_matters: Replenishment moves the replenishment quantity into the fixed bin. If it is larger than the maximum bin
+    quantity, the bin overflows on every replenishment.
+  rule_authority: best_practice
+  sap_impact: Replenishment transfer orders are larger than the bin; confirmation raises capacity errors.
+  fix_map:
+    __other__: Correct the replenishment or maximum quantity in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: replenishment quantity {actual_value}
+    above maximum bin quantity {MLGT.LPMAX}.'
+- id: MM847
+  field: MLGT.LPMIN
+  check_class: cross_field_check
+  grain: MLGT
+  fail_when: ((`MLGT.LPMIN` > 0) | (`MLGT.LPMAX` > 0)) & `MLGT.LGPLA`.isna()
+  severity: medium
+  dimension: completeness
+  message: Bin minimum or maximum quantity is set without a fixed bin
+  why_it_matters: Minimum and maximum bin quantities drive fixed-bin replenishment. Without a fixed bin there is nothing to
+    replenish.
+  rule_authority: best_practice
+  sap_impact: Replenishment (LP21/LP22) never triggers for the material.
+  fix_map:
+    __other__: Assign a fixed bin or clear the bin quantities in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: minimum bin quantity {actual_value}
+    but no fixed bin.'
+- id: MM848
+  field: MLGT.NSMNG
+  check_class: cross_field_check
+  grain: MLGT
+  applies_when:
+    MLGT.LGPLA:
+      populated: true
+    MLGT.LPMIN:
+      gt: 0
+  fail_when: ~(`MLGT.NSMNG`.fillna(0) > 0)
+  severity: low
+  dimension: completeness
+  message: Fixed bin with a minimum quantity has no replenishment quantity
+  why_it_matters: When the bin falls below the minimum, SAP creates a replenishment for the replenishment quantity. Zero replenishment
+    quantity means the replenishment is empty.
+  rule_authority: best_practice
+  sap_impact: Replenishment requirements are created with zero quantity; the bin runs empty.
+  fix_map:
+    __other__: Enter the replenishment quantity in MM02 > Warehouse management 2.
+  record_fix_template: 'Material {MLGT.MATNR}, warehouse {MLGT.LGNUM}, storage type {MLGT.LGTYP}: minimum {MLGT.LPMIN} at
+    fixed bin {MLGT.LGPLA} but no replenishment quantity.'
+- id: MM849
+  field: QMAT.HPZ
+  check_class: cross_field_check
+  grain: QMAT
+  fail_when: ((`QMAT.HPZ` == 'X') & (`QMAT.SPROZ` > 0)) | ((`QMAT.HPZ` == 'X') & `QMAT.STICHPRVER`.notna()) | ((`QMAT.SPROZ`
+    > 0) & `QMAT.STICHPRVER`.notna())
+  severity: high
+  dimension: consistency
+  message: Inspection setup has more than one sample rule (100%, percentage, sampling procedure)
+  why_it_matters: 'The sample size comes from exactly one source: 100% inspection, an inspection percentage or a sampling
+    procedure. SAP allows only one of the three in the inspection setup.'
+  rule_authority: sap_hard_constraint
+  sap_impact: MM02 rejects the inspection setup; inspection lots compute the sample from an unexpected source.
+  fix_map:
+    __other__: Keep one sample rule in MM02 > Quality management > Inspection setup.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: 100% inspection ''{actual_value}'',
+    percentage {QMAT.SPROZ}, sampling procedure ''{QMAT.STICHPRVER}''.'
+- id: MM850
+  field: QMAT.STICHPRVER
+  check_class: cross_field_check
+  grain: QMAT
+  applies_when:
+    QMAT.AKTIV:
+    - X
+    QMAT.SPEZUEBER:
+    - X
+    QMAT.PPL:
+      blank: true
+  fail_when: '`QMAT.STICHPRVER`.isna() & `QMAT.HPZ`.isna() & ~(`QMAT.SPROZ`.fillna(0) > 0)'
+  severity: medium
+  dimension: completeness
+  message: Inspection by material specification has no sample rule
+  why_it_matters: 'Without a task list, the sample size comes from the inspection setup: 100%, a percentage or a sampling
+    procedure. With none of them, the sample cannot be calculated.'
+  rule_authority: best_practice
+  sap_impact: Inspection lots wait for manual sample calculation; usage decisions are delayed.
+  fix_map:
+    __other__: Enter a sampling procedure, percentage or 100% inspection in the inspection setup.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: material specification without
+    a sample rule.'
+- id: MM851
+  field: QMAT.MER
+  check_class: cross_field_check
+  grain: QMAT
+  applies_when:
+    QMAT.MER:
+    - X
+  fail_when: '`QMAT.PPL`.isna() & `QMAT.SPEZUEBER`.isna() & `QMAT.CONF`.isna() & `QMAT.TLS`.isna()'
+  severity: high
+  dimension: consistency
+  message: Inspection by characteristics has no source of characteristics
+  why_it_matters: Inspecting by characteristics needs characteristics from a task list, a material specification, the configuration
+    or batch determination. With none of them the inspection lot has nothing to record.
+  rule_authority: sap_hard_constraint
+  sap_impact: Inspection lots are created without characteristics; results recording is impossible.
+  fix_map:
+    __other__: Set the task list or specification indicator, or clear 'Inspect by characteristics'.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: inspect by characteristics
+    without task list, specification or configuration.'
+- id: MM852
+  field: QMAT.APP
+  check_class: cross_field_check
+  grain: QMAT
+  applies_when:
+    QMAT.APP:
+    - X
+  fail_when: '`QMAT.PPL`.isna() & `QMAT.SPEZUEBER`.isna() & `QMAT.CONF`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Automatic specification assignment is set without a task list or specification
+  why_it_matters: Automatic specification assignment picks the task list or material specification when the lot is created.
+    With neither in the setup there is nothing to assign.
+  rule_authority: best_practice
+  sap_impact: Lots stay at status 'specification not assigned'; inspections are delayed.
+  fix_map:
+    __other__: Set the task list or specification indicator, or clear automatic assignment.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: automatic specification assignment
+    without task list or specification.'
+- id: MM853
+  field: QMAT.MPDAU
+  check_class: cross_field_check
+  grain: QMAT
+  fail_when: '`QMAT.MPDAU` < 0'
+  severity: low
+  dimension: validity
+  message: Average inspection duration is negative
+  why_it_matters: The average inspection duration (MPDAU, days) is added to the goods receipt date for availability. A negative
+    duration is a typing error.
+  rule_authority: best_practice
+  sap_impact: Stock is shown as available before inspection is finished.
+  fix_map:
+    __other__: Correct the inspection duration in MM02 > Quality management.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: average inspection duration
+    {actual_value} days.'
+- id: MM854
+  field: QMAT.SPROZ
+  check_class: cross_field_check
+  grain: QMAT
+  fail_when: (`QMAT.SPROZ` > 0) & (`QMAT.MPB` == 'X')
+  severity: medium
+  dimension: consistency
+  message: Inspection percentage is set together with manual sample entry
+  why_it_matters: Manual sample entry (MPB) means the inspector enters the sample. An inspection percentage computes it automatically.
+    Both together leave the sample source unclear.
+  rule_authority: best_practice
+  sap_impact: Sample sizes are overwritten manually; inspection plans cannot be audited.
+  fix_map:
+    __other__: Keep either the percentage or manual sample entry in the inspection setup.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: inspection percentage {actual_value}
+    with manual sample entry.'
+- id: MM855
+  field: QMAT.AKTIV
+  check_class: exists_check
+  grain: QMAT
+  applies_when:
+    QMAT.AKTIV:
+    - X
+  fields:
+  - QMAT.MATNR
+  - QMAT.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  severity: medium
+  dimension: consistency
+  message: Inspection type is active for a plant where the material is flagged for deletion
+  why_it_matters: Active inspection types create inspection lots. For a plant view that is flagged for deletion, lots would
+    be created for a material that is closed there.
+  rule_authority: best_practice
+  sap_impact: Lots are created for deleted plant data; the archiving of the plant data is blocked.
+  fix_map:
+    __other__: Deactivate the inspection type (QA08) or remove the plant deletion flag.
+  record_fix_template: 'Material {QMAT.MATNR}, plant {QMAT.WERKS}, inspection type {QMAT.ART}: active inspection type on a
+    plant view flagged for deletion.'
+- id: MM856
+  field: MCH1.VFDAT
+  check_class: null_check
+  grain: MCH1
+  applies_when:
+    MARA.MHDHB:
+      gt: 0
+  severity: high
+  dimension: completeness
+  message: Batch of a material with shelf life has no expiration date
+  why_it_matters: A total shelf life (MARA-MHDHB) means every batch needs a shelf-life expiration date. FEFO picking, batch
+    determination and expiry reports all use it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts require the date (SLED check); existing batches are never picked FEFO and never show in expiry
+    reports.
+  fix_map:
+    __blank__: Enter the expiration or production date in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: no shelf-life expiration date although the material has
+    shelf life.'
+- id: MM857
+  field: MCH1.VFDAT
+  check_class: cross_field_check
+  grain: MCH1
+  applies_when:
+    MARA.MHDHB:
+      gt: 0
+    MARA.IPRKZ:
+      blank: true
+  fail_when: '`MCH1.VFDAT`.notna() & `MCH1.HSDAT`.notna() & ((`MCH1.VFDAT` - `MCH1.HSDAT`).dt.days - `MARA.MHDHB`).abs().gt(1)'
+  severity: medium
+  dimension: accuracy
+  message: Batch expiration date does not match the production date plus the total shelf life
+  why_it_matters: With a total shelf life in days, SAP calculates the expiration date as the production date plus the shelf
+    life. A different date was typed in or changed later.
+  rule_authority: best_practice
+  sap_impact: FEFO picking and expiry reports use a date the material's shelf life does not support.
+  fix_map:
+    __other__: Recalculate the expiration date in MSC2N or correct the production date.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: expiration date {actual_value}, production date {MCH1.HSDAT},
+    shelf life {MARA.MHDHB} days.'
+- id: MM858
+  field: MCH1.HSDAT
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.HSDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Batch production date is in the future
+  why_it_matters: A batch cannot be produced after today. A future production date gives a wrong expiration date and wrong
+    batch age.
+  rule_authority: best_practice
+  sap_impact: Expiration dates and remaining shelf life are overstated.
+  fix_map:
+    __other__: Correct the production date in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: production date {actual_value} is in the future.'
+- id: MM859
+  field: MCH1.LWEDT
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.LWEDT`.notna() & `MCH1.HSDAT`.notna() & (`MCH1.LWEDT` < `MCH1.HSDAT`)'
+  severity: medium
+  dimension: accuracy
+  message: Batch was received before it was produced
+  why_it_matters: The last goods receipt date cannot be earlier than the production date of the batch.
+  rule_authority: best_practice
+  sap_impact: Batch age and expiry calculations are wrong; traceability reports are inconsistent.
+  fix_map:
+    __other__: Correct the production date in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: last goods receipt {actual_value} before production date
+    {MCH1.HSDAT}.'
+- id: MM860
+  field: MCH1.LWEDT
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.LWEDT` > @today'
+  severity: low
+  dimension: accuracy
+  message: Batch last goods receipt date is in the future
+  why_it_matters: The last goods receipt date is set by a posted receipt. A future date was typed in or migrated wrongly.
+  rule_authority: best_practice
+  sap_impact: Slow-mover and batch age reports are wrong.
+  fix_map:
+    __other__: Correct the date in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: last goods receipt {actual_value} is in the future.'
+- id: MM861
+  field: MCH1.VFDAT
+  check_class: cross_field_check
+  grain: MCH1
+  applies_when:
+    MARA.MHDRZ:
+      gt: 0
+    MARA.IPRKZ:
+      blank: true
+  fail_when: '`MCH1.VFDAT`.notna() & `MCH1.LWEDT`.notna() & ((`MCH1.VFDAT` - `MCH1.LWEDT`).dt.days < `MARA.MHDRZ`)'
+  severity: medium
+  dimension: accuracy
+  message: Batch was received with less than the minimum remaining shelf life
+  why_it_matters: The minimum remaining shelf life (MARA-MHDRZ) is the shortest life a batch may still have at goods receipt.
+    A batch whose expiry date is closer to its receipt date than that was accepted against the rule.
+  rule_authority: best_practice
+  sap_impact: Short-dated stock is put away and expires before it can be sold or used.
+  fix_map:
+    __other__: Check the batch (MSC2N) and the receipt; block or return short-dated stock.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: expiration {actual_value}, received {MCH1.LWEDT}, minimum
+    remaining shelf life {MARA.MHDRZ} days.'
+- id: MM862
+  field: MCH1.LIFNR
+  check_class: exists_check
+  grain: MCH1
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: medium
+  dimension: consistency
+  message: Batch vendor does not exist
+  why_it_matters: The vendor on the batch (LIFNR) is used for traceability and recall. A vendor that does not exist breaks
+    the trace back to the supplier.
+  rule_authority: best_practice
+  sap_impact: Recall and batch where-used reports cannot name the supplier.
+  fix_map:
+    __other__: Correct the vendor in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: vendor {actual_value} does not exist.'
+- id: MM863
+  field: MCH1.QNDAT
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.QNDAT`.notna() & (`MCH1.QNDAT` < @today) & `MCH1.ZUSTD`.isna()'
+  severity: medium
+  dimension: timeliness
+  message: Batch is past its next inspection date and still unrestricted
+  why_it_matters: The next inspection date (QNDAT) triggers recurring inspection (inspection type 09). A date in the past
+    on an unrestricted batch means the recurring inspection was not done.
+  rule_authority: best_practice
+  sap_impact: Batches due for re-inspection are used or shipped without inspection.
+  fix_map:
+    __other__: Run the recurring inspection (QA07) or set the batch to restricted.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: next inspection date {actual_value} has passed.'
+- id: MM864
+  field: MCH1.VLCHA
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.VLCHA`.notna() & `MCH1.VLMAT`.isna()'
+  severity: low
+  dimension: completeness
+  message: Original batch is entered without its original material
+  why_it_matters: The original batch (VLCHA) and original material (VLMAT) together identify the batch the current batch came
+    from. A batch without the material does not identify anything.
+  rule_authority: best_practice
+  sap_impact: Batch where-used and recall reports cannot trace back to the original batch.
+  fix_map:
+    __other__: Enter the original material in MSC2N or clear the original batch.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: original batch {actual_value} without an original material.'
+- id: MM865
+  field: MCH1.VERAB
+  check_class: cross_field_check
+  grain: MCH1
+  fail_when: '`MCH1.VERAB`.notna() & `MCH1.VFDAT`.notna() & (`MCH1.VERAB` > `MCH1.VFDAT`)'
+  severity: low
+  dimension: consistency
+  message: Batch availability date is after its expiration date
+  why_it_matters: The availability date (VERAB) is when the batch can first be used. If it is after the expiration date the
+    batch can never be used.
+  rule_authority: best_practice
+  sap_impact: Batch determination never selects the batch; the stock is dead.
+  fix_map:
+    __other__: Correct the availability or expiration date in MSC2N.
+  record_fix_template: 'Material {MCH1.MATNR}, batch {MCH1.CHARG}: availability date {actual_value} after expiration {MCH1.VFDAT}.'
+- id: MM866
+  field: EINA.LIFNR
+  check_class: exists_check
+  grain: EINA
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: high
+  dimension: consistency
+  message: Info record vendor does not exist
+  why_it_matters: Every info record belongs to a vendor (LFA1). A vendor that does not exist is left over from a deletion
+    or a failed migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination proposes a vendor that cannot be ordered from.
+  fix_map:
+    __other__: Delete the info record (ME15) or correct the vendor.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): vendor {actual_value} does
+    not exist.'
+- id: MM867
+  field: EINA.LIFNR
+  check_class: exists_check
+  grain: EINA
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+    - X
+  negate: true
+  severity: high
+  dimension: consistency
+  message: Active info record for a vendor centrally blocked for purchasing
+  why_it_matters: A purchasing block on the vendor (LFA1-SPERM) stops all purchase orders. Info records that are still active
+    keep proposing the blocked vendor as a source.
+  rule_authority: best_practice
+  sap_impact: Automatic source determination picks the vendor and then the PO is blocked.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15) or remove the vendor block if it no longer applies.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): vendor {actual_value} is blocked
+    for purchasing.'
+- id: MM868
+  field: EINA.LIFNR
+  check_class: exists_check
+  grain: EINA
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+    - X
+  negate: true
+  severity: medium
+  dimension: lifecycle
+  message: Active info record for a vendor flagged for deletion
+  why_it_matters: A vendor flagged for deletion is being closed. Its info records should be flagged too so that they are archived
+    together.
+  rule_authority: best_practice
+  sap_impact: Vendor archiving is blocked by active info records; sources point to a closed vendor.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15).
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): vendor {actual_value} is flagged
+    for deletion.'
+- id: MM869
+  field: EINA.MATNR
+  check_class: exists_check
+  grain: EINA
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  severity: medium
+  dimension: lifecycle
+  message: Active info record for a material flagged for deletion
+  why_it_matters: A material flagged for deletion is being closed. An active info record keeps it in source determination.
+  rule_authority: best_practice
+  sap_impact: Material archiving is blocked; purchase requisitions still find a source.
+  fix_map:
+    __other__: Flag the info record for deletion (ME15).
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): material {actual_value} is
+    flagged for deletion.'
+- id: MM870
+  field: EINA.MATKL
+  check_class: exists_check
+  grain: EINA
+  fields:
+  - EINA.MATNR
+  - EINA.MATKL
+  target_table: MARA
+  target_fields:
+  - MATNR
+  - MATKL
+  severity: low
+  dimension: consistency
+  message: Info record material group differs from the material's material group
+  why_it_matters: SAP copies the material group from the material into the info record. A different value is left over from
+    a later material change and splits spend analysis by material group.
+  rule_authority: best_practice
+  sap_impact: Spend reports by material group disagree between info records and POs.
+  fix_map:
+    __other__: Align the material group in ME12 with the material master.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): material group {actual_value}
+    differs from the material.'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: MARA
+      match:
+        MATNR: EINA.MATNR
+      value: MATKL
+    confidence: high
+- id: MM871
+  field: EINA.MATKL
+  check_class: cross_field_check
+  grain: EINA
+  fail_when: '`EINA.MATNR`.isna() & `EINA.MATKL`.isna()'
+  severity: high
+  dimension: completeness
+  message: Info record has neither a material nor a material group
+  why_it_matters: An info record is either for a material or, for non-stock items, for a material group. With neither it cannot
+    be found by source determination.
+  rule_authority: sap_hard_constraint
+  sap_impact: The info record is never used; prices maintained on it are lost.
+  fix_map:
+    __other__: Delete the info record or enter the material or material group (ME12).
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): no material and no material
+    group.'
+- id: MM872
+  field: EINA.LIFAB
+  check_class: cross_field_check
+  grain: EINA
+  fail_when: '`EINA.LIFAB`.notna() & `EINA.LIFBI`.notna() & (`EINA.LIFBI` < `EINA.LIFAB`)'
+  severity: low
+  dimension: consistency
+  message: Info record availability period ends before it starts
+  why_it_matters: The vendor's availability period (LIFAB to LIFBI) restricts when the material can be ordered. An end before
+    the start means the vendor is never available.
+  rule_authority: best_practice
+  sap_impact: Source determination never proposes the vendor in the period.
+  fix_map:
+    __other__: Correct the availability dates in ME12.
+  record_fix_template: 'Info record {EINA.INFNR} (vendor {EINA.LIFNR}, material {EINA.MATNR}): available from {actual_value}
+    until {EINA.LIFBI}.'
+- id: MM873
+  field: EINE.EKORG
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINE.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  severity: high
+  dimension: consistency
+  message: Info record vendor is not extended to the purchasing organisation
+  why_it_matters: A purchasing organisation can only order from a vendor that has purchasing data there (LFM1). An info record
+    for the organisation without that data cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: 'Purchase orders from the info record fail: vendor not created for the purchasing organisation.'
+  fix_map:
+    __other__: Extend the vendor to the purchasing organisation (XK01/MK01) or delete the info record data.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': vendor {EINA.LIFNR}
+    is not extended to purchasing organisation {actual_value}.'
+- id: MM874
+  field: EINE.EKORG
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.LIFNR
+  - EINE.EKORG
+  target_table: LFM1
+  target_fields:
+  - LIFNR
+  - EKORG
+  target_when:
+    SPERM:
+    - X
+  negate: true
+  severity: high
+  dimension: consistency
+  message: Info record vendor is blocked at the purchasing organisation
+  why_it_matters: A purchasing block at purchasing organisation level (LFM1-SPERM) stops POs there. Info records for that
+    organisation keep proposing the vendor.
+  rule_authority: best_practice
+  sap_impact: Source determination proposes a vendor whose POs are then blocked.
+  fix_map:
+    __other__: Flag the info record data for deletion (ME15) or lift the vendor block.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': vendor {EINA.LIFNR}
+    is blocked at purchasing organisation {actual_value}.'
+- id: MM875
+  field: EINE.WERKS
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINA.MATNR
+  - EINE.WERKS
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Plant-specific info record for a plant where the material is not extended
+  why_it_matters: A plant-level info record is only used for requisitions in that plant. If the material has no plant view
+    there, the record can never be used.
+  rule_authority: best_practice
+  sap_impact: Prices and conditions maintained on the record are never applied.
+  fix_map:
+    __other__: Extend the material to the plant or delete the plant-level info record data.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': material {EINA.MATNR}
+    is not extended to plant {actual_value}.'
+- id: MM876
+  field: EINE.WERKS
+  check_class: exists_check
+  grain: EINE
+  fields:
+  - EINE.WERKS
+  - EINE.EKORG
+  target_table: T024W
+  target_fields:
+  - WERKS
+  - EKORG
+  severity: high
+  dimension: consistency
+  message: Info record plant is not assigned to its purchasing organisation
+  why_it_matters: A purchasing organisation buys only for the plants assigned to it (T024W). An info record for a plant outside
+    that assignment is never selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: Source determination ignores the record; POs for the plant cannot use its price.
+  fix_map:
+    __other__: Move the info record to the right purchasing organisation or assign the plant (OX17).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': plant {actual_value}
+    is not assigned to purchasing organisation {EINE.EKORG}.'
+- id: MM877
+  field: EINE.NETPR
+  check_class: cross_field_check
+  grain: EINE
+  applies_when:
+    EINE.ESOKZ:
+      not_in:
+      - '2'
+  fail_when: ~(`EINE.NETPR`.fillna(0) > 0)
+  severity: high
+  dimension: completeness
+  message: Info record has no net price
+  why_it_matters: Purchase orders take the price from the info record. A zero price (outside consignment, which has no price)
+    means POs are created at zero and must be corrected by hand.
+  rule_authority: best_practice
+  sap_impact: POs are proposed at zero price; invoices then post large price variances.
+  fix_map:
+    __other__: Maintain the price conditions in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': net price
+    {actual_value}.'
+- id: MM878
+  field: EINE.APLFZ
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: ~(`EINE.APLFZ`.fillna(0) > 0)
+  severity: medium
+  dimension: completeness
+  message: Info record has no planned delivery time
+  why_it_matters: The planned delivery time (APLFZ) in the info record overrides the material's and drives MRP dates for this
+    source. Zero means MRP expects same-day delivery.
+  rule_authority: best_practice
+  sap_impact: Requirements are planned too late; purchase orders arrive after the need date.
+  fix_map:
+    __other__: Enter the vendor's planned delivery time in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': planned delivery
+    time {actual_value} days.'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: LFM1
+      match:
+        LIFNR: EINA.LIFNR
+        EKORG: EINE.EKORG
+      value: PLIFZ
+    confidence: low
+- id: MM879
+  field: EINE.NORBM
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: (`EINE.MINBM` > 0) & (`EINE.NORBM` > 0) & (`EINE.NORBM` < `EINE.MINBM`)
+  severity: medium
+  dimension: consistency
+  message: Standard order quantity is below the minimum order quantity
+  why_it_matters: The standard quantity (NORBM) is proposed into POs. If it is below the vendor's minimum order quantity (MINBM),
+    every proposed PO breaks the minimum.
+  rule_authority: best_practice
+  sap_impact: POs raise a minimum-quantity warning every time; buyers adjust them by hand.
+  fix_map:
+    __other__: Correct the standard or minimum quantity in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': standard quantity
+    {actual_value} below minimum {EINE.MINBM}.'
+- id: MM880
+  field: EINE.PRDAT
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: '`EINE.PRDAT`.notna() & (`EINE.PRDAT` < @today)'
+  severity: medium
+  dimension: timeliness
+  message: Info record price validity has expired
+  why_it_matters: The price valid-until date shows the end of the last price condition. After it, POs from this info record
+    get no price from the conditions.
+  rule_authority: best_practice
+  sap_impact: POs are created with the last PO price or no price; buyers negotiate out of date.
+  fix_map:
+    __other__: Maintain a new price condition period in ME12 or delete the info record.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': price valid
+    until {actual_value}.'
+- id: MM881
+  field: EINE.EKGRP
+  check_class: null_check
+  grain: EINE
+  severity: low
+  dimension: completeness
+  message: Info record has no purchasing group
+  why_it_matters: The purchasing group in the info record is proposed into POs and used for buyer reporting. Without it, the
+    buyer comes from the material or must be entered.
+  rule_authority: best_practice
+  sap_impact: POs get the wrong or no buyer; buyer workload reports are incomplete.
+  fix_map:
+    __blank__: Enter the purchasing group in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': no purchasing
+    group.'
+- id: MM882
+  field: EINE.BPUMZ
+  check_class: cross_field_check
+  grain: EINE
+  applies_when:
+    EINE.BPRME:
+      populated: true
+  fail_when: ~(`EINE.BPUMZ`.fillna(0) > 0) | ~(`EINE.BPUMN`.fillna(0) > 0)
+  severity: high
+  dimension: validity
+  message: Order price unit conversion is not positive
+  why_it_matters: When the order price unit (BPRME) differs from the order unit, the conversion BPUMZ/BPUMN converts between
+    them. A zero factor makes the price conversion impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs cannot convert the price; the item value is zero or the PO raises an error.
+  fix_map:
+    __other__: Correct the order price unit conversion in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': order price
+    unit {EINE.BPRME} with conversion {actual_value}/{EINE.BPUMN}.'
+- id: MM883
+  field: EINE.LOEKZ
+  check_class: cross_field_check
+  grain: EINE
+  applies_when:
+    EINA.LOEKZ:
+    - X
+  fail_when: '`EINE.LOEKZ`.isna()'
+  severity: medium
+  dimension: lifecycle
+  message: Purchasing organisation data is active although the general info record is flagged for deletion
+  why_it_matters: The deletion flag on the general data (EINA) should apply to all purchasing organisation data. Active organisation
+    data keeps the record in source determination.
+  rule_authority: best_practice
+  sap_impact: The info record cannot be archived; it is still proposed as a source.
+  fix_map:
+    __other__: Flag the purchasing organisation data for deletion as well (ME15).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': general data
+    flagged for deletion, purchasing organisation data still active.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
+- id: MM884
+  field: EINE.UEBTK
+  check_class: cross_field_check
+  grain: EINE
+  fail_when: (`EINE.UEBTK` == 'X') & (`EINE.UEBTO` > 0)
+  severity: low
+  dimension: consistency
+  message: Unlimited overdelivery is set together with an overdelivery tolerance
+  why_it_matters: Unlimited overdelivery (UEBTK) overrides the tolerance (UEBTO). Both together hide which rule the buyer
+    intended.
+  rule_authority: best_practice
+  sap_impact: Goods receipts accept any quantity although a tolerance was agreed.
+  fix_map:
+    __other__: Clear either the unlimited indicator or the tolerance in ME12.
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': unlimited
+    overdelivery with tolerance {EINE.UEBTO} %.'
+- id: MM885
+  field: EINE.WAERS
+  check_class: null_check
+  grain: EINE
+  applies_when:
+    EINE.NETPR:
+      gt: 0
+  severity: high
+  dimension: completeness
+  message: Info record price has no currency
+  why_it_matters: A price without a currency key cannot be converted or proposed. SAP requires the currency with any price.
+  rule_authority: sap_hard_constraint
+  sap_impact: POs cannot take the price; conversions to the company code currency fail.
+  fix_map:
+    __blank__: Enter the currency in ME12 (conditions).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': price {EINE.NETPR}
+    without a currency.'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: LFM1
+      match:
+        LIFNR: EINA.LIFNR
+        EKORG: EINE.EKORG
+      value: WAERS
+    confidence: medium
+- id: MM886
+  field: EINE.VERID
+  check_class: exists_check
+  grain: EINE
+  applies_when:
+    EINE.ESOKZ:
+    - '3'
+  fields:
+  - EINA.MATNR
+  - EINE.WERKS
+  - EINE.VERID
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  - VERID
+  severity: medium
+  dimension: consistency
+  message: Subcontracting info record points to a production version that does not exist
+  why_it_matters: For subcontracting, the production version in the info record selects the BOM sent to the vendor. A version
+    that does not exist for the material and plant leaves the components undetermined.
+  rule_authority: sap_hard_constraint
+  sap_impact: Subcontracting POs have no components; provision of materials to the vendor fails.
+  fix_map:
+    __other__: Correct the production version in ME12 or create it (C223).
+  record_fix_template: 'Info record {EINE.INFNR}, purchasing organization {EINE.EKORG}, plant ''{EINE.WERKS}'': production
+    version {actual_value} does not exist.'
