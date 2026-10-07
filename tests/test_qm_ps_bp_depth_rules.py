@@ -10,7 +10,7 @@ from checks.frames import TableFrames
 from checks.runner import run_rule
 from sap.ddic import get_dictionary
 
-PACKS = {"quality_management": ("QM", 79, 55), "project_system": ("PS", 81, 35), "business_partner": ("BP", 227, 22)}
+PACKS = {"quality_management": ("QM", 79, 55), "project_system": ("PS", 81, 85), "business_partner": ("BP", 227, 69)}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")

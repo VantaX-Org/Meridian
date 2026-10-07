@@ -162,6 +162,7 @@ def test_asset_accounting_golden():
         "AA034": {"BUKRS=1000|ANLN1=000000320021|ANLN2=0001|BDATU=20240229"},  # segment ends before it starts
         "AA037": {"BUKRS=1000|ANLN1=000000300012|ANLN2=0000",
                   "BUKRS=1000|ANLN1=000000300018|ANLN2=0000"},             # two main assets, one tag
+        "AA225": {"BUKRS=1000|ANLN1=000000300017|ANLN2=0000"},             # flagged for deletion, not blocked
     }, found
     # the sold vehicle and the scrapped trailer are deactivated and the lathe created in error is
     # flagged for deletion: out of the population, counted
