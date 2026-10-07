@@ -215,3 +215,813 @@ rules:
       why the product is moving-average valued.
   record_fix_template: 'Product {MBEW.MATNR} in valuation area {MBEW.BWKEY}: price control is ''{actual_value}'', expected
     S for finished / semi-finished products.'
+
+# ── Business Partner core and roles ─────────────────────────────────────────
+
+- id: S4C011
+  field: BUT000.PARTNER_GUID
+  check_class: null_check
+  grain: BUT000
+  severity: critical
+  dimension: completeness
+  message: Business partner has no partner GUID
+  why_it_matters: >-
+    CVI links the partner to its supplier and customer accounts by PARTNER_GUID, not by
+    partner number, and the BP APIs and OData services address partners by it. A partner
+    without a GUID cannot be linked to any account and cannot be replicated (DRF, MDG).
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    CVI synchronisation fails for the partner, CVI_VEND_LINK / CVI_CUST_LINK cannot be
+    written, and the conversion pre-check (CVI_PRECHECK) reports it as inconsistent.
+  fix_map:
+    __blank__: >-
+      Partners without a GUID were created outside the BP API (direct table load). Re-create
+      the partner through BP / F3163 or the migration cockpit and archive the broken record.
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} has no partner GUID. Re-create it through the BP API.
+
+- id: S4C012
+  field: BUT100.PARTNER
+  check_class: exists_check
+  target_table: BUT100
+  target_fields: [PARTNER]
+  target_when:
+    RLTYP: [FLVN00]
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP: [FLVN01]
+  severity: medium
+  dimension: consistency
+  message: Business partner has the purchasing supplier role (FLVN01) without the financial supplier role (FLVN00)
+  why_it_matters: >-
+    FLVN01 creates the purchasing organisation data (LFM1), FLVN00 the company code data
+    (LFB1). A supplier with only FLVN01 can be ordered from but has no reconciliation
+    account, payment terms or payment methods, so its invoices cannot be posted or paid.
+  rule_authority: best_practice
+  sap_impact: >-
+    MIRO / Supplier Invoice Fiori apps reject invoices for the company code and the
+    payment run F110 skips the supplier.
+  fix_map:
+    __other__: >-
+      Add role FLVN00 in BP / F3163 and maintain the company code data, or remove FLVN01 if
+      the partner is not a supplier.
+  record_fix_template: >-
+    Business partner {BUT100.PARTNER} has supplier role FLVN01 but not FLVN00. Add the
+    financial supplier role with company code data.
+
+- id: S4C013
+  field: BUT100.PARTNER
+  check_class: exists_check
+  target_table: BUT100
+  target_fields: [PARTNER]
+  target_when:
+    RLTYP: [FLCU00]
+  grain: BUT100
+  applies_when:
+    BUT100.RLTYP: [FLCU01]
+  severity: medium
+  dimension: consistency
+  message: Business partner has the sales customer role (FLCU01) without the financial customer role (FLCU00)
+  why_it_matters: >-
+    FLCU01 creates the sales area data (KNVV), FLCU00 the company code data (KNB1). A
+    customer with only FLCU01 can take orders but has no reconciliation account, so
+    billing documents cannot be released to accounting.
+  rule_authority: best_practice
+  sap_impact: >-
+    Billing documents stop with an accounting error (customer not created in company
+    code); receivables, dunning and credit exposure are missing.
+  fix_map:
+    __other__: >-
+      Add role FLCU00 in BP / F3163 and maintain the company code data, or remove FLCU01 if
+      the partner does not buy.
+  record_fix_template: >-
+    Business partner {BUT100.PARTNER} has customer role FLCU01 but not FLCU00. Add the
+    financial customer role with company code data.
+
+# ── CVI links: completeness ─────────────────────────────────────────────────
+
+- id: S4C014
+  field: BUT000.XBLCK
+  fields: [CVI_VEND_LINK.VENDOR, LFA1.LIFNR, LFA1.SPERR]
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  applies_when:
+    LFA1.LOEVM:
+      blank: true
+  fail_when: "(`BUT000.XBLCK` == 'X') & `LFA1.LIFNR`.notna() & `LFA1.SPERR`.isna()"
+  severity: high
+  dimension: consistency
+  message: Business partner is centrally blocked but its supplier account is not posting-blocked
+  why_it_matters: >-
+    The central block on the partner is meant to stop all business with it. CVI maps the
+    block to the supplier, so an unblocked supplier behind a blocked partner shows that the
+    block was set outside BP or synchronisation failed, and the supplier can still be paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Invoices and payments to a partner that compliance or purchasing blocked still go
+    through.
+  fix_map:
+    __other__: >-
+      Re-save the partner in BP so CVI copies the block, or set the posting block on the
+      supplier (XK05) and check the CVI synchronisation monitor (MDS_PPO2).
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} is centrally blocked but supplier
+    {CVI_VEND_LINK.VENDOR} is not. Synchronise the block.
+
+- id: S4C015
+  field: BUT000.XBLCK
+  fields: [CVI_CUST_LINK.CUSTOMER, KNA1.KUNNR, KNA1.SPERR]
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  applies_when:
+    KNA1.LOEVM:
+      blank: true
+  fail_when: "(`BUT000.XBLCK` == 'X') & `KNA1.KUNNR`.notna() & `KNA1.SPERR`.isna()"
+  severity: high
+  dimension: consistency
+  message: Business partner is centrally blocked but its customer account is not posting-blocked
+  why_it_matters: >-
+    A centrally blocked partner must not trade. If the linked customer has no posting
+    block, sales and receivables still accept the customer, so the block has no effect.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Orders, deliveries and billing for a blocked partner continue.
+  fix_map:
+    __other__: >-
+      Re-save the partner in BP so CVI copies the block, or set the posting block on the
+      customer (XD05) and check MDS_PPO2.
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} is centrally blocked but customer
+    {CVI_CUST_LINK.CUSTOMER} is not. Synchronise the block.
+
+- id: S4C016
+  field: CVI_VEND_LINK.VENDOR
+  check_class: null_check
+  grain: CVI_VEND_LINK
+  severity: high
+  dimension: completeness
+  message: CVI supplier link has no supplier number
+  why_it_matters: >-
+    A link row without the supplier number ties the partner to nothing. It blocks a
+    correct link from being written for the partner and makes the conversion check report
+    the partner as linked when it is not.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    The partner cannot be synchronised to a supplier; purchasing and payables cannot use it.
+  fix_map:
+    __blank__: >-
+      Remove the empty link with the CVI consistency report (CVI_UPGRADE_CHECK_RESOLVE) and
+      re-synchronise the partner in MDS_LOAD_COCKPIT.
+  record_fix_template: >-
+    A CVI supplier link has no supplier number. Remove it and re-synchronise the partner.
+
+- id: S4C017
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: null_check
+  grain: CVI_CUST_LINK
+  severity: high
+  dimension: completeness
+  message: CVI customer link has no customer number
+  why_it_matters: >-
+    A link row without the customer number ties the partner to nothing and prevents a
+    correct customer link from being created.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    The partner cannot be synchronised to a customer; sales and receivables cannot use it.
+  fix_map:
+    __blank__: >-
+      Remove the empty link with CVI_UPGRADE_CHECK_RESOLVE and re-synchronise the partner in
+      MDS_LOAD_COCKPIT.
+  record_fix_template: >-
+    A CVI customer link has no customer number. Remove it and re-synchronise the partner.
+
+- id: S4C018
+  field: CVI_VEND_LINK.PARTNER_GUID
+  check_class: null_check
+  grain: CVI_VEND_LINK
+  severity: high
+  dimension: completeness
+  message: CVI supplier link has no business partner GUID
+  why_it_matters: >-
+    The link is keyed by the partner GUID. Without it the supplier is linked to no partner,
+    so BP cannot maintain it and the conversion check counts it as converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    The supplier cannot be changed through BP or Fiori and is invisible to partner-based
+    processes.
+  fix_map:
+    __blank__: >-
+      Remove the broken link (CVI_UPGRADE_CHECK_RESOLVE) and synchronise the supplier to a
+      partner with MDS_LOAD_COCKPIT.
+  record_fix_template: >-
+    The CVI link for supplier {CVI_VEND_LINK.VENDOR} has no partner GUID. Re-synchronise the
+    supplier.
+
+- id: S4C019
+  field: CVI_CUST_LINK.PARTNER_GUID
+  check_class: null_check
+  grain: CVI_CUST_LINK
+  severity: high
+  dimension: completeness
+  message: CVI customer link has no business partner GUID
+  why_it_matters: >-
+    The link is keyed by the partner GUID. Without it the customer is linked to no partner
+    and cannot be maintained through BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    The customer cannot be changed through BP or Fiori; credit management (UKM) finds no
+    partner for it.
+  fix_map:
+    __blank__: >-
+      Remove the broken link (CVI_UPGRADE_CHECK_RESOLVE) and synchronise the customer to a
+      partner with MDS_LOAD_COCKPIT.
+  record_fix_template: >-
+    The CVI link for customer {CVI_CUST_LINK.CUSTOMER} has no partner GUID. Re-synchronise
+    the customer.
+
+# ── CVI links: partner and account data must agree ──────────────────────────
+
+- id: S4C020
+  field: LFA1.NAME1
+  fields: [BUT000.NAME_ORG1, CVI_VEND_LINK.VENDOR]
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  applies_when:
+    BUT000.TYPE: ["2"]
+  fail_when: >-
+    `LFA1.NAME1`.notna() & `BUT000.NAME_ORG1`.notna() &
+    (`LFA1.NAME1`.str.upper().str.strip() != `BUT000.NAME_ORG1`.str.upper().str.slice(0, 35).str.strip())
+  severity: medium
+  dimension: consistency
+  message: Supplier name differs from the name of its business partner
+  why_it_matters: >-
+    CVI copies the organisation name from the partner to the supplier. Different names on
+    the two sides mean one was changed directly (XK02, table load) and the sync was
+    bypassed; the next save in BP overwrites the supplier name with the partner's.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Purchase orders, remittance advice and payment media show a different name from the
+    partner record; the next CVI sync silently changes the supplier name.
+  fix_map:
+    __other__: >-
+      Decide which name is correct, maintain it on the partner in BP / F3163 and let CVI
+      update the supplier.
+  record_fix_template: >-
+    Supplier {CVI_VEND_LINK.VENDOR} has a different name from business partner
+    {BUT000.PARTNER}. Correct the name on the partner.
+
+- id: S4C021
+  field: KNA1.NAME1
+  fields: [BUT000.NAME_ORG1, CVI_CUST_LINK.CUSTOMER]
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  applies_when:
+    BUT000.TYPE: ["2"]
+  fail_when: >-
+    `KNA1.NAME1`.notna() & `BUT000.NAME_ORG1`.notna() &
+    (`KNA1.NAME1`.str.upper().str.strip() != `BUT000.NAME_ORG1`.str.upper().str.slice(0, 35).str.strip())
+  severity: medium
+  dimension: consistency
+  message: Customer name differs from the name of its business partner
+  why_it_matters: >-
+    CVI copies the organisation name from the partner to the customer. A different name on
+    the customer shows the sync was bypassed, and the next BP save overwrites it.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Order confirmations, invoices and dunning letters carry a name that differs from the
+    partner and changes without notice at the next sync.
+  fix_map:
+    __other__: >-
+      Maintain the correct name on the partner in BP / F3163 and let CVI update the
+      customer.
+  record_fix_template: >-
+    Customer {CVI_CUST_LINK.CUSTOMER} has a different name from business partner
+    {BUT000.PARTNER}. Correct the name on the partner.
+
+- id: S4C022
+  field: LFA1.STCEG
+  fields: [KNA1.STCEG, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`LFA1.STCEG`.notna() & `KNA1.STCEG`.notna() & (`LFA1.STCEG` != `KNA1.STCEG`)"
+  severity: high
+  dimension: consistency
+  message: Supplier and its linked customer have different VAT registration numbers
+  why_it_matters: >-
+    A supplier and customer cross-referenced through LFA1.KUNNR are the same legal entity
+    and become one business partner on conversion. The partner holds one VAT number, so
+    conversion keeps only one and the other side's tax reporting changes.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    After CVI the EC sales list or the purchase VAT report uses the wrong VAT number for
+    one side; the conversion merge stops on the conflict.
+  fix_map:
+    __other__: >-
+      Confirm the valid VAT number with the business and correct it on the supplier (XK02)
+      or customer (XD02) before CVI conversion.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} and linked customer {LFA1.KUNNR} have different VAT numbers. Align
+    them before conversion.
+
+- id: S4C023
+  field: LFA1.STCD1
+  fields: [KNA1.STCD1, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`LFA1.STCD1`.notna() & `KNA1.STCD1`.notna() & (`LFA1.STCD1` != `KNA1.STCD1`)"
+  severity: high
+  dimension: consistency
+  message: Supplier and its linked customer have different tax number 1
+  why_it_matters: >-
+    Cross-linked supplier and customer merge into one partner on conversion, and the partner
+    holds one tax number per tax type (DFKKBPTAXNUM). Conflicting values stop the merge or
+    lose one value.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Withholding tax, legal reporting and e-invoicing use the wrong tax number for one side
+    after conversion.
+  fix_map:
+    __other__: >-
+      Confirm the correct tax number and align supplier (XK02) and customer (XD02).
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} and linked customer {LFA1.KUNNR} have different tax number 1.
+    Align them before conversion.
+
+- id: S4C024
+  field: LFA1.SPERR
+  fields: [KNA1.SPERR, KNA1.KUNNR, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`KNA1.KUNNR`.notna() & (`LFA1.SPERR`.fillna('') != `KNA1.SPERR`.fillna(''))"
+  severity: medium
+  dimension: consistency
+  message: Supplier and its linked customer have different central posting blocks
+  why_it_matters: >-
+    In S/4HANA one business partner carries one central block for both roles. A supplier
+    blocked while its linked customer is open (or the reverse) cannot be represented: the
+    conversion either blocks both or unblocks both.
+  rule_authority: best_practice
+  sap_impact: >-
+    After conversion the partner is blocked in a process the business wanted open, or open
+    in one it wanted blocked.
+  fix_map:
+    __other__: >-
+      Decide whether the entity is blocked and set the same posting block on supplier
+      (XK05) and customer (XD05), or use company-code / sales-area blocks for partial blocks.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} and linked customer {LFA1.KUNNR} have different posting blocks.
+    Align them.
+
+- id: S4C025
+  field: LFA1.LOEVM
+  fields: [KNA1.LOEVM, KNA1.KUNNR, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "(`LFA1.LOEVM` == 'X') & `KNA1.KUNNR`.notna() & `KNA1.LOEVM`.isna()"
+  severity: medium
+  dimension: consistency
+  message: Supplier is flagged for deletion but its linked customer is still active
+  why_it_matters: >-
+    Supplier and customer cross-linked through LFA1.KUNNR become one partner. A deletion
+    flag on only one side forces the conversion to either archive an active customer or
+    keep an obsolete supplier.
+  rule_authority: best_practice
+  sap_impact: >-
+    The obsolete supplier is converted and synchronised for ever, or the active customer is
+    flagged for archiving with it.
+  fix_map:
+    __other__: >-
+      Remove the cross reference (LFA1.KUNNR) if the customer stays active, or flag the
+      customer for deletion too.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} is flagged for deletion while linked customer {LFA1.KUNNR} is
+    active. Remove the link or flag both.
+
+- id: S4C026
+  field: CVI_VEND_LINK.CRDAT
+  fields: [BUT000.CRDAT]
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: "`CVI_VEND_LINK.CRDAT`.notna() & `BUT000.CRDAT`.notna() & (`CVI_VEND_LINK.CRDAT` < `BUT000.CRDAT`)"
+  severity: low
+  dimension: consistency
+  message: CVI supplier link was created before its business partner
+  why_it_matters: >-
+    A link cannot exist before the partner it points to. The pair shows a partner that was
+    deleted and re-created under the same GUID or a link loaded directly into the table,
+    both of which bypass CVI.
+  rule_authority: best_practice
+  sap_impact: >-
+    The link may join the supplier to a different partner than the one it was created for.
+  fix_map:
+    __other__: >-
+      Review the partner's change documents and the link; rebuild the link with
+      CVI_UPGRADE_CHECK_RESOLVE if it is wrong.
+  record_fix_template: >-
+    The CVI link for supplier {CVI_VEND_LINK.VENDOR} is dated {CVI_VEND_LINK.CRDAT}, before
+    its partner was created on {BUT000.CRDAT}.
+
+- id: S4C027
+  field: CVI_CUST_LINK.CRDAT
+  fields: [BUT000.CRDAT]
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: "`CVI_CUST_LINK.CRDAT`.notna() & `BUT000.CRDAT`.notna() & (`CVI_CUST_LINK.CRDAT` < `BUT000.CRDAT`)"
+  severity: low
+  dimension: consistency
+  message: CVI customer link was created before its business partner
+  why_it_matters: >-
+    A link cannot exist before its partner; the pair points to a re-created partner or a
+    direct table load that bypassed CVI.
+  rule_authority: best_practice
+  sap_impact: >-
+    The link may join the customer to a different partner than the one it was created for.
+  fix_map:
+    __other__: >-
+      Review the partner's change documents and the link; rebuild it with
+      CVI_UPGRADE_CHECK_RESOLVE if it is wrong.
+  record_fix_template: >-
+    The CVI link for customer {CVI_CUST_LINK.CUSTOMER} is dated {CVI_CUST_LINK.CRDAT}, before
+    its partner was created on {BUT000.CRDAT}.
+
+# ── Business Partner dates ──────────────────────────────────────────────────
+
+- id: S4C028
+  field: BUT000.BIRTHDT
+  check_class: cross_field_check
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE: ["1"]
+  fail_when: "`BUT000.BIRTHDT`.notna() & (`BUT000.BIRTHDT` > @today)"
+  severity: medium
+  dimension: validity
+  message: Person's date of birth is in the future
+  why_it_matters: >-
+    A future date of birth is always an entry error (often a two-digit year read into the
+    wrong century). Age checks in sanctions screening, KYC and data-protection retention
+    use the date.
+  rule_authority: best_practice
+  sap_impact: >-
+    Screening and retention rules (ILM, blocking of personal data) compute a negative age
+    and skip the person.
+  fix_map:
+    __other__: >-
+      Correct the date of birth in BP / F3163 or clear it if it is not known.
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} has a date of birth in the future. Correct it in BP.
+
+- id: S4C029
+  field: BUT000.BIRTHDT
+  check_class: cross_field_check
+  grain: BUT000
+  applies_when:
+    BUT000.TYPE: ["1"]
+  fail_when: "`BUT000.BIRTHDT`.notna() & (`BUT000.BIRTHDT` <= '19000101')"
+  severity: low
+  dimension: validity
+  message: Person's date of birth is on or before 1 January 1900
+  why_it_matters: >-
+    Dates of birth on or before 1900 come from placeholder dates (01.01.1800, 01.01.1900)
+    or century errors.
+    They make the date useless for identification and age-based rules.
+  rule_authority: best_practice
+  sap_impact: >-
+    Identity matching and screening that use the date of birth fail to match the real
+    person; data-protection residence rules treat the record as long expired.
+  fix_map:
+    __other__: >-
+      Replace the placeholder with the real date of birth or clear the field in BP.
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} has a placeholder date of birth (1900 or earlier).
+    Correct or clear it.
+
+# ── Supplier / customer cross references ────────────────────────────────────
+
+- id: S4C030
+  field: KNA1.LIFNR
+  fields: [LFA1.KUNNR, KNA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`KNA1.LIFNR`.notna() & (`KNA1.LIFNR` != `LFA1.LIFNR`)"
+  severity: high
+  dimension: consistency
+  message: Supplier points to a customer that points back to a different supplier
+  why_it_matters: >-
+    CVI uses the supplier / customer cross reference to put both accounts under one
+    business partner. When supplier A points to customer C but C points to supplier B, the
+    conversion cannot decide which supplier shares the partner with the customer.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    The CVI conversion stops on the conflict or merges the wrong accounts into one partner,
+    mixing bank details, tax numbers and clearing between unrelated entities.
+  fix_map:
+    __other__: >-
+      Decide which supplier belongs to the customer and correct LFA1.KUNNR (XK02) and
+      KNA1.LIFNR (XD02) so they point at each other.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} points to customer {LFA1.KUNNR}, which points to supplier
+    {KNA1.LIFNR}. Make the cross references agree.
+
+- id: S4C031
+  field: MARA.MATNR
+  check_class: exists_check
+  target_table: MARC
+  target_fields: [MATNR]
+  grain: MARA
+  applies_when:
+    MARA.MTART: [FERT, HALB, ROH, HAWA]
+    MARA.LVORM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Stocked product has no plant data
+  why_it_matters: >-
+    Finished, semi-finished, raw and trading goods are planned, procured and stocked per
+    plant. Without any plant view the product exists only as a basic record that MRP,
+    purchasing and inventory cannot use, which is typical of an incomplete migration load.
+  rule_authority: best_practice
+  sap_impact: >-
+    Purchase orders, production orders and goods movements fail with product-not-maintained-
+    for-plant errors; MRP never plans it.
+  fix_map:
+    __other__: >-
+      Extend the product to its plants in F1602 Manage Product Master Data (MM01 plant
+      views) or flag it for deletion if it is obsolete.
+  record_fix_template: >-
+    Product {MARA.MATNR} ({MARA.MTART}) has no plant data. Extend it to a plant or flag it
+    for deletion.
+
+- id: S4C032
+  field: BUT000.NATPERS
+  fields: [LFA1.STKZN, CVI_VEND_LINK.VENDOR]
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: "`LFA1.LIFNR`.notna() & (`BUT000.NATPERS`.fillna('') != `LFA1.STKZN`.fillna(''))"
+  severity: medium
+  dimension: consistency
+  message: Natural-person flag differs between business partner and supplier
+  why_it_matters: >-
+    The natural-person flag decides withholding tax and tax reporting treatment (for
+    example 1099 or self-employed reporting). CVI maps BUT000.NATPERS to LFA1.STKZN; a
+    difference shows the supplier was changed outside BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Withholding tax and legal reports treat the supplier differently from the partner; the
+    next BP save changes the supplier's tax treatment.
+  fix_map:
+    __other__: >-
+      Set the correct natural-person flag on the partner in BP and let CVI update the
+      supplier.
+  record_fix_template: >-
+    Supplier {CVI_VEND_LINK.VENDOR} and business partner {BUT000.PARTNER} disagree on the
+    natural-person flag.
+
+- id: S4C033
+  field: BUT000.NATPERS
+  fields: [KNA1.STKZN, CVI_CUST_LINK.CUSTOMER]
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: "`KNA1.KUNNR`.notna() & (`BUT000.NATPERS`.fillna('') != `KNA1.STKZN`.fillna(''))"
+  severity: medium
+  dimension: consistency
+  message: Natural-person flag differs between business partner and customer
+  why_it_matters: >-
+    CVI maps BUT000.NATPERS to KNA1.STKZN. A difference shows the customer was changed
+    outside BP; tax determination and reporting that read the flag treat the two sides
+    differently.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Tax determination and legal reports differ between the partner and customer; the next
+    BP save changes the customer.
+  fix_map:
+    __other__: >-
+      Set the correct natural-person flag on the partner in BP and let CVI update the
+      customer.
+  record_fix_template: >-
+    Customer {CVI_CUST_LINK.CUSTOMER} and business partner {BUT000.PARTNER} disagree on the
+    natural-person flag.
+
+- id: S4C034
+  field: LFA1.SORTL
+  fields: [BUT000.BU_SORT1, CVI_VEND_LINK.VENDOR]
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: >-
+    `LFA1.SORTL`.notna() & `BUT000.BU_SORT1`.notna() &
+    (`LFA1.SORTL`.str.upper().str.strip() != `BUT000.BU_SORT1`.str.upper().str.slice(0, 10).str.strip())
+  severity: low
+  dimension: consistency
+  message: Supplier search term differs from its business partner's search term
+  why_it_matters: >-
+    CVI copies search term 1 of the partner to the supplier. A difference shows the
+    supplier was maintained directly, so searches by search term find the account in one
+    place and not the other.
+  rule_authority: best_practice
+  sap_impact: >-
+    Users searching by search term in BP or purchasing find different records; the next sync
+    overwrites the supplier value.
+  fix_map:
+    __other__: >-
+      Maintain the search term on the partner in BP and let CVI update the supplier.
+  record_fix_template: >-
+    Supplier {CVI_VEND_LINK.VENDOR} has a different search term from business partner
+    {BUT000.PARTNER}.
+
+- id: S4C035
+  field: KNA1.SORTL
+  fields: [BUT000.BU_SORT1, CVI_CUST_LINK.CUSTOMER]
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: >-
+    `KNA1.SORTL`.notna() & `BUT000.BU_SORT1`.notna() &
+    (`KNA1.SORTL`.str.upper().str.strip() != `BUT000.BU_SORT1`.str.upper().str.slice(0, 10).str.strip())
+  severity: low
+  dimension: consistency
+  message: Customer search term differs from its business partner's search term
+  why_it_matters: >-
+    CVI copies search term 1 of the partner to the customer. A difference shows the
+    customer was maintained directly, and searches return different results in BP and SD.
+  rule_authority: best_practice
+  sap_impact: >-
+    Order entry searches find the customer by a term BP does not know; the next sync
+    overwrites it.
+  fix_map:
+    __other__: >-
+      Maintain the search term on the partner in BP and let CVI update the customer.
+  record_fix_template: >-
+    Customer {CVI_CUST_LINK.CUSTOMER} has a different search term from business partner
+    {BUT000.PARTNER}.
+
+- id: S4C036
+  field: BUT000.CRDAT
+  check_class: cross_field_check
+  grain: BUT000
+  fail_when: "`BUT000.CRDAT`.notna() & (`BUT000.CRDAT` > @today)"
+  severity: low
+  dimension: validity
+  message: Business partner creation date is in the future
+  why_it_matters: >-
+    A future creation date comes from a migration load that set it by hand or a wrong
+    server clock. Change history, data-protection residence periods and delta replication
+    (DRF) rely on it.
+  rule_authority: best_practice
+  sap_impact: >-
+    Residence and blocking rules for personal data (ILM) start too late; delta
+    replication by date skips the partner.
+  fix_map:
+    __other__: >-
+      Correct the migration load or system clock; the creation date cannot be changed in BP,
+      so re-create the partner if the date matters for retention.
+  record_fix_template: >-
+    Business partner {BUT000.PARTNER} has creation date {BUT000.CRDAT}, which is in the
+    future.
+
+- id: S4C037
+  field: LFA1.LAND1
+  fields: [KNA1.LAND1, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`LFA1.LAND1`.notna() & `KNA1.LAND1`.notna() & (`LFA1.LAND1` != `KNA1.LAND1`)"
+  severity: high
+  dimension: consistency
+  message: Supplier and its linked customer are in different countries
+  why_it_matters: >-
+    Cross-linked accounts become one business partner with one standard address. Different
+    countries mean they are probably different legal entities linked by mistake, or one
+    address is wrong; the conversion keeps only one.
+  rule_authority: best_practice
+  sap_impact: >-
+    After conversion tax determination, bank country checks and legal reports use the wrong
+    country for one side.
+  fix_map:
+    __other__: >-
+      Confirm whether the accounts belong to the same entity; remove the cross reference or
+      correct the address before conversion.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} ({LFA1.LAND1}) and linked customer {LFA1.KUNNR} ({KNA1.LAND1})
+    are in different countries.
+
+- id: S4C038
+  field: LFA1.SPRAS
+  fields: [KNA1.SPRAS, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`LFA1.SPRAS`.notna() & `KNA1.SPRAS`.notna() & (`LFA1.SPRAS` != `KNA1.SPRAS`)"
+  severity: low
+  dimension: consistency
+  message: Supplier and its linked customer have different correspondence languages
+  why_it_matters: >-
+    The merged business partner has one correspondence language. Conversion keeps one, so
+    purchase orders or invoices for the other side switch language without warning.
+  rule_authority: best_practice
+  sap_impact: >-
+    Output forms (PO, invoice, dunning) print in a different language after conversion.
+  fix_map:
+    __other__: >-
+      Agree the correspondence language with the business and align supplier and customer.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} ({LFA1.SPRAS}) and linked customer {LFA1.KUNNR} ({KNA1.SPRAS})
+    have different languages.
+
+# ── Product valuation ───────────────────────────────────────────────────────
+
+- id: S4C039
+  field: MBEW.VPRSV
+  check_class: cross_field_check
+  grain: MBEW
+  applies_when:
+    MARA.MTART: [HAWA]
+  fail_when: "`MBEW.VPRSV` == 'S'"
+  severity: low
+  dimension: consistency
+  message: Trading good is valued at standard price
+  why_it_matters: >-
+    Trading goods are bought and resold without production, so purchase price differences
+    belong in the stock value. Standard price on HAWA posts every price difference to
+    PRD and needs a cost estimate that trading goods usually do not have.
+  rule_authority: best_practice
+  sap_impact: >-
+    Purchase price variances pile up on PRD accounts and inventory is valued at an outdated
+    standard; with material ledger actual costing the variance is only revalued at period
+    end.
+  fix_map:
+    __other__: >-
+      Change price control to V in the accounting view (F1602 / MM02) or document why the
+      trading good is standard-priced.
+  record_fix_template: >-
+    Trading good {MBEW.MATNR} in valuation area {MBEW.BWKEY} is valued at standard price.
+    Review the price control.
+
+- id: S4C040
+  field: LFA1.STCD2
+  fields: [KNA1.STCD2, LFA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`LFA1.STCD2`.notna() & `KNA1.STCD2`.notna() & (`LFA1.STCD2` != `KNA1.STCD2`)"
+  severity: medium
+  dimension: consistency
+  message: Supplier and its linked customer have different tax number 2
+  why_it_matters: >-
+    The merged business partner holds one value per tax number type. Conflicting tax
+    number 2 values on cross-linked accounts stop the merge or lose one value.
+  rule_authority: sap_hard_constraint
+  sap_impact: >-
+    Tax reports and e-documents use the wrong tax number for one side after conversion.
+  fix_map:
+    __other__: >-
+      Confirm the correct tax number 2 and align supplier (XK02) and customer (XD02).
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} and linked customer {LFA1.KUNNR} have different tax number 2.
+    Align them before conversion.
+
+- id: S4C041
+  field: KNA1.LIFNR
+  fields: [LFA1.KUNNR, KNA1.KUNNR]
+  check_class: cross_field_check
+  grain: LFA1
+  applies_when:
+    LFA1.KUNNR:
+      populated: true
+  fail_when: "`KNA1.KUNNR`.notna() & `KNA1.LIFNR`.isna()"
+  severity: medium
+  dimension: consistency
+  message: Supplier points to a customer that does not point back to it
+  why_it_matters: >-
+    The supplier / customer cross reference must be kept on both sides for CVI to treat the
+    two accounts as one entity. A one-sided link converts them into two separate business
+    partners, duplicating the entity.
+  rule_authority: best_practice
+  sap_impact: >-
+    The entity exists twice as a business partner after conversion; clearing between
+    payables and receivables (LFB1-XVERR / KNB1-XVERR) no longer finds the partner account.
+  fix_map:
+    __other__: >-
+      Maintain the supplier number on the customer (XD02, control data) or remove the
+      cross reference on the supplier.
+  record_fix_template: >-
+    Supplier {LFA1.LIFNR} points to customer {LFA1.KUNNR}, but the customer has no supplier
+    reference. Complete the link.

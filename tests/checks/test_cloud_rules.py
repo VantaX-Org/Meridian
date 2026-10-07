@@ -13,7 +13,7 @@ from sap.ddic import get_dictionary, dictionary_for_system
 from sap.extraction_plan import MODULES_BY_SYSTEM
 
 D = get_dictionary("s4hana")
-MODULES = {"s4hc_master_data": 10, "concur_expense": 40, "concur_users": 14,
+MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 14,
            "ariba_supplier": 14, "ariba_contracts": 16, "ariba_procurement": 27}
 ENRICHMENT = ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template")
 
@@ -54,7 +54,8 @@ def _failed(module, tables):
 S4_CLEAN = {
     "BUT000": [{"PARTNER": "BP1", "PARTNER_GUID": "G1", "BU_GROUP": "0001"},
                {"PARTNER": "BP2", "PARTNER_GUID": "G2", "BU_GROUP": "0001"}],
-    "BUT100": [{"PARTNER": "BP1", "RLTYP": "FLVN01"}, {"PARTNER": "BP2", "RLTYP": "FLCU01"}],
+    "BUT100": [{"PARTNER": "BP1", "RLTYP": "FLVN01"}, {"PARTNER": "BP1", "RLTYP": "FLVN00"},
+               {"PARTNER": "BP2", "RLTYP": "FLCU01"}, {"PARTNER": "BP2", "RLTYP": "FLCU00"}],
     "CVI_VEND_LINK": [{"PARTNER_GUID": "G1", "VENDOR": "V1"}],
     "CVI_CUST_LINK": [{"PARTNER_GUID": "G2", "CUSTOMER": "K1"}],
     "LFA1": [{"LIFNR": "V1"}],
@@ -83,7 +84,7 @@ def test_s4hc_clean_passes():
 
 
 def test_s4hc_dirty_fires():
-    assert _failed("s4hc_master_data", S4_DIRTY) == {f"S4C{i:03d}" for i in range(1, 11)}
+    assert _failed("s4hc_master_data", S4_DIRTY) >= {f"S4C{i:03d}" for i in range(1, 11)}
 
 
 # ── Concur ────────────────────────────────────────────────────────────────

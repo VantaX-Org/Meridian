@@ -227,3 +227,1080 @@ rules:
     record_fix_template: >-
       Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no receiver partner type.
       Maintain the WE20 partner profile and regenerate the IDoc.
+
+  # ── IDoc control records: statuses stuck between processing steps ─────────
+
+  - id: IDH009
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "Inbound IDoc waiting for its predecessor (status 66) for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 66 IDoc is waiting for predecessor IDoc (serialization)
+      EDIDC.STATUS: ["66"]
+    why_it_matters: >-
+      Serialised IDocs are applied strictly in order. An IDoc in status 66 waits for
+      an older IDoc of the same serialisation group; when that predecessor is in error
+      or was never received, every later IDoc of the object queues behind it and the
+      object stops changing in SAP.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      All later changes to the same material, customer, order or delivery are held
+      back. The receiving system shows an older version of the object than the sender.
+    fix_map:
+      __other__: >-
+        Find the predecessor of the serialisation group in WE02 / BD87, process or
+        correct it, then run RBDAPP01 or BD87 for the waiting IDocs. If the predecessor
+        will never arrive, process the waiting IDoc manually in BD87.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has waited in status 66 since
+      {EDIDC.UPDDAT}. Process its predecessor IDoc first, then reprocess it in BD87.
+
+  - id: IDH010
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: medium
+    dimension: timeliness
+    message: "Inbound IDoc edited (status 69) but not reprocessed for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 69 IDoc was edited
+      EDIDC.STATUS: ["69"]
+    why_it_matters: >-
+      Status 69 means someone corrected the IDoc data in WE19 / WE02 but never
+      reprocessed it. The fix exists only in the IDoc, the business document was
+      still not created, and the edit itself bypassed the normal master-data checks.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The document carried by the IDoc is still missing in SAP even though the error
+      was believed to be resolved.
+    fix_map:
+      __other__: >-
+        Review the edit (the original is kept as a status 70 copy), then reprocess the
+        IDoc with BD87 or RBDAGAIE. If the edit was wrong, set the IDoc to status 68.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) was edited on {EDIDC.UPDDAT} and
+      never reprocessed. Review the edit and reprocess it with BD87.
+
+  - id: IDH011
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "Inbound IDoc stuck in status 50 (added, not yet checked) for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 50 IDoc added
+      EDIDC.STATUS: ["50"]
+    why_it_matters: >-
+      Status 50 is the first step after an IDoc is written to the database. It
+      normally moves to 64 within seconds; an IDoc that stays at 50 was interrupted
+      in the inbound ALE layer (dump, lock, rollback) and no job will pick it up.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is neither in error nor ready for processing, so error monitoring and
+      the RBDAPP01 job both skip it. Its document is never created.
+    fix_map:
+      __other__: >-
+        Check ST22 / SM21 for the time the IDoc was received, then process it with
+        BD87 (or RBDAGAI2 for IDocs in status 50).
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status 50 since
+      {EDIDC.UPDDAT}. Check for a short dump and process it with BD87.
+
+  - id: IDH012
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "Inbound IDoc passed to the application (status 62) without a result for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 62 IDoc passed to application
+      EDIDC.STATUS: ["62"]
+    why_it_matters: >-
+      After status 62 the application function module must return 53 (posted) or 51
+      (error). An IDoc left in 62 lost its result, usually through a dump or a
+      cancelled update task, so nobody knows whether the document was posted.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The business document may be missing or half-posted. Reprocessing blindly risks a
+      duplicate posting.
+    fix_map:
+      __other__: >-
+        Check ST22 and SM13 for the processing time, confirm in the application whether
+        the document exists, then reprocess with BD87 or set the IDoc to status 68.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status 62 since
+      {EDIDC.UPDDAT}. Confirm whether the document was posted before reprocessing.
+
+  - id: IDH013
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "Inbound IDoc waiting in the inbound queue (status 75) for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 75 IDoc is in inbound queue (queued processing via qRFC)
+      EDIDC.STATUS: ["75"]
+    why_it_matters: >-
+      IDocs received with queue processing wait in a qRFC inbound queue (SMQ2) until
+      their turn. A day in status 75 means the queue is stopped or blocked by an
+      earlier failed entry.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Every IDoc behind the blocking entry in the same queue is held, so the object
+      stops changing in SAP.
+    fix_map:
+      __other__: >-
+        Open the queue in SMQ2 or BD87 (queue view), fix the first entry in error and
+        unlock / activate the queue.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been queued (status 75) since
+      {EDIDC.UPDDAT}. Clear the blocking entry in SMQ2.
+
+  - id: IDH014
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: high
+    dimension: timeliness
+    message: "Inbound IDoc partly posted or processed despite syntax errors (status 52 / 61) for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+      # 52 application document not fully posted, 61 processing despite syntax error
+      EDIDC.STATUS: ["52", "61"]
+    why_it_matters: >-
+      Status 52 means only part of the IDoc was posted (for example some items of an
+      order); 61 means a syntax error was overridden. Both leave a document that
+      differs from what the sender sent and are not counted by monitors that look
+      only for 51.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The posted document is incomplete or built from malformed data. Quantities,
+      values and follow-on documents differ from the sending system.
+    fix_map:
+      __other__: >-
+        Compare the document with the IDoc in WE02, post the missing parts manually or
+        have the sender resend a corrected message, then set the IDoc to status 68.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status {EDIDC.STATUS}
+      since {EDIDC.UPDDAT}. Complete the document and close the IDoc.
+
+  - id: IDH015
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "Outbound IDoc generated (status 01) but not passed on for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 01 IDoc generated
+      EDIDC.STATUS: ["01"]
+    why_it_matters: >-
+      Status 01 is written when the IDoc is created and normally changes to 30 or 03
+      within the same LUW. An outbound IDoc left at 01 was interrupted after creation
+      and no dispatch job will send it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The receiving system never gets the document and the IDoc does not appear in
+      error lists.
+    fix_map:
+      __other__: >-
+        Check ST22 / SM13 at the creation time, then dispatch the IDoc with BD87 or
+        regenerate it from the application (output, BD10 / BD12 / BD14).
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status 01 since
+      {EDIDC.UPDDAT}. Dispatch it with BD87 or regenerate it.
+
+  - id: IDH016
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "Outbound IDoc in a dispatch error (status 20 / 37) for more than 24 hours"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 20 error triggering EDI subsystem, 37 IDoc added incorrectly
+      EDIDC.STATUS: ["20", "37"]
+    why_it_matters: >-
+      Status 20 means the EDI subsystem could not be started; 37 means the IDoc was
+      written with structural errors (wrong segment, missing control data). Neither
+      is resent automatically.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The partner never receives the document; for status 37 the IDoc cannot be sent
+      until the data is regenerated.
+    fix_map:
+      __other__: >-
+        For 20, fix the port / subsystem command in WE21 and resend with BD87. For 37,
+        correct the IDoc type or partner profile and regenerate the IDoc from the
+        application.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has been in status
+      {EDIDC.STATUS} since {EDIDC.UPDDAT}. Fix the port or IDoc definition and resend.
+
+  - id: IDH017
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: medium
+    dimension: timeliness
+    message: "Outbound IDoc edited (status 32) but not resent for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 32 IDoc was edited
+      EDIDC.STATUS: ["32"]
+    why_it_matters: >-
+      An outbound IDoc corrected in WE19 / WE02 must be resent. Left at status 32 the
+      partner still does not have the document and the manual edit is not traceable
+      to a business change.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The receiving system is missing the document; the edited content differs from
+      the application document it was generated from.
+    fix_map:
+      __other__: >-
+        Review the edit, then resend the IDoc with BD87 / RSEOUT00, or set it to status
+        31 if the document is no longer needed.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) was edited on {EDIDC.UPDDAT} and
+      never resent. Resend it or set it to status 31.
+
+  - id: IDH018
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP, EDIDC.RCVPRN]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: high
+    dimension: timeliness
+    message: "Outbound IDoc not posted in the receiving system (status 40) for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 40 application document not created in receiving system (ALEAUD confirmation)
+      EDIDC.STATUS: ["40"]
+    why_it_matters: >-
+      With ALE audit (ALEAUD) the receiver reports back whether it posted the IDoc.
+      Status 40 is that confirmation saying it failed: SAP sent the message
+      successfully but the partner system has no document.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The partner system is missing the order, delivery or master record although the
+      sending system shows the IDoc as delivered.
+    fix_map:
+      __other__: >-
+        Fix the error in the receiving system (its BD87) and reprocess there, or resend
+        a new IDoc from this system once the cause is removed.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) to {EDIDC.RCVPRN} was rejected by
+      the receiver (status 40) on {EDIDC.UPDDAT}. Reprocess it in the receiving system.
+
+  - id: IDH019
+    field: EDIDC.UPDDAT
+    time_field: EDIDC.UPDTIM
+    fields: [EDIDC.STATUS, EDIDC.MESTYP, EDIDC.RCVPRN]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: medium
+    dimension: timeliness
+    message: "Outbound EDI IDoc awaiting subsystem acknowledgement (status 18 / 22) for more than 7 days"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+      # 18 triggering EDI subsystem OK, 22 dispatch OK, acknowledgement still due
+      EDIDC.STATUS: ["18", "22"]
+    why_it_matters: >-
+      EDI subsystems report back with statuses 06 / 12 / 16 once the message is
+      translated and dispatched. An IDoc still waiting after a week was lost between
+      SAP and the subsystem or the acknowledgement channel is broken.
+    rule_authority: best_practice
+    sap_impact: >-
+      Delivery to the partner is unconfirmed; missing purchase orders or invoices at
+      the partner are only discovered when they chase.
+    fix_map:
+      __other__: >-
+        Check the subsystem / middleware log for the IDoc number, confirm receipt with
+        the partner and resend with BD87 if it was not delivered.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) to {EDIDC.RCVPRN} has had no
+      subsystem acknowledgement since {EDIDC.UPDDAT}. Confirm delivery in the subsystem.
+
+  # ── IDoc control records: completeness and validity ───────────────────────
+
+  - id: IDH020
+    field: EDIDC.TEST
+    fields: [EDIDC.MESTYP, EDIDC.DIRECT]
+    check_class: cross_field_check
+    fail_when: "`EDIDC.TEST` == 'X'"
+    severity: low
+    dimension: validity
+    message: "IDoc flagged as a test message"
+    why_it_matters: >-
+      The test flag comes from a partner profile set to test mode or from a WE19 test
+      IDoc. In a productive client it means real messages are processed as tests, or
+      test documents were posted into live data.
+    rule_authority: best_practice
+    sap_impact: >-
+      Partners and middleware that honour the flag discard the message; documents
+      created from test IDocs pollute productive figures.
+    fix_map:
+      __other__: >-
+        Clear the test flag in the WE20 partner profile (inbound / outbound parameters)
+        and review the documents created by test IDocs.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) carries the test flag. Remove test mode
+      from the WE20 partner profile.
+
+  - id: IDH021
+    field: EDIDC.DIRECT
+    check_class: domain_value_check
+    severity: high
+    dimension: validity
+    message: "IDoc direction is not 1 (outbound) or 2 (inbound)"
+    allowed_values: ["1", "2"]
+    valid_values_with_labels:
+      "1": Outbound
+      "2": Inbound
+    why_it_matters: >-
+      The direction decides which partner profile, port and status range apply. An
+      IDoc with any other value cannot be processed or monitored by BD87 / WE02 in
+      either direction.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is invisible to direction-based monitoring and cannot be reprocessed.
+    fix_map:
+      __other__: >-
+        Find the program or middleware that wrote the control record and correct it;
+        set the faulty IDoc to a final status (31 / 68) and resend a valid one.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} has direction '{actual_value}'. Only 1 (outbound) and 2
+      (inbound) are valid.
+
+  - id: IDH022
+    field: EDIDC.MESTYP
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "IDoc has no message type"
+    why_it_matters: >-
+      The message type selects the partner profile line, the process code and the
+      application function. An IDoc without it cannot be routed to any business
+      process.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Inbound IDocs stop with a partner profile error; outbound IDocs cannot be
+      assigned a port. The document is never exchanged.
+    fix_map:
+      __blank__: >-
+        Correct the sender or the generating program so the message type is filled,
+        then resend the IDoc.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} has no message type. Correct the sender or generating
+      program and resend it.
+
+  - id: IDH023
+    field: EDIDC.IDOCTP
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "IDoc has no basic type"
+    why_it_matters: >-
+      The basic type (for example ORDERS05) defines the segment structure. Without it
+      SAP cannot parse the data records, so syntax check and application processing
+      both fail.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc ends in a syntax error (status 26 / 60) and its document is never
+      created or sent.
+    fix_map:
+      __blank__: >-
+        Maintain the basic type in the partner profile (WE20) or the sender mapping,
+        then resend the IDoc.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no basic type. Maintain it in WE20 or
+      the sender mapping and resend.
+
+  - id: IDH024
+    field: EDIDC.STATUS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: "IDoc control record has no status"
+    why_it_matters: >-
+      Every IDoc carries its current status in the control record. A blank status
+      means the control record was written outside the IDoc API or damaged, and the
+      IDoc can be neither monitored nor processed.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is invisible to every status-based monitor and job (BD87, RBDAPP01,
+      RSEOUT00).
+    fix_map:
+      __blank__: >-
+        Read the status records (EDIDS) in WE02 to find the last real status and
+        correct the control record through SAP support tools, or archive the IDoc and
+        resend the message.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no status in its control record. Check
+      its status history in WE02.
+
+  - id: IDH025
+    field: EDIDC.RCVPOR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Outbound IDoc has no receiver port"
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+    why_it_matters: >-
+      The receiver port (WE21) tells SAP how to deliver the IDoc: tRFC destination,
+      file, XML or HTTP. An outbound IDoc without a port has no delivery channel.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc cannot be dispatched and the partner never receives the document.
+    fix_map:
+      __blank__: >-
+        Assign the port in the outbound parameters of the WE20 partner profile, then
+        regenerate or resend the IDoc.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no receiver port. Maintain the
+      port in WE20 and resend.
+
+  - id: IDH026
+    field: EDIDC.SNDPOR
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Inbound IDoc has no sender port"
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+    why_it_matters: >-
+      The sender port identifies the channel the IDoc arrived through. It is needed to
+      trace a message back to the sending system and to route acknowledgements
+      (ALEAUD, STATUS IDocs).
+    rule_authority: best_practice
+    sap_impact: >-
+      Acknowledgements cannot be returned and errors cannot be traced to the sending
+      channel.
+    fix_map:
+      __blank__: >-
+        Correct the sender or middleware so it fills the sender port, matching a port
+        defined in WE21.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has no sender port. Have the sender
+      fill SNDPOR.
+
+  - id: IDH027
+    field: EDIDC.UPDDAT
+    fields: [EDIDC.CREDAT]
+    check_class: cross_field_check
+    fail_when: "`EDIDC.UPDDAT`.notna() & `EDIDC.CREDAT`.notna() & (`EDIDC.UPDDAT` < `EDIDC.CREDAT`)"
+    severity: low
+    dimension: consistency
+    message: "IDoc last changed before it was created"
+    why_it_matters: >-
+      The last status change cannot precede creation. The pair is evidence of a
+      copied or restored IDoc table, a client copy, or a clock change, and makes every
+      age-based IDoc rule unreliable for the record.
+    rule_authority: best_practice
+    sap_impact: >-
+      Ageing, archiving (SARA object IDOC) and monitoring that rely on the dates treat
+      the IDoc incorrectly.
+    fix_map:
+      __other__: >-
+        Check the system clock and recent client copies or table imports; correct the
+        source and close or archive affected IDocs.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} was last changed on {EDIDC.UPDDAT}, before its creation date
+      {EDIDC.CREDAT}.
+
+  - id: IDH028
+    field: EDIDC.CREDAT
+    check_class: cross_field_check
+    fail_when: "`EDIDC.CREDAT`.notna() & (`EDIDC.CREDAT` > @today)"
+    severity: medium
+    dimension: validity
+    message: "IDoc creation date is in the future"
+    why_it_matters: >-
+      A creation date after today means the creating system's clock or time zone is
+      wrong, or the control record was written by a foreign program. Ages of such
+      IDocs are negative, so they never show up as overdue.
+    rule_authority: best_practice
+    sap_impact: >-
+      Time-based monitoring and archiving skip the IDoc; serialisation by time stamp
+      applies it in the wrong order.
+    fix_map:
+      __other__: >-
+        Correct the application server or middleware clock / time zone and check the
+        affected IDocs for wrong sequencing.
+    record_fix_template: >-
+      IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has creation date {EDIDC.CREDAT}, which is in
+      the future.
+
+  - id: IDH029
+    field: EDIDC.STATUS
+    fields: [EDIDC.DIRECT, EDIDC.MESTYP]
+    check_class: cross_field_check
+    applies_when:
+      EDIDC.DIRECT: ["2"]
+    # outbound statuses are 00-49, inbound statuses 50-99
+    fail_when: "`EDIDC.STATUS`.notna() & (`EDIDC.STATUS`.fillna('') < '50')"
+    severity: high
+    dimension: consistency
+    message: "Inbound IDoc carries an outbound status code"
+    why_it_matters: >-
+      IDoc statuses 01-49 belong to outbound processing and 50-99 to inbound. An
+      inbound IDoc with an outbound status was written or changed outside the IDoc
+      layer and none of the inbound jobs or error lists will pick it up.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is neither processed nor reported as an inbound error; its document is
+      missing without trace.
+    fix_map:
+      __other__: >-
+        Find the program that set the status (status record user and report in WE02),
+        correct it, and reprocess or close the IDoc with BD87.
+    record_fix_template: >-
+      Inbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has outbound status {EDIDC.STATUS}.
+      Check its status history in WE02.
+
+  - id: IDH030
+    field: EDIDC.STATUS
+    fields: [EDIDC.DIRECT, EDIDC.MESTYP]
+    check_class: cross_field_check
+    applies_when:
+      EDIDC.DIRECT: ["1"]
+    fail_when: "`EDIDC.STATUS`.fillna('') >= '50'"
+    severity: high
+    dimension: consistency
+    message: "Outbound IDoc carries an inbound status code"
+    why_it_matters: >-
+      IDoc statuses 50-99 belong to inbound processing. An outbound IDoc with an
+      inbound status was manipulated outside the IDoc layer, so the dispatch jobs and
+      outbound error lists skip it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The IDoc is never sent and never reported as an outbound error.
+    fix_map:
+      __other__: >-
+        Find the program that set the status in WE02, correct it, and resend or close
+        the IDoc with BD87.
+    record_fix_template: >-
+      Outbound IDoc {EDIDC.DOCNUM} ({EDIDC.MESTYP}) has inbound status {EDIDC.STATUS}.
+      Check its status history in WE02.
+
+  # ── IDoc status records (EDIDS) ───────────────────────────────────────────
+
+  - id: IDH031
+    field: EDIDS.STATUS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "IDoc status record has no status"
+    why_it_matters: >-
+      Each status record documents one processing step. A record without a status
+      breaks the IDoc's audit trail, so it is no longer possible to prove when the
+      message was received, posted or sent.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      WE02 / BD87 history is incomplete; audit and partner disputes over delivery
+      cannot be settled from SAP.
+    fix_map:
+      __blank__: >-
+        Identify the program that wrote the status record and correct it; status
+        records must be written through the IDoc API.
+    record_fix_template: >-
+      Status record {EDIDS.COUNTR} of IDoc {EDIDS.DOCNUM} has no status. Find and
+      correct the program that wrote it.
+
+  - id: IDH032
+    field: EDIDS.STAMID
+    fields: [EDIDS.STATUS]
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "IDoc error status record has no message class"
+    applies_when:
+      EDIDS.STATUS: ["02", "04", "05", "20", "25", "26", "29", "37", "40", "51", "52", "56", "60", "61", "63", "65"]
+    why_it_matters: >-
+      The message class and number on an error status record point to the exact
+      cause (missing master data, locked object, bad partner profile). Without them
+      the error can only be diagnosed by reprocessing the IDoc.
+    rule_authority: best_practice
+    sap_impact: >-
+      Errors cannot be grouped by cause or routed to the right team through workflow
+      or BD87 message filters; resolution takes longer.
+    fix_map:
+      __blank__: >-
+        Check the inbound / outbound function module or custom code that set the error
+        and make it return a message class and number.
+    record_fix_template: >-
+      Error status record {EDIDS.COUNTR} (status {EDIDS.STATUS}) of IDoc
+      {EDIDS.DOCNUM} has no message class. Return a message from the processing code.
+
+  - id: IDH033
+    field: EDIDS.STATXT
+    fields: [EDIDS.STATUS]
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "IDoc error status record has no status text"
+    applies_when:
+      EDIDS.STATUS: ["02", "04", "05", "20", "25", "26", "29", "37", "40", "51", "52", "56", "60", "61", "63", "65"]
+    why_it_matters: >-
+      The status text is what BD87, WE02 and error notifications show to the person
+      fixing the IDoc. An error without text gives them nothing to act on.
+    rule_authority: best_practice
+    sap_impact: >-
+      Error workflow and notifications carry no reason; IDocs are left in error longer.
+    fix_map:
+      __blank__: >-
+        Correct the processing code so it fills the status message, then reprocess
+        the IDoc to get a meaningful error.
+    record_fix_template: >-
+      Error status record {EDIDS.COUNTR} (status {EDIDS.STATUS}) of IDoc
+      {EDIDS.DOCNUM} has no text.
+
+  - id: IDH034
+    field: EDIDS.STATYP
+    check_class: domain_value_check
+    severity: low
+    dimension: validity
+    message: "IDoc status record has an invalid message type"
+    allowed_values: [A, E, I, S, W]
+    valid_values_with_labels:
+      A: Termination
+      E: Error
+      I: Information
+      S: Success
+      W: Warning
+    why_it_matters: >-
+      STATYP uses the SAP message types A / E / I / S / W. Error monitoring,
+      workflow and alerting filter on it; any other value is ignored by all of them.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Errors with an invalid message type do not trigger IDoc error workflow or alerts.
+    fix_map:
+      __other__: >-
+        Correct the custom code that writes status records so it passes a standard
+        message type.
+    record_fix_template: >-
+      Status record {EDIDS.COUNTR} of IDoc {EDIDS.DOCNUM} has message type
+      '{actual_value}'.
+
+  - id: IDH035
+    field: EDIDS.LOGDAT
+    fields: [EDIDC.CREDAT]
+    check_class: cross_field_check
+    grain: EDIDS
+    fail_when: "`EDIDS.LOGDAT`.notna() & `EDIDC.CREDAT`.notna() & (`EDIDS.LOGDAT` < `EDIDC.CREDAT`)"
+    severity: low
+    dimension: consistency
+    message: "IDoc status logged before the IDoc was created"
+    why_it_matters: >-
+      A status record cannot predate its IDoc. The pair shows restored or copied
+      IDoc tables, a reused IDoc number range or a clock change, which corrupts the
+      processing history.
+    rule_authority: best_practice
+    sap_impact: >-
+      Status histories are out of order; processing times and SLA figures computed
+      from them are wrong. A reused number can mix two IDocs' histories.
+    fix_map:
+      __other__: >-
+        Check the IDoc number range (WE07 / SNRO EDIDOC) for a reset and the system
+        clock; archive the affected IDocs.
+    record_fix_template: >-
+      Status record {EDIDS.COUNTR} of IDoc {EDIDS.DOCNUM} is dated {EDIDS.LOGDAT},
+      before the IDoc was created on {EDIDC.CREDAT}.
+
+  # ── qRFC outbound queues (SMQ1) ───────────────────────────────────────────
+
+  - id: IDH036
+    field: TRFCQOUT.QRFCDATUM
+    time_field: TRFCQOUT.QRFCUZEIT
+    fields: [TRFCQOUT.QSTATE, TRFCQOUT.DEST]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "Outbound qRFC queue entry in error (SYSFAIL / CPICERR) for more than 24 hours"
+    applies_when:
+      TRFCQOUT.QSTATE: [SYSFAIL, CPICERR]
+    why_it_matters: >-
+      A qRFC queue is processed strictly in order. One entry in SYSFAIL (error in the
+      target) or CPICERR (connection error) blocks every later call in the same queue,
+      so all changes for that object stop flowing to the target system.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Deltas to BW, CRM, EWM, APO or other targets stop for the queue; the target
+      system works on stale data until the queue is cleared.
+    fix_map:
+      __other__: >-
+        Open the queue in SMQ1, read the error, fix the destination (SM59) or the target
+        problem and reactivate the queue. Delete the entry only if its data is resent
+        another way.
+    record_fix_template: >-
+      Outbound queue {TRFCQOUT.QNAME} to {TRFCQOUT.DEST} has been in {TRFCQOUT.QSTATE}
+      since {TRFCQOUT.QRFCDATUM}. Fix the error and reactivate it in SMQ1.
+
+  - id: IDH037
+    field: TRFCQOUT.QRFCDATUM
+    time_field: TRFCQOUT.QRFCUZEIT
+    fields: [TRFCQOUT.QSTATE, TRFCQOUT.DEST]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "Outbound qRFC queue stopped for more than 24 hours"
+    applies_when:
+      TRFCQOUT.QSTATE: [STOP, WAITSTOP]
+    why_it_matters: >-
+      Queues are stopped manually or by a program during maintenance and must be
+      restarted afterwards. A queue still stopped after a day is usually forgotten,
+      and everything behind it waits.
+    rule_authority: best_practice
+    sap_impact: >-
+      All later calls in the queue are held; the target system does not receive the
+      changes.
+    fix_map:
+      __other__: >-
+        Confirm the reason for the stop, then unlock / activate the queue in SMQ1.
+    record_fix_template: >-
+      Outbound queue {TRFCQOUT.QNAME} to {TRFCQOUT.DEST} has been stopped since
+      {TRFCQOUT.QRFCDATUM}. Activate it in SMQ1.
+
+  - id: IDH038
+    field: TRFCQOUT.ERRMESS
+    fields: [TRFCQOUT.QSTATE]
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Outbound qRFC queue entry in error has no error text"
+    applies_when:
+      TRFCQOUT.QSTATE: [SYSFAIL, CPICERR]
+    why_it_matters: >-
+      The error text is the only clue to why the queue stopped. Without it the cause
+      must be reproduced by restarting the queue, which may fail again.
+    rule_authority: best_practice
+    sap_impact: >-
+      Queue errors take longer to resolve and cannot be grouped by cause.
+    fix_map:
+      __blank__: >-
+        Check SM21 / ST22 on the target at the error time and the destination trace
+        (SM59) to find the cause.
+    record_fix_template: >-
+      Outbound queue {TRFCQOUT.QNAME} in {TRFCQOUT.QSTATE} has no error text. Check
+      the target system log for the cause.
+
+  - id: IDH039
+    field: TRFCQOUT.DEST
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "Outbound qRFC queue entry has no destination"
+    why_it_matters: >-
+      An outbound queue entry is a call to a remote system; without an RFC
+      destination the scheduler (SMQS) cannot send it.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The call is never executed and the queue never empties.
+    fix_map:
+      __blank__: >-
+        Correct the calling program or queue registration so the destination is set,
+        then delete the orphan entry in SMQ1 after resending its data.
+    record_fix_template: >-
+      Outbound queue {TRFCQOUT.QNAME} has an entry without a destination. Fix the
+      calling program.
+
+  - id: IDH040
+    field: TRFCQOUT.QRFCFNAM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "Outbound qRFC queue entry has no function module"
+    why_it_matters: >-
+      Each queue entry executes a function module in the target. An entry without
+      one cannot be executed or diagnosed and usually remains from an interrupted
+      LUW.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The entry blocks or clutters the queue and its data is never delivered.
+    fix_map:
+      __blank__: >-
+        Inspect the LUW in SMQ1, resend the data from the application if needed and
+        delete the empty entry.
+    record_fix_template: >-
+      Outbound queue {TRFCQOUT.QNAME} to {TRFCQOUT.DEST} has an entry without a
+      function module. Inspect and remove it in SMQ1.
+
+  - id: IDH041
+    field: TRFCQOUT.QRFCDATUM
+    time_field: TRFCQOUT.QRFCUZEIT
+    fields: [TRFCQOUT.NOSEND, TRFCQOUT.DEST]
+    check_class: freshness_check
+    max_age_hours: 168
+    severity: medium
+    dimension: timeliness
+    message: "No-send (pull) queue entry not collected by its consumer for more than 7 days"
+    applies_when:
+      TRFCQOUT.NOSEND: [X]
+    why_it_matters: >-
+      No-send queues (for example BW delta queues, mobile and CRM pulls) wait for
+      the consumer to fetch them. Entries older than a week mean the consumer
+      stopped pulling, so its data is out of date and the queue grows without limit.
+    rule_authority: best_practice
+    sap_impact: >-
+      The consuming system reports stale data; the queue tables grow and slow down
+      every queue operation.
+    fix_map:
+      __other__: >-
+        Check the consumer's extraction / pull job, restart it, and remove queues of
+        consumers that no longer exist (SMQ1, RSA7 for BW delta queues).
+    record_fix_template: >-
+      No-send queue {TRFCQOUT.QNAME} has entries since {TRFCQOUT.QRFCDATUM} that were
+      not collected. Restart the consumer.
+
+  # ── qRFC inbound queues (SMQ2) ────────────────────────────────────────────
+
+  - id: IDH042
+    field: TRFCQIN.QRFCDATUM
+    time_field: TRFCQIN.QRFCUZEIT
+    fields: [TRFCQIN.QSTATE, TRFCQIN.QRFCFNAM]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "Inbound qRFC queue entry in error (SYSFAIL / CPICERR) for more than 24 hours"
+    applies_when:
+      TRFCQIN.QSTATE: [SYSFAIL, CPICERR]
+    why_it_matters: >-
+      Inbound queues apply changes received from another system in sequence. An
+      entry in error blocks every later entry in the queue, so SAP stops receiving
+      updates for that object.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      Changes sent by the source system (CRM, EWM, middleware, queued IDocs) are not
+      posted; the systems diverge until the queue is cleared.
+    fix_map:
+      __other__: >-
+        Open the queue in SMQ2, analyse the error (often a lock or missing master
+        data), fix the cause and reactivate the queue.
+    record_fix_template: >-
+      Inbound queue {TRFCQIN.QNAME} ({TRFCQIN.QRFCFNAM}) has been in {TRFCQIN.QSTATE}
+      since {TRFCQIN.QRFCDATUM}. Fix the error and reactivate it in SMQ2.
+
+  - id: IDH043
+    field: TRFCQIN.QRFCDATUM
+    time_field: TRFCQIN.QRFCUZEIT
+    fields: [TRFCQIN.QSTATE]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "Inbound qRFC queue stopped for more than 24 hours"
+    applies_when:
+      TRFCQIN.QSTATE: [STOP, WAITSTOP]
+    why_it_matters: >-
+      A stopped inbound queue holds every change sent to SAP through it. Stops are
+      set for maintenance and are easily forgotten afterwards.
+    rule_authority: best_practice
+    sap_impact: >-
+      Updates from the sending system are not applied while the queue is stopped.
+    fix_map:
+      __other__: >-
+        Confirm the reason for the stop, then unlock / activate the queue in SMQ2.
+    record_fix_template: >-
+      Inbound queue {TRFCQIN.QNAME} has been stopped since {TRFCQIN.QRFCDATUM}.
+      Activate it in SMQ2.
+
+  - id: IDH044
+    field: TRFCQIN.RETRYNR
+    fields: [TRFCQIN.QSTATE]
+    check_class: cross_field_check
+    applies_when:
+      TRFCQIN.QSTATE:
+        populated: true
+    fail_when: "`TRFCQIN.RETRYNR`.fillna('0').str.strip().str.zfill(4) > '0010'"
+    severity: medium
+    dimension: timeliness
+    message: "Inbound qRFC queue entry retried more than 10 times"
+    why_it_matters: >-
+      Automatic retries resolve temporary locks. An entry that has been retried more
+      than ten times is failing for a lasting reason and blocks its queue while it
+      keeps retrying.
+    rule_authority: best_practice
+    sap_impact: >-
+      The queue is held, scheduler capacity is consumed by repeated failures and the
+      change is not posted.
+    fix_map:
+      __other__: >-
+        Analyse the entry in SMQ2, remove the lasting cause (lock owner, missing data)
+        and reactivate; review the retry settings in SMQR.
+    record_fix_template: >-
+      Inbound queue {TRFCQIN.QNAME} has an entry retried {TRFCQIN.RETRYNR} times. Fix
+      the cause in SMQ2.
+
+  - id: IDH045
+    field: TRFCQIN.ERRMESS
+    fields: [TRFCQIN.QSTATE]
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "Inbound qRFC queue entry in error has no error text"
+    applies_when:
+      TRFCQIN.QSTATE: [SYSFAIL, CPICERR]
+    why_it_matters: >-
+      Without the error text the reason a queue stopped must be found by restarting
+      it, which repeats the failure.
+    rule_authority: best_practice
+    sap_impact: >-
+      Queue errors take longer to resolve and cannot be grouped by cause.
+    fix_map:
+      __blank__: >-
+        Check SM21 / ST22 at the error time for the cause of the failure.
+    record_fix_template: >-
+      Inbound queue {TRFCQIN.QNAME} in {TRFCQIN.QSTATE} has no error text. Check the
+      system log for the cause.
+
+  # ── tRFC calls (SM58) ─────────────────────────────────────────────────────
+
+  - id: IDH046
+    field: ARFCSSTATE.ARFCDATUM
+    time_field: ARFCSSTATE.ARFCUZEIT
+    fields: [ARFCSSTATE.ARFCSTATE, ARFCSSTATE.ARFCDEST]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: high
+    dimension: timeliness
+    message: "tRFC call in error (CPICERR / SYSFAIL) for more than 24 hours"
+    applies_when:
+      ARFCSSTATE.ARFCSTATE: [CPICERR, SYSFAIL]
+    why_it_matters: >-
+      Transactional RFC carries ALE IDocs, workflow events and many interface
+      calls. A tRFC in CPICERR could not reach the target; SYSFAIL failed in it.
+      Once the automatic retries are used up the call is never sent again.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      IDocs stay in status 03 without arriving, and remote updates are missing in the
+      target system.
+    fix_map:
+      __other__: >-
+        Fix the destination (SM59) or the target error, then execute the LUW again in
+        SM58 (or schedule RSARFCEX).
+    record_fix_template: >-
+      tRFC call {ARFCSSTATE.ARFCFNAM} to {ARFCSSTATE.ARFCDEST} has been in
+      {ARFCSSTATE.ARFCSTATE} since {ARFCSSTATE.ARFCDATUM}. Fix it and re-execute in SM58.
+
+  - id: IDH047
+    field: ARFCSSTATE.ARFCDATUM
+    time_field: ARFCSSTATE.ARFCUZEIT
+    fields: [ARFCSSTATE.ARFCSTATE, ARFCSSTATE.ARFCDEST]
+    check_class: freshness_check
+    max_age_hours: 24
+    severity: medium
+    dimension: timeliness
+    message: "tRFC call recorded but not executed for more than 24 hours"
+    applies_when:
+      ARFCSSTATE.ARFCSTATE: [RECORDED]
+    why_it_matters: >-
+      RECORDED means the call was registered but never started, typically because
+      the destination has no free resources, was deregistered or the LUW was never
+      handed to the scheduler.
+    rule_authority: best_practice
+    sap_impact: >-
+      The target system does not receive the data and no error is raised.
+    fix_map:
+      __other__: >-
+        Check the destination's tRFC settings (SM59) and resources, then execute the
+        LUW in SM58 or with RSARFCEX.
+    record_fix_template: >-
+      tRFC call {ARFCSSTATE.ARFCFNAM} to {ARFCSSTATE.ARFCDEST} has been recorded since
+      {ARFCSSTATE.ARFCDATUM} without being executed.
+
+  - id: IDH048
+    field: ARFCSSTATE.ARFCMSG
+    fields: [ARFCSSTATE.ARFCSTATE]
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: "tRFC call in error has no error text"
+    applies_when:
+      ARFCSSTATE.ARFCSTATE: [CPICERR, SYSFAIL]
+    why_it_matters: >-
+      The error text in SM58 is the only record of why the call failed. Without it
+      the failure must be reproduced to be diagnosed.
+    rule_authority: best_practice
+    sap_impact: >-
+      Failed calls take longer to resolve and cannot be grouped by cause.
+    fix_map:
+      __blank__: >-
+        Check the gateway trace and SM21 at the error time for the cause.
+    record_fix_template: >-
+      tRFC call {ARFCSSTATE.ARFCFNAM} to {ARFCSSTATE.ARFCDEST} in
+      {ARFCSSTATE.ARFCSTATE} has no error text.
+
+  - id: IDH049
+    field: ARFCSSTATE.ARFCDEST
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: "tRFC call has no destination"
+    why_it_matters: >-
+      A tRFC call is always made to an RFC destination. A call without one cannot be
+      executed or retried and stays in SM58 indefinitely.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The call's data never reaches any system.
+    fix_map:
+      __blank__: >-
+        Correct the calling program, resend the data from the application and delete
+        the orphan LUW in SM58.
+    record_fix_template: >-
+      tRFC call {ARFCSSTATE.ARFCFNAM} has no destination. Fix the calling program.
+
+  - id: IDH050
+    field: ARFCSSTATE.ARFCFNAM
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: "tRFC call has no function module"
+    why_it_matters: >-
+      Each tRFC executes a function module in the target. An entry without one is a
+      leftover of an interrupted LUW that can be neither executed nor diagnosed.
+    rule_authority: sap_hard_constraint
+    sap_impact: >-
+      The entry remains in SM58 and its data is never delivered.
+    fix_map:
+      __blank__: >-
+        Inspect the LUW in SM58, resend the data from the application if needed and
+        delete the entry.
+    record_fix_template: >-
+      tRFC call to {ARFCSSTATE.ARFCDEST} has no function module. Inspect and remove it
+      in SM58.

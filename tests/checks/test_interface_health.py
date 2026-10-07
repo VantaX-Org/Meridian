@@ -53,7 +53,7 @@ def _frame(rows) -> pd.DataFrame:
 
 def _counts(df: pd.DataFrame) -> dict:
     return {r.check_id: (r.affected_count, r.total_count)
-            for r in run_checks("interface_health", df, "t1") if r.check_id.startswith("IDH")}
+            for r in run_checks("interface_health", df, "t1") if r.check_id in EXPECTED_DIRTY}
 
 
 def test_dirty_counts():
@@ -85,7 +85,7 @@ def test_time_field_gives_hour_precision():
 
 def test_rules_carry_enrichment():
     rules = yaml.safe_load(_find_module_yaml("interface_health").read_text())["rules"]
-    assert len(rules) == 8
+    assert len(rules) == 50
     for r in rules:
         for key in ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template"):
             assert r.get(key), (r["id"], key)

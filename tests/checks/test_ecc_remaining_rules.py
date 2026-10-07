@@ -26,6 +26,8 @@ EXPECTED_COUNTS = {
     "quality_management": 133,
     "s4_readiness": 110,
     "banking_tax": 90,
+    "interface_health": 50,
+    "s4hc_master_data": 41,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
