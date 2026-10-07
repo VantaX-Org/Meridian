@@ -19,11 +19,13 @@ areas:
     related:
       blocking: [S4-CVI-LFA1, S4-CVI-KNA1, S4-CVI-KNVK-VEND, S4-CVI-KNVK-CUST, S4-CVI-KTOKK-NUM, S4-CVI-KTOKK-ROLE,
                  S4-CVI-KTOKD-NUM, S4-CVI-KTOKD-ROLE, AP003, AP005, AR003, AR005,
-                 BP201, BP202, BP206, BP207, BP227, BP228, BP229, BP230, BP233, BP234, BP237, BP238, BP239, BP240]
+                 BP201, BP202, BP206, BP207, BP227, BP228, BP229, BP230, BP233, BP234, BP237, BP238, BP239, BP240,
+                 BP256, BP257, BP258, BP259, BP260, BP262, BP280, BP281, BP284, BP285]
       warning: [AP026, AR059, AR071, AP075, AP092, AP233, XLNK001, XDUP002, CF-LFA1-STCD1, CF-LFA1-STCD2, CF-KNA1-STCD1, CF-KNA1-STCD2,
                 CF-LFA1-PSTLZ, CF-KNA1-PSTLZ, CR-LFA1-PSTLZ, CR-KNA1-PSTLZ,
                 BP203, BP204, BP205, BP208, BP209, BP210, BP221, BP222,
-                BP231, BP232, BP235, BP236, BP243, BP244, BP246, BP248]
+                BP231, BP232, BP235, BP236, BP243, BP244, BP246, BP248,
+                BP249, BP261, BP264, BP282, BP283, BP291]
   quality_management:
     label: Quality management
     simplification_item: Business Partner Approach (SAP Note 2265093)
@@ -34,8 +36,8 @@ areas:
     label: Project system
     simplification_item: Business Partner Approach (SAP Note 2265093)
     related:
-      blocking: [PS112]
-      warning: [PS100, PS102]
+      blocking: [PS112, PS157, PS158, PS159, PS160, PS161, PS162]
+      warning: [PS100, PS102, PS121, PS127, PS131, PS140, PS164, PS165]
   material:
     label: Material master
     simplification_item: Material Number Field Length Extension

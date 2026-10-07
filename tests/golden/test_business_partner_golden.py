@@ -192,6 +192,7 @@ def test_business_partner_golden():
         "BP049": {"PARTNER=0001000024"},                         # liquidated before it was founded
         "BP052": {"PARTNER=0001000020|BKVID=0001"},              # bank details end before they start
         "BP055": {"PARTNER=0001000021|BKVID=0001"},              # IBAN fails the mod-97 check
+        "BP295": {"PARTNER=0001000020|BKVID=0001"},              # bank details validity has ended
         "BP216": {"PARTNER=0001000024"},                         # liquidated, neither blocked nor archived
         "BP218": {"PARTNER=0001000027"},                         # archiving flag without the central block
         "BP226": {"PARTNER=0001000013", "PARTNER=0001000019"},   # near-identical names at the same postal code

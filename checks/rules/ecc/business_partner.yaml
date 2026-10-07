@@ -1959,3 +1959,751 @@ rules:
   fix_map:
     __other__: Check open items, set the archiving flag and archive with CA_BUPA (SARA).
   record_fix_template: 'Business partner {BUT000.PARTNER}: blocked and unchanged for over three years, not flagged for archiving.'
+- id: BP249
+  field: BUT0ID.VALID_DATE_TO
+  check_class: cross_field_check
+  grain: BUT0ID
+  fail_when: '`BUT0ID.VALID_DATE_TO` < @today'
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Identification document of an active business partner has expired
+  why_it_matters: Identification numbers (passport, registration, licence) carry a validity end. An expired document on an
+    active partner fails know-your-customer and supplier due-diligence reviews, and screening relies on stale proof of identity.
+  rule_authority: regulatory
+  sap_impact: Compliance screening and onboarding reviews flag the partner; documents that print the ID show an expired number.
+  fix_map:
+    __other__: Obtain the current document and maintain the new number and validity in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification of type {BUT0ID.TYPE} expired on {actual_value}.'
+- id: BP250
+  field: BUT0ID.COUNTRY
+  check_class: referential_check
+  grain: BUT0ID
+  severity: low
+  dimension: validity
+  message: Issuing country of an identification number must exist in T005
+  why_it_matters: The issuing country tells screening and tax reporting which authority issued the number. A country key that
+    is not in T005 cannot be evaluated and is rejected when the partner is next saved in BP.
+  rule_authority: sap_hard_constraint
+  sap_impact: The identification cannot be changed in BP until the country is corrected; country-based reporting omits it.
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct it in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification of type {BUT0ID.TYPE} has an undefined issuing country.'
+- id: BP251
+  field: BUT0ID.REGION
+  check_class: referential_check
+  grain: BUT0ID
+  severity: low
+  dimension: validity
+  message: Issuing region of an identification number must exist in T005S
+  why_it_matters: Some identification numbers (driving licences, state registrations) are issued per region. A region that is
+    not defined for the country cannot be validated.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP rejects the identification on the next change; regional reporting omits the partner.
+  fix_map:
+    __other__: Region '{invalid_value}' is not defined in T005S. Correct it in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification of type {BUT0ID.TYPE} has an undefined issuing region.'
+- id: BP252
+  field: BUT0ID.ENTRY_DATE
+  check_class: cross_field_check
+  grain: BUT0ID
+  fail_when: '`BUT0ID.ENTRY_DATE` > @today'
+  severity: low
+  dimension: accuracy
+  message: Identification entry date is in the future
+  why_it_matters: The entry date records when the document was captured. A future date is a keying error and makes the audit
+    trail of the identification unreliable.
+  rule_authority: best_practice
+  sap_impact: Due-diligence evidence shows an impossible capture date.
+  fix_map:
+    __other__: Correct the entry date in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification of type {BUT0ID.TYPE} has an entry date in the future.'
+- id: BP253
+  field: BUT0ID.TYPE
+  check_class: exists_check
+  grain: BUT0ID
+  target_table: TB039A
+  target_fields:
+  - TYPE
+  target_when:
+    XPERSON:
+    - X
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: medium
+  dimension: consistency
+  message: Identification type is not permitted for a person business partner
+  why_it_matters: Each identification type in TB039A states which partner categories may use it. A company registration number
+    on a person was keyed against the wrong category and is rejected when the partner is next changed.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP refuses to save the partner until the identification is removed; screening reads the wrong document type.
+  fix_map:
+    __other__: Replace the identification with a type allowed for persons (customising BUCZ) in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification type {BUT0ID.TYPE} is not allowed for persons.'
+- id: BP254
+  field: BUT0ID.TYPE
+  check_class: exists_check
+  grain: BUT0ID
+  target_table: TB039A
+  target_fields:
+  - TYPE
+  target_when:
+    XORGANISATION:
+    - X
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: medium
+  dimension: consistency
+  message: Identification type is not permitted for an organisation business partner
+  why_it_matters: Each identification type in TB039A states which partner categories may use it. A passport or personal ID on
+    an organisation was keyed against the wrong category and is rejected when the partner is next changed.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP refuses to save the partner until the identification is removed; screening reads the wrong document type.
+  fix_map:
+    __other__: Replace the identification with a type allowed for organisations (customising BUCZ) in BP > Identification.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification type {BUT0ID.TYPE} is not allowed for organisations.'
+- id: BP255
+  field: BUT0BK.BANKS
+  check_class: cross_field_check
+  grain: BUT0BK
+  fail_when: '`BUT0BK.BANKS`.isna() & (`BUT0BK.BANKN`.notna() | `BUT0BK.IBAN`.notna())'
+  severity: high
+  dimension: completeness
+  message: Bank details carry an account number or IBAN but no bank country
+  why_it_matters: The bank country selects the bank directory and the account-number checks. Without it the account cannot be
+    validated and payment media cannot route the payment.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment run excludes the bank details; CVI synchronisation of the bank data to the customer or vendor fails.
+  fix_map:
+    __blank__: Enter the bank country in BP > Payment transactions and let the system re-validate the account.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: account data without a bank country.'
+- id: BP256
+  field: BUT0BK.PARTNER
+  check_class: exists_check
+  grain: BUT0BK
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  severity: high
+  dimension: consistency
+  message: Bank details belong to a business partner that does not exist
+  why_it_matters: Bank details without a partner header are orphans left by a failed load or deletion. They are invisible in BP
+    yet still hold account numbers that duplicate checks and payment controls count.
+  rule_authority: sap_hard_constraint
+  sap_impact: Duplicate bank-account checks report false matches; the conversion pre-check lists orphan bank data.
+  fix_map:
+    __other__: Delete the orphan bank details with the partner archiving tools or restore the partner.
+  record_fix_template: 'Bank detail {BUT0BK.BKVID} of business partner {BUT0BK.PARTNER}: partner header does not exist.'
+- id: BP257
+  field: BUT0ID.PARTNER
+  check_class: exists_check
+  grain: BUT0ID
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  severity: medium
+  dimension: consistency
+  message: Identification number belongs to a business partner that does not exist
+  why_it_matters: Identification rows without a partner header are orphans. They still count in duplicate-ID checks and keep
+    personal identifiers that no partner record governs.
+  rule_authority: regulatory
+  sap_impact: Duplicate-ID checks report false matches; orphan personal data escapes blocking and deletion under data-protection
+    rules.
+  fix_map:
+    __other__: Delete the orphan identification rows or restore the partner.
+  record_fix_template: 'Business partner {BUT0ID.PARTNER}: identification of type {BUT0ID.TYPE} has no partner header.'
+- id: BP258
+  field: DFKKBPTAXNUM.PARTNER
+  check_class: exists_check
+  grain: DFKKBPTAXNUM
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  severity: medium
+  dimension: consistency
+  message: Tax number belongs to a business partner that does not exist
+  why_it_matters: Tax numbers without a partner header are orphans. They still count in duplicate tax-number checks and in tax
+    reporting extracts.
+  rule_authority: sap_hard_constraint
+  sap_impact: Duplicate tax-number checks report false matches; the conversion pre-check lists orphan tax data.
+  fix_map:
+    __other__: Delete the orphan tax number rows or restore the partner.
+  record_fix_template: 'Business partner {DFKKBPTAXNUM.PARTNER}: tax number of type {DFKKBPTAXNUM.TAXTYPE} has no partner header.'
+- id: BP259
+  field: BUT100.PARTNER
+  check_class: exists_check
+  grain: BUT100
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  severity: high
+  dimension: consistency
+  message: Business partner role belongs to a partner that does not exist
+  why_it_matters: A role row without a partner header is an orphan. Role-based selections and the CVI synchronisation find a role
+    with no partner to synchronise.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI cockpit and the conversion pre-check report the role as inconsistent.
+  fix_map:
+    __other__: Delete the orphan role rows or restore the partner.
+  record_fix_template: 'Business partner {BUT100.PARTNER}: role {BUT100.RLTYP} has no partner header.'
+- id: BP260
+  field: BUT020.PARTNER
+  check_class: exists_check
+  grain: BUT020
+  target_table: BUT000
+  target_fields:
+  - PARTNER
+  severity: medium
+  dimension: consistency
+  message: Business partner address assignment belongs to a partner that does not exist
+  why_it_matters: An address assignment without a partner header keeps an address alive in central address management that no
+    partner owns.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan addresses inflate address volumes and duplicate checks; the conversion pre-check lists them.
+  fix_map:
+    __other__: Delete the orphan assignment and its address or restore the partner.
+  record_fix_template: 'Business partner {BUT020.PARTNER}: address {BUT020.ADDRNUMBER} has no partner header.'
+- id: BP261
+  field: BUT020.ADDRNUMBER
+  check_class: uniqueness_check
+  fields:
+  - BUT020.ADDRNUMBER
+  grain: BUT020
+  severity: high
+  dimension: uniqueness
+  message: One address number is assigned to more than one business partner
+  why_it_matters: Each partner owns its addresses in central address management. A shared address number means a load copied the
+    assignment, so changing one partner's address silently changes the other's.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address changes leak between partners; CVI writes the same address to two customer or vendor accounts.
+  fix_map:
+    __other__: Create a separate address for one of the partners in BP and remove the shared assignment.
+  record_fix_template: 'Business partner {BUT020.PARTNER}: address {BUT020.ADDRNUMBER} is also assigned to another partner.'
+- id: BP262
+  field: BUT021_FS.ADDRNUMBER
+  check_class: exists_check
+  grain: BUT021_FS
+  fields:
+  - BUT021_FS.PARTNER
+  - BUT021_FS.ADDRNUMBER
+  target_table: BUT020
+  target_fields:
+  - PARTNER
+  - ADDRNUMBER
+  severity: high
+  dimension: consistency
+  message: Address usage points at an address that is not assigned to the business partner
+  why_it_matters: An address usage (ship-to, bill-to, correspondence) selects one of the partner's own addresses. A usage pointing
+    at an address the partner does not hold makes output and CVI pick no address or another partner's.
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents for that usage print without an address; CVI synchronisation of the usage fails.
+  fix_map:
+    __other__: Reassign the usage to a valid address in BP > Address usages.
+  record_fix_template: 'Business partner {BUT021_FS.PARTNER}: usage {BUT021_FS.ADR_KIND} points at an address the partner does
+    not hold.'
+- id: BP263
+  field: BUT021_FS.VALID_FROM
+  check_class: cross_field_check
+  grain: BUT021_FS
+  fail_when: '`BUT021_FS.VALID_FROM` > `BUT021_FS.VALID_TO`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Address usage validity starts after it ends
+  why_it_matters: A usage that ends before it starts is never valid, so the partner has no address for that usage at any date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Output for the usage falls back to the standard address or finds none.
+  fix_map:
+    __other__: Correct the validity of the usage in BP > Address usages.
+  record_fix_template: 'Business partner {BUT021_FS.PARTNER}: usage {BUT021_FS.ADR_KIND} has its validity dates reversed.'
+- id: BP264
+  field: BUT000.AUGRP
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Business partner authorisation group must exist in TB037
+  why_it_matters: The authorisation group restricts who may display and change the partner. A group not defined in TB037 is not
+    checked by any role, so the protection the user intended is not there.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sensitive partners are open to every user with general BP access; BP rejects the value on the next change.
+  fix_map:
+    __other__: Group '{invalid_value}' is not defined in TB037. Choose a defined group in BP > Control.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: authorisation group is not defined in TB037.'
+- id: BP265
+  field: BUT000.SOURCE
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Business partner data origin must exist in TB005
+  why_it_matters: The data origin records where the partner came from (load, interface, manual). An undefined value breaks lineage
+    reporting and the migration source filters.
+  rule_authority: best_practice
+  sap_impact: Partners drop out of selections by data origin; BP rejects the value on the next change.
+  fix_map:
+    __other__: Origin '{invalid_value}' is not defined in TB005. Correct it in BP > Control.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: data origin is not defined in TB005.'
+- id: BP266
+  field: BUT000.LANGU_CORR
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Business partner correspondence language must exist in T002
+  why_it_matters: The correspondence language selects the form and text language for every letter, invoice and dunning notice.
+    An undefined language makes output determination fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Correspondence and output stop or fall back to the logon language.
+  fix_map:
+    __other__: Language '{invalid_value}' is not defined in T002. Correct it in BP > Address > Communication.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: correspondence language is not defined in T002.'
+- id: BP267
+  field: BUT000.BU_LANGU
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Business partner language must exist in T002
+  why_it_matters: The partner language drives texts and descriptions. An undefined language key cannot be used by output or CVI.
+  rule_authority: sap_hard_constraint
+  sap_impact: The language is not transferred to the customer or vendor account; BP rejects it on the next change.
+  fix_map:
+    __other__: Language '{invalid_value}' is not defined in T002. Correct it in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: partner language is not defined in T002.'
+- id: BP268
+  field: BUT000.NATIO
+  check_class: referential_check
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: low
+  dimension: validity
+  message: Nationality of a person business partner must exist in T005
+  why_it_matters: Nationality feeds sanctions screening and statutory reporting for persons. A country key that is not in T005
+    cannot be evaluated.
+  rule_authority: regulatory
+  sap_impact: Screening by nationality misses the partner; BP rejects the value on the next change.
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct it in BP > Personal data.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: nationality is not defined in T005.'
+- id: BP269
+  field: BUT000.MARST
+  check_class: referential_check
+  severity: info
+  dimension: validity
+  message: Marital status of a person business partner must exist in TB027
+  why_it_matters: An undefined marital status cannot be displayed or reported and is rejected when the partner is next changed.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP maintenance stops on the invalid value.
+  fix_map:
+    __other__: Choose a defined value or clear the field in BP > Personal data.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: marital status is not defined in TB027.'
+- id: BP270
+  field: BUT000.JOBGR
+  check_class: referential_check
+  severity: info
+  dimension: validity
+  message: Occupation of a person business partner must exist in TB028
+  why_it_matters: An undefined occupation group cannot be selected or reported and is rejected when the partner is next changed.
+  rule_authority: sap_hard_constraint
+  sap_impact: BP maintenance stops on the invalid value.
+  fix_map:
+    __other__: Choose a defined value or clear the field in BP > Personal data.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: occupation is not defined in TB028.'
+- id: BP271
+  field: BUT000.TITLE_ACA1
+  check_class: referential_check
+  severity: info
+  dimension: validity
+  message: Academic title of a person business partner must exist in TSAD2
+  why_it_matters: The academic title is printed in the address block. An undefined key prints nothing or a raw code.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address formatting drops the title; BP rejects the value on the next change.
+  fix_map:
+    __other__: Choose a defined academic title or clear the field in BP > Name.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: academic title is not defined in TSAD2.'
+- id: BP272
+  field: BUT000.PREFIX1
+  check_class: referential_check
+  severity: info
+  dimension: validity
+  message: Name prefix of a person business partner must exist in TSAD4
+  why_it_matters: The name prefix ('van', 'de') is part of the formatted name. An undefined key prints a raw code in the address.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address formatting is wrong; BP rejects the value on the next change.
+  fix_map:
+    __other__: Choose a defined prefix or clear the field in BP > Name.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: name prefix is not defined in TSAD4.'
+- id: BP273
+  field: BUT000.CRDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CRDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Business partner created in the future
+  why_it_matters: The creation date is set by the system. A future date comes from a load that wrote the field directly or from
+    a wrong server clock, and every age-based rule and archiving residence time reads it.
+  rule_authority: best_practice
+  sap_impact: Archiving residence times and audit trails are wrong for the partner.
+  fix_map:
+    __other__: Trace the load that wrote the date and correct the creation date at source.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: creation date is in the future.'
+- id: BP274
+  field: BUT000.BIRTHDT
+  check_class: cross_field_check
+  fail_when: '`BUT000.BIRTHDT` > @today'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+  severity: medium
+  dimension: accuracy
+  message: Date of birth of a person business partner is in the future
+  why_it_matters: A future date of birth is a keying or format error. Identity matching and age checks for the person are wrong.
+  rule_authority: best_practice
+  sap_impact: Duplicate checks on name and date of birth miss or mismatch the person.
+  fix_map:
+    __other__: Correct the date of birth in BP > Personal data.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: date of birth is in the future.'
+- id: BP275
+  field: BUT000.CHDAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.CHDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Business partner changed in the future
+  why_it_matters: The change date is set by the system. A future value comes from a load that wrote the field directly or a
+    wrong clock, and every freshness, delta and archiving evaluation on the partner reads it wrongly.
+  rule_authority: best_practice
+  sap_impact: Delta replication and freshness checks skip the partner; archiving residence time never expires.
+  fix_map:
+    __other__: Trace the load that wrote the date and correct the change date at source.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: change date is in the future.'
+- id: BP276
+  field: BUT000.FOUND_DAT
+  check_class: cross_field_check
+  fail_when: '`BUT000.FOUND_DAT` > @today'
+  applies_when:
+    BUT000.TYPE:
+    - '2'
+  severity: low
+  dimension: accuracy
+  message: Foundation date of an organisation business partner is in the future
+  why_it_matters: An organisation cannot be founded in the future. The date is a keying error and misleads credit and supplier
+    due-diligence reviews that weigh company age.
+  rule_authority: best_practice
+  sap_impact: Credit scoring and supplier evaluation read a false company age.
+  fix_map:
+    __other__: Correct the foundation date in BP > Organisation data.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: foundation date is in the future.'
+- id: BP277
+  field: BUT000.TYPE
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_ORG1`.notna() | `BUT000.NAME_LAST`.notna()'
+  applies_when:
+    BUT000.TYPE:
+    - '3'
+  severity: medium
+  dimension: consistency
+  message: Group business partner carries an organisation or person name
+  why_it_matters: A group partner keeps its names in the group name fields. Organisation or person names on a group mean the
+    category was set wrongly; search, duplicate checks and CVI read the wrong name fields.
+  rule_authority: sap_hard_constraint
+  sap_impact: The partner is found under the wrong name; CVI maps no name to the customer or vendor account.
+  fix_map:
+    __other__: Correct the partner category or move the name into the group name fields in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: group partner carries organisation or person name fields.'
+- id: BP278
+  field: BUT000.NAME_GRP1
+  check_class: cross_field_check
+  fail_when: '`BUT000.NAME_GRP1`.notna()'
+  applies_when:
+    BUT000.TYPE:
+    - '1'
+    - '2'
+  severity: low
+  dimension: consistency
+  message: Person or organisation business partner carries a group name
+  why_it_matters: Group name fields belong to group partners only. On a person or organisation they come from a load mapping
+    error and are ignored by search and CVI.
+  rule_authority: best_practice
+  sap_impact: The name is invisible in search and output; data that looks maintained is never used.
+  fix_map:
+    __other__: Move the name into the correct name fields for the category and clear the group name in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: person or organisation carries a group name.'
+- id: BP279
+  field: BUT000.BPEXT
+  check_class: uniqueness_check
+  fields:
+  - BUT000.BPEXT
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Several business partners share the same external partner number
+  why_it_matters: The external number holds the partner's number in a legacy or source system. Two partners with one external
+    number are the same source record loaded twice, or interfaces will resolve to either of them.
+  rule_authority: best_practice
+  sap_impact: Interfaces and migration cross-references post to the wrong partner; duplicates split open items and history.
+  fix_map:
+    __other__: Compare the partners in BP; merge the duplicate or correct the external number.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: external partner number is shared with another partner.'
+- id: BP280
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: (`BUT000.XBLCK` == 'X') & `KNA1.KUNNR`.notna() & `KNA1.SPERR`.isna()
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Business partner is centrally blocked but the linked customer has no posting block
+  why_it_matters: The central block on the partner is meant to stop all business. When the linked customer account is not blocked,
+    sales and postings still run on the account, so the block has no effect in the ECC processes.
+  rule_authority: s4hana_migration
+  sap_impact: Orders and postings continue for a partner that is supposed to be blocked; the block state differs after conversion.
+  fix_map:
+    __other__: Set the central posting block on the customer (XD05) or remove the partner block if it is no longer intended.
+  record_fix_template: 'Business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: partner is blocked, customer {CVI_CUST_LINK.CUSTOMER}
+    is not.'
+- id: BP281
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: (`BUT000.XBLCK` == 'X') & `LFA1.LIFNR`.notna() & `LFA1.SPERR`.isna()
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Business partner is centrally blocked but the linked vendor has no posting block
+  why_it_matters: The central block on the partner is meant to stop all business. When the linked vendor account is not blocked,
+    invoices can be posted and paid to a supplier that is supposed to be blocked.
+  rule_authority: s4hana_migration
+  sap_impact: Payments to a blocked supplier remain possible; the block state differs after conversion.
+  fix_map:
+    __other__: Set the central posting block on the vendor (XK05) or remove the partner block if it is no longer intended.
+  record_fix_template: 'Business partner GUID {CVI_VEND_LINK.PARTNER_GUID}: partner is blocked, vendor {CVI_VEND_LINK.VENDOR}
+    is not.'
+- id: BP282
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: (`BUT000.NOT_RELEASED` == 'X') & `KNA1.KUNNR`.notna()
+  severity: medium
+  dimension: consistency
+  message: Business partner is not released but already has a customer account
+  why_it_matters: The release procedure holds new or changed partners until they are approved. A linked customer account on an
+    unreleased partner means the account was created before approval, bypassing the control.
+  rule_authority: best_practice
+  sap_impact: Sales can start on an unapproved partner; the approval control is ineffective.
+  fix_map:
+    __other__: Complete or reject the release in BP; block the customer account until the partner is released.
+  record_fix_template: 'Business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: not released but linked to customer {CVI_CUST_LINK.CUSTOMER}.'
+- id: BP283
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: (`BUT000.NOT_RELEASED` == 'X') & `LFA1.LIFNR`.notna()
+  severity: high
+  dimension: consistency
+  message: Business partner is not released but already has a vendor account
+  why_it_matters: The release procedure holds new or changed partners until they are approved. A linked vendor account on an
+    unreleased partner means the supplier can be paid before approval, a classic segregation-of-duties gap.
+  rule_authority: regulatory
+  sap_impact: Invoices and payments can run for an unapproved supplier; auditors flag the bypassed control.
+  fix_map:
+    __other__: Complete or reject the release in BP; block the vendor account until the partner is released.
+  record_fix_template: 'Business partner GUID {CVI_VEND_LINK.PARTNER_GUID}: not released but linked to vendor {CVI_VEND_LINK.VENDOR}.'
+- id: BP284
+  field: CVI_CUST_LINK.CUSTOMER
+  check_class: cross_field_check
+  grain: CVI_CUST_LINK
+  fail_when: ((`KNA1.STKZN` == 'X') & (`BUT000.TYPE` == '2')) | (`KNA1.STKZN`.isna() & `KNA1.KUNNR`.notna() & (`BUT000.TYPE`
+    == '1'))
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: natural-person indicator of the customer does not match the business partner category'
+  why_it_matters: CVI derives the partner category from the natural-person indicator of the customer. A person customer linked
+    to an organisation partner, or the reverse, means the two were linked by hand or the category was changed later, so
+    name and tax fields map to the wrong structure.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI synchronisation fails or maps names wrongly; the conversion pre-check reports the category mismatch.
+  fix_map:
+    __other__: Correct the natural-person indicator on the customer (XD02) or the partner category, then resynchronise.
+  record_fix_template: 'Business partner GUID {CVI_CUST_LINK.PARTNER_GUID}: category does not match natural-person indicator of
+    customer {CVI_CUST_LINK.CUSTOMER}.'
+- id: BP285
+  field: CVI_VEND_LINK.VENDOR
+  check_class: cross_field_check
+  grain: CVI_VEND_LINK
+  fail_when: ((`LFA1.STKZN` == 'X') & (`BUT000.TYPE` == '2')) | (`LFA1.STKZN`.isna() & `LFA1.LIFNR`.notna() & (`BUT000.TYPE`
+    == '1'))
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: natural-person indicator of the vendor does not match the business partner category'
+  why_it_matters: CVI derives the partner category from the natural-person indicator of the vendor. A person vendor linked to
+    an organisation partner, or the reverse, means names, tax numbers and withholding-tax data map to the wrong structure.
+  rule_authority: s4hana_migration
+  sap_impact: The CVI synchronisation fails or maps names wrongly; withholding tax for individuals is determined wrongly.
+  fix_map:
+    __other__: Correct the natural-person indicator on the vendor (XK02) or the partner category, then resynchronise.
+  record_fix_template: 'Business partner GUID {CVI_VEND_LINK.PARTNER_GUID}: category does not match natural-person indicator of
+    vendor {CVI_VEND_LINK.VENDOR}.'
+- id: BP286
+  field: BUT050.PARTNER1
+  check_class: cross_field_check
+  grain: BUT050
+  fail_when: '`BUT050.PARTNER1` == `BUT050.PARTNER2`'
+  severity: medium
+  dimension: consistency
+  message: Business partner relationship links a partner to itself
+  why_it_matters: A relationship describes how two different partners relate (contact person, shareholder, group member). A
+    partner related to itself is a load or keying error and creates loops in group and contact evaluations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contact person determination and group hierarchies return the partner itself; CVI contact synchronisation fails.
+  fix_map:
+    __other__: Delete the relationship in BP > Relationships and create it against the correct partner.
+  record_fix_template: 'Relationship {BUT050.RELNR}: business partner {BUT050.PARTNER1} is related to itself.'
+- id: BP287
+  field: BUT050.RELTYP
+  check_class: null_check
+  grain: BUT050
+  severity: medium
+  dimension: completeness
+  message: Business partner relationship has no relationship category
+  why_it_matters: The relationship category (contact person, ship-to, shareholder) tells every process what the relationship
+    means. Without it the relationship is never selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: Contact person and partner function determination ignore the relationship.
+  fix_map:
+    __blank__: Delete the relationship and create it again with a category in BP > Relationships.
+  record_fix_template: 'Relationship {BUT050.RELNR} of business partner {BUT050.PARTNER1}: category is missing.'
+- id: BP288
+  field: BUT050.PARTNER2
+  check_class: uniqueness_check
+  fields:
+  - BUT050.PARTNER1
+  - BUT050.PARTNER2
+  - BUT050.RELTYP
+  - BUT050.DATE_TO
+  grain: BUT050
+  severity: low
+  dimension: uniqueness
+  message: The same relationship between two business partners exists more than once with the same end date
+  why_it_matters: Two relationships of one category between the same partners with the same validity end overlap. Evaluations
+    count the relationship twice and changes update only one of them.
+  rule_authority: best_practice
+  sap_impact: Contact lists and group evaluations show duplicates; CVI contact synchronisation may create two contacts.
+  fix_map:
+    __other__: Delete the duplicate relationship in BP > Relationships.
+  record_fix_template: 'Relationship {BUT050.RELNR}: duplicates another relationship of the same category between business partners
+    {BUT050.PARTNER1} and {BUT050.PARTNER2}.'
+- id: BP289
+  field: ADRC.LANGU
+  check_class: referential_check
+  grain: BUT000
+  severity: low
+  dimension: validity
+  message: Business partner address language must exist in T002
+  why_it_matters: The address language controls address formatting and the language of address-dependent texts. An undefined
+    language key cannot be used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Address formatting falls back to defaults; BP rejects the address on the next change.
+  fix_map:
+    __other__: Language '{invalid_value}' is not defined in T002. Correct the address in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: address language is not defined in T002.'
+- id: BP290
+  field: ADRC.PO_BOX_CTY
+  check_class: referential_check
+  grain: BUT000
+  severity: low
+  dimension: validity
+  message: Business partner PO box country must exist in T005
+  why_it_matters: The PO box country selects postal validation and formatting for the PO box address. An undefined key breaks
+    both.
+  rule_authority: sap_hard_constraint
+  sap_impact: Letters to the PO box are formatted wrongly; BP rejects the address on the next change.
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct the PO box data in BP.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: PO box country is not defined in T005.'
+- id: BP291
+  field: ADR6.FLGDEFAULT
+  check_class: cross_field_check
+  grain: BUT000
+  fail_when: (`ADR6.FLGDEFAULT` == 'X') & (`ADR6.FLG_NOUSE` == 'X')
+  severity: medium
+  dimension: consistency
+  message: Default e-mail address of the business partner is flagged as not to be used
+  why_it_matters: Output sends to the default e-mail address. When that address is also flagged 'do not use', electronic output
+    is suppressed and documents silently fall back to print or are not sent.
+  rule_authority: best_practice
+  sap_impact: Invoices, remittance advices and order confirmations are not e-mailed to the partner.
+  fix_map:
+    __other__: Mark a usable address as default or clear the 'do not use' flag in BP > Communication.
+  record_fix_template: 'Business partner {BUT000.PARTNER}: default e-mail address is flagged as not to be used.'
+- id: BP292
+  field: ADR2.FLGDEFAULT
+  check_class: cross_field_check
+  grain: ADR2
+  fail_when: (`ADR2.FLGDEFAULT` == 'X') & (`ADR2.FLG_NOUSE` == 'X')
+  severity: low
+  dimension: consistency
+  message: Default telephone number is flagged as not to be used
+  why_it_matters: Processes dial or print the default telephone number. A default flagged 'do not use' leaves the address with no
+    usable phone number.
+  rule_authority: best_practice
+  sap_impact: Call lists and documents show no telephone number for the address.
+  fix_map:
+    __other__: Mark a usable number as default or clear the 'do not use' flag in the address communication data.
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: default telephone number is flagged as not to be used.'
+- id: BP293
+  field: ADR2.COUNTRY
+  check_class: referential_check
+  grain: ADR2
+  severity: low
+  dimension: validity
+  message: Telephone number country must exist in T005
+  why_it_matters: The telephone country supplies the international dialling code. An undefined country gives a number that
+    cannot be converted to the international format.
+  rule_authority: sap_hard_constraint
+  sap_impact: Telephony integration and SMS output cannot dial the number.
+  fix_map:
+    __other__: Country '{invalid_value}' is not defined in T005. Correct the telephone number country.
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: telephone country is not defined in T005.'
+- id: BP294
+  field: ADR2.TEL_NUMBER
+  check_class: null_check
+  grain: ADR2
+  applies_when:
+    ADR2.FLG_NOUSE:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Telephone record has no telephone number
+  why_it_matters: A telephone record without a number is an empty entry left by a load or a cleared field. It can still be the
+    default and hide a usable number.
+  rule_authority: best_practice
+  sap_impact: Documents and call lists show an empty telephone number.
+  fix_map:
+    __blank__: Enter the number or delete the empty telephone entry in the address communication data.
+  record_fix_template: 'Address {ADR2.ADDRNUMBER}: telephone entry {ADR2.CONSNUMBER} has no number.'
+- id: BP295
+  field: BUT0BK.BK_VALID_TO
+  check_class: cross_field_check
+  grain: BUT0BK
+  fail_when: '`BUT0BK.BK_VALID_TO` < (@today.dt.year * 1e10 + @today.dt.month * 1e8 + @today.dt.day * 1e6)'
+  require_populated: true
+  applies_when:
+    BUT000.XDELE:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Bank details of an active business partner are no longer valid
+  why_it_matters: Bank details with a validity end in the past are not used for payments. When they remain the only bank details,
+    payments and direct debits find no account; when several remain, stale accounts clutter the selection.
+  rule_authority: best_practice
+  sap_impact: The payment run finds no valid bank details; direct debits fail.
+  fix_map:
+    __other__: Maintain current bank details and delete the expired ones in BP > Payment transactions.
+  record_fix_template: 'Business partner {BUT0BK.PARTNER} bank detail {BUT0BK.BKVID}: validity has ended.'

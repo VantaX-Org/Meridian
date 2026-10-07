@@ -21,7 +21,7 @@ EXPECTED_COUNTS = {
     "sd_customer_master": 98,
     "sd_sales_orders": 208,
     "production_planning": 278,
-    "project_system": 115,
+    "project_system": 165,
     "plant_maintenance": 188,
     "quality_management": 133,
     "s4_readiness": 110,
