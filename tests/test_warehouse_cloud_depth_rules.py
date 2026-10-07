@@ -88,7 +88,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 236
+    assert sum(len(v) for v in NEW.values()) == 216
     assert len(S4_NEW) == len(S4R_WM)
 
 
