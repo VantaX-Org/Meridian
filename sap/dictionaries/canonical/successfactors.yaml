@@ -155,6 +155,7 @@ tables:
       EMPLOYEE_COST:  {source: BenefitEnrollment.employeeContribution, type: DECIMAL, verify: true}
       EMPLOYER_COST:  {source: BenefitEnrollment.employerContribution, type: DECIMAL, verify: true}
       DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
+      STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)
@@ -244,6 +245,11 @@ tables:
       DUE_DATE:      {source: learning.requiredDate, type: DATETIME, verify: true}
       STATUS:        {source: learning.status, type: STRING, verify: true}
       REQUIRED:      {source: learning.required, type: BOOLEAN, verify: true}
+      ITEM_TYPE:       {source: learning.componentTypeID, type: STRING, verify: true}
+      APPROVAL_STATUS: {source: learning.approvalStatus, type: STRING, verify: true}
+      CURRICULUM_ID:   {source: learning.curriculumID, type: STRING, length: 90, verify: true}
+      CLASS_START_DATE: {source: learning.sessionStartDate, type: DATETIME, verify: true}
+      CLASS_END_DATE:   {source: learning.sessionEndDate, type: DATETIME, verify: true}
 
   LEARNINGCOMPLETION:
     description: Learning history / completions
@@ -256,6 +262,7 @@ tables:
       STATUS:          {source: learningHistory.completionStatusID, type: STRING, verify: true}
       SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
       CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}
+      PASSING_SCORE:   {source: learningHistory.cutScore, type: DECIMAL, verify: true}
 
   POSITION:
     description: Positions (Position Management), current record
