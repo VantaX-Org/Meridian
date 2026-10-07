@@ -101,3 +101,94 @@ rules:
   fix_map:
     __blank__: Maintain the address in the supplier's registration questionnaire.
   record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city is {actual_value}.'
+- id: ARS008
+  field: ARIBA_SUPPLIER.COUNTRY
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.COUNTRY`.isna()'
+  severity: high
+  dimension: completeness
+  message: Ariba supplier has no country
+  why_it_matters: Country drives tax, banking and the business partner address in S/4HANA.
+  rule_authority: sap_hard_constraint
+  sap_impact: The supplier cannot be loaded as a business partner.
+  fix_map:
+    __other__: Maintain the country in the supplier profile.
+  record_fix_template: Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID} has no country.
+- id: ARS009
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.VENDOR_ID`.isna()'
+  severity: critical
+  dimension: completeness
+  message: Ariba supplier has no ERP vendor ID
+  why_it_matters: The vendor ID links the supplier to the ERP vendor and the S/4HANA business partner.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders and invoices cannot be mapped to the ERP.
+  fix_map:
+    __other__: Link the supplier to its ERP vendor.
+  record_fix_template: Ariba supplier {ARIBA_SUPPLIER.CATEGORY} has no ERP vendor ID.
+- id: ARS010
+  field: ARIBA_SUPPLIER.REGISTRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.REGISTRATION_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Ariba supplier registration date is in the future
+  why_it_matters: A supplier cannot register later than today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Onboarding reports are wrong.
+  fix_map:
+    __other__: Correct the date.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: registered {actual_value}, in the future.'
+- id: ARS011
+  field: ARIBA_SUPPLIER.LAST_UPDATED
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.LAST_UPDATED` < `ARIBA_SUPPLIER.REGISTRATION_DATE`'
+  severity: low
+  dimension: consistency
+  message: Ariba supplier was updated before it registered
+  why_it_matters: Update timestamps cannot precede registration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Change history is unreliable.
+  fix_map:
+    __other__: Correct the dates.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: updated {ARIBA_SUPPLIER.LAST_UPDATED}, registered {ARIBA_SUPPLIER.REGISTRATION_DATE}.'
+- id: ARS012
+  field: ARIBA_SUPPLIER.QUALIFICATION_STATUS
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.QUALIFICATION_STATUS`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Ariba supplier has no qualification status
+  why_it_matters: Qualification shows whether the supplier is approved to receive orders.
+  rule_authority: best_practice
+  sap_impact: Unqualified suppliers may be used.
+  fix_map:
+    __other__: Run qualification for the supplier.
+  record_fix_template: Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID} has no qualification status.
+- id: ARS013
+  field: ARIBA_SUPPLIER.CATEGORY
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.CATEGORY`.isna()'
+  severity: low
+  dimension: completeness
+  message: Ariba supplier has no category
+  why_it_matters: Category drives sourcing and spend analysis.
+  rule_authority: best_practice
+  sap_impact: Spend cannot be grouped by category.
+  fix_map:
+    __other__: Assign a category.
+  record_fix_template: Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID} has no category.
+- id: ARS014
+  field: ARIBA_SUPPLIER.LAST_UPDATED
+  check_class: freshness_check
+  max_age_hours: 17520
+  severity: low
+  dimension: timeliness
+  message: Ariba supplier profile not updated for two years
+  why_it_matters: A stale profile is an archive or review candidate before migration.
+  rule_authority: best_practice
+  sap_impact: Stale suppliers are carried into the new system.
+  fix_map:
+    __other__: Review the supplier and archive it if inactive.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: last updated {actual_value}.'

@@ -455,3 +455,153 @@ rules:
       __blank__: Make the rejection reason mandatory in the change request step configuration (MDGIMG) and record
         reasons for future rejections.
     record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: rejected without a reason.'
+
+  - id: MDG027
+    field: USMD120C.USMD_CHANGED_BY
+    check_class: cross_field_check
+    fail_when: (`USMD120C.USMD_CHANGED_AT` > 0) & `USMD120C.USMD_CHANGED_BY`.isna()
+    severity: medium
+    dimension: completeness
+    message: Changed change request has no changer
+    why_it_matters: A change timestamp without a user breaks the audit trail of the request.
+    rule_authority: best_practice
+    sap_impact: Audit cannot show who altered the request.
+    fix_map:
+      __other__: Review the request history in MDG and correct the changer.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} was changed with no user recorded.
+
+  - id: MDG028
+    field: USMD120C.USMD_RELEASED_BY
+    check_class: cross_field_check
+    fail_when: (`USMD120C.USMD_RELEASED_AT` > 0) & `USMD120C.USMD_RELEASED_BY`.isna()
+    severity: high
+    dimension: completeness
+    message: Released change request has no releaser
+    why_it_matters: A released request must name who approved it for activation.
+    rule_authority: sap_hard_constraint
+    sap_impact: Four-eyes evidence for the master data change is missing.
+    fix_map:
+      __other__: Review the release step and correct the releaser.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} was released with no user recorded.
+
+  - id: MDG029
+    field: USMD120C.USMD_RELEASED_AT
+    check_class: cross_field_check
+    fail_when: (`USMD120C.USMD_CREQ_STATUS` == '05') & (`USMD120C.USMD_RELEASED_AT` <= 0)
+    severity: high
+    dimension: consistency
+    message: Finalised change request has no release timestamp
+    why_it_matters: A request in status 05 has completed its workflow and was released.
+    rule_authority: best_practice
+    sap_impact: Cycle-time and approval reports skip the request.
+    fix_map:
+      __other__: Review the request status and release timestamp.
+    record_fix_template: 'Change request {USMD120C.USMD_CREQUEST}: status {USMD120C.USMD_CREQ_STATUS} with no release time.'
+
+  - id: MDG030
+    field: USMD120C.USMD_PRIORITY
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_PRIORITY`.isna()'
+    applies_when:
+      USMD120C.USMD_CREQ_STATUS:
+        not_in:
+        - '05'
+        - '06'
+    severity: low
+    dimension: completeness
+    message: Open change request has no priority
+    why_it_matters: Priority orders the processor work list.
+    rule_authority: best_practice
+    sap_impact: Urgent requests wait with routine ones.
+    fix_map:
+      __other__: Set the priority on the request.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} has no priority.
+
+  - id: MDG031
+    field: USMD120C.USMD_EDITION
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_EDITION`.isna()'
+    applies_when:
+      USMD120C.USMD_CREQ_STATUS:
+        not_in:
+        - '05'
+        - '06'
+      USMD120C.USMD_DATA_ACTIVE:
+        not_in:
+        - X
+    severity: low
+    dimension: completeness
+    message: Change request has no edition
+    why_it_matters: Editions give the planned validity of the change. Without one the change is effective immediately.
+    rule_authority: best_practice
+    sap_impact: Time-dependent master data changes cannot be planned.
+    fix_map:
+      __other__: Assign the edition if the change must take effect later.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} has no edition.
+
+  - id: MDG032
+    field: USMD120C.USMD_CREQ_TEXT
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_CREQ_TEXT`.isna()'
+    severity: low
+    dimension: completeness
+    message: Change request has no description
+    why_it_matters: Approvers need a description to judge the request.
+    rule_authority: best_practice
+    sap_impact: Approvers decide without context.
+    fix_map:
+      __other__: Add a description to the request.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} has no description.
+
+  - id: MDG033
+    field: USMD1213.USMD_CREQUEST
+    check_class: exists_check
+    fields:
+    - USMD1213.USMD_CREQUEST
+    target_table: USMD120C
+    target_fields:
+    - USMD_CREQUEST
+    severity: high
+    dimension: consistency
+    message: Change request entity data has no request header
+    why_it_matters: Entity rows belong to a change request. Without the header the rows cannot be activated or audited.
+    rule_authority: sap_hard_constraint
+    sap_impact: Staged master data cannot be released or deleted.
+    fix_map:
+      __other__: Remove the orphan rows or restore the request.
+    record_fix_template: Entity row for request {USMD1213.USMD_CREQUEST} has no header.
+
+  - id: MDG034
+    field: USMD120C.USMD_CREQUEST
+    check_class: exists_check
+    fields:
+    - USMD120C.USMD_CREQUEST
+    target_table: USMD1213
+    target_fields:
+    - USMD_CREQUEST
+    applies_when:
+      USMD120C.USMD_CREQ_STATUS:
+      - '05'
+    severity: medium
+    dimension: consistency
+    message: Released change request carries no entity data
+    why_it_matters: A released request with no entity rows changed nothing.
+    rule_authority: best_practice
+    sap_impact: The request wasted an approval cycle or lost its staged data.
+    fix_map:
+      __other__: Review the request and archive it if empty.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} has no entity data.
+
+  - id: MDG035
+    field: USMD120C.USMD_CREQ_STATUS
+    check_class: cross_field_check
+    fail_when: (`USMD120C.USMD_CREQ_STATUS` == '06') & (`USMD120C.USMD_DATA_ACTIVE` == 'X')
+    severity: medium
+    dimension: consistency
+    message: Rejected change request is flagged active
+    why_it_matters: A rejected request must not activate data.
+    rule_authority: best_practice
+    sap_impact: Rejected data may reach the active master.
+    fix_map:
+      __other__: Review the request and clear the active flag.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} is rejected but active.

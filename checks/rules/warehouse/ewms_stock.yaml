@@ -954,3 +954,319 @@ rules:
       __blank__: Analyse how the quant was created (interface or migration) and correct it through a physical inventory
         difference; check the product's base unit.
     record_fix_template: 'Warehouse {/SCWM/AQUA.LGNUM} bin {/SCWM/AQUA.LGPLA}: quantity {/SCWM/AQUA.QUAN} without unit.'
+
+  - id: EWMS113
+    field: LQUA.LGNUM
+    check_class: exists_check
+    fields:
+    - LQUA.LGNUM
+    - LQUA.LENUM
+    target_table: LEIN
+    target_fields:
+    - LGNUM
+    - LENUM
+    severity: high
+    dimension: consistency
+    message: Quant references a storage unit that does not exist
+    why_it_matters: A quant that points at a storage unit number with no LEIN header cannot be moved as a unit. Unit-level picks
+      and putaway fail on it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders on the storage unit fail and the quant shows no unit master data.
+    fix_map:
+      __other__: Create the storage unit through a putaway, or clear the storage unit number on the quant through a stock correction.
+    record_fix_template: 'Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGTYP}/{LQUA.LGPLA}: storage unit {LQUA.LENUM} has no header.'
+
+  - id: EWMS114
+    field: LQUA.LGNUM
+    check_class: exists_check
+    fields:
+    - LQUA.LGNUM
+    - LQUA.LENUM
+    - LQUA.LGTYP
+    - LQUA.LGPLA
+    target_table: LEIN
+    target_fields:
+    - LGNUM
+    - LENUM
+    - LGTYP
+    - LGPLA
+    applies_when:
+      LQUA.LENUM:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Quant bin differs from the bin of its storage unit
+    why_it_matters: The storage unit header and the quant must sit in the same bin. A mismatch means one of the two was moved
+      without the other.
+    rule_authority: sap_hard_constraint
+    sap_impact: Unit moves strand quants and inventory counts the same stock in two bins.
+    fix_map:
+      __other__: Compare the storage unit and quant bins (LS24, LS26) and post a transfer to bring them together.
+    record_fix_template: 'Quant {LQUA.LQNUM}: bin {LQUA.LGTYP}/{LQUA.LGPLA} does not match storage unit {LQUA.LENUM}.'
+
+  - id: EWMS115
+    field: LEIN.LGNUM
+    check_class: exists_check
+    fields:
+    - LEIN.LGNUM
+    - LEIN.LGTYP
+    - LEIN.LGPLA
+    target_table: LAGP
+    target_fields:
+    - LGNUM
+    - LGTYP
+    - LGPLA
+    applies_when:
+      LEIN.LGPLA:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Storage unit sits in a bin that does not exist
+    why_it_matters: A storage unit with no bin master cannot be located for a pick.
+    rule_authority: sap_hard_constraint
+    sap_impact: Picks for the unit cannot find the source bin and stock shows as lost.
+    fix_map:
+      __other__: Create the bin (LS01N) or move the unit to an existing bin.
+    record_fix_template: 'Storage unit {LEIN.LENUM} in {LEIN.LGNUM}: bin {LEIN.LGTYP}/{LEIN.LGPLA} not in LAGP.'
+
+  - id: EWMS116
+    field: LEIN.LGNUM
+    check_class: exists_check
+    fields:
+    - LEIN.LGNUM
+    - LEIN.LGTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    applies_when:
+      LEIN.LGTYP:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Storage unit references a storage type that is not configured
+    why_it_matters: Storage type T301 drives putaway and removal strategy. An unknown type breaks both for the unit.
+    rule_authority: sap_hard_constraint
+    sap_impact: Strategy lookup fails and transfer orders for the unit cannot be created.
+    fix_map:
+      __other__: Configure the storage type in T301 or move the unit to a valid type.
+    record_fix_template: 'Storage unit {LEIN.LENUM}: storage type {LEIN.LGTYP} not in T301 for {LEIN.LGNUM}.'
+
+  - id: EWMS117
+    field: LQUA.EINME
+    check_class: cross_field_check
+    fail_when: '`LQUA.EINME` < 0'
+    severity: high
+    dimension: accuracy
+    message: Quant putaway quantity is negative
+    why_it_matters: Stock placed in putaway (EINME) cannot be below zero. A negative figure comes from an unmatched confirmation.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bin capacity and putaway planning use a wrong figure.
+    fix_map:
+      __other__: Review the open transfer orders for the quant and correct the figure (LQ04 or a stock correction).
+    record_fix_template: 'Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA}: putaway quantity is {actual_value}.'
+
+  - id: EWMS118
+    field: LQUA.AUSME
+    check_class: cross_field_check
+    fail_when: '`LQUA.AUSME` < 0'
+    severity: high
+    dimension: accuracy
+    message: Quant removal quantity is negative
+    why_it_matters: Stock placed in removal (AUSME) cannot be below zero. A negative figure comes from an unmatched confirmation.
+    rule_authority: sap_hard_constraint
+    sap_impact: Available stock calculations are wrong for the bin.
+    fix_map:
+      __other__: Review the open transfer orders for the quant and correct the figure (LQ04 or a stock correction).
+    record_fix_template: 'Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA}: removal quantity is {actual_value}.'
+
+  - id: EWMS119
+    field: LQUA.AUSME
+    check_class: cross_field_check
+    fail_when: '`LQUA.AUSME` > `LQUA.GESME`'
+    severity: high
+    dimension: consistency
+    message: Removal quantity exceeds total quant quantity
+    why_it_matters: Quantity reserved for removal cannot be larger than the quant. The excess can never be picked.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open picks stay unconfirmed and the quant looks fully reserved.
+    fix_map:
+      __other__: Cancel or confirm the open removal transfer orders for the quant.
+    record_fix_template: 'Quant {LQUA.LQNUM}: removal {LQUA.AUSME} exceeds total {LQUA.GESME}.'
+
+  - id: EWMS120
+    field: LQUA.SPGRU
+    check_class: cross_field_check
+    fail_when: ((`LQUA.SKZSA` == 'X') | (`LQUA.SKZSE` == 'X') | (`LQUA.SKZSI` == 'X')) & `LQUA.SPGRU`.isna()
+    severity: medium
+    dimension: completeness
+    message: Blocked quant has no block reason
+    why_it_matters: A block indicator without a reason leaves the planner unable to tell why stock is held.
+    rule_authority: best_practice
+    sap_impact: Blocked stock is not released because nobody knows who owns the block.
+    fix_map:
+      __other__: Enter a block reason on the quant (LQ02) or remove the block.
+    record_fix_template: Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA} is blocked with no reason.
+
+  - id: EWMS121
+    field: LQUA.SPGRU
+    check_class: cross_field_check
+    fail_when: '`LQUA.SPGRU`.notna() & (`LQUA.SKZSA` != ''X'') & (`LQUA.SKZSE` != ''X'') & (`LQUA.SKZSI` != ''X'') & (`LQUA.SKZUA`
+      != ''X'') & (`LQUA.SKZUE` != ''X'')'
+    severity: low
+    dimension: consistency
+    message: Quant has a block reason but no block indicator
+    why_it_matters: A stale block reason suggests a block was lifted by hand and the reason was left behind.
+    rule_authority: best_practice
+    sap_impact: Reports show a block that does not exist.
+    fix_map:
+      __other__: Clear the block reason on the quant (LQ02).
+    record_fix_template: 'Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA}: reason {LQUA.SPGRU} with no block.'
+
+  - id: EWMS122
+    field: LAGP.SKZUA
+    check_class: cross_field_check
+    grain: LQUA
+    fail_when: (`LAGP.SKZUA` == 'X') & (`LQUA.AUSME` > 0)
+    severity: medium
+    dimension: consistency
+    message: Removal pending from a bin blocked for removal
+    why_it_matters: Stock is released for removal from a bin that cannot be picked. The transfer order cannot be confirmed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Picks sit open until the block is lifted.
+    fix_map:
+      __other__: Lift the removal block (LS02N) or cancel the open transfer order.
+    record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: removal block with {LQUA.AUSME} awaiting pick.'
+
+  - id: EWMS123
+    field: LAGP.SKZUE
+    check_class: cross_field_check
+    grain: LQUA
+    fail_when: (`LAGP.SKZUE` == 'X') & (`LQUA.EINME` > 0)
+    severity: medium
+    dimension: consistency
+    message: Putaway pending into a bin blocked for putaway
+    why_it_matters: Stock is planned for putaway into a bin that cannot receive it. The transfer order cannot be confirmed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Receipts sit open until the block is lifted.
+    fix_map:
+      __other__: Lift the putaway block (LS02N) or cancel the open transfer order.
+    record_fix_template: 'Bin {LAGP.LGTYP}/{LAGP.LGPLA}: putaway block with {LQUA.EINME} awaiting putaway.'
+
+  - id: EWMS124
+    field: LQUA.BESTQ
+    check_class: cross_field_check
+    fail_when: '`LQUA.BESTQ`.isna() & (`LQUA.VFDAT` < @today)'
+    applies_when:
+      LQUA.GESME:
+        gt: 0
+    severity: high
+    dimension: timeliness
+    message: Expired quant is still unrestricted
+    why_it_matters: Stock past its shelf-life date should be blocked or scrapped. Unrestricted expired stock can still be picked.
+    rule_authority: best_practice
+    sap_impact: Expired goods can ship to customers or feed production.
+    fix_map:
+      __other__: Move the stock to blocked or quality inspection with a transfer posting, then scrap or return it.
+    record_fix_template: 'Quant {LQUA.LQNUM} for {LQUA.MATNR}: shelf life ended {actual_value} and the quant is unrestricted.'
+
+  - id: EWMS125
+    field: LQUA.VFDAT
+    check_class: cross_field_check
+    fail_when: '`LQUA.VFDAT` < `LQUA.WDATU`'
+    severity: medium
+    dimension: consistency
+    message: Quant shelf-life date is before its goods receipt date
+    why_it_matters: Stock cannot expire before it was received.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shelf-life reports flag the quant as expired on arrival.
+    fix_map:
+      __other__: Correct the shelf-life expiration date on the batch or the receipt.
+    record_fix_template: 'Quant {LQUA.LQNUM} for {LQUA.MATNR}: expiry {LQUA.VFDAT} precedes receipt {LQUA.WDATU}.'
+
+  - id: EWMS126
+    field: LQUA.WDATU
+    check_class: cross_field_check
+    fail_when: '`LQUA.WDATU` > @today'
+    severity: medium
+    dimension: validity
+    message: Quant goods receipt date is in the future
+    why_it_matters: A receipt date later than today means the date was keyed or interfaced wrongly.
+    rule_authority: sap_hard_constraint
+    sap_impact: FIFO removal strategy ranks the quant as the newest stock.
+    fix_map:
+      __other__: Correct the goods receipt date on the quant.
+    record_fix_template: 'Quant {LQUA.LQNUM} in {LQUA.LGNUM}/{LQUA.LGPLA}: receipt date {actual_value} is in the future.'
+
+  - id: EWMS127
+    field: LQUA.ADATU
+    check_class: cross_field_check
+    fail_when: '`LQUA.ADATU` < `LQUA.WDATU`'
+    severity: low
+    dimension: consistency
+    message: Quant last removal date is before its receipt date
+    why_it_matters: A quant cannot have a removal before it was received.
+    rule_authority: sap_hard_constraint
+    sap_impact: Movement history on the quant is unreliable.
+    fix_map:
+      __other__: Review the movement history of the quant and correct the dates.
+    record_fix_template: 'Quant {LQUA.LQNUM}: removal date {LQUA.ADATU} precedes receipt {LQUA.WDATU}.'
+
+  - id: EWMS128
+    field: LEIN.SPGRU
+    check_class: cross_field_check
+    fail_when: ((`LEIN.SKZUA` == 'X') | (`LEIN.SKZUE` == 'X')) & `LEIN.SPGRU`.isna()
+    severity: medium
+    dimension: completeness
+    message: Blocked storage unit has no block reason
+    why_it_matters: A block indicator without a reason leaves the planner unable to tell why the unit is held.
+    rule_authority: best_practice
+    sap_impact: Blocked units are not released because nobody knows who owns the block.
+    fix_map:
+      __other__: Enter a block reason on the storage unit or remove the block.
+    record_fix_template: Storage unit {LEIN.LENUM} in {LEIN.LGNUM} is blocked with no reason.
+
+  - id: EWMS129
+    field: LQUA.MATNR
+    check_class: exists_check
+    fields:
+    - LQUA.MATNR
+    - LQUA.WERKS
+    - LQUA.LGORT
+    target_table: MARD
+    target_fields:
+    - MATNR
+    - WERKS
+    - LGORT
+    applies_when:
+      LQUA.LGORT:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Quant plant and storage location have no material storage data
+    why_it_matters: A quant in a plant and storage location with no MARD record cannot reconcile with inventory management.
+    rule_authority: sap_hard_constraint
+    sap_impact: WM stock and IM stock cannot be compared and the quant is invisible to inventory reports.
+    fix_map:
+      __other__: Extend the material to the storage location (MM50) or correct the plant and storage location on the quant.
+    record_fix_template: 'Quant {LQUA.LQNUM} for {LQUA.MATNR}: no stock record in {LQUA.WERKS}/{LQUA.LGORT}.'
+
+  - id: EWMS130
+    field: LQUA.MATNR
+    check_class: exists_check
+    fields:
+    - LQUA.MATNR
+    - LQUA.LGNUM
+    target_table: MLGN
+    target_fields:
+    - MATNR
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Quant material has no warehouse management view for the warehouse
+    why_it_matters: A material needs warehouse data (MLGN) in the warehouse where its quants sit. Without it no strategy applies.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway and removal strategies fall back to defaults or fail.
+    fix_map:
+      __other__: Extend the material to the warehouse number (MM50).
+    record_fix_template: 'Quant {LQUA.LQNUM}: {LQUA.MATNR} has no warehouse data in {LQUA.LGNUM}.'
