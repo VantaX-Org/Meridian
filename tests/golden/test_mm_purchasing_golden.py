@@ -373,6 +373,7 @@ def test_mm_purchasing_golden():
         "PUR019": {"EBELN=4500012011|EBELP=00010"},              # account assignment Z not configured (T163K)
         "PUR044": {"EBELN=4500012012|EBELP=00010"},              # net price -86.40
         "XP2P005": {"EBELN=4500012013|EBELP=00010"},             # open item, vendor blocked for purchasing
+        "PUR391": {"EBELN=4500012013"},                          # same PO: open with a blocked vendor
         "XP2P006": {"EBELN=4500012015|EBELP=00010"},             # open item, material deleted at plant 1000
         "PH-LFA1-TELF1": {"LIFNR=0000100050"},                   # 0000000000 as the phone number
         "PUR057": {"EBELN=4500012016|EBELP=00010"},              # GR-based IV set, no goods receipt expected

@@ -61,7 +61,7 @@ areas:
     label: Purchasing info records and source lists
     simplification_item: Business Partner Approach (SAP Note 2265093)
     related:
-      warning: [PUR131, PUR132, PUR306, PUR320, PUR319, PUR133, PUR130, PUR137, PUR138]
+      warning: [PUR131, PUR132, PUR391, PUR409, PUR410, PUR412, PUR306, PUR320, PUR319, PUR133, PUR130, PUR137, PUR138]
   credit_management:
     label: Credit Management (FSCM)
     simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
@@ -108,7 +108,8 @@ areas:
     label: Plant maintenance equipment and locations
     simplification_item: Business Partner Approach (SAP Note 2265093)
     related:
-      warning: [PM057, PM201, PM283, PM315, PM316, PM317, PM318]
+      blocking: [PM366, PM367]
+      warning: [PM057, PM201, PM283, PM315, PM316, PM317, PM318, PM335, PM364]
   archiving:
     label: Archiving candidates
     simplification_item: Data volume reduction before conversion (archiving)

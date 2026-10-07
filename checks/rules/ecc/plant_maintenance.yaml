@@ -3285,3 +3285,960 @@ rules:
     KSSK.KLART:
     - '002'
     - '003'
+- id: PM319
+  field: AFIH.IWERK
+  check_class: null_check
+  grain: AFIH
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: high
+  dimension: completeness
+  message: Maintenance order has no maintenance planning plant
+  why_it_matters: The planning plant owns planner groups, task lists and material planning for the order. Without it the order
+    cannot be planned or reported by plant.
+  rule_authority: sap_hard_constraint
+  sap_impact: IW38 plant selections miss the order; reservations and planner-group work lists are incomplete.
+  fix_map:
+    __other__: Set the planning plant on the order (IW32), normally inherited from the reference object.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no planning plant.'
+- id: PM320
+  field: AFIH.ILART
+  check_class: null_check
+  grain: AFIH
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: medium
+  dimension: completeness
+  message: Open maintenance order has no maintenance activity type
+  why_it_matters: The activity type separates preventive, corrective and improvement work. Without it maintenance KPIs and
+    cost analysis by activity type are incomplete.
+  rule_authority: best_practice
+  sap_impact: PMIS cost analysis by activity type (MCI4) shows a blank bucket; reliability KPIs are wrong.
+  fix_map:
+    __other__: Enter the maintenance activity type on the order (IW32).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no maintenance activity type.'
+- id: PM321
+  field: AFIH.INGPR
+  check_class: null_check
+  grain: AFIH
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: medium
+  dimension: completeness
+  message: Open maintenance order has no planner group
+  why_it_matters: The planner group is the team responsible for planning the order. Orders without one do not appear on any
+    planner work list and age unnoticed.
+  rule_authority: best_practice
+  sap_impact: Planner work lists (IW38 by planner group) miss the order; backlog reporting is understated.
+  fix_map:
+    __other__: Assign the planner group on the order (IW32) and on the reference object.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no planner group.'
+- id: PM322
+  field: AFIH.GEWRK
+  check_class: null_check
+  grain: AFIH
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: medium
+  dimension: completeness
+  message: Open maintenance order has no main work centre
+  why_it_matters: The main work centre is responsible for executing the work. Without it capacity planning and work centre
+    backlog reports ignore the order.
+  rule_authority: best_practice
+  sap_impact: Capacity evaluation (CM01) and work-centre backlog miss the order.
+  fix_map:
+    __other__: Enter the main work centre on the order header (IW32).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no main work centre.'
+- id: PM323
+  field: AFIH.PRIOK
+  check_class: null_check
+  grain: AFIH
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: low
+  dimension: completeness
+  message: Open maintenance order has no priority
+  why_it_matters: Priority sets the basic dates and the scheduling sequence. Unprioritised orders are scheduled by chance.
+  rule_authority: best_practice
+  sap_impact: Backlog prioritisation and schedule compliance reports cannot rank the order.
+  fix_map:
+    __other__: Assign a priority on the order header (IW32).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: no priority.'
+- id: PM324
+  field: AFIH.EQUNR
+  check_class: exists_check
+  grain: AFIH
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  severity: high
+  dimension: consistency
+  message: Maintenance order refers to equipment that does not exist
+  why_it_matters: Costs and history settle on the reference object. An order on a missing equipment loses its history and
+    cannot be converted to S/4HANA with a valid object reference.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment history (IE03 / IW38) misses the order; MTBR and cost-per-asset KPIs are wrong.
+  fix_map:
+    __other__: Correct the equipment reference on the order (IW32) or recreate the missing equipment.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: equipment {AFIH.EQUNR} not found.'
+- id: PM325
+  field: AFIH.EQUNR
+  check_class: exists_check
+  grain: AFIH
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  target_when:
+    LVORM:
+    - X
+  negate: true
+  applies_when:
+    AFIH.IPHAS:
+    - '0'
+    - '1'
+    - '2'
+  severity: medium
+  dimension: consistency
+  message: Open maintenance order is for equipment flagged for deletion
+  why_it_matters: Work planned on scrapped or deleted equipment is either obsolete or the equipment is still in use. Both
+    cases need a decision before migration.
+  rule_authority: best_practice
+  sap_impact: Costs collect on a retired asset; equipment cannot be archived while orders are open.
+  fix_map:
+    __other__: Complete or delete the order, or remove the deletion flag from the equipment if it is still in service.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: equipment {AFIH.EQUNR} is flagged for deletion.'
+- id: PM326
+  field: AFIH.WARPL
+  check_class: exists_check
+  grain: AFIH
+  target_table: MPLA
+  target_fields:
+  - WARPL
+  severity: high
+  dimension: consistency
+  message: Maintenance order refers to a maintenance plan that does not exist
+  why_it_matters: Plan-generated orders feed completion back into the plan to schedule the next call. A missing plan breaks
+    the preventive maintenance cycle.
+  rule_authority: sap_hard_constraint
+  sap_impact: IP10 scheduling cannot use the completion date; the cycle drifts or stops.
+  fix_map:
+    __other__: Investigate the plan reference; recreate the plan or remove the reference from the order.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: maintenance plan {AFIH.WARPL} not found.'
+- id: PM327
+  field: AFIH.ABNUM
+  check_class: cross_field_check
+  grain: AFIH
+  fail_when: '`AFIH.WARPL`.notna() & ~(`AFIH.ABNUM` > 0)'
+  severity: medium
+  dimension: consistency
+  message: Plan-generated maintenance order has no call number
+  why_it_matters: The call number ties the order to one scheduled call. Without it IP24 cannot show which call the order fulfils
+    and compliance to the plan cannot be measured.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling overview (IP24) shows the call as not processed; plan compliance is understated.
+  fix_map:
+    __other__: Investigate how the order was linked to the plan; regenerate it through scheduling (IP10).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: plan {AFIH.WARPL} without a call number.'
+- id: PM328
+  field: AFIH.QMNUM
+  check_class: exists_check
+  grain: AFIH
+  target_table: QMEL
+  target_fields:
+  - QMNUM
+  severity: medium
+  dimension: consistency
+  message: Maintenance order refers to a notification that does not exist
+  why_it_matters: The notification records the reason for the work and its technical findings. A broken link loses failure
+    data used for reliability analysis.
+  rule_authority: sap_hard_constraint
+  sap_impact: Notification-to-order navigation fails; damage and cause codes are missing from MTBF analysis.
+  fix_map:
+    __other__: Restore the link to the correct notification (IW32) or create the notification.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: notification {AFIH.QMNUM} not found.'
+- id: PM329
+  field: AFIH.ILOAN
+  check_class: exists_check
+  grain: AFIH
+  target_table: ILOA
+  target_fields:
+  - ILOAN
+  severity: high
+  dimension: consistency
+  message: Maintenance order location and account assignment record does not exist
+  why_it_matters: ILOA carries the cost centre, business area and location of the order. Without it the order has no default
+    account assignment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement rule cannot default; location reports miss the order.
+  fix_map:
+    __other__: Re-enter the reference object on the order so ILOA is regenerated.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: location record {AFIH.ILOAN} not found.'
+- id: PM330
+  field: AFIH.GEWRK
+  check_class: exists_check
+  grain: AFIH
+  target_table: CRHD
+  target_fields:
+  - OBJID
+  target_when:
+    OBJTY:
+    - A
+    LVORM:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Maintenance order main work centre does not exist or is flagged for deletion
+  why_it_matters: Work centre data supplies capacity, cost centre and activity types for the order operations.
+  rule_authority: sap_hard_constraint
+  sap_impact: Capacity and costing for the order fail; confirmation cannot find the activity rate.
+  fix_map:
+    __other__: Assign an active work centre on the order (IW32).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: work centre object {AFIH.GEWRK} invalid.'
+- id: PM331
+  field: AFIH.BAUTL
+  check_class: exists_check
+  grain: AFIH
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: low
+  dimension: consistency
+  message: Maintenance order assembly is not a material in the material master
+  why_it_matters: Assemblies structure the equipment for failure analysis. An assembly that is not a material cannot be used
+    in reporting or spare-part search.
+  rule_authority: best_practice
+  sap_impact: Assembly-level cost and failure analysis (MCI1) cannot resolve the assembly.
+  fix_map:
+    __other__: Correct the assembly on the order or create it as a material.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: assembly {AFIH.BAUTL} not in MARA.'
+- id: PM332
+  field: AFIH.LAUFN
+  check_class: exists_check
+  grain: AFIH
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  severity: low
+  dimension: consistency
+  message: Maintenance order refers to an originating order that does not exist
+  why_it_matters: The originating order links follow-up work to its origin. A dangling link breaks order history chains.
+  rule_authority: best_practice
+  sap_impact: Order hierarchy and follow-up analysis lose the parent order.
+  fix_map:
+    __other__: Clear the originating-order reference or point it at the correct order.
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: originating order {AFIH.LAUFN} not found.'
+- id: PM333
+  field: AFIH.INGPR
+  check_class: exists_check
+  grain: AFIH
+  fields:
+  - AFIH.IWERK
+  - AFIH.INGPR
+  target_table: T024I
+  target_fields:
+  - IWERK
+  - INGRP
+  applies_when:
+    AFIH.INGPR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Maintenance order planner group is not defined for its planning plant
+  why_it_matters: Planner groups are defined per planning plant. A group from another plant puts the order on no valid work
+    list.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planner work lists and authorisation by planner group fail for the order.
+  fix_map:
+    __other__: Assign a planner group defined for the planning plant (OIAB).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: planner group {AFIH.INGPR} not defined for plant {AFIH.IWERK}.'
+- id: PM334
+  field: AFIH.PRIOK
+  check_class: exists_check
+  grain: AFIH
+  fields:
+  - AFIH.ARTPR
+  - AFIH.PRIOK
+  target_table: T356
+  target_fields:
+  - ARTPR
+  - PRIOK
+  applies_when:
+    AFIH.PRIOK:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Maintenance order priority is not defined for its priority type
+  why_it_matters: Priorities are defined per priority type and set the start and end offsets for scheduling. An undefined
+    priority leaves the order without automatic dates.
+  rule_authority: sap_hard_constraint
+  sap_impact: Basic dates are not derived from priority; schedule compliance KPIs ignore the order.
+  fix_map:
+    __other__: Use a priority defined for the order type's priority type (OIMN).
+  record_fix_template: 'Maintenance order {AFIH.AUFNR}: priority {AFIH.PRIOK} not defined for type {AFIH.ARTPR}.'
+- id: PM335
+  field: QMIH.QMNUM
+  check_class: exists_check
+  grain: QMIH
+  target_table: QMEL
+  target_fields:
+  - QMNUM
+  severity: high
+  dimension: consistency
+  message: Notification maintenance data has no notification header
+  why_it_matters: QMIH extends a notification header. Rows without a header are orphans that the S/4HANA migration of notifications
+    cannot assign.
+  rule_authority: sap_hard_constraint
+  sap_impact: Breakdown data cannot be reported; conversion of maintenance notifications fails on the orphan.
+  fix_map:
+    __other__: Investigate the orphan rows and remove or archive them.
+  record_fix_template: 'Notification {QMIH.QMNUM}: header not found.'
+- id: PM336
+  field: QMIH.EQUNR
+  check_class: exists_check
+  grain: QMIH
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  severity: high
+  dimension: consistency
+  message: Notification refers to equipment that does not exist
+  why_it_matters: Failure history is collected on the equipment. A broken reference loses the breakdown from reliability analysis.
+  rule_authority: sap_hard_constraint
+  sap_impact: Equipment history and MTBR/MTTR are understated.
+  fix_map:
+    __other__: Correct the reference object on the notification (IW22).
+  record_fix_template: 'Notification {QMIH.QMNUM}: equipment {QMIH.EQUNR} not found.'
+- id: PM337
+  field: QMIH.BTPLN
+  check_class: exists_check
+  grain: QMIH
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  severity: medium
+  dimension: consistency
+  message: Notification refers to a functional location that does not exist
+  why_it_matters: Functional locations carry the plant structure. A missing location loses the notification from structural
+    reports.
+  rule_authority: sap_hard_constraint
+  sap_impact: Location-based failure reporting misses the notification.
+  fix_map:
+    __other__: Correct the functional location on the notification (IW22).
+  record_fix_template: 'Notification {QMIH.QMNUM}: functional location {QMIH.BTPLN} not found.'
+- id: PM338
+  field: QMIH.BEQUI
+  check_class: exists_check
+  grain: QMIH
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  severity: medium
+  dimension: consistency
+  message: Notification refers to an additional equipment that does not exist
+  why_it_matters: The secondary equipment reference must point to real equipment for history and cost reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: History for the secondary equipment is incomplete.
+  fix_map:
+    __other__: Correct or clear the equipment reference on the notification.
+  record_fix_template: 'Notification {QMIH.QMNUM}: equipment {QMIH.BEQUI} not found.'
+- id: PM339
+  field: QMIH.WARPL
+  check_class: exists_check
+  grain: QMIH
+  target_table: MPLA
+  target_fields:
+  - WARPL
+  severity: medium
+  dimension: consistency
+  message: Notification refers to a maintenance plan that does not exist
+  why_it_matters: Plan-generated notifications report back to the plan. A dangling plan breaks the preventive cycle trace.
+  rule_authority: sap_hard_constraint
+  sap_impact: IP24 cannot show the call as processed.
+  fix_map:
+    __other__: Investigate the plan reference; recreate the plan or clear the reference.
+  record_fix_template: 'Notification {QMIH.QMNUM}: maintenance plan {QMIH.WARPL} not found.'
+- id: PM340
+  field: QMIH.ILOAN
+  check_class: exists_check
+  grain: QMIH
+  target_table: ILOA
+  target_fields:
+  - ILOAN
+  severity: medium
+  dimension: consistency
+  message: Notification location and account assignment record does not exist
+  why_it_matters: ILOA provides the location and cost data of the notification object.
+  rule_authority: sap_hard_constraint
+  sap_impact: Location reports and follow-up orders lose the default account assignment.
+  fix_map:
+    __other__: Re-enter the reference object on the notification so ILOA is regenerated.
+  record_fix_template: 'Notification {QMIH.QMNUM}: location record {QMIH.ILOAN} not found.'
+- id: PM341
+  field: QMIH.AUSVN
+  check_class: null_check
+  grain: QMIH
+  applies_when:
+    QMIH.MSAUS:
+    - X
+  severity: high
+  dimension: completeness
+  message: Breakdown notification has no malfunction start date
+  why_it_matters: A breakdown without a start date has no downtime. MTTR, availability and breakdown cost per hour cannot
+    be calculated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Breakdown analysis (MCI7) ignores the notification; availability is overstated.
+  fix_map:
+    __other__: Enter the malfunction start date and time on the notification (IW22).
+  record_fix_template: 'Notification {QMIH.QMNUM}: breakdown without malfunction start.'
+- id: PM342
+  field: QMIH.AUSZT
+  check_class: cross_field_check
+  grain: QMIH
+  fail_when: '`QMIH.AUSZT` < 0'
+  severity: medium
+  dimension: accuracy
+  message: Notification breakdown duration is negative
+  why_it_matters: Duration is calculated from start and end. A negative value corrupts every average downtime figure.
+  rule_authority: sap_hard_constraint
+  sap_impact: MTTR and availability KPIs are distorted.
+  fix_map:
+    __other__: Correct malfunction start and end on the notification so the duration recalculates.
+  record_fix_template: 'Notification {QMIH.QMNUM}: breakdown duration {QMIH.AUSZT}.'
+- id: PM343
+  field: QMIH.MAUEH
+  check_class: cross_field_check
+  grain: QMIH
+  fail_when: (`QMIH.AUSZT` > 0) & `QMIH.MAUEH`.isna()
+  severity: medium
+  dimension: completeness
+  message: Notification breakdown duration has no unit
+  why_it_matters: Without a unit a duration cannot be compared or totalled; hours and days get mixed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Downtime totals in breakdown analysis are wrong.
+  fix_map:
+    __other__: Re-save the malfunction dates so the duration and unit are recalculated.
+  record_fix_template: 'Notification {QMIH.QMNUM}: duration {QMIH.AUSZT} without unit.'
+- id: PM344
+  field: QMIH.AUSVN
+  check_class: cross_field_check
+  grain: QMIH
+  fail_when: '`QMIH.AUSVN` > @today'
+  severity: medium
+  dimension: validity
+  message: Notification malfunction start date is in the future
+  why_it_matters: A malfunction cannot start in the future. Future dates are typing errors that create negative ages and corrupt
+    downtime analysis.
+  rule_authority: best_practice
+  sap_impact: Breakdown and backlog ageing reports show impossible values.
+  fix_map:
+    __other__: Correct the malfunction start date (IW22).
+  record_fix_template: 'Notification {QMIH.QMNUM}: malfunction start {QMIH.AUSVN} is in the future.'
+- id: PM345
+  field: QMIH.AUSBS
+  check_class: cross_field_check
+  grain: QMIH
+  fail_when: '`QMIH.AUSBS`.notna() & `QMIH.AUSVN`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Notification has a malfunction end date but no malfunction start
+  why_it_matters: An end without a start gives no duration. The repair time is lost from availability reporting.
+  rule_authority: sap_hard_constraint
+  sap_impact: MTTR cannot be calculated for the notification.
+  fix_map:
+    __other__: Enter the malfunction start date and time on the notification.
+  record_fix_template: 'Notification {QMIH.QMNUM}: malfunction end {QMIH.AUSBS} without start.'
+- id: PM346
+  field: QMIH.AUSZT
+  check_class: cross_field_check
+  grain: QMIH
+  fail_when: (`QMIH.AUSBS` > `QMIH.AUSVN`) & ~(`QMIH.AUSZT` > 0)
+  applies_when:
+    QMIH.MSAUS:
+    - X
+  severity: low
+  dimension: completeness
+  message: Breakdown with start and end dates has no calculated duration
+  why_it_matters: SAP derives the breakdown duration from start and end. A missing duration means dates were loaded outside
+    the dialog and downtime totals understate reality.
+  rule_authority: best_practice
+  sap_impact: Breakdown analysis totals exclude the notification.
+  fix_map:
+    __other__: Re-save the notification (IW22) so the duration is recalculated, or correct the load program.
+  record_fix_template: 'Notification {QMIH.QMNUM}: breakdown from {QMIH.AUSVN} to {QMIH.AUSBS} without duration.'
+- id: PM347
+  field: QMIH.INGRP
+  check_class: exists_check
+  grain: QMIH
+  fields:
+  - QMIH.IWERK
+  - QMIH.INGRP
+  target_table: T024I
+  target_fields:
+  - IWERK
+  - INGRP
+  applies_when:
+    QMIH.INGRP:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Notification planner group is not defined for its planning plant
+  why_it_matters: Notifications are routed to planner groups per plant. An undefined group means nobody picks the notification
+    up.
+  rule_authority: sap_hard_constraint
+  sap_impact: Notification work lists (IW28 by planner group) miss the notification.
+  fix_map:
+    __other__: Assign a planner group defined for the planning plant.
+  record_fix_template: 'Notification {QMIH.QMNUM}: planner group {QMIH.INGRP} not defined for plant {QMIH.IWERK}.'
+- id: PM348
+  field: QMEL.QMDAB
+  check_class: cross_field_check
+  grain: QMEL
+  fail_when: '`QMEL.QMDAB`.isna()'
+  applies_when:
+    QMEL.QMART:
+    - M1
+    - M2
+    - M3
+    QMEL.KZLOESCH:
+      blank: true
+    QMEL.PHASE:
+    - '1'
+    - '2'
+    - '3'
+    QMEL.LTRMN:
+      older_than_days: 90
+  severity: medium
+  dimension: timeliness
+  message: Maintenance notification is still open more than 90 days after its required end date
+  why_it_matters: Old open maintenance notifications hide real backlog and outdated requests. Planners cannot tell live work
+    from abandoned requests.
+  rule_authority: best_practice
+  sap_impact: Backlog KPIs are inflated; IW28 worklists are cluttered with obsolete requests.
+  fix_map:
+    __other__: Complete, postpone with a new date, or flag the notification for deletion (IW22).
+  record_fix_template: 'Notification {QMEL.QMNUM}: required end {QMEL.LTRMN}, still open.'
+- id: PM349
+  field: QMEL.LTRMN
+  check_class: cross_field_check
+  grain: QMEL
+  fail_when: '`QMEL.LTRMN` < `QMEL.STRMN`'
+  applies_when:
+    QMEL.QMART:
+    - M1
+    - M2
+    - M3
+    QMEL.KZLOESCH:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Maintenance notification required end is before its required start
+  why_it_matters: Required dates come from the priority and drive the maintenance schedule. Reversed dates make the notification
+    overdue before it starts.
+  rule_authority: best_practice
+  sap_impact: Schedule compliance and backlog ageing for the notification are wrong.
+  fix_map:
+    __other__: Correct the required start and end dates (IW22).
+  record_fix_template: 'Notification {QMEL.QMNUM}: required start {QMEL.STRMN}, required end {QMEL.LTRMN}.'
+- id: PM350
+  field: QMEL.AUFNR
+  check_class: exists_check
+  grain: QMEL
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  applies_when:
+    QMEL.QMART:
+    - M1
+    - M2
+    - M3
+    QMEL.KZLOESCH:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Maintenance notification refers to an order that does not exist
+  why_it_matters: The order records the work done for the notification. A dangling order reference loses costs and confirmations
+    from the notification history.
+  rule_authority: sap_hard_constraint
+  sap_impact: Notification-to-order navigation fails; cost per notification is understated.
+  fix_map:
+    __other__: Clear the order reference or link the correct order (IW22).
+  record_fix_template: 'Notification {QMEL.QMNUM}: order {QMEL.AUFNR} not found.'
+- id: PM351
+  field: QMEL.QMDAB
+  check_class: cross_field_check
+  grain: QMEL
+  fail_when: '`QMEL.QMDAB` < `QMEL.QMDAT`'
+  applies_when:
+    QMEL.QMART:
+    - M1
+    - M2
+    - M3
+    QMEL.KZLOESCH:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Maintenance notification is completed before the date it was reported
+  why_it_matters: Completion before creation is impossible and points to loaded or manipulated dates.
+  rule_authority: best_practice
+  sap_impact: Response-time KPIs become negative.
+  fix_map:
+    __other__: Correct the notification or completion date.
+  record_fix_template: 'Notification {QMEL.QMNUM}: reported {QMEL.QMDAT}, completed {QMEL.QMDAB}.'
+- id: PM352
+  field: QMEL.QMCOD
+  check_class: cross_field_check
+  grain: QMEL
+  fail_when: '`QMEL.QMGRP`.isna() | `QMEL.QMCOD`.isna()'
+  applies_when:
+    QMEL.QMART:
+    - M2
+    QMEL.KZLOESCH:
+      blank: true
+    QMEL.PHASE:
+    - '4'
+  severity: low
+  dimension: completeness
+  message: Completed malfunction report has no coding
+  why_it_matters: Coding classifies the failure. Uncoded malfunction reports cannot be analysed for root cause or failure
+    mode.
+  rule_authority: best_practice
+  sap_impact: Failure analysis by code group (MCI5) misses the notification.
+  fix_map:
+    __other__: Enter the code group and code before completing the notification.
+  record_fix_template: 'Notification {QMEL.QMNUM}: completed without coding.'
+- id: PM353
+  field: IMRG.POINT
+  check_class: exists_check
+  grain: IMRG
+  target_table: IMPTT
+  target_fields:
+  - POINT
+  severity: high
+  dimension: consistency
+  message: Measurement document refers to a measuring point that does not exist
+  why_it_matters: Readings only have meaning on their measuring point. Orphan readings cannot drive counter-based plans and
+    fail migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Performance-based scheduling ignores the reading; measurement history is incomplete.
+  fix_map:
+    __other__: Investigate the orphan documents and archive them.
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: measuring point {IMRG.POINT} not found.'
+- id: PM354
+  field: IMRG.MDOCM
+  check_class: uniqueness_check
+  grain: IMRG
+  fields:
+  - IMRG.POINT
+  - IMRG.IDATE
+  - IMRG.ITIME
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+  severity: medium
+  dimension: uniqueness
+  message: Measuring point has more than one live reading at the same date and time
+  why_it_matters: Two readings at the same moment on one point double-count counter progress or give conflicting values.
+  rule_authority: best_practice
+  sap_impact: Counter-based plans calculate the wrong performance; trend charts show spikes.
+  fix_map:
+    __other__: Reverse the duplicate measurement document (IK22).
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: duplicate reading on point {IMRG.POINT} at {IMRG.IDATE} {IMRG.ITIME}.'
+- id: PM355
+  field: IMRG.IDATE
+  check_class: cross_field_check
+  grain: IMRG
+  fail_when: '`IMRG.IDATE` > @today'
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Measurement document is dated in the future
+  why_it_matters: A future reading becomes the latest reading and blocks real readings that are older.
+  rule_authority: sap_hard_constraint
+  sap_impact: IK11 rejects valid readings; counter plans schedule from a future value.
+  fix_map:
+    __other__: Reverse the document and enter the reading with the correct date.
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: reading date {IMRG.IDATE} is in the future.'
+- id: PM356
+  field: IMRG.CDIFF
+  check_class: cross_field_check
+  grain: IMRG
+  fail_when: '`IMRG.CDIFF` < 0'
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+    IMRG.EXCHG:
+      blank: true
+  severity: high
+  dimension: accuracy
+  message: Counter reading goes backwards without a counter replacement
+  why_it_matters: Counters only increase. A negative difference without a replacement entry means a wrong reading that reduces
+    accumulated performance.
+  rule_authority: sap_hard_constraint
+  sap_impact: Performance-based maintenance calls come late; equipment is overdue for service.
+  fix_map:
+    __other__: Reverse the wrong reading or record a counter replacement (IK11).
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: counter difference {IMRG.CDIFF} on point {IMRG.POINT}.'
+- id: PM357
+  field: IMRG.RECDU
+  check_class: null_check
+  grain: IMRG
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+    IMRG.RECDVI:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Measurement document with a value has no unit
+  why_it_matters: A reading without a unit cannot be compared with limits or converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Limit checks and trend analysis cannot use the reading.
+  fix_map:
+    __other__: Reverse and re-enter the reading with the measuring point unit.
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: value without unit.'
+- id: PM358
+  field: IMRG.ERDAT
+  check_class: cross_field_check
+  grain: IMRG
+  fail_when: (`IMRG.ERDAT` - `IMRG.IDATE`).dt.days > 30
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+  severity: low
+  dimension: timeliness
+  message: Reading was entered more than 30 days after it was taken
+  why_it_matters: Late readings delay counter-based plans and condition alerts by the same amount.
+  rule_authority: best_practice
+  sap_impact: Performance-based calls are generated too late.
+  fix_map:
+    __other__: Shorten the reading cycle or capture readings at source (mobile).
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: taken {IMRG.IDATE}, entered {IMRG.ERDAT}.'
+- id: PM359
+  field: IMRG.CODGR
+  check_class: cross_field_check
+  grain: IMRG
+  fail_when: '`IMRG.VLCOD`.notna() & `IMRG.CODGR`.isna()'
+  applies_when:
+    IMRG.CANCL:
+      blank: true
+    IMRG.LVORM:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Measurement valuation code has no code group
+  why_it_matters: Codes are only unique within a code group. A code without its group cannot be interpreted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Condition evaluation by valuation code fails.
+  fix_map:
+    __other__: Re-enter the valuation with its code group.
+  record_fix_template: 'Measurement document {IMRG.MDOCM}: valuation code {IMRG.VLCOD} without group.'
+- id: PM360
+  field: IHSG.PMSOG
+  check_class: null_check
+  grain: IHSG
+  applies_when:
+    IHSG.LVORM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Object permit has no permit category
+  why_it_matters: The permit category decides what approval is required before work starts. A permit without category enforces
+    nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order release does not check the permit; safety approvals are skipped.
+  fix_map:
+    __other__: Assign the permit category on the object (IE02/IL02 permits).
+  record_fix_template: 'Permit {IHSG.COUNTER} on object {IHSG.OBJNR}: no permit category.'
+- id: PM361
+  field: IHSG.EQUNR
+  check_class: exists_check
+  grain: IHSG
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  applies_when:
+    IHSG.LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Object permit refers to equipment that does not exist
+  why_it_matters: A permit assigned to missing equipment never triggers the safety approval it was created for.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the real equipment are released without the permit.
+  fix_map:
+    __other__: Reassign the permit to the existing equipment or delete it.
+  record_fix_template: 'Permit {IHSG.COUNTER} on object {IHSG.OBJNR}: equipment {IHSG.EQUNR} not found.'
+- id: PM362
+  field: IHSG.TPLNR
+  check_class: exists_check
+  grain: IHSG
+  target_table: IFLOT
+  target_fields:
+  - TPLNR
+  applies_when:
+    IHSG.LVORM:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Object permit refers to a functional location that does not exist
+  why_it_matters: A permit on a missing location protects nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the location are released without the permit.
+  fix_map:
+    __other__: Reassign the permit to the existing location or delete it.
+  record_fix_template: 'Permit {IHSG.COUNTER} on object {IHSG.OBJNR}: functional location {IHSG.TPLNR} not found.'
+- id: PM363
+  field: IHSG.AUFNR
+  check_class: exists_check
+  grain: IHSG
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  applies_when:
+    IHSG.LVORM:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Order permit refers to an order that does not exist
+  why_it_matters: Order-level permits that point to missing orders are orphans.
+  rule_authority: best_practice
+  sap_impact: Permit reports show approvals for no order.
+  fix_map:
+    __other__: Delete the orphan permit records.
+  record_fix_template: 'Permit {IHSG.COUNTER} on object {IHSG.OBJNR}: order {IHSG.AUFNR} not found.'
+- id: PM364
+  field: EQBS.EQUNR
+  check_class: exists_check
+  grain: EQBS
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  severity: high
+  dimension: consistency
+  message: Serial number stock segment has no equipment master record
+  why_it_matters: Each serial stock segment belongs to one serialised equipment. Orphan segments show stock that no serial
+    number explains.
+  rule_authority: sap_hard_constraint
+  sap_impact: Serial number stock check fails; S/4HANA conversion of serial numbers reports the orphan.
+  fix_map:
+    __other__: Investigate the orphan segments and remove them with SAP-supported tools.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: equipment not found.'
+- id: PM365
+  field: EQBS.B_LAGER
+  check_class: exists_check
+  grain: EQBS
+  fields:
+  - EQBS.B_WERK
+  - EQBS.B_LAGER
+  target_table: T001L
+  target_fields:
+  - WERKS
+  - LGORT
+  applies_when:
+    EQBS.B_LAGER:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Serial number stock segment points to a storage location not defined for its plant
+  why_it_matters: The stock segment must match a real storage location so serial numbers reconcile with stock.
+  rule_authority: sap_hard_constraint
+  sap_impact: Serial number and stock reconciliation (IQ09 vs MMBE) do not agree.
+  fix_map:
+    __other__: Correct the serial number stock data by a goods movement to the right location.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: storage location {EQBS.B_LAGER} not defined in plant
+    {EQBS.B_WERK}.'
+- id: PM366
+  field: EQBS.LIFNR
+  check_class: exists_check
+  grain: EQBS
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  severity: medium
+  dimension: consistency
+  message: Serial number special stock refers to a vendor that does not exist
+  why_it_matters: Consignment and subcontracting serial stock belongs to a vendor. A missing vendor makes the stock unowned.
+  rule_authority: sap_hard_constraint
+  sap_impact: Special stock reports and consignment settlement cannot attribute the serial number.
+  fix_map:
+    __other__: Correct the special stock by a goods movement; restore the vendor if it was removed.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: vendor {EQBS.LIFNR} not found.'
+- id: PM367
+  field: EQBS.KUNNR
+  check_class: exists_check
+  grain: EQBS
+  target_table: KNA1
+  target_fields:
+  - KUNNR
+  severity: medium
+  dimension: consistency
+  message: Serial number special stock refers to a customer that does not exist
+  why_it_matters: Customer consignment and returnable packaging serial stock belongs to a customer that must exist.
+  rule_authority: sap_hard_constraint
+  sap_impact: Customer special stock reports cannot attribute the serial number.
+  fix_map:
+    __other__: Correct the special stock by a goods movement; restore the customer if it was removed.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: customer {EQBS.KUNNR} not found.'
+- id: PM368
+  field: EQBS.LIFNR
+  check_class: cross_field_check
+  grain: EQBS
+  fail_when: '`EQBS.LIFNR`.isna()'
+  applies_when:
+    EQBS.SOBKZ:
+    - K
+    - O
+  severity: medium
+  dimension: completeness
+  message: Serial number in vendor special stock has no vendor
+  why_it_matters: Vendor consignment and stock provided to a vendor must name the vendor that holds or owns it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Special stock by vendor (MB54/ME2O) cannot show the serial number.
+  fix_map:
+    __other__: Correct the serial stock data by a goods movement with the vendor.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: special stock {EQBS.SOBKZ} without vendor.'
+- id: PM369
+  field: EQBS.KUNNR
+  check_class: cross_field_check
+  grain: EQBS
+  fail_when: '`EQBS.KUNNR`.isna()'
+  applies_when:
+    EQBS.SOBKZ:
+    - W
+    - V
+  severity: medium
+  dimension: completeness
+  message: Serial number in customer special stock has no customer
+  why_it_matters: Customer consignment and returnable packaging stock must name the customer that holds it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Special stock by customer cannot show the serial number.
+  fix_map:
+    __other__: Correct the serial stock data by a goods movement with the customer.
+  record_fix_template: 'Serial stock segment of equipment {EQBS.EQUNR}: special stock {EQBS.SOBKZ} without customer.'

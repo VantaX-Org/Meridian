@@ -17,12 +17,12 @@ EXPECTED_COUNTS = {
     "asset_accounting": 84,
     "hcm": 118,
     "controlling": 93,
-    "mm_purchasing": 214,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
+    "mm_purchasing": 262,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 98,
     "sd_sales_orders": 208,
     "production_planning": 278,
     "project_system": 165,
-    "plant_maintenance": 188,
+    "plant_maintenance": 239,
     "quality_management": 133,
     "s4_readiness": 110,
     "banking_tax": 90,
