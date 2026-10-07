@@ -14,7 +14,7 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75  # ponytail: suite passed 45 min with the MM and SF rule packs; split or run in parallel (xdist) if it nears 75
 
     services:
       postgres:

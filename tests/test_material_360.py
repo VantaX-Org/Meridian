@@ -68,10 +68,10 @@ def test_duplicates_ean_and_description():
 
 def test_findings_sum_equals_rule_count():
     cat = m.rule_catalogue()
-    assert len(cat) == 417
+    assert len(cat) == 678
     rid = next(iter(cat))
     f = m.build_findings([{"check_id": rid, "record_key": f"MATNR={A}|WERKS=1000", "field_values": {}}], {},
                          m.present_tables(tables(), A), set(tables()))
     n = sum(len(v["failing"]) + v["passing_count"] + len(v["not_evaluated"]) for v in f["by_view"])
-    assert n == f["rules_total"] == 417
+    assert n == f["rules_total"] == 678
     assert f["by_view"][0]["failing"] or any(v["failing"] for v in f["by_view"])

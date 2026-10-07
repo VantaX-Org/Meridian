@@ -281,6 +281,9 @@ def test_material_master_golden():
         "MM399": {"MATNR=000000000000300010|WERKS=1100"},        # deleted plant row is still planned by MRP (PD)
         "MM171": {"MATNR=000000000000500097|WERKS=1000"},        # max stock 15 below reorder point 20 (HB)
         "MM182": {"MATNR=000000000000300050|WERKS=1000"},        # plant status Z9 not configured (T141)
+        "MM639": {"MATNR=000000000000300030|SPRAS=E"},           # "DO NOT USE" description, material not blocked
+        "MM645": {"MATNR=000000000000300099"},                   # flagged for deletion without a blocking MSTAE
+        "MM747": {"MATNR=000000000000300010|WERKS=1100|LGORT=0001"},  # storage location active under deleted plant 1100
     }, found
     # 300099 is flagged for deletion: out of every MARA-, MAKT- and plant-level rule, counted
     group = next(r for r in results if r.check_id == "MM007")
