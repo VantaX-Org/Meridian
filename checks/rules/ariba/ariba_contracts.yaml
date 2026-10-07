@@ -224,3 +224,458 @@ rules:
   fix_map:
     __other__: Run compliance evaluation for the contract.
   record_fix_template: Ariba contract {ARIBA_CONTRACT.CONTRACT_ID} has no compliance status.
+- id: ARC017
+  field: ARIBA_CONTRACT.TITLE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Ariba contract has no title
+  why_it_matters: Buyers and approvers pick the contract to release against by title; an untitled contract is found only
+    by guessing the ID.
+  rule_authority: best_practice
+  sap_impact: Buyers release against the wrong contract or raise an off-contract PO.
+  fix_map:
+    __blank__: Set a descriptive title in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: title is {actual_value}.'
+- id: ARC018
+  field: ARIBA_CONTRACT.STATUS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Ariba contract has no status
+  why_it_matters: Status drives whether releases and compliance checks treat the contract as usable.
+  rule_authority: best_practice
+  sap_impact: The contract is silently excluded from, or wrongly included in, active-contract reporting.
+  fix_map:
+    __blank__: Set the contract status in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: status is {actual_value}.'
+- id: ARC019
+  field: ARIBA_CONTRACT.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Draft
+  - InAuthoring
+  - InApproval
+  - InSignatures
+  - Approved
+  - Published
+  - Open
+  - Active
+  - Expiring
+  - Expired
+  - Terminated
+  - Cancelled
+  - OnHold
+  - Superseded
+  - Withdrawn
+  severity: medium
+  dimension: validity
+  message: Ariba contract status is not a recognised Contract Workspace lifecycle state
+  why_it_matters: Reporting and the expiry/renewal rules in this pack group contracts by status; an unrecognised value
+    falls out of every lifecycle count.
+  rule_authority: best_practice
+  sap_impact: The contract is missing from active/expired dashboards and from this pack's status-scoped checks.
+  valid_values_with_labels:
+    Draft: Draft — being authored, not yet in workflow
+    InAuthoring: In authoring — terms being drafted
+    InApproval: In internal approval workflow
+    InSignatures: Routed for signature
+    Approved: Internally approved, not yet published
+    Published: Published to Contract Workspace
+    Open: Open for release
+    Active: Active — current, releasable
+    Expiring: Approaching expiration
+    Expired: Past its expiration date
+    Terminated: Terminated before its term ended
+    Cancelled: Cancelled before taking effect
+    OnHold: On hold — temporarily not releasable
+    Superseded: Replaced by a later contract
+    Withdrawn: Withdrawn from workflow
+  fix_map:
+    __other__: Correct the status to a valid Contract Workspace lifecycle state.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: status ''{actual_value}'' is not a recognised state.'
+- id: ARC020
+  field: ARIBA_CONTRACT.COMPLIANCE_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Compliant
+  - NonCompliant
+  - PartiallyCompliant
+  - NotEvaluated
+  - Exempt
+  - Unknown
+  severity: low
+  dimension: validity
+  message: Ariba contract compliance status is not a recognised value
+  why_it_matters: Compliance reporting groups spend by this status; an unrecognised value is dropped from the report
+    instead of counted as a risk.
+  rule_authority: best_practice
+  sap_impact: Maverick/non-compliant spend under this contract is undercounted.
+  valid_values_with_labels:
+    Compliant: Spend follows the contract terms
+    NonCompliant: Spend violates the contract terms
+    PartiallyCompliant: Some spend follows the terms, some does not
+    NotEvaluated: Compliance evaluation has not run
+    Exempt: Excluded from compliance evaluation
+    Unknown: Compliance could not be determined
+  fix_map:
+    __other__: Correct the value or re-run compliance evaluation.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: compliance status ''{actual_value}'' is not recognised.'
+- id: ARC021
+  field: ARIBA_CONTRACT.CONTRACT_AMOUNT
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Ariba contract has no contract amount
+  why_it_matters: Without an amount, consumption can never be compared against a commitment.
+  rule_authority: best_practice
+  sap_impact: Over-consumption against the contract is never detected.
+  fix_map:
+    __blank__: Maintain the agreed contract value in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: contract amount is {actual_value}.'
+- id: ARC022
+  field: ARIBA_CONTRACT.CONTRACT_AMOUNT
+  check_class: cross_field_check
+  grain: ARIBA_CONTRACT
+  fail_when: "`ARIBA_CONTRACT.CONTRACT_AMOUNT` > 999999999"
+  severity: low
+  dimension: accuracy
+  message: Contract amount is implausibly large
+  why_it_matters: A nine-digit-plus contract value is almost always a unit or currency entry error (e.g. cents keyed as
+    units), not a real commitment.
+  rule_authority: best_practice
+  sap_impact: Consumption-versus-commitment reporting is skewed by one outlier contract.
+  fix_map:
+    __other__: Verify the amount and currency with the contract owner; correct the entry.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: amount {actual_value} is implausibly large.'
+- id: ARC023
+  field: ARIBA_CONTRACT.EFFECTIVE_DATE
+  check_class: cross_field_check
+  grain: ARIBA_CONTRACT
+  fail_when: "`ARIBA_CONTRACT.EFFECTIVE_DATE` < '2000-01-01'"
+  severity: low
+  dimension: accuracy
+  message: Contract effective date predates Ariba Contract Management
+  why_it_matters: Ariba's contract compliance module did not exist before this date, so a date this old is a placeholder
+    or a bad conversion, not a real effective date.
+  rule_authority: best_practice
+  sap_impact: The contract period used for release validation is wrong.
+  fix_map:
+    __other__: Correct the effective date in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: effective date {actual_value} predates Ariba Contract
+    Management.'
+- id: ARC024
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  grain: ARIBA_CONTRACT
+  fail_when: "`ARIBA_CONTRACT.EXPIRATION_DATE` > '2100-01-01'"
+  severity: low
+  dimension: accuracy
+  message: Contract expiration date is implausibly far in the future
+  why_it_matters: A century-plus validity period is almost never a real negotiated term; it is usually a default or
+    placeholder date left in place of a real expiry.
+  rule_authority: best_practice
+  sap_impact: The contract never surfaces on renewal or expiry reporting.
+  fix_map:
+    __other__: Correct the expiration date in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: expiration date {actual_value} is implausibly far
+    in the future.'
+- id: ARC025
+  field: ARIBA_CONTRACT.EFFECTIVE_DATE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.EFFECTIVE_DATE` > @today"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: medium
+  dimension: timeliness
+  message: Ariba contract is marked active but has not started yet
+  why_it_matters: A contract active before its own effective date lets releases be ordered against terms that are not
+    yet in force.
+  rule_authority: best_practice
+  sap_impact: Releases are approved against terms that do not legally apply yet.
+  fix_map:
+    __other__: Correct the effective date, or set the status to Draft/InApproval until it starts.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: marked active but not effective until {actual_value}.'
+- id: ARC026
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.EXPIRATION_DATE` > @today"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Terminated
+    - Cancelled
+    - Expired
+  severity: medium
+  dimension: consistency
+  message: Closed Ariba contract still shows an unexpired term
+  why_it_matters: A terminated, cancelled or expired contract whose expiration date is still in the future means the
+    status and the term disagree about whether the contract is usable.
+  rule_authority: best_practice
+  sap_impact: Compliance reports cannot tell whether the contract's spend window is actually closed.
+  fix_map:
+    __other__: Set the expiration date to match the status change, or correct the status.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: status {ARIBA_CONTRACT.STATUS} but expires
+    {actual_value}.'
+- id: ARC027
+  field: ARIBA_CONTRACT.TITLE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.TITLE` == `ARIBA_CONTRACT.CONTRACT_ID`"
+  severity: low
+  dimension: accuracy
+  message: Contract title is just the contract ID
+  why_it_matters: A title that repeats the ID was never given a real name, so nobody searching Contract Workspace by
+    description can find it.
+  rule_authority: best_practice
+  sap_impact: The contract is effectively unsearchable by business users.
+  fix_map:
+    __other__: Give the contract a descriptive title.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: title is just the contract ID.'
+- id: ARC028
+  field: ARIBA_CONTRACT.SUPPLIER
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_CONTRACT.SUPPLIER
+  - ARIBA_CONTRACT.EFFECTIVE_DATE
+  - ARIBA_CONTRACT.EXPIRATION_DATE
+  severity: medium
+  dimension: uniqueness
+  message: Supplier has more than one contract for the same validity period
+  why_it_matters: Two contracts with the same supplier and the same start/end dates are either a duplicate extract or
+    two competing agreements that releases cannot choose between unambiguously.
+  rule_authority: best_practice
+  sap_impact: Releases may be matched to the wrong one of the two contracts.
+  fix_map:
+    __other__: Confirm with the contract owner which contract is current; close or correct the duplicate.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: supplier and validity period duplicate another
+    contract.'
+- id: ARC029
+  field: ARIBA_CONTRACT.OWNER
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.OWNER`.isna()"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: high
+  dimension: completeness
+  message: Active Ariba contract has no owner
+  why_it_matters: A contract that is live but unowned has nobody to act on expiry, renewal or compliance alerts while
+    it is actually in use.
+  rule_authority: best_practice
+  sap_impact: Renewal and compliance follow-up on live spend never happens.
+  fix_map:
+    __other__: Assign a contract owner in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: active with no owner.'
+- id: ARC030
+  field: ARIBA_CONTRACT.COMPLIANCE_STATUS
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.COMPLIANCE_STATUS`.isna()"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: medium
+  dimension: completeness
+  message: Active Ariba contract has never had a compliance evaluation
+  why_it_matters: Spend is already flowing against this contract, but nothing confirms it follows the negotiated terms.
+  rule_authority: best_practice
+  sap_impact: Maverick spend under a live contract goes unreported.
+  fix_map:
+    __other__: Run compliance evaluation for the contract.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: active with no compliance evaluation.'
+- id: ARC031
+  field: ARIBA_CONTRACT.TITLE
+  check_class: similarity_check
+  block_by:
+  - ARIBA_CONTRACT.SUPPLIER
+  severity: medium
+  dimension: uniqueness
+  message: Contract title looks like a near-duplicate of another contract for the same supplier
+  why_it_matters: A retyped or re-exported contract with a near-identical title for the same supplier is usually the
+    same agreement entered twice, splitting its consumption across two records.
+  rule_authority: best_practice
+  sap_impact: Contract consumption and compliance reporting undercounts spend against the real, single agreement.
+  fix_map:
+    __other__: Confirm whether this duplicates another contract for the supplier; merge or close one.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: title near-duplicates another contract for the same
+    supplier.'
+- id: ARC032
+  field: ARIBA_CONTRACT.CONTRACT_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_CONTRACT.CONTRACT_ID
+  normalize: alnum
+  severity: medium
+  dimension: uniqueness
+  message: Contract ID duplicates another once punctuation and case are ignored
+  why_it_matters: 'IDs such as ''C-1001'' and ''c1001'' pass the exact-match uniqueness check but are the same contract
+    re-extracted with different formatting.'
+  rule_authority: best_practice
+  sap_impact: The same contract is counted twice in contract-count and compliance reporting.
+  fix_map:
+    __other__: Re-extract; if both IDs are real, correct the formatting of one.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: duplicates another ID once formatting is ignored.'
+- id: ARC033
+  field: ARIBA_CONTRACT.CONTRACT_AMOUNT
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.CURRENCY_CODE`.notna() & `ARIBA_CONTRACT.CONTRACT_AMOUNT`.isna()"
+  severity: medium
+  dimension: completeness
+  message: Ariba contract has a currency but no amount
+  why_it_matters: A currency with nothing to convert means the contract carries no measurable commitment, even though
+    it looks financially complete.
+  rule_authority: best_practice
+  sap_impact: The contract is treated as having a value in consumption reports when it has none.
+  fix_map:
+    __other__: Maintain the contract amount.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: currency {ARIBA_CONTRACT.CURRENCY_CODE} set but
+    amount is blank.'
+- id: ARC034
+  field: ARIBA_CONTRACT.OWNER
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.OWNER`.notna() & (`ARIBA_CONTRACT.OWNER` == `ARIBA_CONTRACT.SUPPLIER`)"
+  severity: medium
+  dimension: accuracy
+  message: Contract owner and supplier hold the same value
+  why_it_matters: The owner is an internal buyer and the supplier is an external vendor ID; the same value in both
+    usually means the two columns were swapped during extraction or entry.
+  rule_authority: best_practice
+  sap_impact: Expiry and renewal alerts are routed to a vendor ID, not a buyer.
+  fix_map:
+    __other__: Correct the owner field; it should name the internal contract owner.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: owner and supplier are both ''{actual_value}''.'
+- id: ARC035
+  field: ARIBA_CONTRACT.CONTRACT_ID
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.CONTRACT_ID` == `ARIBA_CONTRACT.SUPPLIER`"
+  severity: low
+  dimension: accuracy
+  message: Contract ID and supplier hold the same value
+  why_it_matters: A contract ID that matches its own supplier ID usually means a value was copied into the wrong column
+    during entry or extraction.
+  rule_authority: best_practice
+  sap_impact: Compliance and release matching may key off the wrong identifier.
+  fix_map:
+    __other__: Verify both fields and correct whichever was mis-keyed.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: ID and supplier are both ''{actual_value}''.'
+- id: ARC036
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.EXPIRATION_DATE` == `ARIBA_CONTRACT.EFFECTIVE_DATE`"
+  severity: medium
+  dimension: accuracy
+  message: Contract effective and expiration dates are identical
+  why_it_matters: A contract valid for zero days gives no window in which a release could ever be compliant.
+  rule_authority: best_practice
+  sap_impact: Every release against the contract is reported as out of its validity period.
+  fix_map:
+    __other__: Correct the effective or expiration date.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: effective and expiration dates are both
+    {actual_value}.'
+- id: ARC037
+  field: ARIBA_CONTRACT.TITLE
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_CONTRACT.TITLE
+  - ARIBA_CONTRACT.SUPPLIER
+  severity: low
+  dimension: uniqueness
+  message: Supplier has more than one contract with the identical title
+  why_it_matters: The same supplier and the same exact title on two contract records is usually one agreement entered
+    or extracted twice.
+  rule_authority: best_practice
+  sap_impact: Contract count and spend-under-contract reporting double-count the agreement.
+  fix_map:
+    __other__: Confirm which record is current; close or correct the duplicate.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: same title and supplier as another contract.'
+- id: ARC038
+  field: ARIBA_CONTRACT.STATUS
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.STATUS`.isna() & `ARIBA_CONTRACT.COMPLIANCE_STATUS`.notna()"
+  severity: low
+  dimension: consistency
+  message: Contract has a compliance status but no lifecycle status
+  why_it_matters: Compliance is evaluated against a lifecycle state; a compliance result with no status to anchor it
+    cannot be interpreted as current or historical.
+  rule_authority: best_practice
+  sap_impact: The compliance figure cannot be attributed to an active or closed contract.
+  fix_map:
+    __other__: Set the contract status.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: compliance status {ARIBA_CONTRACT.COMPLIANCE_STATUS}
+    but no status.'
+- id: ARC039
+  field: ARIBA_CONTRACT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.EXPIRATION_DATE`.isna()"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: high
+  dimension: completeness
+  message: Active Ariba contract has no expiration date
+  why_it_matters: A contract already in use with no expiry never triggers renewal review, so purchasing keeps releasing
+    against terms indefinitely.
+  rule_authority: best_practice
+  sap_impact: Expired commercial terms stay in use because nothing ever flags the contract for review.
+  fix_map:
+    __other__: Set the expiration date, or mark the contract as perpetual with a review date.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: active with no expiration date.'
+- id: ARC040
+  field: ARIBA_CONTRACT.CONTRACT_AMOUNT
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.CONTRACT_AMOUNT`.isna() | (`ARIBA_CONTRACT.CONTRACT_AMOUNT` <= 0)"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: high
+  dimension: accuracy
+  message: Active Ariba contract has no usable contract amount
+  why_it_matters: Releases are already being ordered against this contract, but with no positive amount there is
+    nothing to measure consumption against.
+  rule_authority: best_practice
+  sap_impact: Over-consumption against a live contract is never detected.
+  fix_map:
+    __other__: Maintain the agreed contract value.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: active with amount {actual_value}.'
+- id: ARC041
+  field: ARIBA_CONTRACT.TITLE
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.TITLE`.isna()"
+  applies_when:
+    ARIBA_CONTRACT.STATUS:
+    - Published
+    - Open
+    - Active
+  severity: medium
+  dimension: completeness
+  message: Active Ariba contract has no title
+  why_it_matters: A live contract with no title cannot be found by description when a buyer is choosing which contract
+    to release against.
+  rule_authority: best_practice
+  sap_impact: Buyers release against the wrong contract or skip the contract entirely.
+  fix_map:
+    __other__: Set a descriptive title in Contract Management.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: active with no title.'
+- id: ARC042
+  field: ARIBA_CONTRACT.OWNER
+  check_class: cross_field_check
+  fail_when: "`ARIBA_CONTRACT.OWNER`.notna() & (`ARIBA_CONTRACT.OWNER` == `ARIBA_CONTRACT.TITLE`)"
+  severity: low
+  dimension: accuracy
+  message: Contract owner and title hold the same value
+  why_it_matters: The owner is an internal user ID and the title is a free-text description; identical values usually
+    mean two adjacent columns were swapped on entry or extraction.
+  rule_authority: best_practice
+  sap_impact: Expiry and renewal alerts are routed to whatever text is in the title field, not a real owner.
+  fix_map:
+    __other__: Correct the owner field; it should name the internal contract owner.
+  record_fix_template: 'Ariba contract {ARIBA_CONTRACT.CONTRACT_ID}: owner and title are both ''{actual_value}''.'
