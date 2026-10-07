@@ -337,7 +337,7 @@ rules:
   field: ARIBA_CONTRACT.CONTRACT_AMOUNT
   check_class: cross_field_check
   grain: ARIBA_CONTRACT
-  fail_when: "`ARIBA_CONTRACT.CONTRACT_AMOUNT` > 999999999"
+  fail_when: "`ARIBA_CONTRACT.CONTRACT_AMOUNT` >= 1000000000"
   severity: low
   dimension: accuracy
   message: Contract amount is implausibly large
