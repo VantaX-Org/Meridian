@@ -194,6 +194,25 @@ tables:
       RANKING:        {source: Successor.rank, type: INTEGER, verify: true}
       RISK_OF_LOSS:   {source: User.riskOfLoss, type: STRING, verify: true}
       IMPACT_OF_LOSS: {source: User.impactOfLoss, type: STRING, verify: true}
+      TALENT_POOL_ID:            {source: TalentPool.id, type: STRING, length: 128, verify: true, description: Talent pool the candidate is assigned to}
+      DEVELOPMENT_PLAN_ID:       {source: DevelopmentGoal.planId, type: STRING, length: 128, verify: true, description: Linked development plan}
+      NINE_BOX_RATING:           {source: Successor.nineBoxRating, type: STRING, verify: true, description: Performance/potential grid position (1-9)}
+      PERFORMANCE_RATING:        {source: User.performanceRating, type: STRING, verify: true, description: Latest performance rating (1-5)}
+      POTENTIAL_RATING:          {source: User.potentialRating, type: STRING, verify: true, description: Potential rating (LOW/MEDIUM/HIGH)}
+      CALIBRATION_STATUS:        {source: Successor.calibrationStatus, type: STRING, verify: true, description: Talent review calibration status}
+      CALIBRATION_DATE:          {source: Successor.calibrationDate, type: DATETIME, verify: true, description: Date the nomination was last calibrated}
+      APPROVAL_STATUS:           {source: Successor.approvalStatus, type: STRING, verify: true, description: Approval status of the nomination}
+      NOMINATED_BY:               {source: Successor.nominatedBy, type: STRING, length: 100, verify: true, description: User ID of the nominating manager}
+      SUCCESSOR_TYPE:             {source: Successor.successorType, type: STRING, verify: true, description: INTERNAL or EXTERNAL candidate}
+      EMERGENCY_SUCCESSOR_FLAG:   {source: Successor.emergencySuccessor, type: BOOLEAN, verify: true, description: Flagged as an emergency (interim) successor}
+      BACKUP_SUCCESSOR_FLAG:      {source: Successor.backupSuccessor, type: BOOLEAN, verify: true, description: Flagged as a backup (non-primary) successor}
+      MOBILITY_FLAG:              {source: User.mobilityFlag, type: BOOLEAN, verify: true, description: Candidate is willing to relocate/transfer}
+      DIVERSITY_CANDIDATE_FLAG:   {source: User.diversityCandidate, type: BOOLEAN, verify: true, description: Flagged as a diverse-slate candidate for the plan}
+      ELIGIBLE_SUCCESSOR_FLAG:    {source: Successor.eligibilityFlag, type: BOOLEAN, verify: true, description: Meets the position's minimum eligibility criteria}
+      RETENTION_RISK_SCORE:       {source: User.retentionRiskScore, type: DECIMAL, verify: true, description: Flight-risk score (0-100) used for retention prioritisation}
+      TARGET_READY_DATE:          {source: Successor.targetReadyDate, type: DATE, verify: true, description: Date the candidate is targeted to be ready}
+      EFFECTIVE_START_DATE:       {source: Successor.startDate, type: DATE, verify: true, description: Effective start date of this nomination record}
+      EFFECTIVE_END_DATE:         {source: Successor.endDate, type: DATE, verify: true, description: Effective end date of this nomination record}
 
   JOBREQUISITION:
     description: Job requisitions (Recruiting)
