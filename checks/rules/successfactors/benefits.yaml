@@ -323,6 +323,14 @@ rules:
         or FAMILY via Admin Center > Benefits > Enrolment Import.
     record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: COVERAGE_LEVEL ''{actual_value}'' is invalid. Set to
       EMP_ONLY, EMP_SPOUSE, EMP_CHILD, EMP_SPOUSE_CHILD or FAMILY via Admin Center > Benefits > Enrolment Import.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: regex_replace
+        pattern: '[\s-]+'
+        repl: _
+      confidence: high
 
   - id: BEN022
     field: BENEFITENROLLMENT.STATUS
@@ -367,6 +375,24 @@ rules:
       __other__: Status '{invalid_value}' is not valid. Use A, P, T, W or E via Admin Center > Benefits > Enrolment Import.
     record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: STATUS ''{actual_value}'' is invalid. Set to A, P, T, W
       or E via Admin Center > Benefits > Enrolment Import.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          ACTIVE: A
+          A: A
+          PENDING: P
+          P: P
+          TERMINATED: T
+          T: T
+          WAIVED: W
+          W: W
+          ERROR: E
+          E: E
+          __other__: null
+      confidence: medium
 
   - id: BEN024
     field: BENEFITENROLLMENT.PLAN_TYPE
@@ -702,6 +728,15 @@ rules:
         (not a name or free text), via Admin Center > Benefits > Enrolment Import.
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: DEPENDENT_LINK ''{actual_value}'' contains invalid characters.
       Replace with the dependent identifier(s).'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: regex_replace
+        pattern: '[,|]+'
+        repl: ;
+      confidence: medium
 
   - id: BEN042
     field: BENEFITENROLLMENT.DEPENDENT_LINK
@@ -760,3 +795,591 @@ rules:
       __other__: Review and, if the election is not genuine, remove or correct the enrolment via Admin Center > Benefits.
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment recorded on {BENEFITENROLLMENT.ENROL_DATE}, after
       employment ended on {EMPEMPLOYMENT.END_DATE}.'
+  - id: BEN045
+    field: DEPENDENT.PERSON_ID
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Dependent record has no employee person ID
+    why_it_matters: The person ID links the dependent to the employee. Without it the dependent belongs to nobody.
+    rule_authority: best_practice
+    sap_impact: The dependent cannot be enrolled or replicated to infotype 0021.
+    fix_map:
+      __blank__: Link the dependent to the employee or delete the record.
+      __other__: Link the dependent to the employee or delete the record.
+    record_fix_template: 'Dependent {DEPENDENT.RELATED_PERSON_ID}: has no employee person ID. Link or delete.'
+  - id: BEN046
+    field: DEPENDENT.RELATED_PERSON_ID
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Dependent record has no related person ID
+    why_it_matters: The related person ID identifies the dependent. Without it the relationship has no person to cover.
+    rule_authority: best_practice
+    sap_impact: Benefit enrolments cannot reference the dependent.
+    fix_map:
+      __blank__: Create the dependent person and link it.
+      __other__: Create the dependent person and link it.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}: dependent relationship has no related person. Link the dependent.'
+  - id: BEN047
+    field: DEPENDENT.RELATIONSHIP_TYPE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Dependent has no relationship type
+    why_it_matters: The relationship type (spouse, child, parent) drives eligibility for each coverage level.
+    rule_authority: best_practice
+    sap_impact: The dependent cannot be enrolled; infotype 0021 subtype cannot be derived.
+    fix_map:
+      __blank__: Maintain the relationship type in Dependents.
+      __other__: Maintain the relationship type in Dependents.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: has no relationship type. Maintain it.'
+  - id: BEN048
+    field: DEPENDENT.START_DATE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Dependent relationship has no start date
+    why_it_matters: The start date decides from when the dependent can be covered.
+    rule_authority: best_practice
+    sap_impact: Coverage effective dates cannot be validated against the relationship.
+    fix_map:
+      __blank__: Maintain the relationship start date.
+      __other__: Maintain the relationship start date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship has no start date. Maintain it.'
+  - id: BEN049
+    field: DEPENDENT.RELATED_PERSON_ID
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.PERSON_ID` == `DEPENDENT.RELATED_PERSON_ID`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Employee is recorded as their own dependent
+    why_it_matters: A person cannot be their own dependent. The record was created by linking the wrong person.
+    rule_authority: best_practice
+    sap_impact: The employee is double-covered and premiums are charged twice.
+    fix_map:
+      __other__: Link the correct dependent person.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}: is recorded as their own dependent. Link the correct person.'
+  - id: BEN050
+    field: DEPENDENT.END_DATE
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.END_DATE` < `DEPENDENT.START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Dependent relationship ends before it starts
+    why_it_matters: A negative validity period means the relationship never existed in the system.
+    rule_authority: best_practice
+    sap_impact: The dependent is never eligible; infotype 0021 replication fails.
+    fix_map:
+      __other__: Correct the start or end date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship ends {DEPENDENT.END_DATE}, before it starts {DEPENDENT.START_DATE}. Correct the dates.'
+  - id: BEN051
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.DEPENDENT_BIRTH` > @today'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Dependent date of birth is in the future
+    why_it_matters: A birth date in the future is impossible; unborn children are not dependents until born.
+    rule_authority: best_practice
+    sap_impact: Age-based eligibility and premiums cannot be calculated.
+    fix_map:
+      __other__: Correct the dependent's date of birth.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: has a date of birth in the future. Correct it.'
+  - id: BEN052
+    field: DEPENDENT.START_DATE
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.START_DATE` < `DEPENDENT.DEPENDENT_BIRTH`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Dependent relationship starts before the dependent was born
+    why_it_matters: A relationship cannot start before the dependent exists.
+    rule_authority: best_practice
+    sap_impact: Coverage could be backdated to before birth; carriers reject the enrolment.
+    fix_map:
+      __other__: Set the relationship start to on or after the date of birth.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship starts {DEPENDENT.START_DATE}, before the dependent''s birth. Correct the start date.'
+  - id: BEN053
+    field: DEPENDENT.START_DATE
+    check_class: interval_check
+    group_by:
+    - DEPENDENT.PERSON_ID
+    - DEPENDENT.RELATED_PERSON_ID
+    start: DEPENDENT.START_DATE
+    end: DEPENDENT.END_DATE
+    severity: medium
+    dimension: consistency
+    message: Dependent relationship periods overlap
+    why_it_matters: One relationship between the same two people must have one validity at a time. Overlaps come from loads that did not delimit the previous record.
+    rule_authority: best_practice
+    sap_impact: The dependent appears twice for the overlap and may be enrolled twice.
+    fix_map:
+      __other__: Delimit the earlier relationship record.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: has overlapping relationship records. Delimit the earlier one.'
+  - id: BEN054
+    field: DEPENDENT.IS_BENEFICIARY
+    check_class: domain_value_check
+    allowed_values:
+    - 'true'
+    - 'false'
+    valid_values_with_labels:
+      'true': Beneficiary
+      'false': Not a beneficiary
+    severity: medium
+    dimension: validity
+    message: Beneficiary flag is not true or false
+    why_it_matters: The beneficiary flag decides who receives life cover and pension death benefits. Other values make the designation unclear.
+    rule_authority: best_practice
+    sap_impact: Beneficiary nominations cannot be confirmed with the carrier.
+    fix_map:
+      __other__: Set the beneficiary flag to true or false.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: beneficiary flag ''{actual_value}'' is not true/false. Correct it.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: lower
+      confidence: high
+  - id: BEN055
+    field: DEPENDENT.IS_BENEFICIARY
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Beneficiary flag is not maintained
+    why_it_matters: Life and pension plans need an explicit beneficiary designation for every dependent. A blank flag means the nomination was never captured.
+    rule_authority: best_practice
+    sap_impact: Death benefits go to the estate or are delayed while beneficiaries are traced.
+    fix_map:
+      __blank__: Ask the employee to confirm the beneficiary designation.
+      __other__: Ask the employee to confirm the beneficiary designation.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: beneficiary designation is not maintained. Confirm with the employee.'
+  - id: BEN056
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'child') & `DEPENDENT.DEPENDENT_BIRTH`.isna()
+    severity: high
+    dimension: completeness
+    message: Child dependent has no date of birth
+    why_it_matters: Child eligibility ends at an age limit. Without a birth date the age-out cannot be applied.
+    rule_authority: best_practice
+    sap_impact: Children stay covered beyond the age limit; the carrier bills for ineligible dependents.
+    fix_map:
+      __other__: Maintain the child's date of birth.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: child has no date of birth. Maintain it.'
+  - id: BEN057
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'spouse') & `DEPENDENT.DEPENDENT_BIRTH`.isna()
+    severity: medium
+    dimension: completeness
+    message: Spouse dependent has no date of birth
+    why_it_matters: Spouse life cover and medical premiums are age-rated. Without the birth date the premium cannot be priced.
+    rule_authority: best_practice
+    sap_impact: Carriers reject the enrolment or apply a default age band.
+    fix_map:
+      __other__: Maintain the spouse's date of birth.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: spouse has no date of birth. Maintain it.'
+  - id: BEN058
+    field: DEPENDENT.END_DATE
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'child') & ((@today - `DEPENDENT.DEPENDENT_BIRTH`).dt.days > 9497) & `DEPENDENT.END_DATE`.isna()
+    severity: low
+    dimension: timeliness
+    message: Child dependent older than 26 has no end date
+    why_it_matters: Most plans end child cover at 21 to 26 unless the child is a student or disabled. An open child relationship for someone over 26 should be reviewed.
+    rule_authority: best_practice
+    sap_impact: Ineligible dependents stay on the carrier feed and are billed.
+    fix_map:
+      __other__: Confirm continued eligibility (student/disabled) or end the dependent coverage.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: child is over 26 with no end date. Confirm eligibility.'
+  - id: BEN059
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'child') & ((`DEPENDENT.DEPENDENT_BIRTH` - `PERINFO.DATE_OF_BIRTH`).dt.days < 4383)
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Child dependent is less than 12 years younger than the employee
+    why_it_matters: A biological or adopted child younger by less than 12 years is implausible. The birth date was usually typed with the wrong year or the relationship type is wrong.
+    rule_authority: best_practice
+    sap_impact: Age-based eligibility is wrong and the dependent may age out early or never.
+    fix_map:
+      __other__: Correct the child's birth date or the relationship type.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: child is less than 12 years younger than the employee. Check birth date and relationship.'
+  - id: BEN060
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'child') & (`DEPENDENT.DEPENDENT_BIRTH` == `PERINFO.DATE_OF_BIRTH`)
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Child dependent has the employee's date of birth
+    why_it_matters: A child with exactly the employee's date of birth is a copy error from the employee record.
+    rule_authority: best_practice
+    sap_impact: Child age is wrong for eligibility and premiums.
+    fix_map:
+      __other__: Correct the child's date of birth.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: child has the same date of birth as the employee. Correct it.'
+  - id: BEN061
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'parent') & (`DEPENDENT.DEPENDENT_BIRTH` >= `PERINFO.DATE_OF_BIRTH`)
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Parent dependent is not older than the employee
+    why_it_matters: A parent must be born before the employee. The birth date or relationship type is wrong.
+    rule_authority: best_practice
+    sap_impact: Parent cover (common for extended family medical plans) is priced on the wrong age.
+    fix_map:
+      __other__: Correct the parent's birth date or the relationship type.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: parent is not older than the employee. Check birth date and relationship.'
+  - id: BEN062
+    field: DEPENDENT.START_DATE
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == 'spouse') & ((`DEPENDENT.START_DATE` - `DEPENDENT.DEPENDENT_BIRTH`).dt.days < 5844)
+    require_populated: true
+    severity: medium
+    dimension: accuracy
+    message: Spouse relationship starts before the spouse is 16
+    why_it_matters: Marriage below 16 is not legally possible in the jurisdictions SuccessFactors serves. The birth date or start date is wrong.
+    rule_authority: best_practice
+    sap_impact: Spouse age band and eligibility are wrong.
+    fix_map:
+      __other__: Correct the spouse's birth date or the relationship start date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: spouse relationship starts before the spouse is 16. Check the dates.'
+  - id: BEN063
+    field: DEPENDENT.START_DATE
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.START_DATE` - @today).dt.days > 365
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Dependent relationship starts more than a year ahead
+    why_it_matters: Relationships are recorded when they exist. A start date more than a year ahead is usually a wrong year.
+    rule_authority: best_practice
+    sap_impact: The dependent cannot be enrolled until the date is reached.
+    fix_map:
+      __other__: Correct the start date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship starts more than a year in the future. Correct the year.'
+  - id: BEN064
+    field: DEPENDENT.PERSON_ID
+    check_class: exists_check
+    target_table: PERINFO
+    target_fields:
+    - PERSON_ID
+    severity: high
+    dimension: consistency
+    message: Dependent belongs to an employee person that does not exist
+    why_it_matters: The person ID must exist in Personal Information. Orphaned dependents come from purged or merged employees.
+    rule_authority: best_practice
+    sap_impact: The dependent cannot be enrolled and is dropped in migration.
+    fix_map:
+      __other__: Link the dependent to an existing employee person or delete it.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: employee person does not exist. Link or delete.'
+  - id: BEN065
+    field: DEPENDENT.RELATED_PERSON_ID
+    check_class: exists_check
+    fields:
+    - DEPENDENT.RELATED_PERSON_ID
+    target_table: PERINFO
+    target_fields:
+    - PERSON_ID
+    severity: high
+    dimension: consistency
+    message: Dependent person has no personal information record
+    why_it_matters: Every dependent is a person with name and birth date in Personal Information. Without it the carrier feed has no data for the dependent.
+    rule_authority: best_practice
+    sap_impact: Carrier enrolment for the dependent fails.
+    fix_map:
+      __other__: Create the dependent's personal information.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: dependent has no personal information record. Create it.'
+  - id: BEN066
+    field: DEPENDENT.PERSON_ID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - PERSON_ID
+    severity: medium
+    dimension: consistency
+    message: Dependent belongs to a person with no employment
+    why_it_matters: Dependents are covered through the employee's employment. A person without employment has no benefits to extend.
+    rule_authority: best_practice
+    sap_impact: The dependent is migrated without an eligible employee.
+    fix_map:
+      __other__: Archive the dependent or link it to the employee person.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: employee person has no employment. Review.'
+  - id: BEN067
+    field: DEPENDENT.IS_BENEFICIARY
+    check_class: cross_field_check
+    fail_when: (`DEPENDENT.IS_BENEFICIARY`.str.lower() == 'true') & (`DEPENDENT.END_DATE` < @today)
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Ended dependent is still a beneficiary
+    why_it_matters: When a relationship ends (divorce, death) the beneficiary nomination must be reviewed. An ended relationship still nominated means death benefits may go to a former spouse.
+    rule_authority: best_practice
+    sap_impact: Life and pension payouts go to the wrong person.
+    fix_map:
+      __other__: Ask the employee to update the beneficiary nomination.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship ended {DEPENDENT.END_DATE} but is still a beneficiary. Review the nomination.'
+  - id: BEN068
+    field: DEPENDENT.RELATIONSHIP_TYPE
+    check_class: regex_check
+    pattern: ^\S+$
+    severity: low
+    dimension: validity
+    message: Relationship type code contains spaces
+    why_it_matters: Relationship type is a picklist code such as spouse or child. A code with embedded spaces is free text typed instead of a picklist value and does not match the eligibility rules.
+    rule_authority: best_practice
+    sap_impact: Eligibility rules skip the dependent.
+    fix_map:
+      __other__: Select the relationship type from the picklist.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship type ''{actual_value}'' is not a picklist code. Select the picklist value.'
+  - id: BEN069
+    field: DEPENDENT.PERSON_ID
+    check_class: uniqueness_check
+    fields:
+    - DEPENDENT.PERSON_ID
+    - DEPENDENT.RELATED_PERSON_ID
+    - DEPENDENT.START_DATE
+    severity: medium
+    dimension: uniqueness
+    message: Duplicate dependent relationship
+    why_it_matters: The same relationship with the same start date was loaded twice.
+    rule_authority: best_practice
+    sap_impact: The dependent is enrolled twice.
+    fix_map:
+      __other__: Delete the duplicate.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: duplicate relationship record. Delete one.'
+  - id: BEN070
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.COVERAGE_LEVEL` == 'EMP_SPOUSE') & (`BENEFITENROLLMENT.DEPENDENT_LINK`.str.count(';') > 0)
+    severity: medium
+    dimension: consistency
+    message: Employee + spouse coverage has more than one dependent
+    why_it_matters: EMP_SPOUSE covers one spouse. Several linked dependents mean children were added without upgrading the tier.
+    rule_authority: best_practice
+    sap_impact: Children are covered without premium, or the carrier rejects the extra dependents.
+    fix_map:
+      __other__: Upgrade the coverage level or remove the extra dependents.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: EMP_SPOUSE coverage on plan {BENEFITENROLLMENT.PLAN_ID} has more than one dependent. Review the tier.'
+  - id: BEN071
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.COVERAGE_LEVEL`.isin([''EMP_SPOUSE_CHILD'',''FAMILY'']) & `BENEFITENROLLMENT.DEPENDENT_LINK`.notna() & (`BENEFITENROLLMENT.DEPENDENT_LINK`.str.count('';'') == 0)'
+    severity: medium
+    dimension: consistency
+    message: Family coverage has only one dependent
+    why_it_matters: Spouse-and-child or family coverage needs at least two dependents. With one, the tier is too high.
+    rule_authority: best_practice
+    sap_impact: The employee pays a family premium for single-dependent cover.
+    fix_map:
+      __other__: Downgrade the coverage level or link the missing dependents.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: {BENEFITENROLLMENT.COVERAGE_LEVEL} coverage on plan {BENEFITENROLLMENT.PLAN_ID} has one dependent. Review the tier.'
+  - id: BEN072
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.EFFECTIVE_DATE` - `BENEFITENROLLMENT.ENROL_DATE`).dt.days > 400
+    require_populated: true
+    severity: medium
+    dimension: timeliness
+    message: Enrolment was made more than 400 days before coverage starts
+    why_it_matters: Open enrolment runs a few months before the plan year. An election more than 400 days ahead is a wrong year.
+    rule_authority: best_practice
+    sap_impact: The election applies to the wrong plan year.
+    fix_map:
+      __other__: Correct the enrolment date or the effective date.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} is more than 400 days before coverage. Check the dates.'
+  - id: BEN073
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS`.isin(['A','P'])) & (`FOCOMPANY.STATUS` == 'I')
+    severity: high
+    dimension: consistency
+    message: Active benefit enrolment in an inactive company
+    why_it_matters: A company marked inactive no longer employs anyone. Active or pending enrolments there are left over from a restructuring.
+    rule_authority: best_practice
+    sap_impact: Premiums are paid for a closed legal entity.
+    fix_map:
+      __other__: Move the enrolment to the new company or terminate it.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} is active in an inactive company. Review.'
+  - id: BEN074
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'W') & `BENEFITENROLLMENT.DEPENDENT_LINK`.notna()
+    severity: low
+    dimension: consistency
+    message: Waived enrolment still has dependents linked
+    why_it_matters: A waived plan covers nobody. Linked dependents are stale and may be picked up by the carrier feed.
+    rule_authority: best_practice
+    sap_impact: The carrier may continue dependent cover after the waiver.
+    fix_map:
+      __other__: Remove the dependent links from the waived enrolment.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: waived enrolment on plan {BENEFITENROLLMENT.PLAN_ID} still has dependents. Remove them.'
+  - id: BEN075
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'P') & ((@today - `BENEFITENROLLMENT.ENROL_DATE`).dt.days > 90)
+    require_populated: true
+    severity: medium
+    dimension: timeliness
+    message: Enrolment pending for more than 90 days
+    why_it_matters: Pending elections wait for evidence of insurability or approval. After 90 days the request is stalled.
+    rule_authority: best_practice
+    sap_impact: Coverage is not in force and the employee may be uninsured.
+    fix_map:
+      __other__: Approve, decline or chase the evidence for the pending enrolment.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} pending since {BENEFITENROLLMENT.ENROL_DATE}. Resolve.'
+  - id: BEN076
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'P') & (`BENEFITENROLLMENT.EMPLOYEE_COST` > 0)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Pending enrolment already carries an employee cost
+    why_it_matters: Employee contributions start when coverage is approved. A pending enrolment with a cost may be deducted in payroll before cover exists.
+    rule_authority: best_practice
+    sap_impact: Payroll deducts premiums for cover that is not in force.
+    fix_map:
+      __other__: Hold the deduction until approval, or approve the enrolment.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: pending enrolment on plan {BENEFITENROLLMENT.PLAN_ID} has an employee cost. Review.'
+  - id: BEN077
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.EFFECTIVE_DATE` < `PERINFO.DATE_OF_BIRTH`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Coverage starts before the employee was born
+    why_it_matters: Coverage dated before birth is a wrong date, usually a date-of-birth or century error.
+    rule_authority: best_practice
+    sap_impact: Carrier enrolment is rejected.
+    fix_map:
+      __other__: Correct the coverage effective date.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: coverage on plan {BENEFITENROLLMENT.PLAN_ID} starts before the employee''s birth. Correct the date.'
+  - id: BEN078
+    field: BENEFITENROLLMENT.PLAN_ID
+    check_class: regex_check
+    pattern: ^\S+$
+    severity: medium
+    dimension: validity
+    message: Plan ID contains spaces
+    why_it_matters: Plan IDs are codes. Spaces stop the enrolment from matching the plan definition and the carrier feed.
+    rule_authority: best_practice
+    sap_impact: The enrolment is not linked to its plan; premiums are not calculated.
+    fix_map:
+      __other__: Remove the spaces from the plan ID.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan ID ''{actual_value}'' contains spaces. Correct it.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      confidence: medium
+  - id: BEN079
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: regex_check
+    pattern: ^(?!(?:[^;]*;){10}).*$
+    severity: low
+    dimension: validity
+    message: More than 10 dependents on one enrolment
+    why_it_matters: Carrier files limit dependents per member. More than 10 is almost always a concatenation error.
+    rule_authority: best_practice
+    sap_impact: The carrier rejects the member record.
+    fix_map:
+      __other__: Review the dependent list.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} has more than 10 dependents. Review.'
+  - id: BEN080
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: regex_check
+    pattern: ^(?!(?:.*;)?([^;]+);(?:.*;)?\1(?:;|$)).*$
+    severity: medium
+    dimension: validity
+    message: Same dependent linked twice on one enrolment
+    why_it_matters: Each dependent is covered once per plan. A repeated ID doubles the dependent count and the tier.
+    rule_authority: best_practice
+    sap_impact: The carrier receives a duplicate dependent.
+    fix_map:
+      __other__: Remove the repeated dependent ID.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} lists the same dependent twice. Remove the repeat.'
+  - id: BEN081
+    field: BENEFITENROLLMENT.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.PLAN_TYPE` == 'MEDICAL') & (`BENEFITENROLLMENT.EFFECTIVE_DATE`.dt.day != 1)
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Medical coverage does not start on the first of a month
+    why_it_matters: Medical schemes bill whole months and membership starts on the first of a month. A mid-month start is a date error.
+    rule_authority: best_practice
+    sap_impact: The first premium is pro-rated by payroll but billed in full by the scheme.
+    fix_map:
+      __other__: Move the coverage start to the first of the month.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: medical coverage on plan {BENEFITENROLLMENT.PLAN_ID} starts mid-month. Use the first of the month.'
+  - id: BEN082
+    field: DEPENDENT.START_DATE
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.START_DATE` < `PERINFO.DATE_OF_BIRTH`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Dependent relationship starts before the employee was born
+    why_it_matters: No relationship can start before the employee exists. The start date or the employee birth date has a wrong century.
+    rule_authority: best_practice
+    sap_impact: Coverage dates validated against the relationship are wrong.
+    fix_map:
+      __other__: Correct the relationship start date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: relationship starts before the employee''s birth. Correct the start date.'
+  - id: BEN083
+    field: DEPENDENT.DEPENDENT_BIRTH
+    check_class: cross_field_check
+    fail_when: '`DEPENDENT.DEPENDENT_BIRTH` > `DEPENDENT.END_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Dependent was born after the relationship ended
+    why_it_matters: A relationship cannot end before the dependent exists.
+    rule_authority: best_practice
+    sap_impact: The dependent record is unusable for eligibility and is dropped by carriers.
+    fix_map:
+      __other__: Correct the dependent's birth date or the relationship end date.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}, dependent {DEPENDENT.RELATED_PERSON_ID}: dependent was born after the relationship ended. Correct the dates.'
+  - id: BEN084
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.ENROL_DATE` < `PERINFO.DATE_OF_BIRTH`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Enrolment was recorded before the employee was born
+    why_it_matters: An election dated before birth is a wrong date, usually a century error.
+    rule_authority: best_practice
+    sap_impact: Enrolment windows and life-event deadlines are evaluated on a wrong date.
+    fix_map:
+      __other__: Correct the enrolment date.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment on plan {BENEFITENROLLMENT.PLAN_ID} is dated before the employee''s birth. Correct the date.'
+  - id: BEN085
+    field: DEPENDENT.RELATED_PERSON_ID
+    check_class: regex_check
+    pattern: ^\S+$
+    severity: low
+    dimension: validity
+    message: Dependent person ID contains spaces
+    why_it_matters: Person IDs are keys. Spaces stop the dependent from matching Personal Information and the enrolment dependent links.
+    rule_authority: best_practice
+    sap_impact: The dependent cannot be linked to enrolments.
+    fix_map:
+      __other__: Remove the spaces from the person ID.
+    record_fix_template: 'Employee person {DEPENDENT.PERSON_ID}: dependent person ID ''{actual_value}'' contains spaces. Correct it.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      confidence: medium

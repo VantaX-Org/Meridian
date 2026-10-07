@@ -195,8 +195,9 @@ class _Fake:
     def __init__(self, data):
         self.data, self.calls = data, []
 
-    def read_entity_set(self, entity, select=None, **_):
+    def read_entity_set(self, entity, select=None, **kw):
         self.calls.append((entity, select))
+        self.kwargs = getattr(self, "kwargs", []) + [(entity, kw)]
         return pd.DataFrame(self.data.get(entity, []))
 
 
@@ -223,6 +224,21 @@ def test_s4hc_extractor_maps_odata_to_ecc_tables():
     assert [e for e, _ in conn.calls].count("A_BusinessPartner") == 1
     status = {c["table"]: c["status"] for c in coverage}
     assert status["BUT100"] == "live" and status["BUT000"] == "live"
+
+
+def test_sf_job_history_reads_all_effective_dated_records(monkeypatch):
+    import api.services.source_design as sd
+    monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
+    conn = _Fake({"EmpJob": [{"userId": "U1", "startDate": "2020-01-01", "seqNumber": 1},
+                             {"userId": "U1", "startDate": "2024-01-01", "seqNumber": 1}]})
+    cm = object.__new__(ConnectivityManager)
+    cm.session = None
+    frames, _ = ConnectivityManager._extract_successfactors(
+        cm, conn, ["employee_central"], dictionary_for_system("successfactors"), None)
+    assert len(frames["EMPJOBHIST"]) == 2
+    assert ("EmpJob", {"from_date": "1900-01-01"}) in conn.kwargs  # EMPJOBHIST: full history
+    assert ("EmpJob", {}) in conn.kwargs  # EMPEMPLOYMENT: current record
+    assert ("PerEmergencyContacts", {}) in conn.kwargs  # non-history entities read as of today
 
 
 class _Resp:

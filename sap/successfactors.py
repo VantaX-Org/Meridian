@@ -425,6 +425,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         select: list[str] | None = None,
         filter_expr: str | None = None,
         top: int = 0,
+        from_date: str | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -433,6 +434,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             select:     List of fields for $select. None = all fields.
             filter_expr: OData $filter expression string.
             top:        Maximum rows to return. 0 = no limit (all pages).
+            from_date:  OData fromDate for effective-dated entities. None = as of today
+                        (current record only); "1900-01-01" = full history.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -448,6 +451,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             params["$select"] = ",".join(select)
         if filter_expr:
             params["$filter"] = filter_expr
+        if from_date:
+            params["fromDate"] = from_date
         if top > 0:
             params["$top"] = str(top)
         else:

@@ -37,6 +37,35 @@ tables:
       EMPLOYMENT_TYPE: {source: EmpJob.employmentType, type: STRING, length: 128, picklist: employmentType, description: Employment type}
       EVENT_REASON:    {source: EmpJob.eventReason, type: STRING, length: 128, check_table: FOEventReason, description: Event reason}
       STATUS:          {source: EmpJob.emplStatus, type: STRING, length: 128, picklist: employee-status, description: Employee status}
+      JOB_START_DATE:  {source: EmpJob.startDate, type: DATE, verify: true, description: Effective start date of the current job record}
+      SEQ_NUMBER:      {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence of job records on the same start date}
+      EVENT:           {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event, description: Job event (hire, transfer, termination, ...)}
+      BUSINESS_UNIT:   {source: EmpJob.businessUnit, type: STRING, length: 128, verify: true, check_table: FOBusinessUnit, description: Business unit}
+      FTE:             {source: EmpJob.fte, type: DECIMAL, verify: true, description: Full-time equivalent}
+      STANDARD_HOURS:  {source: EmpJob.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours}
+      WORKING_DAYS_PER_WEEK: {source: EmpJob.workingDaysPerWeek, type: DECIMAL, verify: true, description: Working days per week}
+      IS_FULLTIME:     {source: EmpJob.isFulltimeEmployee, type: BOOLEAN, verify: true, description: Full-time employee flag}
+      REGULAR_TEMP:    {source: EmpJob.regularTemp, type: STRING, length: 128, verify: true, picklist: regular-temp, description: Regular or temporary}
+      EMPLOYEE_CLASS:  {source: EmpJob.employeeClass, type: STRING, length: 128, verify: true, picklist: employee-class, description: Employee class}
+      CONTRACT_TYPE:   {source: EmpJob.contractType, type: STRING, length: 128, verify: true, picklist: contractType, description: Contract type}
+      CONTRACT_END_DATE: {source: EmpJob.contractEndDate, type: DATE, verify: true, description: Fixed-term contract end date}
+      PROBATION_END_DATE: {source: EmpJob.probationPeriodEndDate, type: DATE, verify: true, description: Probation period end date}
+      PAY_GROUP:       {source: EmpJob.payGroup, type: STRING, length: 128, verify: true, check_table: FOPayGroup, description: Pay group}
+      PAY_SCALE_TYPE:  {source: EmpJob.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
+      PAY_SCALE_AREA:  {source: EmpJob.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
+      PAY_SCALE_GROUP: {source: EmpJob.payScaleGroup, type: STRING, length: 128, verify: true, description: Pay scale group}
+      PAY_SCALE_LEVEL: {source: EmpJob.payScaleLevel, type: STRING, length: 128, verify: true, description: Pay scale level}
+      COUNTRY_OF_COMPANY: {source: EmpJob.countryOfCompany, type: STRING, length: 128, verify: true, description: Country of the legal entity on the job record}
+      TIMEZONE:        {source: EmpJob.timezone, type: STRING, length: 128, verify: true, description: Time zone}
+      ORIGINAL_START_DATE: {source: EmpEmployment.originalStartDate, type: DATE, verify: true, description: Original start date (first hire)}
+      SENIORITY_DATE:  {source: EmpEmployment.seniorityDate, type: DATE, verify: true, description: Seniority start date}
+      SERVICE_DATE:    {source: EmpEmployment.serviceDate, type: DATE, verify: true, description: Service date}
+      LAST_DATE_WORKED: {source: EmpEmployment.lastDateWorked, type: DATE, verify: true, description: Last date worked}
+      PAYROLL_END_DATE: {source: EmpEmployment.payrollEndDate, type: DATE, verify: true, description: Payroll end date}
+      OK_TO_REHIRE:    {source: EmpEmployment.okToRehire, type: BOOLEAN, verify: true, description: Eligible for rehire}
+      IS_CONTINGENT_WORKER: {source: EmpEmployment.isContingentWorker, type: BOOLEAN, verify: true, description: Contingent worker flag}
+      IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment)}
+      ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: ST standard, GA global assignment, PH higher duty, ...}
 
   PERINFO:
     description: Personal information (PerPersonal ⋈ PerPerson ⋈ primary PerNationalId)
@@ -55,6 +84,10 @@ tables:
       DATE_OF_BIRTH:  {source: PerPerson.dateOfBirth, type: DATE, description: Date of birth}
       NATIONAL_ID:    {source: PerNationalId.nationalId, type: STRING, length: 256, description: National ID (primary)}
       NATIONAL_ID_COUNTRY: {source: PerNationalId.country, type: STRING, length: 128, description: Country that issued the national ID}
+      NATIONAL_ID_CARD_TYPE: {source: PerNationalId.cardType, type: STRING, length: 256, verify: true, description: National ID card type}
+      COUNTRY_OF_BIRTH: {source: PerPerson.countryOfBirth, type: STRING, length: 128, verify: true, check_table: Country, description: Country of birth}
+      DATE_OF_DEATH:  {source: PerPerson.dateOfDeath, type: DATE, verify: true, description: Date of death}
+      SECOND_NATIONALITY: {source: PerPersonal.secondNationality, type: STRING, length: 128, verify: true, check_table: Country, description: Second nationality}
 
   PEREMAIL:
     description: E-mail addresses
@@ -64,6 +97,7 @@ tables:
       PERSON_ID:     {source: PerEmail.personIdExternal, type: STRING, length: 100}
       EMAIL_TYPE:    {source: PerEmail.emailType, type: STRING, length: 128, picklist: ecEmailType, description: E-mail type}
       EMAIL_ADDRESS: {source: PerEmail.emailAddress, type: STRING, length: 100, description: E-mail address}
+      IS_PRIMARY:    {source: PerEmail.isPrimary, type: BOOLEAN, verify: true, description: Primary e-mail flag}
 
   PERPHONE:
     description: Phone numbers
@@ -73,6 +107,10 @@ tables:
       PERSON_ID:    {source: PerPhone.personIdExternal, type: STRING, length: 100}
       PHONE_TYPE:   {source: PerPhone.phoneType, type: STRING, length: 128, picklist: ecPhoneType, description: Phone type}
       PHONE_NUMBER: {source: PerPhone.phoneNumber, type: STRING, length: 256, description: Phone number}
+      COUNTRY_CODE: {source: PerPhone.countryCode, type: STRING, length: 256, verify: true, description: International dialling code}
+      AREA_CODE:    {source: PerPhone.areaCode, type: STRING, length: 256, verify: true, description: Area code}
+      EXTENSION:    {source: PerPhone.extension, type: STRING, length: 256, verify: true, description: Extension}
+      IS_PRIMARY:   {source: PerPhone.isPrimary, type: BOOLEAN, verify: true, description: Primary phone flag}
 
   PERADDRESS:
     description: Home address (default country format)
@@ -96,7 +134,7 @@ tables:
       USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
       EFFECTIVE_DATE:      {source: EmpCompensation.startDate, type: DATE}
       EFFECTIVE_DATE_COMP: {source: EmpPayCompRecurring.startDate, type: DATE, description: Pay component effective date}
-      PAY_GROUP:           {source: EmpCompensation.payGroup, type: STRING, length: 128, description: Pay group}
+      PAY_GROUP:           {source: EmpCompensation.payGroup, type: STRING, length: 128, check_table: FOPayGroup, description: Pay group}
       PAY_GRADE:           {source: EmpJob.payGrade, type: STRING, length: 128, check_table: FOPayGrade}
       PAY_TYPE:            {source: EmpPayCompRecurring.payComponent, type: STRING, length: 32, check_table: FOPayComponent, description: Pay component}
       SALARY:              {source: EmpPayCompRecurring.paycompvalue, type: DECIMAL, description: Pay component amount}
@@ -106,6 +144,44 @@ tables:
       PAY_RANGE_MID:       {source: FOPayRange.midPoint, type: DECIMAL}
       PAY_RANGE_MAX:       {source: FOPayRange.maximumPay, type: DECIMAL}
       COMPA_RATIO:         {source: EmpCompensationCalculatedNavigation.compaRatio, type: DECIMAL, verify: true}
+      EVENT_REASON:        {source: EmpCompensation.eventReason, type: STRING, length: 128, check_table: FOEventReason, verify: true, description: Compensation change reason}
+      PAY_SCALE_TYPE:      {source: EmpJob.payScaleType, type: STRING, length: 32, verify: true, description: SAP pay scale type (PA0008.TRFAR)}
+      PAY_SCALE_AREA:      {source: EmpJob.payScaleArea, type: STRING, length: 32, verify: true, description: SAP pay scale area (PA0008.TRFGB)}
+      PAY_SCALE_LEVEL:     {source: EmpJob.payScaleLevel, type: STRING, length: 32, verify: true, description: SAP pay scale level (PA0008.TRFST)}
+      END_DATE:            {source: EmpCompensation.endDate, type: DATE, verify: true, description: End of the compensation record's validity}
+      PAYCOMP_END_DATE:    {source: EmpPayCompRecurring.endDate, type: DATE, verify: true, description: End of the recurring pay component's validity}
+      PAYROLL_ID:          {source: EmpCompensation.payrollId, type: STRING, length: 256, verify: true, description: Personnel number in the payroll system (EC Payroll PERNR)}
+      PAYROLL_SYSTEM_ID:   {source: EmpCompensation.payrollSystemId, type: STRING, length: 128, verify: true, description: Payroll system the employee is replicated to}
+      PAY_GRADE_STATUS:    {source: FOPayGrade.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_RANGE_CURRENCY:  {source: FOPayRange.currency, type: STRING, length: 20, verify: true, description: Currency of the pay range}
+      PAY_RANGE_FREQUENCY: {source: FOPayRange.frequencyCode, type: STRING, length: 32, verify: true, description: Frequency the pay range is expressed in}
+      PAY_RANGE_STATUS:    {source: FOPayRange.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_COMPONENT_TYPE:  {source: FOPayComponent.payComponentType, type: STRING, length: 32, verify: true, description: Pay component type (AMOUNT / PERCENTAGE / NUMBER)}
+      PAY_COMPONENT_RECURRING: {source: FOPayComponent.recurring, type: BOOLEAN, verify: true, description: Pay component is a recurring component}
+      PAY_COMPONENT_CURRENCY:  {source: FOPayComponent.currency, type: STRING, length: 20, verify: true, description: Default currency of the pay component}
+      PAY_COMPONENT_FREQUENCY: {source: FOPayComponent.frequencyCode, type: STRING, length: 32, verify: true, description: Default frequency of the pay component}
+      PAY_COMPONENT_STATUS:    {source: FOPayComponent.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_COMPONENT_IS_EARNING: {source: FOPayComponent.isEarning, type: BOOLEAN, verify: true, description: Pay component is an earning (not a deduction)}
+      PAY_COMPONENT_CAN_OVERRIDE: {source: FOPayComponent.canOverride, type: BOOLEAN, verify: true, description: Default value of the pay component may be overridden}
+      PAY_COMPONENT_DEFAULT:   {source: FOPayComponent.payComponentValue, type: DECIMAL, verify: true, description: Default value of the pay component}
+      ANNUALIZATION_FACTOR:    {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year of the pay component frequency}
+      ANNUAL_SALARY:       {source: EmpCompensationCalculatedNavigation.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
+      RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: Calculated position in the pay range (0 at minimum, 1 at maximum)}
+
+  PAYCOMPNONREC:
+    description: One-time pay components (EmpPayCompNonRecurring)
+    source: EmpPayCompNonRecurring
+    keys: [USERID, PAY_COMPONENT, PAY_DATE]
+    fields:
+      USERID:          {source: EmpPayCompNonRecurring.userId, type: STRING, length: 100}
+      PAY_COMPONENT:   {source: EmpPayCompNonRecurring.payComponentCode, type: STRING, length: 32, verify: true, description: One-time pay component}
+      PAY_DATE:        {source: EmpPayCompNonRecurring.payDate, type: DATE}
+      VALUE:           {source: EmpPayCompNonRecurring.value, type: DECIMAL}
+      CURRENCY:        {source: EmpPayCompNonRecurring.currencyCode, type: STRING, length: 20}
+      ALT_COST_CENTER: {source: EmpPayCompNonRecurring.alternativeCostCenter, type: STRING, length: 128, verify: true, description: Cost centre charged instead of the employee's own}
+      SEQUENCE_NUMBER: {source: EmpPayCompNonRecurring.sequenceNumber, type: STRING, length: 32, verify: true, description: Sequence of several payments of one component on one date}
+      NUMBER_OF_UNITS: {source: EmpPayCompNonRecurring.numberOfUnits, type: DECIMAL, verify: true, description: Quantity paid (units-based component)}
+      UNIT_OF_MEASURE: {source: EmpPayCompNonRecurring.unitOfMeasure, type: STRING, length: 32, verify: true, description: Unit of the quantity paid}
 
   PAYRESULT:
     description: Payroll results (Employee Central Payroll export / Payroll Control Center)
@@ -126,6 +202,26 @@ tables:
       CURRENCY:     {source: payroll_export.currency, type: STRING, length: 5, verify: true}
       DELTA_FLAG:   {source: payroll_export.delta_flag, type: STRING, length: 1, verify: true}
 
+  PAYMENTINFO:
+    description: Payment information detail (PaymentInformationDetailV3 under PaymentInformationV3)
+    source: PaymentInformationV3, PaymentInformationDetailV3
+    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
+    fields:
+      USERID:         {source: PaymentInformationV3.worker, type: STRING, length: 100}
+      EFFECTIVE_DATE: {source: PaymentInformationV3.effectiveStartDate, type: DATE}
+      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, description: Sequence of the payment detail}
+      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment / regular / bonus / expenses}
+      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true, description: Bank transfer / cheque / cash}
+      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true}
+      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true, description: Bank (Bank foundation object)}
+      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
+      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
+      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC of the bank}
+      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Bank routing / branch code}
+      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
+      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true, description: Fixed amount paid to this account}
+      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true, description: Share of net pay paid to this account}
+
   TIMESHEET:
     description: Time recording (EmployeeTimeSheetEntry, EmployeeTime, TimeAccount)
     source: EmployeeTimeSheet, EmployeeTimeSheetEntry, EmployeeTime, TimeAccount
@@ -144,6 +240,28 @@ tables:
       SUBMITTED_DATE:     {source: EmployeeTimeSheet.submittedDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
       LAST_MODIFIED_DATE: {source: EmployeeTime.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified timestamp of the time record}
       QUANTITY_IN_DAYS:   {source: EmployeeTime.quantityInDays, type: DECIMAL, verify: true, description: Absence quantity expressed in days (full/half day)}
+      ENTRY_TIME_TYPE:     {source: EmployeeTimeSheetEntry.timeType, type: STRING, length: 128, verify: true, description: Attendance time type of the entry}
+      ENTRY_START_TIME:    {source: EmployeeTimeSheetEntry.startTime, type: STRING, length: 8, verify: true, description: Clock-in time (HH:MM or HH:MM:SS)}
+      ENTRY_END_TIME:      {source: EmployeeTimeSheetEntry.endTime, type: STRING, length: 8, verify: true, description: Clock-out time (HH:MM or HH:MM:SS)}
+      SHEET_START_DATE:    {source: EmployeeTimeSheet.startDate, type: DATE, verify: true, description: Timesheet period start}
+      SHEET_END_DATE:      {source: EmployeeTimeSheet.endDate, type: DATE, verify: true, description: Timesheet period end}
+      ABSENCE_ID:          {source: EmployeeTime.externalCode, type: STRING, length: 128, verify: true, description: Absence record ID}
+      ABSENCE_START_DATE:  {source: EmployeeTime.startDate, type: DATE, verify: true, description: Absence start}
+      ABSENCE_END_DATE:    {source: EmployeeTime.endDate, type: DATE, verify: true, description: Absence end}
+      ABSENCE_APPROVAL_STATUS: {source: EmployeeTime.approvalStatus, type: STRING, length: 32, verify: true, description: Absence approval status}
+      ABSENCE_HOURS:       {source: EmployeeTime.quantityInHours, type: DECIMAL, verify: true, description: Absence quantity in hours}
+      UNDETERMINED_END:    {source: EmployeeTime.undeterminedEndDate, type: BOOLEAN, verify: true, description: Absence has an open (undetermined) end date}
+      TIME_ACCOUNT_ID:     {source: TimeAccount.externalCode, type: STRING, length: 128, verify: true, description: Time account ID}
+      ACCOUNT_START_DATE:  {source: TimeAccount.startDate, type: DATE, verify: true, description: Time account validity start}
+      ACCOUNT_END_DATE:    {source: TimeAccount.endDate, type: DATE, verify: true, description: Time account validity end}
+      BOOKING_START_DATE:  {source: TimeAccount.bookingStartDate, type: DATE, verify: true, description: First date bookable against the account}
+      BOOKING_END_DATE:    {source: TimeAccount.bookingEndDate, type: DATE, verify: true, description: Last date bookable against the account}
+      ACCOUNT_CLOSED:      {source: TimeAccount.accountClosed, type: BOOLEAN, verify: true, description: Time account closed}
+      WORK_SCHEDULE:       {source: EmpJob.workscheduleCode, type: STRING, length: 128, verify: true, description: Work schedule of the employee}
+      HOLIDAY_CALENDAR:    {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar of the employee}
+      TIME_TYPE_PROFILE:   {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true, description: Time profile (allowed time types)}
+      TIME_RECORDING_PROFILE: {source: EmpJob.timeRecordingProfileCode, type: STRING, length: 128, verify: true, description: Time recording profile}
+      TIME_RECORDING_VARIANT: {source: EmpJob.timeRecordingVariant, type: STRING, length: 32, verify: true, description: DURATION or CLOCK_TIME recording}
 
   BENEFITENROLLMENT:
     description: Benefit enrolments
@@ -161,6 +279,19 @@ tables:
       DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
       STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
 
+  DEPENDENT:
+    description: Dependents and beneficiaries (PerPersonRelationship ⋈ related PerPerson)
+    source: PerPersonRelationship, PerPerson
+    keys: [PERSON_ID, RELATED_PERSON_ID, START_DATE]
+    fields:
+      PERSON_ID:         {source: PerPersonRelationship.personIdExternal, type: STRING, length: 100}
+      RELATED_PERSON_ID: {source: PerPersonRelationship.relatedPersonIdExternal, type: STRING, length: 100}
+      RELATIONSHIP_TYPE: {source: PerPersonRelationship.relationshipType, type: STRING, length: 128, verify: true, description: Picklist relation (spouse, child, ...)}
+      START_DATE:        {source: PerPersonRelationship.startDate, type: DATE}
+      END_DATE:          {source: PerPersonRelationship.endDate, type: DATE}
+      IS_BENEFICIARY:    {source: PerPersonRelationship.isBeneficiary, type: BOOLEAN, verify: true}
+      DEPENDENT_BIRTH:   {source: PerPerson.dateOfBirth (related person), type: DATE, verify: true, description: Date of birth of the dependent}
+
   GOALPLAN:
     description: Performance goals (Goal_<planId>)
     source: Goal_<planId>
@@ -177,6 +308,14 @@ tables:
       GOAL_CATEGORY:       {source: Goal.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
       CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
       COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
+      GOAL_PLAN_ID:        {source: GoalPlanTemplate.id, type: INTEGER, verify: true, description: Goal plan (template) the goal belongs to}
+      PLAN_START_DATE:     {source: GoalPlanTemplate.startDate, type: DATE, verify: true, description: Goal plan period start}
+      PLAN_END_DATE:       {source: GoalPlanTemplate.dueDate, type: DATE, verify: true, description: Goal plan period end (plan due date)}
+      LAST_MODIFIED:       {source: Goal.lastModified, type: DATETIME, verify: true, description: Goal last modified}
+      VISIBILITY_FLAG:     {source: Goal.flag, type: INTEGER, verify: true, description: 0 public / 1 private goal}
+      ACTUAL_ACHIEVEMENT:  {source: Goal.actualAchievement, type: DECIMAL, verify: true, description: Actual achievement recorded against the metric}
+      CURRENT_OWNER:       {source: Goal.currentOwner, type: STRING, length: 100, verify: true, description: User currently owning the goal}
+      MODIFIER:            {source: Goal.modifier, type: STRING, length: 100, verify: true, description: User who last modified the goal}
 
   PMREVIEWRESULT:
     description: Performance review forms
@@ -192,6 +331,16 @@ tables:
       SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
       FORM_TEMPLATE_ID: {source: FormHeader.templateId, type: STRING, length: 38, verify: true, description: Review form template}
       SIGNOFF_DATE:     {source: FormHeader.signOffDate, type: DATE, verify: true, description: Employee sign-off date}
+      FORM_DATA_ID:       {source: FormHeader.formDataId, type: INTEGER, verify: true, description: Form instance ID}
+      FORM_TEMPLATE_TYPE: {source: FormHeader.formTemplateType, type: STRING, length: 32, verify: true, description: Template type such as Review or 360}
+      FORM_TITLE:         {source: FormHeader.formTitle, type: STRING, length: 255, verify: true, description: Form title}
+      REVIEW_END_DATE:    {source: FormHeader.formReviewEndDate, type: DATE, verify: true, description: Review period end}
+      REVIEW_DUE_DATE:    {source: FormHeader.formReviewDueDate, type: DATE, verify: true, description: Form due date}
+      CREATION_DATE:      {source: FormHeader.creationDate, type: DATETIME, verify: true, description: Form launched on}
+      CURRENT_STEP:       {source: FormHeader.currentStep, type: STRING, length: 255, verify: true, description: Route-map step the form sits in}
+      STEP_DUE_DATE:      {source: FormHeader.stepDueDate, type: DATE, verify: true, description: Due date of the current route-map step}
+      FORM_ORIGINATOR:    {source: FormHeader.formOriginator, type: STRING, length: 100, verify: true, description: User who launched the form}
+      IS_RATED:           {source: FormHeader.isRated, type: BOOLEAN, verify: true, description: Form carries an overall rating}
 
   SUCCESSIONCANDIDATE:
     description: Succession nominations
@@ -205,6 +354,25 @@ tables:
       RANKING:        {source: Successor.rank, type: INTEGER, verify: true}
       RISK_OF_LOSS:   {source: User.riskOfLoss, type: STRING, verify: true}
       IMPACT_OF_LOSS: {source: User.impactOfLoss, type: STRING, verify: true}
+      TALENT_POOL_ID:            {source: TalentPool.id, type: STRING, length: 128, verify: true, description: Talent pool the candidate is assigned to}
+      DEVELOPMENT_PLAN_ID:       {source: DevelopmentGoal.planId, type: STRING, length: 128, verify: true, description: Linked development plan}
+      NINE_BOX_RATING:           {source: Successor.nineBoxRating, type: STRING, verify: true, description: Performance/potential grid position (1-9)}
+      PERFORMANCE_RATING:        {source: User.performanceRating, type: STRING, verify: true, description: Latest performance rating (1-5)}
+      POTENTIAL_RATING:          {source: User.potentialRating, type: STRING, verify: true, description: Potential rating (LOW/MEDIUM/HIGH)}
+      CALIBRATION_STATUS:        {source: Successor.calibrationStatus, type: STRING, verify: true, description: Talent review calibration status}
+      CALIBRATION_DATE:          {source: Successor.calibrationDate, type: DATETIME, verify: true, description: Date the nomination was last calibrated}
+      APPROVAL_STATUS:           {source: Successor.approvalStatus, type: STRING, verify: true, description: Approval status of the nomination}
+      NOMINATED_BY:               {source: Successor.nominatedBy, type: STRING, length: 100, verify: true, description: User ID of the nominating manager}
+      SUCCESSOR_TYPE:             {source: Successor.successorType, type: STRING, verify: true, description: INTERNAL or EXTERNAL candidate}
+      EMERGENCY_SUCCESSOR_FLAG:   {source: Successor.emergencySuccessor, type: BOOLEAN, verify: true, description: Flagged as an emergency (interim) successor}
+      BACKUP_SUCCESSOR_FLAG:      {source: Successor.backupSuccessor, type: BOOLEAN, verify: true, description: Flagged as a backup (non-primary) successor}
+      MOBILITY_FLAG:              {source: User.mobilityFlag, type: BOOLEAN, verify: true, description: Candidate is willing to relocate/transfer}
+      DIVERSITY_CANDIDATE_FLAG:   {source: User.diversityCandidate, type: BOOLEAN, verify: true, description: Flagged as a diverse-slate candidate for the plan}
+      ELIGIBLE_SUCCESSOR_FLAG:    {source: Successor.eligibilityFlag, type: BOOLEAN, verify: true, description: Meets the position's minimum eligibility criteria}
+      RETENTION_RISK_SCORE:       {source: User.retentionRiskScore, type: DECIMAL, verify: true, description: Flight-risk score (0-100) used for retention prioritisation}
+      TARGET_READY_DATE:          {source: Successor.targetReadyDate, type: DATE, verify: true, description: Date the candidate is targeted to be ready}
+      EFFECTIVE_START_DATE:       {source: Successor.startDate, type: DATE, verify: true, description: Effective start date of this nomination record}
+      EFFECTIVE_END_DATE:         {source: Successor.endDate, type: DATE, verify: true, description: Effective end date of this nomination record}
 
   JOBREQUISITION:
     description: Job requisitions (Recruiting)
@@ -220,6 +388,17 @@ tables:
       CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
       NUM_OPENINGS:   {source: JobRequisition.numberOfOpenings, type: INTEGER, verify: true}
       DEPARTMENT:     {source: JobRequisition.department, type: STRING, length: 128, verify: true}
+      POSITION_NUMBER: {source: JobRequisition.positionNumber, type: STRING, length: 128, verify: true, description: Position the requisition fills}
+      SALARY_MIN:      {source: JobRequisition.salaryMin, type: DECIMAL, verify: true, description: Pay range minimum}
+      SALARY_MAX:      {source: JobRequisition.salaryMax, type: DECIMAL, verify: true, description: Pay range maximum}
+      CURRENCY:        {source: JobRequisition.currency, type: STRING, length: 20, verify: true, description: Pay range currency}
+      JOB_CODE:        {source: JobRequisition.jobCode, type: STRING, length: 128, verify: true, description: Job classification}
+      COUNTRY:         {source: JobRequisition.country, type: STRING, length: 128, verify: true, description: Country of the job}
+      LOCATION:        {source: JobRequisition.location, type: STRING, length: 128, verify: true, description: Location of the job}
+      OPENINGS_FILLED: {source: JobRequisition.openingsFilled, type: INTEGER, verify: true, description: Openings already filled}
+      DELETED:         {source: JobRequisition.deleted, type: STRING, length: 16, verify: true, description: Requisition deleted flag}
+      INTERNAL_STATUS: {source: JobRequisition.internalStatus, type: STRING, length: 32, verify: true, description: Approval state such as Pre-Approved or Approved}
+      LAST_MODIFIED:   {source: JobRequisition.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified}
 
   JOBAPPLICATION:
     description: Job applications (Recruiting)
@@ -233,6 +412,10 @@ tables:
       APPLICATION_DATE: {source: JobApplication.applicationDate, type: DATETIME, verify: true}
       RATING:           {source: JobApplication.averageRating, type: DECIMAL, verify: true}
       REJECT_REASON:    {source: JobApplication.rejectReason, type: STRING, verify: true}
+      APPLICATION_ID:   {source: JobApplication.applicationId, type: INTEGER, verify: true, description: Application ID}
+      EMAIL:            {source: JobApplication.contactEmail, type: STRING, length: 255, verify: true, description: Candidate contact e-mail}
+      START_DATE:       {source: JobApplication.startDate, type: DATE, verify: true, description: Agreed start date on the application}
+      LAST_MODIFIED:    {source: JobApplication.lastModifiedDateTime, type: DATETIME, verify: true, description: Last status change}
 
   ONBOARDINGCANDIDATEINFO:
     description: Onboarding processes (Onboarding 2.0)
@@ -246,6 +429,11 @@ tables:
       MANAGER_ID:              {source: EmpJob.managerId, type: STRING, length: 100}
       TASK_COMPLETION:         {source: ONB2Process.processTrigger, type: STRING, verify: true}
       BACKGROUND_CHECK_STATUS: {source: ONB2Process.backgroundCheckStatus, type: STRING, verify: true}
+      PROCESS_ID:              {source: ONB2Process.processId, type: STRING, length: 128, verify: true, description: Onboarding process ID}
+      CANCELLED_ON:            {source: ONB2Process.cancelledOn, type: DATETIME, verify: true, description: Process cancelled on}
+      CANCEL_REASON:           {source: ONB2Process.cancelEventReason, type: STRING, length: 128, verify: true, description: Cancellation event reason}
+      HIRE_STATUS:             {source: ONB2Process.onboardingHireStatus, type: STRING, length: 32, verify: true, description: Hire status of the onboardee}
+      INTERNAL_HIRE:           {source: ONB2Process.onboardingInternalHire, type: BOOLEAN, verify: true, description: Internal hire / rehire flag}
 
   JOBOFFER:
     description: Job offers (Recruiting)
@@ -258,6 +446,10 @@ tables:
       OFFER_STATUS:  {source: JobOffer.status, type: STRING, verify: true}
       OFFER_DATE:    {source: JobOffer.offerDate, type: DATETIME, verify: true}
       START_DATE:    {source: JobOffer.startDate, type: DATE, verify: true}
+      APPLICATION_ID: {source: JobOffer.applicationId, type: INTEGER, verify: true, description: Application the offer belongs to}
+      SALARY:         {source: JobOffer.salaryBase, type: DECIMAL, verify: true, description: Offered base salary}
+      CURRENCY:       {source: JobOffer.currency, type: STRING, length: 20, verify: true, description: Offer currency}
+      LAST_MODIFIED:  {source: JobOffer.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified}
 
   LEARNINGASSIGNMENT:
     description: Learning assignments (SAP SuccessFactors Learning OData)
@@ -276,6 +468,12 @@ tables:
       CURRICULUM_ID:   {source: learning.curriculumID, type: STRING, length: 90, verify: true}
       CLASS_START_DATE: {source: learning.sessionStartDate, type: DATETIME, verify: true}
       CLASS_END_DATE:   {source: learning.sessionEndDate, type: DATETIME, verify: true}
+      REVISION_DATE:    {source: learning.revisionDate, type: DATETIME, verify: true, description: Item revision assigned}
+      EXPIRATION_DATE:  {source: learning.expirationDate, type: DATETIME, verify: true, description: Curriculum / certification expiry}
+      SCHEDULE_ID:      {source: learning.scheduleID, type: STRING, length: 90, verify: true, description: Scheduled offering (class) ID}
+      INSTRUCTOR_ID:    {source: learning.instructorID, type: STRING, length: 90, verify: true, description: Primary instructor of the scheduled offering}
+      ITEM_ACTIVE:      {source: Item.active, type: BOOLEAN, verify: true, description: Learning item is active in the catalogue}
+      ASSIGNMENT_TYPE:  {source: learning.assignmentTypeID, type: STRING, length: 90, verify: true, description: Assignment type (required/optional source)}
 
   LEARNINGCOMPLETION:
     description: Learning history / completions
@@ -289,6 +487,12 @@ tables:
       SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
       CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}
       PASSING_SCORE:   {source: learningHistory.cutScore, type: DECIMAL, verify: true}
+      REVISION_DATE:   {source: learningHistory.revisionDate, type: DATETIME, verify: true, description: Item revision completed}
+      ITEM_TYPE:       {source: learningHistory.componentTypeID, type: STRING, length: 90, verify: true, description: Item type}
+      TOTAL_HOURS:     {source: learningHistory.totalHours, type: DECIMAL, verify: true, description: Total hours of the item}
+      CONTACT_HOURS:   {source: learningHistory.contactHours, type: DECIMAL, verify: true, description: Contact (instructor-led) hours}
+      CPE_HOURS:       {source: learningHistory.cpeHours, type: DECIMAL, verify: true, description: Continuing professional education hours}
+      GRADE:           {source: learningHistory.grade, type: STRING, length: 90, verify: true, description: Grade awarded}
 
   POSITION:
     description: Positions (Position Management), current record
@@ -302,6 +506,10 @@ tables:
       COST_CENTER:      {source: Position.costCenter, type: STRING, length: 128, verify: true, description: Cost centre of the position}
       VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
       EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
+      CRITICALITY:      {source: Position.criticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
+      TARGET_FTE:       {source: Position.targetFTE, type: DECIMAL, verify: true, description: Target FTE of the position}
+      MULTIPLE_INCUMBENTS: {source: Position.multipleIncumbentsAllowed, type: BOOLEAN, verify: true, description: More than one incumbent allowed}
+      STANDARD_HOURS:   {source: Position.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours of the position}
 
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
@@ -321,3 +529,134 @@ tables:
       EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
       COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, description: Default cost centre of the department}
       STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}
+
+  # Employee Central depth (EC121+): full job history, permits, payment, emergency
+  # contacts, global assignments and the remaining Foundation Objects.
+  EMPJOBHIST:
+    description: Job history, every effective-dated EmpJob record (not only the current one)
+    source: EmpJob (all records, asOfDate not applied)
+    keys: [USERID, START_DATE, SEQ_NUMBER]
+    fields:
+      USERID:       {source: EmpJob.userId, type: STRING, length: 100, verify: true}
+      START_DATE:   {source: EmpJob.startDate, type: DATE, verify: true, description: Record effective start}
+      SEQ_NUMBER:   {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence on the same start date}
+      END_DATE:     {source: EmpJob.endDate, type: DATE, verify: true, description: Record effective end}
+      EVENT:        {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event}
+      EVENT_REASON: {source: EmpJob.eventReason, type: STRING, length: 128, verify: true, check_table: FOEventReason}
+      STATUS:       {source: EmpJob.emplStatus, type: STRING, length: 128, verify: true, picklist: employee-status}
+      COMPANY:      {source: EmpJob.company, type: STRING, length: 128, verify: true, check_table: FOCompany}
+      POSITION:     {source: EmpJob.position, type: STRING, length: 128, verify: true}
+      MANAGER_ID:   {source: EmpJob.managerId, type: STRING, length: 100, verify: true}
+
+  EMPWORKPERMIT:
+    description: Work permits and visas
+    source: EmpWorkPermit
+    keys: [USERID, COUNTRY, DOCUMENT_TYPE, DOCUMENT_NUMBER]
+    fields:
+      USERID:          {source: EmpWorkPermit.userId, type: STRING, length: 100, verify: true}
+      COUNTRY:         {source: EmpWorkPermit.country, type: STRING, length: 128, verify: true, check_table: Country}
+      DOCUMENT_TYPE:   {source: EmpWorkPermit.documentType, type: STRING, length: 128, verify: true, picklist: documentType}
+      DOCUMENT_NUMBER: {source: EmpWorkPermit.documentNumber, type: STRING, length: 256, verify: true}
+      ISSUE_DATE:      {source: EmpWorkPermit.issueDate, type: DATE, verify: true}
+      EXPIRATION_DATE: {source: EmpWorkPermit.expirationDate, type: DATE, verify: true}
+      IS_VALIDATED:    {source: EmpWorkPermit.isValidated, type: BOOLEAN, verify: true}
+
+  PAYMENTINFO:
+    description: Payment information details (bank accounts), MDF PaymentInformationDetailV3
+    source: PaymentInformationDetailV3
+    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
+    fields:
+      USERID:         {source: PaymentInformationDetailV3.PaymentInformationV3_worker, type: STRING, length: 100, verify: true}
+      EFFECTIVE_DATE: {source: PaymentInformationDetailV3.PaymentInformationV3_effectiveStartDate, type: DATE, verify: true}
+      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, verify: true}
+      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment method or expenses}
+      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true}
+      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true, check_table: Country}
+      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true}
+      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC}
+      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
+      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
+      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Routing / sort code / BSB / branch code}
+      ACCOUNT_OWNER:  {source: PaymentInformationDetailV3.accountOwner, type: STRING, length: 256, verify: true}
+      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
+      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true}
+      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true}
+
+  PEREMERGENCY:
+    description: Emergency contacts
+    source: PerEmergencyContacts
+    keys: [PERSON_ID, NAME, RELATIONSHIP]
+    fields:
+      PERSON_ID:    {source: PerEmergencyContacts.personIdExternal, type: STRING, length: 100, verify: true}
+      NAME:         {source: PerEmergencyContacts.name, type: STRING, length: 256, verify: true}
+      RELATIONSHIP: {source: PerEmergencyContacts.relationship, type: STRING, length: 128, verify: true, picklist: relation}
+      PHONE:        {source: PerEmergencyContacts.phone, type: STRING, length: 256, verify: true}
+      EMAIL:        {source: PerEmergencyContacts.email, type: STRING, length: 256, verify: true}
+      PRIMARY_FLAG: {source: PerEmergencyContacts.primaryFlag, type: STRING, length: 1, verify: true, description: Y primary / N}
+
+  EMPGLOBALASSIGNMENT:
+    description: Global assignment details of a host employment
+    source: EmpGlobalAssignment
+    keys: [USERID]
+    fields:
+      USERID:           {source: EmpGlobalAssignment.userId, type: STRING, length: 100, verify: true}
+      ASSIGNMENT_TYPE:  {source: EmpGlobalAssignment.assignmentType, type: STRING, length: 128, verify: true}
+      START_DATE:       {source: EmpGlobalAssignment.startDate, type: DATE, verify: true}
+      END_DATE:         {source: EmpGlobalAssignment.endDate, type: DATE, verify: true}
+      PLANNED_END_DATE: {source: EmpGlobalAssignment.plannedEndDate, type: DATE, verify: true}
+
+  FOEVENTREASON:
+    description: Event reasons (Foundation Object)
+    source: FOEventReason
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOEventReason.externalCode, type: STRING, length: 128, verify: true}
+      EVENT:         {source: FOEventReason.event, type: STRING, length: 128, verify: true, picklist: event}
+      EMPL_STATUS:   {source: FOEventReason.emplStatus, type: STRING, length: 128, verify: true, description: Employee status the reason sets}
+      STATUS:        {source: FOEventReason.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+
+  FOLOCATION:
+    description: Locations (Foundation Object)
+    source: FOLocation
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:  {source: FOLocation.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:         {source: FOLocation.status, type: STRING, length: 2, verify: true}
+      TIMEZONE:       {source: FOLocation.timezone, type: STRING, length: 128, verify: true}
+      STANDARD_HOURS: {source: FOLocation.standardHours, type: DECIMAL, verify: true}
+
+  FOJOBCODE:
+    description: Job classifications (Foundation Object)
+    source: FOJobCode
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:  {source: FOJobCode.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:         {source: FOJobCode.status, type: STRING, length: 2, verify: true}
+      IS_FULLTIME:    {source: FOJobCode.isFulltimeEmployee, type: BOOLEAN, verify: true}
+      EMPLOYEE_CLASS: {source: FOJobCode.employeeClass, type: STRING, length: 128, verify: true}
+      REGULAR_TEMP:   {source: FOJobCode.regularTemporary, type: STRING, length: 128, verify: true}
+
+  FODIVISION:
+    description: Divisions (Foundation Object)
+    source: FODivision
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FODivision.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FODivision.status, type: STRING, length: 2, verify: true}
+
+  FOBUSINESSUNIT:
+    description: Business units (Foundation Object)
+    source: FOBusinessUnit
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOBusinessUnit.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FOBusinessUnit.status, type: STRING, length: 2, verify: true}
+
+  FOCOSTCENTER:
+    description: Cost centres (Foundation Object)
+    source: FOCostCenter
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
+      LEGAL_ENTITY:  {source: FOCostCenter.legalEntity, type: STRING, length: 128, verify: true}

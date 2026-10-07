@@ -500,6 +500,7 @@ def test_recruiting_onboarding_golden():
         "REC005": {"CANDIDATE_ID=70005|JOB_REQ_ID=1201"},
         "REC014": {"USERID=100132"},
         "REC020": {"USERID=100133"},
+        "REC071": {"USERID=100133"},  # same hire-date mismatch, checked against the employment start
     }, found
 
 
@@ -555,6 +556,7 @@ def test_learning_management_golden():
         "LMS019": {"USERID=100107|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-11"},
         "LMS020": {"USERID=100108|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-12"},
         "LMS021": {"USERID=100109|COURSE_ID=COC-2025|COMPLETION_DATE=2025-02-13"},
+        "LMS049": {"USERID=100106|COURSE_ID=POPIA-2026", "USERID=100109|COURSE_ID=EXCEL-ADV"},  # open and past due, not Overdue
     }, found
 
 

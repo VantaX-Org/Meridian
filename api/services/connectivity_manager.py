@@ -440,12 +440,14 @@ class ConnectivityManager:
                 coverage.append({"table": table, "status": "upload_required",
                                  "detail": "source is not an SF OData entity (e.g. payroll export)"})
                 continue
+            # effective-dated entities return only today's record unless fromDate is given
+            history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
             merged = None
             for ent, props in by_entity.items():
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props] if len(by_entity) > 1 else []
                 try:
-                    df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)))
+                    df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)), **history)
                 except Exception as e:
                     coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
                     continue

@@ -100,11 +100,11 @@ rules:
         Center > Time Management.
     record_fix_template: 'Timesheet {TIMESHEET.USERID}: APPROVAL_STATUS ''{actual_value}'' is invalid. Set to pending/approved/rejected/cancelled
       via Admin Center > Time Management.'
-
-
-
-
-
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
 
   - id: TIME011
     field: TIMESHEET.USERID
@@ -129,6 +129,10 @@ rules:
     record_fix_template: >-
       Timesheet {TIMESHEET.USERID}: USERID format invalid (value: {actual_value}).
       Correct to match Employee Central format via Admin Center.
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
 
   - id: TIME012
     field: TIMESHEET.HOURS
@@ -289,6 +293,10 @@ rules:
     fix_map:
       __other__: Use a cost centre of at most 10 characters or add a mapping in the integration.
     record_fix_template: 'Time record for user {TIMESHEET.USERID}: cost centre does not fit the SAP cost centre. Correct the record.'
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
   - id: TIME022
     field: TIMESHEET.HOURS
     check_class: cross_field_check
@@ -616,6 +624,10 @@ rules:
     fix_map:
       __other__: Correct the approver user ID to match the Employee Central USERID format.
     record_fix_template: 'Timesheet {TIMESHEET.USERID}: approver ID format invalid (value: {actual_value}).'
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
 
   - id: TIME040
     field: TIMESHEET.APPROVER_ID
@@ -729,6 +741,10 @@ rules:
       __other__: Correct the cost centre to a valid SAP cost centre code (value found {actual_value}).
     record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: cost centre has invalid characters (value:
       {actual_value}).'
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
 
   - id: TIME046
     field: TIMESHEET.DATE
@@ -747,3 +763,633 @@ rules:
       __other__: Review the backlog of old pending entries and approve, reject or cancel each one so they stop
         blocking payroll reconciliation.
     record_fix_template: 'Timesheet {TIMESHEET.USERID}: pending since {TIMESHEET.DATE}, more than 60 days ago.'
+
+  - id: TIME047
+    field: TIMESHEET.ENTRY_TIME_TYPE
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9._-]{1,128}$
+    severity: low
+    dimension: validity
+    message: Time-sheet entry time type contains invalid characters
+    why_it_matters: The entry's time type is an external code of the TimeType object; whitespace or symbols break the valuation
+      of the entry (pay type, overtime, account).
+    rule_authority: best_practice
+    sap_impact: Entry not valuated; not paid.
+    fix_map:
+      __other__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Use the time type's
+        external code.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: time type ''{actual_value}'' is invalid.'
+    auto_fix: &id001
+      steps:
+      - op: strip
+      confidence: high
+  - id: TIME048
+    field: TIMESHEET.ENTRY_TIME_TYPE
+    check_class: null_check
+    applies_when:
+      TIMESHEET.HOURS:
+        gt: 0
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: high
+    dimension: completeness
+    message: Worked hours recorded without a time type
+    why_it_matters: Time valuation turns each entry into pay types by its time type. Hours without a time type are not valuated
+      and never reach payroll.
+    rule_authority: best_practice
+    sap_impact: Worked hours unpaid.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Set the time type
+        on the entry.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: {TIMESHEET.HOURS} hours with no time type.'
+  - id: TIME049
+    field: TIMESHEET.ACCOUNT_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ACCOUNT_END_DATE` < `TIMESHEET.ACCOUNT_START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Time account ends before it starts
+    why_it_matters: An inverted account validity period cannot receive accruals or bookings.
+    rule_authority: best_practice
+    sap_impact: Leave accrual lost.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} valid {TIMESHEET.ACCOUNT_START_DATE}
+      to {TIMESHEET.ACCOUNT_END_DATE}.'
+  - id: TIME050
+    field: TIMESHEET.BOOKING_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.BOOKING_END_DATE` < `TIMESHEET.BOOKING_START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Time account booking period ends before it starts
+    why_it_matters: No absence can be booked against an account whose booking period is inverted.
+    rule_authority: best_practice
+    sap_impact: Absences rejected or booked to the wrong account.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} bookable {TIMESHEET.BOOKING_START_DATE}
+      to {TIMESHEET.BOOKING_END_DATE}.'
+  - id: TIME051
+    field: TIMESHEET.ACCOUNT_CLOSED
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ACCOUNT_CLOSED`.str.lower().isin([''true'',''y'',''1'',''x'']) & (`TIMESHEET.BOOKING_END_DATE` >
+      @today)'
+    severity: medium
+    dimension: consistency
+    message: Closed time account still has an open booking period
+    why_it_matters: Closing an account (period-end processing) stops bookings. A future booking end on a closed account contradicts
+      it and the remaining balance may have been paid out or forfeited.
+    rule_authority: best_practice
+    sap_impact: Balance paid out while absences still deducted.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures. Reopen or correct the
+        booking end date.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} closed, bookable
+      until {TIMESHEET.BOOKING_END_DATE}.'
+  - id: TIME052
+    field: TIMESHEET.ACCOUNT_END_DATE
+    check_class: cross_field_check
+    fail_when: ((@today - `TIMESHEET.ACCOUNT_END_DATE`).dt.days > 90) & ~`TIMESHEET.ACCOUNT_CLOSED`.str.lower().isin(['true','y','1','x'])
+    severity: medium
+    dimension: timeliness
+    message: Time account ended more than 90 days ago but was never closed
+    why_it_matters: Period-end processing closes expired accounts and handles carry-forward or payout. An unclosed account keeps
+      a stale balance.
+    rule_authority: best_practice
+    sap_impact: Carry-forward and payout never processed.
+    fix_map:
+      __blank__: Run period-end processing for the account.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} ended {TIMESHEET.ACCOUNT_END_DATE},
+      still open.'
+  - id: TIME053
+    field: TIMESHEET.BALANCE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ACCOUNT_CLOSED`.str.lower().isin([''true'',''y'',''1'',''x'']) & (`TIMESHEET.BALANCE` < 0)'
+    severity: medium
+    dimension: consistency
+    message: Closed time account has a negative balance
+    why_it_matters: A negative balance at closure is leave taken in advance that was never recovered.
+    rule_authority: best_practice
+    sap_impact: Overpaid leave not recovered.
+    fix_map:
+      __blank__: Recover the negative balance (payroll deduction or carry-forward).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} closed at {TIMESHEET.BALANCE}.'
+  - id: TIME054
+    field: TIMESHEET.TIME_ACCOUNT_ID
+    check_class: null_check
+    applies_when:
+      TIMESHEET.TIME_ACCOUNT_TYPE:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Time account type recorded without a time account
+    why_it_matters: A time account type is only meaningful with the account instance it describes.
+    rule_authority: best_practice
+    sap_impact: Balance cannot be traced to an account.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account type {TIMESHEET.TIME_ACCOUNT_TYPE} with no
+      account.'
+  - id: TIME055
+    field: TIMESHEET.TIME_ACCOUNT_ID
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9._-]{1,128}$
+    severity: low
+    dimension: validity
+    message: Time account ID contains invalid characters
+    why_it_matters: Account IDs are external codes; whitespace breaks the link.
+    rule_authority: best_practice
+    sap_impact: Account link broken.
+    fix_map:
+      __other__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account ID ''{actual_value}'' is invalid.'
+    auto_fix: *id001
+  - id: TIME056
+    field: TIMESHEET.ABSENCE_ID
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9._-]{1,128}$
+    severity: low
+    dimension: validity
+    message: Absence ID contains invalid characters
+    why_it_matters: Absence IDs are EmployeeTime external codes; whitespace or symbols break the link to the absence request.
+    rule_authority: best_practice
+    sap_impact: Absence link broken.
+    fix_map:
+      __other__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence ID ''{actual_value}'' is invalid.'
+    auto_fix: *id001
+  - id: TIME057
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.DATE` < `TIMESHEET.ABSENCE_START_DATE`) | (`TIMESHEET.DATE` > `TIMESHEET.ABSENCE_END_DATE`)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Absence day lies outside the absence's own period
+    why_it_matters: Each absence day must fall within the absence request's start and end date. A day outside it was deducted
+      for a period the employee did not request.
+    rule_authority: best_practice
+    sap_impact: Leave balance deducted wrongly.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: outside absence {TIMESHEET.ABSENCE_START_DATE} to
+      {TIMESHEET.ABSENCE_END_DATE}.'
+  - id: TIME058
+    field: TIMESHEET.ABSENCE_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_END_DATE` < `TIMESHEET.ABSENCE_START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Absence ends before it starts
+    why_it_matters: An inverted absence period cannot be valuated or deducted.
+    rule_authority: best_practice
+    sap_impact: Absence not paid or deducted.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence {TIMESHEET.ABSENCE_START_DATE} to {TIMESHEET.ABSENCE_END_DATE}.'
+  - id: TIME059
+    field: TIMESHEET.ABSENCE_ID
+    check_class: null_check
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Absence time recorded without an absence request ID
+    why_it_matters: Absence days come from an absence request (EmployeeTime). Without its ID the day cannot be cancelled or
+      audited.
+    rule_authority: best_practice
+    sap_impact: Absence cannot be traced or cancelled.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence {TIMESHEET.ABSENCE_TYPE} with no ID.'
+  - id: TIME060
+    field: TIMESHEET.ABSENCE_APPROVAL_STATUS
+    check_class: domain_value_check
+    severity: high
+    dimension: validity
+    message: Absence approval status must be a valid value
+    why_it_matters: Only approved absences deduct balances and reach payroll. An unknown status is never processed.
+    rule_authority: best_practice
+    sap_impact: Absence not deducted or paid.
+    allowed_values:
+    - PENDING
+    - APPROVED
+    - REJECTED
+    - CANCELLED
+    - PENDING_CANCELLATION
+    valid_values_with_labels:
+      PENDING: Pending approval
+      APPROVED: Approved
+      REJECTED: Rejected
+      CANCELLED: Cancelled
+      PENDING_CANCELLATION: Cancellation pending approval
+    fix_map:
+      __other__: Set the absence approval status via Time Off administration.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence status ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: TIME061
+    field: TIMESHEET.ABSENCE_HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_HOURS` < 0'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Absence hours are negative
+    why_it_matters: Negative absence hours credit the time account instead of deducting it.
+    rule_authority: best_practice
+    sap_impact: Leave balance inflated.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence hours {TIMESHEET.ABSENCE_HOURS}.'
+  - id: TIME062
+    field: TIMESHEET.ABSENCE_HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_HOURS` > 24 * ((`TIMESHEET.ABSENCE_END_DATE` - `TIMESHEET.ABSENCE_START_DATE`).dt.days +
+      1)'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Absence hours exceed 24 hours per absence day
+    why_it_matters: An absence cannot cover more hours than its calendar days hold; this is a unit error that over-deducts the
+      account.
+    rule_authority: best_practice
+    sap_impact: Leave balance over-deducted.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: {TIMESHEET.ABSENCE_HOURS} hours for {TIMESHEET.ABSENCE_START_DATE}
+      to {TIMESHEET.ABSENCE_END_DATE}.'
+  - id: TIME063
+    field: TIMESHEET.ABSENCE_START_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_START_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Absence starts before the employment started
+    why_it_matters: No leave entitlement exists before hire; the absence was keyed against the wrong person or year.
+    rule_authority: best_practice
+    sap_impact: Balance deducted for a period before hire.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence from {TIMESHEET.ABSENCE_START_DATE}, hired
+      {EMPEMPLOYMENT.START_DATE}.'
+  - id: TIME064
+    field: TIMESHEET.ABSENCE_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_END_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Absence runs past the employment end date
+    why_it_matters: Absence after termination is paid in error and distorts the leave payout at termination.
+    rule_authority: best_practice
+    sap_impact: Leave payout miscalculated.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Shorten the absence
+        to the termination date.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence until {TIMESHEET.ABSENCE_END_DATE}, employment
+      ended {EMPEMPLOYMENT.END_DATE}.'
+  - id: TIME065
+    field: TIMESHEET.ABSENCE_START_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_START_DATE` < @today'
+    require_populated: true
+    applies_when:
+      TIMESHEET.ABSENCE_APPROVAL_STATUS:
+      - PENDING
+    severity: medium
+    dimension: timeliness
+    message: Absence has started but is still pending approval
+    why_it_matters: Pending absences are not deducted or passed to payroll. Once the absence has begun the payroll period may
+      close without it.
+    rule_authority: best_practice
+    sap_impact: Absence missing from payroll.
+    fix_map:
+      __blank__: Approve or reject the absence request.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence from {TIMESHEET.ABSENCE_START_DATE} still
+      pending.'
+  - id: TIME066
+    field: TIMESHEET.SHEET_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.SHEET_END_DATE` < `TIMESHEET.SHEET_START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Time sheet period ends before it starts
+    why_it_matters: An inverted time sheet period cannot be submitted.
+    rule_authority: best_practice
+    sap_impact: Time sheet cannot be approved.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: time sheet {TIMESHEET.SHEET_START_DATE} to {TIMESHEET.SHEET_END_DATE}.'
+  - id: TIME067
+    field: TIMESHEET.SHEET_END_DATE
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.SHEET_END_DATE` - `TIMESHEET.SHEET_START_DATE`).dt.days > 31
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Time sheet period is longer than a month
+    why_it_matters: SuccessFactors time sheets are weekly; anything over a month is a data error that breaks period validation.
+    rule_authority: best_practice
+    sap_impact: Weekly overtime rules misapplied.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: time sheet {TIMESHEET.SHEET_START_DATE} to {TIMESHEET.SHEET_END_DATE}.'
+  - id: TIME068
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.DATE` < `TIMESHEET.SHEET_START_DATE`) | (`TIMESHEET.DATE` > `TIMESHEET.SHEET_END_DATE`)
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Time entry lies outside its time sheet period
+    why_it_matters: Entries belong to the week of their time sheet. An entry outside it is valuated in the wrong period.
+    rule_authority: best_practice
+    sap_impact: Hours paid in the wrong period; weekly overtime wrong.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: outside time sheet {TIMESHEET.SHEET_START_DATE} to
+      {TIMESHEET.SHEET_END_DATE}.'
+  - id: TIME069
+    field: TIMESHEET.HOLIDAY_CALENDAR
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Employee has no holiday calendar
+    why_it_matters: The holiday calendar decides which days are public holidays; without it holidays are deducted as leave and
+      holiday premiums are not paid.
+    rule_authority: best_practice
+    sap_impact: Public holidays deducted from leave.
+    fix_map:
+      __blank__: Assign the holiday calendar on the employee's job information.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: no holiday calendar.'
+  - id: TIME070
+    field: TIMESHEET.WORK_SCHEDULE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Employee has no work schedule
+    why_it_matters: The work schedule gives planned hours per day, the base for overtime and for absence deduction. Without
+      it time valuation fails.
+    rule_authority: best_practice
+    sap_impact: Overtime and absences not valuated.
+    fix_map:
+      __blank__: Assign the work schedule on the employee's job information.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: no work schedule.'
+  - id: TIME071
+    field: TIMESHEET.TIME_TYPE_PROFILE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Employee has no time type profile
+    why_it_matters: The time type profile lists the absence types the employee may request; without it Time Off is unusable.
+    rule_authority: best_practice
+    sap_impact: Employee cannot request leave.
+    fix_map:
+      __blank__: Assign the time profile on the employee's job information.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: no time type profile.'
+  - id: TIME072
+    field: TIMESHEET.TIME_RECORDING_PROFILE
+    check_class: null_check
+    applies_when:
+      TIMESHEET.HOURS:
+        gt: 0
+    severity: high
+    dimension: completeness
+    message: Worked time recorded without a time recording profile
+    why_it_matters: The time recording profile holds the valuation rules (overtime, premiums). Hours without one are not valuated.
+    rule_authority: best_practice
+    sap_impact: Overtime and premiums not paid.
+    fix_map:
+      __blank__: Assign the time recording profile on the employee's job information.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: hours recorded, no time recording profile.'
+  - id: TIME073
+    field: TIMESHEET.ENTRY_END_TIME
+    check_class: null_check
+    applies_when:
+      TIMESHEET.ENTRY_START_TIME:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Clock-time entry has a start time but no end time
+    why_it_matters: With clock-time recording hours are derived from start and end. A missing end leaves the entry open and
+      unvaluated.
+    rule_authority: best_practice
+    sap_impact: Hours not derived; entry unpaid.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Record the end time.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: start {TIMESHEET.ENTRY_START_TIME}, no end.'
+  - id: TIME074
+    field: TIMESHEET.ENTRY_START_TIME
+    check_class: null_check
+    applies_when:
+      TIMESHEET.ENTRY_END_TIME:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Clock-time entry has an end time but no start time
+    why_it_matters: Without a start time the entry's hours cannot be derived.
+    rule_authority: best_practice
+    sap_impact: Hours not derived; entry unpaid.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Record the start
+        time.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: end {TIMESHEET.ENTRY_END_TIME}, no start.'
+  - id: TIME075
+    field: TIMESHEET.ENTRY_END_TIME
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ENTRY_END_TIME` == `TIMESHEET.ENTRY_START_TIME`'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Clock-time entry starts and ends at the same time
+    why_it_matters: A zero-length clock entry is a double punch or a placeholder; it produces no hours.
+    rule_authority: best_practice
+    sap_impact: Worked time missing.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: starts and ends {TIMESHEET.ENTRY_START_TIME}.'
+  - id: TIME076
+    field: TIMESHEET.ENTRY_START_TIME
+    check_class: regex_check
+    pattern: ^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$
+    severity: medium
+    dimension: validity
+    message: Entry start time is not a valid HH:MM time
+    why_it_matters: Clock times must be valid 24-hour times to derive hours.
+    rule_authority: best_practice
+    sap_impact: Hours not derived.
+    fix_map:
+      __other__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: start time ''{actual_value}'' is invalid.'
+    auto_fix: &id002
+      steps:
+      - op: strip
+      - op: pad_left
+        width: 5
+        char: '0'
+      confidence: medium
+  - id: TIME077
+    field: TIMESHEET.ENTRY_END_TIME
+    check_class: regex_check
+    pattern: ^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$
+    severity: medium
+    dimension: validity
+    message: Entry end time is not a valid HH:MM time
+    why_it_matters: Clock times must be valid 24-hour times to derive hours.
+    rule_authority: best_practice
+    sap_impact: Hours not derived.
+    fix_map:
+      __other__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: end time ''{actual_value}'' is invalid.'
+    auto_fix: *id002
+  - id: TIME078
+    field: TIMESHEET.HOURS
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.QUANTITY_IN_DAYS` == 1) & (`TIMESHEET.HOURS` > 0)
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Worked hours recorded on a full-day absence
+    why_it_matters: A full-day absence means the employee did not work. Worked hours on the same day are paid twice — once as
+      absence, once as work.
+    rule_authority: best_practice
+    sap_impact: Double payment for the day.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Remove the hours
+        or shorten the absence.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: full-day absence with {TIMESHEET.HOURS} worked hours.'
+  - id: TIME079
+    field: TIMESHEET.ABSENCE_APPROVAL_STATUS
+    check_class: null_check
+    applies_when:
+      TIMESHEET.ABSENCE_ID:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Absence has no approval status
+    why_it_matters: 'Without a status the absence is never processed: not deducted, not paid.'
+    rule_authority: best_practice
+    sap_impact: Absence not deducted or paid.
+    fix_map:
+      __blank__: Route the absence through approval.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence {TIMESHEET.ABSENCE_ID} with no status.'
+  - id: TIME080
+    field: TIMESHEET.ABSENCE_END_DATE
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.ABSENCE_END_DATE` - `TIMESHEET.ABSENCE_START_DATE`).dt.days > 365
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Absence lasts longer than a year
+    why_it_matters: Absences over a year are normally long-term leave handled as a job event (leave of absence), not as a time-off
+      request; often a year typo.
+    rule_authority: best_practice
+    sap_impact: Balance over-deducted; leave of absence not reported.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import). Check the dates
+        or record a leave of absence.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: absence {TIMESHEET.ABSENCE_START_DATE} to {TIMESHEET.ABSENCE_END_DATE}.'
+  - id: TIME081
+    field: TIMESHEET.ACCOUNT_START_DATE
+    check_class: null_check
+    applies_when:
+      TIMESHEET.TIME_ACCOUNT_ID:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Time account has no validity start date
+    why_it_matters: Accruals and bookings are valid from the account start; without it the account cannot be used.
+    rule_authority: best_practice
+    sap_impact: Accrual not posted.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} has no start date.'
+  - id: TIME082
+    field: TIMESHEET.BALANCE
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.ACCOUNT_START_DATE` > @today) & (`TIMESHEET.BALANCE` != 0)
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Time account that has not started yet already carries a balance
+    why_it_matters: A future account receives its first accrual on its start date. A balance before then was posted early or
+      to the wrong account.
+    rule_authority: best_practice
+    sap_impact: Leave available before entitlement.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} starts {TIMESHEET.ACCOUNT_START_DATE}
+      with balance {TIMESHEET.BALANCE}.'
+  - id: TIME083
+    field: TIMESHEET.SUBMITTED_DATE
+    check_class: null_check
+    applies_when:
+      TIMESHEET.APPROVAL_STATUS:
+      - APPROVED
+    severity: medium
+    dimension: completeness
+    message: Approved time entry has no submission date
+    why_it_matters: Approval follows submission. An approved entry without a submission date bypassed the time sheet workflow.
+    rule_authority: best_practice
+    sap_impact: Approval audit trail incomplete.
+    fix_map:
+      __blank__: Correct the entry in Time Sheet / Time Off (or via Admin Center > Time Management import).
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: approved, never submitted.'
+  - id: TIME084
+    field: TIMESHEET.LAST_MODIFIED_DATE
+    check_class: freshness_check
+    max_age_hours: 336
+    applies_when:
+      TIMESHEET.ABSENCE_APPROVAL_STATUS:
+      - PENDING_CANCELLATION
+    severity: low
+    dimension: timeliness
+    message: Absence cancellation has waited more than 14 days for approval
+    why_it_matters: Until the cancellation is approved the absence stays deducted; the employee's balance is understated.
+    rule_authority: best_practice
+    sap_impact: Leave balance understated.
+    fix_map:
+      __blank__: Approve or reject the cancellation request.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: cancellation pending since {TIMESHEET.LAST_MODIFIED_DATE}.'
+  - id: TIME085
+    field: TIMESHEET.BOOKING_END_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.BOOKING_END_DATE` < `TIMESHEET.ACCOUNT_END_DATE`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Time account booking period ends before the account validity ends
+    why_it_matters: Bookings are normally allowed at least until the account ends. An earlier booking end blocks absences in
+      the last part of the period.
+    rule_authority: best_practice
+    sap_impact: Absences rejected at the end of the period.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} bookable until
+      {TIMESHEET.BOOKING_END_DATE}, valid until {TIMESHEET.ACCOUNT_END_DATE}.'
+  - id: TIME086
+    field: TIMESHEET.BOOKING_START_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.BOOKING_START_DATE` > `TIMESHEET.ACCOUNT_END_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Time account booking period starts after the account has ended
+    why_it_matters: No booking can fall in the account's validity; the account can never be used.
+    rule_authority: best_practice
+    sap_impact: Absences rejected.
+    fix_map:
+      __blank__: Correct the time account in Admin Center > Time Account / Manage Time Off Structures.
+    record_fix_template: 'Time sheet {TIMESHEET.USERID} {TIMESHEET.DATE}: account {TIMESHEET.TIME_ACCOUNT_ID} bookable from
+      {TIMESHEET.BOOKING_START_DATE}, ended {TIMESHEET.ACCOUNT_END_DATE}.'

@@ -116,7 +116,10 @@ rules:
     record_fix_template: >-
       Succession candidate {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINEE_ID format invalid
       (value: {actual_value}). Correct to match Employee Central USERID format.
-
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
 
   - id: SUC010
     field: SUCCESSIONCANDIDATE.NOMINATED_DATE
@@ -246,3 +249,1313 @@ rules:
     fix_map:
       __other__: Remove the nominee and nominate an active employee.
     record_fix_template: 'Succession nomination for position {SUCCESSIONCANDIDATE.POSITION_ID}: the nominee has left. Remove the nominee.'
+  - id: SUC017
+    field: SUCCESSIONCANDIDATE.DEVELOPMENT_PLAN_ID
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no linked development plan
+    why_it_matters: A readiness rating without a development plan is an opinion, not a plan. The development plan is what
+      closes the gap between the candidate's current skills and the target position, and is what calibration discussions
+      review.
+    rule_authority: best_practice
+    sap_impact: Talent review discussions have no development actions to track. Readiness dates are not backed by a plan.
+    fix_map:
+      __blank__: Create or link a development plan for the candidate via Succession > Development Plan, or the candidate's
+        Talent Profile.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: no development
+      plan linked. Create or link one.'
+  - id: SUC018
+    field: SUCCESSIONCANDIDATE.TALENT_POOL_ID
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor is not assigned to a talent pool
+    why_it_matters: Talent pool assignment groups candidates for the same category of role so recruiters and HR business
+      partners can source replacements for more than one position at a time. A nomination outside any pool is invisible
+      to talent-pool-based reporting.
+    rule_authority: best_practice
+    sap_impact: Talent pool headcount and bench-strength-by-pool reports under-count this candidate.
+    fix_map:
+      __blank__: Assign the candidate to the relevant talent pool via Succession > Talent Pools.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: not assigned
+      to a talent pool.'
+  - id: SUC019
+    field: SUCCESSIONCANDIDATE.NINE_BOX_RATING
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no nine-box (performance/potential grid) rating
+    why_it_matters: The nine-box rating is the standard talent-review artefact that plots performance against potential.
+      Without it, calibration sessions have no shared, comparable view of the candidate.
+    rule_authority: best_practice
+    sap_impact: Talent review calibration grid shows an empty cell for this candidate. Cross-candidate comparison is not
+      possible.
+    fix_map:
+      __blank__: Record the candidate's nine-box grid position via Succession > Talent Review / Calibration.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: NINE_BOX_RATING is missing. Record via the talent review
+      calibration session.'
+  - id: SUC020
+    field: SUCCESSIONCANDIDATE.NINE_BOX_RATING
+    check_class: domain_value_check
+    allowed_values:
+    - '1'
+    - '2'
+    - '3'
+    - '4'
+    - '5'
+    - '6'
+    - '7'
+    - '8'
+    - '9'
+    severity: medium
+    dimension: validity
+    message: Nine-box rating must be a valid grid position (1-9)
+    why_it_matters: The nine-box grid has exactly nine cells. A value outside 1-9 cannot be plotted and breaks the calibration
+      grid visualisation and any downstream bench-strength-by-box reporting.
+    rule_authority: best_practice
+    sap_impact: Calibration grid cannot render the candidate. Nine-box distribution analytics exclude the record.
+    valid_values_with_labels:
+      '1': Risk — low performance, low potential
+      '2': Inconsistent player — low performance, medium potential
+      '3': Enigma — low performance, high potential
+      '4': Average performer — medium performance, low potential
+      '5': Core player — medium performance, medium potential
+      '6': Growth potential — medium performance, high potential
+      '7': Trusted professional — high performance, low potential
+      '8': High impact performer — high performance, medium potential
+      '9': Star — high performance, high potential
+    fix_map:
+      __other__: "Nine-box rating '{invalid_value}' is not a valid grid position. Use 1-9. Correct via the talent review\
+        \ calibration session."
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: NINE_BOX_RATING ''{actual_value}'' is invalid. Use 1-9.'
+  - id: SUC021
+    field: SUCCESSIONCANDIDATE.PERFORMANCE_RATING
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no performance rating recorded
+    why_it_matters: PERFORMANCE_RATING is one of the two axes of the nine-box grid and is used independently in calibration
+      to sanity-check readiness claims against delivered performance.
+    rule_authority: best_practice
+    sap_impact: Nine-box plotting and calibration sanity checks cannot run for this candidate.
+    fix_map:
+      __blank__: Pull the latest performance rating from the performance review cycle, or record via Succession > Talent
+        Review.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: PERFORMANCE_RATING is missing.'
+  - id: SUC022
+    field: SUCCESSIONCANDIDATE.PERFORMANCE_RATING
+    check_class: domain_value_check
+    allowed_values:
+    - '1'
+    - '2'
+    - '3'
+    - '4'
+    - '5'
+    severity: medium
+    dimension: validity
+    message: Performance rating must be on the 1-5 scale
+    why_it_matters: The performance rating feeds the nine-box grid and compensation calibration, both of which assume a
+      1-5 scale. A value outside that range cannot be plotted on either.
+    rule_authority: best_practice
+    sap_impact: Nine-box grid and compensation calibration reports exclude or misplace the record.
+    valid_values_with_labels:
+      '1': Unsatisfactory
+      '2': Needs improvement
+      '3': Meets expectations
+      '4': Exceeds expectations
+      '5': Outstanding
+    fix_map:
+      __other__: Performance rating '{invalid_value}' is not on the 1-5 scale. Correct via the performance review record.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: PERFORMANCE_RATING ''{actual_value}'' is invalid. Use
+      1-5.'
+  - id: SUC023
+    field: SUCCESSIONCANDIDATE.POTENTIAL_RATING
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no potential rating recorded
+    why_it_matters: POTENTIAL_RATING is the second axis of the nine-box grid. Without it, readiness and nine-box rating
+      cannot be reconciled against an independent potential assessment.
+    rule_authority: best_practice
+    sap_impact: Nine-box plotting cannot run for this candidate. Potential-based succession pipeline reports under-count.
+    fix_map:
+      __blank__: Record via Succession > Talent Review / Calibration.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: POTENTIAL_RATING is missing.'
+  - id: SUC024
+    field: SUCCESSIONCANDIDATE.POTENTIAL_RATING
+    check_class: domain_value_check
+    allowed_values:
+    - LOW
+    - MEDIUM
+    - HIGH
+    severity: medium
+    dimension: validity
+    message: Potential rating must be LOW, MEDIUM, or HIGH
+    why_it_matters: Potential rating is plotted on the nine-box grid and drives high-potential (HiPo) programme eligibility.
+      An invalid value cannot be plotted and silently excludes the candidate from HiPo reporting.
+    rule_authority: best_practice
+    sap_impact: HiPo programme eligibility reporting excludes this candidate. Nine-box grid cannot plot the record.
+    valid_values_with_labels:
+      LOW: Low potential
+      MEDIUM: Medium potential
+      HIGH: High potential
+    fix_map:
+      __other__: Potential rating '{invalid_value}' is invalid. Use LOW, MEDIUM, or HIGH. Correct via Talent Review.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: POTENTIAL_RATING ''{actual_value}'' is invalid. Use LOW,
+      MEDIUM, or HIGH.'
+  - id: SUC025
+    field: SUCCESSIONCANDIDATE.NINE_BOX_RATING
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NINE_BOX_RATING`.notna() and (`SUCCESSIONCANDIDATE.PERFORMANCE_RATING`.isna() or `SUCCESSIONCANDIDATE.POTENTIAL_RATING`.isna())'
+    severity: medium
+    dimension: consistency
+    message: Nine-box rating is recorded without the performance or potential rating that should support it
+    why_it_matters: The nine-box position is derived from the performance and potential axes. A nine-box value with one
+      of its two source ratings missing cannot be reproduced or audited at the next calibration cycle.
+    rule_authority: best_practice
+    sap_impact: Calibration cannot verify or recalculate the plotted nine-box position. Audit of the rating fails.
+    fix_map:
+      __other__: Populate the missing PERFORMANCE_RATING and/or POTENTIAL_RATING so the nine-box position is supported
+        and auditable.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: NINE_BOX_RATING is set but PERFORMANCE_RATING or POTENTIAL_RATING
+      is missing.'
+  - id: SUC026
+    field: SUCCESSIONCANDIDATE.CALIBRATION_STATUS
+    check_class: domain_value_check
+    allowed_values:
+    - NOT_STARTED
+    - IN_PROGRESS
+    - CALIBRATED
+    severity: medium
+    dimension: validity
+    message: Calibration status must be NOT_STARTED, IN_PROGRESS, or CALIBRATED
+    why_it_matters: Calibration status tracks where a nomination is in the talent review governance process. An invalid
+      status cannot be filtered into the calibration workflow queues.
+    rule_authority: best_practice
+    sap_impact: Calibration workflow queue (Admin Center > Calibration) cannot route this nomination.
+    valid_values_with_labels:
+      NOT_STARTED: Not yet reviewed in a calibration session
+      IN_PROGRESS: Currently under calibration review
+      CALIBRATED: Calibration complete and signed off
+    fix_map:
+      __other__: Calibration status '{invalid_value}' is invalid. Use NOT_STARTED, IN_PROGRESS, or CALIBRATED.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: CALIBRATION_STATUS ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: SUC027
+    field: SUCCESSIONCANDIDATE.CALIBRATION_STATUS
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor nomination has no calibration status
+    why_it_matters: Without a calibration status, a nomination cannot be told apart from one that was reviewed and signed
+      off versus one that has never been looked at by the talent review committee.
+    rule_authority: best_practice
+    sap_impact: Calibration workflow queue cannot distinguish reviewed from unreviewed nominations.
+    fix_map:
+      __blank__: Set to NOT_STARTED, IN_PROGRESS, or CALIBRATED via Succession > Talent Review / Calibration.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: CALIBRATION_STATUS is missing.'
+  - id: SUC028
+    field: SUCCESSIONCANDIDATE.CALIBRATION_STATUS
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.CALIBRATION_STATUS` == "CALIBRATED" and `SUCCESSIONCANDIDATE.CALIBRATION_DATE`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Nomination is marked calibrated but has no calibration date
+    why_it_matters: A CALIBRATED status without a date cannot be aged for the next calibration cycle, and cannot be audited
+      as having actually gone through a dated talent review session.
+    rule_authority: best_practice
+    sap_impact: Calibration-cycle ageing reports cannot date this nomination. Audit trail for the sign-off is incomplete.
+    fix_map:
+      __other__: Record the date the calibration session signed off this nomination via Succession > Talent Review.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: CALIBRATION_STATUS is CALIBRATED but CALIBRATION_DATE
+      is missing.'
+  - id: SUC029
+    field: SUCCESSIONCANDIDATE.CALIBRATION_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.CALIBRATION_DATE` > @today'
+    severity: low
+    dimension: validity
+    message: Calibration date lies in the future
+    why_it_matters: A talent review calibration session cannot have occurred after today.
+    rule_authority: best_practice
+    sap_impact: Calibration-cycle ageing reports are wrong.
+    fix_map:
+      __other__: Correct the calibration date to the date the session actually occurred.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: CALIBRATION_DATE is in the future. Correct the date.'
+  - id: SUC030
+    field: SUCCESSIONCANDIDATE.APPROVAL_STATUS
+    check_class: domain_value_check
+    allowed_values:
+    - PENDING
+    - APPROVED
+    - REJECTED
+    severity: medium
+    dimension: validity
+    message: Approval status must be PENDING, APPROVED, or REJECTED
+    why_it_matters: Approval status governs whether a nomination counts towards official bench strength. An invalid status
+      cannot be routed through the nomination approval workflow.
+    rule_authority: best_practice
+    sap_impact: Nomination approval workflow cannot route this record. Official bench-strength count is unreliable.
+    valid_values_with_labels:
+      PENDING: Awaiting manager/HR approval
+      APPROVED: Approved and counted in bench strength
+      REJECTED: Rejected — not counted in bench strength
+    fix_map:
+      __other__: Approval status '{invalid_value}' is invalid. Use PENDING, APPROVED, or REJECTED.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: APPROVAL_STATUS ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: SUC031
+    field: SUCCESSIONCANDIDATE.APPROVAL_STATUS
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor nomination has no approval status
+    why_it_matters: Without an approval status, a nomination cannot be told apart from an approved, pending, or rejected
+      one, so bench-strength totals cannot exclude rejected candidates.
+    rule_authority: best_practice
+    sap_impact: Bench-strength totals may include candidates that were never actually approved.
+    fix_map:
+      __blank__: Set via the nomination approval workflow in Succession > Approvals.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: APPROVAL_STATUS is missing.'
+  - id: SUC032
+    field: SUCCESSIONCANDIDATE.NOMINATED_BY
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Successor nomination has no recorded nominator
+    why_it_matters: NOMINATED_BY is the audit trail for who proposed the candidate. Without it, a disputed or incorrect
+      nomination cannot be traced back to the nominating manager for clarification.
+    rule_authority: best_practice
+    sap_impact: Nomination audit trail is broken. Disputed nominations cannot be traced to a nominating manager.
+    fix_map:
+      __blank__: Record the nominating manager's user ID via Succession > Org Chart nomination history.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: NOMINATED_BY
+      is missing.'
+  - id: SUC033
+    field: SUCCESSIONCANDIDATE.NOMINATED_BY
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    target_when:
+      STATUS:
+      - A
+      - U
+      - P
+      - S
+    severity: medium
+    dimension: consistency
+    message: Nominating manager is not an active employee
+    why_it_matters: A nomination recorded against a manager who has since left cannot be followed up on, and suggests the
+      nomination record itself is stale.
+    rule_authority: best_practice
+    sap_impact: Nomination cannot be clarified or re-confirmed with the original nominator. Stale-plan detection is unreliable.
+    fix_map:
+      __other__: Confirm the nomination with the candidate's current manager and update NOMINATED_BY.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: nominating manager {SUCCESSIONCANDIDATE.NOMINATED_BY}
+      is not an active employee.'
+  - id: SUC034
+    field: SUCCESSIONCANDIDATE.NOMINATED_BY
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NOMINATED_BY` == `SUCCESSIONCANDIDATE.NOMINEE_ID`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Successor appears to have nominated themselves
+    why_it_matters: A nomination where the nominator and the nominee are the same person bypasses manager review entirely
+      and should never occur in a governed succession process.
+    rule_authority: best_practice
+    sap_impact: Self-nominated candidates inflate bench strength without the manager sign-off the process requires.
+    fix_map:
+      __other__: Confirm who actually nominated this candidate and correct NOMINATED_BY, or remove the nomination.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: NOMINATED_BY matches the nominee. Confirm the real nominator.'
+  - id: SUC035
+    field: SUCCESSIONCANDIDATE.SUCCESSOR_TYPE
+    check_class: domain_value_check
+    allowed_values:
+    - INTERNAL
+    - EXTERNAL
+    severity: medium
+    dimension: validity
+    message: Successor type must be INTERNAL or EXTERNAL
+    why_it_matters: SUCCESSOR_TYPE determines whether the candidate should resolve to an Employee Central record at all.
+      An invalid value prevents the correct validation path (internal existence check vs external candidate handling)
+      from being applied.
+    rule_authority: best_practice
+    sap_impact: Internal-vs-external bench-strength split is wrong. Candidate existence validation is applied inconsistently.
+    valid_values_with_labels:
+      INTERNAL: Current employee
+      EXTERNAL: External candidate, not yet an employee
+    fix_map:
+      __other__: Successor type '{invalid_value}' is invalid. Use INTERNAL or EXTERNAL.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: SUCCESSOR_TYPE ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: SUC036
+    field: SUCCESSIONCANDIDATE.SUCCESSOR_TYPE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor nomination has no successor type
+    why_it_matters: Without SUCCESSOR_TYPE, the nomination cannot be classified as internal or external bench strength,
+      and the internal-employee-existence check cannot determine whether it should apply.
+    rule_authority: best_practice
+    sap_impact: Internal-vs-external bench-strength reporting under-counts both categories.
+    fix_map:
+      __blank__: Set to INTERNAL or EXTERNAL via Succession > Org Chart.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: SUCCESSOR_TYPE is missing.'
+  - id: SUC037
+    field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - 'Y'
+    - 'N'
+    severity: low
+    dimension: validity
+    message: Emergency successor flag must be Y or N
+    why_it_matters: The emergency successor flag identifies who can step in immediately if the incumbent leaves without
+      notice. An invalid value is dropped from emergency-coverage reporting used in business continuity planning.
+    rule_authority: best_practice
+    sap_impact: Emergency/interim coverage report excludes this candidate. Business continuity plan looks less covered
+      than it is.
+    valid_values_with_labels:
+      'Y': Flagged as an emergency successor
+      'N': Not an emergency successor
+    fix_map:
+      __other__: Emergency successor flag '{invalid_value}' is invalid. Use Y or N.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: EMERGENCY_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          'YES': Y
+          'NO': N
+          'TRUE': Y
+          'FALSE': N
+          '1': Y
+          '0': N
+      confidence: high
+  - id: SUC038
+    field: SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - 'Y'
+    - 'N'
+    severity: low
+    dimension: validity
+    message: Backup successor flag must be Y or N
+    why_it_matters: The backup flag distinguishes a secondary successor from the primary nominee ranked first. An invalid
+      value breaks the primary-versus-backup split used in succession org chart displays.
+    rule_authority: best_practice
+    sap_impact: Succession org chart cannot reliably distinguish primary from backup successors for this record.
+    valid_values_with_labels:
+      'Y': Backup (non-primary) successor
+      'N': Primary successor
+    fix_map:
+      __other__: Backup successor flag '{invalid_value}' is invalid. Use Y or N.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: BACKUP_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          'YES': Y
+          'NO': N
+          'TRUE': Y
+          'FALSE': N
+          '1': Y
+          '0': N
+      confidence: high
+  - id: SUC039
+    field: SUCCESSIONCANDIDATE.MOBILITY_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - 'Y'
+    - 'N'
+    severity: low
+    dimension: validity
+    message: Mobility flag must be Y or N
+    why_it_matters: Relocation/mobility willingness determines whether a candidate can actually be considered for positions
+      outside their current location. An invalid value is excluded from mobility-filtered succession searches.
+    rule_authority: best_practice
+    sap_impact: Mobility-filtered succession search excludes this candidate even where they would otherwise qualify.
+    valid_values_with_labels:
+      'Y': Willing to relocate or transfer
+      'N': Not willing to relocate or transfer
+    fix_map:
+      __other__: Mobility flag '{invalid_value}' is invalid. Use Y or N.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: MOBILITY_FLAG ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          'YES': Y
+          'NO': N
+          'TRUE': Y
+          'FALSE': N
+          '1': Y
+          '0': N
+      confidence: high
+  - id: SUC040
+    field: SUCCESSIONCANDIDATE.DIVERSITY_CANDIDATE_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - 'Y'
+    - 'N'
+    severity: low
+    dimension: validity
+    message: Diversity candidate flag must be Y or N
+    why_it_matters: The diversity-slate flag feeds diverse-slate representation reporting for succession plans. An invalid
+      value is silently excluded from that reporting rather than counted as not flagged.
+    rule_authority: best_practice
+    sap_impact: Diverse-slate representation reporting under-counts eligible candidates for this plan.
+    valid_values_with_labels:
+      'Y': Counted in diverse-slate representation reporting
+      'N': Not flagged for diverse-slate reporting
+    fix_map:
+      __other__: Diversity candidate flag '{invalid_value}' is invalid. Use Y or N.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: DIVERSITY_CANDIDATE_FLAG ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          'YES': Y
+          'NO': N
+          'TRUE': Y
+          'FALSE': N
+          '1': Y
+          '0': N
+      confidence: high
+  - id: SUC041
+    field: SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG
+    check_class: domain_value_check
+    allowed_values:
+    - 'Y'
+    - 'N'
+    severity: medium
+    dimension: validity
+    message: Eligible successor flag must be Y or N
+    why_it_matters: The eligibility flag records whether the candidate meets the position's minimum tenure/grade/certification
+      criteria. An invalid value means ineligible candidates cannot be reliably filtered out of readiness reporting.
+    rule_authority: best_practice
+    sap_impact: Readiness reporting may include candidates who do not actually meet the position's eligibility criteria.
+    valid_values_with_labels:
+      'Y': Meets the position's minimum eligibility criteria
+      'N': Does not meet the position's minimum eligibility criteria
+    fix_map:
+      __other__: Eligible successor flag '{invalid_value}' is invalid. Use Y or N.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: ELIGIBLE_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      - op: map
+        values:
+          'YES': Y
+          'NO': N
+          'TRUE': Y
+          'FALSE': N
+          '1': Y
+          '0': N
+      confidence: high
+  - id: SUC042
+    field: SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no retention risk score recorded
+    why_it_matters: The retention risk score quantifies flight risk for the nominee, independent of the qualitative RISK_OF_LOSS
+      rating, and is used to prioritise retention action for the most business-critical successors.
+    rule_authority: best_practice
+    sap_impact: Retention-risk prioritisation reports cannot rank this candidate.
+    fix_map:
+      __blank__: Record a retention risk score (0-100) via the talent review / retention planning module.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: RETENTION_RISK_SCORE is missing.'
+  - id: SUC043
+    field: SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE` < 0 or `SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE` > 100'
+    severity: medium
+    dimension: validity
+    message: Retention risk score must be between 0 and 100
+    why_it_matters: RETENTION_RISK_SCORE is defined as a 0-100 scale. A value outside that range cannot be ranked against
+      other candidates or compared to the retention-risk threshold used for escalation.
+    rule_authority: best_practice
+    sap_impact: Retention-risk ranking and threshold-based escalation produce meaningless comparisons for this candidate.
+    fix_map:
+      __other__: Correct the retention risk score to a value between 0 and 100.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: RETENTION_RISK_SCORE is out of the 0-100 range.'
+  - id: SUC044
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Successor has no target-ready date
+    why_it_matters: TARGET_READY_DATE is what readiness levels like "ready in 1-2 years" are actually anchored to. Without
+      it, there is no date to track the candidate against or to flag as overdue.
+    rule_authority: best_practice
+    sap_impact: Readiness-date tracking and overdue-readiness alerts cannot run for this candidate.
+    fix_map:
+      __blank__: Set an estimated target-ready date via Succession > Org Chart nomination detail.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: TARGET_READY_DATE is missing.'
+  - id: SUC045
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.TARGET_READY_DATE` < `SUCCESSIONCANDIDATE.NOMINATED_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Target-ready date is before the nomination date
+    why_it_matters: A candidate cannot be targeted to be ready for a role before they were even nominated for it. This
+      points to a data entry error in one of the two dates.
+    rule_authority: best_practice
+    sap_impact: Readiness-date tracking produces a negative timeline and overdue-readiness alerts misfire.
+    fix_map:
+      __other__: Correct TARGET_READY_DATE or NOMINATED_DATE so the target-ready date falls after the nomination date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: TARGET_READY_DATE is before NOMINATED_DATE. Correct
+      one of the two dates.'
+  - id: SUC046
+    field: SUCCESSIONCANDIDATE.EFFECTIVE_START_DATE
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Succession record has no effective start date
+    why_it_matters: SuccessFactors succession data is effective-dated. Without EFFECTIVE_START_DATE, the record cannot
+      be placed in the nomination's history and the current/as-of version cannot be determined reliably.
+    rule_authority: best_practice
+    sap_impact: Effective-dated history for this nomination cannot be reconstructed. "As of" succession reporting may pick
+      the wrong record.
+    fix_map:
+      __blank__: Set the effective start date via the succession planning module's record history.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: EFFECTIVE_START_DATE is missing.'
+  - id: SUC047
+    field: SUCCESSIONCANDIDATE.EFFECTIVE_START_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.EFFECTIVE_START_DATE` > `SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Effective start date is after the effective end date
+    why_it_matters: An effective-dated record whose start is after its own end describes a negative-length validity window,
+      which breaks "as of" lookups that rely on start-before-end ordering.
+    rule_authority: best_practice
+    sap_impact: "\"As of\" succession queries that rely on start-before-end ordering return no record, or the wrong one,\
+      \ for this nomination."
+    fix_map:
+      __other__: Correct EFFECTIVE_START_DATE or EFFECTIVE_END_DATE so the record's validity window is start-before-end.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: EFFECTIVE_START_DATE is after EFFECTIVE_END_DATE.'
+  - id: SUC048
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: domain_value_check
+    allowed_values:
+    - READY_NOW
+    - READY_1_2_YEARS
+    - READY_3_5_YEARS
+    - NOT_READY
+    severity: medium
+    dimension: validity
+    message: Readiness level must be a valid SAP SuccessFactors readiness code
+    why_it_matters: READINESS drives the succession org chart's readiness colour-coding and the "ready now" bench-strength
+      metric used in emergency succession decisions. An invalid code cannot be classified into either.
+    rule_authority: best_practice
+    sap_impact: Succession org chart cannot colour-code this candidate's readiness. "Ready now" bench-strength metric excludes
+      the record.
+    valid_values_with_labels:
+      READY_NOW: Ready now
+      READY_1_2_YEARS: Ready in 1-2 years
+      READY_3_5_YEARS: Ready in 3-5 years
+      NOT_READY: Not ready / development needed
+    fix_map:
+      __other__: Readiness level '{invalid_value}' is not a valid code. Use READY_NOW, READY_1_2_YEARS, READY_3_5_YEARS,
+        or NOT_READY.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: READINESS ''{actual_value}'' is invalid.'
+  - id: SUC049
+    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
+    check_class: domain_value_check
+    allowed_values:
+    - LOW
+    - MEDIUM
+    - HIGH
+    severity: medium
+    dimension: validity
+    message: Risk of loss must be LOW, MEDIUM, or HIGH
+    why_it_matters: RISK_OF_LOSS is plotted against IMPACT_OF_LOSS on the retention risk matrix used to prioritise retention
+      conversations. An invalid value cannot be placed on that matrix.
+    rule_authority: best_practice
+    sap_impact: Retention risk matrix cannot plot this candidate. Retention-conversation prioritisation excludes the record.
+    valid_values_with_labels:
+      LOW: Low risk of loss
+      MEDIUM: Medium risk of loss
+      HIGH: High risk of loss
+    fix_map:
+      __other__: Risk of loss '{invalid_value}' is invalid. Use LOW, MEDIUM, or HIGH.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: RISK_OF_LOSS ''{actual_value}'' is invalid.'
+  - id: SUC050
+    field: SUCCESSIONCANDIDATE.IMPACT_OF_LOSS
+    check_class: domain_value_check
+    allowed_values:
+    - LOW
+    - MEDIUM
+    - HIGH
+    severity: medium
+    dimension: validity
+    message: Impact of loss must be LOW, MEDIUM, or HIGH
+    why_it_matters: IMPACT_OF_LOSS is the business-impact axis of the retention risk matrix. An invalid value cannot be
+      plotted, which hides genuinely high-impact positions from retention prioritisation.
+    rule_authority: best_practice
+    sap_impact: Retention risk matrix cannot plot this candidate. High-impact positions may be hidden from retention prioritisation.
+    valid_values_with_labels:
+      LOW: Low business impact if lost
+      MEDIUM: Medium business impact if lost
+      HIGH: High business impact if lost
+    fix_map:
+      __other__: Impact of loss '{invalid_value}' is invalid. Use LOW, MEDIUM, or HIGH.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: IMPACT_OF_LOSS ''{actual_value}'' is invalid.'
+
+  - id: SUC051
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.POSITION_ID` == `EMPEMPLOYMENT.POSITION`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Nominee is nominated as successor to the position they already hold
+    why_it_matters: A successor replaces the incumbent. Nominating the incumbent for their own position inflates bench strength
+      with a person who cannot be their own successor.
+    rule_authority: best_practice
+    sap_impact: Bench strength and 'ready now' coverage overstated for the position.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Remove the incumbent
+        from the position's successor list.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: nominee is
+      the current incumbent.'
+  - id: SUC052
+    field: POSITION.CODE
+    check_class: exists_check
+    target_table: SUCCESSIONCANDIDATE
+    target_fields:
+    - POSITION_ID
+    applies_when:
+      POSITION.CRITICALITY:
+        populated: true
+        not_in:
+        - LOW
+        - Low
+        - low
+        - NONE
+        - None
+        - N
+        - '0'
+        - NOT_CRITICAL
+        - Not Critical
+      POSITION.EFFECTIVE_STATUS:
+      - A
+    severity: high
+    dimension: completeness
+    message: Critical position has no successor nominated
+    why_it_matters: Critical positions are the reason succession planning exists. A critical, active position without any nominee
+      has zero bench strength — a single resignation becomes a business-continuity incident.
+    rule_authority: best_practice
+    sap_impact: Succession coverage of critical roles overstated; position appears covered in no report.
+    fix_map:
+      __other__: Nominate at least one successor for the critical position in the Succession Org Chart.
+    record_fix_template: Position {POSITION.CODE} (criticality {POSITION.CRITICALITY}) has no successor.
+  - id: SUC053
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Successor nomination has no readiness level
+    why_it_matters: 'Readiness (ready now, 1-2 years, 3-5 years) is the core attribute of a nomination: bench-strength and emergency
+      coverage reports are built on it. A nomination without readiness is not counted anywhere.'
+    rule_authority: best_practice
+    sap_impact: Nominee excluded from bench-strength and ready-now metrics.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Set the readiness level.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: no readiness
+      level.'
+  - id: SUC054
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: cross_field_check
+    fail_when: (@today - `SUCCESSIONCANDIDATE.NOMINATED_DATE`).dt.days > 90
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS:
+      - PENDING
+    severity: medium
+    dimension: timeliness
+    message: Nomination has waited more than 90 days for approval
+    why_it_matters: Pending nominations do not count as succession coverage. A nomination pending for a quarter has been forgotten
+      in the approval workflow.
+    rule_authority: best_practice
+    sap_impact: Position looks uncovered; nominee unaware of development path.
+    fix_map:
+      __blank__: Approve or reject the pending nomination (Succession > Nomination approval).
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: pending since
+      {SUCCESSIONCANDIDATE.NOMINATED_DATE}.'
+  - id: SUC055
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NOMINATED_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.SUCCESSOR_TYPE:
+      - INTERNAL
+    severity: medium
+    dimension: consistency
+    message: Internal successor was nominated before they were hired
+    why_it_matters: An internal nominee must be an employee when nominated. A nomination dated before the hire date came from
+      a date error or a re-hire whose history was overwritten.
+    rule_authority: best_practice
+    sap_impact: Nomination history and tenure-based readiness wrong.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Correct the nomination
+        date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: nominated
+      {SUCCESSIONCANDIDATE.NOMINATED_DATE}, hired {EMPEMPLOYMENT.START_DATE}.'
+  - id: SUC056
+    field: SUCCESSIONCANDIDATE.NOMINATED_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.NOMINATED_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Successor was nominated after their employment ended
+    why_it_matters: A leaver cannot be nominated. The nomination was keyed against the wrong user or the termination was missed.
+    rule_authority: best_practice
+    sap_impact: Bench strength counts a leaver.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Remove the nomination
+        or nominate the right user.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: nominated
+      {SUCCESSIONCANDIDATE.NOMINATED_DATE}, employment ended {EMPEMPLOYMENT.END_DATE}.'
+  - id: SUC057
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.TARGET_READY_DATE` - @today).dt.days > 365
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.READINESS:
+      - READY_NOW
+    severity: medium
+    dimension: consistency
+    message: Ready-now successor has a target-ready date more than a year away
+    why_it_matters: READY_NOW means the nominee can step in today. A target-ready date over a year out contradicts it; one of
+      the two was not updated.
+    rule_authority: best_practice
+    sap_impact: Emergency coverage reports count a nominee who is not ready.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Align readiness and
+        target-ready date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ready now
+      but target-ready {SUCCESSIONCANDIDATE.TARGET_READY_DATE}.'
+  - id: SUC058
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: (@today - `SUCCESSIONCANDIDATE.TARGET_READY_DATE`).dt.days > 180
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.READINESS:
+        populated: true
+        not_in:
+        - READY_NOW
+    severity: medium
+    dimension: timeliness
+    message: Target-ready date passed more than six months ago but readiness was never updated
+    why_it_matters: When the target-ready date passes the readiness should be reassessed. Six months later the nomination still
+      shows a not-ready level — the assessment is stale.
+    rule_authority: best_practice
+    sap_impact: Bench-strength reports use outdated readiness.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Reassess readiness
+        and set a new target-ready date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: target-ready
+      {SUCCESSIONCANDIDATE.TARGET_READY_DATE}, readiness {SUCCESSIONCANDIDATE.READINESS}.'
+  - id: SUC059
+    field: SUCCESSIONCANDIDATE.CALIBRATION_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.CALIBRATION_DATE` < `SUCCESSIONCANDIDATE.NOMINATED_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Nomination was calibrated before it was made
+    why_it_matters: Calibration reviews an existing nomination; a calibration date before the nomination date belongs to an
+      earlier nomination that was overwritten.
+    rule_authority: best_practice
+    sap_impact: Calibration audit trail wrong.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Correct the calibration
+        or nomination date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: calibrated
+      {SUCCESSIONCANDIDATE.CALIBRATION_DATE}, nominated {SUCCESSIONCANDIDATE.NOMINATED_DATE}.'
+  - id: SUC060
+    field: SUCCESSIONCANDIDATE.RANKING
+    check_class: uniqueness_check
+    fields:
+    - SUCCESSIONCANDIDATE.POSITION_ID
+    - SUCCESSIONCANDIDATE.RANKING
+    applies_when: &id002
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS: &id001
+        not_in:
+        - REJECTED
+    severity: medium
+    dimension: uniqueness
+    message: Two successors share the same rank for one position
+    why_it_matters: The successor rank orders the slate. Two nominees with the same rank make the order ambiguous for emergency
+      replacement.
+    rule_authority: best_practice
+    sap_impact: Emergency successor choice ambiguous.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Re-rank the successors
+        so each rank is used once.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: rank {SUCCESSIONCANDIDATE.RANKING}
+      is shared.'
+  - id: SUC061
+    field: SUCCESSIONCANDIDATE.RANKING
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.RANKING` == 0'
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Successor rank is zero
+    why_it_matters: Successor ranks start at 1. Rank 0 is a default left by an import and sorts before the real first choice.
+    rule_authority: best_practice
+    sap_impact: Successor order on the org chart wrong.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Set the real rank (1
+        = first choice).
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: rank 0.'
+  - id: SUC062
+    field: SUCCESSIONCANDIDATE.READINESS
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.READINESS` != ''READY_NOW'''
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      - Y
+    severity: high
+    dimension: consistency
+    message: Emergency successor is not ready now
+    why_it_matters: An emergency successor must be able to step in immediately. A nominee flagged emergency but not READY_NOW
+      gives false confidence in business continuity.
+    rule_authority: best_practice
+    sap_impact: Emergency coverage overstated.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Either clear the emergency
+        flag or update readiness.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: emergency
+      successor with readiness {SUCCESSIONCANDIDATE.READINESS}.'
+  - id: SUC063
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: uniqueness_check
+    fields:
+    - SUCCESSIONCANDIDATE.POSITION_ID
+    applies_when:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      - Y
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS: *id001
+    severity: medium
+    dimension: uniqueness
+    message: Position has more than one emergency successor
+    why_it_matters: The emergency successor is the single person who steps in on day one. Two emergency successors leave the
+      decision unresolved in a crisis.
+    rule_authority: best_practice
+    sap_impact: Emergency replacement ambiguous.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Keep one emergency
+        successor; flag the others as backup.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: another emergency
+      successor exists for this position.'
+  - id: SUC064
+    field: SUCCESSIONCANDIDATE.NOMINEE_ID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    negate: true
+    applies_when:
+      SUCCESSIONCANDIDATE.SUCCESSOR_TYPE:
+      - EXTERNAL
+    severity: medium
+    dimension: consistency
+    message: External successor is an existing employee
+    why_it_matters: External successors are candidates outside the company. A nominee that exists in Employee Central is internal;
+      the wrong type excludes them from internal bench-strength and development reporting.
+    rule_authority: best_practice
+    sap_impact: Internal bench strength understated; development plans not triggered.
+    fix_map:
+      __other__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Change the successor
+        type to INTERNAL.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: typed EXTERNAL
+      but is an employee.'
+  - id: SUC065
+    field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG` == 'Y') | (`SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG` == 'Y')
+    applies_when:
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS:
+      - REJECTED
+    severity: medium
+    dimension: consistency
+    message: Rejected nomination is still flagged as emergency or backup successor
+    why_it_matters: A rejected nomination is not part of the slate. Keeping its emergency or backup flag makes coverage reports
+      count a rejected nominee.
+    rule_authority: best_practice
+    sap_impact: Emergency/backup coverage overstated.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Clear the emergency
+        and backup flags on rejected nominations.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: rejected
+      but still emergency or backup.'
+  - id: SUC066
+    field: SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE` < @today'
+    require_populated: true
+    applies_when: *id002
+    severity: low
+    dimension: timeliness
+    message: Nomination's effective period has ended but it is still pending or approved
+    why_it_matters: An ended nomination should no longer count in the current slate. If it is still approved the end date is
+      wrong, or the nomination should be closed.
+    rule_authority: best_practice
+    sap_impact: Current slate includes expired nominations.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Extend the effective
+        period or close the nomination.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: effective
+      until {SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE}.'
+  - id: SUC067
+    field: SUCCESSIONCANDIDATE.TALENT_POOL_ID
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9._-]{1,128}$
+    severity: low
+    dimension: validity
+    message: Talent pool ID contains invalid characters
+    why_it_matters: Talent pool IDs are MDF external codes. Whitespace or special characters break the link to the talent pool.
+    rule_authority: best_practice
+    sap_impact: Nominee does not appear in the talent pool.
+    fix_map:
+      __other__: Correct the talent pool ID to the pool's external code.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: talent pool
+      ID ''{actual_value}'' is invalid.'
+    auto_fix: &id003
+      steps:
+      - op: strip
+      confidence: high
+  - id: SUC068
+    field: SUCCESSIONCANDIDATE.POSITION_ID
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9._-]{1,128}$
+    severity: medium
+    dimension: validity
+    message: Position ID contains invalid characters
+    why_it_matters: The position ID must match the Position object code. Stray whitespace or symbols make the nomination point
+      at no position.
+    rule_authority: best_practice
+    sap_impact: Nomination not shown on the succession org chart.
+    fix_map:
+      __other__: Correct the position ID to the Position code.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: position
+      ID ''{actual_value}'' is invalid.'
+    auto_fix: *id003
+  - id: SUC069
+    field: SUCCESSIONCANDIDATE.NOMINATED_BY
+    check_class: regex_check
+    pattern: ^[a-zA-Z0-9._@-]{1,100}$
+    severity: low
+    dimension: validity
+    message: Nominator user ID contains invalid characters
+    why_it_matters: The nominator must be an Employee Central user ID; invalid characters break the audit link to the user.
+    rule_authority: best_practice
+    sap_impact: Nomination audit trail broken.
+    fix_map:
+      __other__: Correct the nominator to the user's USERID.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: nominator
+      ''{actual_value}'' is not a valid user ID.'
+    auto_fix: *id003
+  - id: SUC070
+    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE` >= 70) & (`SUCCESSIONCANDIDATE.RISK_OF_LOSS` == 'LOW')
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: High retention risk score but risk of loss is LOW
+    why_it_matters: The retention risk score and the risk-of-loss rating describe the same risk. A score of 70+ with LOW risk
+      means one of them was not refreshed.
+    rule_authority: best_practice
+    sap_impact: Retention matrix hides an at-risk successor.
+    fix_map:
+      __blank__: Reassess the risk of loss with the current retention risk score.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: score {SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE},
+      risk of loss LOW.'
+  - id: SUC071
+    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE` <= 30) & (`SUCCESSIONCANDIDATE.RISK_OF_LOSS` == 'HIGH')
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Low retention risk score but risk of loss is HIGH
+    why_it_matters: A low score with HIGH risk contradicts itself; retention actions may be wasted on a stable nominee.
+    rule_authority: best_practice
+    sap_impact: Retention budget aimed at the wrong people.
+    fix_map:
+      __blank__: Reassess the risk of loss with the current retention risk score.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: score {SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE},
+      risk of loss HIGH.'
+  - id: SUC072
+    field: SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG` == ''N'''
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS:
+      - APPROVED
+    severity: medium
+    dimension: consistency
+    message: Approved nomination for a nominee flagged not eligible
+    why_it_matters: The eligibility flag marks nominees barred from succession (policy, performance or legal hold). Approving
+      them bypasses that control.
+    rule_authority: best_practice
+    sap_impact: Ineligible nominee counted in bench strength.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Reject the nomination
+        or correct the eligibility flag.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: approved
+      but not eligible.'
+  - id: SUC073
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.TARGET_READY_DATE` - `SUCCESSIONCANDIDATE.NOMINATED_DATE`).dt.days > 3653
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Target-ready date is more than ten years after nomination
+    why_it_matters: Readiness horizons in SuccessFactors run to 3-5 years. Ten years out is a year typo.
+    rule_authority: best_practice
+    sap_impact: Nominee never comes due for reassessment.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Correct the target-ready
+        date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: target-ready
+      {SUCCESSIONCANDIDATE.TARGET_READY_DATE}.'
+  - id: SUC074
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.TARGET_READY_DATE` - `SUCCESSIONCANDIDATE.NOMINATED_DATE`).dt.days < 365
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.READINESS:
+      - READY_3_5_YEARS
+    severity: low
+    dimension: consistency
+    message: Ready-in-3-5-years successor has a target-ready date within a year
+    why_it_matters: READY_3_5_YEARS and a target date under a year apart contradict each other; one was not updated.
+    rule_authority: best_practice
+    sap_impact: Readiness pipeline reports inconsistent.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Align readiness and
+        target-ready date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: readiness
+      3-5 years, target-ready {SUCCESSIONCANDIDATE.TARGET_READY_DATE}.'
+  - id: SUC075
+    field: SUCCESSIONCANDIDATE.TARGET_READY_DATE
+    check_class: cross_field_check
+    fail_when: (`SUCCESSIONCANDIDATE.TARGET_READY_DATE` - `SUCCESSIONCANDIDATE.NOMINATED_DATE`).dt.days > 1096
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.READINESS:
+      - READY_1_2_YEARS
+    severity: low
+    dimension: consistency
+    message: Ready-in-1-2-years successor has a target-ready date more than three years away
+    why_it_matters: READY_1_2_YEARS with a target over three years out contradicts itself.
+    rule_authority: best_practice
+    sap_impact: Readiness pipeline reports inconsistent.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Align readiness and
+        target-ready date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: readiness
+      1-2 years, target-ready {SUCCESSIONCANDIDATE.TARGET_READY_DATE}.'
+  - id: SUC076
+    field: SUCCESSIONCANDIDATE.CALIBRATION_STATUS
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.CALIBRATION_STATUS` == ''NOT_STARTED'''
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.APPROVAL_STATUS:
+      - APPROVED
+    severity: low
+    dimension: consistency
+    message: Nomination was approved before calibration started
+    why_it_matters: Where succession calibration is used, nominations are approved after the talent review. An approved but
+      uncalibrated nomination skipped that control.
+    rule_authority: best_practice
+    sap_impact: Uncalibrated nominee counted as approved bench strength.
+    fix_map:
+      __blank__: Run the nomination through calibration or document why it was approved without one.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: approved,
+      calibration not started.'
+  - id: SUC077
+    field: SUCCESSIONCANDIDATE.CALIBRATION_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.CALIBRATION_DATE`.notna()'
+    applies_when:
+      SUCCESSIONCANDIDATE.CALIBRATION_STATUS:
+      - NOT_STARTED
+    severity: low
+    dimension: consistency
+    message: Calibration date recorded although calibration has not started
+    why_it_matters: A calibration date means a session happened; NOT_STARTED says it did not. One of the two is stale.
+    rule_authority: best_practice
+    sap_impact: Calibration completion reports inconsistent.
+    fix_map:
+      __blank__: Correct the calibration status or clear the date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: calibrated
+      {SUCCESSIONCANDIDATE.CALIBRATION_DATE} but status NOT_STARTED.'
+  - id: SUC078
+    field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Emergency successor flag is blank
+    why_it_matters: The flag is a yes/no attribute; blank is read as 'no' by the UI but as unknown by reports and the migration
+      load, which expects Y or N.
+    rule_authority: best_practice
+    sap_impact: Emergency coverage reports count the nominee as unknown.
+    fix_map:
+      __blank__: Set the flag to N unless the nominee is the emergency successor.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: emergency
+      flag blank.'
+    auto_fix:
+      steps:
+      - op: set
+        value: N
+      confidence: medium
+  - id: SUC079
+    field: SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG
+    check_class: null_check
+    severity: low
+    dimension: completeness
+    message: Backup successor flag is blank
+    why_it_matters: Blank is read as 'no' by the UI but as unknown by reports and the migration load, which expects Y or N.
+    rule_authority: best_practice
+    sap_impact: Backup coverage reports count the nominee as unknown.
+    fix_map:
+      __blank__: Set the flag to N unless the nominee is a backup successor.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: backup flag
+      blank.'
+    auto_fix:
+      steps:
+      - op: set
+        value: N
+      confidence: medium
+  - id: SUC080
+    field: SUCCESSIONCANDIDATE.RISK_OF_LOSS
+    check_class: null_check
+    applies_when:
+      SUCCESSIONCANDIDATE.RETENTION_RISK_SCORE:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Retention risk score recorded but risk of loss missing
+    why_it_matters: The retention matrix plots risk of loss; a scored nominee with no risk rating drops out of it.
+    rule_authority: best_practice
+    sap_impact: Retention matrix incomplete.
+    fix_map:
+      __blank__: Rate the risk of loss for the nominee.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: retention
+      score present, risk of loss blank.'
+  - id: SUC081
+    field: SUCCESSIONCANDIDATE.IMPACT_OF_LOSS
+    check_class: null_check
+    applies_when:
+      SUCCESSIONCANDIDATE.RISK_OF_LOSS:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Risk of loss rated but impact of loss missing
+    why_it_matters: Risk and impact are the two axes of the retention matrix; one without the other cannot be plotted.
+    rule_authority: best_practice
+    sap_impact: Retention matrix cannot place the nominee.
+    fix_map:
+      __blank__: Rate the impact of loss for the nominee.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: risk of loss
+      rated, impact of loss blank.'
+  - id: SUC082
+    field: SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE` < `SUCCESSIONCANDIDATE.NOMINATED_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Nomination ends before it was made
+    why_it_matters: The effective period starts at or after nomination; an end date before the nomination date is inverted.
+    rule_authority: best_practice
+    sap_impact: Nomination never effective; drops out of the slate.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Correct the effective
+        end date.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: nominated
+      {SUCCESSIONCANDIDATE.NOMINATED_DATE}, effective until {SUCCESSIONCANDIDATE.EFFECTIVE_END_DATE}.'
+  - id: SUC083
+    field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
+    check_class: cross_field_check
+    fail_when: '`EMPEMPLOYMENT.STATUS`.isin([''U'',''P'',''S''])'
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      - Y
+    severity: medium
+    dimension: consistency
+    message: Emergency successor is on leave or suspended
+    why_it_matters: The emergency successor must be available immediately. A nominee on paid or unpaid leave or suspended cannot
+      step in.
+    rule_authority: best_practice
+    sap_impact: Emergency coverage overstated while the nominee is away.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Name an available emergency
+        successor for the absence period.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: emergency
+      successor with employment status {EMPEMPLOYMENT.STATUS}.'
+  - id: SUC084
+    field: SUCCESSIONCANDIDATE.RANKING
+    check_class: cross_field_check
+    fail_when: '`SUCCESSIONCANDIDATE.RANKING` == 1'
+    require_populated: true
+    applies_when:
+      SUCCESSIONCANDIDATE.READINESS:
+      - NOT_READY
+    severity: low
+    dimension: consistency
+    message: Not-ready successor is ranked first
+    why_it_matters: Rank 1 is the first choice to replace the incumbent. A NOT_READY nominee in first place suggests the ranking
+      or readiness was not updated after the talent review.
+    rule_authority: best_practice
+    sap_impact: Emergency replacement defaults to a not-ready nominee.
+    fix_map:
+      __blank__: Correct the nomination in Succession Org Chart / Talent Search (Succession Management). Re-rank the slate or
+        update readiness.
+    record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID} for position {SUCCESSIONCANDIDATE.POSITION_ID}: ranked first
+      but NOT_READY.'
