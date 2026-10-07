@@ -256,6 +256,8 @@ rules:
   applies_when:
     ANLA.AKTIV:
       populated: true
+    ANLB.AFASL:
+      not_in: ['0000']
 - id: AA018
   field: ANLZ.STORT
   check_class: null_check
@@ -1700,40 +1702,39 @@ rules:
   sap_impact: AS01 fails with "account determination missing" for every attempt to create an asset in
     the class; existing assets of the class (if any) cannot post.
   fix_map:
-    __blank__: Assign the account determination for the class in OAOA; it is required before any asset
+    __other__: Assign the account determination for the class in OAOA; it is required before any asset
       of the class can post acquisitions or depreciation.
   record_fix_template: 'Asset class {ANKA.ANLKL}: no account determination (KTOGR) assigned.'
 
 - id: AA249
-  field: ANLA.ANLGR
+  field: ANLB.ANLGR
   check_class: exists_check
+  grain: ANLB
   fields:
-  - ANLA.BUKRS
-  - ANLA.ANLGR
-  target_table: ANLA
+  - ANLB.BUKRS
+  - ANLB.ANLGR
+  target_table: ANLH
   target_fields:
   - BUKRS
   - ANLN1
-  target_when:
-    ANLN2: ['0000']
   applies_when:
-    ANLA.ANLGR:
+    ANLB.ANLGR:
       populated: true
   severity: medium
   dimension: consistency
   message: Asset's group asset reference does not exist
   why_it_matters: >-
-    The group asset (ANLA.ANLGR) consolidates several individual assets for tax reporting or group
-    depreciation. A reference to a group asset number that has no main asset record (subnumber 0000)
-    points to a group asset that was never created or was deleted.
+    The group asset (ANLB.ANLGR) consolidates several individual assets for tax reporting or group
+    depreciation. A reference to a group asset number that has no main asset record in ANLH points to
+    a group asset that was never created or was deleted.
   rule_authority: best_practice
   sap_impact: Group asset reports (tax group depreciation) cannot find the group asset; the member
     asset is excluded from group-level depreciation and disclosures.
   fix_map:
     __other__: Create the missing group asset (AS01, asset class flagged as group asset) or correct the
-      group asset number on the member asset in AS02 > General tab.
-  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): group asset
-    {ANLA.ANLGR} does not exist.'
+      group asset number on the member asset's depreciation area in AS02 > Depreciation areas.
+  record_fix_template: 'Asset {ANLB.ANLN1}-{ANLB.ANLN2} (company code {ANLB.BUKRS}, area {ANLB.AFABE}):
+    group asset {ANLB.ANLGR} does not exist.'
 
 - id: AA250
   field: ANLB.AFABG
@@ -1870,8 +1871,8 @@ rules:
 - id: AA256
   field: ANLZ.BDATU
   check_class: cross_field_check
-  grain: ANLZ
-  fail_when: '(`ANLZ.BDATU` < @today) & `ANLA.DEAKT`.isna()'
+  grain: ANLA
+  fail_when: '`ANLZ.BDATU`.isna() & `ANLA.DEAKT`.isna()'
   severity: medium
   dimension: consistency
   message: Active asset's time-dependent assignment interval has already ended
@@ -1885,8 +1886,8 @@ rules:
   fix_map:
     __other__: Maintain a new, currently valid time-dependent interval in AS02 > Time-dependent tab
       (S/4HANA Fiori app F2747).
-  record_fix_template: 'Asset {ANLZ.ANLN1}-{ANLZ.ANLN2} (company code {ANLZ.BUKRS}): time-dependent
-    interval ended {ANLZ.BDATU}, asset still active.'
+  record_fix_template: 'Asset {ANLA.ANLN1}-{ANLA.ANLN2} (company code {ANLA.BUKRS}): no currently
+    valid time-dependent interval, asset still active.'
 
 - id: AA257
   field: ANLC.KNAFA
@@ -1963,8 +1964,11 @@ rules:
   field: ANLC.GJAHR
   check_class: cross_field_check
   grain: ANLC
+  applies_when:
+    ANLA.DEAKT:
+      populated: true
   fail_when: >-
-    `ANLA.DEAKT`.notna() & (`ANLC.GJAHR`.astype(int) > `ANLA.DEAKT`.dt.year) &
+    (`ANLC.GJAHR`.str.extract(r'(\d+)', expand=False).fillna('0').astype('int64') > `ANLA.DEAKT`.dt.year) &
     ((`ANLC.KNAFA`.fillna(0) + `ANLC.NAFAG`.fillna(0) + `ANLC.SAFAG`.fillna(0) + `ANLC.AAFAG`.fillna(0)).abs() > 0.01)
   severity: high
   dimension: accuracy
