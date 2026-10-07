@@ -330,3 +330,291 @@ rules:
   fix_map:
     __other__: Delete the entry or complete its itemisation.
   record_fix_template: 'Expense entry {CONCUR_ENTRY.ENTRY_ID}: amount is zero.'
+- id: CNE021
+  field: CONCUR_REPORT.TOTAL
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.TOTAL` < 0'
+  severity: medium
+  dimension: validity
+  message: Concur report total is negative
+  why_it_matters: A negative total is a credit. Employee expense reports should not net negative.
+  rule_authority: best_practice
+  sap_impact: Reimbursement goes the wrong way.
+  fix_map:
+    __other__: Review the entries of the report.
+  record_fix_template: 'Report {CONCUR_REPORT.REPORT_ID}: total is {actual_value}.'
+- id: CNE022
+  field: CONCUR_REPORT.SUBMIT_DATE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.SUBMIT_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Concur report submit date is in the future
+  why_it_matters: A report cannot be submitted later than today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cycle-time reports are wrong.
+  fix_map:
+    __other__: Correct the submit date.
+  record_fix_template: 'Report {CONCUR_REPORT.REPORT_ID}: submitted {actual_value}, in the future.'
+- id: CNE023
+  field: CONCUR_REPORT.APPROVED_DATE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.APPROVED_DATE` < `CONCUR_REPORT.SUBMIT_DATE`'
+  severity: high
+  dimension: consistency
+  message: Concur report approved before it was submitted
+  why_it_matters: Approval follows submission.
+  rule_authority: sap_hard_constraint
+  sap_impact: The approval trail is unreliable.
+  fix_map:
+    __other__: Review the approval history.
+  record_fix_template: 'Report {CONCUR_REPORT.REPORT_ID}: approved {CONCUR_REPORT.APPROVED_DATE}, submitted {CONCUR_REPORT.SUBMIT_DATE}.'
+- id: CNE024
+  field: CONCUR_REPORT.APPROVED_DATE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.APPROVED_DATE`.isna()'
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_APPR
+  severity: high
+  dimension: consistency
+  message: Approved Concur report has no approval date
+  why_it_matters: A report in approved status must carry the approval date.
+  rule_authority: best_practice
+  sap_impact: Payment timing cannot be audited.
+  fix_map:
+    __other__: Review the approval history.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} is approved with no approval date.
+- id: CNE025
+  field: CONCUR_REPORT.APPROVER_LOGIN_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.APPROVER_LOGIN_ID`.isna()'
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_PEND
+  severity: medium
+  dimension: completeness
+  message: Pending Concur report has no approver
+  why_it_matters: A report waiting for approval needs a named approver.
+  rule_authority: best_practice
+  sap_impact: The report waits forever.
+  fix_map:
+    __other__: Assign an approver.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} is pending with no approver.
+- id: CNE026
+  field: CONCUR_REPORT.SUBMIT_DATE
+  check_class: freshness_check
+  max_age_hours: 720
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_PEND
+  severity: medium
+  dimension: timeliness
+  message: Concur report pending approval for over 30 days
+  why_it_matters: Reports waiting a month delay reimbursement and period close.
+  rule_authority: best_practice
+  sap_impact: Accruals build up for unapproved expenses.
+  fix_map:
+    __other__: Approve, return or reassign the report.
+  record_fix_template: 'Report {CONCUR_REPORT.REPORT_ID}: submitted {actual_value}, still pending.'
+- id: CNE027
+  field: CONCUR_REPORT.PAYMENT_STATUS_CODE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.PAYMENT_STATUS_CODE`.isna()'
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_APPR
+  severity: medium
+  dimension: completeness
+  message: Approved Concur report has no payment status
+  why_it_matters: Approved reports move to payment. A blank status hides where the report is.
+  rule_authority: best_practice
+  sap_impact: Reimbursement is not tracked.
+  fix_map:
+    __other__: Review the payment process for the report.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} is approved with no payment status.
+- id: CNE028
+  field: CONCUR_REPORT.POLICY_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.POLICY_ID`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Concur report has no policy
+  why_it_matters: The policy decides limits and receipt rules.
+  rule_authority: best_practice
+  sap_impact: Policy checks are skipped.
+  fix_map:
+    __other__: Assign a policy.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} has no policy.
+- id: CNE029
+  field: CONCUR_REPORT.ORG_UNIT_1
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.ORG_UNIT_1`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Concur report has no organisation unit
+  why_it_matters: The organisation unit maps the expense to a company code for the ERP posting.
+  rule_authority: best_practice
+  sap_impact: The report cannot be posted or mapped to an S/4HANA company code.
+  fix_map:
+    __other__: Set the organisation unit.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} has no organisation unit.
+- id: CNE030
+  field: CONCUR_REPORT.CURRENCY_CODE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.CURRENCY_CODE`.isna()'
+  severity: high
+  dimension: completeness
+  message: Concur report has no currency
+  why_it_matters: A total without a currency cannot be reimbursed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment fails.
+  fix_map:
+    __other__: Set the report currency.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} has no currency.
+- id: CNE031
+  field: CONCUR_REPORT.HAS_EXCEPTION
+  check_class: cross_field_check
+  fail_when: (`CONCUR_REPORT.HAS_EXCEPTION` == 'true')
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_APPR
+  severity: medium
+  dimension: consistency
+  message: Concur report approved with open exceptions
+  why_it_matters: Approving past a policy exception needs an explicit justification.
+  rule_authority: best_practice
+  sap_impact: Out-of-policy spend is paid.
+  fix_map:
+    __other__: Review the exceptions and the approver comment.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} is approved with policy exceptions.
+- id: CNE032
+  field: CONCUR_REPORT.RECEIPTS_RECEIVED
+  check_class: cross_field_check
+  fail_when: '`CONCUR_REPORT.RECEIPTS_RECEIVED` != ''true'''
+  applies_when:
+    CONCUR_REPORT.APPROVAL_STATUS_CODE:
+    - A_APPR
+  severity: medium
+  dimension: consistency
+  message: Concur report approved without paper receipts
+  why_it_matters: Where paper receipts are required, approval should wait for them.
+  rule_authority: best_practice
+  sap_impact: Tax deduction for the expense is at risk.
+  fix_map:
+    __other__: Confirm receipts or record the exemption.
+  record_fix_template: Report {CONCUR_REPORT.REPORT_ID} is approved without receipts received.
+- id: CNE033
+  field: CONCUR_ENTRY.TRANSACTION_DATE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_ENTRY.TRANSACTION_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Concur expense date is in the future
+  why_it_matters: An expense cannot occur later than today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Fraudulent or mistyped expenses are reimbursed.
+  fix_map:
+    __other__: Correct the expense date.
+  record_fix_template: 'Entry {CONCUR_ENTRY.ENTRY_ID}: date {actual_value}, in the future.'
+- id: CNE034
+  field: CONCUR_ENTRY.TRANSACTION_DATE
+  check_class: freshness_check
+  max_age_hours: 8760
+  severity: low
+  dimension: timeliness
+  message: Concur expense is older than one year
+  why_it_matters: Old expenses breach most claim policies and tax rules.
+  rule_authority: best_practice
+  sap_impact: Stale expenses are reimbursed.
+  fix_map:
+    __other__: Review the entry and the late-claim policy.
+  record_fix_template: 'Entry {CONCUR_ENTRY.ENTRY_ID}: dated {actual_value}.'
+- id: CNE035
+  field: CONCUR_ENTRY.POSTED_AMOUNT
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: (`CONCUR_ENTRY.TRANSACTION_CURRENCY_CODE` == `CONCUR_REPORT.CURRENCY_CODE`) & ((`CONCUR_ENTRY.POSTED_AMOUNT`
+    - `CONCUR_ENTRY.TRANSACTION_AMOUNT`).abs() > 0.01)
+  severity: high
+  dimension: accuracy
+  message: Concur posted amount differs from transaction amount in the same currency
+  why_it_matters: With no conversion the posted amount must equal the transaction amount.
+  rule_authority: best_practice
+  sap_impact: The reimbursed amount is wrong.
+  fix_map:
+    __other__: Review the entry amounts and the exchange rate.
+  record_fix_template: 'Entry {CONCUR_ENTRY.ENTRY_ID}: transaction {CONCUR_ENTRY.TRANSACTION_AMOUNT}, posted {CONCUR_ENTRY.POSTED_AMOUNT}.'
+- id: CNE036
+  field: CONCUR_ENTRY.EXCHANGE_RATE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_ENTRY.EXCHANGE_RATE` <= 0'
+  applies_when:
+    CONCUR_ENTRY.EXCHANGE_RATE:
+      populated: true
+  severity: high
+  dimension: validity
+  message: Concur exchange rate is zero or negative
+  why_it_matters: An exchange rate must be positive.
+  rule_authority: sap_hard_constraint
+  sap_impact: Converted amounts are zero or negative.
+  fix_map:
+    __other__: Correct the exchange rate.
+  record_fix_template: 'Entry {CONCUR_ENTRY.ENTRY_ID}: exchange rate {actual_value}.'
+- id: CNE037
+  field: CONCUR_ENTRY.EXPENSE_TYPE_CODE
+  check_class: cross_field_check
+  fail_when: '`CONCUR_ENTRY.EXPENSE_TYPE_CODE`.isna()'
+  severity: high
+  dimension: completeness
+  message: Concur entry has no expense type
+  why_it_matters: The expense type maps to the GL account in the ERP posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: The entry cannot be posted.
+  fix_map:
+    __other__: Set the expense type.
+  record_fix_template: Entry {CONCUR_ENTRY.ENTRY_ID} has no expense type.
+- id: CNE038
+  field: CONCUR_ENTRY.VENDOR_DESCRIPTION
+  check_class: cross_field_check
+  fail_when: '`CONCUR_ENTRY.VENDOR_DESCRIPTION`.isna()'
+  severity: low
+  dimension: completeness
+  message: Concur entry has no vendor description
+  why_it_matters: The vendor name supports audit and duplicate checks.
+  rule_authority: best_practice
+  sap_impact: Audit cannot confirm the supplier of the expense.
+  fix_map:
+    __other__: Add the vendor description.
+  record_fix_template: Entry {CONCUR_ENTRY.ENTRY_ID} has no vendor description.
+- id: CNE039
+  field: CONCUR_ENTRY.REPORT_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_ENTRY.REPORT_ID
+  - CONCUR_ENTRY.EXPENSE_TYPE_CODE
+  - CONCUR_ENTRY.TRANSACTION_DATE
+  - CONCUR_ENTRY.TRANSACTION_AMOUNT
+  severity: medium
+  dimension: uniqueness
+  message: Concur report has duplicate expense lines
+  why_it_matters: Same type, date and amount on one report is a likely double entry.
+  rule_authority: best_practice
+  sap_impact: The employee is reimbursed twice.
+  fix_map:
+    __other__: Review and delete the duplicate.
+  record_fix_template: Entry {CONCUR_ENTRY.ENTRY_ID} on report {CONCUR_ENTRY.REPORT_ID} repeats another line.
+- id: CNE040
+  field: CONCUR_ENTRY.IS_PERSONAL
+  check_class: cross_field_check
+  grain: CONCUR_ENTRY
+  fail_when: (`CONCUR_ENTRY.IS_PERSONAL` == 'true') & (`CONCUR_REPORT.APPROVAL_STATUS_CODE` == 'A_APPR')
+  severity: medium
+  dimension: consistency
+  message: Personal Concur expense is on an approved report
+  why_it_matters: Personal expenses are not reimbursable. They should be excluded before approval.
+  rule_authority: best_practice
+  sap_impact: Company pays for private spend.
+  fix_map:
+    __other__: Review the entry and recover the amount if paid.
+  record_fix_template: Entry {CONCUR_ENTRY.ENTRY_ID} is personal on approved report {CONCUR_REPORT.REPORT_ID}.
