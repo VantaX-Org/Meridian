@@ -769,7 +769,7 @@ rules:
       or set price via MM02 > Accounting 1. In S/4HANA: use Fiori F1602 or cost estimate Fiori F4736.'}
   record_fix_template: 'Material {MARA.MATNR}: price control is S but STPRS is {actual_value}. Set a valid standard
     price via MM02 (ECC) or Fiori F1602 (S/4HANA).'
-  fail_when: (`MBEW.VPRSV` == 'S') & ~(`MBEW.STPRS` > 0)
+  fail_when: (`MBEW.VPRSV` == 'S') & ~(`MBEW.STPRS`.fillna(0) > 0)
 - id: MM044
   field: MARC.BSTMI
   check_class: cross_field_check

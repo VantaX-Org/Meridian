@@ -163,3 +163,11 @@ def test_rule_fails_bad_and_passes_good_record(rid):
     affected, total = fire(rid, CASES[rid])
     assert affected == 1, (rid, affected, total)
     assert total == 2, (rid, affected, total)
+
+
+def test_mm043_blank_standard_price_fails():
+    # a blank STPRS is NA after typing; NA > 0 must not let the record pass
+    from checks.types.cross_field_check import CrossFieldCheck
+    df = pd.DataFrame({"MBEW.VPRSV": ["S", "S", "S", "V"], "MBEW.STPRS": ["", "0", "12.5", ""],
+                       "MBEW.LBKUM": ["5"] * 4, "MARA.MATNR": ["A", "B", "C", "D"]})
+    assert CrossFieldCheck(RULES["MM043"]).evaluate(df).failing.tolist() == [True, True, False, False]
