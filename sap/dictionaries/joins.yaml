@@ -99,6 +99,7 @@ edges:
   # ── Asset accounting ───────────────────────────────────────────────────
   - {parent: ANLA, child: ANLB, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
   - {parent: ANLA, child: ANLZ, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: one, filter: {BDATU: "99991231"}}
+  - {parent: ANLA, child: ANLC, join: {BUKRS: BUKRS, ANLN1: ANLN1, ANLN2: ANLN2}, cardinality: many}
   # company code and its asset accounting settings (chart of depreciation) above the asset
   - {parent: T001, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}
   - {parent: T093C, child: ANLA, join: {BUKRS: BUKRS}, cardinality: many}

@@ -322,3 +322,428 @@ rules:
     fix_map:
       __other__: Correct the hours or the overtime.
     record_fix_template: 'Time record for user {TIMESHEET.USERID}: overtime exceeds the hours of the day. Correct the record.'
+
+  - id: TIME024
+    field: TIMESHEET.APPROVAL_STATUS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Approval status is mandatory — an entry with no status never enters the approval workflow
+    why_it_matters: APPROVAL_STATUS is the workflow gate between submission and payroll (see domain check on this field).
+      A blank status means the entry is not pending, not approved, not rejected — it exists only in the raw import with
+      no routing information at all.
+    rule_authority: best_practice
+    sap_impact: The entry cannot be routed to an approver or picked up by the payroll extract; it is invisible to both
+      the approval queue and payroll.
+    fix_map:
+      __blank__: Set the approval status to pending to route the entry into the workflow via Admin Center > Time
+        Management > Timesheet Import.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: APPROVAL_STATUS is missing. Set to pending via
+      Admin Center > Time Management.'
+
+  - id: TIME025
+    field: TIMESHEET.APPROVER_ID
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.APPROVAL_STATUS` == ''APPROVED'' & `TIMESHEET.APPROVER_ID`.isna()'
+    severity: high
+    dimension: completeness
+    message: Approved timesheet entry has no recorded approver
+    why_it_matters: An approval decision must be attributable to the person who made it. An entry marked approved with
+      no APPROVER_ID cannot be traced back to the manager or delegate who authorised payment, breaking the segregation-of-duties
+      evidence payroll audits rely on.
+    rule_authority: best_practice
+    sap_impact: Payroll pays the entry but the audit trail cannot show who approved it; internal-control testing fails
+      for this transaction.
+    fix_map:
+      __blank__: Record the approving manager's user ID on the entry, or reject and re-approve through the workflow
+        so the approver is captured.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: approved with no APPROVER_ID recorded.'
+
+  - id: TIME026
+    field: TIMESHEET.ABSENCE_TYPE
+    check_class: uniqueness_check
+    fields:
+    - TIMESHEET.USERID
+    - TIMESHEET.DATE
+    - TIMESHEET.ABSENCE_TYPE
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        populated: true
+    severity: medium
+    dimension: uniqueness
+    message: Same employee, date and time type booked as an absence more than once
+    why_it_matters: An employee can only be absent under one time type on a given calendar day. Two rows with the same
+      USERID, DATE and ABSENCE_TYPE mean the absence was imported twice or booked twice by mistake.
+    rule_authority: best_practice
+    sap_impact: The time account is deducted twice and payroll replication (infotype 2001) may create duplicate absence
+      records for the same day.
+    fix_map:
+      __blank__: Investigate the duplicate absence booking and delete or cancel the extra entry via Time Off.
+    record_fix_template: 'Employee {TIMESHEET.USERID}: absence type duplicated on {TIMESHEET.DATE}.'
+
+  - id: TIME027
+    field: TIMESHEET.SUBMITTED_DATE
+    check_class: cross_field_check
+    fail_when: '(`TIMESHEET.SUBMITTED_DATE` - `TIMESHEET.DATE`).dt.days > 30'
+    require_populated: true
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: medium
+    dimension: timeliness
+    message: Timesheet submitted more than 30 days after the work date
+    why_it_matters: Worked time is expected to be submitted shortly after it is worked. A submission more than a month
+      late points to a backlog in timesheet entry that delays payroll processing and cost allocation for the period it
+      belongs to.
+    rule_authority: best_practice
+    sap_impact: Labour cost posts to a closed or already-reported period; payroll processes the hours as a retroactive
+      correction instead of in the normal run.
+    fix_map:
+      __other__: Submit timesheets within the period they were worked; escalate persistent late submission to the
+        employee's manager.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: work on {TIMESHEET.DATE} submitted {TIMESHEET.SUBMITTED_DATE},
+      more than 30 days late.'
+
+  - id: TIME028
+    field: TIMESHEET.SUBMITTED_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.SUBMITTED_DATE` < `TIMESHEET.DATE`'
+    require_populated: true
+    applies_when:
+      TIMESHEET.ABSENCE_TYPE:
+        blank: true
+    severity: medium
+    dimension: consistency
+    message: Worked time submitted before the day it was worked
+    why_it_matters: Worked hours can only be submitted once they have actually been worked. A submission date earlier
+      than the work date is a sign the two dates were swapped or copied from another entry.
+    rule_authority: best_practice
+    sap_impact: Payroll may process hours for a day that has not occurred yet; the audit trail for the entry is unreliable.
+    fix_map:
+      __other__: Correct the submitted date or the work date, whichever was entered wrong.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: submitted {TIMESHEET.SUBMITTED_DATE} before the work date {TIMESHEET.DATE}.'
+
+  - id: TIME029
+    field: TIMESHEET.QUANTITY_IN_DAYS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_TYPE`.notna() & `TIMESHEET.QUANTITY_IN_DAYS`.isna() & `TIMESHEET.HOURS`.isna()'
+    severity: high
+    dimension: completeness
+    message: Absence entry has a time type but no quantity in either days or hours
+    why_it_matters: An absence booking exists to deduct a quantity from a time account. A time type with neither
+      QUANTITY_IN_DAYS nor HOURS populated cannot be converted into a deduction, so the absence is recorded but has
+      no effect.
+    rule_authority: best_practice
+    sap_impact: The time account is not deducted; the employee appears to have taken leave that was never charged
+      against their balance.
+    fix_map:
+      __blank__: Enter the absence quantity in days or hours via Time Off, matching how the time type is configured
+        to be recorded.
+    record_fix_template: 'Absence {TIMESHEET.USERID} {TIMESHEET.DATE}: time type recorded with no quantity in days or
+      hours.'
+
+  - id: TIME030
+    field: TIMESHEET.QUANTITY_IN_DAYS
+    check_class: cross_field_check
+    fail_when: (`TIMESHEET.QUANTITY_IN_DAYS` < 0) | (`TIMESHEET.QUANTITY_IN_DAYS` > 1)
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Absence quantity in days is outside the 0-1 range for a single calendar-day record
+    why_it_matters: Each timesheet row covers one calendar day (DATE). A day-based absence quantity below 0 or above
+      1 on a single-day row is not physically possible — it is a decimal error or a multi-day absence that was not
+      split by day.
+    rule_authority: best_practice
+    sap_impact: The time account is deducted for more or less leave than was actually taken.
+    fix_map:
+      __other__: Correct the quantity, or split a multi-day absence into one record per calendar day.
+    record_fix_template: 'Absence {TIMESHEET.USERID} {TIMESHEET.DATE}: quantity in days {TIMESHEET.QUANTITY_IN_DAYS}
+      is outside 0-1.'
+
+  - id: TIME031
+    field: TIMESHEET.BALANCE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.BALANCE`.notna() & `TIMESHEET.TIME_ACCOUNT_TYPE`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Time account balance recorded without a time account type
+    why_it_matters: A balance only means something in the context of the account type that defines its accrual and
+      pay-out rules. A balance with no account type cannot be interpreted or validated against its entitlement rules.
+    rule_authority: best_practice
+    sap_impact: The balance cannot be matched to an accrual rule; leave pay-out on termination cannot determine which
+      rate applies.
+    fix_map:
+      __other__: Link the balance to its time account type, or remove the orphaned balance record.
+    record_fix_template: 'Time account {TIMESHEET.USERID}: balance {TIMESHEET.BALANCE} recorded with no account type.'
+
+  - id: TIME032
+    field: TIMESHEET.TIME_ACCOUNT_TYPE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.TIME_ACCOUNT_TYPE`.notna() & `TIMESHEET.BALANCE`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Time account type recorded without a balance
+    why_it_matters: Every time account of a configured type should carry a current balance; one with no balance value
+      cannot be booked against or paid out.
+    rule_authority: best_practice
+    sap_impact: Absences cannot be deducted from the account; leave pay-out on termination treats the account as empty.
+    fix_map:
+      __blank__: Recalculate or re-import the balance for this time account via Manage Time Accounts.
+    record_fix_template: 'Time account {TIMESHEET.USERID}: account type {TIMESHEET.TIME_ACCOUNT_TYPE} has no balance.'
+
+  - id: TIME033
+    field: TIMESHEET.COST_CENTER
+    fields:
+    - TIMESHEET.USERID
+    - TIMESHEET.COST_CENTER
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    - COST_CENTER
+    severity: medium
+    dimension: consistency
+    message: Timesheet cost centre is not the cost centre currently assigned to this employee
+    why_it_matters: Time is normally booked to the cost centre the employee is currently assigned to in Employee
+      Central. A different cost centre on the timesheet either reflects a genuine cross-charge that needs separate
+      approval, or the employee's job assignment changed without the timesheet being updated.
+    rule_authority: best_practice
+    sap_impact: Labour cost posts to a cost centre that does not match the employee's organisational assignment,
+      distorting both centres' cost reporting.
+    fix_map:
+      __other__: Confirm whether the cost centre is a deliberate cross-charge; if not, correct it to the cost centre
+        currently assigned to the employee.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: cost centre {TIMESHEET.COST_CENTER} does not match the
+      employee current cost centre assignment.'
+
+  - id: TIME034
+    field: TIMESHEET.COST_CENTER
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.COST_CENTER`.isna() & `TIMESHEET.ABSENCE_TYPE`.isna() & (`TIMESHEET.HOURS` > 0)'
+    severity: medium
+    dimension: completeness
+    message: Worked hours recorded with no cost centre to allocate them to
+    why_it_matters: Worked time must be allocated to a cost centre for controlling to post the labour cost. Hours with
+      no cost centre and no absence type cannot be charged anywhere.
+    rule_authority: best_practice
+    sap_impact: The hours are excluded from cost centre labour cost reporting, or default to a fallback cost centre
+      that distorts it.
+    fix_map:
+      __blank__: Add the employee's cost centre to the timesheet entry via Admin Center > Time Management > Timesheet
+        Import.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: {TIMESHEET.HOURS} worked hours with no cost
+      centre.'
+
+  - id: TIME035
+    field: TIMESHEET.OVERTIME_HOURS
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.ABSENCE_TYPE`.notna() & (`TIMESHEET.OVERTIME_HOURS` > 0)'
+    severity: medium
+    dimension: consistency
+    message: Overtime hours recorded on a day booked as an absence
+    why_it_matters: Overtime is a premium paid on hours actually worked. A day booked as an absence has, by definition,
+      no worked hours to be in addition to, so overtime on that day is a data error, not a genuine premium entitlement.
+    rule_authority: best_practice
+    sap_impact: Overtime premium paid for a day the employee did not work.
+    fix_map:
+      __other__: Remove the overtime hours from the absence day, or correct the time type if the day was partly worked.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: overtime {TIMESHEET.OVERTIME_HOURS} recorded
+      on an absence day.'
+
+  - id: TIME036
+    field: TIMESHEET.LAST_MODIFIED_DATE
+    check_class: freshness_check
+    max_age_hours: 240
+    applies_when:
+      TIMESHEET.APPROVAL_STATUS:
+      - PENDING
+    severity: medium
+    dimension: timeliness
+    message: Timesheet entry has sat pending with no activity for more than 10 days
+    why_it_matters: A pending entry with no recent change has stalled in the approval queue — nobody has approved,
+      rejected or even touched it recently. The longer it stalls, the more it delays the payroll run it belongs to.
+    rule_authority: best_practice
+    sap_impact: The entry risks missing its payroll run; the employee is paid late or via an off-cycle correction.
+    fix_map:
+      __blank__: Follow up with the approving manager or escalate the stalled approval via Time Management > Approvals.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: pending with no activity since {TIMESHEET.LAST_MODIFIED_DATE}.'
+
+  - id: TIME037
+    field: TIMESHEET.APPROVER_ID
+    check_class: cross_field_check
+    fail_when: '(`TIMESHEET.APPROVAL_STATUS` == ''PENDING_CANCELLATION'') & `TIMESHEET.APPROVER_ID`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Cancellation request has no approver assigned to action it
+    why_it_matters: A cancellation request needs the same approver routing as the original approval. One with no
+      APPROVER_ID is stuck — nobody is assigned to approve or reject the cancellation.
+    rule_authority: best_practice
+    sap_impact: The cancellation never resolves; the original entry stays live in payroll while the employee believes
+      it was withdrawn.
+    fix_map:
+      __blank__: Assign an approver to the cancellation request via Time Management > Approvals.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: cancellation request has no approver.'
+
+  - id: TIME038
+    field: TIMESHEET.APPROVER_ID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: medium
+    dimension: consistency
+    message: Approver user ID does not correspond to an existing employee
+    why_it_matters: The approver recorded against a timesheet entry must be a real, active employee for the approval
+      to be valid. An approver ID that does not exist means the approval has no accountable person behind it.
+    rule_authority: best_practice
+    sap_impact: The audit trail for the approval cannot be verified against the employee master; segregation-of-duties
+      reporting cannot identify the approver.
+    fix_map:
+      __other__: Correct the approver user ID to match an existing employee record.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: approver {TIMESHEET.APPROVER_ID} is not a valid employee.'
+
+  - id: TIME039
+    field: TIMESHEET.APPROVER_ID
+    check_class: regex_check
+    pattern: "^[a-zA-Z0-9._@-]{1,100}$"
+    severity: medium
+    dimension: validity
+    message: Approver user ID must contain only valid characters
+    why_it_matters: APPROVER_ID must match the same USERID format used in Employee Central as the timesheet owner's
+      own USERID. Invalid characters prevent the approver from being matched to an employee record.
+    rule_authority: best_practice
+    sap_impact: The approver cannot be matched to an employee record; the approval cannot be attributed to anyone.
+    fix_map:
+      __other__: Correct the approver user ID to match the Employee Central USERID format.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: approver ID format invalid (value: {actual_value}).'
+
+  - id: TIME040
+    field: TIMESHEET.APPROVER_ID
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.APPROVER_ID` == `TIMESHEET.USERID`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Timesheet approved by the same person who recorded it
+    why_it_matters: Segregation of duties requires that the person who records time is not also the one who approves
+      it. An approver ID equal to the timesheet owner's own USERID is a self-approval, which most organisations'
+      internal controls prohibit.
+    rule_authority: best_practice
+    sap_impact: Internal-control testing flags the approval as a segregation-of-duties violation; the hours may need
+      to be re-approved by an independent approver.
+    fix_map:
+      __other__: Re-route the entry for approval by the employee's manager or a delegate, not the employee themselves.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: approved by the same user ID, a self-approval.'
+
+  - id: TIME041
+    field: TIMESHEET.BALANCE
+    check_class: uniqueness_check
+    fields:
+    - TIMESHEET.USERID
+    - TIMESHEET.DATE
+    - TIMESHEET.TIME_ACCOUNT_TYPE
+    applies_when:
+      TIMESHEET.TIME_ACCOUNT_TYPE:
+        populated: true
+    severity: medium
+    dimension: uniqueness
+    message: Same employee, date and time account type has more than one balance record
+    why_it_matters: A time account has one current balance per account type on a given date. Two rows for the same
+      employee, date and account type mean the balance was imported twice, or two different values exist for the
+      same account at the same point in time.
+    rule_authority: best_practice
+    sap_impact: It is unclear which balance is current; leave entitlement and pay-out calculations may use the wrong
+      one.
+    fix_map:
+      __blank__: Investigate the duplicate balance record and remove the superseded one via Manage Time Accounts.
+    record_fix_template: 'Time account {TIMESHEET.USERID} {TIMESHEET.TIME_ACCOUNT_TYPE}: more than one balance record
+      on {TIMESHEET.DATE}.'
+
+  - id: TIME042
+    field: TIMESHEET.APPROVER_ID
+    check_class: cross_field_check
+    fail_when: '(`TIMESHEET.APPROVAL_STATUS` == ''REJECTED'') & `TIMESHEET.APPROVER_ID`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Rejected timesheet entry has no recorded approver
+    why_it_matters: A rejection, like an approval, is a decision that must be attributable to the person who made it.
+      A rejected entry with no APPROVER_ID gives the employee no one to follow up with and leaves no record of who
+      rejected the time.
+    rule_authority: best_practice
+    sap_impact: The employee cannot determine who to query about the rejection; the audit trail for the decision is
+      incomplete.
+    fix_map:
+      __blank__: Record the rejecting manager's user ID, or re-process the rejection through the workflow so the
+        approver is captured.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: rejected with no APPROVER_ID recorded.'
+
+  - id: TIME043
+    field: TIMESHEET.SUBMITTED_DATE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.SUBMITTED_DATE` > @today'
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Timesheet submission date is in the future
+    why_it_matters: SUBMITTED_DATE records when the employee actually submitted the entry, which cannot be later than
+      today. A future submission date is a clock or data-entry error, not a real submission.
+    rule_authority: best_practice
+    sap_impact: Late-submission and ageing reports built on SUBMITTED_DATE are distorted by entries that appear not
+      yet due.
+    fix_map:
+      __other__: Correct the submission date to the date the entry was actually submitted.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: submitted date {TIMESHEET.SUBMITTED_DATE} is in the future.'
+
+  - id: TIME044
+    field: TIMESHEET.BALANCE
+    check_class: cross_field_check
+    fail_when: '`TIMESHEET.TIME_ACCOUNT_TYPE`.notna() & (`TIMESHEET.BALANCE` < 0)'
+    severity: medium
+    dimension: accuracy
+    message: Time account balance is negative
+    why_it_matters: Most leave-type time accounts are not configured to go negative; a negative balance usually means
+      more was booked against the account than it had available, or an accrual run did not complete before bookings
+      were made.
+    rule_authority: customer_configured
+    sap_impact: The employee appears to owe leave they do not have entitlement for; termination pay-out calculated
+      on a negative balance is wrong.
+    fix_map:
+      __other__: Confirm whether negative balances are allowed for this time account type; if not, investigate and
+        correct the overbooking.
+    record_fix_template: 'Time account {TIMESHEET.USERID} {TIMESHEET.TIME_ACCOUNT_TYPE}: balance {TIMESHEET.BALANCE}
+      is negative.'
+
+  - id: TIME045
+    field: TIMESHEET.COST_CENTER
+    check_class: regex_check
+    pattern: "^[A-Za-z0-9._-]{1,128}$"
+    severity: low
+    dimension: validity
+    message: Cost centre contains characters not valid for an SAP cost centre code
+    why_it_matters: Cost centre codes replicate into controlling (CO) as a key field; special characters or whitespace
+      outside the allowed set are either a copy-paste artefact from the source system or will be rejected on
+      replication.
+    rule_authority: best_practice
+    sap_impact: The cost centre fails validation on replication to CO, and the labour cost cannot post.
+    fix_map:
+      __other__: Correct the cost centre to a valid SAP cost centre code (value found {actual_value}).
+    record_fix_template: 'Timesheet {TIMESHEET.USERID} {TIMESHEET.DATE}: cost centre has invalid characters (value:
+      {actual_value}).'
+
+  - id: TIME046
+    field: TIMESHEET.DATE
+    check_class: cross_field_check
+    fail_when: '(`TIMESHEET.APPROVAL_STATUS` == ''PENDING'') & ((@today - `TIMESHEET.DATE`).dt.days > 60)'
+    require_populated: true
+    severity: medium
+    dimension: timeliness
+    message: Timesheet entry still pending more than 60 days after the work date
+    why_it_matters: A pending entry this old is very unlikely to still be actioned through the normal workflow — it
+      has effectively fallen out of the payroll cycle it belonged to and needs manual intervention.
+    rule_authority: best_practice
+    sap_impact: The hours are permanently excluded from normal payroll processing and, if approved late, require an
+      off-cycle or retroactive correction run.
+    fix_map:
+      __other__: Review the backlog of old pending entries and approve, reject or cancel each one so they stop
+        blocking payroll reconciliation.
+    record_fix_template: 'Timesheet {TIMESHEET.USERID}: pending since {TIMESHEET.DATE}, more than 60 days ago.'

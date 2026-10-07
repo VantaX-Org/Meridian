@@ -352,3 +352,379 @@ rules:
   fix_map:
     __other__: Select a valid department.
   record_fix_template: 'Onboarding record {ONBOARDINGCANDIDATEINFO.USERID}: department is not a foundation department. Correct the onboarding record.'
+- id: REC026
+  field: JOBREQUISITION.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Requisition status is required to track where the requisition sits in its lifecycle
+  why_it_matters: STATUS drives which requisitions are open for new applications, visible on the career site, and included
+    in time-to-fill reporting. Without it, the requisition cannot be reliably included in or excluded from recruiting pipeline
+    dashboards.
+  rule_authority: best_practice
+  sap_impact: Requisition lifecycle state is unknown. Career site publishing rules and pipeline dashboards cannot classify
+    this requisition as open, closed, or on hold.
+  fix_map:
+    __blank__: Set the requisition status via Recruiting > Requisition Management > Edit Requisition.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: STATUS is missing. Set via Recruiting > Requisition Management.'
+- id: REC027
+  field: JOBREQUISITION.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Open
+  - Closed
+  - OnHold
+  - Cancelled
+  - Filled
+  severity: medium
+  dimension: accuracy
+  message: Requisition status must be a recognised lifecycle value
+  why_it_matters: Reporting and the career site posting rules branch on a fixed set of requisition statuses. A value outside
+    this set is usually a free-text entry or a stale integration code that reporting cannot classify.
+  rule_authority: best_practice
+  sap_impact: Requisition is excluded from status-based dashboards and may stay published or hidden incorrectly on the career
+    site.
+  valid_values_with_labels:
+    Open: Open — accepting applications
+    Closed: Closed — filled or cancelled, no longer accepting applications
+    OnHold: On hold — temporarily paused
+    Cancelled: Cancelled — withdrawn before being filled
+    Filled: Filled — hire completed, pending close
+  fix_map:
+    __blank__: Correct the requisition status to one of the recognised lifecycle values via Recruiting > Requisition Management.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: STATUS value is not recognised. Correct via Recruiting >
+    Requisition Management.'
+- id: REC028
+  field: JOBREQUISITION.NUM_OPENINGS
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Number of openings is required for headcount and budget tracking
+  why_it_matters: NUM_OPENINGS tells workforce planning how many hires a single requisition covers. Without it, headcount
+    forecasts and approved-budget reconciliation cannot tell a single-hire requisition from a multi-hire one.
+  rule_authority: best_practice
+  sap_impact: Headcount forecast cannot allocate approved budget correctly against this requisition. Multi-hire requisitions
+    may be under-counted in workforce planning.
+  fix_map:
+    __blank__: Set the number of openings via Recruiting > Requisition Management > Edit Requisition.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: NUM_OPENINGS is missing. Set via Recruiting > Requisition
+    Management.'
+- id: REC029
+  field: JOBREQUISITION.NUM_OPENINGS
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.NUM_OPENINGS` <= 0'
+  require_populated: true
+  severity: medium
+  dimension: accuracy
+  message: Number of openings must be a positive count
+  why_it_matters: A requisition with zero or negative openings should not be open for applications — it indicates the requisition
+    was not closed when the headcount was filled or cancelled, or that the field was populated with a placeholder value.
+  rule_authority: best_practice
+  sap_impact: Headcount forecast overstates open positions. Career site may keep accepting applications for a requisition
+    that should already be closed.
+  fix_map:
+    __other__: Correct the number of openings to a positive integer, or close the requisition if no openings remain.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: NUM_OPENINGS is zero or negative. Correct via Recruiting
+    > Requisition Management.'
+- id: REC030
+  field: JOBREQUISITION.DEPARTMENT
+  check_class: exists_check
+  target_table: FODEPARTMENT
+  target_fields:
+  - EXTERNAL_CODE
+  applies_when:
+    JOBREQUISITION.DEPARTMENT:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Requisition department does not exist in the foundation data
+  why_it_matters: The department on a requisition must be a valid foundation department because it is copied to the Employee
+    Central job information record of the hire made against it.
+  rule_authority: best_practice
+  sap_impact: The eventual hire inherits an invalid organisation assignment and the Employee Central replication rejects it.
+  fix_map:
+    __other__: Select a valid department.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: department is not a foundation department. Correct the
+    requisition.'
+- id: REC031
+  field: JOBAPPLICATION.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Application status is required to track pipeline stage
+  why_it_matters: STATUS is the single field that places an application in the recruiting pipeline (applied, screening,
+    interview, offer, hired, rejected, withdrawn). Without it, the application cannot appear on any pipeline or funnel
+    report.
+  rule_authority: best_practice
+  sap_impact: Application does not appear on recruiter pipeline views. Funnel conversion reporting undercounts applications
+    at every stage.
+  fix_map:
+    __blank__: Set the application status via Recruiting > Application Management > Edit Application.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: STATUS is missing. Set via Recruiting > Application Management.'
+- id: REC032
+  field: JOBAPPLICATION.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Applied
+  - Screening
+  - Interview
+  - Offer
+  - Hired
+  - Rejected
+  - Withdrawn
+  severity: medium
+  dimension: accuracy
+  message: Application status must be a recognised pipeline stage
+  why_it_matters: Funnel and conversion reporting groups applications by a fixed set of pipeline stages. A status outside
+    this set is usually a free-text note or a stale integration code that breaks the stage grouping.
+  rule_authority: best_practice
+  sap_impact: Application is excluded from funnel stage reporting or counted in an "unknown" bucket that masks true conversion
+    rates.
+  valid_values_with_labels:
+    Applied: Applied — awaiting initial review
+    Screening: Screening — under recruiter review
+    Interview: Interview — in the interview process
+    Offer: Offer — offer extended
+    Hired: Hired — offer accepted and hire completed
+    Rejected: Rejected — candidate declined
+    Withdrawn: Withdrawn — candidate withdrew
+  fix_map:
+    __blank__: Correct the application status to one of the recognised pipeline stages via Recruiting > Application Management.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: STATUS value is not recognised. Correct via Recruiting
+    > Application Management.'
+- id: REC033
+  field: JOBAPPLICATION.RATING
+  check_class: null_check
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Interview
+    - Offer
+    - Hired
+  severity: medium
+  dimension: completeness
+  message: Average interview rating is required once an application reaches the interview stage
+  why_it_matters: RATING records the average interviewer assessment and is used to compare candidates in the same pipeline.
+    Once an application has progressed to interview, offer, or hire, a missing rating means the hiring decision cannot be
+    justified against other candidates.
+  rule_authority: best_practice
+  sap_impact: Candidate comparison and offer justification reports show no rating for an application that has already been
+    interviewed or hired.
+  fix_map:
+    __blank__: Record the average interview rating via Recruiting > Application Management > Interview Scorecards.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: RATING is missing for an application past the interview
+    stage. Record via Recruiting > Application Management.'
+- id: REC034
+  field: JOBAPPLICATION.RATING
+  check_class: cross_field_check
+  fail_when: '`JOBAPPLICATION.RATING` > 5'
+  require_populated: true
+  severity: low
+  dimension: accuracy
+  message: Average interview rating exceeds the configured 0-5 scale
+  why_it_matters: RATING is an average of interviewer scores on a 0-5 scale. A value above 5 means the average was computed
+    incorrectly or a scorecard was entered on a different scale, and will skew candidate comparison reports.
+  rule_authority: best_practice
+  sap_impact: Candidate comparison reports rank this application above every candidate rated on the correct scale.
+  fix_map:
+    __other__: Recalculate the average rating from the individual interview scorecards, each scored 0-5.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: RATING is above the 0-5 scale. Recalculate from interview
+    scorecards.'
+- id: REC035
+  field: JOBAPPLICATION.REJECT_REASON
+  check_class: null_check
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Rejected
+  severity: medium
+  dimension: completeness
+  message: Rejection reason is required when an application has been rejected
+  why_it_matters: REJECT_REASON is required by EEO/diversity compliance reporting to explain why a candidate was not progressed.
+    A rejected application without a reason cannot be included in adverse-impact analysis.
+  rule_authority: best_practice
+  sap_impact: Adverse-impact and EEO compliance reporting is missing the rejection reason for this application and may fail
+    an audit.
+  fix_map:
+    __blank__: Record the rejection reason via Recruiting > Application Management > Edit Application before closing the
+      application.
+  record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: application is rejected but REJECT_REASON is missing.
+    Record via Recruiting > Application Management.'
+- id: REC036
+  field: ONBOARDINGCANDIDATEINFO.TASK_COMPLETION
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.TASK_COMPLETION` != "COMPLETED"'
+  require_populated: true
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.STATUS:
+    - COMPLETED
+  severity: medium
+  dimension: consistency
+  message: Onboarding status is completed but the task completion checklist state disagrees
+  why_it_matters: When the overall onboarding STATUS has been marked COMPLETED, the underlying task checklist (TASK_COMPLETION)
+    should also show COMPLETED. A mismatch means the checklist was not actually finished when the overall status was closed
+    out, or the two fields were updated independently.
+  rule_authority: best_practice
+  sap_impact: Onboarding checklist progress dashboard reports this new hire as fully onboarded while required tasks remain
+    outstanding on the checklist.
+  fix_map:
+    __other__: Reconcile the onboarding STATUS with the TASK_COMPLETION checklist state via Onboarding > Candidate Management.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: STATUS is COMPLETED but TASK_COMPLETION disagrees.
+    Reconcile via Onboarding > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
+- id: REC037
+  field: ONBOARDINGCANDIDATEINFO.TASK_COMPLETION
+  check_class: domain_value_check
+  allowed_values:
+  - NOT_STARTED
+  - IN_PROGRESS
+  - COMPLETED
+  severity: low
+  dimension: accuracy
+  message: Onboarding task completion state must be a recognised value
+  why_it_matters: The onboarding progress dashboard groups new hires by a fixed set of completion states. A value outside
+    this set cannot be classified and is dropped from the manager-facing readiness view.
+  rule_authority: best_practice
+  sap_impact: New hire is dropped from the onboarding readiness dashboard that the hiring manager uses ahead of the start
+    date.
+  valid_values_with_labels:
+    NOT_STARTED: Checklist not yet started
+    IN_PROGRESS: Checklist in progress
+    COMPLETED: Checklist completed
+  fix_map:
+    __blank__: Correct the task completion state to NOT_STARTED, IN_PROGRESS, or COMPLETED via Onboarding > Candidate Management.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: TASK_COMPLETION value is not recognised. Correct
+    via Onboarding > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
+- id: REC038
+  field: ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Background check status is required before the new hire's start date
+  why_it_matters: BACKGROUND_CHECK_STATUS gates whether a new hire is cleared to start. Without it, the onboarding workflow
+    cannot tell a pending check from a cleared one, and IT provisioning may proceed for a candidate who has not been cleared.
+  rule_authority: best_practice
+  sap_impact: IT account provisioning and equipment ordering may proceed for a new hire whose background check has not been
+    confirmed as cleared.
+  fix_map:
+    __blank__: Record the background check outcome via Onboarding > Candidate Management > Compliance Tasks.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: BACKGROUND_CHECK_STATUS is missing. Record
+    via Onboarding > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
+- id: REC039
+  field: ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Pending
+  - Cleared
+  - Failed
+  - Waived
+  severity: medium
+  dimension: accuracy
+  message: Background check status must be a recognised value
+  why_it_matters: The onboarding compliance dashboard groups new hires by a fixed set of background check outcomes. A value
+    outside this set cannot be classified as cleared or blocked, and compliance cannot confirm the new hire is cleared to
+    start.
+  rule_authority: best_practice
+  sap_impact: Compliance dashboard cannot confirm this new hire is cleared to start. Start-date gating logic may default
+    to blocking or, worse, allowing the hire to proceed.
+  valid_values_with_labels:
+    Pending: Check in progress
+    Cleared: Check passed — cleared to start
+    Failed: Check failed — hire should be blocked
+    Waived: Check waived by HR/compliance
+  fix_map:
+    __blank__: Correct the background check status to Pending, Cleared, Failed, or Waived via Onboarding > Candidate Management.
+  record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: BACKGROUND_CHECK_STATUS value is not recognised.
+    Correct via Onboarding > Candidate Management.'
+  grain: ONBOARDINGCANDIDATEINFO
+- id: REC040
+  field: JOBOFFER.OFFER_STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Offer status is required to track the offer through extension, acceptance, or decline
+  why_it_matters: OFFER_STATUS is the field that tells recruiting whether an offer is still open, has been accepted, or has
+    been declined or rescinded. Without it, the offer cannot be excluded from open-offer ageing reports once it has been
+    resolved.
+  rule_authority: best_practice
+  sap_impact: Open-offer ageing reports cannot determine whether this offer is still pending a candidate decision.
+  fix_map:
+    __blank__: Set the offer status via Recruiting > Offer Management > Edit Offer.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: OFFER_STATUS is missing. Set via Recruiting > Offer Management.'
+- id: REC041
+  field: JOBOFFER.OFFER_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Extended
+  - Accepted
+  - Declined
+  - Rescinded
+  severity: medium
+  dimension: accuracy
+  message: Offer status must be a recognised value
+  why_it_matters: Offer acceptance-rate reporting groups offers by a fixed set of outcomes. A value outside this set cannot
+    be classified as accepted, declined, or rescinded, and is dropped from the acceptance-rate calculation.
+  rule_authority: best_practice
+  sap_impact: Offer acceptance-rate reporting excludes this offer, understating or overstating the true acceptance rate for
+    the requisition.
+  valid_values_with_labels:
+    Extended: Extended — awaiting candidate decision
+    Accepted: Accepted — candidate accepted the offer
+    Declined: Declined — candidate declined the offer
+    Rescinded: Rescinded — offer withdrawn by the company
+  fix_map:
+    __blank__: Correct the offer status to Extended, Accepted, Declined, or Rescinded via Recruiting > Offer Management.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: OFFER_STATUS value is not recognised. Correct via Recruiting > Offer
+    Management.'
+- id: REC042
+  field: JOBOFFER.START_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.START_DATE` < `JOBOFFER.OFFER_DATE`'
+  require_populated: true
+  severity: high
+  dimension: consistency
+  message: Offer start date must not be before the date the offer was extended
+  why_it_matters: A proposed start date earlier than the offer date is not physically possible — the candidate cannot start
+    a job before being offered it. This usually means the offer date was not updated when the offer was re-issued with a
+    new start date.
+  rule_authority: best_practice
+  sap_impact: Onboarding workflow generation computes a negative lead time and either fails to schedule pre-boarding tasks
+    or schedules them in the past.
+  fix_map:
+    __other__: Correct the offer date or the proposed start date via Recruiting > Offer Management so the start date follows
+      the offer date.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: START_DATE is before OFFER_DATE. Correct via Recruiting > Offer Management.'
+- id: REC043
+  field: JOBOFFER.JOB_REQ_ID
+  check_class: exists_check
+  target_table: JOBREQUISITION
+  target_fields:
+  - JOB_REQ_ID
+  severity: high
+  dimension: consistency
+  message: Offer does not reference an existing job requisition
+  why_it_matters: Every offer must be issued against a requisition so headcount, budget, and the eventual hire can be reconciled
+    back to the approved opening. An offer with no matching requisition is orphaned from budget and headcount controls.
+  rule_authority: best_practice
+  sap_impact: Offer cannot be reconciled against approved headcount or budget. The eventual hire has no requisition to close.
+  fix_map:
+    __other__: Correct the requisition reference on the offer, or create the missing requisition if the offer is legitimate.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: JOB_REQ_ID does not match an existing requisition. Correct the offer.'
+- id: REC044
+  field: JOBOFFER.CANDIDATE_ID
+  check_class: exists_check
+  target_table: JOBAPPLICATION
+  target_fields:
+  - CANDIDATE_ID
+  severity: high
+  dimension: consistency
+  message: Offer does not reference a candidate who has an application on file
+  why_it_matters: An offer should only be issued to a candidate who went through the application and interview pipeline.
+    An offer with no matching application record is a sign of a bypassed process or a broken candidate ID link between
+    the Recruiting application and offer objects.
+  rule_authority: best_practice
+  sap_impact: The offer cannot be traced back to its application, interview history, or EEO/diversity pipeline reporting
+    for this hire.
+  fix_map:
+    __other__: Correct the candidate reference on the offer, or create the missing application record if the offer is legitimate.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: CANDIDATE_ID does not match an existing application. Correct the offer.'
