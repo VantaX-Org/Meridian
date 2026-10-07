@@ -40,21 +40,23 @@ areas:
     label: Material master
     simplification_item: Material Number Field Length Extension
     related:
-      blocking: [MM001, MM002]
+      blocking: [MM001, MM002, MM138, MM140]
+      warning: [MM334, MM232]
   mrp:
     label: MRP areas
     simplification_item: Storage Location MRP
-    related: {}
+    related:
+      warning: [MM158, MM429, MM430, MM023, MM186]
   material_ledger:
     label: Material Ledger
     simplification_item: Material Ledger Obligatory for Material Valuation
     related:
-      warning: [MM043]
+      warning: [MM043, MM518, MM519, MM520, MM180, MM035]
   purchasing:
     label: Purchasing info records and source lists
     simplification_item: Business Partner Approach (SAP Note 2265093)
     related:
-      warning: [PUR131, PUR132]
+      warning: [PUR131, PUR132, PUR306, PUR320, PUR319, PUR133, PUR130, PUR137, PUR138]
   credit_management:
     label: Credit Management (FSCM)
     simplification_item: Credit Management - FI-AR-CR replaced by FIN-FSCM-CR
@@ -73,7 +75,8 @@ areas:
   foreign_trade:
     label: Foreign trade
     simplification_item: SD Foreign Trade replaced by SAP Global Trade Services
-    related: {}
+    related:
+      warning: [MM369, MM376, MM377, MM092]
   revenue_recognition:
     label: Revenue recognition
     simplification_item: SD Revenue Recognition replaced by Revenue Accounting and Reporting
@@ -94,7 +97,23 @@ areas:
   production:
     label: Production planning
     simplification_item: Production version mandatory for BOM selection
+    related:
+      warning: [PP066, PP067, PP069, MM503, MM506, MM507]
+  plant_maintenance:
+    label: Plant maintenance equipment and locations
+    simplification_item: Business Partner Approach (SAP Note 2265093)
+    related:
+      warning: [PM057, PM201, PM283, PM315, PM316, PM317, PM318]
+  archiving:
+    label: Archiving candidates
+    simplification_item: Data volume reduction before conversion (archiving)
     related: {}
+  batch_serial:
+    label: Batch and serial management
+    simplification_item: Migration cockpit load objects for logistics master and transaction data
+    related:
+      warning: [MM459, MM460, MM456, MM233]
+
   warehouse_ewm:
     label: Warehouse Management to EWM
     simplification_item: Warehouse Management (LE-WM) in Compatibility Scope, replaced by SAP EWM
@@ -452,6 +471,1841 @@ rules:
     __other__: Create a production version for the material and plant (C223 or MM02, MRP 4 view) that names the BOM
       alternative and the routing, before the conversion.
   record_fix_template: 'Material {MARC.MATNR} in plant {MARC.WERKS} has a BOM but no production version.'
+- id: S4R-MM-MARA-NOPLANT
+  field: MARA.MATNR
+  check_class: exists_check
+  applies_when:
+    MARA.LVORM:
+      blank: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  s4_area: material
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: active material is not extended to any plant'
+  why_it_matters: The migration cockpit loads the product master with its plant data. A material without any plant row has
+    no MRP, purchasing, valuation or storage data to migrate and is a candidate to exclude or to flag for deletion.
+  rule_authority: s4hana_migration
+  sap_impact: The material is loaded as a bare client-level record that no process can use, or is dropped from the load.
+  fix_map:
+    __other__: Extend the material to its plants (MM01 or MM02), or flag it for deletion (MM06) and exclude it from the migration.
+  record_fix_template: Material {MARA.MATNR} is active but has no plant data.
+- id: S4R-MM-MARM-NOMARA
+  field: MARM.MATNR
+  check_class: exists_check
+  target_table: MARA
+  target_fields:
+  - MATNR
+  s4_area: material
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: unit of measure row belongs to a material that does not exist'
+  why_it_matters: The alternative unit rows are loaded as part of the product master. A row without its material header cannot
+    be loaded.
+  rule_authority: s4hana_migration
+  sap_impact: The unit conversion row is rejected and every document that uses the unit fails after the load.
+  fix_map:
+    __other__: Delete the orphan unit row or restore the material header.
+  record_fix_template: Unit row {MARM.MEINH} refers to material {MARM.MATNR}, which does not exist.
+- id: S4R-MM-MARD-NOMARC
+  field: MARD.MATNR
+  fields:
+  - MARD.MATNR
+  - MARD.WERKS
+  check_class: exists_check
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: material
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location stock record has no plant view'
+  why_it_matters: Stock is loaded per plant and storage location below the plant view of the material. A storage row without
+    the plant row cannot be assigned.
+  rule_authority: s4hana_migration
+  sap_impact: The stock quantity is rejected by the load and the inventory does not reconcile with the ledger.
+  fix_map:
+    __other__: Extend the material to the plant, or clear the orphan storage row after checking that it holds no stock.
+  record_fix_template: Material {MARD.MATNR} has storage location {MARD.LGORT} in plant {MARD.WERKS} without a plant view.
+- id: S4R-MM-MARC-NOMBEW
+  field: MARC.MATNR
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  check_class: exists_check
+  applies_when:
+    MARC.LVORM:
+      blank: true
+  target_table: MBEW
+  target_fields:
+  - MATNR
+  - BWKEY
+  s4_area: material
+  s4_impact: warning
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: plant view has no valuation record in the plant'
+  why_it_matters: With the material ledger obligatory, every stock-keeping material needs valuation data in its valuation
+    area to open a material ledger record. This check assumes valuation at plant level.
+  rule_authority: s4hana_migration
+  sap_impact: The material cannot receive stock postings or goods movements; the conversion of the material ledger skips or
+    rejects the material.
+  fix_map:
+    __other__: Create the accounting view of the material for the valuation area (MM01 or MM02), or flag the plant view for
+      deletion.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} has no valuation record.
+- id: S4R-MM-MARA-MBRSH-MTYPE
+  field: MARA.MTART
+  check_class: exists_check
+  target_table: T134
+  target_fields:
+  - MTART
+  s4_area: material
+  s4_impact: blocking
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: material type is not defined in the material type table'
+  why_it_matters: The material type decides the number range, field selection and valuation behaviour and is mapped to a product
+    type in the migration. An undefined type has no mapping.
+  rule_authority: s4hana_migration
+  sap_impact: The material is rejected by the migration cockpit because its type has no customising.
+  fix_map:
+    __other__: Correct the material type with MMAM or define the type in customising before the load.
+  record_fix_template: Material {MARA.MATNR} has a material type that is not defined.
+- id: S4R-ML-MLAST-INACTIVE
+  field: MBEW.BWKEY
+  fields:
+  - MBEW.BWKEY
+  check_class: exists_check
+  applies_when:
+    MBEW.MLAST:
+      populated: true
+  target_table: T001K
+  target_fields:
+  - BWKEY
+  target_when:
+    MLBWA:
+      blank: true
+  negate: true
+  s4_area: material_ledger
+  s4_impact: warning
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: price determination is set in a valuation area where the material ledger is not active'
+  why_it_matters: A price determination indicator is only meaningful with an active material ledger. In S/4HANA the material
+    ledger is active everywhere, so the indicator must hold a defined value in every valuation area.
+  rule_authority: s4hana_migration
+  sap_impact: The conversion of the material ledger starts from an inconsistent record and the price determination of the
+    material is undefined after it.
+  fix_map:
+    __other__: Activate the material ledger in the valuation area, or clear the price determination of the material.
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has a price determination but the material ledger is not active.
+- id: S4R-ML-NEG-VALUE
+  field: MBEW.SALK3
+  check_class: cross_field_check
+  fail_when: '`MBEW.LBKUM` > 0 & `MBEW.SALK3` < 0'
+  s4_area: material_ledger
+  s4_impact: blocking
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: material has a positive stock quantity but a negative stock value'
+  why_it_matters: The material ledger opening balance of the conversion is the stock quantity and the stock value per material.
+    A negative value on positive stock produces a negative price and stops the period closing of the ledger.
+  rule_authority: s4hana_migration
+  sap_impact: The ML conversion cannot determine a valid price for the material and posts the difference to price difference
+    accounts.
+  fix_map:
+    __other__: Revalue the material (MR21) or correct the stock before the conversion.
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has positive stock and a negative stock value.
+- id: S4R-ML-VALUE-NOQTY
+  field: MBEW.SALK3
+  check_class: cross_field_check
+  fail_when: '`MBEW.LBKUM` == 0 & `MBEW.SALK3` != 0'
+  s4_area: material_ledger
+  s4_impact: blocking
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: material has a stock value but no stock quantity'
+  why_it_matters: A stock value without quantity cannot be carried into the material ledger as quantity times price, so the
+    value is orphaned at the conversion.
+  rule_authority: s4hana_migration
+  sap_impact: The stock value stays on the stock account without material backing and distorts the reconciliation after the
+    conversion.
+  fix_map:
+    __other__: Write off or revalue the residual stock value (MR21) to zero before the conversion.
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has a stock value but zero stock quantity.
+- id: S4R-ML-VPRSV-BLANK-STOCK
+  field: MBEW.VPRSV
+  check_class: cross_field_check
+  fail_when: '`MBEW.VPRSV`.isna() & `MBEW.SALK3` != 0'
+  s4_area: material_ledger
+  s4_impact: warning
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: material with stock value has no price control'
+  why_it_matters: Price control decides how the material ledger values movements. A valuated material without it cannot be
+    opened in the ledger.
+  rule_authority: s4hana_migration
+  sap_impact: The material is rejected by the migration of the valuation data.
+  fix_map:
+    __other__: Set the price control (MM02, accounting view) after review of the current price.
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has stock value and no price control.
+- id: S4R-ML-BKLAS-BLANK-STOCK
+  field: MBEW.BKLAS
+  check_class: cross_field_check
+  fail_when: '`MBEW.BKLAS`.isna() & `MBEW.SALK3` != 0'
+  s4_area: material_ledger
+  s4_impact: blocking
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: high
+  dimension: completeness
+  message: 'S/4HANA readiness: material with stock value has no valuation class'
+  why_it_matters: In S/4HANA the valuation class determines the G/L account of every stock posting through the material ledger.
+    Stock without a class cannot be assigned to an account at the conversion.
+  rule_authority: s4hana_migration
+  sap_impact: The stock value cannot be reconciled to a G/L account and the conversion of the material ledger reports an error
+    for the material.
+  fix_map:
+    __other__: Set the valuation class that matches the material type (MM02, accounting view).
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has stock value and no valuation class.
+- id: S4R-ML-MLAST-INVALID-VPRSV
+  field: MBEW.MLAST
+  check_class: cross_field_check
+  fail_when: '`MBEW.MLAST`.notna() & `MBEW.VPRSV`.isna()'
+  s4_area: material_ledger
+  s4_impact: warning
+  simplification_item: Material Ledger Obligatory for Material Valuation
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: material ledger price determination is set on a material without a price control'
+  why_it_matters: Price determination and price control work together in the material ledger. A price determination on a record
+    without price control cannot be interpreted.
+  rule_authority: s4hana_migration
+  sap_impact: The material gets an undefined valuation procedure in the ledger after the conversion.
+  fix_map:
+    __other__: Set the price control and a valid price determination together (MM02, accounting view).
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has a price determination and no price control.
+- id: S4R-MRP-MARD-LSOBS
+  field: MARD.LSOBS
+  check_class: cross_field_check
+  fail_when: '`MARD.LSOBS`.notna()'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location carries a special procurement type at storage location level (MARD.LSOBS)'
+  why_it_matters: The special procurement type at storage location level exists only for storage location MRP. S/4HANA plans
+    separate storage locations through MRP areas and does not read the storage location parameters.
+  rule_authority: s4hana_migration
+  sap_impact: The special procurement type is ignored after the conversion, so the storage location is replenished with the
+    plant requirement instead of its own.
+  fix_map:
+    __other__: Create an MRP area for the storage location, maintain the planning parameters there, then clear the storage
+      location values.
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} carries storage location
+    MRP parameters.
+- id: S4R-MRP-MARD-LBSTF
+  field: MARD.LBSTF
+  check_class: cross_field_check
+  fail_when: '`MARD.LBSTF`.notna() & `MARD.LBSTF` > 0'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location carries a replenishment quantity at storage location level (MARD.LBSTF)'
+  why_it_matters: The replenishment quantity at storage location level exists only for storage location MRP. S/4HANA plans
+    separate storage locations through MRP areas and does not read the storage location parameters.
+  rule_authority: s4hana_migration
+  sap_impact: The replenishment quantity is ignored after the conversion, so the storage location is replenished with the
+    plant requirement instead of its own.
+  fix_map:
+    __other__: Create an MRP area for the storage location, maintain the planning parameters there, then clear the storage
+      location values.
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} carries storage location
+    MRP parameters.
+- id: S4R-MRP-MARD-LMINB
+  field: MARD.LMINB
+  check_class: cross_field_check
+  fail_when: '`MARD.LMINB`.notna() & `MARD.LMINB` > 0'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location carries a reorder point at storage location level (MARD.LMINB)'
+  why_it_matters: The reorder point at storage location level exists only for storage location MRP. S/4HANA plans separate
+    storage locations through MRP areas and does not read the storage location parameters.
+  rule_authority: s4hana_migration
+  sap_impact: The reorder point is ignored after the conversion, so the storage location is replenished with the plant requirement
+    instead of its own.
+  fix_map:
+    __other__: Create an MRP area for the storage location, maintain the planning parameters there, then clear the storage
+      location values.
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} carries storage location
+    MRP parameters.
+- id: S4R-MRP-MARD-ND
+  field: MARD.DISKZ
+  check_class: cross_field_check
+  fail_when: '`MARD.DISKZ`.notna() & `MARC.DISMM` == "ND"'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location MRP is set for a material that is excluded from planning in the plant'
+  why_it_matters: Storage location MRP only works on a material that MRP plans in the plant. With MRP type ND the setting
+    has no effect today and no counterpart in an MRP area.
+  rule_authority: s4hana_migration
+  sap_impact: The setting survives as dead data and misleads the MRP area design.
+  fix_map:
+    __other__: Clear the storage location MRP indicator, or plan the material in the plant.
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} uses storage location MRP
+    but the plant MRP type is ND.
+- id: S4R-MRP-MARD-NOPLANNED
+  field: MARD.MATNR
+  fields:
+  - MARD.MATNR
+  - MARD.WERKS
+  check_class: exists_check
+  applies_when:
+    MARD.DISKZ:
+      populated: true
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    DISPO:
+      blank: true
+  negate: true
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: storage location MRP is set on a material with no MRP controller in the plant'
+  why_it_matters: A storage location that is planned separately needs an MRP controller on the plant view. Without one the
+    MRP area built from it has no planner.
+  rule_authority: s4hana_migration
+  sap_impact: The MRP area created for the storage location has no responsible planner and its exceptions go unread.
+  fix_map:
+    __other__: Maintain an MRP controller on the plant view of the material (MM02, MRP 1 view).
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS} uses storage location MRP but has no MRP controller.
+- id: S4R-MRP-T001L-DISKZ
+  field: T001L.DISKZ
+  check_class: cross_field_check
+  fail_when: '`T001L.DISKZ`.notna()'
+  s4_area: mrp
+  s4_impact: blocking
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: storage location is customised for storage location MRP (T001L.DISKZ)'
+  why_it_matters: The storage location master switches storage location MRP on for the location. S/4HANA replaces it with
+    an MRP area per storage location.
+  rule_authority: s4hana_migration
+  sap_impact: Every material stored in the location is planned separately in ECC; after the conversion the setting has no
+    effect and the location is planned with the plant.
+  fix_map:
+    __other__: Define an MRP area of type storage location for the plant and storage location (OMIA) and clear T001L.DISKZ.
+  record_fix_template: Plant {T001L.WERKS}, storage location {T001L.LGORT} is flagged for storage location MRP.
+- id: S4R-MRP-MARC-DISMM-CUSTOM
+  field: MARC.DISMM
+  check_class: cross_field_check
+  fail_when: '`MARC.DISMM`.str.match("^[XYZ]", na=False)'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: MRP Live (MRP run on SAP HANA)
+  baseline: s4_target
+  severity: low
+  dimension: validity
+  message: 'S/4HANA readiness: MRP type is a customer-defined key (MARC.DISMM)'
+  why_it_matters: A MRP type defined by the customer is not part of the standard SAP configuration delivered with S/4HANA.
+    It is carried over only if the customising is transported, and MRP Live evaluates it with its own logic.
+  rule_authority: s4hana_migration
+  sap_impact: The planning result for the material changes if the key is dropped or behaves differently under MRP Live.
+  fix_map:
+    __other__: Check the key against the S/4HANA planning parameters, map it to a standard MRP type, then change the plant
+      view.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} uses a customer-defined MRP type.
+- id: S4R-MRP-MARC-DISLS-CUSTOM
+  field: MARC.DISLS
+  check_class: cross_field_check
+  fail_when: '`MARC.DISLS`.str.match("^[XYZ]", na=False)'
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: MRP Live (MRP run on SAP HANA)
+  baseline: s4_target
+  severity: low
+  dimension: validity
+  message: 'S/4HANA readiness: lot-sizing procedure is a customer-defined key (MARC.DISLS)'
+  why_it_matters: A lot-sizing procedure defined by the customer is not part of the standard SAP configuration delivered with
+    S/4HANA. It is carried over only if the customising is transported, and MRP Live evaluates it with its own logic.
+  rule_authority: s4hana_migration
+  sap_impact: The planning result for the material changes if the key is dropped or behaves differently under MRP Live.
+  fix_map:
+    __other__: Check the key against the S/4HANA planning parameters, map it to a standard lot-sizing procedure, then change
+      the plant view.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} uses a customer-defined lot-sizing procedure.
+- id: S4R-MRP-MDMA-NOMARC
+  field: MDMA.MATNR
+  fields:
+  - MDMA.MATNR
+  - MDMA.WERKS
+  check_class: exists_check
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: Storage Location MRP
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: MRP area data exists for a material that is not extended to the plant'
+  why_it_matters: MRP areas are the S/4HANA successor of storage location MRP. Area data is loaded below the plant view; area
+    data without it cannot be loaded.
+  rule_authority: s4hana_migration
+  sap_impact: The MRP area record is rejected by the migration of the planning data.
+  fix_map:
+    __other__: Extend the material to the plant or delete the MRP area data (MD_MRP_AREA).
+  record_fix_template: Material {MDMA.MATNR} has MRP area {MDMA.BERID} in plant {MDMA.WERKS} without a plant view.
+- id: S4R-MRP-MDMA-NOPLANNING
+  field: MDMA.MATNR
+  fields:
+  - MDMA.MATNR
+  - MDMA.WERKS
+  check_class: exists_check
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  target_when:
+    DISMM:
+    - ND
+    - ''
+  negate: true
+  s4_area: mrp
+  s4_impact: warning
+  simplification_item: MRP Live (MRP run on SAP HANA)
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: material has MRP area data but is not planned in the plant'
+  why_it_matters: A material that is not planned by MRP (type ND or blank) does not use the MRP area data. It is dead planning
+    data.
+  rule_authority: s4hana_migration
+  sap_impact: The MRP area built from the data would plan a material that the plant excludes.
+  fix_map:
+    __other__: Clear the MRP area data or plan the material in the plant.
+  record_fix_template: Material {MDMA.MATNR} has MRP area {MDMA.BERID} in plant {MDMA.WERKS} but the plant does not plan it.
+- id: S4R-PUR-EINA-NOBP
+  field: EINA.LIFNR
+  check_class: exists_check
+  applies_when:
+    EINA.LOEKZ:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: active info record names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: The info record keeps a vendor that does not exist as a BP after the conversion, so source determination fails
+    for it.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Info record {EINA.INFNR}: vendor {EINA.LIFNR} has no Business Partner link.'
+- id: S4R-PUR-EORD-NOBP
+  field: EORD.LIFNR
+  check_class: exists_check
+  applies_when:
+    EORD.LIFNR:
+      populated: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: active source list record names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Automatic source determination proposes a vendor that is not a BP after the conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Source list record for material {EORD.MATNR} in plant {EORD.WERKS}: vendor {EORD.LIFNR} has no Business
+    Partner link.'
+- id: S4R-PUR-LFM1-NOBP
+  field: LFM1.LIFNR
+  check_class: exists_check
+  applies_when:
+    LFM1.LOEVM:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: vendor purchasing-organisation data belongs to a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: The purchasing role of the BP cannot be created, so the vendor cannot be ordered from.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: Vendor {LFM1.LIFNR} in purchasing organisation {LFM1.EKORG} has no Business Partner link.
+- id: S4R-PUR-EKKO-PO-NOBP
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKKO.LOEKZ:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open purchase order names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Open orders reference the vendor number; the vendor is not found as BP after the conversion and goods receipt
+    and invoice verification fail.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Purchase order {EKKO.EBELN}: vendor {EKKO.LIFNR} has no Business Partner link.'
+- id: S4R-PUR-EKKO-CONTRACT-NOBP
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKKO.LOEKZ:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open contract names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Call-offs against the contract cannot find the vendor after the conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Contract {EKKO.EBELN}: vendor {EKKO.LIFNR} has no Business Partner link.'
+- id: S4R-PUR-EKKO-SA-NOBP
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - L
+    EKKO.LOEKZ:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open scheduling agreement names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Delivery schedule releases cannot be sent or received for a vendor that is not a BP.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Scheduling agreement {EKKO.EBELN}: vendor {EKKO.LIFNR} has no Business Partner link.'
+- id: S4R-PUR-EBAN-FLIEF-NOBP
+  field: EBAN.FLIEF
+  check_class: exists_check
+  applies_when:
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.FLIEF:
+      populated: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: open requisition has a fixed vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: The requisition keeps a fixed source that is not a BP after the conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: fixed vendor {EBAN.FLIEF} has no Business Partner link.'
+- id: S4R-PUR-EBAN-LIFNR-NOBP
+  field: EBAN.LIFNR
+  check_class: exists_check
+  applies_when:
+    EBAN.LOEKZ:
+      blank: true
+    EBAN.LIFNR:
+      populated: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: open requisition has a desired vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: The proposed vendor is not found as BP after the conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Requisition {EBAN.BANFN} item {EBAN.BNFPO}: desired vendor {EBAN.LIFNR} has no Business Partner link.'
+- id: S4R-PUR-CO-SPERM
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open contract names a vendor that is blocked for purchasing'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the contract fail with a vendor block, or the vendor is missing after the conversion.
+  fix_map:
+    __other__: Replace the vendor on the contract or lift the block if the vendor is still used; close the contract if it
+      is not.
+  record_fix_template: 'Contract {EKKO.EBELN}: vendor {EKKO.LIFNR} is blocked for purchasing.'
+- id: S4R-PUR-CO-SPERR
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERR:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open contract names a vendor that is centrally blocked for posting'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the contract fail with a vendor block, or the vendor is missing after the conversion.
+  fix_map:
+    __other__: Replace the vendor on the contract or lift the block if the vendor is still used; close the contract if it
+      is not.
+  record_fix_template: 'Contract {EKKO.EBELN}: vendor {EKKO.LIFNR} is centrally blocked for posting.'
+- id: S4R-PUR-CO-LOEVM
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - K
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open contract names a vendor that is flagged for deletion'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the contract fail with a vendor block, or the vendor is missing after the conversion.
+  fix_map:
+    __other__: Replace the vendor on the contract or lift the block if the vendor is still used; close the contract if it
+      is not.
+  record_fix_template: 'Contract {EKKO.EBELN}: vendor {EKKO.LIFNR} is flagged for deletion.'
+- id: S4R-PUR-SA-SPERM
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - L
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open scheduling agreement names a vendor that is blocked for purchasing'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the scheduling agreement fail with a vendor block, or the vendor is missing after
+    the conversion.
+  fix_map:
+    __other__: Replace the vendor on the scheduling agreement or lift the block if the vendor is still used; close the scheduling
+      agreement if it is not.
+  record_fix_template: 'Scheduling agreement {EKKO.EBELN}: vendor {EKKO.LIFNR} is blocked for purchasing.'
+- id: S4R-PUR-SA-SPERR
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - L
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERR:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open scheduling agreement names a vendor that is centrally blocked for posting'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the scheduling agreement fail with a vendor block, or the vendor is missing after
+    the conversion.
+  fix_map:
+    __other__: Replace the vendor on the scheduling agreement or lift the block if the vendor is still used; close the scheduling
+      agreement if it is not.
+  record_fix_template: 'Scheduling agreement {EKKO.EBELN}: vendor {EKKO.LIFNR} is centrally blocked for posting.'
+- id: S4R-PUR-SA-LOEVM
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - L
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    LOEVM:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: blocking
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: open scheduling agreement names a vendor that is flagged for deletion'
+  why_it_matters: The CVI synchronisation creates the Business Partner with the block of the vendor. An open agreement on
+    a blocked vendor cannot be called off after the conversion, and a deleted vendor is not converted at all.
+  rule_authority: s4hana_migration
+  sap_impact: Releases and call-offs against the scheduling agreement fail with a vendor block, or the vendor is missing after
+    the conversion.
+  fix_map:
+    __other__: Replace the vendor on the scheduling agreement or lift the block if the vendor is still used; close the scheduling
+      agreement if it is not.
+  record_fix_template: 'Scheduling agreement {EKKO.EBELN}: vendor {EKKO.LIFNR} is flagged for deletion.'
+- id: S4R-PUR-PO-SPERM
+  field: EKKO.LIFNR
+  check_class: exists_check
+  applies_when:
+    EKKO.BSTYP:
+    - F
+    EKKO.LOEKZ:
+      blank: true
+  target_table: LFA1
+  target_fields:
+  - LIFNR
+  target_when:
+    SPERM:
+    - X
+  negate: true
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: open purchase order names a vendor that is blocked for purchasing'
+  why_it_matters: Open orders carry the vendor into the Business Partner conversion together with its purchasing block.
+  rule_authority: s4hana_migration
+  sap_impact: Goods receipt and follow-on orders for the vendor are blocked after the conversion until the block is cleared.
+  fix_map:
+    __other__: Decide per order whether to deliver, change the vendor or close the order; lift the block only if the vendor
+      is still active.
+  record_fix_template: 'Purchase order {EKKO.EBELN}: vendor {EKKO.LIFNR} is blocked for purchasing.'
+- id: S4R-PUR-EINA-NOEINE
+  field: EINA.INFNR
+  check_class: exists_check
+  applies_when:
+    EINA.LOEKZ:
+      blank: true
+  target_table: EINE
+  target_fields:
+  - INFNR
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: active info record has no purchasing organisation data'
+  why_it_matters: The info record is loaded as header plus purchasing-organisation conditions. A header without the organisation
+    part has no price or terms to migrate.
+  rule_authority: s4hana_migration
+  sap_impact: The info record is loaded without a price and cannot be used by source determination.
+  fix_map:
+    __other__: Add the purchasing organisation data (ME11) or flag the info record for deletion (ME15).
+  record_fix_template: Info record {EINA.INFNR} has no purchasing organisation data.
+- id: S4R-PUR-EINE-NOEINA
+  field: EINE.INFNR
+  check_class: exists_check
+  target_table: EINA
+  target_fields:
+  - INFNR
+  s4_area: purchasing
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: purchasing organisation data belongs to a missing info record header'
+  why_it_matters: Organisation-level price data is loaded below the info record header; without the header it cannot be loaded.
+  rule_authority: s4hana_migration
+  sap_impact: The conditions are rejected by the migration and the price is lost.
+  fix_map:
+    __other__: Delete the orphan record or recreate the header.
+  record_fix_template: Info record {EINE.INFNR} in purchasing organisation {EINE.EKORG} has no header.
+- id: S4R-PP-ROUTING-NOPV
+  field: MAPL.MATNR
+  fields:
+  - MAPL.MATNR
+  - MAPL.WERKS
+  check_class: exists_check
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+    MAPL.PLNTY:
+    - N
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Production version mandatory for BOM selection
+  baseline: s4_target
+  severity: medium
+  dimension: completeness
+  message: 'S/4HANA readiness: material has a routing assignment but no production version in the plant'
+  why_it_matters: In S/4HANA the routing is found through the production version. The assignment of the routing to the material
+    alone no longer selects it.
+  rule_authority: s4hana_migration
+  sap_impact: Planned order conversion and production order creation find no routing for the material.
+  fix_map:
+    __other__: Create a production version that names the routing (C223 or MM02, MRP 4 view).
+  record_fix_template: Material {MAPL.MATNR} in plant {MAPL.WERKS} has a routing assignment but no production version.
+- id: S4R-PP-PV-EXPIRED
+  field: MKAL.BDATU
+  check_class: cross_field_check
+  fail_when: (`MKAL.BDATU` - @today).dt.days < 0 & `MKAL.MKSP`.isna()
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Production version mandatory for BOM selection
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: production version is past its validity and still unlocked'
+  why_it_matters: The production version is the only way to select BOM and routing in S/4HANA. An expired version that is
+    not locked clutters the selection and is migrated with no use.
+  rule_authority: s4hana_migration
+  sap_impact: MRP raises errors for the material because no valid version exists on the planning date, or the expired version
+    is loaded for nothing.
+  fix_map:
+    __other__: Lock the expired version (C202) and create a current one.
+  record_fix_template: Production version {MKAL.VERID} of material {MKAL.MATNR} in plant {MKAL.WERKS} is past its validity.
+- id: S4R-PP-MAPL-PLKO-CREATED
+  field: MAPL.PLNNR
+  fields:
+  - MAPL.PLNTY
+  - MAPL.PLNNR
+  - MAPL.PLNAL
+  check_class: exists_check
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  target_when:
+    STATU:
+    - '1'
+  negate: true
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: routing assigned to a material has only the status created'
+  why_it_matters: The migration cockpit loads released routings. A routing that is only created is not released for order
+    or costing use.
+  rule_authority: s4hana_migration
+  sap_impact: The routing is not selected by the production version and the material cannot be produced from it.
+  fix_map:
+    __other__: Release the routing (CA02, status).
+  record_fix_template: 'Material {MAPL.MATNR} in plant {MAPL.WERKS}: routing {MAPL.PLNNR} is only created, not released.'
+- id: S4R-PP-CRHD-LIFNR-NOBP
+  field: CRHD.LIFNR
+  check_class: exists_check
+  applies_when:
+    CRHD.LIFNR:
+      populated: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: work centre names an external vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: External work centres cost against the vendor; the vendor is not found as BP after the conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Work centre {CRHD.ARBPL}: vendor {CRHD.LIFNR} has no Business Partner link.'
+- id: S4R-PP-PLPO-LIFNR-NOBP
+  field: PLPO.LIFNR
+  check_class: exists_check
+  applies_when:
+    PLPO.LIFNR:
+      populated: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: production
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: routing operation names an external-processing vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Externally processed operations create purchase requisitions for the named vendor, which is not a BP after the
+    conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Routing {PLPO.PLNTY}/{PLPO.PLNNR} node {PLPO.PLNKN}: vendor {PLPO.LIFNR} has no Business Partner link.'
+- id: S4R-PM-EQUI-NOCLASS
+  field: EQUI.EQUNR
+  check_class: exists_check
+  applies_when:
+    EQUI.LVORM:
+      blank: true
+  target_table: INOB
+  target_fields:
+  - OBJEK
+  target_when:
+    OBTAB:
+    - EQUI
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: active equipment is not classified'
+  why_it_matters: Equipment characteristics are loaded through the classification of the object. Equipment without a class
+    assignment migrates with no technical attributes.
+  rule_authority: s4hana_migration
+  sap_impact: Reporting and selection by technical attributes finds no values for the equipment after the load.
+  fix_map:
+    __other__: Classify the equipment (IE02, classification tab) or exclude it from the load.
+  record_fix_template: Equipment {EQUI.EQUNR} has no classification link.
+- id: S4R-PM-INOB-NOCLASS
+  field: INOB.CUOBJ
+  check_class: exists_check
+  applies_when:
+    INOB.OBTAB:
+    - EQUI
+    - IFLOT
+  target_table: KSSK
+  target_fields:
+  - OBJEK
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: classification link of a technical object has no class assignment'
+  why_it_matters: The link to the classification object exists, but no class is assigned to it. The load of the assignment
+    has nothing to attach characteristic values to.
+  rule_authority: s4hana_migration
+  sap_impact: The empty link is migrated as an unclassified object and clutters the classification reports.
+  fix_map:
+    __other__: Delete the link or assign a class (CL20N).
+  record_fix_template: Classification link {INOB.CUOBJ} for object {INOB.OBJEK} has no class assignment.
+- id: S4R-PM-AUSP-NOCLASS
+  field: AUSP.OBJEK
+  fields:
+  - AUSP.OBJEK
+  - AUSP.KLART
+  check_class: exists_check
+  target_table: KSSK
+  target_fields:
+  - OBJEK
+  - KLART
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: characteristic values exist for an object that has no class assignment'
+  why_it_matters: Characteristic values are loaded with the class assignment of the object. Values without an assignment have
+    no class to belong to.
+  rule_authority: s4hana_migration
+  sap_impact: The value rows are rejected by the migration cockpit and the attributes are lost.
+  fix_map:
+    __other__: Assign the object to its class again or delete the orphan values.
+  record_fix_template: Object {AUSP.OBJEK} has characteristic values but no class assignment.
+- id: S4R-PM-AFIH-EQUI-DEL
+  field: AFIH.EQUNR
+  check_class: exists_check
+  applies_when:
+    AFIH.EQUNR:
+      populated: true
+  target_table: EQUI
+  target_fields:
+  - EQUNR
+  target_when:
+    LVORM:
+      blank: true
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: maintenance order references equipment that is missing or flagged for deletion'
+  why_it_matters: Open maintenance orders are migrated with their technical object. An order on a deleted piece of equipment
+    cannot get its object reference.
+  rule_authority: s4hana_migration
+  sap_impact: The order is rejected, or it is loaded without an object and costs cannot be tracked to equipment.
+  fix_map:
+    __other__: Move the order to the active equipment or close the order.
+  record_fix_template: Maintenance order {AFIH.AUFNR} references equipment {AFIH.EQUNR}, which is missing or flagged for deletion.
+- id: S4R-PM-IHPA-VN-NOBP
+  field: IHPA.PARNR
+  check_class: exists_check
+  applies_when:
+    IHPA.PARVW:
+    - VN
+    IHPA.KZLOESCH:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: technical object partner is a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: Partner functions on equipment and orders reference the vendor number; the vendor is not found as BP after the
+    conversion.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Partner record {IHPA.OBJNR}/{IHPA.PARVW}: vendor {IHPA.PARNR} has no Business Partner link.'
+- id: S4R-PM-EQUI-ELIEF-NOBP
+  field: EQUI.ELIEF
+  check_class: exists_check
+  applies_when:
+    EQUI.ELIEF:
+      populated: true
+    EQUI.LVORM:
+      blank: true
+  target_table: CVI_VEND_LINK
+  target_fields:
+  - VENDOR
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Business Partner Approach (SAP Note 2265093)
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: equipment names a vendor with no Business Partner link'
+  why_it_matters: In S/4HANA vendors exist only as Business Partners; the CVI link table connects each vendor number to its
+    BP. A document that names a vendor without a link cannot be converted, and the conversion pre-checks stop at the vendor.
+  rule_authority: s4hana_migration
+  sap_impact: The vendor of the equipment is not found as BP after the conversion and warranty claims lose their reference.
+  fix_map:
+    __other__: Synchronise the vendor to a Business Partner with the CVI cockpit (MDS_LOAD_COCKPIT), or move the document
+      to a vendor that has a link.
+  record_fix_template: 'Equipment {EQUI.EQUNR}: vendor {EQUI.ELIEF} has no Business Partner link.'
+- id: S4R-PM-EQUZ-ILOA-PLANT
+  field: EQUZ.IWERK
+  check_class: cross_field_check
+  fail_when: '`EQUZ.IWERK`.notna() & `ILOA.SWERK`.notna() & (`EQUZ.IWERK` != `ILOA.SWERK`)'
+  s4_area: plant_maintenance
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: equipment planning plant differs from the maintenance plant of its location record'
+  why_it_matters: The migration builds the equipment from the time segment and its location record. A planning plant that
+    differs from the maintenance plant of the location is loaded with two different plants.
+  rule_authority: s4hana_migration
+  sap_impact: Orders for the equipment are planned in one plant and executed in another, with split work centres and planner
+    groups.
+  fix_map:
+    __other__: Align the planning plant and the maintenance plant (IE02, location tab).
+  record_fix_template: 'Equipment {EQUZ.EQUNR}: planning plant differs from the maintenance plant of the location record.'
+- id: S4R-FT-MARC-STAWN
+  field: MARC.STAWN
+  check_class: cross_field_check
+  fail_when: '`MARC.STAWN`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (commodity code, MARC.STAWN)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-PRENC
+  field: MARC.PRENC
+  check_class: cross_field_check
+  fail_when: '`MARC.PRENC`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (export control (preference) status, MARC.PRENC)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-PRENO
+  field: MARC.PRENO
+  check_class: cross_field_check
+  fail_when: '`MARC.PRENO`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (vendor declaration indicator, MARC.PRENO)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-PRENG
+  field: MARC.PRENG
+  check_class: cross_field_check
+  fail_when: '`MARC.PRENG`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (preference status exemption, MARC.PRENG)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-ITARK
+  field: MARC.ITARK
+  check_class: cross_field_check
+  fail_when: '`MARC.ITARK`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (military goods indicator, MARC.ITARK)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-CASNR
+  field: MARC.CASNR
+  check_class: cross_field_check
+  fail_when: '`MARC.CASNR`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (CAS number, MARC.CASNR)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-GPNUM
+  field: MARC.GPNUM
+  check_class: cross_field_check
+  fail_when: '`MARC.GPNUM`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (manufacturer number, MARC.GPNUM)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-MOWNR
+  field: MARC.MOWNR
+  check_class: cross_field_check
+  fail_when: '`MARC.MOWNR`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (legal control owner, MARC.MOWNR)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-MARC-MOGRU
+  field: MARC.MOGRU
+  check_class: cross_field_check
+  fail_when: '`MARC.MOGRU`.notna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: material carries SD foreign-trade data (legal control group, MARC.MOGRU)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The value is not read by S/4HANA standard processes and must be loaded into GTS if foreign-trade compliance
+    relies on it.
+  fix_map:
+    __other__: Decide per material whether GTS needs the value; if so include it in the GTS product master load, then plan
+      to clear the plant-view field.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} carries foreign-trade data in the plant view.
+- id: S4R-FT-EKKO-EXNUM
+  field: EKKO.EXNUM
+  check_class: cross_field_check
+  fail_when: '`EKKO.EXNUM`.notna() & `EKKO.LOEKZ`.isna()'
+  s4_area: foreign_trade
+  s4_impact: warning
+  simplification_item: Foreign Trade in SD replaced by SAP Global Trade Services
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: purchasing document carries a foreign-trade document number (EKKO.EXNUM)'
+  why_it_matters: SD foreign trade (legal control, preference, import and export processing) is replaced by SAP Global Trade
+    Services in S/4HANA. Foreign-trade fields in the plant view of the material are not used by S/4HANA and are migrated into
+    GTS master data instead.
+  rule_authority: s4hana_migration
+  sap_impact: The SD foreign-trade document behind the number is not converted; open import processes must be completed or
+    recreated in GTS.
+  fix_map:
+    __other__: Close the import process in SD foreign trade or recreate it in GTS before the conversion.
+  record_fix_template: Purchasing document {EKKO.EBELN} has a foreign-trade document number.
+- id: S4R-AR-MARA-LVORM
+  field: MARA.LVORM
+  check_class: cross_field_check
+  fail_when: '`MARA.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: material is flagged for deletion at client level and has not been archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The material and all its plant data stay in the converted database.
+  fix_map:
+    __other__: Run the deletion archiving of materials (MM71 and SARA, object MM_MATNR).
+  record_fix_template: Material {MARA.MATNR} is flagged for deletion and not yet archived.
+- id: S4R-AR-MARA-STALE
+  field: MARA.LAEDA
+  check_class: cross_field_check
+  fail_when: '`MARA.MSTAE`.notna() & (`MARA.LAEDA` - @today).dt.days < -1095'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: blocked material has not been changed for more than three years'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The inactive material is converted with its full plant and valuation data.
+  fix_map:
+    __other__: Review the material, flag it for deletion and archive it, or release it.
+  record_fix_template: Material {MARA.MATNR} is blocked and unchanged for over three years.
+- id: S4R-AR-MARC-LVORM
+  field: MARC.LVORM
+  check_class: cross_field_check
+  fail_when: '`MARC.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: plant view is flagged for deletion and has not been archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The dead plant view is converted with its planning data.
+  fix_map:
+    __other__: Archive the plant view with the material deletion run.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} is flagged for deletion.
+- id: S4R-AR-MARD-LVORM
+  field: MARD.LVORM
+  check_class: cross_field_check
+  fail_when: '`MARD.LVORM` == "X" & (`MARD.LABST`.isna() | `MARD.LABST` == 0)'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: storage location view without stock is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The storage row is converted although nothing can be posted to it.
+  fix_map:
+    __other__: Archive the storage location view.
+  record_fix_template: Material {MARD.MATNR} in plant {MARD.WERKS}, storage location {MARD.LGORT} is flagged for deletion.
+- id: S4R-AR-MBEW-LVORM
+  field: MBEW.LVORM
+  check_class: cross_field_check
+  fail_when: '`MBEW.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: medium
+  dimension: timeliness
+  message: 'S/4HANA readiness: valuation record is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The record is converted into the material ledger as a dead valuation.
+  fix_map:
+    __other__: Archive the valuation record with the material.
+  record_fix_template: Material {MBEW.MATNR} in {MBEW.BWKEY} has a valuation flagged for deletion.
+- id: S4R-AR-MCH1-LVORM
+  field: MCH1.LVORM
+  check_class: cross_field_check
+  fail_when: '`MCH1.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: batch is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The batch master is converted with its classification.
+  fix_map:
+    __other__: Archive the batch (SARA, object MM_CHARGE).
+  record_fix_template: Batch {MCH1.CHARG} of material {MCH1.MATNR} is flagged for deletion.
+- id: S4R-AR-MCHA-LVORM
+  field: MCHA.LVORM
+  check_class: cross_field_check
+  fail_when: '`MCHA.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: plant batch is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The plant batch is converted although it is dead.
+  fix_map:
+    __other__: Archive the batch with its deletion run.
+  record_fix_template: Batch {MCHA.CHARG} of material {MCHA.MATNR} in plant {MCHA.WERKS} is flagged for deletion.
+- id: S4R-AR-MCH1-EXPIRED
+  field: MCH1.VFDAT
+  check_class: cross_field_check
+  fail_when: (`MCH1.VFDAT` - @today).dt.days < -730
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: batch has been expired for more than two years'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The expired batch is converted with its characteristic values.
+  fix_map:
+    __other__: Check that no stock is left, then flag the batch for deletion and archive it.
+  record_fix_template: Batch {MCH1.CHARG} of material {MCH1.MATNR} expired over two years ago.
+- id: S4R-AR-EINA-LOEKZ
+  field: EINA.LOEKZ
+  check_class: cross_field_check
+  fail_when: '`EINA.LOEKZ` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: info record is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The record is converted with its conditions.
+  fix_map:
+    __other__: Archive the info record (SARA, object MM_EINA).
+  record_fix_template: Info record {EINA.INFNR} is flagged for deletion.
+- id: S4R-AR-EORD-EXPIRED
+  field: EORD.BDATU
+  check_class: cross_field_check
+  fail_when: (`EORD.BDATU` - @today).dt.days < -365
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: source list record has been expired for more than a year'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The record is converted although source determination ignores it.
+  fix_map:
+    __other__: Delete the expired source list record (ME01).
+  record_fix_template: Source list record for material {EORD.MATNR} in plant {EORD.WERKS} expired over a year ago.
+- id: S4R-AR-EKKO-LOEKZ
+  field: EKKO.LOEKZ
+  check_class: cross_field_check
+  fail_when: '`EKKO.LOEKZ`.notna()'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: purchasing document is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The document is converted with all its items.
+  fix_map:
+    __other__: Archive the purchasing document (SARA, object MM_EKKO).
+  record_fix_template: Purchasing document {EKKO.EBELN} is flagged for deletion.
+- id: S4R-AR-EKKO-EXPIRED
+  field: EKKO.KDATE
+  check_class: cross_field_check
+  fail_when: '`EKKO.BSTYP`.isin(["K","L"]) & `EKKO.LOEKZ`.isna() & (`EKKO.KDATE` - @today).dt.days < -365'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: medium
+  dimension: timeliness
+  message: 'S/4HANA readiness: contract or scheduling agreement validity ended more than a year ago and it is still open'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The agreement is converted as an open document and its vendor needs a Business Partner.
+  fix_map:
+    __other__: Close the agreement or extend its validity.
+  record_fix_template: Agreement {EKKO.EBELN} ended over a year ago and is still open.
+- id: S4R-AR-EKPO-LOEKZ
+  field: EKPO.LOEKZ
+  check_class: cross_field_check
+  fail_when: '`EKPO.LOEKZ`.notna()'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: purchase order item is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The item is converted with its history.
+  fix_map:
+    __other__: Archive the purchasing document.
+  record_fix_template: Purchase order {EKPO.EBELN} item {EKPO.EBELP} is flagged for deletion.
+- id: S4R-AR-AUFK-LOEKZ
+  field: AUFK.LOEKZ
+  check_class: cross_field_check
+  fail_when: '`AUFK.LOEKZ`.notna()'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: order is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The order and its cost history are converted.
+  fix_map:
+    __other__: Archive the order (SARA, object PP_ORDER, CO_ORDER).
+  record_fix_template: Order {AUFK.AUFNR} is flagged for deletion.
+- id: S4R-AR-AUFK-CLOSED
+  field: AUFK.IDAT2
+  check_class: cross_field_check
+  fail_when: (`AUFK.IDAT2` - @today).dt.days < -730
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: order was technically completed more than two years ago and is not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The order and its cost history are converted although they are closed.
+  fix_map:
+    __other__: Archive the order after the business-completion step.
+  record_fix_template: Order {AUFK.AUFNR} was technically completed over two years ago.
+- id: S4R-AR-EQUI-LVORM
+  field: EQUI.LVORM
+  check_class: cross_field_check
+  fail_when: '`EQUI.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: equipment is flagged for deletion and has not been archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The equipment record is converted with its time segments.
+  fix_map:
+    __other__: Archive the equipment (SARA, object PM_EQUI).
+  record_fix_template: Equipment {EQUI.EQUNR} is flagged for deletion.
+- id: S4R-AR-IFLO-LVORM
+  field: IFLOT.LVORM
+  check_class: cross_field_check
+  fail_when: '`IFLOT.LVORM` == "X"'
+  s4_area: archiving
+  s4_impact: warning
+  simplification_item: Data volume reduction before conversion (archiving)
+  baseline: s4_target
+  severity: low
+  dimension: timeliness
+  message: 'S/4HANA readiness: functional location is flagged for deletion and not archived'
+  why_it_matters: Data that is flagged for deletion or inactive for years is converted with the rest unless it is archived
+    first, which lengthens the downtime and carries dead records into the new system.
+  rule_authority: s4hana_migration
+  sap_impact: The location is converted with its hierarchy.
+  fix_map:
+    __other__: Archive the functional location.
+  record_fix_template: Functional location {IFLOT.TPLNR} is flagged for deletion.
+- id: S4R-BATCH-MCHB-NOMCHA
+  field: MCHB.CHARG
+  fields:
+  - MCHB.MATNR
+  - MCHB.WERKS
+  - MCHB.CHARG
+  check_class: exists_check
+  target_table: MCHA
+  target_fields:
+  - MATNR
+  - WERKS
+  - CHARG
+  s4_area: batch_serial
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: high
+  dimension: consistency
+  message: 'S/4HANA readiness: batch stock exists without a plant batch master record'
+  why_it_matters: Batch stock is loaded together with the batch master of the plant. Stock without its master record cannot
+    be assigned to a batch.
+  rule_authority: s4hana_migration
+  sap_impact: The stock is rejected by the migration cockpit and the batch inventory does not reconcile.
+  fix_map:
+    __other__: Recreate the batch master (MSC1N) or move the stock to a valid batch.
+  record_fix_template: Material {MCHB.MATNR} batch {MCHB.CHARG} in plant {MCHB.WERKS} has stock but no batch master.
+- id: S4R-BATCH-MCHA-NOMARC
+  field: MCHA.MATNR
+  fields:
+  - MCHA.MATNR
+  - MCHA.WERKS
+  check_class: exists_check
+  target_table: MARC
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: batch_serial
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: medium
+  dimension: consistency
+  message: 'S/4HANA readiness: plant batch exists for a material that is not extended to the plant'
+  why_it_matters: Batch masters are loaded below the plant view of the material. A batch for a plant the material is not extended
+    to cannot be attached.
+  rule_authority: s4hana_migration
+  sap_impact: The batch is rejected by the load.
+  fix_map:
+    __other__: Extend the material to the plant or delete the batch.
+  record_fix_template: Batch {MCHA.CHARG} of material {MCHA.MATNR} exists in plant {MCHA.WERKS} without a plant view.
+- id: S4R-BATCH-MARC-NOMCHA
+  field: MARC.MATNR
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  check_class: exists_check
+  applies_when:
+    MARC.XCHPF:
+    - X
+    MARC.LVORM:
+      blank: true
+  target_table: MCHA
+  target_fields:
+  - MATNR
+  - WERKS
+  s4_area: batch_serial
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: batch-managed plant view has no batches and no stock record'
+  why_it_matters: A batch-managed material with a plant view but no batch is a configuration with nothing to migrate and is
+    a candidate to remove the batch flag.
+  rule_authority: s4hana_migration
+  sap_impact: The batch management flag is carried over although no batch exists.
+  fix_map:
+    __other__: Remove the batch management flag (MSC2N) if no batch will be used, or create the batches.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} is batch-managed but has no batch.
+- id: S4R-BATCH-SERNP-BATCH
+  field: MARC.SERNP
+  check_class: cross_field_check
+  fail_when: '`MARC.SERNP`.notna() & `MARC.XCHPF` == "X"'
+  s4_area: batch_serial
+  s4_impact: warning
+  simplification_item: Migration cockpit load objects for logistics master and transaction data
+  baseline: s4_target
+  severity: low
+  dimension: consistency
+  message: 'S/4HANA readiness: material is both serial-number managed and batch managed in the plant'
+  why_it_matters: Both together mean the same unit is tracked by serial number and by batch; the migration cockpit loads the
+    serial numbers with the batch of the plant.
+  rule_authority: s4hana_migration
+  sap_impact: Serial number records are rejected when the batch cannot be derived.
+  fix_map:
+    __other__: Confirm that both tracking levels are intended.
+  record_fix_template: Material {MARC.MATNR} in plant {MARC.WERKS} has a serial number profile and is batch managed.
 - id: S4R-WM-QUANT-NEG
   field: LQUA.GESME
   check_class: cross_field_check
