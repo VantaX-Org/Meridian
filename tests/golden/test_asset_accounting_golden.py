@@ -105,7 +105,7 @@ def _frames() -> TableFrames:
         for afabe, afasl, ndjar, ndper in AREAS[a[2]]:
             if a[0] == "000000300014":
                 afasl = "ZL05"  # defect AA032: depreciation key not defined in the chart of depreciation
-            afabg = _start(a[6])
+            afabg = "00000000" if afasl == "0000" else _start(a[6])  # no-depreciation areas carry no start date
             if a[0] == "000000320022" and afabe == "15":
                 afabg = "00000000"  # defect AA016: tax area never got its depreciation start date
             saprz, safbg, aedat = "0.0000", "00000000", "00000000"
