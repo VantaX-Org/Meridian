@@ -37,6 +37,35 @@ tables:
       EMPLOYMENT_TYPE: {source: EmpJob.employmentType, type: STRING, length: 128, picklist: employmentType, description: Employment type}
       EVENT_REASON:    {source: EmpJob.eventReason, type: STRING, length: 128, check_table: FOEventReason, description: Event reason}
       STATUS:          {source: EmpJob.emplStatus, type: STRING, length: 128, picklist: employee-status, description: Employee status}
+      JOB_START_DATE:  {source: EmpJob.startDate, type: DATE, verify: true, description: Effective start date of the current job record}
+      SEQ_NUMBER:      {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence of job records on the same start date}
+      EVENT:           {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event, description: Job event (hire, transfer, termination, ...)}
+      BUSINESS_UNIT:   {source: EmpJob.businessUnit, type: STRING, length: 128, verify: true, check_table: FOBusinessUnit, description: Business unit}
+      FTE:             {source: EmpJob.fte, type: DECIMAL, verify: true, description: Full-time equivalent}
+      STANDARD_HOURS:  {source: EmpJob.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours}
+      WORKING_DAYS_PER_WEEK: {source: EmpJob.workingDaysPerWeek, type: DECIMAL, verify: true, description: Working days per week}
+      IS_FULLTIME:     {source: EmpJob.isFulltimeEmployee, type: BOOLEAN, verify: true, description: Full-time employee flag}
+      REGULAR_TEMP:    {source: EmpJob.regularTemp, type: STRING, length: 128, verify: true, picklist: regular-temp, description: Regular or temporary}
+      EMPLOYEE_CLASS:  {source: EmpJob.employeeClass, type: STRING, length: 128, verify: true, picklist: employee-class, description: Employee class}
+      CONTRACT_TYPE:   {source: EmpJob.contractType, type: STRING, length: 128, verify: true, picklist: contractType, description: Contract type}
+      CONTRACT_END_DATE: {source: EmpJob.contractEndDate, type: DATE, verify: true, description: Fixed-term contract end date}
+      PROBATION_END_DATE: {source: EmpJob.probationPeriodEndDate, type: DATE, verify: true, description: Probation period end date}
+      PAY_GROUP:       {source: EmpJob.payGroup, type: STRING, length: 128, verify: true, check_table: FOPayGroup, description: Pay group}
+      PAY_SCALE_TYPE:  {source: EmpJob.payScaleType, type: STRING, length: 128, verify: true, description: Pay scale type}
+      PAY_SCALE_AREA:  {source: EmpJob.payScaleArea, type: STRING, length: 128, verify: true, description: Pay scale area}
+      PAY_SCALE_GROUP: {source: EmpJob.payScaleGroup, type: STRING, length: 128, verify: true, description: Pay scale group}
+      PAY_SCALE_LEVEL: {source: EmpJob.payScaleLevel, type: STRING, length: 128, verify: true, description: Pay scale level}
+      COUNTRY_OF_COMPANY: {source: EmpJob.countryOfCompany, type: STRING, length: 128, verify: true, description: Country of the legal entity on the job record}
+      TIMEZONE:        {source: EmpJob.timezone, type: STRING, length: 128, verify: true, description: Time zone}
+      ORIGINAL_START_DATE: {source: EmpEmployment.originalStartDate, type: DATE, verify: true, description: Original start date (first hire)}
+      SENIORITY_DATE:  {source: EmpEmployment.seniorityDate, type: DATE, verify: true, description: Seniority start date}
+      SERVICE_DATE:    {source: EmpEmployment.serviceDate, type: DATE, verify: true, description: Service date}
+      LAST_DATE_WORKED: {source: EmpEmployment.lastDateWorked, type: DATE, verify: true, description: Last date worked}
+      PAYROLL_END_DATE: {source: EmpEmployment.payrollEndDate, type: DATE, verify: true, description: Payroll end date}
+      OK_TO_REHIRE:    {source: EmpEmployment.okToRehire, type: BOOLEAN, verify: true, description: Eligible for rehire}
+      IS_CONTINGENT_WORKER: {source: EmpEmployment.isContingentWorker, type: BOOLEAN, verify: true, description: Contingent worker flag}
+      IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment)}
+      ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: ST standard, GA global assignment, PH higher duty, ...}
 
   PERINFO:
     description: Personal information (PerPersonal ⋈ PerPerson ⋈ primary PerNationalId)
@@ -55,6 +84,10 @@ tables:
       DATE_OF_BIRTH:  {source: PerPerson.dateOfBirth, type: DATE, description: Date of birth}
       NATIONAL_ID:    {source: PerNationalId.nationalId, type: STRING, length: 256, description: National ID (primary)}
       NATIONAL_ID_COUNTRY: {source: PerNationalId.country, type: STRING, length: 128, description: Country that issued the national ID}
+      NATIONAL_ID_CARD_TYPE: {source: PerNationalId.cardType, type: STRING, length: 256, verify: true, description: National ID card type}
+      COUNTRY_OF_BIRTH: {source: PerPerson.countryOfBirth, type: STRING, length: 128, verify: true, check_table: Country, description: Country of birth}
+      DATE_OF_DEATH:  {source: PerPerson.dateOfDeath, type: DATE, verify: true, description: Date of death}
+      SECOND_NATIONALITY: {source: PerPersonal.secondNationality, type: STRING, length: 128, verify: true, check_table: Country, description: Second nationality}
 
   PEREMAIL:
     description: E-mail addresses
@@ -64,6 +97,7 @@ tables:
       PERSON_ID:     {source: PerEmail.personIdExternal, type: STRING, length: 100}
       EMAIL_TYPE:    {source: PerEmail.emailType, type: STRING, length: 128, picklist: ecEmailType, description: E-mail type}
       EMAIL_ADDRESS: {source: PerEmail.emailAddress, type: STRING, length: 100, description: E-mail address}
+      IS_PRIMARY:    {source: PerEmail.isPrimary, type: BOOLEAN, verify: true, description: Primary e-mail flag}
 
   PERPHONE:
     description: Phone numbers
@@ -73,6 +107,10 @@ tables:
       PERSON_ID:    {source: PerPhone.personIdExternal, type: STRING, length: 100}
       PHONE_TYPE:   {source: PerPhone.phoneType, type: STRING, length: 128, picklist: ecPhoneType, description: Phone type}
       PHONE_NUMBER: {source: PerPhone.phoneNumber, type: STRING, length: 256, description: Phone number}
+      COUNTRY_CODE: {source: PerPhone.countryCode, type: STRING, length: 256, verify: true, description: International dialling code}
+      AREA_CODE:    {source: PerPhone.areaCode, type: STRING, length: 256, verify: true, description: Area code}
+      EXTENSION:    {source: PerPhone.extension, type: STRING, length: 256, verify: true, description: Extension}
+      IS_PRIMARY:   {source: PerPhone.isPrimary, type: BOOLEAN, verify: true, description: Primary phone flag}
 
   PERADDRESS:
     description: Home address (default country format)
@@ -469,6 +507,9 @@ tables:
       VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
       EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
       CRITICALITY:      {source: Position.criticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
+      TARGET_FTE:       {source: Position.targetFTE, type: DECIMAL, verify: true, description: Target FTE of the position}
+      MULTIPLE_INCUMBENTS: {source: Position.multipleIncumbentsAllowed, type: BOOLEAN, verify: true, description: More than one incumbent allowed}
+      STANDARD_HOURS:   {source: Position.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours of the position}
 
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
@@ -488,3 +529,134 @@ tables:
       EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
       COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, description: Default cost centre of the department}
       STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}
+
+  # Employee Central depth (EC121+): full job history, permits, payment, emergency
+  # contacts, global assignments and the remaining Foundation Objects.
+  EMPJOBHIST:
+    description: Job history, every effective-dated EmpJob record (not only the current one)
+    source: EmpJob (all records, asOfDate not applied)
+    keys: [USERID, START_DATE, SEQ_NUMBER]
+    fields:
+      USERID:       {source: EmpJob.userId, type: STRING, length: 100, verify: true}
+      START_DATE:   {source: EmpJob.startDate, type: DATE, verify: true, description: Record effective start}
+      SEQ_NUMBER:   {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence on the same start date}
+      END_DATE:     {source: EmpJob.endDate, type: DATE, verify: true, description: Record effective end}
+      EVENT:        {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event}
+      EVENT_REASON: {source: EmpJob.eventReason, type: STRING, length: 128, verify: true, check_table: FOEventReason}
+      STATUS:       {source: EmpJob.emplStatus, type: STRING, length: 128, verify: true, picklist: employee-status}
+      COMPANY:      {source: EmpJob.company, type: STRING, length: 128, verify: true, check_table: FOCompany}
+      POSITION:     {source: EmpJob.position, type: STRING, length: 128, verify: true}
+      MANAGER_ID:   {source: EmpJob.managerId, type: STRING, length: 100, verify: true}
+
+  EMPWORKPERMIT:
+    description: Work permits and visas
+    source: EmpWorkPermit
+    keys: [USERID, COUNTRY, DOCUMENT_TYPE, DOCUMENT_NUMBER]
+    fields:
+      USERID:          {source: EmpWorkPermit.userId, type: STRING, length: 100, verify: true}
+      COUNTRY:         {source: EmpWorkPermit.country, type: STRING, length: 128, verify: true, check_table: Country}
+      DOCUMENT_TYPE:   {source: EmpWorkPermit.documentType, type: STRING, length: 128, verify: true, picklist: documentType}
+      DOCUMENT_NUMBER: {source: EmpWorkPermit.documentNumber, type: STRING, length: 256, verify: true}
+      ISSUE_DATE:      {source: EmpWorkPermit.issueDate, type: DATE, verify: true}
+      EXPIRATION_DATE: {source: EmpWorkPermit.expirationDate, type: DATE, verify: true}
+      IS_VALIDATED:    {source: EmpWorkPermit.isValidated, type: BOOLEAN, verify: true}
+
+  PAYMENTINFO:
+    description: Payment information details (bank accounts), MDF PaymentInformationDetailV3
+    source: PaymentInformationDetailV3
+    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
+    fields:
+      USERID:         {source: PaymentInformationDetailV3.PaymentInformationV3_worker, type: STRING, length: 100, verify: true}
+      EFFECTIVE_DATE: {source: PaymentInformationDetailV3.PaymentInformationV3_effectiveStartDate, type: DATE, verify: true}
+      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, verify: true}
+      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment method or expenses}
+      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true}
+      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true, check_table: Country}
+      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true}
+      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC}
+      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
+      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
+      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Routing / sort code / BSB / branch code}
+      ACCOUNT_OWNER:  {source: PaymentInformationDetailV3.accountOwner, type: STRING, length: 256, verify: true}
+      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
+      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true}
+      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true}
+
+  PEREMERGENCY:
+    description: Emergency contacts
+    source: PerEmergencyContacts
+    keys: [PERSON_ID, NAME, RELATIONSHIP]
+    fields:
+      PERSON_ID:    {source: PerEmergencyContacts.personIdExternal, type: STRING, length: 100, verify: true}
+      NAME:         {source: PerEmergencyContacts.name, type: STRING, length: 256, verify: true}
+      RELATIONSHIP: {source: PerEmergencyContacts.relationship, type: STRING, length: 128, verify: true, picklist: relation}
+      PHONE:        {source: PerEmergencyContacts.phone, type: STRING, length: 256, verify: true}
+      EMAIL:        {source: PerEmergencyContacts.email, type: STRING, length: 256, verify: true}
+      PRIMARY_FLAG: {source: PerEmergencyContacts.primaryFlag, type: STRING, length: 1, verify: true, description: Y primary / N}
+
+  EMPGLOBALASSIGNMENT:
+    description: Global assignment details of a host employment
+    source: EmpGlobalAssignment
+    keys: [USERID]
+    fields:
+      USERID:           {source: EmpGlobalAssignment.userId, type: STRING, length: 100, verify: true}
+      ASSIGNMENT_TYPE:  {source: EmpGlobalAssignment.assignmentType, type: STRING, length: 128, verify: true}
+      START_DATE:       {source: EmpGlobalAssignment.startDate, type: DATE, verify: true}
+      END_DATE:         {source: EmpGlobalAssignment.endDate, type: DATE, verify: true}
+      PLANNED_END_DATE: {source: EmpGlobalAssignment.plannedEndDate, type: DATE, verify: true}
+
+  FOEVENTREASON:
+    description: Event reasons (Foundation Object)
+    source: FOEventReason
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOEventReason.externalCode, type: STRING, length: 128, verify: true}
+      EVENT:         {source: FOEventReason.event, type: STRING, length: 128, verify: true, picklist: event}
+      EMPL_STATUS:   {source: FOEventReason.emplStatus, type: STRING, length: 128, verify: true, description: Employee status the reason sets}
+      STATUS:        {source: FOEventReason.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+
+  FOLOCATION:
+    description: Locations (Foundation Object)
+    source: FOLocation
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:  {source: FOLocation.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:         {source: FOLocation.status, type: STRING, length: 2, verify: true}
+      TIMEZONE:       {source: FOLocation.timezone, type: STRING, length: 128, verify: true}
+      STANDARD_HOURS: {source: FOLocation.standardHours, type: DECIMAL, verify: true}
+
+  FOJOBCODE:
+    description: Job classifications (Foundation Object)
+    source: FOJobCode
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE:  {source: FOJobCode.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:         {source: FOJobCode.status, type: STRING, length: 2, verify: true}
+      IS_FULLTIME:    {source: FOJobCode.isFulltimeEmployee, type: BOOLEAN, verify: true}
+      EMPLOYEE_CLASS: {source: FOJobCode.employeeClass, type: STRING, length: 128, verify: true}
+      REGULAR_TEMP:   {source: FOJobCode.regularTemporary, type: STRING, length: 128, verify: true}
+
+  FODIVISION:
+    description: Divisions (Foundation Object)
+    source: FODivision
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FODivision.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FODivision.status, type: STRING, length: 2, verify: true}
+
+  FOBUSINESSUNIT:
+    description: Business units (Foundation Object)
+    source: FOBusinessUnit
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOBusinessUnit.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FOBusinessUnit.status, type: STRING, length: 2, verify: true}
+
+  FOCOSTCENTER:
+    description: Cost centres (Foundation Object)
+    source: FOCostCenter
+    keys: [EXTERNAL_CODE]
+    fields:
+      EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
+      STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
+      LEGAL_ENTITY:  {source: FOCostCenter.legalEntity, type: STRING, length: 128, verify: true}

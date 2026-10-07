@@ -256,6 +256,18 @@ edges:
   - {parent: EMPEMPLOYMENT, child: POSITION, join: {CODE: POSITION}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: FOCOMPANY, join: {EXTERNAL_CODE: COMPANY}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: EMPJOBHIST, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: EMPWORKPERMIT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: PAYMENTINFO, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: EMPGLOBALASSIGNMENT, join: {USERID: USERID}, cardinality: one}
+  - {parent: PERINFO, child: PEREMERGENCY, join: {PERSON_ID: PERSON_ID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}
+  - {parent: EMPJOBHIST, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOLOCATION, join: {EXTERNAL_CODE: LOCATION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FODIVISION, join: {EXTERNAL_CODE: DIVISION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOBUSINESSUNIT, join: {EXTERNAL_CODE: BUSINESS_UNIT}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: FOCOSTCENTER, join: {EXTERNAL_CODE: COST_CENTER}, cardinality: one}
 
   # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)
   - {parent: CONCUR_USER, child: CONCUR_REPORT, join: {OWNER_LOGIN_ID: LOGIN_ID}, cardinality: many}
