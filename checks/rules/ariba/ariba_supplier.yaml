@@ -192,3 +192,395 @@ rules:
   fix_map:
     __other__: Review the supplier and archive it if inactive.
   record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: last updated {actual_value}.'
+- id: ARS015
+  field: ARIBA_SUPPLIER.REGION
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Ariba supplier has no region
+  why_it_matters: Region refines the country for tax jurisdiction, local sourcing and spend reporting below country level.
+  rule_authority: best_practice
+  sap_impact: Spend and sourcing reports cannot be sliced below country level for this supplier.
+  fix_map:
+    __blank__: Maintain the region in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: region is {actual_value}.'
+- id: ARS016
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Ariba supplier has no lifecycle status
+  why_it_matters: Status is the gate that decides whether buyers may transact with the supplier at all.
+  rule_authority: best_practice
+  sap_impact: Buyers cannot tell whether the supplier is approved, blocked or still prospective; orders may go to an
+    unapproved supplier.
+  fix_map:
+    __blank__: Set the supplier's lifecycle status in Supplier Management.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: status is {actual_value}.'
+- id: ARS017
+  field: ARIBA_SUPPLIER.REGISTRATION_DATE
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Ariba supplier has no registration date
+  why_it_matters: The registration date anchors onboarding SLAs and the supplier's age in spend and risk reporting.
+  rule_authority: best_practice
+  sap_impact: Onboarding ageing reports cannot date the supplier; SLA breach detection is blind to this record.
+  fix_map:
+    __blank__: Re-extract; a missing registration date points to an incomplete registration record.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: registration date is {actual_value}.'
+- id: ARS018
+  field: ARIBA_SUPPLIER.LAST_UPDATED
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Ariba supplier has no last-updated timestamp
+  why_it_matters: Without a last-updated timestamp, staleness (ARS014) and change-ordering checks (ARS011) cannot run on
+    the record at all.
+  rule_authority: best_practice
+  sap_impact: The supplier is invisible to staleness-based archive and review reporting.
+  fix_map:
+    __blank__: Re-extract; the source record should stamp every update.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: last updated is {actual_value}.'
+- id: ARS019
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - PROSPECT
+  - PENDING
+  - APPROVED
+  - BLOCKED
+  - INACTIVE
+  valid_values_with_labels:
+    PROSPECT: Prospect — potential supplier under evaluation
+    PENDING: Pending approval — registration awaiting approval
+    APPROVED: Approved — active, may receive orders
+    BLOCKED: Blocked — blocked from transactions
+    INACTIVE: Inactive — no longer active
+  severity: high
+  dimension: validity
+  message: Supplier lifecycle status is not a recognised value
+  why_it_matters: Status drives every downstream gate — ordering, contracting and reporting all branch on it. An
+    unrecognised value cannot be interpreted by any of those gates.
+  rule_authority: best_practice
+  sap_impact: The supplier falls through lifecycle-based filters; it may be silently excluded from, or included in,
+    buyer-facing supplier lists.
+  fix_map:
+    __other__: Correct the status to one of the configured lifecycle values in Supplier Management.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: status ''{actual_value}'' is not a recognised value.'
+- id: ARS020
+  field: ARIBA_SUPPLIER.QUALIFICATION_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - NOT_STARTED
+  - IN_PROGRESS
+  - QUALIFIED
+  - DISQUALIFIED
+  valid_values_with_labels:
+    NOT_STARTED: Not started — qualification process not started
+    IN_PROGRESS: In progress — qualification under way
+    QUALIFIED: Qualified — supplier qualified
+    DISQUALIFIED: Disqualified — supplier disqualified
+  severity: medium
+  dimension: validity
+  message: Supplier qualification status is not a recognised value
+  why_it_matters: Sourcing teams filter by qualification status to decide who may bid; an unrecognised value hides the
+    supplier from, or wrongly exposes it to, that filter.
+  rule_authority: best_practice
+  sap_impact: Sourcing events may wrongly include or exclude the supplier based on an unreadable qualification value.
+  fix_map:
+    __other__: Correct the qualification status to one of the configured values.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: qualification status ''{actual_value}'' is not a recognised
+    value.'
+- id: ARS021
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9_./-]+$
+  severity: high
+  dimension: validity
+  message: Supplier ID contains characters that are not valid in an SAP vendor number
+  why_it_matters: The supplier ID is copied into the ERP vendor number (LIFNR) on replication. Whitespace or punctuation
+    outside the allowed set breaks the exact-match join between Ariba and the ERP vendor.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP vendor link fails to resolve; POs and invoices cannot be matched to the replicated vendor.
+  fix_map:
+    __other__: Remove the invalid characters from the supplier ID; re-extract if the source itself holds them.
+  record_fix_template: 'Ariba supplier ID ''{actual_value}'' contains characters not valid in an SAP vendor number.'
+- id: ARS022
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: regex_check
+  pattern: ^.{1,10}$
+  severity: high
+  dimension: validity
+  message: Supplier ID is longer than the 10-character SAP vendor number field
+  why_it_matters: The ERP vendor number (LIFNR) is 10 characters. A longer Ariba supplier ID cannot be written to it
+    unchanged.
+  rule_authority: sap_hard_constraint
+  sap_impact: Vendor replication truncates or rejects the ID, breaking the link between the Ariba supplier and the ERP
+    vendor.
+  fix_map:
+    __other__: Shorten the supplier ID or map it to a 10-character ERP vendor number.
+  record_fix_template: 'Ariba supplier ID ''{actual_value}'' is longer than 10 characters.'
+- id: ARS023
+  field: ARIBA_SUPPLIER.NAME
+  check_class: regex_check
+  pattern: ^.{2,}$
+  severity: medium
+  dimension: validity
+  message: Supplier name is a single character
+  why_it_matters: A one-character name is not a legal entity name; it is almost always a data-entry placeholder.
+  rule_authority: best_practice
+  sap_impact: The ERP vendor name field carries an unusable value; buyers cannot identify the supplier from it.
+  fix_map:
+    __other__: Maintain the full legal name in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: name ''{actual_value}'' is a single character.'
+- id: ARS024
+  field: ARIBA_SUPPLIER.CITY
+  check_class: regex_check
+  pattern: ^.{2,}$
+  severity: low
+  dimension: validity
+  message: Supplier city is a single character
+  why_it_matters: A one-character city is not a usable postal address component; it is almost always a data-entry
+    placeholder.
+  rule_authority: best_practice
+  sap_impact: Payment media and sanctions screening carry an unusable address line for this supplier.
+  fix_map:
+    __other__: Maintain the full city in the supplier's registration questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city ''{actual_value}'' is a single character.'
+- id: ARS025
+  field: ARIBA_SUPPLIER.NAME
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SUPPLIER.NAME
+  normalize: name
+  severity: low
+  dimension: uniqueness
+  message: Possible duplicate supplier (same name, any country)
+  why_it_matters: The same legal name registered more than once, even across countries, is the usual signature of a
+    multinational group that registered its local entities as separate, unlinked suppliers.
+  rule_authority: best_practice
+  sap_impact: Global spend for the group is split across unrelated supplier records and understates negotiating leverage.
+  fix_map:
+    __other__: Review the group; link or merge the records in Supplier Management if they are the same legal entity.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: name ''{ARIBA_SUPPLIER.NAME}'' matches another supplier
+    in a different country.'
+- id: ARS026
+  field: ARIBA_SUPPLIER.VENDOR_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SUPPLIER.VENDOR_ID
+  normalize: alnum
+  severity: critical
+  dimension: uniqueness
+  message: Supplier ID collides with another once case and punctuation are ignored
+  why_it_matters: The ERP vendor number comparison is not case- or punctuation-sensitive; two IDs that differ only in
+    case or formatting (e.g. 'S-100' and 's100') resolve to the same ERP vendor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Two Ariba suppliers replicate to a single ERP vendor; spend and payments for one are attributed to the
+    other.
+  fix_map:
+    __other__: Re-extract; if the collision persists, correct one of the supplier IDs in Supplier Management.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: ID collides with another once normalised.'
+- id: ARS027
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'BLOCKED') & (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'QUALIFIED')
+  severity: medium
+  dimension: consistency
+  message: Blocked supplier is still marked qualified
+  why_it_matters: A supplier blocked from transactions should not show as currently qualified to bid; sourcing teams
+    scanning qualification status alone would miss the block.
+  rule_authority: best_practice
+  sap_impact: Sourcing events may invite a blocked supplier to bid because its qualification status looks current.
+  fix_map:
+    __other__: Review the block; downgrade the qualification status or lift the block, whichever is correct.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: blocked but qualification status is QUALIFIED.'
+- id: ARS028
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'APPROVED') & (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'DISQUALIFIED')
+  severity: high
+  dimension: consistency
+  message: Approved and active supplier is marked disqualified
+  why_it_matters: An approved supplier can receive orders; a disqualified one should not. The two flags contradict each
+    other on whether buyers may use the supplier.
+  rule_authority: best_practice
+  sap_impact: Orders may be placed with a supplier that failed qualification, or a legitimately disqualified supplier
+    stays visible to buyers as approved.
+  fix_map:
+    __other__: Resolve the contradiction — either the approval or the disqualification is stale.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: approved but qualification status is DISQUALIFIED.'
+- id: ARS029
+  field: ARIBA_SUPPLIER.QUALIFICATION_STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'NOT_STARTED') & (`ARIBA_SUPPLIER.STATUS` == 'APPROVED')
+  severity: high
+  dimension: consistency
+  message: Supplier is approved but qualification was never started
+  why_it_matters: Approval should follow qualification. A supplier approved without qualification ever starting bypassed
+    the onboarding control entirely.
+  rule_authority: best_practice
+  sap_impact: An unvetted supplier is treated as fully approved for ordering.
+  fix_map:
+    __other__: Start qualification retroactively, or revert the approval until it completes.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: approved but qualification status is NOT_STARTED.'
+- id: ARS030
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'INACTIVE') & (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'IN_PROGRESS')
+  severity: low
+  dimension: consistency
+  message: Inactive supplier still shows qualification in progress
+  why_it_matters: An inactive supplier's qualification workflow should have been closed, not left running.
+  rule_authority: best_practice
+  sap_impact: The qualification workbench carries a stale, unresolvable task for an inactive supplier.
+  fix_map:
+    __other__: Close the qualification workflow for the inactive supplier.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: inactive but qualification status is IN_PROGRESS.'
+- id: ARS031
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'PROSPECT') & (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'QUALIFIED')
+  severity: low
+  dimension: consistency
+  message: Prospect supplier has already qualified but was never promoted
+  why_it_matters: A prospect that has qualified should be promoted to an active status; leaving it as a prospect hides
+    a usable supplier from buyers.
+  rule_authority: best_practice
+  sap_impact: A qualified supplier is excluded from buyer-facing sourcing because its status was never advanced.
+  fix_map:
+    __other__: Promote the supplier's status now that qualification is complete.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: prospect but qualification status is QUALIFIED.'
+- id: ARS032
+  field: ARIBA_SUPPLIER.REGISTRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.REGISTRATION_DATE`.isna() & `ARIBA_SUPPLIER.STATUS`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Supplier has a lifecycle status but no registration date
+  why_it_matters: A status cannot have been reached without the supplier having registered; a missing registration date
+    on a status-bearing record is a gap in the onboarding trail.
+  rule_authority: best_practice
+  sap_impact: Onboarding ageing and SLA reports cannot date a record that nonetheless carries a lifecycle status.
+  fix_map:
+    __other__: Re-extract; backfill the registration date from the onboarding questionnaire.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: status {ARIBA_SUPPLIER.STATUS} but no registration
+    date.'
+- id: ARS033
+  field: ARIBA_SUPPLIER.REGION
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.REGION`.notna() & `ARIBA_SUPPLIER.COUNTRY`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Supplier has a region but no country
+  why_it_matters: Region is a subdivision of country; a region without a country breaks the address hierarchy that tax
+    and bank validation rely on.
+  rule_authority: best_practice
+  sap_impact: Country-dependent validation (tax, bank, address) cannot run because the country it needs is missing.
+  fix_map:
+    __other__: Maintain the country for the region already on file.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: region {ARIBA_SUPPLIER.REGION} but no country.'
+- id: ARS034
+  field: ARIBA_SUPPLIER.CITY
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.CITY`.notna() & `ARIBA_SUPPLIER.COUNTRY`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Supplier has a city but no country
+  why_it_matters: City is a subdivision of country; a city without a country breaks the address hierarchy used for
+    payment media and sanctions screening.
+  rule_authority: best_practice
+  sap_impact: Country-dependent address validation and screening cannot run for this record.
+  fix_map:
+    __other__: Maintain the country for the city already on file.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city {ARIBA_SUPPLIER.CITY} but no country.'
+- id: ARS035
+  field: ARIBA_SUPPLIER.LAST_UPDATED
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'APPROVED') & (`ARIBA_SUPPLIER.REGISTRATION_DATE` == `ARIBA_SUPPLIER.LAST_UPDATED`)
+  severity: low
+  dimension: consistency
+  message: Approved supplier's profile has never been touched since registration
+  why_it_matters: An approved supplier whose last-updated timestamp still equals its registration date has never had
+    its profile refreshed since onboarding.
+  rule_authority: best_practice
+  sap_impact: Buyer-facing profile data (address, category, contacts) may be as old as onboarding and never revalidated.
+  fix_map:
+    __other__: Prompt the supplier to review and refresh its profile.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: approved, profile unchanged since registration.'
+- id: ARS036
+  field: ARIBA_SUPPLIER.REGISTRATION_DATE
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'PROSPECT') & ((@today - `ARIBA_SUPPLIER.REGISTRATION_DATE`).dt.days > 365)
+  severity: medium
+  dimension: timeliness
+  message: Prospect supplier has sat without a decision for over a year
+  why_it_matters: A prospect should be qualified, approved or rejected within a reasonable window; one open for over a
+    year is a stalled onboarding, not an active pipeline entry.
+  rule_authority: best_practice
+  sap_impact: Sourcing pipeline reports overstate the active prospect pool with records that are effectively abandoned.
+  fix_map:
+    __other__: Progress the prospect's onboarding decision or close the record.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: prospect since {actual_value}, no decision in over a
+    year.'
+- id: ARS037
+  field: ARIBA_SUPPLIER.LAST_UPDATED
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'APPROVED') & ((@today - `ARIBA_SUPPLIER.LAST_UPDATED`).dt.days > 365)
+  severity: medium
+  dimension: timeliness
+  message: Approved supplier has not been revalidated in over a year
+  why_it_matters: Active suppliers are expected to confirm their profile at least annually; an approved supplier not
+    updated in over a year is overdue for revalidation.
+  rule_authority: best_practice
+  sap_impact: Buyers keep ordering from a supplier whose banking, category and compliance data may be a year or more
+    out of date.
+  fix_map:
+    __other__: Trigger a profile revalidation for the supplier.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: approved, last updated {actual_value}, over a year
+    ago.'
+- id: ARS038
+  field: ARIBA_SUPPLIER.REGION
+  check_class: cross_field_check
+  fail_when: '`ARIBA_SUPPLIER.REGION`.notna() & (`ARIBA_SUPPLIER.REGION` == `ARIBA_SUPPLIER.COUNTRY`)'
+  severity: low
+  dimension: consistency
+  message: Supplier region is the same value as its country
+  why_it_matters: Region and country are different parts of the address hierarchy; the same value in both usually means
+    the country was copied into the region field by mistake.
+  rule_authority: best_practice
+  sap_impact: Sub-country sourcing and spend reports treat the country as its own region, hiding the real geographic
+    split.
+  fix_map:
+    __other__: Maintain the actual region; do not repeat the country value.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: region and country are both {ARIBA_SUPPLIER.COUNTRY}.'
+- id: ARS039
+  field: ARIBA_SUPPLIER.REGISTRATION_DATE
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'PENDING') & ((@today - `ARIBA_SUPPLIER.REGISTRATION_DATE`).dt.days > 90)
+  severity: medium
+  dimension: timeliness
+  message: Supplier has been pending approval for over 90 days
+  why_it_matters: Pending approval is meant to be a short gate between registration and a decision; one open for over
+    90 days is an onboarding SLA breach.
+  rule_authority: best_practice
+  sap_impact: The supplier cannot be used by buyers while the approval decision is overdue, delaying sourcing.
+  fix_map:
+    __other__: Escalate the pending approval decision.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: pending approval since {actual_value}, over 90 days.'
+- id: ARS040
+  field: ARIBA_SUPPLIER.STATUS
+  check_class: cross_field_check
+  fail_when: (`ARIBA_SUPPLIER.STATUS` == 'PENDING') & (`ARIBA_SUPPLIER.QUALIFICATION_STATUS` == 'DISQUALIFIED')
+  severity: high
+  dimension: consistency
+  message: Supplier is pending approval despite already being disqualified
+  why_it_matters: A disqualified supplier has already failed the qualification gate; it should not still be sitting in
+    the pending-approval queue.
+  rule_authority: best_practice
+  sap_impact: The approval queue carries a decision that should already be closed, delaying the queue for other
+    suppliers and risking an accidental approval.
+  fix_map:
+    __other__: Close the pending approval as rejected; do not approve a disqualified supplier.
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: pending but qualification status is DISQUALIFIED.'
