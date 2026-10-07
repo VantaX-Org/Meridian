@@ -169,6 +169,10 @@ tables:
       GOAL_STATUS: {source: Goal.state, type: STRING, length: 128, verify: true}
       GOAL_WEIGHT: {source: Goal.weight, type: DECIMAL}
       TARGET_DATE: {source: Goal.dueDate, type: DATE}
+      GOAL_START_DATE:     {source: Goal.startDate, type: DATE, verify: true, description: Goal start date}
+      GOAL_CATEGORY:       {source: Goal.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
+      CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
+      COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
 
   PMREVIEWRESULT:
     description: Performance review forms
@@ -182,6 +186,8 @@ tables:
       OVERALL_RATING: {source: FormSummarySection.overallFormRating, type: DECIMAL, verify: true}
       MANAGER_RATING: {source: FormSummarySection.overallFormRating (manager step), type: DECIMAL, verify: true}
       SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
+      FORM_TEMPLATE_ID: {source: FormHeader.templateId, type: STRING, length: 38, verify: true, description: Review form template}
+      SIGNOFF_DATE:     {source: FormHeader.signOffDate, type: DATE, verify: true, description: Employee sign-off date}
 
   SUCCESSIONCANDIDATE:
     description: Succession nominations
