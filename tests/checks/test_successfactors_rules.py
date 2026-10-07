@@ -19,7 +19,7 @@ EXPECTED_COUNTS = {
     "performance_goals": 40,
     "succession_planning": 12,
     "time_attendance": 17,
-    "benefits": 15,
+    "benefits": 40,
     "payroll_integration": 59,
 }
 
