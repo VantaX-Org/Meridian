@@ -140,6 +140,10 @@ tables:
       ABSENCE_TYPE:      {source: EmployeeTime.timeType, type: STRING, length: 128, check_table: TimeType}
       TIME_ACCOUNT_TYPE: {source: TimeAccount.accountType, type: STRING, length: 128, check_table: TimeAccountType}
       BALANCE:           {source: TimeAccountBalance.balance, type: DECIMAL, verify: true}
+      APPROVER_ID:        {source: EmployeeTimeSheet.approverId, type: STRING, length: 100, verify: true, description: Approver user ID}
+      SUBMITTED_DATE:     {source: EmployeeTimeSheet.submittedDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
+      LAST_MODIFIED_DATE: {source: EmployeeTime.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified timestamp of the time record}
+      QUANTITY_IN_DAYS:   {source: EmployeeTime.quantityInDays, type: DECIMAL, verify: true, description: Absence quantity expressed in days (full/half day)}
 
   BENEFITENROLLMENT:
     description: Benefit enrolments
