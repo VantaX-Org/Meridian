@@ -14,9 +14,9 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "ecc"
 EXPECTED_COUNTS = {
     "accounts_payable": 181,
     "accounts_receivable": 145,
-    "asset_accounting": 57,
+    "asset_accounting": 84,
     "hcm": 118,
-    "controlling": 59,
+    "controlling": 93,
     "mm_purchasing": 214,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 98,
     "sd_sales_orders": 208,
@@ -24,8 +24,8 @@ EXPECTED_COUNTS = {
     "project_system": 165,
     "plant_maintenance": 188,
     "quality_management": 133,
-    "s4_readiness": 29,
-    "banking_tax": 77,
+    "s4_readiness": 110,
+    "banking_tax": 90,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]

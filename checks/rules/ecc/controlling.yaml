@@ -992,3 +992,757 @@ rules:
       fiscal year.
   record_fix_template: 'Company code {TKA02.BUKRS} in controlling area {TKA02.KOKRS}: fiscal year variant differs from
     {TKA01.LMONA}.'
+
+# Depth pass 2: cost centres, cost elements, profit centres, activity types, internal orders (CO060 onward)
+- id: CO060
+  field: CSKS.LAND1
+  fields:
+  - CSKS.BUKRS
+  - CSKS.LAND1
+  check_class: exists_check
+  target_table: T001
+  target_fields:
+  - BUKRS
+  - LAND1
+  applies_when:
+    CSKS.LAND1:
+      populated: true
+    CSKS.BUKRS:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Cost centre country differs from the country of its company code
+  why_it_matters: The cost centre address country drives tax jurisdiction and country-specific reporting. It has to be the
+    country of the company code the cost centre belongs to.
+  rule_authority: best_practice
+  sap_impact: Tax on cost-centre postings (jurisdiction) and country reports use the wrong country.
+  fix_map:
+    __other__: Correct the country in KS02 or move the cost centre to the right company code.
+  record_fix_template: 'Cost centre {CSKS.KOSTL}: country {CSKS.LAND1} differs from company code {CSKS.BUKRS}.'
+- id: CO061
+  field: CSKS.NKOST
+  fields:
+  - CSKS.KOKRS
+  - CSKS.NKOST
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI:
+    - '99991231'
+  applies_when:
+    CSKS.NKOST:
+      populated: true
+    CSKS.DATBI:
+    - '99991231'
+  severity: medium
+  dimension: consistency
+  message: Successor cost centre does not exist as a current cost centre
+  why_it_matters: The successor cost centre is where planned and actual data moves when the cost centre is closed. A successor
+    that does not exist in the controlling area has no valid time segment.
+  rule_authority: sap_hard_constraint
+  sap_impact: Closing and allocation to the successor fail; planning copy functions that follow the successor stop.
+  fix_map:
+    __other__: Create the successor cost centre (KS01) or correct the reference in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOSTL}: successor {CSKS.NKOST} does not exist.'
+- id: CO062
+  field: CSKS.PRCTR
+  fields:
+  - CSKS.KOKRS
+  - CSKS.PRCTR
+  check_class: exists_check
+  negate: true
+  target_table: TKA01
+  target_fields:
+  - KOKRS
+  - DPRCT
+  applies_when:
+    CSKS.PRCTR:
+      populated: true
+    CSKS.DATBI:
+    - '99991231'
+  severity: medium
+  dimension: consistency
+  message: Current cost centre is assigned to the dummy profit centre
+  why_it_matters: The dummy profit centre of the controlling area collects postings with no real profit centre. A cost centre
+    on it has no profit centre of its own.
+  rule_authority: best_practice
+  sap_impact: Profit centre reports show the cost centre's costs under the dummy profit centre.
+  fix_map:
+    __other__: Assign the real profit centre in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOSTL}: profit centre {CSKS.PRCTR} is the dummy profit centre.'
+- id: CO063
+  field: CSKS.WERKS
+  check_class: exists_check
+  target_table: T001W
+  target_fields:
+  - WERKS
+  applies_when:
+    CSKS.WERKS:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Cost centre plant does not exist
+  why_it_matters: The plant on the cost centre drives plant-based reporting and the default for logistics postings. A plant
+    that is not defined makes the derivation fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods issues to the cost centre and the plant derivation raise errors.
+  fix_map:
+    __other__: Correct the plant in KS02.
+  record_fix_template: 'Cost centre {CSKS.KOSTL}: plant {CSKS.WERKS} does not exist.'
+- id: CO064
+  field: CSKB.KOSTL
+  fields:
+  - CSKB.KOKRS
+  - CSKB.KOSTL
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI:
+    - '99991231'
+  applies_when:
+    CSKB.KOSTL:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Default cost centre of the cost element does not exist
+  why_it_matters: A cost element can default the cost centre in postings. A default that is not a current cost centre of the
+    controlling area fails the derivation.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings that rely on the default account assignment stop with a cost centre error.
+  fix_map:
+    __other__: Correct or clear the default cost centre in KA02.
+  record_fix_template: 'Cost element {CSKB.KSTAR}: default cost centre {CSKB.KOSTL} does not exist.'
+- id: CO065
+  field: CSKB.AUFNR
+  check_class: exists_check
+  target_table: AUFK
+  target_fields:
+  - AUFNR
+  applies_when:
+    CSKB.AUFNR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Default order of the cost element does not exist
+  why_it_matters: A cost element can default an internal order in postings. An order that does not exist cannot take the posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings relying on the default order stop with an order error.
+  fix_map:
+    __other__: Correct or clear the default order in KA02.
+  record_fix_template: 'Cost element {CSKB.KSTAR}: default order {CSKB.AUFNR} does not exist.'
+- id: CO066
+  field: CSKB.AUFNR
+  check_class: cross_field_check
+  fail_when: '`CSKB.KOSTL`.notna() & `CSKB.AUFNR`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Cost element defaults both a cost centre and an order
+  why_it_matters: A default account assignment holds one object. A cost element with both a cost centre and an order leaves
+    it unclear which one is to be posted to.
+  rule_authority: best_practice
+  sap_impact: Postings pick one of the two depending on the transaction and the choice is not reproducible.
+  fix_map:
+    __other__: Keep one default in KA02.
+  record_fix_template: 'Cost element {CSKB.KSTAR}: default cost centre {CSKB.KOSTL} and order {CSKB.AUFNR} are both set.'
+- id: CO067
+  field: CSKB.MSEHI
+  check_class: cross_field_check
+  fail_when: (`CSKB.MGEFL` == 'X') & `CSKB.MSEHI`.isna()
+  severity: medium
+  dimension: completeness
+  message: Cost element records quantity but has no unit of measure
+  why_it_matters: With quantity recording on, postings to the cost element carry a quantity. The unit of measure is what that
+    quantity is stated in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings with quantity fail on the missing unit, and quantity reports cannot be totalled.
+  fix_map:
+    __other__: Maintain the unit of measure in KA02 or switch quantity recording off.
+  record_fix_template: 'Cost element {CSKB.KSTAR}: quantity recording on without unit of measure.'
+- id: CO068
+  field: CSKB.KATYP
+  check_class: domain_value_check
+  allowed_values:
+  - '01'
+  - '03'
+  - '04'
+  - '11'
+  - '12'
+  - '21'
+  - '22'
+  - '31'
+  - '41'
+  - '42'
+  - '43'
+  - '50'
+  - '51'
+  - '52'
+  - '61'
+  - '90'
+  valid_values_with_labels:
+    '01': Primary costs/cost-reducing revenues
+    '11': Revenues
+    '12': Sales deduction
+    '21': Internal settlement
+    '03': Accrual/deferral per surcharge
+    '04': Accrual/deferral per debit = actual
+    '22': External settlement
+    '31': Order/project results analysis
+    '41': Overhead Rates
+    '42': Assessment
+    '43': Internal activity allocation
+    '50': 'Project-related incoming orders: Sales revenue'
+    '51': 'Project-related incoming orders: Other revenues'
+    '52': 'Project-related incoming orders: Costs'
+    '61': Earned value
+    '90': Statistical cost element for balance sheet account
+  severity: high
+  dimension: validity
+  message: Cost element category is not a valid category
+  why_it_matters: The category decides what the element may be used for (primary costs, revenue, allocation, settlement).
+    Only the categories in the domain are valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and allocation cycles that look at the category skip or reject the element.
+  fix_map:
+    __other__: Correct the category in KA02.
+  record_fix_template: 'Cost element {CSKB.KSTAR}: category {CSKB.KATYP} is not valid.'
+- id: CO069
+  field: CSKB.KSTAR
+  fields:
+  - TKA01.KTOPL
+  - CSKB.KSTAR
+  check_class: exists_check
+  negate: true
+  grain: CSKB
+  target_table: SKA1
+  target_fields:
+  - KTOPL
+  - SAKNR
+  target_when:
+    XLOEV:
+      populated: true
+  applies_when:
+    CSKB.DEAKT:
+      blank: true
+  severity: high
+  dimension: consistency
+  message: Active cost element belongs to a G/L account flagged for deletion
+  why_it_matters: A primary cost element is the G/L account's cost view. If the account is flagged for deletion in the chart
+    of accounts the cost element cannot be used for new postings but is still active in CO.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the cost element are rejected by FI while CO plans still contain it.
+  fix_map:
+    __other__: Reactivate the account (FSP0) or deactivate the cost element (KA02).
+  record_fix_template: 'Cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account is flagged for deletion.'
+- id: CO070
+  field: CSKA.KSTAR
+  fields:
+  - CSKA.KTOPL
+  - CSKA.KSTAR
+  check_class: exists_check
+  target_table: SKA1
+  target_fields:
+  - KTOPL
+  - SAKNR
+  applies_when:
+    CSKA.KSTAR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Cost element master has no G/L account in the chart of accounts
+  why_it_matters: Cost elements are keyed by chart of accounts and number, and the number must be a G/L account of that chart
+    for the element to be postable from FI.
+  rule_authority: sap_hard_constraint
+  sap_impact: FI postings to the number cannot be mirrored into CO, and the element cannot be used.
+  fix_map:
+    __other__: Create the G/L account in FSP0 or delete the cost element master in KA04.
+  record_fix_template: 'Chart {CSKA.KTOPL}: cost element {CSKA.KSTAR} has no G/L account.'
+- id: CO071
+  field: CEPC.BUKRS
+  fields:
+  - CEPC.KOKRS
+  - CEPC.BUKRS
+  check_class: exists_check
+  target_table: TKA02
+  target_fields:
+  - KOKRS
+  - BUKRS
+  applies_when:
+    CEPC.BUKRS:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Profit centre company code is not assigned to its controlling area
+  why_it_matters: A profit centre is assigned to company codes of its controlling area. A company code outside it cannot post
+    to the profit centre.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings of the company code derive a profit centre that is not valid for it.
+  fix_map:
+    __other__: Assign the company code to the controlling area (OX19) or correct the profit centre.
+  record_fix_template: 'Profit centre {CEPC.PRCTR}: company code {CEPC.BUKRS} is not in controlling area {CEPC.KOKRS}.'
+- id: CO072
+  field: CEPC.NPRCTR
+  check_class: cross_field_check
+  fail_when: '`CEPC.NPRCTR` == `CEPC.PRCTR`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Profit centre names itself as successor
+  why_it_matters: A successor is the profit centre postings move to when the original is closed. Naming itself is a loop with
+    no effect.
+  rule_authority: best_practice
+  sap_impact: Closing the profit centre moves nothing and the follow-up is not found.
+  fix_map:
+    __other__: Correct the successor in KE52.
+  record_fix_template: 'Profit centre {CEPC.PRCTR}: successor is itself.'
+- id: CO073
+  field: TKA01.DPRCT
+  fields:
+  - TKA01.KOKRS
+  - TKA01.DPRCT
+  check_class: exists_check
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  applies_when:
+    TKA01.DPRCT:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Dummy profit centre of the controlling area does not exist
+  why_it_matters: The dummy profit centre takes postings with no profit centre. When it is not defined in the controlling
+    area those postings fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings with no derivable profit centre are rejected.
+  fix_map:
+    __other__: Create the profit centre (KE51) or correct the assignment in OKKP.
+  record_fix_template: 'Controlling area {TKA01.KOKRS}: dummy profit centre {TKA01.DPRCT} does not exist.'
+- id: CO074
+  field: CSLA.LEINH
+  check_class: exists_check
+  target_table: T006
+  target_fields:
+  - MSEHI
+  applies_when:
+    CSLA.LEINH:
+      populated: true
+  severity: high
+  dimension: validity
+  message: Activity unit is not a defined unit of measure
+  why_it_matters: The activity unit is the unit activity quantities are recorded in. A unit that is not in T006 cannot be
+    converted or posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Activity confirmation and allocation stop on the unit of measure.
+  fix_map:
+    __other__: Correct the unit in KL02.
+  record_fix_template: 'Activity type {CSLA.LSTAR}: unit {CSLA.LEINH} is not defined.'
+- id: CO075
+  field: CSLA.LATYP
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  valid_values_with_labels:
+    '1': Manual entry, manual allocation
+    '2': Indirect determination, indirect allocation
+    '3': Manual entry, indirect allocation
+    '4': Manual entry, no allocation
+  severity: medium
+  dimension: validity
+  message: Activity type category is not valid
+  why_it_matters: The activity type category controls how the activity is planned and allocated (manual entry, indirect, direct).
+    Only categories 1 to 4 are valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Activity price calculation and allocation use no rule for the activity type.
+  fix_map:
+    __other__: Correct the category in KL02.
+  record_fix_template: 'Activity type {CSLA.LSTAR}: category {CSLA.LATYP} is not valid.'
+- id: CO076
+  field: AUFK.KOKRS
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+  severity: critical
+  dimension: completeness
+  message: Internal order has no controlling area
+  why_it_matters: Every internal order belongs to one controlling area, which holds its postings and settlement.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be posted to or settled.
+  fix_map:
+    __other__: Correct the order in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: controlling area is empty.'
+- id: CO077
+  field: AUFK.BUKRS
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+  severity: high
+  dimension: completeness
+  message: Internal order has no company code
+  why_it_matters: The company code decides which ledger the order's costs reach and the currency of the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order cannot be assigned to a company code.
+  fix_map:
+    __other__: Correct the order in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: company code is empty.'
+- id: CO078
+  field: AUFK.WAERS
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+  severity: high
+  dimension: completeness
+  message: Internal order has no currency
+  why_it_matters: The order currency is the currency its plan and actual values are held in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order values cannot be stored or reported.
+  fix_map:
+    __other__: Correct the order in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: currency is empty.'
+- id: CO079
+  field: AUFK.KOSTV
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KOSTV
+  check_class: exists_check
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI:
+    - '99991231'
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.KOSTV:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Responsible cost centre of the internal order does not exist
+  why_it_matters: The responsible cost centre owns the order and receives its authorisations and reports. A cost centre that
+    is not current for the controlling area owns nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order reporting by responsible cost centre misses the order and workflow routing fails.
+  fix_map:
+    __other__: Correct the responsible cost centre in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: responsible cost centre {AUFK.KOSTV} does not exist.'
+- id: CO080
+  field: AUFK.KOSTV
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KOSTV
+  check_class: exists_check
+  negate: true
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI:
+    - '99991231'
+    BKZKP:
+    - X
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.KOSTV:
+      populated: true
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PHAS3:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Open internal order is owned by a cost centre blocked for primary postings
+  why_it_matters: A cost centre blocked for primary postings is usually one that is closed. An order that is still open and
+    owned by it has no active owner.
+  rule_authority: best_practice
+  sap_impact: Open orders are left without an active owner and nobody reviews them at period close.
+  fix_map:
+    __other__: Change the responsible cost centre in KO02 or close the order.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: responsible cost centre {AUFK.KOSTV} is blocked.'
+- id: CO081
+  field: AUFK.BUKRS
+  fields:
+  - AUFK.KOKRS
+  - AUFK.BUKRS
+  check_class: exists_check
+  target_table: TKA02
+  target_fields:
+  - KOKRS
+  - BUKRS
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.BUKRS:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Internal order company code is not assigned to its controlling area
+  why_it_matters: An order may only be in a company code that belongs to its controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order fail, and the order cannot be settled.
+  fix_map:
+    __other__: Correct the company code or assign it in OX19.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: company code {AUFK.BUKRS} is not in controlling area {AUFK.KOKRS}.'
+- id: CO082
+  field: AUFK.PRCTR
+  fields:
+  - AUFK.KOKRS
+  - AUFK.PRCTR
+  check_class: exists_check
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.PRCTR:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Internal order profit centre does not exist in the controlling area
+  why_it_matters: The profit centre of the order receives its costs in profit centre reporting. A profit centre that does
+    not exist takes nothing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order fail on profit centre derivation.
+  fix_map:
+    __other__: Correct the profit centre in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: profit centre {AUFK.PRCTR} does not exist.'
+- id: CO083
+  field: AUFK.PRCTR
+  fields:
+  - AUFK.KOKRS
+  - AUFK.PRCTR
+  check_class: exists_check
+  negate: true
+  target_table: CEPC
+  target_fields:
+  - KOKRS
+  - PRCTR
+  target_when:
+    DATBI:
+    - '99991231'
+    LOCK_IND:
+      populated: true
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.PRCTR:
+      populated: true
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Active internal order is assigned to a locked profit centre
+  why_it_matters: A locked profit centre refuses postings. An active order on it cannot take costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the order are rejected.
+  fix_map:
+    __other__: Unlock the profit centre (KE52) or assign the order to another one (KO02).
+  record_fix_template: 'Internal order {AUFK.AUFNR}: profit centre {AUFK.PRCTR} is locked.'
+- id: CO084
+  field: AUFK.KSTAR
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KSTAR
+  check_class: exists_check
+  target_table: CSKB
+  target_fields:
+  - KOKRS
+  - KSTAR
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.KSTAR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Order settlement cost element is not a defined cost element
+  why_it_matters: The settlement cost element carries the order's credit at settlement. It has to be a cost element of the
+    controlling area.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order settlement fails on the cost element.
+  fix_map:
+    __other__: Correct the cost element in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: cost element {AUFK.KSTAR} does not exist.'
+- id: CO085
+  field: AUFK.WERKS
+  check_class: exists_check
+  target_table: T001W
+  target_fields:
+  - WERKS
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.WERKS:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Internal order plant does not exist
+  why_it_matters: The plant on an order is used for the logistics link. A plant that is not defined makes it unusable.
+  rule_authority: sap_hard_constraint
+  sap_impact: Material postings to the order fail.
+  fix_map:
+    __other__: Correct the plant in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: plant {AUFK.WERKS} does not exist.'
+- id: CO086
+  field: AUFK.OBJNR
+  check_class: exists_check
+  target_table: COBRB
+  target_fields:
+  - OBJNR
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.ASTKZ:
+      blank: true
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PHAS1:
+    - X
+    AUFK.PHAS3:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Released internal order has no settlement rule
+  why_it_matters: A real order that is released must be settled at period end. Without a settlement rule the costs stay on
+    the order.
+  rule_authority: sap_hard_constraint
+  sap_impact: The settlement run (KO88/CJ88) fails for the order and its costs never reach FI or assets.
+  fix_map:
+    __other__: Maintain the settlement rule in KO02 > Settlement rule.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: released, no settlement rule.'
+- id: CO087
+  field: AUFK.IDAT3
+  check_class: cross_field_check
+  fail_when: (`AUFK.PHAS3` == 'X') & `AUFK.IDAT3`.isna()
+  severity: medium
+  dimension: consistency
+  message: Closed order has no closing date
+  why_it_matters: The closing date marks when the order was closed. A closed status with no date breaks ageing and archiving
+    selections.
+  rule_authority: best_practice
+  sap_impact: Archiving by closing date and ageing reports miss the order.
+  fix_map:
+    __other__: Reset and close the order again (KO02).
+  record_fix_template: 'Internal order {AUFK.AUFNR}: closed without closing date.'
+- id: CO088
+  field: AUFK.IDAT1
+  check_class: cross_field_check
+  fail_when: (`AUFK.PHAS1` == 'X') & `AUFK.IDAT1`.isna()
+  severity: medium
+  dimension: consistency
+  message: Released order has no release date
+  why_it_matters: The release date marks when the order became open for postings.
+  rule_authority: best_practice
+  sap_impact: Release ageing and audit reports miss the order.
+  fix_map:
+    __other__: Check the order status history (KO03).
+  record_fix_template: 'Internal order {AUFK.AUFNR}: released without release date.'
+- id: CO089
+  field: AUFK.IDAT3
+  check_class: cross_field_check
+  fail_when: '`AUFK.IDAT3` < `AUFK.IDAT1`'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Order was closed before it was released
+  why_it_matters: The closing date cannot be earlier than the release date.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order lifecycle reports contradict themselves.
+  fix_map:
+    __other__: Check the status history and correct the dates.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: closing date before release date.'
+- id: CO090
+  field: AUFK.PHAS1
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PHAS3:
+      blank: true
+    AUFK.ERDAT:
+      older_than_days: 180
+  severity: medium
+  dimension: completeness
+  message: Internal order created over six months ago was never released
+  why_it_matters: An order that stays in status created for six months is unused and clutters the open order list.
+  rule_authority: best_practice
+  sap_impact: Open order lists and period-end checks include orders that will never be used.
+  fix_map:
+    __other__: Release the order or flag it for deletion (KO02).
+  record_fix_template: 'Internal order {AUFK.AUFNR}: not released since creation.'
+- id: S4-CO-ORDER-PRCTR
+  field: AUFK.PRCTR
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.LOEKZ:
+      blank: true
+    AUFK.PHAS3:
+      blank: true
+  baseline: s4_target
+  severity: low
+  dimension: completeness
+  message: 'S/4HANA readiness: open internal order has no profit centre - simplification item S4TWL Data Model Changes in
+    Financials - Universal Journal'
+  why_it_matters: Every line of the Universal Journal carries a profit centre. Costs posted to an order without one land on
+    the dummy profit centre.
+  rule_authority: s4hana_migration
+  sap_impact: Profit centre results are incomplete for the order's costs after the conversion.
+  fix_map:
+    __other__: Assign the profit centre in KO02 before the conversion.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: no profit centre.'
+- id: CO091
+  field: AUFK.IDAT3
+  check_class: freshness_check
+  max_age_hours: 26280
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+  severity: low
+  dimension: timeliness
+  message: Internal order closed more than three years ago is still in the master
+  why_it_matters: A closed order has no further postings. After three years it belongs in the archive, not in the data to
+    migrate.
+  rule_authority: best_practice
+  sap_impact: Migration volume and reconciliation include orders that have been closed for years.
+  fix_map:
+    __other__: Archive the order (SARA, object CO_ORDER) before the conversion.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: closed more than three years ago.'
+- id: CO092
+  field: AUFK.LOEKZ
+  check_class: cross_field_check
+  fail_when: (`AUFK.LOEKZ` == 'X') & `AUFK.PHAS3`.isna()
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.AEDAT:
+      older_than_days: 365
+  severity: low
+  dimension: timeliness
+  message: Internal order flagged for deletion more than a year ago was never closed
+  why_it_matters: An order flagged for deletion should have been closed first so that it can be archived. A year later, an
+    order that is flagged and still open is stuck.
+  rule_authority: best_practice
+  sap_impact: The migration carries orders that nobody uses.
+  fix_map:
+    __other__: Complete the settlement and close the order (KO88, then KO02) so it can be archived, or remove the flag.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: deletion flag older than a year.'
