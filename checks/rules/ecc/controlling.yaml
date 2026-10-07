@@ -1746,3 +1746,140 @@ rules:
   fix_map:
     __other__: Complete the settlement and close the order (KO88, then KO02) so it can be archived, or remove the flag.
   record_fix_template: 'Internal order {AUFK.AUFNR}: deletion flag older than a year.'
+
+# Depth pass 3: order type, master-data descriptions, activity type key/uniqueness, WBS link, settlement percentage (CO093 onward)
+- id: CO093
+  field: AUFK.AUART
+  check_class: exists_check
+  target_table: T003O
+  target_fields:
+  - AUART
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.AUART:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Internal order type does not exist
+  why_it_matters: The order type (AUFK.AUART) controls the number range, status profile, settlement profile and field
+    selection of the order. SAP validates it against the order type customising table (T003O, transaction KOT2) when
+    the order is created; a type missing from T003O was removed from customising after orders were created with it.
+  rule_authority: sap_hard_constraint
+  sap_impact: KO02/KO03 cannot display or change the order because its type is undefined; batch settlement and
+    reporting that look up the order type's settlement profile fail.
+  fix_map:
+    __other__: Recreate the order type in KOT2, or move the order to an existing order type in KO02.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: order type {AUFK.AUART} does not exist.'
+
+- id: CO094
+  field: CSKT.KTEXT
+  check_class: null_check
+  applies_when:
+    CSKT.SPRAS:
+    - EN
+    CSKT.DATBI:
+    - '99991231'
+  severity: medium
+  dimension: completeness
+  message: Current cost centre has no description
+  why_it_matters: The short text (CSKT.KTEXT) is what every cost centre report, drop-down and search help shows
+    instead of the bare number. KS01 requires it; a blank text means the text record was loaded without it or was
+    deleted on its own after the cost centre was created.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cost centre selection lists, KSB1 and S_ALR_87013611 show the cost centre with a blank name.
+  fix_map:
+    __blank__: Enter the short and long text in KS02 (Basic data) for the English language.
+  record_fix_template: 'Cost centre {CSKT.KOSTL} in controlling area {CSKT.KOKRS}: no description.'
+
+- id: CO095
+  field: CSLA.LSTAR
+  check_class: uniqueness_check
+  fields:
+  - CSLA.KOKRS
+  - CSLA.LSTAR
+  - CSLA.DATBI
+  severity: high
+  dimension: uniqueness
+  message: Activity type version is duplicated
+  why_it_matters: KOKRS, LSTAR and DATBI form the key of CSLA. Two versions with the same key point to a load that
+    bypassed the DDIC key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Activity price calculation (KSPI) and allocation select an arbitrary version of the activity type.
+  fix_map:
+    __other__: Remove the duplicate version in KL02.
+  record_fix_template: 'Activity type {CSLA.LSTAR} in controlling area {CSLA.KOKRS}: Activity type version is
+    duplicated. Correct it in KL02.'
+
+- id: CO096
+  field: AUFK.KTEXT
+  check_class: null_check
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Internal order has no description
+  why_it_matters: The order short text (AUFK.KTEXT) is what every order list, KOB1 line item report and approval
+    workflow shows instead of the bare number. KO01 requires it at creation.
+  rule_authority: best_practice
+  sap_impact: Order lists and approval workflows display the order with a blank description.
+  fix_map:
+    __blank__: Enter the order description in KO02 (Header).
+  record_fix_template: 'Internal order {AUFK.AUFNR}: no description.'
+
+- id: CO097
+  field: AUFK.PSPNR
+  check_class: exists_check
+  target_table: PRPS
+  target_fields:
+  - PSPNR
+  applies_when:
+    AUFK.AUTYP:
+    - '01'
+    AUFK.PSPNR:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Internal order's WBS element does not exist
+  why_it_matters: An order can be assigned to a WBS element (AUFK.PSPNR) of a project for joint reporting and
+    settlement. A WBS element that is not a row of PRPS was deleted or never created, leaving the assignment pointing
+    nowhere.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project-related reports (CJI3, CNS41) and settlement to the WBS element omit the order's costs.
+  fix_map:
+    __other__: Correct the WBS element in KO02, or remove the assignment if the project was deleted.
+  record_fix_template: 'Internal order {AUFK.AUFNR}: WBS element {AUFK.PSPNR} does not exist.'
+
+- id: CO098
+  field: COBRB.PROZS
+  check_class: cross_field_check
+  fail_when: (`COBRB.PROZS` < 0) | (`COBRB.PROZS` > 100)
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Settlement rule percentage is out of range
+  why_it_matters: A settlement distribution rule (COBRB.PROZS) states the share of costs sent to the receiver as a
+    percentage. A value outside 0-100 cannot be a share and was written by something other than KO02's rule editor.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement (KO88) rejects the rule or distributes the wrong amount to the receiver.
+  fix_map:
+    __other__: Correct the percentage in KO02 > Settlement rule.
+  record_fix_template: 'Settlement rule on object {COBRB.OBJNR}: percentage {COBRB.PROZS} is out of range.'
+
+- id: CO099
+  field: CSLA.LSTAR
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Activity type number is mandatory
+  why_it_matters: LSTAR is the key of the activity type master, along with KOKRS and DATBI. A record without it cannot
+    be addressed by planning, confirmation or allocation.
+  rule_authority: sap_hard_constraint
+  sap_impact: The activity type cannot be selected in KP26, KB21N or routings.
+  fix_map:
+    __blank__: Recreate the activity type with a valid number in KL01.
+  record_fix_template: 'Activity type in controlling area {CSLA.KOKRS}: LSTAR is ''{actual_value}''. Correct it in
+    KL02.'
