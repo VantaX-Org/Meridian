@@ -2,7 +2,8 @@
 # default_view_by_table (keyed on the table of the rule's field). Read by api/services/rule_coverage.py.
 module: material_master
 default_view_by_table: {MARA: basic_data, MAKT: basic_data, MEAN: basic_data, MARC: mrp, MBEW: accounting,
-  MVKE: sales, MLAN: sales, MARM: units, MARD: storage}
+  MVKE: sales, MLAN: sales, MARM: units, MARD: storage, MDMA: mrp, MKAL: work_scheduling,
+  MAST: work_scheduling, STPO: work_scheduling, MAPL: work_scheduling}
 views:
 - id: basic_data
   label: Basic data and descriptions

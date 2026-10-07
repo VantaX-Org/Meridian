@@ -12,7 +12,7 @@ from sap.ddic import get_dictionary
 
 PACK = yaml.safe_load(open("checks/rules/ecc/material_master.yaml"))["rules"]
 RULES = {r["id"]: r for r in PACK}
-NEW = [r for r in PACK if r["id"][2:].isdigit() and int(r["id"][2:]) >= 317]
+NEW = [r for r in PACK if r["id"][2:].isdigit() and 317 <= int(r["id"][2:]) < 600]
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 DDIC = get_dictionary("ecc6")

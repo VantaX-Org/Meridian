@@ -1025,6 +1025,23 @@ rules:
     __other__: 'Value {invalid_value} is not valid for Source list requirement. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid MARC.KORDB value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
     or Fiori app F1602 (Manage Product Master Data).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
 - id: MM095
   field: MARC.LADGR
   check_class: null_check
@@ -2709,6 +2726,11 @@ rules:
     __other__: Align the flag in MM02. If batch level is plant (OMCT), mute this rule.
   record_fix_template: 'Material {MARC.MATNR} plant {MARC.WERKS}: plant batch flag ''{MARC.XCHPF}'', client
     ''{MARA.XCHPF}''.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MARA.XCHPF
+    confidence: medium
 - id: MM234
   field: MARC.PLIFZ
   check_class: cross_field_check
@@ -4059,6 +4081,11 @@ rules:
   fix_map:
     __other__: Clear either the flag or the tolerance in MM02 Purchasing.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: unlimited over-delivery set with tolerance {MARC.UEETO}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: high
 - id: MM380
   field: MARC.LVORM
   check_class: cross_field_check
@@ -4077,6 +4104,11 @@ rules:
     __other__: Set the deletion flag in MM06 on the plant row or remove the client-level flag.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: client-level deletion flag {MARA.LVORM} but the plant row
     is not flagged.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
 - id: MM381
   field: MARC.MISKZ
   check_class: domain_value_check
@@ -4243,6 +4275,11 @@ rules:
   fix_map:
     __other__: Set the safety time indicator in MM02 MRP 2 or clear the days.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: safety time {actual_value} days but no safety time indicator.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '00'
+    confidence: medium
 - id: MM392
   field: MARC.SHFLG
   check_class: cross_field_check
@@ -4277,6 +4314,11 @@ rules:
   fix_map:
     __other__: Enter the unit in MM02 Plant data / storage 1.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: maximum storage period {actual_value} with no time unit.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: low
 - id: MM394
   field: MARC.FXHOR
   check_class: cross_field_check
@@ -4294,6 +4336,11 @@ rules:
   fix_map:
     __other__: Clear the planning time fence in MM02 MRP 1 or change the MRP type.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: planning time fence {actual_value} but MRP type ND.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '000'
+    confidence: medium
 - id: MM395
   field: MARC.VINT1
   check_class: cross_field_check
@@ -4351,6 +4398,11 @@ rules:
   fix_map:
     __other__: Clear the in-house production time in MM02 MRP 2 or change the procurement type.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: procurement type F but in-house production time {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: medium
 - id: MM398
   field: MARC.AUSDT
   check_class: cross_field_check
@@ -4384,6 +4436,11 @@ rules:
   fix_map:
     __other__: Set the MRP type to ND in MM02 MRP 1 or remove the deletion flag in MM06.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: plant row flagged for deletion but MRP type is {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: ND
+    confidence: medium
 - id: MM400
   field: MARC.SFCPF
   check_class: referential_check
@@ -5983,6 +6040,23 @@ rules:
     __other__: Correct the value in MM02 Work scheduling; the allowed values are those of domain XFELD.
   record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: SAUFT is ''{actual_value}'', which is not a value of domain
     XFELD.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
 - id: MM497
   field: MDMA.DISMM
   check_class: referential_check
@@ -7228,3 +7302,1866 @@ rules:
     __blank__: Enter the discontinuation group in CS02 or clear the follow-up indicator.
   record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: follow-up item has no discontinuation
     group.'
+# --- plant / MRP depth (mm-plant) ---
+- id: MM700
+  field: MARC.BSTRF
+  check_class: cross_field_check
+  fail_when: (`MARC.BSTRF` > 0) & (`MARC.BSTMA` > 0) & (`MARC.BSTRF` > `MARC.BSTMA`)
+  severity: medium
+  dimension: consistency
+  message: Rounding value is larger than the maximum lot size
+  why_it_matters: MRP rounds every lot up to a multiple of the rounding value (BSTRF). A rounding value above the maximum
+    lot size (BSTMA) forces every lot above the maximum.
+  rule_authority: best_practice
+  sap_impact: Planned orders and purchase requisitions break the maximum lot size; MRP issues exception messages on every
+    run.
+  fix_map:
+    __other__: Lower the rounding value or raise the maximum lot size in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: rounding value {actual_value} above maximum lot size {MARC.BSTMA}.'
+- id: MM701
+  field: MARC.BSTFE
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISLS:
+    - FX
+  fail_when: (`MARC.BSTRF` > 0) & (`MARC.BSTFE` > 0) & ((`MARC.BSTFE` % `MARC.BSTRF`) != 0)
+  severity: medium
+  dimension: consistency
+  message: Fixed lot size is not a multiple of the rounding value
+  why_it_matters: With fixed lot size (FX) MRP still rounds each lot to the rounding value (BSTRF). A fixed lot that is not
+    a multiple is rounded up, so the fixed quantity is never ordered.
+  rule_authority: best_practice
+  sap_impact: Order quantities differ from the fixed lot size; packaging and container planning are wrong.
+  fix_map:
+    __other__: Align the fixed lot size with the rounding value in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: fixed lot size {actual_value}, rounding value {MARC.BSTRF}.'
+- id: MM702
+  field: MARC.BSTFE
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISLS:
+    - EX
+    - TB
+    - WB
+    - MB
+    - PB
+    - HB
+  fail_when: '`MARC.BSTFE` > 0'
+  severity: low
+  dimension: consistency
+  message: Fixed lot size is maintained but the lot-sizing procedure is not fixed lot size
+  why_it_matters: The fixed lot size (BSTFE) is read only with lot-sizing procedure FX. With another standard procedure the
+    value is ignored and misleads planners and the S/4HANA migration review.
+  rule_authority: best_practice
+  sap_impact: MRP ignores the value; planners believe a fixed lot size applies.
+  fix_map:
+    __other__: Clear the fixed lot size in MM02 MRP 1 or switch the lot-sizing procedure to FX.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: lot-sizing procedure {MARC.DISLS} with fixed lot size {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: low
+- id: MM703
+  field: MARC.MABST
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISLS:
+    - EX
+    - TB
+    - WB
+    - MB
+    - PB
+    - FX
+  fail_when: '`MARC.MABST` > 0'
+  severity: low
+  dimension: consistency
+  message: Maximum stock level is maintained but the lot-sizing procedure is not replenish to maximum
+  why_it_matters: The maximum stock level (MABST) drives lot size only with procedure HB. With another standard procedure
+    the value is ignored.
+  rule_authority: best_practice
+  sap_impact: MRP ignores the value; planners believe stock is capped.
+  fix_map:
+    __other__: Clear the maximum stock level in MM02 MRP 1 or switch the lot-sizing procedure to HB.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: lot-sizing procedure {MARC.DISLS} with maximum stock level
+    {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: low
+- id: MM704
+  field: MARC.BSTMI
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISLS:
+    - HB
+  fail_when: (`MARC.MABST` > 0) & (`MARC.BSTMI` > `MARC.MABST`)
+  severity: medium
+  dimension: consistency
+  message: Minimum lot size is above the maximum stock level (replenish to maximum)
+  why_it_matters: With procedure HB MRP fills up to the maximum stock level (MABST). A minimum lot size above it forces every
+    lot past the maximum.
+  rule_authority: best_practice
+  sap_impact: Stock is pushed above the maximum level on every replenishment.
+  fix_map:
+    __other__: Lower the minimum lot size or raise the maximum stock level in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: minimum lot size {actual_value}, maximum stock level {MARC.MABST}.'
+- id: MM705
+  field: MARC.EISBE
+  check_class: cross_field_check
+  fail_when: '`MARC.EISBE` < 0'
+  severity: high
+  dimension: validity
+  message: Safety stock is negative
+  why_it_matters: Safety stock (EISBE) is a quantity. MM02 rejects negative values; a negative value comes from a load or
+    interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative safety stock in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: safety stock {actual_value}.'
+- id: MM706
+  field: MARC.MINBE
+  check_class: cross_field_check
+  fail_when: '`MARC.MINBE` < 0'
+  severity: high
+  dimension: validity
+  message: Reorder point is negative
+  why_it_matters: Reorder point (MINBE) is a quantity. MM02 rejects negative values; a negative value comes from a load or
+    interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative reorder point in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: reorder point {actual_value}.'
+- id: MM707
+  field: MARC.BSTMI
+  check_class: cross_field_check
+  fail_when: '`MARC.BSTMI` < 0'
+  severity: high
+  dimension: validity
+  message: Minimum lot size is negative
+  why_it_matters: Minimum lot size (BSTMI) is a quantity. MM02 rejects negative values; a negative value comes from a load
+    or interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative minimum lot size in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: minimum lot size {actual_value}.'
+- id: MM708
+  field: MARC.BSTMA
+  check_class: cross_field_check
+  fail_when: '`MARC.BSTMA` < 0'
+  severity: high
+  dimension: validity
+  message: Maximum lot size is negative
+  why_it_matters: Maximum lot size (BSTMA) is a quantity. MM02 rejects negative values; a negative value comes from a load
+    or interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative maximum lot size in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: maximum lot size {actual_value}.'
+- id: MM709
+  field: MARC.BSTFE
+  check_class: cross_field_check
+  fail_when: '`MARC.BSTFE` < 0'
+  severity: high
+  dimension: validity
+  message: Fixed lot size is negative
+  why_it_matters: Fixed lot size (BSTFE) is a quantity. MM02 rejects negative values; a negative value comes from a load or
+    interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative fixed lot size in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: fixed lot size {actual_value}.'
+- id: MM710
+  field: MARC.BSTRF
+  check_class: cross_field_check
+  fail_when: '`MARC.BSTRF` < 0'
+  severity: high
+  dimension: validity
+  message: Rounding value is negative
+  why_it_matters: Rounding value (BSTRF) is a quantity. MM02 rejects negative values; a negative value comes from a load or
+    interface.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP calculates wrong net requirements and lot sizes; the migration load rejects the row.
+  fix_map:
+    __other__: Enter the correct non-negative rounding value in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: rounding value {actual_value}.'
+- id: MM711
+  field: MARC.FXHOR
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISMM:
+    - P1
+    - P2
+    - P3
+    - P4
+  fail_when: '`MARC.FXHOR`.fillna('''').str.lstrip(''0'') == '''''
+  severity: medium
+  dimension: consistency
+  message: MRP type with planning time fence has no planning time fence
+  why_it_matters: MRP types P1 to P4 firm proposals inside the planning time fence (FXHOR). A zero fence turns them into plain
+    MRP (PD), so the firming the planner asked for never happens.
+  rule_authority: best_practice
+  sap_impact: Planned orders are rescheduled inside the frozen zone; the shop floor sees plan changes every night.
+  fix_map:
+    __other__: Enter the planning time fence in MM02 MRP 1 or change the MRP type to PD.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MRP type {MARC.DISMM} with planning time fence {actual_value}.'
+- id: MM712
+  field: MARC.STRGR
+  check_class: cross_field_check
+  applies_when:
+    MARC.DISMM:
+    - ND
+  fail_when: '`MARC.STRGR`.notna()'
+  severity: low
+  dimension: consistency
+  message: Planning strategy group is set on a material excluded from MRP
+  why_it_matters: The strategy group (STRGR) controls how independent requirements are planned. With MRP type ND no planning
+    happens, so the strategy is dead data.
+  rule_authority: best_practice
+  sap_impact: No effect in MRP; misleads strategy reviews in S/4HANA.
+  fix_map:
+    __other__: Clear the strategy group in MM02 MRP 3 or set the right MRP type.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MRP type ND with strategy group {actual_value}.'
+- id: MM713
+  field: MARC.PLIFZ
+  check_class: cross_field_check
+  fail_when: '`MARC.PLIFZ` < 0'
+  severity: high
+  dimension: validity
+  message: Planned delivery time is negative
+  why_it_matters: Planned delivery time (PLIFZ) is a number of days. MM02 rejects negative values.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling puts the delivery date before the order date.
+  fix_map:
+    __other__: Enter the planned delivery time in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: planned delivery time {actual_value} days.'
+- id: MM714
+  field: MARC.WEBAZ
+  check_class: cross_field_check
+  fail_when: (`MARC.WEBAZ` < 0) | (`MARC.WEBAZ` > 30)
+  severity: low
+  dimension: accuracy
+  message: Goods receipt processing time is negative or more than 30 days
+  why_it_matters: GR processing time (WEBAZ) covers inspection and put-away. Values below zero are invalid; values above 30
+    days are almost always a typing error (hours or calendar days).
+  rule_authority: best_practice
+  sap_impact: Available-to-promise dates and MRP coverage are pushed back by the extra days.
+  fix_map:
+    __other__: Correct the GR processing time in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: GR processing time {actual_value} days.'
+- id: MM715
+  field: MARC.DZEIT
+  check_class: cross_field_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - X
+  fail_when: '`MARC.DZEIT` > 365'
+  severity: low
+  dimension: accuracy
+  message: In-house production time is longer than one year
+  why_it_matters: In-house production time (DZEIT) above 365 days is almost always a load error (hours or minutes entered
+    as days).
+  rule_authority: best_practice
+  sap_impact: Planned orders start a year early; capacity and stock projections are distorted.
+  fix_map:
+    __other__: Correct the in-house production time in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: in-house production time {actual_value} days.'
+- id: MM716
+  field: MARC.DZEIT
+  check_class: cross_field_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  fail_when: (`MARC.DZEIT`.fillna(0) == 0) & (`MARC.BEARZ`.fillna(0) == 0)
+  severity: medium
+  dimension: completeness
+  message: In-house produced MRP material has no production time
+  why_it_matters: Basic date scheduling uses the in-house production time (DZEIT) or the lot-size dependent times (BEARZ).
+    With both zero, planned orders start and finish the same day.
+  rule_authority: best_practice
+  sap_impact: Planned orders and dependent requirements are scheduled too late; components arrive after production starts.
+  fix_map:
+    __other__: Enter the in-house production time or the scheduling times in MM02 MRP 2 / Work scheduling.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: in-house production time {actual_value}, processing time
+    {MARC.BEARZ}.'
+- id: MM717
+  field: MARC.PLIFZ
+  check_class: cross_field_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    MARC.SOBSL:
+      blank: true
+  fail_when: '`MARC.PLIFZ` > 0'
+  severity: low
+  dimension: consistency
+  message: Planned delivery time is set on a material produced in-house only
+  why_it_matters: Planned delivery time (PLIFZ) is read for external procurement. On procurement type E without special procurement
+    it is ignored.
+  rule_authority: best_practice
+  sap_impact: Lead time scheduling ignores the value; it is stale data.
+  fix_map:
+    __other__: Clear the planned delivery time in MM02 MRP 2 or change the procurement type.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: procurement type E with planned delivery time {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: medium
+- id: MM718
+  field: MARC.UNETO
+  check_class: cross_field_check
+  fail_when: '`MARC.UNETO` > 100'
+  severity: medium
+  dimension: validity
+  message: Under-delivery tolerance is above 100 percent
+  why_it_matters: Under-delivery tolerance (UNETO) is a share of the ordered quantity. Above 100 percent it has no meaning.
+  rule_authority: best_practice
+  sap_impact: Goods receipt and order confirmation tolerance checks never trigger.
+  fix_map:
+    __other__: Enter a tolerance between 0 and 100 in MM02 Work scheduling.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: under-delivery tolerance {actual_value}%.'
+- id: MM719
+  field: MARC.AUSSS
+  check_class: cross_field_check
+  fail_when: '`MARC.AUSSS` >= 100'
+  severity: medium
+  dimension: accuracy
+  message: Assembly scrap is 100 percent or more
+  why_it_matters: Assembly scrap (AUSSS) raises every planned order. At 100 percent or more, MRP orders at least double the
+    requirement; this is a load error in practice.
+  rule_authority: best_practice
+  sap_impact: Production and component requirements are doubled or more.
+  fix_map:
+    __other__: Correct the assembly scrap in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: assembly scrap {actual_value}%.'
+- id: MM720
+  field: MARC.SOBSL
+  check_class: cross_field_check
+  fail_when: '`MARC.SOBSL`.notna() & `MARC.BESKZ`.isna()'
+  severity: high
+  dimension: consistency
+  message: Special procurement type is set but the procurement type is blank
+  why_it_matters: A special procurement type (SOBSL) refines the procurement type (BESKZ). Without a procurement type, MRP
+    does not procure the material at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP creates no proposals; the special procurement is never used.
+  fix_map:
+    __other__: Set the procurement type in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: special procurement {actual_value} with blank procurement
+    type.'
+- id: MM721
+  field: MARC.SOBSL
+  check_class: exists_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - F
+    MARC.SOBSL:
+      populated: true
+  fields:
+  - MARC.WERKS
+  - MARC.SOBSL
+  - MARC.BESKZ
+  target_table: T460A
+  target_fields:
+  - WERKS
+  - SOBSL
+  - BESKZ
+  severity: high
+  dimension: consistency
+  message: Special procurement type does not fit the procurement type
+  why_it_matters: Each special procurement key (T460A) belongs to one procurement type. Subcontracting or stock transfer keys
+    need F; phantom, direct production or production in another plant need E.
+  rule_authority: sap_hard_constraint
+  sap_impact: MM02 rejects the combination; MRP ignores the special procurement or raises errors.
+  fix_map:
+    __other__: Pick a special procurement key that matches the procurement type in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: procurement type {MARC.BESKZ} with special procurement
+    {actual_value}.'
+- id: MM722
+  field: MARC.MTVFP
+  check_class: null_check
+  applies_when:
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: medium
+  dimension: completeness
+  message: In-house produced material has no availability check group
+  why_it_matters: Production orders run a component and material availability check with the checking group (MTVFP). In S/4HANA
+    advanced ATP and production order release need it.
+  rule_authority: best_practice
+  sap_impact: Availability checks fail or are skipped; orders are released without stock.
+  fix_map:
+    __blank__: Enter the availability check group in MM02 MRP 3.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: no availability check group.'
+- id: MM723
+  field: MARC.LGPRO
+  check_class: null_check
+  applies_when:
+    MARC.RGEKZ:
+    - '1'
+  severity: high
+  dimension: completeness
+  message: Backflushed component has no issue storage location
+  why_it_matters: With backflush indicator 1 the component is issued automatically at confirmation from the production storage
+    location (LGPRO). Without one the backflush goods issue fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Confirmations post with errors (COGI); stock and costs are wrong until cleared.
+  fix_map:
+    __blank__: Enter the production storage location in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: backflush set but no production storage location.'
+- id: MM724
+  field: MARC.LGPRO
+  check_class: exists_check
+  applies_when:
+    MARC.LGPRO:
+      populated: true
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  - MARC.LGPRO
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: high
+  dimension: consistency
+  message: Production storage location is not extended for the material
+  why_it_matters: Goods receipts and backflush issues post to the production storage location (LGPRO). The material must exist
+    in that storage location (MARD).
+  rule_authority: best_practice
+  sap_impact: Postings create the storage location on the fly or fail; S/4HANA migration flags the gap.
+  fix_map:
+    __other__: Extend the material to the storage location in MM02 or MMSC, or correct LGPRO.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production storage location {actual_value} not extended.'
+- id: MM725
+  field: MARC.VERKZ
+  check_class: exists_check
+  applies_when:
+    MARC.VERKZ:
+    - X
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: Production version indicator is set but no production version exists
+  why_it_matters: The version indicator (VERKZ) says production versions are maintained. Without a version in MKAL, BOM and
+    routing selection fails.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planned and production orders cannot pick a BOM or routing.
+  fix_map:
+    __other__: Create the production version in C223 or clear the indicator.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: version indicator set, no production version.'
+- id: MM726
+  field: MARC.BESKZ
+  check_class: exists_check
+  applies_when:
+    MARA.MTART:
+    - FERT
+    - HALB
+    MARC.BESKZ:
+    - E
+    - X
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MKAL
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: In-house produced material has no production version
+  why_it_matters: S/4HANA selects BOM and routing only through production versions (MKAL); selection by order quantity or
+    explosion date is gone. Every finished and semi-finished product produced in-house needs a version.
+  rule_authority: sap_hard_constraint
+  sap_impact: After conversion, MRP Live and order creation find no BOM or routing for the material.
+  fix_map:
+    __other__: Create production versions in C223 (or run CS_BOM_PRODVER_MIGRATION) before conversion.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: procurement type {actual_value}, no production version.'
+- id: MM727
+  field: MARC.MMSTA
+  check_class: exists_check
+  applies_when:
+    MARC.MMSTA:
+      populated: true
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
+  negate: true
+  fields:
+  - MARC.MMSTA
+  target_table: T141
+  target_fields:
+  - MMSTA
+  target_when:
+    DDISP:
+    - B
+  severity: high
+  dimension: consistency
+  message: Plant status blocks MRP but the material is still planned
+  why_it_matters: The plant status (MMSTA) has MRP set to error (T141-DDISP B). MRP stops on the material every run while
+    the MRP type still asks for planning.
+  rule_authority: best_practice
+  sap_impact: MRP runs log errors and leave requirements uncovered.
+  fix_map:
+    __other__: Set MRP type ND for the blocked material in MM02, or change the plant status.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: plant status {actual_value} blocks MRP, MRP type {MARC.DISMM}.'
+- id: MM728
+  field: MARC.MMSTA
+  check_class: cross_field_check
+  fail_when: '`MARC.MMSTA`.notna() & `MARA.MSTAE`.notna() & (`MARC.MMSTA` != `MARA.MSTAE`)'
+  severity: low
+  dimension: consistency
+  message: Plant status differs from the cross-plant status
+  why_it_matters: When both statuses are set, SAP applies the stricter one per business process. Different codes usually come
+    from a partial roll-out or a stale block.
+  rule_authority: best_practice
+  sap_impact: Procurement or production is blocked or allowed in a way nobody intended.
+  fix_map:
+    __other__: Align the plant status with the cross-plant status in MM02, or document the difference.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: plant status {actual_value}, cross-plant status {MARA.MSTAE}.'
+- id: MM729
+  field: MARC.USEQU
+  check_class: exists_check
+  applies_when:
+    MARC.USEQU:
+      blank: true
+  negate: true
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: EQUK
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: medium
+  dimension: consistency
+  message: Quota arrangement exists but quota usage is not set
+  why_it_matters: A quota arrangement (EQUK) splits requirements between sources only when the quota usage (USEQU) is set.
+  rule_authority: best_practice
+  sap_impact: MRP and purchasing ignore the quota arrangement; one source gets all demand.
+  fix_map:
+    __other__: Set the quota arrangement usage in MM02 Purchasing or delete the quota arrangement.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: quota arrangement exists, quota usage blank.'
+- id: MM730
+  field: MARC.DIBER
+  check_class: exists_check
+  applies_when:
+    MARC.DIBER:
+    - X
+  fields:
+  - MARC.MATNR
+  - MARC.WERKS
+  target_table: MDMA
+  target_fields:
+  - MATNR
+  - WERKS
+  severity: high
+  dimension: consistency
+  message: MRP area indicator is set but no MRP area is assigned
+  why_it_matters: The MRP area indicator (DIBER) marks a material planned in MRP areas. Without an MDMA record, only the plant
+    MRP area is planned.
+  rule_authority: best_practice
+  sap_impact: Storage-location or subcontractor MRP areas are not planned.
+  fix_map:
+    __other__: Assign the MRP area in MM02 MRP 1 or clear the indicator.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: MRP area indicator set, no MRP area.'
+- id: MM731
+  field: MARC.SAUFT
+  check_class: cross_field_check
+  applies_when:
+    MARC.BESKZ:
+    - F
+  fail_when: '`MARC.SAUFT` == ''X'''
+  severity: medium
+  dimension: consistency
+  message: Repetitive manufacturing is allowed on an externally procured material
+  why_it_matters: Repetitive manufacturing (SAUFT) plans run schedules for materials made in-house. On procurement type F
+    it is never used.
+  rule_authority: best_practice
+  sap_impact: Planning and costing settings are inconsistent; run schedule tools show the material.
+  fix_map:
+    __other__: Clear repetitive manufacturing in MM02 MRP 4 or change the procurement type.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: repetitive manufacturing with procurement type {MARC.BESKZ}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: ''
+    confidence: low
+- id: MM732
+  field: MARC.XCHPF
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Batch management indicator holds a value outside its domain
+  why_it_matters: Batch management (XCHPF) controls batch-managed stock in the plant. SAP accepts only X or blank. Loads often
+    bring Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: batch management indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM733
+  field: MARC.KZKRI
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Critical part indicator holds a value outside its domain
+  why_it_matters: The critical part flag (KZKRI) drives physical inventory sampling. SAP accepts only X or blank. Loads often
+    bring Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Plant data.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: critical part indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM734
+  field: MARC.DIBER
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: MRP area indicator holds a value outside its domain
+  why_it_matters: The MRP area flag (DIBER) says MRP areas exist. SAP accepts only X or blank. Loads often bring Y, 1 or TRUE,
+    which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: mrp area indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM735
+  field: MARC.VERKZ
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Production version indicator holds a value outside its domain
+  why_it_matters: The version flag (VERKZ) says production versions exist. SAP accepts only X or blank. Loads often bring
+    Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 MRP 4.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: production version indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM736
+  field: MARC.SCHGT
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Bulk material indicator holds a value outside its domain
+  why_it_matters: Bulk material (SCHGT) is not planned per order. SAP accepts only X or blank. Loads often bring Y, 1 or TRUE,
+    which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 MRP 2.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: bulk material indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM737
+  field: MARC.KAUTB
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Automatic purchase order indicator holds a value outside its domain
+  why_it_matters: Automatic PO (KAUTB) lets ME59N convert requisitions. SAP accepts only X or blank. Loads often bring Y,
+    1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Purchasing.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: automatic purchase order indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM738
+  field: MARC.XMCNG
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Negative stock indicator holds a value outside its domain
+  why_it_matters: Negative stock (XMCNG) allows issues without stock. SAP accepts only X or blank. Loads often bring Y, 1
+    or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Plant data.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: negative stock indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM739
+  field: MARC.NCOST
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Do-not-cost indicator holds a value outside its domain
+  why_it_matters: Do not cost (NCOST) excludes the material from costing. SAP accepts only X or blank. Loads often bring Y,
+    1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Costing 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: do-not-cost indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM740
+  field: MARC.INSMK
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Post to inspection stock indicator holds a value outside its domain
+  why_it_matters: Post to inspection stock (INSMK) routes goods receipts. SAP accepts only X or blank. Loads often bring Y,
+    1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Purchasing.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: post to inspection stock indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM741
+  field: MARC.UEETK
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Unlimited over-delivery indicator holds a value outside its domain
+  why_it_matters: Unlimited over-delivery (UEETK) switches off tolerances. SAP accepts only X or blank. Loads often bring
+    Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Purchasing.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: unlimited over-delivery indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM742
+  field: MARC.AUTRU
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Reset forecast model indicator holds a value outside its domain
+  why_it_matters: Reset forecast model (AUTRU) controls forecasting. SAP accepts only X or blank. Loads often bring Y, 1 or
+    TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 Forecasting.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: reset forecast model indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM743
+  field: MARC.APOKZ
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: APO relevance indicator holds a value outside its domain
+  why_it_matters: The APO indicator (APOKZ) accepts blank, 1, 2 or 3. In S/4HANA embedded PP/DS uses it to decide advanced
+    planning.
+  rule_authority: sap_hard_constraint
+  sap_impact: The material is planned in the wrong tool or the load fails.
+  fix_map:
+    __other__: Correct the indicator in MM02 MRP 1.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: APO indicator ''{actual_value}''.'
+- id: MM744
+  field: MARC.AHDIS
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Dependent requirement MRP indicator holds a value outside its domain
+  why_it_matters: The indicator (AHDIS) accepts blank or 1 and decides whether dependent requirements are planned.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP plans or skips components unexpectedly.
+  fix_map:
+    __other__: Correct the indicator in MM02 MRP 4.
+  record_fix_template: 'Material {MARC.MATNR}, plant {MARC.WERKS}: dependent requirement indicator ''{actual_value}''.'
+- id: MM745
+  field: MARD.LMINB
+  check_class: cross_field_check
+  grain: MARD
+  applies_when:
+    MARD.DISKZ:
+    - '1'
+  fail_when: ~(`MARD.LMINB` > 0)
+  severity: high
+  dimension: completeness
+  message: Storage location planned separately has no reorder point
+  why_it_matters: With storage-location MRP indicator 1 the location is planned by its own reorder point (LMINB). Without
+    one no replenishment is ever triggered.
+  rule_authority: sap_hard_constraint
+  sap_impact: The storage location runs empty without proposals.
+  fix_map:
+    __other__: Maintain the storage location reorder point in MM02 MRP 4, or clear indicator 1.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: reorder point {actual_value}.'
+- id: MM746
+  field: MARD.LMINB
+  check_class: cross_field_check
+  grain: MARD
+  applies_when:
+    MARD.DISKZ:
+      blank: true
+  fail_when: '`MARD.LMINB` > 0'
+  severity: low
+  dimension: consistency
+  message: Storage location reorder point is set but the location is not planned separately
+  why_it_matters: The storage location reorder point (LMINB) is read only with MRP indicator 1. Otherwise it is ignored.
+  rule_authority: best_practice
+  sap_impact: MRP ignores the value; planners believe the location is replenished.
+  fix_map:
+    __other__: Clear the reorder point in MM02 MRP 4 or set storage-location MRP indicator 1.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: reorder point {actual_value}
+    with MRP indicator ''{MARD.DISKZ}''.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '0'
+    confidence: low
+- id: MM747
+  field: MARD.LVORM
+  check_class: cross_field_check
+  grain: MARD
+  applies_when:
+    MARC.LVORM:
+    - X
+  fail_when: '`MARD.LVORM`.isna()'
+  severity: medium
+  dimension: lifecycle
+  message: Storage location is active although the plant is flagged for deletion
+  why_it_matters: A deletion flag on the plant (MARC-LVORM) covers all storage locations. An active storage location under
+    a deleted plant row is inconsistent and blocks archiving.
+  rule_authority: best_practice
+  sap_impact: Archiving MM_MATNR stops; postings to the location still work.
+  fix_map:
+    __other__: Flag the storage location for deletion in MM06 or remove the plant deletion flag.
+  record_fix_template: 'Material {MARD.MATNR}, plant {MARD.WERKS}, storage location {MARD.LGORT}: plant flagged for deletion,
+    storage location active.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
+- id: MM748
+  field: MKAL.ADATU
+  check_class: null_check
+  grain: MKAL
+  severity: high
+  dimension: completeness
+  message: Production version has no valid-from date
+  why_it_matters: A production version is valid from ADATU. Without it the version is never selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and order creation skip the version.
+  fix_map:
+    __blank__: Enter the valid-from date in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: no valid-from date.'
+- id: MM749
+  field: MKAL.BDATU
+  check_class: null_check
+  grain: MKAL
+  severity: high
+  dimension: completeness
+  message: Production version has no valid-to date
+  why_it_matters: A production version is valid to BDATU. Without it the version is never selected.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP and order creation skip the version.
+  fix_map:
+    __blank__: Enter the valid-to date in C223 (31.12.9999 for open-ended).
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: no valid-to date.'
+  auto_fix:
+    steps:
+    - op: set
+      value: '99991231'
+    confidence: low
+- id: MM750
+  field: MKAL.BDATU
+  check_class: cross_field_check
+  grain: MKAL
+  fail_when: '`MKAL.BDATU` < @today'
+  severity: low
+  dimension: lifecycle
+  message: Production version has expired
+  why_it_matters: An expired version (BDATU in the past) is never selected again. Expired versions clutter C223 and the S/4HANA
+    production version migration.
+  rule_authority: best_practice
+  sap_impact: No effect in planning; adds noise to master data reviews.
+  fix_map:
+    __other__: Delete the version in C223 or extend its validity.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: valid to {actual_value}.'
+- id: MM751
+  field: MKAL.PRFG_F
+  check_class: cross_field_check
+  grain: MKAL
+  fail_when: '`MKAL.PRFG_F` == ''3'''
+  severity: high
+  dimension: consistency
+  message: Production version consistency check ended with errors
+  why_it_matters: The C223 check status (PRFG_F 3) says BOM or routing selection failed when the version was last checked.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders created with the version have missing components or operations.
+  fix_map:
+    __other__: Run the check in C223, correct BOM or routing, and save.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: check status {actual_value}.'
+- id: MM752
+  field: MKAL.PRFG_F
+  check_class: null_check
+  grain: MKAL
+  severity: low
+  dimension: completeness
+  message: Production version was never checked
+  why_it_matters: A version that was never checked in C223 (PRFG_F blank) may point at a BOM or routing that does not explode.
+  rule_authority: best_practice
+  sap_impact: Errors appear only when the first order is created.
+  fix_map:
+    __blank__: Run the consistency check in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: never checked.'
+- id: MM753
+  field: MKAL.PLNNR
+  check_class: null_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNTY:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Production version has a task list type but no task list
+  why_it_matters: A task list type (PLNTY) without a group (PLNNR) points at no routing.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the version have no operations.
+  fix_map:
+    __blank__: Enter the routing group in C223 or clear the task list type.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: task list type {MKAL.PLNTY},
+    no group.'
+- id: MM754
+  field: MKAL.PLNTY
+  check_class: null_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNNR:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Production version has a task list group but no task list type
+  why_it_matters: SAP reads the routing by type (PLNTY) and group (PLNNR). A group without type cannot be read.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the version have no operations.
+  fix_map:
+    __blank__: Enter the task list type in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: routing group {MKAL.PLNNR},
+    no task list type.'
+- id: MM755
+  field: MKAL.ALNAL
+  check_class: null_check
+  grain: MKAL
+  applies_when:
+    MKAL.PLNNR:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Production version has a task list group but no group counter
+  why_it_matters: The group counter (ALNAL) picks one routing inside the group. Without it the routing is ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation stops or picks the wrong routing.
+  fix_map:
+    __blank__: Enter the group counter in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: routing group {MKAL.PLNNR},
+    no group counter.'
+- id: MM756
+  field: MKAL.STLAN
+  check_class: null_check
+  grain: MKAL
+  applies_when:
+    MKAL.STLAL:
+      populated: true
+  severity: high
+  dimension: completeness
+  message: Production version has a BOM alternative but no BOM usage
+  why_it_matters: SAP reads the BOM by usage (STLAN) and alternative (STLAL). An alternative without usage cannot be read.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders for the version have no components.
+  fix_map:
+    __blank__: Enter the BOM usage in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: BOM alternative {MKAL.STLAL},
+    no usage.'
+- id: MM757
+  field: MKAL.TEXT1
+  check_class: null_check
+  grain: MKAL
+  severity: low
+  dimension: completeness
+  message: Production version has no description
+  why_it_matters: Planners pick versions by text in MD04, C223 and the S/4HANA Manage Production Versions app.
+  rule_authority: best_practice
+  sap_impact: Planners pick the wrong version.
+  fix_map:
+    __blank__: Enter a short text in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: no description.'
+- id: MM758
+  field: MKAL.ELPRO
+  check_class: exists_check
+  grain: MKAL
+  applies_when:
+    MKAL.ELPRO:
+      populated: true
+  fields:
+  - MKAL.MATNR
+  - MKAL.WERKS
+  - MKAL.ELPRO
+  target_table: MARD
+  target_fields:
+  - MATNR
+  - WERKS
+  - LGORT
+  severity: medium
+  dimension: consistency
+  message: Production version receiving storage location is not extended for the material
+  why_it_matters: Goods receipts from orders for the version post to its receiving storage location (ELPRO). The material
+    must be extended there (MARD).
+  rule_authority: best_practice
+  sap_impact: Goods receipt fails or creates the location on the fly.
+  fix_map:
+    __other__: Extend the material to the storage location or correct the version in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: receiving storage location
+    {actual_value} not extended.'
+- id: MM759
+  field: MKAL.BESKZ
+  check_class: domain_value_check
+  grain: MKAL
+  severity: low
+  dimension: validity
+  message: Production version procurement type is outside its domain
+  why_it_matters: The version procurement type (BESKZ) accepts E, F, X or blank.
+  rule_authority: sap_hard_constraint
+  sap_impact: The version is rejected in load or ignored in MRP.
+  fix_map:
+    __other__: Correct the procurement type in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: procurement type ''{actual_value}''.'
+- id: MM760
+  field: MKAL.MKSP
+  check_class: domain_value_check
+  grain: MKAL
+  severity: low
+  dimension: validity
+  message: Production version lock indicator is outside its domain
+  why_it_matters: The lock (MKSP) accepts blank or 1.
+  rule_authority: sap_hard_constraint
+  sap_impact: The version is locked or unlocked unexpectedly.
+  fix_map:
+    __other__: Correct the lock indicator in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: lock ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: '1'
+        Y: '1'
+        __other__: null
+    confidence: medium
+- id: MM761
+  field: MKAL.MKSP
+  check_class: cross_field_check
+  grain: MKAL
+  applies_when:
+    MKAL.MKSP:
+    - '1'
+  fail_when: '`MKAL.BDATU` > @today'
+  severity: low
+  dimension: lifecycle
+  message: Locked production version is still valid in the future
+  why_it_matters: A locked version (MKSP 1) is skipped by MRP. When it stays valid for years it is usually a forgotten lock
+    or should be closed by its valid-to date.
+  rule_authority: best_practice
+  sap_impact: Planners cannot see why the version is never used.
+  fix_map:
+    __other__: Unlock the version or set its valid-to date in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: locked, valid to {MKAL.BDATU}.'
+- id: MM762
+  field: MKAL.SERKZ
+  check_class: domain_value_check
+  grain: MKAL
+  severity: low
+  dimension: validity
+  message: Repetitive manufacturing indicator holds a value outside its domain
+  why_it_matters: The REM flag (SERKZ) allows run schedules for the version. SAP accepts only X or blank. Loads often bring
+    Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in C223.
+  record_fix_template: 'Material {MKAL.MATNR}, plant {MKAL.WERKS}, production version {MKAL.VERID}: repetitive manufacturing
+    indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM763
+  field: MDMA.BSTMA
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: (`MDMA.BSTMA` > 0) & (`MDMA.BSTMA` < `MDMA.BSTMI`)
+  severity: medium
+  dimension: consistency
+  message: MRP area maximum lot size is below its minimum lot size
+  why_it_matters: A maximum lot size (BSTMA) below the minimum (BSTMI) matches no lot.
+  rule_authority: best_practice
+  sap_impact: MRP in the MRP area creates lots that break one of the limits.
+  fix_map:
+    __other__: Correct the lot-size limits in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: minimum {MDMA.BSTMI}, maximum {actual_value}.'
+- id: MM764
+  field: MDMA.MINBE
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+    - VB
+    - V1
+  fail_when: '`MDMA.MINBE`.isna() | (`MDMA.MINBE` <= 0)'
+  severity: high
+  dimension: completeness
+  message: MRP area with reorder-point planning has no reorder point
+  why_it_matters: Reorder-point MRP types (VB, VM, V1, V2) in the MRP area need a reorder point (MINBE).
+  rule_authority: sap_hard_constraint
+  sap_impact: The MRP area is never replenished.
+  fix_map:
+    __other__: Maintain the reorder point in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: reorder point {actual_value}.'
+- id: MM765
+  field: MDMA.MINBE
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+    - VB
+  fail_when: (`MDMA.MINBE` > 0) & (`MDMA.MINBE` < `MDMA.EISBE`)
+  severity: medium
+  dimension: consistency
+  message: MRP area reorder point is below its safety stock
+  why_it_matters: The reorder point should cover safety stock plus lead-time demand. Below safety stock, replenishment starts
+    only after safety stock is used.
+  rule_authority: best_practice
+  sap_impact: Stock-outs in the MRP area.
+  fix_map:
+    __other__: Raise the reorder point in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: reorder point {actual_value}, safety stock {MDMA.EISBE}.'
+- id: MM766
+  field: MDMA.DISPO
+  check_class: null_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: high
+  dimension: completeness
+  message: MRP area has no MRP controller
+  why_it_matters: MRP controller (DISPO) owns exceptions in MD04 and MD06. MRP areas that are planned need one.
+  rule_authority: sap_hard_constraint
+  sap_impact: Exceptions in the MRP area are not routed to anyone.
+  fix_map:
+    __blank__: Enter the MRP controller in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: no MRP controller.'
+- id: MM767
+  field: MDMA.DISLS
+  check_class: null_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISMM:
+      populated: true
+      not_in:
+      - ND
+  severity: high
+  dimension: completeness
+  message: Planned MRP area has no lot-sizing procedure
+  why_it_matters: MRP needs a lot-sizing procedure (DISLS) to size proposals.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP stops for the MRP area with an error.
+  fix_map:
+    __blank__: Enter the lot-sizing procedure in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: no lot-sizing procedure.'
+- id: MM768
+  field: MDMA.BSTFE
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - FX
+  fail_when: '`MDMA.BSTFE`.isna() | (`MDMA.BSTFE` <= 0)'
+  severity: high
+  dimension: completeness
+  message: MRP area with fixed lot size has no fixed lot size
+  why_it_matters: Lot-sizing procedure FX orders the fixed lot size (BSTFE). Without it no proposal is made.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP creates no or zero proposals in the MRP area.
+  fix_map:
+    __other__: Maintain the fixed lot size in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: fixed lot size {actual_value}.'
+- id: MM769
+  field: MDMA.MABST
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.DISLS:
+    - HB
+  fail_when: '`MDMA.MABST`.isna() | (`MDMA.MABST` <= 0)'
+  severity: high
+  dimension: completeness
+  message: MRP area with replenish to maximum has no maximum stock level
+  why_it_matters: Lot-sizing procedure HB fills up to the maximum stock level (MABST). Without it no proposal is made.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP creates no proposals in the MRP area.
+  fix_map:
+    __other__: Maintain the maximum stock level in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: maximum stock level {actual_value}.'
+- id: MM770
+  field: MDMA.DISMM
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.LOEKZ:
+    - X
+  fail_when: '`MDMA.DISMM`.notna() & (`MDMA.DISMM` != ''ND'')'
+  severity: medium
+  dimension: lifecycle
+  message: MRP area is flagged for deletion but still planned
+  why_it_matters: A deletion flag (LOEKZ) on the MRP area should stop planning. MRP still plans the area while the MRP type
+    is not ND.
+  rule_authority: best_practice
+  sap_impact: Proposals keep being created for a retired MRP area.
+  fix_map:
+    __other__: Set MRP type ND in the MRP area or remove the deletion flag.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: flagged for deletion, MRP type {actual_value}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: ND
+    confidence: medium
+- id: MM771
+  field: MDMA.PLIFZX
+  check_class: cross_field_check
+  grain: MDMA
+  applies_when:
+    MDMA.PLIFZX:
+      blank: true
+  fail_when: '`MDMA.PLIFZ` > 0'
+  severity: low
+  dimension: consistency
+  message: MRP area planned delivery time is maintained but not activated
+  why_it_matters: The MRP area delivery time (PLIFZ) is used only when PLIFZX is set; otherwise the plant value applies.
+  rule_authority: best_practice
+  sap_impact: Scheduling in the MRP area uses the plant lead time, not the one entered.
+  fix_map:
+    __other__: Set the indicator to use the MRP area delivery time in MM02 MRP area, or clear the value.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: planned delivery time {MDMA.PLIFZ} days, indicator blank.'
+  auto_fix:
+    steps:
+    - op: set
+      value: X
+    confidence: medium
+- id: MM772
+  field: MDMA.BERID
+  check_class: cross_field_check
+  grain: MDMA
+  fail_when: '`MDMA.BERID` == `MDMA.WERKS`'
+  severity: medium
+  dimension: consistency
+  message: MRP area segment repeats the plant MRP area
+  why_it_matters: The plant MRP area is planned from the plant data (MARC). An MDMA segment whose MRP area equals the plant
+    code duplicates it.
+  rule_authority: best_practice
+  sap_impact: Two sets of MRP parameters exist for one area; results depend on which is read.
+  fix_map:
+    __other__: Delete the MDMA segment and keep plant parameters in MM02 MRP views.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: MRP area equals plant {MDMA.WERKS}.'
+- id: MM773
+  field: MDMA.LOEKZ
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area deletion flag holds a value outside its domain
+  why_it_matters: The deletion flag (LOEKZ) retires the MRP area segment. SAP accepts only X or blank. Loads often bring Y,
+    1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: mrp area deletion flag ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM774
+  field: MDMA.PLIFZX
+  check_class: domain_value_check
+  grain: MDMA
+  severity: low
+  dimension: validity
+  message: MRP area delivery time indicator is outside its domain
+  why_it_matters: PLIFZX accepts X or blank.
+  rule_authority: sap_hard_constraint
+  sap_impact: The load fails or the indicator is read as not set.
+  fix_map:
+    __other__: Correct the indicator in MM02 MRP area.
+  record_fix_template: 'Material {MDMA.MATNR}, MRP area {MDMA.BERID}: indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM775
+  field: MAST.LOSBS
+  check_class: cross_field_check
+  grain: MAST
+  fail_when: (`MAST.LOSBS` > 0) & (`MAST.LOSBS` < `MAST.LOSVN`)
+  severity: medium
+  dimension: consistency
+  message: BOM lot-size range ends before it starts
+  why_it_matters: The material-to-BOM link is valid from lot size LOSVN to LOSBS. A to-value below the from-value matches
+    no lot.
+  rule_authority: best_practice
+  sap_impact: BOM selection by lot size never finds the alternative.
+  fix_map:
+    __other__: Correct the lot-size range in CS02.
+  record_fix_template: 'BOM {MAST.STLNR}, material {MAST.MATNR}, plant {MAST.WERKS}: lot size from {MAST.LOSVN} to {actual_value}.'
+- id: MM776
+  field: STPO.MENGE
+  check_class: cross_field_check
+  grain: STPO
+  applies_when:
+    STPO.POSTP:
+    - L
+    STPO.LKENZ:
+      blank: true
+  fail_when: '`STPO.MENGE`.fillna(0) == 0'
+  severity: high
+  dimension: validity
+  message: Stock item has zero component quantity
+  why_it_matters: A stock item (POSTP L) with quantity 0 creates no requirement and issues nothing. Co-products use negative
+    quantities; zero has no meaning.
+  rule_authority: sap_hard_constraint
+  sap_impact: Components are missing from orders and costing.
+  fix_map:
+    __other__: Enter the component quantity in CS02 or delete the item.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: quantity {actual_value}.'
+- id: MM777
+  field: STPO.MEINS
+  check_class: null_check
+  grain: STPO
+  severity: high
+  dimension: completeness
+  message: BOM item has no unit of measure
+  why_it_matters: The component quantity is meaningless without its unit (MEINS).
+  rule_authority: sap_hard_constraint
+  sap_impact: Explosion fails or converts with the wrong unit.
+  fix_map:
+    __blank__: Enter the unit in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: no unit.'
+- id: MM778
+  field: STPO.IDNRK
+  check_class: null_check
+  grain: STPO
+  applies_when:
+    STPO.POSTP:
+    - L
+    - R
+  severity: high
+  dimension: completeness
+  message: Stock item has no component material
+  why_it_matters: Stock (L) and variable-size (R) items need a component material (IDNRK).
+  rule_authority: sap_hard_constraint
+  sap_impact: Explosion creates requirements for no material.
+  fix_map:
+    __blank__: Enter the component in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: no component.'
+- id: MM779
+  field: STPO.POSTP
+  check_class: null_check
+  grain: STPO
+  severity: high
+  dimension: completeness
+  message: BOM item has no item category
+  why_it_matters: The item category (POSTP) decides whether the item is stock, non-stock, text or document.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item cannot be exploded or migrated.
+  fix_map:
+    __blank__: Enter the item category in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: no item category.'
+- id: MM780
+  field: STPO.AUSCH
+  check_class: cross_field_check
+  grain: STPO
+  fail_when: '`STPO.AUSCH` >= 100'
+  severity: medium
+  dimension: accuracy
+  message: Component scrap is 100 percent or more
+  why_it_matters: Component scrap (AUSCH) raises the component requirement. At 100 percent or more it at least doubles; this
+    is a load error in practice.
+  rule_authority: best_practice
+  sap_impact: Component requirements and costs are doubled or more.
+  fix_map:
+    __other__: Correct the component scrap in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: component scrap {actual_value}%.'
+- id: MM781
+  field: STPO.ALPST
+  check_class: null_check
+  grain: STPO
+  applies_when:
+    STPO.ALPGR:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Alternative item group has no strategy
+  why_it_matters: Alternative items (ALPGR) need a strategy (ALPST) that says how the alternative is chosen.
+  rule_authority: sap_hard_constraint
+  sap_impact: MRP cannot choose between alternative items.
+  fix_map:
+    __blank__: Enter the strategy in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: alternative group {STPO.ALPGR}, no strategy.'
+- id: MM782
+  field: STPO.IDNRK
+  check_class: exists_check
+  grain: STPO
+  applies_when:
+    STPO.POSTP:
+    - L
+    - R
+    STPO.IDNRK:
+      populated: true
+  fields:
+  - STPO.IDNRK
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: high
+  dimension: consistency
+  message: BOM component does not exist in the material master
+  why_it_matters: A stock or variable-size item must point at an existing material (MARA).
+  rule_authority: sap_hard_constraint
+  sap_impact: Explosion fails; the S/4HANA migration rejects the BOM.
+  fix_map:
+    __other__: Create the component or correct the item in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: component {actual_value} not found.'
+- id: MM783
+  field: STPO.IDNRK
+  check_class: exists_check
+  grain: STPO
+  applies_when:
+    STPO.LKENZ:
+      blank: true
+  negate: true
+  fields:
+  - STPO.IDNRK
+  target_table: MARA
+  target_fields:
+  - MATNR
+  target_when:
+    LVORM:
+    - X
+  severity: high
+  dimension: lifecycle
+  message: BOM component is flagged for deletion at client level
+  why_it_matters: A component with the client-level deletion flag (MARA-LVORM) cannot be planned or issued.
+  rule_authority: best_practice
+  sap_impact: Orders carry a component that cannot be procured; archiving is blocked.
+  fix_map:
+    __other__: Replace the component or delete the item in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: component {actual_value} flagged for
+    deletion.'
+- id: MM784
+  field: STPO.STLTY
+  check_class: domain_value_check
+  grain: STPO
+  severity: low
+  dimension: validity
+  message: BOM category is outside its domain
+  why_it_matters: The BOM category (STLTY) accepts D, E, K, M, S, T or P.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item belongs to no BOM header type and is lost in migration.
+  fix_map:
+    __other__: Correct the extract or the BOM.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: BOM category ''{actual_value}''.'
+- id: MM785
+  field: STPO.FMENG
+  check_class: domain_value_check
+  grain: STPO
+  severity: low
+  dimension: validity
+  message: Fixed quantity indicator holds a value outside its domain
+  why_it_matters: Fixed quantity (FMENG) keeps the quantity independent of lot size. SAP accepts only X or blank. Loads often
+    bring Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: fixed quantity indicator ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM786
+  field: STPO.SANKO
+  check_class: domain_value_check
+  grain: STPO
+  severity: low
+  dimension: validity
+  message: Engineering relevance indicator holds a value outside its domain
+  why_it_matters: SANKO marks items relevant for engineering. SAP accepts only X or blank. Loads often bring Y, 1 or TRUE,
+    which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in CS02.
+  record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: engineering relevance indicator
+    ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
+- id: MM787
+  field: MAPL.PLNNR
+  check_class: exists_check
+  grain: MAPL
+  fields:
+  - MAPL.PLNTY
+  - MAPL.PLNNR
+  - MAPL.PLNAL
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  severity: high
+  dimension: consistency
+  message: Routing assignment points at a task list that does not exist
+  why_it_matters: The material-to-routing link (MAPL) must point at a task list header (PLKO).
+  rule_authority: sap_hard_constraint
+  sap_impact: Order creation finds no operations; the S/4HANA migration rejects the link.
+  fix_map:
+    __other__: Correct or delete the assignment in CA02.
+  record_fix_template: 'Material {MAPL.MATNR}, plant {MAPL.WERKS}, task list {MAPL.PLNTY}/{MAPL.PLNNR}/{MAPL.PLNAL}: task
+    list not found.'
+- id: MM788
+  field: MAPL.PLNNR
+  check_class: exists_check
+  grain: MAPL
+  applies_when:
+    MAPL.LOEKZ:
+      blank: true
+  negate: true
+  fields:
+  - MAPL.PLNTY
+  - MAPL.PLNNR
+  - MAPL.PLNAL
+  target_table: PLKO
+  target_fields:
+  - PLNTY
+  - PLNNR
+  - PLNAL
+  target_when:
+    LOEKZ:
+    - X
+  severity: medium
+  dimension: lifecycle
+  message: Routing assignment points at a task list flagged for deletion
+  why_it_matters: A task list with deletion flag (PLKO-LOEKZ) is not selected for orders.
+  rule_authority: best_practice
+  sap_impact: Orders for the material find no routing.
+  fix_map:
+    __other__: Assign an active routing in CA02 or remove the link.
+  record_fix_template: 'Material {MAPL.MATNR}, plant {MAPL.WERKS}, task list {MAPL.PLNTY}/{MAPL.PLNNR}/{MAPL.PLNAL}: task
+    list flagged for deletion.'
+- id: MM789
+  field: MAPL.LOEKZ
+  check_class: domain_value_check
+  grain: MAPL
+  severity: low
+  dimension: validity
+  message: Routing assignment deletion flag holds a value outside its domain
+  why_it_matters: The deletion flag (LOEKZ) retires the routing assignment. SAP accepts only X or blank. Loads often bring
+    Y, 1 or TRUE, which SAP and the S/4HANA migration cockpit reject.
+  rule_authority: sap_hard_constraint
+  sap_impact: The migration load fails on the field or the indicator is read as not set.
+  fix_map:
+    __other__: Set the indicator to X or blank in CA02.
+  record_fix_template: 'Material {MAPL.MATNR}, plant {MAPL.WERKS}, task list {MAPL.PLNTY}/{MAPL.PLNNR}/{MAPL.PLNAL}: routing
+    assignment deletion flag ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    - op: map
+      values:
+        X: X
+        Y: X
+        'YES': X
+        'TRUE': X
+        '1': X
+        N: ''
+        'NO': ''
+        'FALSE': ''
+        '0': ''
+        __other__: null
+    confidence: medium
