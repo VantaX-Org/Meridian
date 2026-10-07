@@ -218,7 +218,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
-            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
+            in_scope = {"date": TODAY, "num": "1", "timestamp": TODAY + "000000"}.get(_kind(dictionary, c), "X")
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else [in_scope]  # inside the scope
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
                 vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
