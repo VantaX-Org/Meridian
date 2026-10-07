@@ -155,6 +155,7 @@ tables:
       EMPLOYEE_COST:  {source: BenefitEnrollment.employeeContribution, type: DECIMAL, verify: true}
       EMPLOYER_COST:  {source: BenefitEnrollment.employerContribution, type: DECIMAL, verify: true}
       DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
+      STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)
@@ -168,6 +169,10 @@ tables:
       GOAL_STATUS: {source: Goal.state, type: STRING, length: 128, verify: true}
       GOAL_WEIGHT: {source: Goal.weight, type: DECIMAL}
       TARGET_DATE: {source: Goal.dueDate, type: DATE}
+      GOAL_START_DATE:     {source: Goal.startDate, type: DATE, verify: true, description: Goal start date}
+      GOAL_CATEGORY:       {source: Goal.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
+      CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
+      COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
 
   PMREVIEWRESULT:
     description: Performance review forms
@@ -181,6 +186,8 @@ tables:
       OVERALL_RATING: {source: FormSummarySection.overallFormRating, type: DECIMAL, verify: true}
       MANAGER_RATING: {source: FormSummarySection.overallFormRating (manager step), type: DECIMAL, verify: true}
       SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
+      FORM_TEMPLATE_ID: {source: FormHeader.templateId, type: STRING, length: 38, verify: true, description: Review form template}
+      SIGNOFF_DATE:     {source: FormHeader.signOffDate, type: DATE, verify: true, description: Employee sign-off date}
 
   SUCCESSIONCANDIDATE:
     description: Succession nominations
@@ -244,6 +251,11 @@ tables:
       DUE_DATE:      {source: learning.requiredDate, type: DATETIME, verify: true}
       STATUS:        {source: learning.status, type: STRING, verify: true}
       REQUIRED:      {source: learning.required, type: BOOLEAN, verify: true}
+      ITEM_TYPE:       {source: learning.componentTypeID, type: STRING, verify: true}
+      APPROVAL_STATUS: {source: learning.approvalStatus, type: STRING, verify: true}
+      CURRICULUM_ID:   {source: learning.curriculumID, type: STRING, length: 90, verify: true}
+      CLASS_START_DATE: {source: learning.sessionStartDate, type: DATETIME, verify: true}
+      CLASS_END_DATE:   {source: learning.sessionEndDate, type: DATETIME, verify: true}
 
   LEARNINGCOMPLETION:
     description: Learning history / completions
@@ -256,6 +268,7 @@ tables:
       STATUS:          {source: learningHistory.completionStatusID, type: STRING, verify: true}
       SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
       CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}
+      PASSING_SCORE:   {source: learningHistory.cutScore, type: DECIMAL, verify: true}
 
   POSITION:
     description: Positions (Position Management), current record

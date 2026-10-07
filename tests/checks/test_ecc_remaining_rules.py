@@ -16,7 +16,7 @@ EXPECTED_COUNTS = {
     "accounts_receivable": 145,
     "asset_accounting": 100,
     "hcm": 118,
-    "controlling": 93,
+    "controlling": 100,
     "mm_purchasing": 262,  # PUR031 removed (no ECC field); XP2P001-002 moved in from cross_module
     "sd_customer_master": 98,
     "sd_sales_orders": 208,
