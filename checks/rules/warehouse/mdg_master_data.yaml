@@ -605,3 +605,145 @@ rules:
     fix_map:
       __other__: Review the request and clear the active flag.
     record_fix_template: Change request {USMD120C.USMD_CREQUEST} is rejected but active.
+
+  - id: MDG036
+    field: USMD120C.USMD_DATA_CHN_AT
+    check_class: cross_field_check
+    fail_when: (`USMD120C.USMD_DATA_ACTIVE` == 'X') & `USMD120C.USMD_DATA_CHN_AT`.isna()
+    severity: high
+    dimension: completeness
+    message: Active change request has no data-change timestamp
+    why_it_matters: When a change request has activated master data (DATA_ACTIVE = X), the system records when the
+      active master record was last touched by that activation (USMD_DATA_CHN_AT). Without it, there is no evidence
+      of when the production master data actually changed, breaking downstream 'as-of' reporting and change-impact
+      analysis.
+    rule_authority: best_practice
+    sap_impact: Point-in-time master data reporting cannot determine when the active record changed.
+    fix_map:
+      __other__: Review the activation step in MDG and correct the data-change timestamp.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} activated data with no data-change timestamp.
+
+  - id: MDG037
+    field: USMD120C.USMD_CREQUEST_RE
+    check_class: cross_field_check
+    fail_when: '`USMD120C.USMD_CREQUEST_RE`.notna() & (`USMD120C.USMD_CREQUEST_RE` == `USMD120C.USMD_CREQUEST`)'
+    severity: medium
+    dimension: consistency
+    message: Change request references itself as its follow-on/predecessor request
+    why_it_matters: USMD_CREQUEST_RE links a change request to a related (follow-on or reversal) change request. A
+      change request pointing to itself is a circular reference that cannot reflect a real governance relationship and
+      will confuse the MDG request-chain navigation.
+    rule_authority: best_practice
+    sap_impact: The MDG request-chain view shows a change request as its own predecessor, confusing stewards tracing
+      related changes.
+    fix_map:
+      __other__: Review how the related-request link was set and correct it to the actual related change request, or
+        clear it.
+    record_fix_template: Change request {USMD120C.USMD_CREQUEST} lists itself as the related change request.
+
+  - id: MDG038
+    field: CDHDR.TCODE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Change document header has no transaction code
+    why_it_matters: TCODE records which transaction (e.g. USMD_MAINTAIN, a Fiori app's backing transaction) produced
+      the change. Without it, data stewards investigating a change cannot tell whether it came through MDG governance
+      or a direct table maintenance transaction outside of governance.
+    rule_authority: best_practice
+    sap_impact: Cannot distinguish governed MDG changes from direct, ungoverned table maintenance in the change audit
+      trail.
+    fix_map:
+      __blank__: Investigate how the change document was written (migration or direct table update) and document the
+        gap for audit.
+    record_fix_template: 'Change document {CDHDR.OBJECTCLAS}/{CDHDR.OBJECTID}/{CDHDR.CHANGENR}: no transaction code.'
+
+  - id: MDG039
+    field: CDPOS.TABNAME
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Change document item has no table name
+    why_it_matters: TABNAME identifies which database table the changed field (FNAME) belongs to. Without it, the
+      field name alone is ambiguous — the same field name can exist on multiple tables — so the change cannot be
+      reliably reconstructed or replayed for audit.
+    rule_authority: sap_hard_constraint
+    sap_impact: The audit trail cannot determine which table was changed; change document items become ambiguous or
+      unusable for compliance review.
+    fix_map:
+      __blank__: Investigate how the change document was written and document the gap for audit.
+    record_fix_template: 'Change document {CDPOS.OBJECTCLAS}/{CDPOS.OBJECTID}/{CDPOS.CHANGENR}: no table name recorded
+      for the changed field.'
+
+  - id: MDG040
+    field: USMD1213.USMD_SEQNR
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Change-request entity value record has no sequence number
+    why_it_matters: USMD_SEQNR orders the value records within an entity when an entity carries multiple segments or
+      repeating values. Without it, the MDG activation step cannot determine the correct processing order of the
+      staged values, and value records may be applied out of sequence.
+    rule_authority: best_practice
+    sap_impact: Staged entity values may activate in the wrong order, producing an inconsistent active master record.
+    fix_map:
+      __blank__: Investigate how the entity value record was staged and assign the correct sequence number via MDG
+        change request maintenance.
+    record_fix_template: Entity row for request {USMD1213.USMD_CREQUEST} / entity {USMD1213.USMD_ENTITY} has no
+      sequence number.
+
+  - id: MDG041
+    field: CDPOS.VALUE_NEW
+    check_class: cross_field_check
+    fail_when: (`CDPOS.CHNGIND` == 'U') & `CDPOS.VALUE_OLD`.notna() & `CDPOS.VALUE_NEW`.notna() & (`CDPOS.VALUE_OLD`
+      == `CDPOS.VALUE_NEW`)
+    severity: low
+    dimension: consistency
+    message: Change document item recorded an update with no actual value change
+    why_it_matters: An update change type (CHNGIND = U) should mean the field value changed. When VALUE_OLD equals
+      VALUE_NEW, the change document recorded an update that changed nothing, which inflates the perceived volume of
+      master data changes and may indicate a no-op resave or a logging defect.
+    rule_authority: best_practice
+    sap_impact: Change-volume analytics and 'what changed' audit reports overstate real master data churn.
+    fix_map:
+      __other__: Investigate the transaction that wrote this change document item; if it is a logging defect, raise
+        it with Basis.
+    record_fix_template: 'Change document {CDPOS.OBJECTCLAS}/{CDPOS.OBJECTID}/{CDPOS.CHANGENR}: logged as updated but
+      old and new value are identical.'
+
+  - id: MDG042
+    field: CDHDR.PLANCHNGNR
+    check_class: cross_field_check
+    fail_when: (`CDHDR.WAS_PLANND` == 'X') & `CDHDR.PLANCHNGNR`.isna()
+    severity: medium
+    dimension: consistency
+    message: Change document is flagged as a planned change but has no planned-change number
+    why_it_matters: WAS_PLANND marks a change document as originating from a planned change (engineering change
+      management). When set, PLANCHNGNR must carry the planned-change document number so the actual change can be
+      traced back to the plan that authorised it. Without it, the link between the planned change and what was
+      actually executed is lost.
+    rule_authority: best_practice
+    sap_impact: Engineering/planned-change traceability is broken — auditors cannot confirm the change was executed
+      under an approved change plan.
+    fix_map:
+      __other__: Investigate how the change document was written and document the gap for audit.
+    record_fix_template: 'Change document {CDHDR.OBJECTCLAS}/{CDHDR.OBJECTID}/{CDHDR.CHANGENR}: flagged as a planned
+      change with no planned-change number.'
+
+  - id: MDG043
+    field: USMD1213.USMD_ENTITY_OBJ
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Change-request entity value record has no entity object key
+    why_it_matters: USMD_ENTITY_OBJ identifies the specific business-object instance (e.g. the segment occurrence)
+      within the entity that the staged value belongs to. Without it, the activation step cannot determine which
+      object instance the value record applies to, especially for entities that allow multiple object occurrences.
+    rule_authority: best_practice
+    sap_impact: Staged values with no object key may be applied to the wrong object occurrence or rejected at
+      activation.
+    fix_map:
+      __blank__: Investigate how the entity value record was staged and assign the correct entity object key via MDG
+        change request maintenance.
+    record_fix_template: Entity row for request {USMD1213.USMD_CREQUEST} / entity {USMD1213.USMD_ENTITY} has no entity
+      object key.

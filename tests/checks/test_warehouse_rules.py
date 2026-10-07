@@ -18,9 +18,9 @@ EXPECTED_COUNTS = {
     "cross_system_integration": 40,
     "transport_management": 48,
     "batch_management": 35,
-    "wm_interface": 32,
+    "wm_interface": 40,
     "grc_compliance": 40,
-    "mdg_master_data": 32,
+    "mdg_master_data": 40,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -107,7 +107,11 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
+<<<<<<< HEAD
     assert total == 398, f"Expected 398 total warehouse rules, got {total}"
+=======
+    assert total == 392, f"Expected 392 total warehouse rules, got {total}"
+>>>>>>> feat/rules-mdg-master-data-depth
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

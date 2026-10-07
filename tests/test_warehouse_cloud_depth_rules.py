@@ -22,18 +22,18 @@ AUTHORITIES = {"sap_hard_constraint", "best_practice", "customer_configured", "i
 PACKS = {
     "warehouse/ewms_stock": ("EWMS", 113, 18),
     "warehouse/ewms_transfer_orders": ("EWTO", 109, 10),
-    "warehouse/wm_interface": ("WMI", 24, 13),
+    "warehouse/wm_interface": ("WMI", 24, 21),
     "warehouse/batch_management": ("BATCH", 25, 16),
     "warehouse/transport_management": ("TM", 38, 13),
     "warehouse/fleet_management": ("FLEET", 36, 14),
     "warehouse/grc_compliance": ("GRC", 27, 15),
-    "warehouse/mdg_master_data": ("MDG", 27, 9),
+    "warehouse/mdg_master_data": ("MDG", 27, 17),
     "warehouse/cross_system_integration": ("XSYS", 28, 5),
-    "ariba/ariba_procurement": ("ARP", 17, 11),
-    "ariba/ariba_contracts": ("ARC", 10, 7),
+    "ariba/ariba_procurement": ("ARP", 17, 24),
+    "ariba/ariba_contracts": ("ARC", 10, 33),
     "ariba/ariba_supplier": ("ARS", 8, 33),
     "concur/concur_expense": ("CNE", 21, 20),
-    "concur/concur_users": ("CNU", 10, 5),
+    "concur/concur_users": ("CNU", 10, 32),
 }
 S4R_WM = ["S4R-WM-QUANT-NEG", "S4R-WM-TO-OPEN", "S4R-WM-INV-QUANT", "S4R-WM-INV-BIN", "S4R-WM-QUANT-EXPIRED",
           "S4R-WM-LEIN-EMPTY", "S4R-WM-MLGT-BIN", "S4R-WM-QUANT-BLOCKED"]
@@ -89,7 +89,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 189
+    assert sum(len(v) for v in NEW.values()) == 271
     assert len(S4_NEW) == len(S4R_WM)
 
 
