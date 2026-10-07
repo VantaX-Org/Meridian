@@ -29,11 +29,11 @@ PACKS = {
     "warehouse/grc_compliance": ("GRC", 27, 15),
     "warehouse/mdg_master_data": ("MDG", 27, 9),
     "warehouse/cross_system_integration": ("XSYS", 28, 5),
-    "ariba/ariba_procurement": ("ARP", 17, 11),
-    "ariba/ariba_contracts": ("ARC", 10, 7),
+    "ariba/ariba_procurement": ("ARP", 17, 24),
+    "ariba/ariba_contracts": ("ARC", 10, 33),
     "ariba/ariba_supplier": ("ARS", 8, 33),
     "concur/concur_expense": ("CNE", 21, 20),
-    "concur/concur_users": ("CNU", 10, 5),
+    "concur/concur_users": ("CNU", 10, 32),
 }
 S4R_WM = ["S4R-WM-QUANT-NEG", "S4R-WM-TO-OPEN", "S4R-WM-INV-QUANT", "S4R-WM-INV-BIN", "S4R-WM-QUANT-EXPIRED",
           "S4R-WM-LEIN-EMPTY", "S4R-WM-MLGT-BIN", "S4R-WM-QUANT-BLOCKED"]
@@ -88,7 +88,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 197
+    assert sum(len(v) for v in NEW.values()) == 263
     assert len(S4_NEW) == len(S4R_WM)
 
 
