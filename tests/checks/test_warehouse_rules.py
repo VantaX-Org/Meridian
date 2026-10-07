@@ -15,7 +15,7 @@ EXPECTED_COUNTS = {
     "ewms_stock": 71,
     "ewms_transfer_orders": 51,
     "fleet_management": 49,
-    "cross_system_integration": 26,
+    "cross_system_integration": 40,
     "transport_management": 48,
     "batch_management": 35,
     "wm_interface": 32,
@@ -97,7 +97,7 @@ def test_runner_discovers_warehouse_modules():
 # ---- Test 5: Total rule count across all 9 warehouse modules ----
 
 def test_total_warehouse_rule_count():
-    """Total across all 9 warehouse modules should be 384 rules.
+    """Total across all 9 warehouse modules should be 398 rules.
 
     Two freshness rules (EWMS023 on LGPLA, WM014 on MLGN) were removed: their
     tables carry no change-date column, so freshness parsed a warehouse-number
@@ -107,7 +107,7 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 384, f"Expected 384 total warehouse rules, got {total}"
+    assert total == 398, f"Expected 398 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----
