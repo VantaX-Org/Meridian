@@ -661,8 +661,17 @@ rules:
   - id: BEN040
     field: BENEFITENROLLMENT.COVERAGE_LEVEL
     check_class: cross_field_check
-    fail_when: '`BENEFITENROLLMENT.PLAN_TYPE`.isin([''LIFE'',''AD_D'',''DISABILITY_STD'',''DISABILITY_LTD'',''RETIREMENT'',''FSA'',''HSA'',''COMMUTER''])
-      & `BENEFITENROLLMENT.COVERAGE_LEVEL`.isin([''EMP_SPOUSE'',''EMP_CHILD'',''EMP_SPOUSE_CHILD'',''FAMILY''])'
+    applies_when:
+      BENEFITENROLLMENT.PLAN_TYPE:
+      - LIFE
+      - AD_D
+      - DISABILITY_STD
+      - DISABILITY_LTD
+      - RETIREMENT
+      - FSA
+      - HSA
+      - COMMUTER
+    fail_when: '`BENEFITENROLLMENT.COVERAGE_LEVEL`.isin([''EMP_SPOUSE'',''EMP_CHILD'',''EMP_SPOUSE_CHILD'',''FAMILY''])'
     severity: medium
     dimension: consistency
     message: Non-health benefit type carries a dependent coverage tier
