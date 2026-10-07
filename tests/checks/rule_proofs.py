@@ -25,9 +25,10 @@ from checks.runner import rule_columns, run_rule
 
 TODAY = date.today().strftime("%Y%m%d")
 NOW = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+CUR_YEAR = date.today().strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],
-    "num": ["", "0", "1", "-1", "100", "1000000"],
+    "num": ["", "0", "1", "-1", "100", "1000000", CUR_YEAR],
     "char": ["", "X", "A", "1", "ZZ", "§§§"],
     "timestamp": ["", "20000101000000", NOW.replace("-", "").replace("T", "").replace(":", ""), "0"],
 }

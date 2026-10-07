@@ -44,8 +44,9 @@ def _load(pack):
 
 
 def _new(pack):
-    prefix, start, _ = PACKS[pack]
-    return [r for r in _load(pack) if re.fullmatch(prefix + r"\d+", r["id"]) and int(r["id"][len(prefix):]) >= start]
+    prefix, start, count = PACKS[pack]
+    matched = (r for r in _load(pack) if re.fullmatch(prefix + r"\d+", r["id"]))
+    return [r for r in matched if start <= int(r["id"][len(prefix):]) < start + count]
 
 
 NEW = {p: _new(p) for p in PACKS}
