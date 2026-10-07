@@ -390,3 +390,234 @@ rules:
       __other__: Correct the replenishment or maximum quantity in the material's storage type view (MM02).
     record_fix_template: 'Material {MLGT.MATNR}, {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG}, bin maximum
       {MLGT.LPMAX}.'
+
+  - id: WMI024
+    field: MLGN.MATNR
+    check_class: exists_check
+    fields:
+    - MLGN.MATNR
+    target_table: MARA
+    target_fields:
+    - MATNR
+    severity: high
+    dimension: consistency
+    message: Warehouse management data exists for a material that is not in the material master
+    why_it_matters: An MLGN row with no general material record is orphaned warehouse data.
+    rule_authority: sap_hard_constraint
+    sap_impact: Warehouse reports show a material that no transaction can use.
+    fix_map:
+      __other__: Delete the orphaned warehouse view through archiving or restore the material.
+    record_fix_template: Warehouse data for {MLGN.MATNR} in {MLGN.LGNUM} has no material master.
+
+  - id: WMI025
+    field: MLGT.MATNR
+    check_class: exists_check
+    fields:
+    - MLGT.MATNR
+    - MLGT.LGNUM
+    target_table: MLGN
+    target_fields:
+    - MATNR
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Storage type data exists without the warehouse management view
+    why_it_matters: Storage type data (MLGT) hangs off the warehouse view (MLGN). Without it the strategy settings are ignored.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway for the material in the storage type uses defaults.
+    fix_map:
+      __other__: Extend the material to the warehouse number (MM50) or delete the storage type data.
+    record_fix_template: Storage type data for {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP} has no warehouse view.
+
+  - id: WMI026
+    field: MLGT.LPMAX
+    check_class: cross_field_check
+    fail_when: (`MLGT.LGPLA`.notna()) & ((`MLGT.LPMAX`.isna()) | (`MLGT.LPMAX` <= 0))
+    severity: low
+    dimension: completeness
+    message: Fixed bin has no maximum quantity
+    why_it_matters: A fixed bin without a maximum cannot drive replenishment.
+    rule_authority: best_practice
+    sap_impact: Replenishment never triggers for the fixed bin.
+    fix_map:
+      __other__: Maintain the maximum bin quantity in the storage type data.
+    record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: fixed bin {MLGT.LGPLA} has no maximum.'
+
+  - id: WMI027
+    field: MLGT.LGPLA
+    check_class: cross_field_check
+    fail_when: (`MLGT.NSMNG` > 0) & `MLGT.LGPLA`.isna()
+    severity: low
+    dimension: completeness
+    message: Replenishment quantity set with no fixed bin
+    why_it_matters: A replenishment quantity only means something against a fixed bin.
+    rule_authority: best_practice
+    sap_impact: Setting is ignored and misleads planners.
+    fix_map:
+      __other__: Enter the fixed bin or clear the quantity.
+    record_fix_template: 'Material {MLGT.MATNR} in {MLGT.LGNUM}/{MLGT.LGTYP}: replenishment {MLGT.NSMNG} with no bin.'
+
+  - id: WMI028
+    field: MLGN.LHME2
+    check_class: cross_field_check
+    fail_when: (`MLGN.LHMG2` > 0) & `MLGN.LHME2`.isna()
+    severity: medium
+    dimension: completeness
+    message: Loading equipment quantity 2 has no unit
+    why_it_matters: A quantity without a unit of measure cannot be converted or put away.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway quantity calculations fail for the material.
+    fix_map:
+      __other__: Enter the unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 2 has no unit.'
+
+  - id: WMI029
+    field: MLGN.LHME3
+    check_class: cross_field_check
+    fail_when: (`MLGN.LHMG3` > 0) & `MLGN.LHME3`.isna()
+    severity: medium
+    dimension: completeness
+    message: Loading equipment quantity 3 has no unit
+    why_it_matters: A quantity without a unit of measure cannot be converted or put away.
+    rule_authority: sap_hard_constraint
+    sap_impact: Putaway quantity calculations fail for the material.
+    fix_map:
+      __other__: Enter the unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: quantity 3 has no unit.'
+
+  - id: WMI030
+    field: MLGN.LHMG1
+    check_class: cross_field_check
+    fail_when: '`MLGN.LETY1`.notna() & ((`MLGN.LHMG1`.isna()) | (`MLGN.LHMG1` <= 0))'
+    severity: medium
+    dimension: completeness
+    message: Storage unit type has no loading equipment quantity
+    why_it_matters: A storage unit type without a quantity per unit cannot size pallets.
+    rule_authority: best_practice
+    sap_impact: Storage unit putaway creates units with no capacity logic.
+    fix_map:
+      __other__: Maintain the loading equipment quantity for the storage unit type.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: type {MLGN.LETY1} has no quantity.'
+
+  - id: WMI031
+    field: MLGN.LVSME
+    check_class: exists_check
+    fields:
+    - MLGN.LVSME
+    target_table: T006
+    target_fields:
+    - MSEHI
+    applies_when:
+      MLGN.LVSME:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Warehouse unit of measure is not a valid unit
+    why_it_matters: A warehouse unit that is not in the unit table cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders in the warehouse unit fail at conversion.
+    fix_map:
+      __other__: Correct the warehouse unit of measure.
+    record_fix_template: 'Material {MLGN.MATNR} in {MLGN.LGNUM}: unit {MLGN.LVSME} is not valid.'
+
+  - id: WMI032
+    field: T302.LGNUM
+    check_class: exists_check
+    fields:
+    - T302.LGNUM
+    - T302.LGTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    severity: high
+    dimension: consistency
+    message: Storage section belongs to a storage type that is not configured
+    why_it_matters: A section config for an unknown storage type is dead config.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bins assigned to the section cannot be created.
+    fix_map:
+      __other__: Configure the storage type or delete the section.
+    record_fix_template: Section {T302.LGBER} in {T302.LGNUM}/{T302.LGTYP} has no storage type.
+
+  - id: WMI033
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    - T333.VLTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    applies_when:
+      T333.VLTYP:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Movement type default source type is not configured
+    why_it_matters: A default source storage type that does not exist breaks every transfer order of the movement type.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders default to an unknown type and fail.
+    fix_map:
+      __other__: Correct the default source type in the movement type config.
+    record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: source type {T333.VLTYP} not in T301.'
+
+  - id: WMI034
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    - T333.NLTYP
+    target_table: T301
+    target_fields:
+    - LGNUM
+    - LGTYP
+    applies_when:
+      T333.NLTYP:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Movement type default destination type is not configured
+    why_it_matters: A default destination storage type that does not exist breaks every transfer order of the movement type.
+    rule_authority: sap_hard_constraint
+    sap_impact: Transfer orders default to an unknown type and fail.
+    fix_map:
+      __other__: Correct the default destination type in the movement type config.
+    record_fix_template: 'Movement type {T333.BWLVS} in {T333.LGNUM}: destination type {T333.NLTYP} not in T301.'
+
+  - id: WMI035
+    field: T333.LGNUM
+    check_class: exists_check
+    fields:
+    - T333.LGNUM
+    target_table: T300
+    target_fields:
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Movement type config belongs to an undefined warehouse
+    why_it_matters: Movement type config for a warehouse number that is not defined is orphaned.
+    rule_authority: sap_hard_constraint
+    sap_impact: The config has no effect and misleads administrators.
+    fix_map:
+      __other__: Delete the config or define the warehouse.
+    record_fix_template: 'Movement type {T333.BWLVS}: warehouse {T333.LGNUM} not in T300.'
+
+  - id: WMI036
+    field: T301.LGNUM
+    check_class: exists_check
+    fields:
+    - T301.LGNUM
+    target_table: T300
+    target_fields:
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Storage type belongs to an undefined warehouse
+    why_it_matters: A storage type for a warehouse number that is not defined is orphaned config.
+    rule_authority: sap_hard_constraint
+    sap_impact: Bins in the type cannot be used.
+    fix_map:
+      __other__: Delete the storage type or define the warehouse.
+    record_fix_template: 'Storage type {T301.LGTYP}: warehouse {T301.LGNUM} not in T300.'

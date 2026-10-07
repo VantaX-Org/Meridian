@@ -238,3 +238,158 @@ rules:
   fix_map:
     __other__: Reject the invoice for re-issue with the ISO 4217 code.
   record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: currency ''{actual_value}'' is not an ISO code.'
+- id: ARP017
+  field: ARIBA_PO.TOTAL_AMOUNT
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.TOTAL_AMOUNT` <= 0'
+  applies_when:
+    ARIBA_PO.TOTAL_AMOUNT:
+      populated: true
+  severity: medium
+  dimension: accuracy
+  message: Ariba order has a zero or negative total
+  why_it_matters: An order with no value commits no spend.
+  rule_authority: best_practice
+  sap_impact: Spend reports and S/4 purchase order loads reject the order.
+  fix_map:
+    __other__: Correct the order total.
+  record_fix_template: 'Ariba order {ARIBA_PO.ORDER_ID}: total is {actual_value}.'
+- id: ARP018
+  field: ARIBA_PO.COMPANY_CODE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.COMPANY_CODE`.isna()'
+  applies_when:
+    ARIBA_PO.STATUS:
+      not_in:
+      - Canceled
+      - Cancelled
+  severity: high
+  dimension: completeness
+  message: Ariba order has no company code
+  why_it_matters: The company code decides the ledger the order commits to.
+  rule_authority: best_practice
+  sap_impact: The order cannot be matched to an ERP purchase order.
+  fix_map:
+    __other__: Maintain the company code on the order.
+  record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no company code.
+- id: ARP019
+  field: ARIBA_PO.PLANT
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.PLANT`.isna()'
+  severity: low
+  dimension: completeness
+  message: Ariba order has no plant
+  why_it_matters: Goods orders need a plant for receiving.
+  rule_authority: best_practice
+  sap_impact: Goods receipt cannot be planned.
+  fix_map:
+    __other__: Maintain the plant on the order.
+  record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no plant.
+- id: ARP020
+  field: ARIBA_PO.ORDER_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.ORDER_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Ariba order date is in the future
+  why_it_matters: An order cannot be dated later than today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Ageing and cycle-time reports are wrong.
+  fix_map:
+    __other__: Correct the order date.
+  record_fix_template: 'Ariba order {ARIBA_PO.ORDER_ID}: date {actual_value}, in the future.'
+- id: ARP021
+  field: ARIBA_PO.CURRENCY_CODE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.CURRENCY_CODE`.isna() & (`ARIBA_PO.TOTAL_AMOUNT` > 0)'
+  severity: high
+  dimension: completeness
+  message: Ariba order has a value but no currency
+  why_it_matters: An amount without a currency cannot be converted or posted.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order commits an unknown amount.
+  fix_map:
+    __other__: Maintain the currency on the order.
+  record_fix_template: 'Ariba order {ARIBA_PO.ORDER_ID}: total {ARIBA_PO.TOTAL_AMOUNT} has no currency.'
+- id: ARP022
+  field: ARIBA_PO.CREATED_BY
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.CREATED_BY`.isna()'
+  severity: low
+  dimension: completeness
+  message: Ariba order has no creator
+  why_it_matters: The creator is the contact for questions on the order.
+  rule_authority: best_practice
+  sap_impact: Nobody is accountable for the order.
+  fix_map:
+    __other__: Maintain the creator on the order.
+  record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no creator.
+- id: ARP023
+  field: ARIBA_INVOICE.TOTAL_AMOUNT
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  fail_when: (`ARIBA_INVOICE.TOTAL_AMOUNT` > `ARIBA_PO.TOTAL_AMOUNT`) & (`ARIBA_PO.TOTAL_AMOUNT` > 0)
+  severity: high
+  dimension: consistency
+  message: Ariba invoice is larger than its order
+  why_it_matters: A single invoice above the order total is over-billing unless the order was amended.
+  rule_authority: best_practice
+  sap_impact: The company pays more than it committed.
+  fix_map:
+    __other__: Review the invoice against the order. Amend the order or reject the invoice.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: total {ARIBA_INVOICE.TOTAL_AMOUNT} exceeds order {ARIBA_PO.ORDER_ID}
+    total {ARIBA_PO.TOTAL_AMOUNT}.'
+- id: ARP024
+  field: ARIBA_INVOICE.PURCHASE_ORDER_ID
+  check_class: cross_field_check
+  fail_when: '`ARIBA_INVOICE.PURCHASE_ORDER_ID`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Ariba invoice has no order reference
+  why_it_matters: Invoices without an order cannot be three-way matched.
+  rule_authority: best_practice
+  sap_impact: The invoice goes to manual processing.
+  fix_map:
+    __other__: Link the invoice to its order.
+  record_fix_template: Ariba invoice {ARIBA_INVOICE.INVOICE_ID} has no order reference.
+- id: ARP025
+  field: ARIBA_INVOICE.INVOICE_NUMBER
+  check_class: cross_field_check
+  fail_when: '`ARIBA_INVOICE.INVOICE_NUMBER`.isna()'
+  severity: high
+  dimension: completeness
+  message: Ariba invoice has no supplier invoice number
+  why_it_matters: The supplier invoice number is the duplicate check key in the ERP.
+  rule_authority: sap_hard_constraint
+  sap_impact: Duplicate invoices are not detected.
+  fix_map:
+    __other__: Capture the supplier invoice number.
+  record_fix_template: Ariba invoice {ARIBA_INVOICE.INVOICE_ID} has no invoice number.
+- id: ARP026
+  field: ARIBA_INVOICE.SUPPLIER
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_INVOICE.SUPPLIER
+  - ARIBA_INVOICE.INVOICE_NUMBER
+  severity: high
+  dimension: uniqueness
+  message: Same supplier invoice number appears twice
+  why_it_matters: One supplier should not reuse an invoice number. A repeat is a likely duplicate.
+  rule_authority: best_practice
+  sap_impact: The same invoice is paid twice.
+  fix_map:
+    __other__: Compare the invoices and cancel the duplicate.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: number is used on more than one invoice for the supplier.'
+- id: ARP027
+  field: ARIBA_PO.SUPPLIER
+  check_class: cross_field_check
+  fail_when: '`ARIBA_PO.SUPPLIER`.isna()'
+  severity: high
+  dimension: completeness
+  message: Ariba order has no supplier
+  why_it_matters: An order must name its supplier.
+  rule_authority: sap_hard_constraint
+  sap_impact: The order cannot be sent or matched.
+  fix_map:
+    __other__: Maintain the supplier on the order.
+  record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no supplier.

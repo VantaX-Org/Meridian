@@ -255,6 +255,9 @@ def test_batch_management_golden():
     results, found = _run("batch_management", {"MARA": mara, "MAKT": makt, "MCH1": mch1, "MCHA": mcha, "MCHB": mchb},
                           {"MCH1.HERKL": {"ZA", "DE", "US", "CN"}})
     assert found == {
+        "BATCH027": {"MATNR=RESIN-200|WERKS=1000|LGORT=0001|CHARG=0000004690"},  # expired batch, still has unrestricted stock (cascade)
+        "BATCH033": {"MATNR=RESIN-200|CHARG=0000004714"},                        # manufactured after goods receipt (cascade)
+        "BATCH040": {"MATNR=RESIN-200|CHARG=0000004713"},                        # shelf-life material, no expiry date (cascade)
         "BATCH015": {"MATNR=RESIN-200|WERKS=1000|LGORT=0001|CHARG=0000004690"},  # expired, still unrestricted
         "BATCH006": {"MATNR=RESIN-200|CHARG=0000004713"},                        # SLED material, no expiry date
         "BATCH008": {"MATNR=RESIN-200|CHARG=0000004714"},                        # manufactured after expiry
@@ -323,6 +326,8 @@ def test_mdg_master_data_golden():
                      "USMD120C.USMD_CREQ_STATUS": {"00", "01", "02", "03", "04", "05", "06", "07", "08", "09"},
                      "USMD120C.USMD_CREQ_TYPE": {"MAT01", "BP1P1", "CCT1P1"}})
     assert found == {
+        "MDG028": {"USMD_CREQUEST=000000004717"},  # released with no release user (cascade)
+        "MDG034": {"USMD_CREQUEST=000000004719"},  # released request with no entity data (cascade)
         "MDG017": {"USMD_CREQUEST=000000004716"},    # pending for over a year
         "MDG007": {"USMD_CREQUEST=000000004717"},    # activated without a release user
         "MDG004": {"USMD_CREQUEST=000000004718"},    # status not configured
@@ -394,6 +399,10 @@ def test_grc_compliance_golden():
                      "GRACUSERROLE.CONNECTOR": {"ECPCLNT100", "S4PCLNT100"},
                      "GRACROLE.ROLE_TYPE": {"SIN", "COM", "DER", "BUS"}})
     assert found == {
+        "GRC027": {"USERROLEID=UR10" + "0" * 28},  # assigned role not in the repository (cascade)
+        "GRC028": {"USERROLEID=UR02" + "0" * 28},  # JSMITH holds the locked role R03; new rule flags the existing assignment
+        "GRC037": {"RISKID=M004"},                 # risk with no description text (cascade)
+        "GRC041": {"USERROLEID=UR08" + "0" * 28, "USERROLEID=UR09" + "0" * 28},  # same role twice (cascade)
         "GRC005": {f"USERROLEID=UR07{'0' * 28}"},
         "GRC024": {f"USERROLEID=UR07{'0' * 28}"},                                    # assignment expired over a year ago
         "GRC013": {f"USERROLEID=UR08{'0' * 28}", f"USERROLEID=UR09{'0' * 28}"},
@@ -494,6 +503,7 @@ def test_fleet_management_golden():
                                          "EQUZ": equz, "ILOA": iloa},
                     {"FLEET.FLEET_CAT": {"CAR", "VAN", "TRUCK", "BUS", "TRAILER", "MOTORCYCLE"}})
     assert found == {
+        "FLEET039": {f"EQUNR={eq(10000008)}", f"EQUNR={eq(10000012)}"},  # service date already passed (cascade)
         "FLEET006": {f"EQUNR={eq(10000012)}"},                          # two years in service, never serviced
         "FLEET004": {f"EQUNR={eq(10000007)}"},                          # VIN with 16 characters
         "FLEET017": {f"EQUNR={eq(10000001)}", f"EQUNR={eq(10000008)}"},  # one plate, two vehicles
@@ -554,6 +564,8 @@ def test_transport_management_golden():
     _, found = _run("transport_management", {"VTTK": vttk, "VTTP": vttp, "TVRO": tvro},
                     {"VTTK.SHTYP": {"0001", "0002"}, "VTTK.TPLST": {"1000", "2000"}, "VTTK.VSART": {"01", "03"}})
     assert found == {
+        "TM038": {"TKNUM=0000012006"},  # route not in TVRO (cascade)
+        "TM041": {"TKNUM=0000012005"},  # planned end passed, not completed (cascade)
         "TM017": {"TKNUM=0000012005"},   # open for four months
         "TM014": {"TKNUM=0000012006"},   # route not in TVRO
         "TM013": {"TKNUM=0000012007"},   # shipment ended without an end date
@@ -637,6 +649,7 @@ def test_cross_system_integration_golden():
     _, found = _run("cross_system_integration", {"XSYS": xsys})
     k = "SOURCE_SYSTEM={}|OBJECT_TYPE={}|OBJECT_KEY={}".format
     assert found == {
+        "XSYS029": {"SOURCE_SYSTEM=ECC_PRD|OBJECT_TYPE=VENDOR|OBJECT_KEY=0000100300"},  # vendor row without vendor number (cascade)
         "XSYS002": {k("S4_PRD", "MATERIAL", "pump-1001")},
         "XSYS003": {k("ECC_PRD", "VENDOR", "0000100300")},
         "XSYS007": {k("ECC_PRD", "CUSTOMER", "0000200400")},

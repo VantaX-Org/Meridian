@@ -410,3 +410,263 @@ rules:
         quality inspection.
     record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG}: inspection was due {actual_value}, {MCHB.CLABS}
       unrestricted.'
+
+  - id: BATCH025
+    field: MCH1.MATNR
+    check_class: exists_check
+    fields:
+    - MCH1.MATNR
+    target_table: MARA
+    target_fields:
+    - MATNR
+    severity: high
+    dimension: consistency
+    message: Batch master exists for a material that is not in the material master
+    why_it_matters: A batch with no material master is orphaned.
+    rule_authority: sap_hard_constraint
+    sap_impact: Batch reports show batches no transaction can use.
+    fix_map:
+      __other__: Archive the orphaned batch or restore the material.
+    record_fix_template: Batch {MCH1.CHARG} of {MCH1.MATNR} has no material master.
+
+  - id: BATCH026
+    field: MCHA.MATNR
+    check_class: exists_check
+    fields:
+    - MCHA.MATNR
+    - MCHA.WERKS
+    target_table: MARC
+    target_fields:
+    - MATNR
+    - WERKS
+    severity: high
+    dimension: consistency
+    message: Batch exists in a plant where the material is not extended
+    why_it_matters: A plant batch (MCHA) needs plant data for the material.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods movements for the batch fail.
+    fix_map:
+      __other__: Extend the material to the plant or delete the batch.
+    record_fix_template: 'Batch {MCHA.CHARG} of {MCHA.MATNR}: not extended to plant {MCHA.WERKS}.'
+
+  - id: BATCH027
+    field: MCH1.VFDAT
+    check_class: cross_field_check
+    grain: MCHB
+    fail_when: (`MCH1.VFDAT` < @today) & (`MCHB.CLABS` > 0)
+    severity: high
+    dimension: timeliness
+    message: Expired batch still has unrestricted stock
+    why_it_matters: A batch past its shelf-life date should have no unrestricted stock.
+    rule_authority: best_practice
+    sap_impact: Expired stock can be issued to production or sales.
+    fix_map:
+      __other__: Move the stock to blocked and scrap or return it.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: expired {actual_value}, {MCHB.CLABS}
+      unrestricted.'
+
+  - id: BATCH028
+    field: MCHB.CINSM
+    check_class: cross_field_check
+    fail_when: '`MCHB.CINSM` < 0'
+    severity: high
+    dimension: accuracy
+    message: Batch quality inspection stock is negative
+    why_it_matters: Stock in quality inspection cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Inspection stock reports are wrong and a posting may have bypassed the check.
+    fix_map:
+      __other__: Review the inspection lot postings and correct the stock.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: inspection stock is {actual_value}.'
+
+  - id: BATCH029
+    field: MCHB.CSPEM
+    check_class: cross_field_check
+    fail_when: '`MCHB.CSPEM` < 0'
+    severity: high
+    dimension: accuracy
+    message: Batch blocked stock is negative
+    why_it_matters: Blocked stock cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Blocked stock reports are wrong.
+    fix_map:
+      __other__: Review the postings and correct the stock.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: blocked stock is {actual_value}.'
+
+  - id: BATCH030
+    field: MCHB.CRETM
+    check_class: cross_field_check
+    fail_when: '`MCHB.CRETM` < 0'
+    severity: high
+    dimension: accuracy
+    message: Batch returns stock is negative
+    why_it_matters: Returns stock cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Returns reports are wrong.
+    fix_map:
+      __other__: Review the postings and correct the stock.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: returns stock is {actual_value}.'
+
+  - id: BATCH031
+    field: MCHB.SPERC
+    check_class: cross_field_check
+    fail_when: (`MCHB.SPERC` == 'X') & (`MCHB.CLABS` > 0)
+    severity: medium
+    dimension: consistency
+    message: Batch stock is blocked at storage location level but still unrestricted
+    why_it_matters: A batch blocked at the location should have its stock in blocked status. Unrestricted quantity on a blocked
+      batch is contradictory.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock appears available while posting is prevented.
+    fix_map:
+      __other__: Clear the block or move the stock to blocked status.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG} in {MCHB.WERKS}/{MCHB.LGORT}: blocked with {MCHB.CLABS} unrestricted.'
+
+  - id: BATCH032
+    field: MCHB.MATNR
+    check_class: exists_check
+    fields:
+    - MCHB.MATNR
+    - MCHB.WERKS
+    - MCHB.LGORT
+    target_table: MARD
+    target_fields:
+    - MATNR
+    - WERKS
+    - LGORT
+    severity: high
+    dimension: consistency
+    message: Batch stock sits in a storage location with no material storage data
+    why_it_matters: Batch stock needs a MARD record for the same plant and location to reconcile.
+    rule_authority: sap_hard_constraint
+    sap_impact: Batch stock cannot reconcile with inventory management.
+    fix_map:
+      __other__: Extend the material to the storage location (MM50) or correct the location.
+    record_fix_template: 'Batch {MCHB.MATNR}/{MCHB.CHARG}: no stock record in {MCHB.WERKS}/{MCHB.LGORT}.'
+
+  - id: BATCH033
+    field: MCH1.HSDAT
+    check_class: cross_field_check
+    fail_when: '`MCH1.HSDAT` > @today'
+    severity: medium
+    dimension: validity
+    message: Batch production date is in the future
+    why_it_matters: A date of manufacture later than today is a keying error and distorts shelf-life dates calculated from it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Calculated expiry dates are wrong.
+    fix_map:
+      __other__: Correct the date of manufacture.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: production date {actual_value} is in the future.'
+
+  - id: BATCH034
+    field: MCH1.VFDAT
+    check_class: cross_field_check
+    fail_when: '`MCH1.VFDAT` < `MCH1.ERSDA`'
+    severity: medium
+    dimension: consistency
+    message: Batch expires before it was created
+    why_it_matters: A shelf-life date earlier than the creation date means the batch was born expired.
+    rule_authority: sap_hard_constraint
+    sap_impact: The batch is blocked by expiry checks at first use.
+    fix_map:
+      __other__: Correct the shelf-life expiration date.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: expiry {MCH1.VFDAT} precedes creation {MCH1.ERSDA}.'
+
+  - id: BATCH035
+    field: MCH1.VERAB
+    check_class: cross_field_check
+    fail_when: '`MCH1.VERAB` > `MCH1.VFDAT`'
+    severity: low
+    dimension: consistency
+    message: Batch available-from date is after its expiry
+    why_it_matters: The batch can never be available.
+    rule_authority: sap_hard_constraint
+    sap_impact: Availability checks reject the batch.
+    fix_map:
+      __other__: Correct the available-from date.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: available from {MCH1.VERAB}, expires {MCH1.VFDAT}.'
+
+  - id: BATCH036
+    field: MCH1.LIFNR
+    check_class: exists_check
+    fields:
+    - MCH1.LIFNR
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    applies_when:
+      MCH1.LIFNR:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Batch vendor does not exist
+    why_it_matters: A vendor batch number refers to the vendor that supplied it. The vendor must exist for traceability.
+    rule_authority: sap_hard_constraint
+    sap_impact: Recall traceability to the supplier is broken.
+    fix_map:
+      __other__: Correct the vendor on the batch.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: vendor {MCH1.LIFNR} does not exist.'
+
+  - id: BATCH037
+    field: MCH1.VLMAT
+    check_class: cross_field_check
+    fail_when: '`MCH1.VLCHA`.notna() & `MCH1.VLMAT`.isna()'
+    severity: low
+    dimension: completeness
+    message: Original batch is set without its material
+    why_it_matters: The original batch reference needs the original material to be unique.
+    rule_authority: best_practice
+    sap_impact: Origin traceability cannot resolve the original batch.
+    fix_map:
+      __other__: Enter the original material or clear the original batch.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: original batch {MCH1.VLCHA} has no material.'
+
+  - id: BATCH038
+    field: MARA.XCHPF
+    check_class: cross_field_check
+    grain: MCH1
+    fail_when: (`MARA.XCHPF`.isna()) & `MCH1.CHARG`.notna()
+    severity: high
+    dimension: consistency
+    message: Batch exists for a material that is not batch managed
+    why_it_matters: A batch master record for a material without the batch management indicator is unusable.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods movements ignore the batch and stock cannot be traced.
+    fix_map:
+      __other__: Set the batch management indicator on the material (only when no stock is posted) or delete the batch.
+    record_fix_template: 'Batch {MCH1.CHARG} of {MCH1.MATNR}: material is not batch managed.'
+
+  - id: BATCH039
+    field: MARA.MHDRZ
+    check_class: cross_field_check
+    fail_when: '`MARA.MHDRZ` > `MARA.MHDHB`'
+    applies_when:
+      MARA.MHDHB:
+        gt: 0
+    severity: medium
+    dimension: consistency
+    message: Minimum remaining shelf life exceeds total shelf life
+    why_it_matters: A minimum remaining life larger than the total life blocks every goods receipt.
+    rule_authority: sap_hard_constraint
+    sap_impact: Receipts are rejected for expiry on arrival.
+    fix_map:
+      __other__: Correct the minimum remaining shelf life or the total shelf life.
+    record_fix_template: 'Material {MARA.MATNR}: minimum remaining {MARA.MHDRZ}, total {MARA.MHDHB}.'
+
+  - id: BATCH040
+    field: MCH1.VFDAT
+    check_class: cross_field_check
+    grain: MCH1
+    fail_when: (`MARA.MHDHB` > 0) & `MCH1.VFDAT`.isna()
+    applies_when:
+      MCH1.LWEDT:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Shelf-life material batch has no expiry date
+    why_it_matters: A material with a total shelf life must carry an expiry date on each batch.
+    rule_authority: best_practice
+    sap_impact: Expiry tracking and FEFO selection skip the batch.
+    fix_map:
+      __other__: Enter the shelf-life expiration date on the batch.
+    record_fix_template: 'Batch {MCH1.MATNR}/{MCH1.CHARG}: no expiry date.'
