@@ -715,7 +715,7 @@ rules:
     check_class: cross_field_check
     applies_when:
       XSYS.OBJECT_TYPE: ['FI_DOCUMENT']
-    fail_when: '`XSYS.BUDAT`.dt.year.astype(''string'') != `XSYS.GJAHR`'
+    fail_when: '`XSYS.BUDAT`.dt.year.astype(''Int64'').astype(''string'') != `XSYS.GJAHR`'
     require_populated: true
     severity: medium
     dimension: consistency
