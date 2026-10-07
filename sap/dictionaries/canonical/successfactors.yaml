@@ -218,6 +218,8 @@ tables:
       RECRUITER:      {source: JobRequisition.recruiter, type: STRING, verify: true}
       OPEN_DATE:      {source: JobRequisition.createdDateTime, type: DATETIME}
       CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
+      NUM_OPENINGS:   {source: JobRequisition.numberOfOpenings, type: INTEGER, verify: true}
+      DEPARTMENT:     {source: JobRequisition.department, type: STRING, length: 128, verify: true}
 
   JOBAPPLICATION:
     description: Job applications (Recruiting)
@@ -230,18 +232,32 @@ tables:
       SOURCE:           {source: JobApplication.source, type: STRING, verify: true}
       APPLICATION_DATE: {source: JobApplication.applicationDate, type: DATETIME, verify: true}
       RATING:           {source: JobApplication.averageRating, type: DECIMAL, verify: true}
+      REJECT_REASON:    {source: JobApplication.rejectReason, type: STRING, verify: true}
 
   ONBOARDINGCANDIDATEINFO:
     description: Onboarding processes (Onboarding 2.0)
     source: ONB2Process
     keys: [USERID]
     fields:
-      USERID:          {source: ONB2Process.user, type: STRING, length: 100, verify: true}
-      HIRE_DATE:       {source: ONB2Process.hireDate, type: DATE, verify: true}
-      STATUS:          {source: ONB2Process.processStatus, type: STRING, verify: true}
-      DEPARTMENT:      {source: EmpJob.department, type: STRING, length: 128}
-      MANAGER_ID:      {source: EmpJob.managerId, type: STRING, length: 100}
-      TASK_COMPLETION: {source: ONB2Process.processTrigger, type: STRING, verify: true}
+      USERID:                  {source: ONB2Process.user, type: STRING, length: 100, verify: true}
+      HIRE_DATE:               {source: ONB2Process.hireDate, type: DATE, verify: true}
+      STATUS:                  {source: ONB2Process.processStatus, type: STRING, verify: true}
+      DEPARTMENT:              {source: EmpJob.department, type: STRING, length: 128}
+      MANAGER_ID:              {source: EmpJob.managerId, type: STRING, length: 100}
+      TASK_COMPLETION:         {source: ONB2Process.processTrigger, type: STRING, verify: true}
+      BACKGROUND_CHECK_STATUS: {source: ONB2Process.backgroundCheckStatus, type: STRING, verify: true}
+
+  JOBOFFER:
+    description: Job offers (Recruiting)
+    source: JobOffer
+    keys: [OFFER_ID]
+    fields:
+      OFFER_ID:      {source: JobOffer.offerId, type: INTEGER}
+      CANDIDATE_ID:  {source: JobOffer.candidateId, type: INTEGER}
+      JOB_REQ_ID:    {source: JobOffer.jobReqId, type: INTEGER}
+      OFFER_STATUS:  {source: JobOffer.status, type: STRING, verify: true}
+      OFFER_DATE:    {source: JobOffer.offerDate, type: DATETIME, verify: true}
+      START_DATE:    {source: JobOffer.startDate, type: DATE, verify: true}
 
   LEARNINGASSIGNMENT:
     description: Learning assignments (SAP SuccessFactors Learning OData)
