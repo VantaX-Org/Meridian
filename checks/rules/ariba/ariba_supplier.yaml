@@ -309,7 +309,7 @@ rules:
 - id: ARS022
   field: ARIBA_SUPPLIER.VENDOR_ID
   check_class: regex_check
-  pattern: ^.{1,10}$
+  pattern: ^[A-Za-z0-9_-]{1,10}$
   severity: high
   dimension: validity
   message: Supplier ID is longer than the 10-character SAP vendor number field
@@ -363,8 +363,8 @@ rules:
   sap_impact: Global spend for the group is split across unrelated supplier records and understates negotiating leverage.
   fix_map:
     __other__: Review the group; link or merge the records in Supplier Management if they are the same legal entity.
-  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: name ''{ARIBA_SUPPLIER.NAME}'' matches another supplier
-    in a different country.'
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: legal name matches another supplier in a different
+    country.'
 - id: ARS026
   field: ARIBA_SUPPLIER.VENDOR_ID
   check_class: uniqueness_check
