@@ -279,6 +279,13 @@ rules:
       > Email Information.
   record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: EMAIL_ADDRESS ''{actual_value}'' is invalid. Correct format via Admin
     Center > Email Information.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
 - id: EC019
   field: PEREMAIL.EMAIL_TYPE
   check_class: domain_value_check
@@ -991,6 +998,13 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - USA
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: ^(\d{5})\s*(\d{4})$
+      repl: \1-\2
+    confidence: high
 - id: EC065
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1052,6 +1066,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - DEU
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 5
+      char: '0'
+    confidence: medium
 - id: EC068
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1072,6 +1095,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - FRA
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 5
+      char: '0'
+    confidence: medium
 - id: EC069
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1112,6 +1144,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - AUS
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 4
+      char: '0'
+    confidence: medium
 - id: EC071
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1152,6 +1193,15 @@ rules:
   applies_when:
     PERADDRESS.COUNTRY:
     - ZAF
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: pad_left
+      width: 4
+      char: '0'
+    confidence: medium
 - id: EC073
   field: PERADDRESS.ZIPCODE
   check_class: regex_check
@@ -1605,6 +1655,13 @@ rules:
   fix_map:
     __other__: Correct the IBAN against the employee's bank confirmation (PA30, infotype 0009).
   record_fix_template: 'Employee {PA0009.PERNR} ({PA0009.BEGDA}-{PA0009.ENDDA}): employee IBAN fails the ISO 13616 check digits.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[^A-Za-z0-9]'
+      repl: ''
+    - op: upper
+    confidence: high
 - id: HCM028
   field: PA0105.USRID
   check_class: uniqueness_check
@@ -1644,6 +1701,13 @@ rules:
   fix_map:
     __other__: Correct the e-mail address (PA30, infotype 0105, subtype 0010).
   record_fix_template: 'Employee {PA0105.PERNR} ({PA0105.BEGDA}-{PA0105.ENDDA}): employee e-mail address is not a valid address.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
 - id: HCM030
   field: PA0185.ICNUM
   check_class: uniqueness_check
@@ -1921,6 +1985,12 @@ rules:
   fix_map:
     __other__: Correct the SSN from the employee's Social Security card in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: US Social Security Number is not in the 9-digit SSN format. Correct the record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s.]'
+      repl: ''
+    confidence: medium
 - id: EC088
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -1938,6 +2008,12 @@ rules:
   fix_map:
     __other__: Correct the ID number from the employee's ID document in National ID Information (digits only).
   record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number is not 13 digits. Correct the record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s-]'
+      repl: ''
+    confidence: medium
 - id: EC089
   field: PERINFO.NATIONAL_ID
   check_class: format_check
@@ -1988,6 +2064,11 @@ rules:
   fix_map:
     __other__: Correct the NINO from HMRC correspondence or the payslip in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: UK National Insurance number is not in the NINO format. Correct the record.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC092
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2020,6 +2101,15 @@ rules:
   fix_map:
     __other__: Correct the BSN from the employee's ID document in National ID Information (digits only).
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Dutch BSN is not 9 digits. Correct the record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s.-]'
+      repl: ''
+    - op: pad_left
+      width: 9
+      char: '0'
+    confidence: medium
 - id: EC094
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2037,6 +2127,13 @@ rules:
   fix_map:
     __other__: Correct the DNI or NIE from the employee's ID document in National ID Information (no spaces or dashes).
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Spanish DNI or NIE is not in the official format. Correct the record.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s-]'
+      repl: ''
+    - op: upper
+    confidence: high
 - id: EC095
   field: PERINFO.NATIONAL_ID
   check_class: regex_check
@@ -2053,6 +2150,11 @@ rules:
   fix_map:
     __other__: Correct the ID number from the employee's resident identity card in National ID Information.
   record_fix_template: 'Person {PERINFO.PERSON_ID}: Chinese resident ID number is not 18 characters. Correct the record.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: EC096
   field: EMPEMPLOYMENT.COMPANY
   check_class: cross_field_check
@@ -2504,3 +2606,2224 @@ rules:
   fix_map:
     __blank__: Complete the address in Personal Information.
   record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address has a city but no street. Correct in Personal Information.'
+- id: EC121
+  field: PERINFO.DATE_OF_BIRTH
+  check_class: cross_field_check
+  fail_when: '`PERINFO.DATE_OF_BIRTH` > @today'
+  severity: high
+  dimension: validity
+  message: Date of birth lies in the future
+  why_it_matters: A birth date after today cannot be true. It is usually a typing error in the year or a day/month swap on
+    import.
+  rule_authority: best_practice
+  sap_impact: Age-based eligibility (benefits, pension, minimum working age) and statutory reporting compute a negative age.
+  fix_map:
+    __other__: Correct the date of birth from the identity document in Personal Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: date of birth is in the future.'
+- id: EC122
+  field: PERINFO.DATE_OF_BIRTH
+  check_class: cross_field_check
+  fail_when: '`PERINFO.DATE_OF_BIRTH` <= ''1900-01-01'''
+  severity: medium
+  dimension: accuracy
+  message: Date of birth is on or before 1 January 1900 (placeholder date)
+  why_it_matters: Legacy systems often load 1900-01-01 (or earlier) when the real birth date was unknown. No current employee
+    was born then, so the value is a placeholder, not data.
+  rule_authority: best_practice
+  sap_impact: Age, retirement and pension calculations run on a 125-year-old person; age-band analytics are distorted.
+  fix_map:
+    __other__: Replace the placeholder with the real date of birth from the identity document.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: date of birth is a placeholder (on or before 1900-01-01).'
+- id: EC123
+  field: PERINFO.DATE_OF_DEATH
+  check_class: cross_field_check
+  fail_when: '`PERINFO.DATE_OF_DEATH`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Person has a date of death but the employment is still active
+  why_it_matters: A deceased person's employment must be terminated (event Termination, reason Death). An active status with
+    a date of death keeps the person in payroll and in every active-headcount report.
+  rule_authority: best_practice
+  sap_impact: Payroll continues to pay a deceased employee; benefits and access rights stay open.
+  fix_map:
+    __other__: Confirm the death and run the termination with the death event reason, or remove a wrongly entered date of
+      death.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person {PERINFO.PERSON_ID} has a date of death but the employment
+    is still active.'
+- id: EC124
+  field: PERINFO.DATE_OF_DEATH
+  check_class: cross_field_check
+  fail_when: '`PERINFO.DATE_OF_DEATH` < `PERINFO.DATE_OF_BIRTH`'
+  severity: high
+  dimension: validity
+  message: Date of death is before the date of birth
+  why_it_matters: A person cannot die before being born; one of the two dates is wrong.
+  rule_authority: best_practice
+  sap_impact: Age and survivor-benefit calculations fail or produce negative values.
+  fix_map:
+    __other__: Check both dates against the source documents and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: date of death is before the date of birth.'
+- id: EC125
+  field: PERINFO.DATE_OF_DEATH
+  check_class: cross_field_check
+  fail_when: '`PERINFO.DATE_OF_DEATH` > @today'
+  severity: high
+  dimension: validity
+  message: Date of death lies in the future
+  why_it_matters: A date of death after today is impossible; it is usually a typing error in the year.
+  rule_authority: best_practice
+  sap_impact: Survivor benefits and termination processing are scheduled for a date that has not happened.
+  fix_map:
+    __other__: Correct the date of death from the death certificate.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: date of death is in the future.'
+- id: EC126
+  field: PERINFO.COUNTRY_OF_BIRTH
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Country of birth is not a 3-letter ISO country code
+  why_it_matters: SuccessFactors stores countries as ISO 3166-1 alpha-3 codes (ZAF, USA, DEU). Names or 2-letter codes do
+    not resolve against the Country object.
+  rule_authority: best_practice
+  sap_impact: The value does not validate on save and is lost in a replication to Employee Central Payroll.
+  fix_map:
+    __other__: Replace the value with the ISO alpha-3 code of the country of birth.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: country of birth {PERINFO.COUNTRY_OF_BIRTH} is not an ISO alpha-3 code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC127
+  field: PERINFO.FIRSTNAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  severity: low
+  dimension: validity
+  message: First name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate checks
+    and badge or letter output treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters and IDs show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: first name contains repeated spaces.'
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+- id: EC128
+  field: PERINFO.FIRSTNAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: First name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such as @ #
+    / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Payslips, tax certificates and bank files carry the wrong name; bank name matching on payments can fail.
+  fix_map:
+    __other__: Correct the name from the identity document and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: first name contains digits or symbols.'
+- id: EC129
+  field: PERINFO.FIRSTNAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.FIRSTNAME`.str.isupper() & (`PERINFO.FIRSTNAME`.str.len() > 1)'
+  severity: low
+  dimension: validity
+  message: First name is in all capitals
+  why_it_matters: Names loaded from mainframes or ID scans often arrive in capitals. SuccessFactors shows them as entered,
+    so letters, org charts and e-mail signatures shout the name.
+  rule_authority: best_practice
+  sap_impact: Formal correspondence and generated documents show the name in capitals.
+  fix_map:
+    __other__: Rewrite the name in normal case, keeping particles such as 'van der' and prefixes such as 'Mc' as the person
+      writes them.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: first name is in all capitals.'
+  auto_fix:
+    steps:
+    - op: title
+    confidence: low
+- id: EC130
+  field: PERINFO.LASTNAME
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  severity: low
+  dimension: validity
+  message: Last name contains repeated spaces
+  why_it_matters: Double spaces inside a name come from concatenated legacy fields or copy-paste. Searches, duplicate checks
+    and badge or letter output treat the name as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Duplicate-person detection misses the record; generated letters and IDs show the extra space.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: last name contains repeated spaces.'
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+- id: EC131
+  field: PERINFO.LASTNAME
+  check_class: regex_check
+  pattern: ^[^0-9!@#$%^&*()_+=\[\]{};:"\\|<>/?~]*$
+  severity: medium
+  dimension: accuracy
+  message: Last name contains digits or symbols
+  why_it_matters: 'Personal names contain letters, spaces, hyphens, apostrophes and periods. Digits or symbols such as @ #
+    / mean an ID, an e-mail or a note was typed into the name field.'
+  rule_authority: best_practice
+  sap_impact: Payslips, tax certificates and bank files carry the wrong name; bank name matching on payments can fail.
+  fix_map:
+    __other__: Correct the name from the identity document and move any other information to its own field.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: last name contains digits or symbols.'
+- id: EC132
+  field: PERINFO.LASTNAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.LASTNAME`.str.isupper() & (`PERINFO.LASTNAME`.str.len() > 1)'
+  severity: low
+  dimension: validity
+  message: Last name is in all capitals
+  why_it_matters: Names loaded from mainframes or ID scans often arrive in capitals. SuccessFactors shows them as entered,
+    so letters, org charts and e-mail signatures shout the name.
+  rule_authority: best_practice
+  sap_impact: Formal correspondence and generated documents show the name in capitals.
+  fix_map:
+    __other__: Rewrite the name in normal case, keeping particles such as 'van der' and prefixes such as 'Mc' as the person
+      writes them.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: last name is in all capitals.'
+  auto_fix:
+    steps:
+    - op: title
+    confidence: low
+- id: EC133
+  field: PERINFO.FIRSTNAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.FIRSTNAME`.str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'', ''tbd'', ''n/a'', ''na'', ''none''])
+    | `PERINFO.LASTNAME`.str.lower().isin([''test'', ''dummy'', ''xxx'', ''unknown'', ''tbd'', ''n/a'', ''na'', ''none''])'
+  severity: high
+  dimension: accuracy
+  message: Name is a placeholder (TEST, DUMMY, UNKNOWN, N/A ...)
+  why_it_matters: Placeholder names come from test hires or from loads where the name was unknown. Test persons must not exist
+    in production and real persons need their real name.
+  rule_authority: best_practice
+  sap_impact: Test persons are paid, counted in headcount and replicated to downstream systems.
+  fix_map:
+    __other__: Delete test persons, or replace the placeholder with the person's legal name.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: name is a placeholder value.'
+- id: EC134
+  field: PERINFO.LASTNAME
+  check_class: cross_field_check
+  fail_when: '`PERINFO.FIRSTNAME`.str.lower() == `PERINFO.LASTNAME`.str.lower()'
+  severity: medium
+  dimension: accuracy
+  message: First name and last name are identical
+  why_it_matters: The same value in both name fields usually means one field was copied into the other during a load.
+  rule_authority: best_practice
+  sap_impact: Letters, payslips and tax certificates show the wrong name; duplicate detection on name is weakened.
+  fix_map:
+    __other__: Correct the first or the last name from the identity document.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: first name and last name are identical.'
+- id: EC135
+  field: PERINFO.SALUTATION
+  check_class: cross_field_check
+  fail_when: ((`PERINFO.SALUTATION` == 'MR') & (`PERINFO.GENDER` == 'F')) | (`PERINFO.SALUTATION`.isin(['MS', 'MRS', 'MISS'])
+    & (`PERINFO.GENDER` == 'M'))
+  severity: low
+  dimension: consistency
+  message: Salutation contradicts the gender (Mr for a woman, Ms/Mrs/Miss for a man)
+  why_it_matters: Salutation and gender are maintained separately. A contradiction means one of them was entered for the wrong
+    person or was defaulted on load.
+  rule_authority: best_practice
+  sap_impact: Letters and contracts address the person with the wrong form of address.
+  fix_map:
+    __other__: Confirm with the employee which value is wrong and correct it.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: salutation {PERINFO.SALUTATION} does not match gender {PERINFO.GENDER}.'
+- id: EC136
+  field: PERINFO.NATIONAL_ID_COUNTRY
+  check_class: cross_field_check
+  fail_when: '`PERINFO.NATIONAL_ID`.notna() & `PERINFO.NATIONAL_ID_COUNTRY`.isna()'
+  severity: medium
+  dimension: completeness
+  message: National ID is recorded without the issuing country
+  why_it_matters: Every PerNationalId record is keyed by country and card type. Without the country, the ID format cannot
+    be validated and country-specific payroll and tax reporting cannot pick it up.
+  rule_authority: best_practice
+  sap_impact: Country payroll and statutory reports (tax certificates, social security) do not find the ID.
+  fix_map:
+    __other__: Set the issuing country on the national ID record.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID has no issuing country.'
+- id: EC137
+  field: PERINFO.NATIONAL_ID_COUNTRY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: National ID country is not a 3-letter ISO country code
+  why_it_matters: PerNationalId.country uses ISO 3166-1 alpha-3 codes. Country-specific format validation depends on it.
+  rule_authority: best_practice
+  sap_impact: The ID is not validated against its country format and is not reported in country payroll.
+  fix_map:
+    __other__: Replace the value with the ISO alpha-3 code of the issuing country.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID country {PERINFO.NATIONAL_ID_COUNTRY} is not an ISO alpha-3
+    code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC138
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{2}(1[3-9]|[2-9]\d|00)\d{9}$|\d{4}(00|3[2-9]|[4-9]\d)\d{7}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: validity
+  message: South African ID number does not start with a valid birth date (YYMMDD)
+  why_it_matters: The first six digits of a South African ID number are the holder's date of birth (YYMMDD). A month above
+    12 or a day above 31 means the number was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's ZAF identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ZAF national ID is not in the valid format. Correct it from the identity
+    document.'
+- id: EC139
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{10}[3-9]\d{2}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: validity
+  message: South African ID number has an invalid citizenship digit
+  why_it_matters: Digit 11 of a South African ID number is 0 (citizen), 1 (permanent resident) or 2 (refugee). Any other value
+    means the number was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's ZAF identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ZAF national ID is not in the valid format. Correct it from the identity
+    document.'
+- id: EC140
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^([A-Z]{5}[0-9]{4}[A-Z]|[2-9][0-9]{3} ?[0-9]{4} ?[0-9]{4})$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - IND
+  severity: high
+  dimension: validity
+  message: Indian national ID is neither a valid PAN nor a valid Aadhaar number
+  why_it_matters: 'A PAN is 10 characters: five letters, four digits, one letter (AAAAA9999A). An Aadhaar number is 12 digits
+    and never starts with 0 or 1.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's IND identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: IND national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC141
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^[1-478]\d{2}(0[1-9]|1[0-2]|[2-9]\d)(\d{2}|2[AB])\d{6}(\d{2})?$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - FRA
+  severity: high
+  dimension: validity
+  message: French NIR (social security number) is not in the 13 or 15 character format
+  why_it_matters: The NIR is sex (1 digit), birth year and month, department (2 digits or 2A/2B), commune, order number and
+    an optional 2-digit key.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's FRA identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: FRA national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: upper
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
+- id: EC142
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^[A-Z]{6}[0-9LMNPQRSTUV]{2}[ABCDEHLMPRST][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ITA
+  severity: high
+  dimension: validity
+  message: Italian codice fiscale is not in the 16-character format
+  why_it_matters: The codice fiscale is 6 letters (surname, name), birth year, month letter, birth day (plus 40 for women),
+    municipality code and a check letter. Omocodia letters can replace digits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's ITA identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: ITA national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: upper
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: medium
+- id: EC143
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^\d{3} ?\d{3} ?\d{2,3}$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - AUS
+  severity: medium
+  dimension: validity
+  message: Australian Tax File Number is not 8 or 9 digits
+  why_it_matters: A TFN has 9 digits (older ones 8). Letters or other lengths mean the number was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's AUS identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: AUS national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[^0-9]'
+      repl: ''
+    confidence: medium
+- id: EC144
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^[A-Z][AEIOUX][A-Z]{2}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[HMX](AS|BC|BS|CC|CL|CM|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9]\d$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - MEX
+  severity: high
+  dimension: validity
+  message: Mexican CURP is not in the 18-character format
+  why_it_matters: A CURP is 4 letters from the name, the birth date, sex, the state of birth, 3 internal consonants and two
+    check characters.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's MEX identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: MEX national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC145
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^[STFGM]\d{7}[A-Z]$
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - SGP
+  severity: medium
+  dimension: validity
+  message: Singapore NRIC/FIN is not in the format letter, 7 digits, letter
+  why_it_matters: NRIC and FIN numbers start with S, T, F, G or M, then 7 digits and a check letter.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll tax and social-security reporting for the country reject the number; employer filings are returned.
+  fix_map:
+    __other__: Correct the number from the employee's SGP identity document in National ID Information.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: SGP national ID is not in the valid format. Correct it from the identity
+    document.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC146
+  field: PERINFO.NATIONAL_ID
+  check_class: cross_field_check
+  fail_when: (`PERINFO.NATIONAL_ID`.str.slice(0, 6) != `PERINFO.DATE_OF_BIRTH`.dt.strftime('%y%m%d')) & `PERINFO.DATE_OF_BIRTH`.notna()
+    & `PERINFO.NATIONAL_ID`.str.isdigit()
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: consistency
+  message: South African ID number does not match the date of birth
+  why_it_matters: The first six digits of a South African ID number are the date of birth (YYMMDD). A different date of birth
+    means either the ID or the birth date belongs to someone else or was mistyped.
+  rule_authority: sap_hard_constraint
+  sap_impact: SARS IRP5 and UIF submissions are rejected when ID and birth date disagree; age-based benefits use the wrong
+    age.
+  fix_map:
+    __other__: Compare both values with the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number does not match the date of birth.'
+- id: EC147
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}[5-9]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+    PERINFO.GENDER:
+    - F
+  severity: medium
+  dimension: consistency
+  message: South African ID number encodes a male but the person is recorded as female
+  why_it_matters: 'Digit 7 of a South African ID number encodes the sex at registration: 0-4 female, 5-9 male. A mismatch
+    with the recorded gender means the ID or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: SARS and UIF submissions flag the mismatch; gender-based statutory reports (Employment Equity) are wrong.
+  fix_map:
+    __other__: Check the ID and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number sex digit does not match gender {PERINFO.GENDER}.'
+- id: EC148
+  field: PERINFO.NATIONAL_ID
+  check_class: regex_check
+  pattern: ^(?!\d{6}[0-4]\d{6}$)
+  applies_when:
+    PERINFO.NATIONAL_ID_COUNTRY:
+    - ZAF
+    PERINFO.GENDER:
+    - M
+  severity: medium
+  dimension: consistency
+  message: South African ID number encodes a female but the person is recorded as male
+  why_it_matters: 'Digit 7 of a South African ID number encodes the sex at registration: 0-4 female, 5-9 male. A mismatch
+    with the recorded gender means the ID or the gender was entered for the wrong person.'
+  rule_authority: best_practice
+  sap_impact: SARS and UIF submissions flag the mismatch; gender-based statutory reports (Employment Equity) are wrong.
+  fix_map:
+    __other__: Check the ID and the gender against the identity document and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: South African ID number sex digit does not match gender {PERINFO.GENDER}.'
+- id: EC149
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: regex_check
+  pattern: ^\S+$
+  severity: medium
+  dimension: validity
+  message: E-mail address contains spaces
+  why_it_matters: An e-mail address cannot contain spaces. Spaces come from copy-paste or from joining first and last name.
+  rule_authority: best_practice
+  sap_impact: Notifications, workflow approvals and SSO user provisioning fail for the address.
+  fix_map:
+    __other__: Remove the spaces from the address.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address contains spaces.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    confidence: high
+- id: EC150
+  field: PEREMAIL.EMAIL_ADDRESS
+  check_class: regex_check
+  pattern: ^(?!.*\.\.).*$
+  severity: medium
+  dimension: validity
+  message: E-mail address contains consecutive dots
+  why_it_matters: RFC 5321 does not allow two dots in a row in an e-mail address. It is a typing error.
+  rule_authority: best_practice
+  sap_impact: Mail servers reject the address; notifications and password resets never arrive.
+  fix_map:
+    __other__: Replace the double dot with a single dot.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: e-mail address contains consecutive dots.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \.{2,}
+      repl: .
+    confidence: medium
+- id: EC151
+  field: PEREMAIL.PERSON_ID
+  check_class: uniqueness_check
+  fields:
+  - PEREMAIL.PERSON_ID
+  - PEREMAIL.IS_PRIMARY
+  applies_when:
+    PEREMAIL.IS_PRIMARY:
+    - 'true'
+  severity: medium
+  dimension: uniqueness
+  message: Person has more than one primary e-mail address
+  why_it_matters: SuccessFactors allows exactly one primary e-mail per person. Integrations (IAS/IPS, Microsoft Entra, payroll)
+    pick 'the' primary address and take an arbitrary one when there are two.
+  rule_authority: best_practice
+  sap_impact: User provisioning and notifications go to the wrong mailbox; the e-mail address flips between syncs.
+  fix_map:
+    __other__: Keep the primary flag on one address only.
+  record_fix_template: 'Person {PEREMAIL.PERSON_ID}: more than one e-mail address is flagged as primary.'
+- id: EC152
+  field: PERINFO.PERSON_ID
+  check_class: exists_check
+  target_table: PEREMAIL
+  target_fields:
+  - PERSON_ID
+  target_when:
+    IS_PRIMARY:
+    - 'true'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: completeness
+  message: Active employee has no primary e-mail address
+  why_it_matters: Every person needs one e-mail flagged as primary. Identity provisioning and Employee Central notifications
+    read the primary address only.
+  rule_authority: best_practice
+  sap_impact: The employee gets no workflow notifications and is not provisioned to IAS or the corporate directory.
+  fix_map:
+    __other__: Flag one of the person's e-mail addresses as primary, or add a business e-mail.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person {PERINFO.PERSON_ID} has no primary e-mail address.'
+- id: EC153
+  field: PERPHONE.PERSON_ID
+  check_class: uniqueness_check
+  fields:
+  - PERPHONE.PERSON_ID
+  - PERPHONE.IS_PRIMARY
+  applies_when:
+    PERPHONE.IS_PRIMARY:
+    - 'true'
+  severity: low
+  dimension: uniqueness
+  message: Person has more than one primary phone number
+  why_it_matters: SuccessFactors allows one primary phone per person; integrations and the people profile take the primary
+    one.
+  rule_authority: best_practice
+  sap_impact: Directory and emergency-call lists show an arbitrary number.
+  fix_map:
+    __other__: Keep the primary flag on one phone number only.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: more than one phone number is flagged as primary.'
+- id: EC154
+  field: PERPHONE.COUNTRY_CODE
+  check_class: regex_check
+  pattern: ^\+?[1-9]\d{0,2}$
+  severity: medium
+  dimension: validity
+  message: Phone country code is not a 1 to 3 digit dialling code
+  why_it_matters: PerPhone.countryCode holds the international dialling code (27, 1, 49), optionally with a leading +. Country
+    names or ISO codes do not dial.
+  rule_authority: best_practice
+  sap_impact: Click-to-call, SMS notifications and MFA enrolment fail.
+  fix_map:
+    __other__: Replace the value with the international dialling code.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone country code {PERPHONE.COUNTRY_CODE} is not a dialling code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s()-]'
+      repl: ''
+    - op: regex_replace
+      pattern: ^00
+      repl: +
+    confidence: medium
+- id: EC155
+  field: PERPHONE.PHONE_NUMBER
+  check_class: regex_check
+  pattern: ^(?!.*(0000000|1111111|9999999|1234567|0123456)).*$
+  severity: medium
+  dimension: accuracy
+  message: Phone number is a placeholder (0000000, 1234567, 9999999 ...)
+  why_it_matters: Runs of the same digit or an ascending sequence are typed when the real number was not known.
+  rule_authority: best_practice
+  sap_impact: Emergency and MFA contact is impossible; the number looks valid in every format check.
+  fix_map:
+    __other__: Replace the placeholder with the employee's real number or remove it.
+  record_fix_template: 'Person {PERPHONE.PERSON_ID}: phone number is a placeholder.'
+- id: EC156
+  field: PERADDRESS.CITY
+  check_class: regex_check
+  pattern: ^(?!.*\s{2}).*$
+  severity: low
+  dimension: validity
+  message: City contains repeated spaces
+  why_it_matters: Double spaces come from concatenated legacy fields. Address validation and duplicate checks treat the value
+    as different from the clean spelling.
+  rule_authority: best_practice
+  sap_impact: Postal address validation fails or returns no match; printed letters show gaps.
+  fix_map:
+    __other__: Collapse the repeated spaces to one.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: city on the {PERADDRESS.COUNTRY} address contains repeated spaces.'
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    - op: strip
+    confidence: high
+- id: EC157
+  field: PERADDRESS.STATE
+  check_class: regex_check
+  pattern: ^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI)$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - USA
+  severity: medium
+  dimension: validity
+  message: US state is not a USPS state code
+  why_it_matters: US addresses use the two-letter USPS state code (CA, NY, TX). State tax withholding is determined from it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax jurisdiction and payroll tax assignment fail; postal validation rejects the address.
+  fix_map:
+    __other__: Replace the state with the official abbreviation.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: state {PERADDRESS.STATE} is not a valid USA code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC158
+  field: PERADDRESS.STATE
+  check_class: regex_check
+  pattern: ^(AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - CAN
+  severity: medium
+  dimension: validity
+  message: Canadian province is not a Canada Post province code
+  why_it_matters: Canadian addresses use the two-letter province or territory code (ON, QC, BC). Provincial tax depends on
+    it.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax jurisdiction and payroll tax assignment fail; postal validation rejects the address.
+  fix_map:
+    __other__: Replace the state with the official abbreviation.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: state {PERADDRESS.STATE} is not a valid CAN code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC159
+  field: PERADDRESS.STATE
+  check_class: regex_check
+  pattern: ^(ACT|NSW|NT|QLD|SA|TAS|VIC|WA)$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - AUS
+  severity: medium
+  dimension: validity
+  message: Australian state is not an Australia Post state code
+  why_it_matters: Australian addresses use the state or territory abbreviation (NSW, VIC, QLD). Payroll tax is per state.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax jurisdiction and payroll tax assignment fail; postal validation rejects the address.
+  fix_map:
+    __other__: Replace the state with the official abbreviation.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: state {PERADDRESS.STATE} is not a valid AUS code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC160
+  field: PERADDRESS.STATE
+  check_class: null_check
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - USA
+    - CAN
+    - AUS
+    - BRA
+    - IND
+    - MEX
+  severity: medium
+  dimension: completeness
+  message: State or province is missing for a country that requires it
+  why_it_matters: In the US, Canada, Australia, Brazil, India and Mexico the state is part of the postal address and determines
+    state or provincial tax.
+  rule_authority: best_practice
+  sap_impact: State tax withholding and payroll tax cannot be determined; mail is undeliverable.
+  fix_map:
+    __blank__: Enter the state or province of the address.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: state is missing on the {PERADDRESS.COUNTRY} address.'
+- id: EC161
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^(0[1-9]|[1-4]\d|5[0-2])\d{3}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - ESP
+  severity: medium
+  dimension: validity
+  message: ESP postal code is not 5 digits starting with a province code 01-52
+  why_it_matters: Postal codes in ESP are 5 digits starting with a province code 01-52. Other values do not pass postal validation
+    and cannot be used for tax-jurisdiction or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the ESP format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid ESP postal code.'
+- id: EC162
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{5}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - ITA
+  severity: medium
+  dimension: validity
+  message: ITA postal code is not 5 digits (CAP)
+  why_it_matters: Postal codes in ITA are 5 digits (CAP). Other values do not pass postal validation and cannot be used for
+    tax-jurisdiction or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the ITA format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid ITA postal code.'
+- id: EC163
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^[1-9]\d{3}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - CHE
+  severity: medium
+  dimension: validity
+  message: CHE postal code is not 4 digits
+  why_it_matters: Postal codes in CHE are 4 digits. Other values do not pass postal validation and cannot be used for tax-jurisdiction
+    or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the CHE format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid CHE postal code.'
+- id: EC164
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{2}-\d{3}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - POL
+  severity: medium
+  dimension: validity
+  message: POL postal code is not NN-NNN
+  why_it_matters: Postal codes in POL are NN-NNN. Other values do not pass postal validation and cannot be used for tax-jurisdiction
+    or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the POL format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid POL postal code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: ^(\d{2})\s*(\d{3})$
+      repl: \1-\2
+    confidence: high
+- id: EC165
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^\d{4}-\d{3}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - PRT
+  severity: medium
+  dimension: validity
+  message: PRT postal code is not NNNN-NNN
+  why_it_matters: Postal codes in PRT are NNNN-NNN. Other values do not pass postal validation and cannot be used for tax-jurisdiction
+    or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the PRT format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid PRT postal code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: regex_replace
+      pattern: ^(\d{4})\s*(\d{3})$
+      repl: \1-\2
+    confidence: high
+- id: EC166
+  field: PERADDRESS.ZIPCODE
+  check_class: regex_check
+  pattern: ^([AC-FHKNPRTV-Y]\d{2}|D6W) ?[0-9AC-FHKNPRTV-Y]{4}$
+  applies_when:
+    PERADDRESS.COUNTRY:
+    - IRL
+  severity: medium
+  dimension: validity
+  message: IRL postal code is not an Eircode (A65 F4E2)
+  why_it_matters: Postal codes in IRL are an Eircode (A65 F4E2). Other values do not pass postal validation and cannot be
+    used for tax-jurisdiction or region lookups.
+  rule_authority: sap_hard_constraint
+  sap_impact: Mail is undeliverable; regional tax and statutory reporting by postal code fail.
+  fix_map:
+    __other__: Correct the postal code to the IRL format.
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: postal code {PERADDRESS.ZIPCODE} is not a valid IRL postal code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: EC167
+  field: EMPEMPLOYMENT.JOB_START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.JOB_START_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: high
+  dimension: consistency
+  message: Current job record starts before the employment start date
+  why_it_matters: No job record can be effective before the hire. A job record dated before the hire date means the hire was
+    re-dated without moving the job history.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time accounts start before the employee was hired; retro calculations run for days without employment.
+  fix_map:
+    __other__: Align the first job record with the hire date, or correct the hire date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job record from {EMPEMPLOYMENT.JOB_START_DATE} starts before the
+    hire on {EMPEMPLOYMENT.START_DATE}.'
+- id: EC168
+  field: EMPEMPLOYMENT.EVENT
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: completeness
+  message: Current job record has no event
+  why_it_matters: Every EmpJob record is created by an event (hire, transfer, data change, termination). Without it, workflows,
+    event-reason derivation and the job history report cannot classify the change.
+  rule_authority: best_practice
+  sap_impact: Job history and headcount movement reports miss the change; event-based integrations do not trigger.
+  fix_map:
+    __blank__: Set the event that created the record.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: current job record has no event.'
+- id: EC169
+  field: EMPEMPLOYMENT.EVENT_REASON
+  check_class: exists_check
+  fields:
+  - EMPEMPLOYMENT.EVENT_REASON
+  - EMPEMPLOYMENT.EVENT
+  target_table: FOEVENTREASON
+  target_fields:
+  - EXTERNAL_CODE
+  - EVENT
+  target_when:
+    STATUS:
+    - A
+  severity: high
+  dimension: consistency
+  message: Event reason is inactive, unknown or does not belong to the job event
+  why_it_matters: Each FOEventReason belongs to exactly one event and must be active. A reason from another event (for example
+    a termination reason on a data change) breaks event-reason derivation and the employee status.
+  rule_authority: sap_hard_constraint
+  sap_impact: Employee status, workflows and payroll actions are triggered for the wrong event.
+  fix_map:
+    __other__: Choose an active event reason of the record's event.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: event reason {EMPEMPLOYMENT.EVENT_REASON} is not an active reason
+    of event {EMPEMPLOYMENT.EVENT}.'
+- id: EC170
+  field: EMPEMPLOYMENT.STATUS
+  check_class: cross_field_check
+  fail_when: '`FOEVENTREASON.EMPL_STATUS`.notna() & (`FOEVENTREASON.EMPL_STATUS` != `EMPEMPLOYMENT.STATUS`)'
+  severity: high
+  dimension: consistency
+  message: Employee status differs from the status that the event reason sets
+  why_it_matters: An event reason determines the employee status (FOEventReason.emplStatus). A different status on the job
+    record means the status was changed without an event, or the wrong reason was used.
+  rule_authority: sap_hard_constraint
+  sap_impact: Active/inactive headcount, payroll inclusion and access rights follow the wrong status.
+  fix_map:
+    __other__: Correct the event reason, or re-run the change with the event reason that sets this status.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: status {EMPEMPLOYMENT.STATUS} differs from status {FOEVENTREASON.EMPL_STATUS}
+    of event reason {EMPEMPLOYMENT.EVENT_REASON}.'
+- id: EC171
+  field: EMPEMPLOYMENT.BUSINESS_UNIT
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: completeness
+  message: Active employee has no business unit
+  why_it_matters: The business unit is part of the standard organisational assignment (legal entity, business unit, division,
+    department). Role-based permissions and reporting hierarchies use it.
+  rule_authority: best_practice
+  sap_impact: The employee falls out of business-unit based permission groups and org reports.
+  fix_map:
+    __blank__: Assign the business unit.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no business unit.'
+- id: EC172
+  field: EMPEMPLOYMENT.DIVISION
+  check_class: exists_check
+  target_table: FODIVISION
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to an inactive or unknown division
+  why_it_matters: The division on the job record must exist as an active Foundation Object (FODIVISION). An inactive object
+    stays on the record when it is retired without moving its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job changes fail validation on save; reporting and permissions by division miss the employee.
+  fix_map:
+    __other__: Move the employee to an active division, or reactivate the object if it was retired by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: division {EMPEMPLOYMENT.DIVISION} is not active.'
+- id: EC173
+  field: EMPEMPLOYMENT.BUSINESS_UNIT
+  check_class: exists_check
+  target_table: FOBUSINESSUNIT
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to an inactive or unknown business unit
+  why_it_matters: The business unit on the job record must exist as an active Foundation Object (FOBUSINESSUNIT). An inactive
+    object stays on the record when it is retired without moving its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job changes fail validation on save; reporting and permissions by business unit miss the employee.
+  fix_map:
+    __other__: Move the employee to an active business unit, or reactivate the object if it was retired by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: business unit {EMPEMPLOYMENT.BUSINESS_UNIT} is not active.'
+- id: EC174
+  field: EMPEMPLOYMENT.LOCATION
+  check_class: exists_check
+  target_table: FOLOCATION
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to an inactive or unknown location
+  why_it_matters: The location on the job record must exist as an active Foundation Object (FOLOCATION). An inactive object
+    stays on the record when it is retired without moving its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job changes fail validation on save; reporting and permissions by location miss the employee.
+  fix_map:
+    __other__: Move the employee to an active location, or reactivate the object if it was retired by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: location {EMPEMPLOYMENT.LOCATION} is not active.'
+- id: EC175
+  field: EMPEMPLOYMENT.JOB_CODE
+  check_class: exists_check
+  target_table: FOJOBCODE
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to an inactive or unknown job classification
+  why_it_matters: The job classification on the job record must exist as an active Foundation Object (FOJOBCODE). An inactive
+    object stays on the record when it is retired without moving its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job changes fail validation on save; reporting and permissions by job classification miss the employee.
+  fix_map:
+    __other__: Move the employee to an active job classification, or reactivate the object if it was retired by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job classification {EMPEMPLOYMENT.JOB_CODE} is not active.'
+- id: EC176
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: exists_check
+  target_table: FOCOSTCENTER
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: consistency
+  message: Active employee is assigned to an inactive or unknown cost centre
+  why_it_matters: The cost centre on the job record must exist as an active Foundation Object (FOCOSTCENTER). An inactive
+    object stays on the record when it is retired without moving its employees.
+  rule_authority: sap_hard_constraint
+  sap_impact: Job changes fail validation on save; reporting and permissions by cost centre miss the employee; cost postings
+    go to a closed cost centre.
+  fix_map:
+    __other__: Move the employee to an active cost centre, or reactivate the object if it was retired by mistake.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre {EMPEMPLOYMENT.COST_CENTER} is not active.'
+- id: EC177
+  field: EMPEMPLOYMENT.COST_CENTER
+  check_class: cross_field_check
+  fail_when: '`FOCOSTCENTER.LEGAL_ENTITY`.notna() & (`FOCOSTCENTER.LEGAL_ENTITY` != `EMPEMPLOYMENT.COMPANY`)'
+  severity: high
+  dimension: consistency
+  message: Cost centre belongs to a different legal entity than the employee
+  why_it_matters: A cost centre is assigned to one legal entity (FOCostCenter.legalEntity). Charging an employee to another
+    legal entity's cost centre posts personnel cost across company codes.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll posting to FI fails or posts cross-company without an intercompany clearing.
+  fix_map:
+    __other__: Choose a cost centre of the employee's legal entity.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: cost centre {EMPEMPLOYMENT.COST_CENTER} belongs to {FOCOSTCENTER.LEGAL_ENTITY},
+    not to {EMPEMPLOYMENT.COMPANY}.'
+- id: EC178
+  field: EMPEMPLOYMENT.FTE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.FTE` <= 0'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: validity
+  message: Active employee has an FTE of zero or less
+  why_it_matters: FTE expresses the share of a full-time position. Zero or a negative value means the field was not maintained.
+  rule_authority: best_practice
+  sap_impact: Headcount-to-FTE reporting, budget and pay proration (FTE-based pay components) are wrong.
+  fix_map:
+    __other__: Set the FTE from the contracted hours.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE {EMPEMPLOYMENT.FTE} is zero or negative.'
+- id: EC179
+  field: EMPEMPLOYMENT.FTE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.FTE` > 1'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: validity
+  message: FTE is greater than 1
+  why_it_matters: An FTE above 1 is only correct where the location's standard hours are below the contract hours. Usually
+    the percentage (100) or hours (40) were typed into the FTE.
+  rule_authority: best_practice
+  sap_impact: FTE totals and budgets are overstated; prorated pay components are inflated.
+  fix_map:
+    __other__: 'Check the FTE: it is contract hours divided by the standard hours of the location or position.'
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE {EMPEMPLOYMENT.FTE} is greater than 1.'
+- id: EC180
+  field: EMPEMPLOYMENT.STANDARD_HOURS
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.STANDARD_HOURS` <= 0) | (`EMPEMPLOYMENT.STANDARD_HOURS` > 168)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: validity
+  message: Standard weekly hours are zero, negative or more than 168
+  why_it_matters: A week has 168 hours. Zero or negative hours, or more than 168, cannot be a working-time agreement.
+  rule_authority: best_practice
+  sap_impact: Hourly rate, overtime and time-account calculations divide by a wrong number.
+  fix_map:
+    __other__: Correct the standard weekly hours.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: standard weekly hours {EMPEMPLOYMENT.STANDARD_HOURS} are not plausible.'
+- id: EC181
+  field: EMPEMPLOYMENT.WORKING_DAYS_PER_WEEK
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.WORKING_DAYS_PER_WEEK` <= 0) | (`EMPEMPLOYMENT.WORKING_DAYS_PER_WEEK` > 7)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: validity
+  message: Working days per week are zero, negative or more than 7
+  why_it_matters: A week has 7 days. Values outside 0 to 7 cannot be a work schedule.
+  rule_authority: best_practice
+  sap_impact: Leave entitlement and daily-rate calculations use an impossible number of days.
+  fix_map:
+    __other__: Correct the working days per week.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: working days per week {EMPEMPLOYMENT.WORKING_DAYS_PER_WEEK} are not
+    plausible.'
+- id: EC182
+  field: EMPEMPLOYMENT.IS_FULLTIME
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.IS_FULLTIME`.str.lower() == 'true') & (`EMPEMPLOYMENT.FTE` < 1)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Employee is flagged full-time but works less than 1 FTE
+  why_it_matters: The full-time flag and the FTE must agree. A part-time FTE with the full-time flag misclassifies the employee
+    in statutory and benefits reporting.
+  rule_authority: best_practice
+  sap_impact: Benefit eligibility and full-time/part-time statutory reports are wrong.
+  fix_map:
+    __other__: Set the full-time flag to No, or correct the FTE.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: flagged full-time with FTE {EMPEMPLOYMENT.FTE}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: 'false'
+    confidence: medium
+- id: EC183
+  field: EMPEMPLOYMENT.IS_FULLTIME
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.IS_FULLTIME`.str.lower() == 'false') & (`EMPEMPLOYMENT.FTE` >= 1)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Employee is flagged part-time but works 1 FTE or more
+  why_it_matters: The full-time flag and the FTE must agree. A full FTE flagged as part-time misclassifies the employee.
+  rule_authority: best_practice
+  sap_impact: Benefit eligibility and full-time/part-time statutory reports are wrong.
+  fix_map:
+    __other__: Set the full-time flag to Yes, or correct the FTE.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: flagged part-time with FTE {EMPEMPLOYMENT.FTE}.'
+  auto_fix:
+    steps:
+    - op: set
+      value: 'true'
+    confidence: medium
+- id: EC184
+  field: EMPEMPLOYMENT.FTE
+  check_class: cross_field_check
+  fail_when: (`FOLOCATION.STANDARD_HOURS` > 0) & ((`EMPEMPLOYMENT.FTE` * `FOLOCATION.STANDARD_HOURS` - `EMPEMPLOYMENT.STANDARD_HOURS`
+    > 0.5) | (`EMPEMPLOYMENT.STANDARD_HOURS` - `EMPEMPLOYMENT.FTE` * `FOLOCATION.STANDARD_HOURS` > 0.5))
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: FTE does not equal standard hours divided by the location's standard hours
+  why_it_matters: SuccessFactors derives FTE as the employee's standard weekly hours divided by the standard hours of the
+    location. A difference of more than half an hour means one of them was overwritten.
+  rule_authority: best_practice
+  sap_impact: FTE-based pay proration, budgets and headcount reports disagree with the contracted hours.
+  fix_map:
+    __other__: Recalculate the FTE from the employee's standard hours, or correct the hours.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE {EMPEMPLOYMENT.FTE} does not match {EMPEMPLOYMENT.STANDARD_HOURS}
+    hours at location {EMPEMPLOYMENT.LOCATION}.'
+- id: EC185
+  field: EMPEMPLOYMENT.PAY_GROUP
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    EMPEMPLOYMENT.IS_CONTINGENT_WORKER:
+      not_in:
+      - 'true'
+  severity: high
+  dimension: completeness
+  message: Active employee has no pay group
+  why_it_matters: The pay group assigns the employee to a payroll area and pay calendar. Without it, Employee Central Payroll
+    and third-party payroll integrations do not pick up the employee.
+  rule_authority: sap_hard_constraint
+  sap_impact: The employee is not paid; payroll replication (EC to ECP) fails for the record.
+  fix_map:
+    __blank__: Assign the pay group of the employee's payroll area.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no pay group.'
+- id: EC186
+  field: EMPEMPLOYMENT.PAY_SCALE_GROUP
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAY_SCALE_GROUP`.notna() & (`EMPEMPLOYMENT.PAY_SCALE_TYPE`.isna() | `EMPEMPLOYMENT.PAY_SCALE_AREA`.isna())'
+  severity: medium
+  dimension: completeness
+  message: Pay scale group is set without a pay scale type or area
+  why_it_matters: A pay scale group is defined within a pay scale type and area (collective agreement). Without them the group
+    cannot be resolved to a pay scale structure.
+  rule_authority: best_practice
+  sap_impact: Tariff pay and automatic pay-scale progression do not run; replication to Employee Central Payroll fails.
+  fix_map:
+    __other__: Set the pay scale type and area of the collective agreement.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: pay scale group {EMPEMPLOYMENT.PAY_SCALE_GROUP} has no pay scale
+    type or area.'
+- id: EC187
+  field: EMPEMPLOYMENT.PAY_SCALE_LEVEL
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAY_SCALE_LEVEL`.notna() & `EMPEMPLOYMENT.PAY_SCALE_GROUP`.isna()'
+  severity: medium
+  dimension: completeness
+  message: Pay scale level is set without a pay scale group
+  why_it_matters: A pay scale level belongs to a pay scale group. A level without a group cannot be valued.
+  rule_authority: best_practice
+  sap_impact: Tariff pay components are not generated; replication to Employee Central Payroll fails.
+  fix_map:
+    __other__: Set the pay scale group, or clear the level.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: pay scale level {EMPEMPLOYMENT.PAY_SCALE_LEVEL} has no pay scale
+    group.'
+- id: EC188
+  field: EMPEMPLOYMENT.COUNTRY_OF_COMPANY
+  check_class: cross_field_check
+  fail_when: '`FOCOMPANY.COUNTRY`.notna() & (`EMPEMPLOYMENT.COUNTRY_OF_COMPANY` != `FOCOMPANY.COUNTRY`)'
+  severity: medium
+  dimension: consistency
+  message: Country of company on the job record differs from the legal entity's country
+  why_it_matters: countryOfCompany is derived from the legal entity. A different value means the legal entity changed without
+    the country, and country-specific fields (CSF) follow the wrong country.
+  rule_authority: best_practice
+  sap_impact: Country-specific job fields, payroll country and statutory reporting use the wrong country.
+  fix_map:
+    __other__: Set the country of company to the legal entity's country.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: country of company {EMPEMPLOYMENT.COUNTRY_OF_COMPANY} differs from
+    {FOCOMPANY.COUNTRY} of legal entity {EMPEMPLOYMENT.COMPANY}.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: FOCOMPANY.COUNTRY
+    confidence: high
+- id: EC189
+  field: EMPEMPLOYMENT.TIMEZONE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: completeness
+  message: Active employee has no time zone
+  why_it_matters: The time zone drives time recording, clock-in validation and the dates shown to the employee.
+  rule_authority: best_practice
+  sap_impact: Time records and workflow due dates are shifted; clock-in times are recorded in the wrong zone.
+  fix_map:
+    __blank__: Set the time zone, normally the time zone of the location.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no time zone.'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: FOLOCATION
+      match:
+        EXTERNAL_CODE: EMPEMPLOYMENT.LOCATION
+      value: TIMEZONE
+    confidence: medium
+- id: EC190
+  field: EMPEMPLOYMENT.CONTRACT_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CONTRACT_END_DATE` < `EMPEMPLOYMENT.JOB_START_DATE`'
+  severity: high
+  dimension: validity
+  message: Contract end date is before the job record start date
+  why_it_matters: A fixed-term contract cannot end before the job record it belongs to starts.
+  rule_authority: best_practice
+  sap_impact: Contract-expiry alerts fire at once; leave and benefit accruals stop on an earlier date.
+  fix_map:
+    __other__: Correct the contract end date or the job start date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: contract ends on {EMPEMPLOYMENT.CONTRACT_END_DATE}, before the job
+    record starts on {EMPEMPLOYMENT.JOB_START_DATE}.'
+- id: EC191
+  field: EMPEMPLOYMENT.CONTRACT_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.CONTRACT_END_DATE` < @today'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: timeliness
+  message: Fixed-term contract has expired but the employee is still active
+  why_it_matters: When a fixed-term contract ends, the contract must be extended or the employee terminated. An expired contract
+    on an active employee means neither happened.
+  rule_authority: best_practice
+  sap_impact: The employee works and is paid without a valid contract; labour law may convert the contract to permanent.
+  fix_map:
+    __other__: Extend the contract (new contract end date) or process the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: contract ended on {EMPEMPLOYMENT.CONTRACT_END_DATE} but the employee
+    is active.'
+- id: EC192
+  field: EMPEMPLOYMENT.PROBATION_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PROBATION_END_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: validity
+  message: Probation ends before the employment starts
+  why_it_matters: The probation period starts with the employment. An end date before the start date is a typing error.
+  rule_authority: best_practice
+  sap_impact: Probation-end reminders and confirmation workflows never fire.
+  fix_map:
+    __other__: Correct the probation end date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: probation ends on {EMPEMPLOYMENT.PROBATION_END_DATE}, before the
+    start on {EMPEMPLOYMENT.START_DATE}.'
+- id: EC193
+  field: EMPEMPLOYMENT.ORIGINAL_START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.ORIGINAL_START_DATE` > `EMPEMPLOYMENT.START_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Original start date is after the current employment start date
+  why_it_matters: The original start date is the first hire with the company. It can be earlier than the current start (rehire)
+    but never later.
+  rule_authority: best_practice
+  sap_impact: Service awards, seniority-based leave and severance are calculated from the wrong date.
+  fix_map:
+    __other__: Correct the original start date to the first hire date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: original start date {EMPEMPLOYMENT.ORIGINAL_START_DATE} is after
+    the start date {EMPEMPLOYMENT.START_DATE}.'
+- id: EC194
+  field: EMPEMPLOYMENT.SENIORITY_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.SENIORITY_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Seniority date lies in the future
+  why_it_matters: Seniority counts from a past date (hire or recognised prior service). A future date means a typing error.
+  rule_authority: best_practice
+  sap_impact: Seniority-based leave, pay progression and layoff ranking treat the employee as having no service.
+  fix_map:
+    __other__: Correct the seniority date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: seniority date {EMPEMPLOYMENT.SENIORITY_DATE} is in the future.'
+- id: EC195
+  field: EMPEMPLOYMENT.LAST_DATE_WORKED
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.LAST_DATE_WORKED` > `EMPEMPLOYMENT.END_DATE`'
+  severity: medium
+  dimension: consistency
+  message: Last date worked is after the employment end date
+  why_it_matters: The last date worked is on or before the termination date. A later date means one of the two was changed
+    alone.
+  rule_authority: best_practice
+  sap_impact: Final pay, leave payout and benefit end dates are calculated inconsistently.
+  fix_map:
+    __other__: Correct the last date worked or the termination date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: last date worked {EMPEMPLOYMENT.LAST_DATE_WORKED} is after the end
+    date {EMPEMPLOYMENT.END_DATE}.'
+- id: EC196
+  field: EMPEMPLOYMENT.PAYROLL_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE` < `EMPEMPLOYMENT.LAST_DATE_WORKED`'
+  severity: medium
+  dimension: consistency
+  message: Payroll end date is before the last date worked
+  why_it_matters: Payroll must run at least until the last day the employee worked, or the final days are unpaid.
+  rule_authority: best_practice
+  sap_impact: The final working days are not paid; a manual off-cycle payment is needed.
+  fix_map:
+    __other__: Correct the payroll end date.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: payroll ends on {EMPEMPLOYMENT.PAYROLL_END_DATE}, before the last
+    date worked {EMPEMPLOYMENT.LAST_DATE_WORKED}.'
+- id: EC197
+  field: EMPEMPLOYMENT.LAST_DATE_WORKED
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.LAST_DATE_WORKED`.notna()'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: consistency
+  message: Active employee has a last date worked
+  why_it_matters: The last date worked is captured on termination. On an active employee it is a leftover of a cancelled termination
+    or a rehire.
+  rule_authority: best_practice
+  sap_impact: Reports of leavers and final-pay processes pick up an active employee.
+  fix_map:
+    __other__: Clear the last date worked, or complete the termination.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: active but has a last date worked {EMPEMPLOYMENT.LAST_DATE_WORKED}.'
+- id: EC198
+  field: EMPEMPLOYMENT.PERSON_ID
+  check_class: uniqueness_check
+  fields:
+  - EMPEMPLOYMENT.PERSON_ID
+  - EMPEMPLOYMENT.IS_PRIMARY
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    EMPEMPLOYMENT.IS_PRIMARY:
+    - 'true'
+  severity: high
+  dimension: uniqueness
+  message: Person has more than one active primary employment
+  why_it_matters: With concurrent employment, exactly one employment is primary. Two primary employments make person-level
+    integrations and the people profile pick one at random.
+  rule_authority: best_practice
+  sap_impact: Identity provisioning, the org chart and person-level reporting flip between employments.
+  fix_map:
+    __other__: Keep the primary flag on one active employment.
+  record_fix_template: 'Person {EMPEMPLOYMENT.PERSON_ID}: employment {EMPEMPLOYMENT.USERID} is one of several active primary
+    employments.'
+- id: EC199
+  field: EMPEMPLOYMENT.PAY_GROUP
+  check_class: cross_field_check
+  fail_when: (`EMPEMPLOYMENT.IS_CONTINGENT_WORKER`.str.lower() == 'true') & `EMPEMPLOYMENT.PAY_GROUP`.notna()
+  severity: medium
+  dimension: consistency
+  message: Contingent worker is assigned to a pay group
+  why_it_matters: Contingent workers are paid by their agency, not by payroll. A pay group puts them into the payroll run.
+  rule_authority: best_practice
+  sap_impact: The contingent worker is replicated to payroll and may be paid twice (agency invoice and payroll).
+  fix_map:
+    __other__: Remove the pay group, or correct the contingent-worker flag if the person is an employee.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: contingent worker is assigned to pay group {EMPEMPLOYMENT.PAY_GROUP}.'
+- id: EC200
+  field: EMPEMPLOYMENT.USERID
+  check_class: exists_check
+  target_table: EMPGLOBALASSIGNMENT
+  target_fields:
+  - USERID
+  applies_when:
+    EMPEMPLOYMENT.ASSIGNMENT_CLASS:
+    - GA
+  severity: medium
+  dimension: completeness
+  message: Global assignment employment has no global assignment details
+  why_it_matters: An employment with assignment class GA is a global assignment and must have its EmpGlobalAssignment record
+    (assignment type, planned end date).
+  rule_authority: best_practice
+  sap_impact: Mobility reporting, home/host payroll split and the planned-end alert do not work.
+  fix_map:
+    __other__: Create the global assignment details for the employment.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment is a global assignment but has no global assignment details.'
+- id: EC201
+  field: EMPEMPLOYMENT.EMPLOYEE_CLASS
+  check_class: cross_field_check
+  fail_when: '`FOJOBCODE.EMPLOYEE_CLASS`.notna() & (`EMPEMPLOYMENT.EMPLOYEE_CLASS` != `FOJOBCODE.EMPLOYEE_CLASS`)'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: consistency
+  message: Employee class differs from the default of the job classification
+  why_it_matters: The job classification proposes the employee class. A different value is allowed but is often a leftover
+    from a job change where the class was not updated.
+  rule_authority: best_practice
+  sap_impact: Benefit eligibility and statutory reports by employee class are wrong.
+  fix_map:
+    __other__: Confirm the exception; otherwise apply the job classification's employee class.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employee class {EMPEMPLOYMENT.EMPLOYEE_CLASS} differs from {FOJOBCODE.EMPLOYEE_CLASS}
+    of job {EMPEMPLOYMENT.JOB_CODE}.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: FOJOBCODE.EMPLOYEE_CLASS
+    confidence: low
+- id: EC202
+  field: EMPJOBHIST.START_DATE
+  check_class: interval_check
+  group_by:
+  - EMPJOBHIST.USERID
+  start: EMPJOBHIST.START_DATE
+  end: EMPJOBHIST.END_DATE
+  mode: continuous
+  applies_when:
+    EMPJOBHIST.SEQ_NUMBER:
+    - '1'
+  severity: high
+  dimension: consistency
+  message: Job history has a gap or an overlap between effective-dated records
+  why_it_matters: 'EmpJob is effective-dated without interruption from the hire to 31.12.9999: each record ends the day before
+    the next one starts. A gap leaves days without job data; an overlap gives two job records for one day.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll has no org assignment for the gap days, or pays twice for the overlap; retro calculations break.
+  fix_map:
+    __other__: Correct the effective dates so that each record ends the day before the next one starts.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} leaves a gap or overlaps another
+    record.'
+- id: EC203
+  field: EMPJOBHIST.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.END_DATE` < `EMPJOBHIST.START_DATE`'
+  severity: high
+  dimension: validity
+  message: Job record ends before it starts
+  why_it_matters: An effective-dated record cannot end before its start date.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record is invisible to as-of-date reporting and payroll; the history is corrupt.
+  fix_map:
+    __other__: Correct the record's start or end date.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} ends on {EMPJOBHIST.END_DATE},
+    before it starts.'
+- id: EC204
+  field: EMPJOBHIST.STATUS
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Historical job record has no employee status
+  why_it_matters: Every job record carries its employee status. History records without it come from migrations that loaded
+    only the current values.
+  rule_authority: best_practice
+  sap_impact: Turnover, movement and status history reports miss the change; retro payroll cannot classify it.
+  fix_map:
+    __blank__: Fill the employee status of the historical record from the legacy history.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} has no employee status.'
+- id: EC205
+  field: EMPJOBHIST.EVENT_REASON
+  check_class: exists_check
+  fields:
+  - EMPJOBHIST.EVENT_REASON
+  - EMPJOBHIST.EVENT
+  target_table: FOEVENTREASON
+  target_fields:
+  - EXTERNAL_CODE
+  - EVENT
+  severity: medium
+  dimension: consistency
+  message: Historical job record uses an event reason that is unknown or belongs to another event
+  why_it_matters: Each event reason belongs to exactly one event. History loaded with reasons from the wrong event or with
+    unmapped legacy codes cannot be reported or reprocessed.
+  rule_authority: best_practice
+  sap_impact: Turnover and movement analytics classify the change wrongly; rehire and history corrections fail validation.
+  fix_map:
+    __other__: Map the legacy reason to a valid event reason of the record's event.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE}: event reason {EMPJOBHIST.EVENT_REASON}
+    is not a reason of event {EMPJOBHIST.EVENT}.'
+- id: EC206
+  field: EMPJOBHIST.START_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.START_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  severity: high
+  dimension: consistency
+  message: Job record starts before the employment start date
+  why_it_matters: No job history can exist before the hire. Records before it are left over from a re-dated hire.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payroll and time evaluation run for days before the employee was hired.
+  fix_map:
+    __other__: Delete or re-date the records before the hire date.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} is before the hire on {EMPEMPLOYMENT.START_DATE}.'
+- id: EC207
+  field: EMPJOBHIST.START_DATE
+  check_class: cross_field_check
+  fail_when: (`EMPJOBHIST.START_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 1
+  severity: medium
+  dimension: consistency
+  message: Job record starts after the employment ended
+  why_it_matters: After termination the only job record is the termination itself, starting the day after the end date. Later
+    records mean changes were made to a terminated employment.
+  rule_authority: best_practice
+  sap_impact: Changes after termination are replicated to payroll and may reopen the employee.
+  fix_map:
+    __other__: Delete the record or move the change to a rehire.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} is after the employment ended
+    on {EMPEMPLOYMENT.END_DATE}.'
+- id: EC208
+  field: EMPJOBHIST.MANAGER_ID
+  check_class: cross_field_check
+  fail_when: '`EMPJOBHIST.MANAGER_ID` == `EMPJOBHIST.USERID`'
+  severity: medium
+  dimension: consistency
+  message: Historical job record names the employee as their own manager
+  why_it_matters: A user cannot report to themselves. In history this breaks the as-of-date org chart and approval routing
+    for retro changes.
+  rule_authority: best_practice
+  sap_impact: Historical org charts loop; retro approvals route back to the employee.
+  fix_map:
+    __other__: Set the manager who was in charge on that date.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} names the employee as their
+    own manager.'
+- id: EC209
+  field: POSITION.TARGET_FTE
+  check_class: cross_field_check
+  fail_when: '`POSITION.TARGET_FTE` <= 0'
+  applies_when:
+    POSITION.EFFECTIVE_STATUS:
+    - A
+  severity: medium
+  dimension: validity
+  message: Active position has a target FTE of zero or less
+  why_it_matters: The target FTE is the capacity of the position. Zero or negative capacity cannot be filled or budgeted.
+  rule_authority: best_practice
+  sap_impact: Position budgeting and FTE vacancy reporting are wrong.
+  fix_map:
+    __other__: Set the target FTE of the position.
+  record_fix_template: 'Position {POSITION.CODE}: target FTE {POSITION.TARGET_FTE} is zero or negative.'
+- id: EC210
+  field: POSITION.TARGET_FTE
+  check_class: cross_field_check
+  fail_when: (`POSITION.TARGET_FTE` > 1) & (`POSITION.MULTIPLE_INCUMBENTS`.str.lower() == 'false')
+  severity: medium
+  dimension: consistency
+  message: Position has a target FTE above 1 but does not allow multiple incumbents
+  why_it_matters: A capacity above one FTE can only be filled by more than one person. Without 'multiple incumbents allowed'
+    the extra capacity can never be used.
+  rule_authority: best_practice
+  sap_impact: Vacancy reporting shows open FTE that cannot be filled; budgets are overstated.
+  fix_map:
+    __other__: Allow multiple incumbents, or reduce the target FTE to 1.
+  record_fix_template: 'Position {POSITION.CODE}: target FTE {POSITION.TARGET_FTE} but multiple incumbents are not allowed.'
+- id: EC211
+  field: POSITION.COMPANY
+  check_class: exists_check
+  target_table: FOCOMPANY
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    POSITION.EFFECTIVE_STATUS:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Active position is assigned to an inactive or unknown legal entity
+  why_it_matters: Positions default the legal entity to their incumbents. A position on a retired legal entity pushes the
+    inactive value into every new hire and transfer.
+  rule_authority: best_practice
+  sap_impact: Hires and transfers into the position fail validation or inherit an inactive legal entity.
+  fix_map:
+    __other__: Move the position to an active legal entity.
+  record_fix_template: 'Position {POSITION.CODE}: legal entity {POSITION.COMPANY} is not active.'
+- id: EC212
+  field: POSITION.JOB_CODE
+  check_class: exists_check
+  target_table: FOJOBCODE
+  target_fields:
+  - EXTERNAL_CODE
+  target_when:
+    STATUS:
+    - A
+  applies_when:
+    POSITION.EFFECTIVE_STATUS:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Active position is assigned to an inactive or unknown job classification
+  why_it_matters: Positions default the job classification to their incumbents. A position on a retired job classification
+    pushes the inactive value into every new hire and transfer.
+  rule_authority: best_practice
+  sap_impact: Hires and transfers into the position fail validation or inherit an inactive job classification.
+  fix_map:
+    __other__: Move the position to an active job classification.
+  record_fix_template: 'Position {POSITION.CODE}: job classification {POSITION.JOB_CODE} is not active.'
+- id: EC213
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPWORKPERMIT.EXPIRATION_DATE` < @today'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: high
+  dimension: timeliness
+  message: Active employee's work permit has expired
+  why_it_matters: An expired permit means the employee may not legally work in the country unless a renewal is pending.
+  rule_authority: sap_hard_constraint
+  sap_impact: Illegal employment exposes the employer to fines and sponsorship loss; immigration audits fail.
+  fix_map:
+    __other__: Record the renewed permit, or start the legal process if no renewal exists.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: {EMPWORKPERMIT.COUNTRY} work permit ({EMPWORKPERMIT.DOCUMENT_TYPE})
+    expired on {EMPWORKPERMIT.EXPIRATION_DATE}.'
+- id: EC214
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: ((`EMPWORKPERMIT.EXPIRATION_DATE` - @today).dt.days >= 0) & ((`EMPWORKPERMIT.EXPIRATION_DATE` - @today).dt.days
+    <= 60)
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: timeliness
+  message: Active employee's work permit expires within 60 days
+  why_it_matters: Renewals take weeks to months. Permits expiring within 60 days need a renewal in progress.
+  rule_authority: best_practice
+  sap_impact: Without renewal the employee must stop working on the expiry date.
+  fix_map:
+    __other__: Start or confirm the permit renewal.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: {EMPWORKPERMIT.COUNTRY} work permit ({EMPWORKPERMIT.DOCUMENT_TYPE})
+    expires on {EMPWORKPERMIT.EXPIRATION_DATE}.'
+- id: EC215
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPWORKPERMIT.EXPIRATION_DATE` < `EMPWORKPERMIT.ISSUE_DATE`'
+  severity: high
+  dimension: validity
+  message: Work permit expires before it was issued
+  why_it_matters: A permit cannot expire before its issue date; one of the dates is mistyped.
+  rule_authority: best_practice
+  sap_impact: Expiry alerts are wrong; the permit cannot be relied on in an audit.
+  fix_map:
+    __other__: Correct the dates from the permit document.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: {EMPWORKPERMIT.COUNTRY} work permit ({EMPWORKPERMIT.DOCUMENT_TYPE})
+    expires before it was issued.'
+- id: EC216
+  field: EMPWORKPERMIT.DOCUMENT_NUMBER
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Work permit has no document number
+  why_it_matters: The document number identifies the permit to the immigration authority and in audits.
+  rule_authority: best_practice
+  sap_impact: The permit cannot be verified in an immigration audit.
+  fix_map:
+    __blank__: Enter the document number from the permit.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: {EMPWORKPERMIT.COUNTRY} work permit ({EMPWORKPERMIT.DOCUMENT_TYPE})
+    has no document number.'
+- id: EC217
+  field: EMPWORKPERMIT.EXPIRATION_DATE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: completeness
+  message: Work permit has no expiry date
+  why_it_matters: Most work permits and visas are time-limited. Without the expiry date no renewal alert is raised. Permanent
+    residence documents are the exception.
+  rule_authority: best_practice
+  sap_impact: Expiry is missed and the employee may work without a valid permit.
+  fix_map:
+    __blank__: Enter the expiry date, or confirm the document is permanent.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: {EMPWORKPERMIT.COUNTRY} work permit ({EMPWORKPERMIT.DOCUMENT_TYPE})
+    has no expiry date.'
+- id: EC218
+  field: EMPWORKPERMIT.COUNTRY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Work permit country is not a 3-letter ISO country code
+  why_it_matters: EmpWorkPermit.country uses ISO 3166-1 alpha-3 codes. Other values do not resolve to a country.
+  rule_authority: best_practice
+  sap_impact: Permit reporting by country and country-specific document types fail.
+  fix_map:
+    __other__: Replace the value with the ISO alpha-3 code.
+  record_fix_template: 'Employee {EMPWORKPERMIT.USERID}: work permit country {EMPWORKPERMIT.COUNTRY} is not an ISO alpha-3
+    code.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: EC219
+  field: PAYMENTINFO.IBAN
+  check_class: format_check
+  format: iban
+  severity: critical
+  dimension: validity
+  message: IBAN fails the ISO 13616 checksum
+  why_it_matters: An IBAN carries a mod-97 check over country, check digits and account. A failing checksum means a digit
+    is wrong; the bank rejects the transfer.
+  rule_authority: sap_hard_constraint
+  sap_impact: Salary payment is rejected by the bank (SEPA return) and the employee is not paid on time.
+  fix_map:
+    __other__: Correct the IBAN from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: IBAN fails the checksum.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[^A-Za-z0-9]'
+      repl: ''
+    - op: upper
+    confidence: high
+- id: EC220
+  field: PAYMENTINFO.IBAN
+  check_class: null_check
+  applies_when:
+    PAYMENTINFO.BANK_COUNTRY:
+    - DEU
+    - FRA
+    - GBR
+    - NLD
+    - ESP
+    - ITA
+    - BEL
+    - AUT
+    - CHE
+    - IRL
+    - PRT
+    - SWE
+    - DNK
+    - NOR
+    - POL
+    - FIN
+    - LUX
+    - SAU
+    - ARE
+  severity: high
+  dimension: completeness
+  message: Bank account in an IBAN country has no IBAN
+  why_it_matters: In the SEPA area and the other IBAN countries, salary transfers require the IBAN. An account number alone
+    is not accepted.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment file cannot be created; the employee is not paid.
+  fix_map:
+    __blank__: Enter the IBAN from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: no IBAN for bank country
+    {PAYMENTINFO.BANK_COUNTRY}.'
+- id: EC221
+  field: PAYMENTINFO.BIC
+  check_class: regex_check
+  pattern: ^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$
+  severity: high
+  dimension: validity
+  message: BIC/SWIFT code is not 8 or 11 characters in the ISO 9362 format
+  why_it_matters: A BIC is 4 letters (bank), 2 letters (country), 2 letters or digits (location) and an optional 3-character
+    branch.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cross-border and SEPA payments are rejected.
+  fix_map:
+    __other__: Correct the BIC from the bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: BIC {PAYMENTINFO.BIC} is
+    not a valid SWIFT code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: upper
+    confidence: high
+- id: EC222
+  field: PAYMENTINFO.ROUTING_NUMBER
+  check_class: regex_check
+  pattern: ^\d{9}$
+  applies_when:
+    PAYMENTINFO.BANK_COUNTRY:
+    - USA
+  severity: high
+  dimension: validity
+  message: US ABA routing number is not 9 digits
+  why_it_matters: An ABA routing transit number has 9 digits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Domestic salary transfers are rejected or routed to the wrong branch.
+  fix_map:
+    __other__: Correct the routing code from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: routing code is not a valid
+    USA routing code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[^0-9]'
+      repl: ''
+    confidence: medium
+- id: EC223
+  field: PAYMENTINFO.ROUTING_NUMBER
+  check_class: regex_check
+  pattern: ^\d{2}-?\d{2}-?\d{2}$
+  applies_when:
+    PAYMENTINFO.BANK_COUNTRY:
+    - GBR
+  severity: high
+  dimension: validity
+  message: UK sort code is not 6 digits
+  why_it_matters: A sort code has 6 digits, often written NN-NN-NN.
+  rule_authority: sap_hard_constraint
+  sap_impact: Domestic salary transfers are rejected or routed to the wrong branch.
+  fix_map:
+    __other__: Correct the routing code from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: routing code is not a valid
+    GBR routing code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\s]'
+      repl: ''
+    confidence: medium
+- id: EC224
+  field: PAYMENTINFO.ROUTING_NUMBER
+  check_class: regex_check
+  pattern: ^\d{6}$
+  applies_when:
+    PAYMENTINFO.BANK_COUNTRY:
+    - ZAF
+  severity: high
+  dimension: validity
+  message: South African branch code is not 6 digits
+  why_it_matters: South African bank branch (universal branch) codes have 6 digits.
+  rule_authority: sap_hard_constraint
+  sap_impact: Domestic salary transfers are rejected or routed to the wrong branch.
+  fix_map:
+    __other__: Correct the routing code from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: routing code is not a valid
+    ZAF routing code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[^0-9]'
+      repl: ''
+    confidence: medium
+- id: EC225
+  field: PAYMENTINFO.ROUTING_NUMBER
+  check_class: regex_check
+  pattern: ^[A-Z]{4}0[A-Z0-9]{6}$
+  applies_when:
+    PAYMENTINFO.BANK_COUNTRY:
+    - IND
+  severity: high
+  dimension: validity
+  message: Indian IFSC is not in the AAAA0NNNNNN format
+  why_it_matters: An IFSC is 4 letters (bank), a zero and 6 characters (branch).
+  rule_authority: sap_hard_constraint
+  sap_impact: Domestic salary transfers are rejected or routed to the wrong branch.
+  fix_map:
+    __other__: Correct the routing code from the employee's bank confirmation.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: routing code is not a valid
+    IND routing code.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: \s+
+      repl: ''
+    - op: upper
+    confidence: high
+- id: EC226
+  field: PAYMENTINFO.ACCOUNT_NUMBER
+  check_class: cross_field_check
+  fail_when: '`PAYMENTINFO.BANK`.notna() & `PAYMENTINFO.IBAN`.isna() & `PAYMENTINFO.ACCOUNT_NUMBER`.isna()'
+  severity: critical
+  dimension: completeness
+  message: Bank account has a bank but neither IBAN nor account number
+  why_it_matters: A payment record needs an account to pay to. A bank without IBAN or account number cannot receive a transfer.
+  rule_authority: sap_hard_constraint
+  sap_impact: The payment file cannot be created; the employee is not paid.
+  fix_map:
+    __other__: Enter the IBAN or the account number.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: no IBAN and no account number.'
+- id: EC227
+  field: PAYMENTINFO.ACCOUNT_OWNER
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Bank account has no account owner
+  why_it_matters: Banks and SEPA verification-of-payee check the beneficiary name against the account owner.
+  rule_authority: best_practice
+  sap_impact: Payee-name verification fails; the bank may hold or return the payment.
+  fix_map:
+    __blank__: Enter the account owner exactly as the bank holds it.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: no account owner.'
+- id: EC228
+  field: PAYMENTINFO.BANK_COUNTRY
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Bank account has no bank country
+  why_it_matters: The bank country determines the account format (IBAN or domestic), the clearing system and the payment method.
+  rule_authority: sap_hard_constraint
+  sap_impact: Account validation and payment file creation fail.
+  fix_map:
+    __blank__: Enter the country of the bank.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: no bank country.'
+- id: EC229
+  field: PAYMENTINFO.PERCENT
+  check_class: cross_field_check
+  fail_when: (`PAYMENTINFO.PERCENT` < 0) | (`PAYMENTINFO.PERCENT` > 100)
+  severity: high
+  dimension: validity
+  message: Payment split percentage is below 0 or above 100
+  why_it_matters: A split distributes the net pay over accounts by percentage. A share outside 0 to 100 cannot be paid.
+  rule_authority: best_practice
+  sap_impact: Net pay distribution fails or pays more than the net amount.
+  fix_map:
+    __other__: Correct the percentage of the split.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account {PAYMENTINFO.EXTERNAL_CODE}: split percentage {PAYMENTINFO.PERCENT}
+    is outside 0 to 100.'
+- id: EC230
+  field: EMPEMPLOYMENT.USERID
+  check_class: exists_check
+  target_table: PAYMENTINFO
+  target_fields:
+  - USERID
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+    EMPEMPLOYMENT.IS_CONTINGENT_WORKER:
+      not_in:
+      - 'true'
+  severity: high
+  dimension: completeness
+  message: Active employee has no payment information
+  why_it_matters: Payroll pays to the bank account in Payment Information. Without one, the employee is paid by cheque or
+    not at all.
+  rule_authority: best_practice
+  sap_impact: The employee is not paid by transfer; payroll raises errors for the record.
+  fix_map:
+    __other__: Create the payment information from the employee's bank confirmation.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: no payment information.'
+- id: EC231
+  field: PEREMERGENCY.PHONE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Emergency contact has no phone number
+  why_it_matters: An emergency contact is called in an emergency. Without a phone number the contact cannot be reached.
+  rule_authority: best_practice
+  sap_impact: In an accident or incident the employer cannot reach the family.
+  fix_map:
+    __blank__: Enter the contact's phone number.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact ({PEREMERGENCY.RELATIONSHIP}) has no phone number.'
+- id: EC232
+  field: PEREMERGENCY.RELATIONSHIP
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Emergency contact has no relationship
+  why_it_matters: The relationship tells who the contact is (spouse, parent). It is also part of the record key.
+  rule_authority: best_practice
+  sap_impact: Responders do not know who they are calling; dependants reporting is incomplete.
+  fix_map:
+    __blank__: Enter the relationship to the employee.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact has no relationship.'
+- id: EC233
+  field: PEREMERGENCY.PHONE
+  check_class: regex_check
+  pattern: ^\+?[0-9][0-9 ()./-]{5,19}$
+  severity: medium
+  dimension: validity
+  message: Emergency contact phone number is not a dialable number
+  why_it_matters: A phone number has 6 to 20 digits with optional +, spaces, brackets, dots or hyphens. Text such as 'ask
+    HR' cannot be dialled.
+  rule_authority: best_practice
+  sap_impact: In an emergency the contact cannot be reached.
+  fix_map:
+    __other__: Enter the contact's phone number with country code.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: emergency contact ({PEREMERGENCY.RELATIONSHIP}) has a phone number
+    that cannot be dialled.'
+- id: EC234
+  field: PERINFO.PERSON_ID
+  check_class: exists_check
+  target_table: PEREMERGENCY
+  target_fields:
+  - PERSON_ID
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: completeness
+  message: Active employee has no emergency contact
+  why_it_matters: Duty of care requires a way to reach the family in an emergency. Many works councils and safety policies
+    require at least one contact.
+  rule_authority: best_practice
+  sap_impact: In an accident the employer cannot inform the family.
+  fix_map:
+    __other__: Ask the employee to add an emergency contact in their profile.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person {PERINFO.PERSON_ID} has no emergency contact.'
+- id: EC235
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPGLOBALASSIGNMENT.PLANNED_END_DATE` < `EMPGLOBALASSIGNMENT.START_DATE`'
+  severity: high
+  dimension: validity
+  message: Global assignment is planned to end before it starts
+  why_it_matters: The planned end date of an assignment must follow its start date.
+  rule_authority: best_practice
+  sap_impact: Assignment-end alerts, tax-equalisation periods and host payroll end on a wrong date.
+  fix_map:
+    __other__: Correct the planned end date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment from {EMPGLOBALASSIGNMENT.START_DATE} is
+    planned to end on {EMPGLOBALASSIGNMENT.PLANNED_END_DATE}, before it starts.'
+- id: EC236
+  field: EMPGLOBALASSIGNMENT.END_DATE
+  check_class: cross_field_check
+  fail_when: '`EMPGLOBALASSIGNMENT.END_DATE` < `EMPGLOBALASSIGNMENT.START_DATE`'
+  severity: high
+  dimension: validity
+  message: Global assignment ends before it starts
+  why_it_matters: The actual end date of an assignment must follow its start date.
+  rule_authority: best_practice
+  sap_impact: The host employment has an impossible duration; mobility cost and tax reports are wrong.
+  fix_map:
+    __other__: Correct the end date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment from {EMPGLOBALASSIGNMENT.START_DATE} ends
+    on {EMPGLOBALASSIGNMENT.END_DATE}, before it starts.'
+- id: EC237
+  field: EMPGLOBALASSIGNMENT.PLANNED_END_DATE
+  check_class: cross_field_check
+  fail_when: (`EMPGLOBALASSIGNMENT.PLANNED_END_DATE` < @today) & `EMPGLOBALASSIGNMENT.END_DATE`.isna()
+  severity: medium
+  dimension: timeliness
+  message: Global assignment is past its planned end date and has not been ended or extended
+  why_it_matters: When the planned end passes, the assignment is ended (return home) or the planned end is extended. Neither
+    means the mobility process stalled.
+  rule_authority: best_practice
+  sap_impact: Host-country tax, social security certificates (A1/CoC) and immigration status may have lapsed.
+  fix_map:
+    __other__: End the assignment or extend the planned end date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment from {EMPGLOBALASSIGNMENT.START_DATE} passed
+    its planned end {EMPGLOBALASSIGNMENT.PLANNED_END_DATE} without being ended.'
+- id: EC238
+  field: EMPGLOBALASSIGNMENT.END_DATE
+  check_class: null_check
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - T
+    - R
+  severity: medium
+  dimension: consistency
+  message: Terminated assignment employment still has an open global assignment
+  why_it_matters: When the host employment ends, the global assignment must be ended too.
+  rule_authority: best_practice
+  sap_impact: The assignment appears active in mobility reports; allowances may continue.
+  fix_map:
+    __blank__: End the global assignment on the employment end date.
+  record_fix_template: 'Employee {EMPGLOBALASSIGNMENT.USERID}: global assignment from {EMPGLOBALASSIGNMENT.START_DATE} is
+    still open although the employment ended.'
