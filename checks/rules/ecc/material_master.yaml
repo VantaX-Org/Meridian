@@ -38,6 +38,11 @@ rules:
       chars). Use LSMW or migration cockpit for bulk reformatting.'
   record_fix_template: 'Material {MARA.MATNR}: number format is invalid (value: ''{actual_value}''). Reformat to uppercase
     printable ASCII without leading or trailing spaces (max 40 chars for S/4HANA) and update references.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM003
   field: MARA.MTART
   check_class: null_check
@@ -93,6 +98,11 @@ rules:
       check via SPRO or Fiori F1602.'
   record_fix_template: 'Material {MARA.MATNR}: MBRSH is ''{actual_value}''. Correct to a valid industry sector (A, C, M, P,
     V).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM007
   field: MARA.MATKL
   check_class: null_check
@@ -163,6 +173,19 @@ rules:
     __other__: 'Deletion flag ''{invalid_value}'' is not valid. Must be blank or ''X''. In ECC: correct via MM06 (flag for
       deletion) or MM02. In S/4HANA: use Fiori F1602.'
   record_fix_template: 'Material {MARA.MATNR}: LVORM is ''{actual_value}''. Set to blank (active) or ''X'' (flagged for deletion).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
 - id: MM014
   field: MARA.NTGEW
   check_class: null_check
@@ -226,6 +249,21 @@ rules:
   record_fix_template: 'Material {MARA.MATNR}: GEWEI is ''{actual_value}''. Set to a valid weight unit via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
   live_reference: false
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        KGM: KG
+        GRM: G
+        MGM: MG
+        LBR: LB
+        ONZ: OZ
+        TNE: TO
+        kg: KG
+        g: G
+        __other__: null
+    confidence: high
 - id: MM017
   field: MARA.VOLEH
   check_class: domain_value_check
@@ -260,6 +298,24 @@ rules:
   record_fix_template: 'Material {MARA.MATNR}: VOLEH is ''{actual_value}''. Set to a valid volume unit via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
   live_reference: false
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        LTR: L
+        MLT: ML
+        MTQ: M3
+        CMQ: CCM
+        DMQ: CDM
+        FTQ: FT3
+        GLL: GAL
+        HLT: HL
+        INQ: IN3
+        l: L
+        ml: ML
+        __other__: null
+    confidence: high
 - id: MM018B
   field: MARA.EAN11
   check_class: format_check
@@ -277,6 +333,11 @@ rules:
     __other__: 'EAN/GTIN ''{invalid_value}'' has an invalid GS1 check digit. Verify the barcode against the GS1 registry and
       re-key it via MM02 > Basic Data 1 (ECC) or Fiori F1602 (S/4HANA).'
   record_fix_template: 'Material {MARA.MATNR}: EAN11 ''{actual_value}'' fails the GS1 mod-10 check digit. Re-verify the barcode.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: gtin_check_digit
+    confidence: low
 - id: MM019
   field: MARA.MSTAE
   check_class: domain_value_check
@@ -365,6 +426,19 @@ rules:
       view. In S/4HANA: use Fiori F1602.'
   record_fix_template: 'Material {MARA.MATNR}: XCHPF is ''{actual_value}''. Set to blank or ''X'' via MM02 (ECC) or Fiori
     F1602 (S/4HANA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
 - id: MM023
   field: MARC.DISMM
   check_class: domain_value_check
@@ -754,6 +828,19 @@ rules:
     __other__: 'Value {invalid_value} is not valid for Configurable material flag. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid MARA.KZKFG value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
     or Fiori app F1602 (Manage Product Master Data).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
 - id: MM062
   field: MARA.MFRNR
   check_class: null_check
@@ -841,6 +928,19 @@ rules:
     __other__: 'Value {invalid_value} is not valid for QM in procurement flag. Allowed values: ['''', ''X''].'
   record_fix_template: 'Record has invalid MARA.QMPUR value ''{actual_value}''. In ECC: Set via MM02. In S/4HANA: Use MM02
     or Fiori app F1602 (Manage Product Master Data).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
 - id: MM077
   field: MARA.TRAGR
   check_class: null_check
@@ -1227,6 +1327,11 @@ rules:
       Types.'
   record_fix_template: 'Material {MARA.MATNR}: material type ''{actual_value}'' is not in T134.'
 
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM141
   field: MARA.MATKL
   check_class: referential_check
@@ -1245,6 +1350,11 @@ rules:
       > Material Master > Settings for Key Fields > Define Material Groups.
   record_fix_template: 'Material {MARA.MATNR}: material group ''{actual_value}'' is not in T023.'
 
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM142
   field: MARA.MEINS
   check_class: referential_check
@@ -1460,6 +1570,14 @@ rules:
     __other__: Enter the unit for the weight (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
       F1602 Manage Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARA.MATNR}: weight maintained but unit MARA.GEWEI is blank.'
+  auto_fix:
+    steps:
+    - op: lookup
+      table: T023
+      match:
+        MATKL: MARA.MATKL
+      value: GEWEI
+    confidence: medium
 - id: MM160
   field: MARA.VOLEH
   check_class: cross_field_check
@@ -1511,6 +1629,11 @@ rules:
     __other__: Enter the unit for the weight (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
       F1602 Manage Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: weight maintained but unit MARM.GEWEI is blank.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MARA.GEWEI
+    confidence: medium
 - id: MM163
   field: MARM.VOLEH
   check_class: cross_field_check
@@ -1528,6 +1651,11 @@ rules:
     __other__: Enter the unit for the volume (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
       F1602 Manage Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume maintained but unit MARM.VOLEH is blank.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MARA.VOLEH
+    confidence: medium
 - id: MM164
   field: MARM.MEABM
   check_class: cross_field_check
@@ -1545,6 +1673,11 @@ rules:
     __other__: Enter the unit for the dimensions (Basic data 1 / Additional data > Units of measure) via MM02 (ECC) or Fiori
       F1602 Manage Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: dimensions maintained but unit MARM.MEABM is blank.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MARA.MEABM
+    confidence: medium
 - id: MM165
   field: MARM.EAN11
   check_class: format_check
@@ -1561,6 +1694,11 @@ rules:
     __other__: GTIN '{invalid_value}' fails the GS1 check digit. Verify it against the GS1 registration and correct it in
       Additional data > Units of measure via MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {actual_value} fails the GS1 check digit.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: gtin_check_digit
+    confidence: low
 - id: MM166
   field: MARM.NUMTP
   check_class: null_check
@@ -1579,6 +1717,12 @@ rules:
     __blank__: Enter the EAN category for the unit in Additional data > Units of measure via MM02 (ECC) or Fiori F1602 Manage
       Product Master Data (S/4HANA).
   record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {MARM.EAN11} has no EAN category.'
+  auto_fix:
+    when: '`MARM.MEINH` == `MARA.MEINS`'
+    steps:
+    - op: copy
+      from: MARA.NUMTP
+    confidence: medium
 - id: MM167
   field: MARM.EAN11
   check_class: uniqueness_check
@@ -1880,6 +2024,11 @@ rules:
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVAS).'
   record_fix_template: 'Material {MARA.MATNR}: cross-distribution-chain material status ''{actual_value}'' is not configured
     (TVMS).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM184
   field: MVKE.VMSTA
   check_class: referential_check
@@ -2132,6 +2281,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TSPA. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVXB).'
   record_fix_template: 'Material {MARA.MATNR}: division ''{actual_value}'' is not configured (TSPA).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM200
   field: MARA.TRAGR
   check_class: referential_check
@@ -2147,6 +2301,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TTGR. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVTG).'
   record_fix_template: 'Material {MARA.MATNR}: transportation group ''{actual_value}'' is not configured (TTGR).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM201
   field: MARA.PRDHA
   check_class: referential_check
@@ -2162,6 +2321,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T179. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (V/76).'
   record_fix_template: 'Material {MARA.MATNR}: product hierarchy ''{actual_value}'' is not configured (T179).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM202
   field: MARA.MTPOS_MARA
   check_class: referential_check
@@ -2177,6 +2341,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TPTM. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (OVS9).'
   record_fix_template: 'Material {MARA.MATNR}: general item category group ''{actual_value}'' is not configured (TPTM).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM203
   field: MARA.BSTME
   check_class: referential_check
@@ -2207,6 +2376,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TNTP. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
       Data (S/4HANA) or, if the value is genuinely needed, create it in customizing (W4ES).'
   record_fix_template: 'Material {MARA.MATNR}: ean category ''{actual_value}'' is not configured (TNTP).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM205
   field: MVKE.KTGRM
   check_class: referential_check
@@ -3060,6 +3234,13 @@ rules:
     __other__: Correct the value in MM02 Basic data 1 (material category is set at creation; use the variant or retail creation
       transactions); the allowed values are those of domain ATTYP.
   record_fix_template: 'Material {MARA.MATNR}: ATTYP is ''{actual_value}'', which is not a value of domain ATTYP.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: pad_left
+      width: 2
+      char: '0'
+    confidence: medium
 - id: MM318
   field: MARA.VABME
   check_class: domain_value_check
@@ -3236,6 +3417,11 @@ rules:
   fix_map:
     __other__: Correct the value in MM02 Plant data / storage 1; the allowed values are those of domain SLED_BBD.
   record_fix_template: 'Material {MARA.MATNR}: SLED_BBD is ''{actual_value}'', which is not a value of domain SLED_BBD.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM329
   field: MARA.MSTDE
   check_class: cross_field_check
@@ -3404,6 +3590,11 @@ rules:
   fix_map:
     __other__: Correct the number against the packaging or the GS1 registration.
   record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: GTIN {actual_value} has an invalid check digit.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: gtin_check_digit
+    confidence: low
 - id: MM338
   field: MEAN.EANTP
   check_class: null_check
@@ -3437,6 +3628,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TNTP. Correct the value in MM02 or create the entry in table TNTP (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: EANTP ''{actual_value}'' is not configured in TNTP.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM340
   field: MAKT.SPRAS
   check_class: referential_check
@@ -3467,6 +3663,12 @@ rules:
   fix_map:
     __other__: Re-save the description in MM02 (Additional data > Descriptions) so that SAP regenerates the search term.
   record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{MAKT.MAKTX}'' has no search description.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MAKT.MAKTX
+    - op: upper
+    confidence: high
 - id: MM342
   field: MAKT.MAKTG
   check_class: cross_field_check
@@ -3484,6 +3686,12 @@ rules:
     __other__: Re-save the description in MM02 (Additional data > Descriptions).
   record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: search description ''{actual_value}'' does not match
     description ''{MAKT.MAKTX}''.'
+  auto_fix:
+    steps:
+    - op: copy
+      from: MAKT.MAKTX
+    - op: upper
+    confidence: high
 - id: MM343
   field: MAKT.MAKTX
   check_class: cross_field_check
@@ -3499,6 +3707,10 @@ rules:
   fix_map:
     __other__: Remove the extra spaces in MM02 (Additional data > Descriptions).
   record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' contains extra spaces.'
+  auto_fix:
+    steps:
+    - op: collapse_spaces
+    confidence: high
 - id: MM344
   field: MAKT.MAKTX
   check_class: cross_field_check
@@ -3654,6 +3866,11 @@ rules:
   fix_map:
     __other__: Correct the data type in CT04 (only possible while no values exist).
   record_fix_template: 'Characteristic {CABN.ATNAM}: ATFOR is ''{actual_value}'', which is not a value of domain ATFOR.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: MM354
   field: CABN.ANZST
   check_class: cross_field_check
@@ -3921,6 +4138,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T143. Correct the value in MM02 or create the entry in table T143 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: TEMPB ''{actual_value}'' is not configured in T143.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM371
   field: MARA.BEHVO
   check_class: referential_check
@@ -3935,6 +4157,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T144. Correct the value in MM02 or create the entry in table T144 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: BEHVO ''{actual_value}'' is not configured in T144.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM372
   field: MARA.RAUBE
   check_class: referential_check
@@ -3949,6 +4176,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T142. Correct the value in MM02 or create the entry in table T142 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: RAUBE ''{actual_value}'' is not configured in T142.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM373
   field: MARA.LABOR
   check_class: referential_check
@@ -3963,6 +4195,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T024L. Correct the value in MM02 or create the entry in table T024L (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: LABOR ''{actual_value}'' is not configured in T024L.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM374
   field: MARA.MAGRV
   check_class: referential_check
@@ -3978,6 +4215,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TVEGR. Correct the value in MM02 or create the entry in table TVEGR (SM30 or
       the matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: MAGRV ''{actual_value}'' is not configured in TVEGR.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM375
   field: MARA.EXTWG
   check_class: referential_check
@@ -3993,6 +4235,11 @@ rules:
     __other__: '''{invalid_value}'' is not in TWEW. Correct the value in MM02 or create the entry in table TWEW (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: EXTWG ''{actual_value}'' is not configured in TWEW.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM376
   field: MARC.STAWN
   check_class: null_check
@@ -5285,6 +5532,14 @@ rules:
   fix_map:
     __other__: Retype the description in MM02 (Additional data > Descriptions) without pasted line breaks.
   record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' contains a control character.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[\x01-\x1f]'
+      repl: ' '
+    - op: collapse_spaces
+    - op: strip
+    confidence: medium
 - id: MM452
   field: MARA.LAEDA
   check_class: cross_field_check
@@ -5327,6 +5582,11 @@ rules:
     __other__: '''{invalid_value}'' is not in T141. Correct the value in MM02 or create the entry in table T141 (SM30 or the
       matching IMG node).'
   record_fix_template: 'Material {MARA.MATNR}: MSTAE ''{actual_value}'' is not configured in T141.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
 - id: MM455
   field: MARA.KZUMW
   check_class: domain_value_check
@@ -5341,6 +5601,19 @@ rules:
   fix_map:
     __other__: Correct the value in MM02 Basic data 2; the allowed values are those of domain XFELD.
   record_fix_template: 'Material {MARA.MATNR}: KZUMW is ''{actual_value}'', which is not a value of domain XFELD.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
 - id: MM456
   field: MARC.SERNP
   check_class: cross_field_check
@@ -7228,3 +7501,1705 @@ rules:
     __blank__: Enter the discontinuation group in CS02 or clear the follow-up indicator.
   record_fix_template: 'BOM {STPO.STLNR}, item {STPO.POSNR}, component {STPO.IDNRK}: follow-up item has no discontinuation
     group.'
+# --- basic data depth (mm-basic) ---
+- id: MM600
+  field: MARA.MATNR
+  check_class: cross_field_check
+  fail_when: '`MARA.MATNR`.str.contains(''[*%&?#;,]'', regex=True)'
+  severity: medium
+  dimension: validity
+  message: Material number contains a character that breaks searches, URLs or file interfaces
+  why_it_matters: '*, % and ? are wildcards in SAP selection screens and OData filters; & and # break URLs in Fiori and web
+    services; ; and , break CSV and flat-file interfaces. A material number with these characters cannot be searched or exchanged
+    reliably.'
+  rule_authority: best_practice
+  sap_impact: Selections return the wrong materials, Fiori apps fail to open the product, and interface files split the key.
+  fix_map:
+    __other__: Renumber the material (create a new material and move stock and documents) or, before go-live, change the key
+      in the load file.
+  record_fix_template: 'Material {MARA.MATNR}: material number contains a reserved character.'
+- id: MM601
+  field: MARA.KZKFG
+  check_class: cross_field_check
+  fail_when: (`MARA.MTART` == 'KMAT') & `MARA.KZKFG`.isna()
+  severity: high
+  dimension: consistency
+  message: Material of type KMAT (configurable material) is not flagged as configurable
+  why_it_matters: Material type KMAT exists for configurable materials; its type definition (T134) sets the configurable flag
+    (KZKFG). A KMAT material without the flag cannot hold a configuration profile or a variant class.
+  rule_authority: sap_hard_constraint
+  sap_impact: Sales orders cannot configure the material; variant pricing and the super BOM are not used.
+  fix_map:
+    __other__: Set the configurable-material flag in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic
+      data 2).
+  record_fix_template: 'Material {MARA.MATNR}: material type KMAT but configurable flag is blank.'
+  auto_fix:
+    when: '`MARA.MTART` == ''KMAT'''
+    steps:
+    - op: set
+      value: X
+    confidence: medium
+- id: MM602
+  field: MARA.MATNR
+  check_class: exists_check
+  applies_when:
+    MARA.KZKFG:
+    - X
+  fields:
+  - MARA.MATNR
+  target_table: INOB
+  target_fields:
+  - OBJEK
+  target_when:
+    KLART:
+    - '300'
+  severity: high
+  dimension: completeness
+  message: Configurable material has no variant class (class type 300)
+  why_it_matters: A configurable material (KZKFG = X) gets its characteristics from a variant class of class type 300, assigned
+    through the object table INOB. Without that class the configuration has no characteristics to value.
+  rule_authority: sap_hard_constraint
+  sap_impact: Configuration in sales orders and production orders shows no characteristics; variant conditions and object
+    dependencies never fire.
+  fix_map:
+    __other__: Assign a variant class (class type 300) in CU41 / CL20N, or remove the configurable flag.
+  record_fix_template: 'Material {MARA.MATNR}: configurable material has no variant class.'
+- id: MM603
+  field: MARA.XCHPF
+  check_class: cross_field_check
+  fail_when: (`MARA.XCHPF` == 'X') & `MARA.MTART`.isin(['DIEN', 'NLAG'])
+  severity: medium
+  dimension: consistency
+  message: Service or non-stock material is flagged as batch-managed
+  why_it_matters: Batches exist only for stock. Material types DIEN (service) and NLAG (non-stock) carry no quantity-based
+    inventory, so a batch flag on them is a load error.
+  rule_authority: sap_hard_constraint
+  sap_impact: Purchase order and goods receipt ask for a batch that can never exist; account-assigned postings fail.
+  fix_map:
+    __other__: Remove the batch-management flag in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MARA.MATNR}: material type {MARA.MTART} is batch-managed.'
+- id: MM604
+  field: MARA.NTGEW
+  check_class: cross_field_check
+  fail_when: (`MARA.MEINS` == `MARA.GEWEI`) & `MARA.NTGEW`.notna() & (`MARA.NTGEW` != 1)
+  severity: high
+  dimension: accuracy
+  message: Net weight of a weight-based material is not 1 in its own unit
+  why_it_matters: When the base unit is itself the weight unit (base unit KG, weight unit KG), one base unit weighs exactly
+    one weight unit by definition. Any other net weight is impossible.
+  rule_authority: sap_hard_constraint
+  sap_impact: Delivery weights, freight and customs values are multiplied by a wrong factor.
+  fix_map:
+    __other__: Set the net weight to 1 in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1).
+  record_fix_template: 'Material {MARA.MATNR}: base unit and weight unit are {MARA.MEINS} but net weight is {actual_value}.'
+  auto_fix:
+    when: '`MARA.MEINS` == `MARA.GEWEI`'
+    steps:
+    - op: set
+      value: '1'
+    confidence: high
+- id: MM605
+  field: MARA.VOLUM
+  check_class: cross_field_check
+  fail_when: (`MARA.MEINS` == `MARA.VOLEH`) & `MARA.VOLUM`.notna() & (`MARA.VOLUM` != 1)
+  severity: medium
+  dimension: accuracy
+  message: Volume of a volume-based material is not 1 in its own unit
+  why_it_matters: When the base unit is itself the volume unit (base unit L, volume unit L), one base unit has a volume of
+    exactly one volume unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Shipment volumes, load planning and storage capacity checks use a wrong factor.
+  fix_map:
+    __other__: Set the volume to 1 in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1).
+  record_fix_template: 'Material {MARA.MATNR}: base unit and volume unit are {MARA.MEINS} but volume is {actual_value}.'
+  auto_fix:
+    when: '`MARA.MEINS` == `MARA.VOLEH`'
+    steps:
+    - op: set
+      value: '1'
+    confidence: medium
+- id: MM606
+  field: MARA.LAENG
+  check_class: cross_field_check
+  fail_when: ((`MARA.LAENG` > 0) | (`MARA.BREIT` > 0) | (`MARA.HOEHE` > 0)) & ~((`MARA.LAENG` > 0) & (`MARA.BREIT` > 0) &
+    (`MARA.HOEHE` > 0))
+  severity: low
+  dimension: completeness
+  message: Only some of length, width and height are maintained
+  why_it_matters: 'Dimensions are used together: volume, bin capacity and carton or pallet fit all need length, width and
+    height. One or two of the three is a partial load.'
+  rule_authority: best_practice
+  sap_impact: Warehouse capacity checks, packing proposals and transport planning cannot use the dimensions.
+  fix_map:
+    __other__: Maintain all three dimensions in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data
+      1) or clear them.
+  record_fix_template: 'Material {MARA.MATNR}: dimensions {MARA.LAENG} x {MARA.BREIT} x {MARA.HOEHE} {MARA.MEABM} are incomplete.'
+- id: MM607
+  field: MARM.LAENG
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: ((`MARM.LAENG` > 0) | (`MARM.BREIT` > 0) | (`MARM.HOEHE` > 0)) & ~((`MARM.LAENG` > 0) & (`MARM.BREIT` > 0) &
+    (`MARM.HOEHE` > 0))
+  severity: low
+  dimension: completeness
+  message: Only some of length, width and height are maintained for a unit of measure
+  why_it_matters: Packing units (cartons, pallets) are measured as boxes. A unit with one or two dimensions cannot be used
+    for volume, stacking or pallet calculations.
+  rule_authority: best_practice
+  sap_impact: Packing proposals, warehouse capacity checks and EWM / WM putaway ignore the unit's dimensions.
+  fix_map:
+    __other__: Maintain all three dimensions of the unit in MM02 (Additional data > Units of measure) or clear them.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: dimensions {MARM.LAENG} x {MARM.BREIT} x {MARM.HOEHE} {MARM.MEABM}
+    are incomplete.'
+- id: MM608
+  field: MARA.VOLUM
+  check_class: cross_field_check
+  applies_when:
+    MARA.MEABM:
+    - CM
+    MARA.VOLEH:
+    - CCM
+    - ML
+  fail_when: ((`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE` < 0.95 * `MARA.VOLUM`) | (`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE`
+    > 10 * `MARA.VOLUM`)) & (`MARA.VOLUM` > 0) & (`MARA.LAENG` > 0) & (`MARA.BREIT` > 0) & (`MARA.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume does not fit the length, width and height (CM / CCM/ML)
+  why_it_matters: With dimensions in CM and volume in CCM or ML, the volume cannot be larger than the box L x W x H, and a
+    box more than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARA.MATNR}: volume {actual_value} {MARA.VOLEH} against dimensions {MARA.LAENG} x {MARA.BREIT}
+    x {MARA.HOEHE} {MARA.MEABM}.'
+- id: MM609
+  field: MARA.VOLUM
+  check_class: cross_field_check
+  applies_when:
+    MARA.MEABM:
+    - M
+    MARA.VOLEH:
+    - M3
+  fail_when: ((`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE` < 0.95 * `MARA.VOLUM`) | (`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE`
+    > 10 * `MARA.VOLUM`)) & (`MARA.VOLUM` > 0) & (`MARA.LAENG` > 0) & (`MARA.BREIT` > 0) & (`MARA.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume does not fit the length, width and height (M / M3)
+  why_it_matters: With dimensions in M and volume in M3, the volume cannot be larger than the box L x W x H, and a box more
+    than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARA.MATNR}: volume {actual_value} {MARA.VOLEH} against dimensions {MARA.LAENG} x {MARA.BREIT}
+    x {MARA.HOEHE} {MARA.MEABM}.'
+- id: MM610
+  field: MARA.VOLUM
+  check_class: cross_field_check
+  applies_when:
+    MARA.MEABM:
+    - DM
+    MARA.VOLEH:
+    - CDM
+    - L
+  fail_when: ((`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE` < 0.95 * `MARA.VOLUM`) | (`MARA.LAENG` * `MARA.BREIT` * `MARA.HOEHE`
+    > 10 * `MARA.VOLUM`)) & (`MARA.VOLUM` > 0) & (`MARA.LAENG` > 0) & (`MARA.BREIT` > 0) & (`MARA.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume does not fit the length, width and height (DM / CDM/L)
+  why_it_matters: With dimensions in DM and volume in CDM or L, the volume cannot be larger than the box L x W x H, and a
+    box more than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARA.MATNR}: volume {actual_value} {MARA.VOLEH} against dimensions {MARA.LAENG} x {MARA.BREIT}
+    x {MARA.HOEHE} {MARA.MEABM}.'
+- id: MM611
+  field: MARM.VOLUM
+  check_class: cross_field_check
+  grain: MARM
+  applies_when:
+    MARM.MEABM:
+    - CM
+    MARM.VOLEH:
+    - CCM
+    - ML
+  fail_when: ((`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE` < 0.95 * `MARM.VOLUM`) | (`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE`
+    > 10 * `MARM.VOLUM`)) & (`MARM.VOLUM` > 0) & (`MARM.LAENG` > 0) & (`MARM.BREIT` > 0) & (`MARM.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume of a unit of measure does not fit its length, width and height (CM / CCM/ML)
+  why_it_matters: With dimensions in CM and volume in CCM or ML, the volume cannot be larger than the box L x W x H, and a
+    box more than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume {actual_value} {MARM.VOLEH} against dimensions {MARM.LAENG}
+    x {MARM.BREIT} x {MARM.HOEHE} {MARM.MEABM}.'
+- id: MM612
+  field: MARM.VOLUM
+  check_class: cross_field_check
+  grain: MARM
+  applies_when:
+    MARM.MEABM:
+    - M
+    MARM.VOLEH:
+    - M3
+  fail_when: ((`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE` < 0.95 * `MARM.VOLUM`) | (`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE`
+    > 10 * `MARM.VOLUM`)) & (`MARM.VOLUM` > 0) & (`MARM.LAENG` > 0) & (`MARM.BREIT` > 0) & (`MARM.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume of a unit of measure does not fit its length, width and height (M / M3)
+  why_it_matters: With dimensions in M and volume in M3, the volume cannot be larger than the box L x W x H, and a box more
+    than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume {actual_value} {MARM.VOLEH} against dimensions {MARM.LAENG}
+    x {MARM.BREIT} x {MARM.HOEHE} {MARM.MEABM}.'
+- id: MM613
+  field: MARM.VOLUM
+  check_class: cross_field_check
+  grain: MARM
+  applies_when:
+    MARM.MEABM:
+    - DM
+    MARM.VOLEH:
+    - CDM
+    - L
+  fail_when: ((`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE` < 0.95 * `MARM.VOLUM`) | (`MARM.LAENG` * `MARM.BREIT` * `MARM.HOEHE`
+    > 10 * `MARM.VOLUM`)) & (`MARM.VOLUM` > 0) & (`MARM.LAENG` > 0) & (`MARM.BREIT` > 0) & (`MARM.HOEHE` > 0)
+  severity: medium
+  dimension: accuracy
+  message: Volume of a unit of measure does not fit its length, width and height (DM / CDM/L)
+  why_it_matters: With dimensions in DM and volume in CDM or L, the volume cannot be larger than the box L x W x H, and a
+    box more than ten times the volume points to a unit error (for example cm entered as m).
+  rule_authority: best_practice
+  sap_impact: Load planning, storage-bin capacity and freight by volume are wrong by the same factor.
+  fix_map:
+    __other__: Correct the volume or the dimensions in MM02 (Basic data 1 or Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume {actual_value} {MARM.VOLEH} against dimensions {MARM.LAENG}
+    x {MARM.BREIT} x {MARM.HOEHE} {MARM.MEABM}.'
+- id: MM614
+  field: MARA.MEABM
+  check_class: domain_value_check
+  allowed_values:
+  - MM
+  - CM
+  - DM
+  - M
+  - KM
+  - IN
+  - FT
+  - YD
+  severity: medium
+  dimension: validity
+  message: Length unit is not a recognised length unit
+  why_it_matters: The length unit must be one of the SAP internal unit codes for length (MM, CM, DM, M, KM, IN, FT, YD). ISO
+    codes (for example KGM, MTR, LTR) or free text are the external representation and do not convert.
+  rule_authority: sap_hard_constraint
+  sap_impact: Length conversions in logistics, packing and customs fail or return a wrong figure.
+  fix_map:
+    __other__: Replace the unit with the SAP internal code (MM, CM, DM, M, KM, IN, FT, YD) in MM02.
+  record_fix_template: 'Material {MARA.MATNR}: dimension unit is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        MMT: MM
+        CMT: CM
+        DMT: DM
+        MTR: M
+        KMT: KM
+        INH: IN
+        FOT: FT
+        YRD: YD
+        mm: MM
+        cm: CM
+        m: M
+        __other__: null
+    confidence: high
+- id: MM615
+  field: MARM.GEWEI
+  check_class: domain_value_check
+  grain: MARM
+  allowed_values:
+  - KG
+  - G
+  - MG
+  - LB
+  - OZ
+  - T
+  - TO
+  - TON
+  severity: medium
+  dimension: validity
+  message: Weight unit is not a recognised weight unit
+  why_it_matters: The weight unit must be one of the SAP internal unit codes for weight (KG, G, MG, LB, OZ, T, TO, TON). ISO
+    codes (for example KGM, MTR, LTR) or free text are the external representation and do not convert.
+  rule_authority: sap_hard_constraint
+  sap_impact: Weight conversions in logistics, packing and customs fail or return a wrong figure.
+  fix_map:
+    __other__: Replace the unit with the SAP internal code (KG, G, MG, LB, OZ, T, TO, TON) in MM02.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: weight unit is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        KGM: KG
+        GRM: G
+        MGM: MG
+        LBR: LB
+        ONZ: OZ
+        TNE: TO
+        kg: KG
+        g: G
+        __other__: null
+    confidence: high
+- id: MM616
+  field: MARM.VOLEH
+  check_class: domain_value_check
+  grain: MARM
+  allowed_values:
+  - L
+  - ML
+  - CCM
+  - CDM
+  - M3
+  - FT3
+  - GAL
+  - HL
+  - IN3
+  severity: medium
+  dimension: validity
+  message: Volume unit is not a recognised volume unit
+  why_it_matters: The volume unit must be one of the SAP internal unit codes for volume (L, ML, CCM, CDM, M3, FT3, GAL, HL,
+    IN3). ISO codes (for example KGM, MTR, LTR) or free text are the external representation and do not convert.
+  rule_authority: sap_hard_constraint
+  sap_impact: Volume conversions in logistics, packing and customs fail or return a wrong figure.
+  fix_map:
+    __other__: Replace the unit with the SAP internal code (L, ML, CCM, CDM, M3, FT3, GAL, HL, IN3) in MM02.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: volume unit is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        LTR: L
+        MLT: ML
+        MTQ: M3
+        CMQ: CCM
+        DMQ: CDM
+        FTQ: FT3
+        GLL: GAL
+        HLT: HL
+        INQ: IN3
+        l: L
+        ml: ML
+        __other__: null
+    confidence: high
+- id: MM617
+  field: MARM.MEABM
+  check_class: domain_value_check
+  grain: MARM
+  allowed_values:
+  - MM
+  - CM
+  - DM
+  - M
+  - KM
+  - IN
+  - FT
+  - YD
+  severity: medium
+  dimension: validity
+  message: Length unit is not a recognised length unit
+  why_it_matters: The length unit must be one of the SAP internal unit codes for length (MM, CM, DM, M, KM, IN, FT, YD). ISO
+    codes (for example KGM, MTR, LTR) or free text are the external representation and do not convert.
+  rule_authority: sap_hard_constraint
+  sap_impact: Length conversions in logistics, packing and customs fail or return a wrong figure.
+  fix_map:
+    __other__: Replace the unit with the SAP internal code (MM, CM, DM, M, KM, IN, FT, YD) in MM02.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: dimension unit is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        MMT: MM
+        CMT: CM
+        DMT: DM
+        MTR: M
+        KMT: KM
+        INH: IN
+        FOT: FT
+        YRD: YD
+        mm: MM
+        cm: CM
+        m: M
+        __other__: null
+    confidence: high
+- id: MM618
+  field: MARA.ERGEI
+  check_class: cross_field_check
+  fail_when: (`MARA.ERGEW` > 0) & `MARA.ERGEI`.isna()
+  severity: medium
+  dimension: completeness
+  message: Allowed packaging weight is maintained without its unit
+  why_it_matters: The allowed packaging weight (ERGEW) of a packaging material is a quantity; its meaning comes from the unit
+    ERGEI. Without the unit the value cannot be compared with the weight of the packed goods.
+  rule_authority: sap_hard_constraint
+  sap_impact: Handling-unit packing does not check the load limit of the packaging material.
+  fix_map:
+    __other__: 'Enter the unit of the allowed packaging weight in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA)
+      (Sales: general/plant).'
+  record_fix_template: 'Material {MARA.MATNR}: allowed packaging weight {MARA.ERGEW} has no unit.'
+- id: MM619
+  field: MARA.ERVOE
+  check_class: cross_field_check
+  fail_when: (`MARA.ERVOL` > 0) & `MARA.ERVOE`.isna()
+  severity: medium
+  dimension: completeness
+  message: Allowed packaging volume is maintained without its unit
+  why_it_matters: The allowed packaging volume (ERVOL) of a packaging material is a quantity; its meaning comes from the unit
+    ERVOE. Without the unit the value cannot be compared with the volume of the packed goods.
+  rule_authority: sap_hard_constraint
+  sap_impact: Handling-unit packing does not check the volume limit of the packaging material.
+  fix_map:
+    __other__: 'Enter the unit of the allowed packaging volume in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA)
+      (Sales: general/plant).'
+  record_fix_template: 'Material {MARA.MATNR}: allowed packaging volume {MARA.ERVOL} has no unit.'
+- id: MM620
+  field: MARM.BRGEW
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & (`MARA.BRGEW` > 0) & (`MARM.BRGEW` != `MARA.BRGEW`)
+  severity: medium
+  dimension: consistency
+  message: Gross weight on the base unit row differs from the material's gross weight
+  why_it_matters: SAP keeps the gross weight of the base unit in two places, MARA and the MARM row of the base unit, and the
+    material master transaction keeps them equal. A difference comes from a direct load into one table.
+  rule_authority: sap_hard_constraint
+  sap_impact: Deliveries in the base unit and deliveries converted through MARM show different weights for the same quantity.
+  fix_map:
+    __other__: Re-save the weight in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1) so both
+      tables are aligned.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit gross weight {actual_value} differs from material
+    gross weight {MARA.BRGEW}.'
+  auto_fix:
+    when: (`MARM.MEINH` == `MARA.MEINS`)
+    steps:
+    - op: copy
+      from: MARA.BRGEW
+    confidence: high
+- id: MM621
+  field: MARM.VOLUM
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & (`MARA.VOLUM` > 0) & (`MARM.VOLUM` != `MARA.VOLUM`)
+  severity: medium
+  dimension: consistency
+  message: Volume on the base unit row differs from the material's volume
+  why_it_matters: SAP keeps the volume of the base unit in MARA and in the MARM row of the base unit and keeps them equal.
+    A difference comes from a direct load into one table.
+  rule_authority: sap_hard_constraint
+  sap_impact: Volume totals differ depending on whether a document reads MARA or the unit conversion.
+  fix_map:
+    __other__: Re-save the volume in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1) so both
+      tables are aligned.
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit volume {actual_value} differs from material volume
+    {MARA.VOLUM}.'
+  auto_fix:
+    when: (`MARM.MEINH` == `MARA.MEINS`)
+    steps:
+    - op: copy
+      from: MARA.VOLUM
+    confidence: high
+- id: MM622
+  field: MARM.EAN11
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & `MARM.EAN11`.isna() & `MARA.EAN11`.notna()
+  severity: medium
+  dimension: consistency
+  message: Base unit row has no GTIN although the material has one
+  why_it_matters: The GTIN of the base unit is stored in MARA.EAN11 and in the MARM row of the base unit. Scanning and EDI
+    read the unit row; if it is blank, the GTIN is invisible to them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Barcode scanning, EDI order lines and POS lookups by GTIN do not find the material in its base unit.
+  fix_map:
+    __other__: Re-save the GTIN in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1 or Units of
+      measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit has no GTIN, material GTIN is {MARA.EAN11}.'
+  auto_fix:
+    when: (`MARM.MEINH` == `MARA.MEINS`) & `MARA.EAN11`.notna()
+    steps:
+    - op: copy
+      from: MARA.EAN11
+    confidence: high
+- id: MM623
+  field: MARM.EAN11
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & `MARM.EAN11`.notna() & `MARA.EAN11`.notna() & (`MARM.EAN11` != `MARA.EAN11`)
+  severity: high
+  dimension: consistency
+  message: GTIN on the base unit row differs from the material's GTIN
+  why_it_matters: MARA.EAN11 and the GTIN on the base unit row must be the same number. Two different GTINs for one unit mean
+    one of them belongs to another product or packaging level.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scanning finds the material under one GTIN, EDI and catalogues send the other; GS1 data pools reject the item.
+  fix_map:
+    __other__: Confirm the correct GTIN and maintain it in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA)
+      (Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit GTIN {actual_value} differs from material GTIN
+    {MARA.EAN11}.'
+  auto_fix:
+    when: (`MARM.MEINH` == `MARA.MEINS`)
+    steps:
+    - op: copy
+      from: MARA.EAN11
+    confidence: medium
+- id: MM624
+  field: MARM.GEWEI
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & `MARM.GEWEI`.notna() & `MARA.GEWEI`.notna() & (`MARM.GEWEI` != `MARA.GEWEI`)
+  severity: medium
+  dimension: consistency
+  message: Weight unit on the base unit row differs from the material's weight unit
+  why_it_matters: The base unit row in MARM mirrors the weight unit of MARA. A different unit makes the same weight figure
+    mean two different things.
+  rule_authority: sap_hard_constraint
+  sap_impact: Weights converted through MARM are off by the factor between the two units.
+  fix_map:
+    __other__: Re-save the weight and weight unit in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic
+      data 1).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit weight unit {actual_value} differs from material
+    weight unit {MARA.GEWEI}.'
+- id: MM625
+  field: MARM.NUMTP
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` == `MARA.MEINS`) & `MARM.NUMTP`.notna() & `MARA.NUMTP`.notna() & (`MARM.NUMTP` != `MARA.NUMTP`)
+  severity: low
+  dimension: consistency
+  message: EAN category on the base unit row differs from the material's EAN category
+  why_it_matters: The EAN category (NUMTP) of the base unit is stored in MARA and in the MARM row of the base unit. Different
+    categories mean the same GTIN is validated by two different rules.
+  rule_authority: sap_hard_constraint
+  sap_impact: GTIN check-digit and number-range checks give different results depending on the table read.
+  fix_map:
+    __other__: Re-save the EAN category in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic data 1).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: base unit EAN category {actual_value} differs from material
+    EAN category {MARA.NUMTP}.'
+  auto_fix:
+    when: (`MARM.MEINH` == `MARA.MEINS`)
+    steps:
+    - op: copy
+      from: MARA.NUMTP
+    confidence: medium
+- id: MM626
+  field: MARM.BRGEW
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.GEWEI` == `MARA.GEWEI`) & (`MARM.BRGEW` > 0) & (`MARM.UMREN` > 0) & (`MARM.BRGEW` < `MARM.UMREZ` / `MARM.UMREN`
+    * `MARA.NTGEW` * 0.999)
+  severity: high
+  dimension: accuracy
+  message: Gross weight of a packing unit is lower than the net weight of its contents
+  why_it_matters: A packing unit holding UMREZ/UMREN base units weighs at least that many times the net weight of one base
+    unit. A lower gross weight is physically impossible and points to a wrong conversion or a weight entered per base unit.
+  rule_authority: sap_hard_constraint
+  sap_impact: Pallet and carton weights in deliveries, shipments and freight bills are understated; axle and pallet load limits
+    are not respected.
+  fix_map:
+    __other__: Correct the gross weight or the conversion of the unit in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: gross weight {actual_value} {MARM.GEWEI} for {MARM.UMREZ}/{MARM.UMREN}
+    base units of net weight {MARA.NTGEW}.'
+- id: MM627
+  field: MARM.MESUB
+  check_class: exists_check
+  grain: MARM
+  fields:
+  - MARM.MATNR
+  - MARM.MESUB
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  severity: medium
+  dimension: consistency
+  message: Lower-level unit of measure is not a unit of the material
+  why_it_matters: The lower-level unit (MESUB) builds the packaging hierarchy, for example pallet contains carton. It must
+    itself be a unit of the same material, or the hierarchy breaks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Packaging hierarchies in EWM, retail and GDSN are incomplete; the unit cannot be broken down.
+  fix_map:
+    __other__: Create the lower-level unit for the material or correct MESUB in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: lower-level unit ''{actual_value}'' is not a unit of this
+    material.'
+- id: MM628
+  field: MARM.MESUB
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: '`MARM.MESUB` == `MARM.MEINH`'
+  severity: medium
+  dimension: consistency
+  message: Unit of measure is its own lower-level unit
+  why_it_matters: The lower-level unit points to the next smaller packaging level. A unit that contains itself creates a loop
+    in the packaging hierarchy.
+  rule_authority: sap_hard_constraint
+  sap_impact: Packaging hierarchy explosion loops or stops; GDSN and EWM packaging data are rejected.
+  fix_map:
+    __other__: Clear MESUB or set it to the next smaller unit in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: lower-level unit is the unit itself.'
+- id: MM629
+  field: MARM.UMREZ
+  check_class: cross_field_check
+  grain: MARM
+  applies_when:
+    MARM.MEINH:
+    - PAL
+    - KAR
+    - CS
+    - BOX
+    - CRT
+    - PAK
+    - CAR
+    MARA.MEINS:
+    - ST
+    - EA
+    - PC
+    - STK
+    - PCE
+  fail_when: '`MARM.UMREZ` < `MARM.UMREN`'
+  severity: high
+  dimension: accuracy
+  message: Packaging unit holds less than one piece
+  why_it_matters: A pallet, carton, case or box holds a whole number of pieces, at least one. A conversion below one piece
+    means numerator and denominator are swapped.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orders in cartons or pallets are converted to a fraction of a piece; stock, prices and replenishment are wrong.
+  fix_map:
+    __other__: Swap or correct the numerator and denominator of the unit in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: 1 {MARM.MEINH} = {MARM.UMREZ}/{MARM.UMREN} {MARA.MEINS}.'
+- id: MM630
+  field: MARM.UMREZ
+  check_class: uniqueness_check
+  grain: MARM
+  fields:
+  - MARM.MATNR
+  - MARM.UMREZ
+  - MARM.UMREN
+  severity: low
+  dimension: uniqueness
+  message: Two units of measure of the material have the same conversion factor
+  why_it_matters: Two units with the same conversion (for example CS = 12 and CAR = 12) are the same quantity under two names.
+    Users pick either one, which splits order history and confuses packaging data.
+  rule_authority: best_practice
+  sap_impact: Purchasing and sales documents use different units for the same pack; GTINs and pack data diverge.
+  fix_map:
+    __other__: Keep one unit per packaging level and delete the duplicate in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: conversion {MARM.UMREZ}/{MARM.UMREN} is used by another
+    unit of the same material.'
+- id: MM631
+  field: MARM.BRGEW
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: (`MARM.MEINH` != `MARA.MEINS`) & (`MARA.BRGEW` > 0) & ~(`MARM.BRGEW` > 0) & (`MARM.UMREZ` > `MARM.UMREN`)
+  severity: low
+  dimension: completeness
+  message: Packing unit has no gross weight although the material has one
+  why_it_matters: A packing unit that contains several base units weighs more than the base unit, and its own gross weight
+    feeds shipment and pallet weights. SAP does not derive it from the base unit.
+  rule_authority: best_practice
+  sap_impact: Shipments planned in cartons or pallets show no weight; freight and load checks are skipped.
+  fix_map:
+    __other__: Maintain the gross weight of the unit in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: unit has no gross weight.'
+- id: MM632
+  field: MEAN.EAN11
+  check_class: exists_check
+  grain: MEAN
+  applies_when:
+    MEAN.HPEAN:
+    - X
+  fields:
+  - MEAN.MATNR
+  - MEAN.MEINH
+  - MEAN.EAN11
+  target_table: MARM
+  target_fields:
+  - MATNR
+  - MEINH
+  - EAN11
+  severity: medium
+  dimension: consistency
+  message: Main GTIN in the EAN table is not the GTIN of the unit of measure
+  why_it_matters: For each unit, the GTIN flagged as main (HPEAN) in MEAN must be the GTIN stored on the unit (MARM.EAN11).
+    SAP keeps them equal when the GTIN is maintained in the material master.
+  rule_authority: sap_hard_constraint
+  sap_impact: Documents print the unit GTIN while scanning and EDI identify the material by a different main GTIN.
+  fix_map:
+    __other__: Set the main GTIN flag on the GTIN of the unit, or maintain the unit GTIN, in MM02 (Units of measure > EANs).
+  record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: main GTIN {actual_value} is not the GTIN of the unit.'
+- id: MM633
+  field: MEAN.EAN11
+  check_class: cross_field_check
+  grain: MEAN
+  fail_when: '`MEAN.EAN11`.notna() & (((`MEAN.EANTP` == ''HE'') & ~`MEAN.EAN11`.str.len().isin([8, 13])) | ((`MEAN.EANTP`
+    == ''UC'') & (`MEAN.EAN11`.str.len() != 12)))'
+  severity: medium
+  dimension: validity
+  message: GTIN length does not match its EAN category
+  why_it_matters: EAN category HE (manufacturer EAN) is an EAN-13 or EAN-8 number; category UC is a 12-digit UPC-A. A GTIN
+    whose length does not match its category was loaded under the wrong category or is truncated.
+  rule_authority: sap_hard_constraint
+  sap_impact: SAP's GTIN check for the category rejects the number on the next change; scanners and EDI partners reject it.
+  fix_map:
+    __other__: Correct the GTIN or its EAN category in MM02 (Units of measure > EANs).
+  record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: GTIN {actual_value} has category {MEAN.EANTP}.'
+- id: MM634
+  field: MARM.EAN11
+  check_class: cross_field_check
+  grain: MARM
+  fail_when: '`MARM.EAN11`.notna() & (((`MARM.NUMTP` == ''HE'') & ~`MARM.EAN11`.str.len().isin([8, 13])) | ((`MARM.NUMTP`
+    == ''UC'') & (`MARM.EAN11`.str.len() != 12)))'
+  severity: medium
+  dimension: validity
+  message: GTIN length of a unit of measure does not match its EAN category
+  why_it_matters: EAN category HE (manufacturer EAN) is an EAN-13 or EAN-8 number; category UC is a 12-digit UPC-A. A GTIN
+    whose length does not match its category was loaded under the wrong category or is truncated.
+  rule_authority: sap_hard_constraint
+  sap_impact: SAP's GTIN check for the category rejects the number on the next change; scanners and EDI partners reject it.
+  fix_map:
+    __other__: Correct the GTIN or its EAN category in MM02 (Additional data > Units of measure).
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: GTIN {actual_value} has category {MARM.NUMTP}.'
+- id: MM635
+  field: MARA.EAN11
+  check_class: cross_field_check
+  fail_when: '`MARA.EAN11`.notna() & (((`MARA.NUMTP` == ''HE'') & ~`MARA.EAN11`.str.len().isin([8, 13])) | ((`MARA.NUMTP`
+    == ''UC'') & (`MARA.EAN11`.str.len() != 12)))'
+  severity: medium
+  dimension: validity
+  message: GTIN length of the material does not match its EAN category
+  why_it_matters: EAN category HE (manufacturer EAN) is an EAN-13 or EAN-8 number; category UC is a 12-digit UPC-A. A GTIN
+    whose length does not match its category was loaded under the wrong category or is truncated.
+  rule_authority: sap_hard_constraint
+  sap_impact: SAP's GTIN check for the category rejects the number on the next change; scanners and EDI partners reject it.
+  fix_map:
+    __other__: Correct the GTIN or its EAN category in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Basic
+      data 1).
+  record_fix_template: 'Material {MARA.MATNR}: GTIN {actual_value} has category {MARA.NUMTP}.'
+- id: MM636
+  field: MEAN.EANTP
+  check_class: cross_field_check
+  grain: MEAN
+  fail_when: (`MEAN.EANTP` == 'HE') & `MEAN.EAN11`.str.startswith('2')
+  severity: low
+  dimension: validity
+  message: In-store (restricted circulation) GTIN is classified as a manufacturer EAN
+  why_it_matters: GS1 reserves GTINs starting with 2 for restricted circulation (in-store numbers, variable-weight labels).
+    Such a number is not a manufacturer EAN and is not unique outside the company.
+  rule_authority: best_practice
+  sap_impact: The number is sent to GS1 data pools and trading partners as if it were a global GTIN.
+  fix_map:
+    __other__: Change the EAN category to an in-store category in MM02 (Units of measure > EANs).
+  record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: GTIN {MEAN.EAN11} starts with 2 but has category HE.'
+- id: MM637
+  field: MARA.EAN11
+  check_class: exists_check
+  fields:
+  - MARA.MATNR
+  - MARA.MEINS
+  - MARA.EAN11
+  target_table: MEAN
+  target_fields:
+  - MATNR
+  - MEINH
+  - EAN11
+  target_when:
+    HPEAN:
+    - X
+  severity: low
+  dimension: consistency
+  message: Material GTIN is not the main GTIN of the base unit in the EAN table
+  why_it_matters: MARA.EAN11 is the main GTIN of the base unit. When the EAN table (MEAN) is in use it must hold the same
+    GTIN for the base unit, flagged as main GTIN.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scanning and EDI that read MEAN identify the base unit by a different GTIN than documents print.
+  fix_map:
+    __other__: Re-save the GTIN in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) so that SAP rebuilds the
+      EAN table entry, or set the main flag.
+  record_fix_template: 'Material {MARA.MATNR}: GTIN {actual_value} is not the main GTIN of base unit {MARA.MEINS} in MEAN.'
+- id: MM638
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.contains(''[|^~]'', regex=True)'
+  severity: low
+  dimension: validity
+  message: Material description contains a pipe, caret or tilde
+  why_it_matters: '| is the field separator of many flat-file and IDoc interfaces; ^ and ~ are the command prefixes of ZPL
+    label printers. In a description they split interface records or corrupt labels.'
+  rule_authority: best_practice
+  sap_impact: Interface files shift columns; warehouse and shipping labels print garbage or stop.
+  fix_map:
+    __other__: Remove the character from the description in MM02 (Additional data > Descriptions).
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' contains |, ^ or ~.'
+  auto_fix:
+    steps:
+    - op: regex_replace
+      pattern: '[|^~]'
+      repl: ' '
+    - op: collapse_spaces
+    - op: strip
+    confidence: low
+- id: MM639
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.upper().str.contains(''DO NOT USE|DONT USE|NOT TO BE USED|OBSOLETE|DUPLICATE|DUPLICATED'',
+    regex=True) & `MARA.LVORM`.isna() & `MARA.MSTAE`.isna()'
+  severity: medium
+  dimension: lifecycle
+  message: Description says the material is obsolete but the material is not blocked
+  why_it_matters: Writing DO NOT USE, OBSOLETE or DUPLICATE in the description is a manual block that SAP does not enforce.
+    Only a material status or the deletion flag stops purchasing, MRP and sales from using the material.
+  rule_authority: best_practice
+  sap_impact: MRP keeps planning the material, buyers can still order it and it stays in S/4HANA migration scope.
+  fix_map:
+    __other__: Set a blocking cross-plant material status (and the deletion flag if appropriate) in MM02 (ECC) or Fiori F1602
+      Manage Product Master Data (S/4HANA).
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' marks the material as
+    not to be used, but it has no status or deletion flag.'
+- id: MM640
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.contains(''�|Ã|Â'', regex=True)'
+  severity: medium
+  dimension: validity
+  message: Material description contains corrupted characters from a wrong code page
+  why_it_matters: Characters such as Ã, Â or the replacement character appear when UTF-8 text was loaded as a single-byte
+    code page (or the reverse). The original letters (é, ü, °) are lost.
+  rule_authority: best_practice
+  sap_impact: Descriptions print wrongly on documents and labels; searches by the real word do not find the material.
+  fix_map:
+    __other__: Reload the description from the source in the correct encoding, or retype it in MM02 (Descriptions).
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' contains code-page errors.'
+- id: MM641
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.fullmatch(''[0-9 ./-]+'')'
+  severity: low
+  dimension: accuracy
+  message: Material description consists only of digits
+  why_it_matters: A description made only of digits and separators is a number (old material number, drawing or GTIN), not
+    a name. Users cannot recognise the material from it.
+  rule_authority: best_practice
+  sap_impact: Buyers, planners and warehouse staff cannot identify the material; searches by name find nothing.
+  fix_map:
+    __other__: Enter a descriptive name in MM02 (Additional data > Descriptions) and keep the number in its own field.
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' contains no letters.'
+- id: MM642
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.match(r''[^\w(\[]'')'
+  severity: low
+  dimension: validity
+  message: Material description starts with a special character
+  why_it_matters: 'Descriptions that start with a symbol (*, -, ., #) are usually status markers or load artefacts. They sort
+    apart from the real names in lists and search helps.'
+  rule_authority: best_practice
+  sap_impact: Alphabetical lists, search helps and catalogues place the material out of order.
+  fix_map:
+    __other__: Remove the leading symbol in MM02 (Additional data > Descriptions); use material status for blocking.
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' starts with a special
+    character.'
+- id: MM643
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.endswith(''-'') | `MAKT.MAKTX`.str.endswith('','') | `MAKT.MAKTX`.str.endswith(''/'') | `MAKT.MAKTX`.str.endswith('';'')
+    | `MAKT.MAKTX`.str.endswith('':'') | `MAKT.MAKTX`.str.endswith(''&'') | `MAKT.MAKTX`.str.endswith(''+'') | `MAKT.MAKTX`.str.endswith(''('')'
+  severity: low
+  dimension: accuracy
+  message: Material description ends with a separator (likely cut off)
+  why_it_matters: A description that ends with -, comma, /, &, + or an open bracket was cut off at 40 characters by a load
+    program; the rest of the name is missing.
+  rule_authority: best_practice
+  sap_impact: Users see half a description; descriptions of similar materials become identical.
+  fix_map:
+    __other__: Shorten the description so it ends with a complete word in MM02 (Additional data > Descriptions); keep the
+      full text in the basic data text.
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' ends with a separator.'
+- id: MM644
+  field: MAKT.MAKTX
+  check_class: cross_field_check
+  grain: MAKT
+  fail_when: '`MAKT.MAKTX`.str.islower()'
+  severity: low
+  dimension: validity
+  message: Material description is entirely in lower case
+  why_it_matters: Descriptions in a consistent case are easier to read on documents and labels. An all-lower-case description
+    is usually a load from a source system that lost the case convention.
+  rule_authority: best_practice
+  sap_impact: Printed documents and catalogues mix case conventions.
+  fix_map:
+    __other__: Apply the company's description convention in MM02 (Additional data > Descriptions).
+  record_fix_template: 'Material {MAKT.MATNR}, language {MAKT.SPRAS}: description ''{actual_value}'' is all lower case.'
+- id: MM645
+  field: MARA.MSTAE
+  check_class: cross_field_check
+  fail_when: (`MARA.LVORM` == 'X') & `MARA.MSTAE`.isna()
+  severity: low
+  dimension: lifecycle
+  message: Material is flagged for deletion but has no blocking cross-plant status
+  why_it_matters: The deletion flag only marks the material for archiving; until archiving runs, many transactions only warn.
+    A blocking cross-plant material status stops purchasing, MRP and inventory from using it.
+  rule_authority: best_practice
+  sap_impact: Deleted materials keep appearing in purchase requisitions, MRP runs and S/4HANA migration scope.
+  fix_map:
+    __other__: Set a blocking cross-plant material status in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA)
+      (Basic data 1).
+  record_fix_template: 'Material {MARA.MATNR}: flagged for deletion without a cross-plant status.'
+- id: MM646
+  field: MARA.SATNR
+  check_class: cross_field_check
+  fail_when: '`MARA.ATTYP`.isin([''00'', ''01'']) & `MARA.SATNR`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Single or generic material carries a generic material reference
+  why_it_matters: Only variants (material category 02) belong to a generic material (SATNR). A single material (00) or a generic
+    material (01) with SATNR set contradicts its own category.
+  rule_authority: sap_hard_constraint
+  sap_impact: Retail variant maintenance, assortments and article hierarchies treat the material inconsistently.
+  fix_map:
+    __other__: Clear the generic material or correct the material category.
+  record_fix_template: 'Material {MARA.MATNR}: material category {MARA.ATTYP} with generic material {actual_value}.'
+- id: MM647
+  field: MARA.EAN11
+  check_class: null_check
+  applies_when:
+    MARA.GDS_RELEVANT:
+    - X
+  severity: high
+  dimension: completeness
+  message: Material is relevant for global data synchronisation but has no GTIN
+  why_it_matters: Global data synchronisation (GDS) publishes the material to GS1 data pools by its GTIN. A GDS-relevant material
+    without a GTIN cannot be published.
+  rule_authority: sap_hard_constraint
+  sap_impact: The item is rejected by the data pool and does not reach trading partners.
+  fix_map:
+    __blank__: Maintain the GTIN in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) or remove the GDS-relevant
+      flag.
+  record_fix_template: 'Material {MARA.MATNR}: GDS-relevant but no GTIN.'
+- id: MM648
+  field: MARA.EAN11
+  check_class: null_check
+  applies_when:
+    MARA.GTIN_VARIANT:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: GTIN variant is set but the material has no GTIN
+  why_it_matters: The GTIN variant identifies a version of a GTIN. Without the GTIN itself it has nothing to qualify.
+  rule_authority: sap_hard_constraint
+  sap_impact: GTIN version data sent to partners is incomplete.
+  fix_map:
+    __blank__: Maintain the GTIN in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) or clear the GTIN variant.
+  record_fix_template: 'Material {MARA.MATNR}: GTIN variant {MARA.GTIN_VARIANT} without GTIN.'
+- id: MM649
+  field: MARA.MHDRZ
+  check_class: cross_field_check
+  fail_when: (`MARA.MHDRZ` > 0) & ~(`MARA.MHDHB` > 0)
+  severity: medium
+  dimension: completeness
+  message: Minimum remaining shelf life is set but total shelf life is missing
+  why_it_matters: The minimum remaining shelf life (MHDRZ) is checked against the expiration date at goods receipt. The expiration
+    date is calculated from the total shelf life (MHDHB); without it the check has nothing to compare.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods receipts cannot calculate an expiration date and the remaining-shelf-life check is skipped.
+  fix_map:
+    __other__: Maintain the total shelf life in MM02 (ECC) or Fiori F1602 Manage Product Master Data (S/4HANA) (Plant data
+      / storage 1).
+  record_fix_template: 'Material {MARA.MATNR}: minimum remaining shelf life {actual_value} without total shelf life.'
+- id: MM650
+  field: MARA.HAZMAT
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Relevant for hazardous substances (MARA.HAZMAT) is not a value of its SAP domain
+  why_it_matters: Relevant for hazardous substances accepts only the fixed values of domain XFELD. The value drives whether
+    EHS hazardous-substance checks run; the SAP screens never accept a value outside the domain, so it comes from a direct
+    table load or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Hazardous-substance checks and safety data sheet shipping are skipped or run for the wrong materials.
+  fix_map:
+    __other__: Correct the value in MM02; the allowed values are those of domain XFELD.
+  record_fix_template: 'Material {MARA.MATNR}: HAZMAT is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
+- id: MM651
+  field: MARA.GDS_RELEVANT
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Relevant for global data synchronisation (MARA.GDS_RELEVANT) is not a value of its SAP domain
+  why_it_matters: Relevant for global data synchronisation accepts only the fixed values of domain XFELD. The value drives
+    whether the material is published to GS1 data pools; the SAP screens never accept a value outside the domain, so it comes
+    from a direct table load or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: The material is published or withheld from data pools against intent.
+  fix_map:
+    __other__: Correct the value in MM02; the allowed values are those of domain XFELD.
+  record_fix_template: 'Material {MARA.MATNR}: GDS_RELEVANT is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
+- id: MM652
+  field: MEAN.HPEAN
+  check_class: domain_value_check
+  grain: MEAN
+  severity: low
+  dimension: validity
+  message: Main EAN indicator (MEAN.HPEAN) is not a value of its SAP domain
+  why_it_matters: Main EAN indicator accepts only the fixed values of domain XFELD. The value drives which GTIN of a unit
+    is the main GTIN; the SAP screens never accept a value outside the domain, so it comes from a direct table load or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: No main GTIN is recognised for the unit; documents and EDI carry no GTIN.
+  fix_map:
+    __other__: Correct the value in MM02; the allowed values are those of domain XFELD.
+  record_fix_template: 'Material {MEAN.MATNR}, unit {MEAN.MEINH}: HPEAN is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: map
+      values:
+        x: X
+        Y: X
+        y: X
+        '1': X
+        'TRUE': X
+        'true': X
+        __other__: null
+    confidence: medium
+- id: MM653
+  field: MARA.KZWSM
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Units of measure usage (catch weight) (MARA.KZWSM) is not a value of its SAP domain
+  why_it_matters: Units of measure usage (catch weight) accepts only the fixed values of domain KZWSO. The value drives whether
+    alternative units are used as catch-weight or variable units; the SAP screens never accept a value outside the domain,
+    so it comes from a direct table load or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Catch-weight processing and proportional unit handling run with an undefined setting.
+  fix_map:
+    __other__: Correct the value in MM02; the allowed values are those of domain KZWSO.
+  record_fix_template: 'Material {MARA.MATNR}: KZWSM is ''{actual_value}''.'
+  auto_fix:
+    steps:
+    - op: upper
+    confidence: high
+- id: MM654
+  field: MARA.CMETH
+  check_class: domain_value_check
+  severity: low
+  dimension: validity
+  message: Quantity conversion method (MARA.CMETH) is not a value of its SAP domain
+  why_it_matters: Quantity conversion method accepts only the fixed values of domain OIB_CMETH. The value drives how quantities
+    are converted between units with characteristics; the SAP screens never accept a value outside the domain, so it comes
+    from a direct table load or a migration.
+  rule_authority: sap_hard_constraint
+  sap_impact: Unit conversion with batch-specific factors uses an undefined method.
+  fix_map:
+    __other__: Correct the value in MM02; the allowed values are those of domain OIB_CMETH.
+  record_fix_template: 'Material {MARA.MATNR}: CMETH is ''{actual_value}''.'
+- id: MM655
+  field: MARA.ERGEI
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Unit of allowed packaging weight (MARA.ERGEI) is not defined in the system's configuration (T006)
+  why_it_matters: Unit of allowed packaging weight is a key into the system's own configuration (T006). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from
+    direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Packing checks cannot convert the allowed weight of the packaging material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: unit of allowed packaging weight ''{actual_value}'' is not configured (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM656
+  field: MARA.ERVOE
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Unit of allowed packaging volume (MARA.ERVOE) is not defined in the system's configuration (T006)
+  why_it_matters: Unit of allowed packaging volume is a key into the system's own configuration (T006). A value that is not
+    configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from
+    direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Packing checks cannot convert the allowed volume of the packaging material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: unit of allowed packaging volume ''{actual_value}'' is not configured (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM657
+  field: MARA.INHME
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Content unit (MARA.INHME) is not defined in the system's configuration (T006)
+  why_it_matters: Content unit is a key into the system's own configuration (T006). A value that is not configured there cannot
+    be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads, client
+    copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Unit prices per content unit (price per litre or kilo) cannot be calculated or printed.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: content unit ''{actual_value}'' is not configured (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM658
+  field: MARA.MAXDIM_UOM
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Unit of the maximum packing dimensions (MARA.MAXDIM_UOM) is not defined in the system's configuration (T006)
+  why_it_matters: Unit of the maximum packing dimensions is a key into the system's own configuration (T006). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Packing material dimension checks cannot convert the maximum dimensions.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: unit of the maximum packing dimensions ''{actual_value}'' is not configured
+    (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM659
+  field: MARA.HERKL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Country of origin (MARA.HERKL) is not defined in the system's configuration (T005)
+  why_it_matters: Country of origin is a key into the system's own configuration (T005). A value that is not configured there
+    cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct loads,
+    client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Preference calculation, export declarations and certificates of origin carry an invalid country.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T005. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: country of origin ''{actual_value}'' is not configured (T005).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM660
+  field: MARA.STOFF
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Hazardous material number (MARA.STOFF) is not defined in the system's configuration (MGEF)
+  why_it_matters: Hazardous material number is a key into the system's own configuration (MGEF). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warehouse hazardous-material checks (storage class, water pollution class) are not applied.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in MGEF. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: hazardous material number ''{actual_value}'' is not configured (MGEF).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM661
+  field: MARA.PROFL
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Dangerous goods indicator profile (MARA.PROFL) is not defined in the system's configuration (TDG41)
+  why_it_matters: Dangerous goods indicator profile is a key into the system's own configuration (TDG41). A value that is
+    not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Dangerous-goods checks in deliveries and shipments are not triggered.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TDG41. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: dangerous goods indicator profile ''{actual_value}'' is not configured (TDG41).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM662
+  field: MARA.VHART
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Packaging material type (MARA.VHART) is not defined in the system's configuration (TVTY)
+  why_it_matters: Packaging material type is a key into the system's own configuration (TVTY). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Handling units cannot be created with the packaging material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TVTY. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: packaging material type ''{actual_value}'' is not configured (TVTY).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM663
+  field: MARA.TAKLV
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Tax classification of the material (MARA.TAKLV) is not defined in the system's configuration (TSKM)
+  why_it_matters: Tax classification of the material is a key into the system's own configuration (TSKM). A value that is
+    not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes
+    from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax determination proposals for new sales areas use an undefined classification.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TSKM. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: tax classification of the material ''{actual_value}'' is not configured (TSKM).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM664
+  field: MARA.MFRGR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Material freight group (MARA.MFRGR) is not defined in the system's configuration (TMFG)
+  why_it_matters: Material freight group is a key into the system's own configuration (TMFG). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Freight cost calculation in shipments does not find the freight group.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TMFG. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: material freight group ''{actual_value}'' is not configured (TMFG).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM665
+  field: MARA.HNDLCODE
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Handling indicator (MARA.HNDLCODE) is not defined in the system's configuration (THNDLCD)
+  why_it_matters: Handling indicator is a key into the system's own configuration (THNDLCD). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Warehouse process steps that depend on the handling indicator are skipped.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in THNDLCD. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: handling indicator ''{actual_value}'' is not configured (THNDLCD).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM666
+  field: MARA.WHMATGR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Warehouse material group (MARA.WHMATGR) is not defined in the system's configuration (TWHMATGR)
+  why_it_matters: Warehouse material group is a key into the system's own configuration (TWHMATGR). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: EWM putaway and picking strategies do not find the material group.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TWHMATGR. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: warehouse material group ''{actual_value}'' is not configured (TWHMATGR).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM667
+  field: MARA.WHSTC
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Warehouse storage condition (MARA.WHSTC) is not defined in the system's configuration (TWHSTC)
+  why_it_matters: Warehouse storage condition is a key into the system's own configuration (TWHSTC). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: EWM storage-condition checks during putaway are not applied.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TWHSTC. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: warehouse storage condition ''{actual_value}'' is not configured (TWHSTC).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM668
+  field: MARA.QGRP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Quarantine period group (MARA.QGRP) is not defined in the system's configuration (TQGRP)
+  why_it_matters: Quarantine period group is a key into the system's own configuration (TQGRP). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Quarantine periods in EWM are not determined for the material.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TQGRP. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: quarantine period group ''{actual_value}'' is not configured (TQGRP).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM669
+  field: MARA.SERIAL
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Serial number profile at client level (MARA.SERIAL) is not defined in the system's configuration (TSERIAL)
+  why_it_matters: Serial number profile at client level is a key into the system's own configuration (TSERIAL). A value that
+    is not configured there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it
+    comes from direct loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: Serial number capture in EWM does not apply the profile.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in TSERIAL. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARA.MATNR}: serial number profile at client level ''{actual_value}'' is not configured
+    (TSERIAL).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM670
+  field: MARM.MESUB
+  check_class: referential_check
+  grain: MARM
+  severity: medium
+  dimension: validity
+  message: Lower-level unit of measure (MARM.MESUB) is not defined in the system's configuration (T006)
+  why_it_matters: Lower-level unit of measure is a key into the system's own configuration (T006). A value that is not configured
+    there cannot be interpreted by the functions that read it; SAP's own screens never accept it, so it comes from direct
+    loads, client copies or configuration deleted after the fact.
+  rule_authority: sap_hard_constraint
+  sap_impact: The packaging hierarchy cannot be exploded below the unit.
+  fix_map:
+    __other__: '''{invalid_value}'' is not in T006. Correct the value via MM02 (ECC) or Fiori F1602 Manage Product Master
+      Data (S/4HANA) or, if the value is genuinely needed, create it in customizing.'
+  record_fix_template: 'Material {MARM.MATNR}, unit {MARM.MEINH}: lower-level unit of measure ''{actual_value}'' is not configured
+    (T006).'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: medium
+- id: MM671
+  field: KSSK.CLINT
+  check_class: exists_check
+  grain: KSSK
+  target_table: KLAH
+  target_fields:
+  - CLINT
+  target_when:
+    STATU:
+    - '1'
+  severity: medium
+  dimension: lifecycle
+  message: Object is assigned to a class that is not released
+  why_it_matters: Only classes with status 1 (released) can be used for classification and searches. Assignments to classes
+    in preparation or locked are not evaluated.
+  rule_authority: sap_hard_constraint
+  sap_impact: Class searches (CL30N), variant configuration and batch determination ignore the assignment.
+  fix_map:
+    __other__: Release the class in CL02 or move the assignment to a released class in CL20N.
+  record_fix_template: 'Class assignment of object {KSSK.OBJEK}, class type {KSSK.KLART}: class {actual_value} is not released.'
+- id: MM672
+  field: AUSP.ATFLB
+  check_class: cross_field_check
+  grain: AUSP
+  fail_when: '`AUSP.ATFLB`.notna() & (`AUSP.ATFLB` != 0) & (`AUSP.ATFLB` < `AUSP.ATFLV`)'
+  severity: medium
+  dimension: consistency
+  message: Numeric characteristic interval has an upper limit below its lower limit
+  why_it_matters: An interval value is stored as lower limit (ATFLV) and upper limit (ATFLB). An upper limit below the lower
+    limit is an empty interval that no value can satisfy.
+  rule_authority: sap_hard_constraint
+  sap_impact: Classification searches and batch selection by this characteristic never match the object.
+  fix_map:
+    __other__: Correct the interval in CL20N / MSC2N.
+  record_fix_template: 'Object {AUSP.OBJEK}, characteristic {AUSP.ATINN}: upper limit {actual_value} is below lower limit
+    {AUSP.ATFLV}.'
+- id: MM673
+  field: CAWN.ATFLB
+  check_class: cross_field_check
+  grain: CAWN
+  fail_when: '`CAWN.ATFLB`.notna() & (`CAWN.ATFLB` != 0) & (`CAWN.ATFLB` < `CAWN.ATFLV`)'
+  severity: medium
+  dimension: consistency
+  message: Allowed value interval of a characteristic has an upper limit below its lower limit
+  why_it_matters: An allowed interval is stored as lower limit (ATFLV) and upper limit (ATFLB). An upper limit below the lower
+    limit allows no value at all.
+  rule_authority: sap_hard_constraint
+  sap_impact: Every value entered for the characteristic is rejected or the interval is silently ignored.
+  fix_map:
+    __other__: Correct the allowed values of the characteristic in CT04.
+  record_fix_template: 'Characteristic {CAWN.ATINN}, value {CAWN.ATZHL}: upper limit {actual_value} is below lower limit {CAWN.ATFLV}.'
+- id: MM674
+  field: CABN.ATNAM
+  check_class: uniqueness_check
+  grain: CABN
+  fields:
+  - CABN.ATNAM
+  - CABN.ADZHL
+  severity: high
+  dimension: uniqueness
+  message: Two characteristics have the same name
+  why_it_matters: The characteristic name (ATNAM) is the external key that users, BAPIs and object dependencies use. Two internal
+    characteristics with one name make every reference ambiguous.
+  rule_authority: sap_hard_constraint
+  sap_impact: Classification loads and dependencies attach values to the wrong characteristic.
+  fix_map:
+    __other__: Rename or delete the duplicate characteristic in CT04.
+  record_fix_template: 'Characteristic {CABN.ATINN}: name ''{actual_value}'' is used by another characteristic.'
+- id: MM675
+  field: CABN.ATNAM
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: '`CABN.ATNAM`.str.contains(''[a-z]'', regex=True)'
+  severity: medium
+  dimension: validity
+  message: Characteristic name contains lower-case letters
+  why_it_matters: Characteristic names are stored in upper case; CT04 converts every entry. A lower-case name comes from a
+    direct load and cannot be found by the upper-case search that SAP applies.
+  rule_authority: sap_hard_constraint
+  sap_impact: CT04, CL20N and BAPIs do not find the characteristic by name; dependencies referring to it fail.
+  fix_map:
+    __other__: Correct the name in upper case.
+  record_fix_template: 'Characteristic {CABN.ATINN}: name ''{actual_value}'' contains lower-case letters.'
+  auto_fix:
+    steps:
+    - op: upper
+    confidence: high
+- id: MM676
+  field: KLAH.CLASS
+  check_class: cross_field_check
+  grain: KLAH
+  fail_when: '`KLAH.CLASS`.str.contains(''[a-z]'', regex=True)'
+  severity: medium
+  dimension: validity
+  message: Class name contains lower-case letters
+  why_it_matters: Class names are stored in upper case; CL01 converts every entry. A lower-case name comes from a direct load
+    and cannot be found by the upper-case search that SAP applies.
+  rule_authority: sap_hard_constraint
+  sap_impact: CL02, CL20N and BAPIs do not find the class by name.
+  fix_map:
+    __other__: Correct the name in upper case.
+  record_fix_template: 'Class {KLAH.CLINT}, class type {KLAH.KLART}: name ''{actual_value}'' contains lower-case letters.'
+  auto_fix:
+    steps:
+    - op: upper
+    confidence: high
+- id: MM677
+  field: INOB.OBJEK
+  check_class: exists_check
+  grain: INOB
+  applies_when:
+    INOB.OBTAB:
+    - MARA
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: medium
+  dimension: consistency
+  message: Classification object points to a material that does not exist
+  why_it_matters: INOB links an internal object number to a material for class types that use it (for example 300 variant
+    classes, 023 batch classes). A material number that is not in MARA leaves the classification orphaned.
+  rule_authority: sap_hard_constraint
+  sap_impact: Orphan classification data is migrated and searched but belongs to no material.
+  fix_map:
+    __other__: Delete the orphan object link (and its values) or recreate the material.
+  record_fix_template: 'Object {INOB.CUOBJ}: material ''{actual_value}'' does not exist.'
+- id: MM678
+  field: KSSK.OBJEK
+  check_class: exists_check
+  grain: KSSK
+  applies_when:
+    KSSK.KLART:
+    - '001'
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: medium
+  dimension: consistency
+  message: Material class assignment points to a material that does not exist
+  why_it_matters: For class type 001 (material class) the object key in KSSK is the material number. An assignment to a material
+    that is not in MARA is an orphan.
+  rule_authority: sap_hard_constraint
+  sap_impact: Class searches return material numbers that cannot be opened; migration carries orphan rows.
+  fix_map:
+    __other__: Delete the orphan assignment in CL24N or recreate the material.
+  record_fix_template: 'Class assignment of object {actual_value}, class type {KSSK.KLART}: material does not exist.'
+- id: MM679
+  field: AUSP.OBJEK
+  check_class: exists_check
+  grain: AUSP
+  applies_when:
+    AUSP.KLART:
+    - '001'
+  target_table: MARA
+  target_fields:
+  - MATNR
+  severity: medium
+  dimension: consistency
+  message: Material characteristic value belongs to a material that does not exist
+  why_it_matters: For class type 001 (material class) the object key in AUSP is the material number. Values for a material
+    that is not in MARA are orphans.
+  rule_authority: sap_hard_constraint
+  sap_impact: Characteristic searches return material numbers that cannot be opened; migration carries orphan values.
+  fix_map:
+    __other__: Delete the orphan values or recreate the material.
+  record_fix_template: 'Object {actual_value}, characteristic {AUSP.ATINN}: material does not exist.'
+- id: MM680
+  field: AUSP.OBJEK
+  check_class: exists_check
+  grain: AUSP
+  fields:
+  - AUSP.OBJEK
+  - AUSP.KLART
+  target_table: KSSK
+  target_fields:
+  - OBJEK
+  - KLART
+  severity: medium
+  dimension: consistency
+  message: Characteristic value exists without a class assignment
+  why_it_matters: Values are entered for the characteristics of the classes an object is assigned to. A value whose object
+    has no class assignment of that class type cannot be displayed or changed in CL20N.
+  rule_authority: sap_hard_constraint
+  sap_impact: Hidden values still drive searches and batch selection but cannot be maintained.
+  fix_map:
+    __other__: Assign the object to a class in CL20N or delete the orphan values.
+  record_fix_template: 'Object {actual_value}, class type {AUSP.KLART}, characteristic {AUSP.ATINN}: no class assignment.'
+- id: MM681
+  field: CABN.MSEHI
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: (`CABN.ATFOR` == 'CHAR') & `CABN.MSEHI`.notna()
+  severity: low
+  dimension: consistency
+  message: Character-format characteristic carries a unit of measure
+  why_it_matters: A unit of measure applies only to numeric characteristics (NUM, CURR). On a character characteristic it
+    is ignored and shows that the format was changed after the unit was set.
+  rule_authority: best_practice
+  sap_impact: Values are compared as text; users read them as quantities in the unit.
+  fix_map:
+    __other__: Clear the unit or change the characteristic to numeric format in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format CHAR with unit {actual_value}.'
+- id: MM682
+  field: CABN.ANZST
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: (`CABN.ATFOR` == 'CHAR') & (`CABN.ANZST` > 30)
+  severity: high
+  dimension: validity
+  message: Character characteristic is longer than 30 characters
+  why_it_matters: In ECC a character-format characteristic holds at most 30 characters (AUSP.ATWRT is CHAR 30). A longer length
+    cannot be stored.
+  rule_authority: sap_hard_constraint
+  sap_impact: Values are truncated at 30 characters when saved; loads fail.
+  fix_map:
+    __other__: Reduce the length to 30 or use a long-text approach in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format CHAR with length {actual_value}.'
+- id: MM683
+  field: CABN.ANZST
+  check_class: cross_field_check
+  grain: CABN
+  fail_when: '`CABN.ATFOR`.isin([''NUM'', ''CURR'']) & (`CABN.ANZST` > 15)'
+  severity: high
+  dimension: validity
+  message: Numeric characteristic has more than 15 digits
+  why_it_matters: Numeric characteristic values are stored as floating point (ATFLV); SAP limits numeric characteristics to
+    15 digits including decimals.
+  rule_authority: sap_hard_constraint
+  sap_impact: Values beyond 15 digits lose precision; CT04 rejects the definition on the next change.
+  fix_map:
+    __other__: Reduce the number of digits to 15 or less in CT04.
+  record_fix_template: 'Characteristic {CABN.ATNAM}: format {CABN.ATFOR} with {actual_value} digits.'
