@@ -20,7 +20,7 @@ EXPECTED_COUNTS = {
     "batch_management": 35,
     "wm_interface": 40,
     "grc_compliance": 40,
-    "mdg_master_data": 32,
+    "mdg_master_data": 40,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -107,7 +107,7 @@ def test_total_warehouse_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 392, f"Expected 392 total warehouse rules, got {total}"
+    assert total == 400, f"Expected 400 total warehouse rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

@@ -27,7 +27,7 @@ PACKS = {
     "warehouse/transport_management": ("TM", 38, 13),
     "warehouse/fleet_management": ("FLEET", 36, 14),
     "warehouse/grc_compliance": ("GRC", 27, 15),
-    "warehouse/mdg_master_data": ("MDG", 27, 9),
+    "warehouse/mdg_master_data": ("MDG", 27, 17),
     "warehouse/cross_system_integration": ("XSYS", 28, 5),
     "ariba/ariba_procurement": ("ARP", 17, 24),
     "ariba/ariba_contracts": ("ARC", 10, 33),
@@ -88,7 +88,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 263
+    assert sum(len(v) for v in NEW.values()) == 271
     assert len(S4_NEW) == len(S4R_WM)
 
 
