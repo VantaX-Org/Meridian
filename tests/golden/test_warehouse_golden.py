@@ -611,6 +611,7 @@ def test_wm_interface_golden():
         "WMI020": {"MATNR=BOLT-M10|LGNUM=10"},   # ... so it is not a configured warehouse either
         "WMI012": {"MATNR=BOLT-M12|LGNUM=100|LGTYP=005"},   # minimum bin quantity above maximum
         "WMI013": {"MATNR=BOLT-M12|LGNUM=100"},             # palletization quantity without unit
+        "WMI044": {"MATNR=GASKET-50|LGNUM=100"},            # WM view survives flagged central deletion
     }, found
     # GASKET-50 is flagged for deletion at client level: out of the population, counted
     lgnum = next(r for r in results if r.check_id == "WMI001")

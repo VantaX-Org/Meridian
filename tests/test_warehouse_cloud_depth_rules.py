@@ -22,7 +22,7 @@ AUTHORITIES = {"sap_hard_constraint", "best_practice", "customer_configured", "i
 PACKS = {
     "warehouse/ewms_stock": ("EWMS", 113, 18),
     "warehouse/ewms_transfer_orders": ("EWTO", 109, 10),
-    "warehouse/wm_interface": ("WMI", 24, 13),
+    "warehouse/wm_interface": ("WMI", 24, 21),
     "warehouse/batch_management": ("BATCH", 25, 16),
     "warehouse/transport_management": ("TM", 38, 13),
     "warehouse/fleet_management": ("FLEET", 36, 14),
@@ -88,7 +88,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 163
+    assert sum(len(v) for v in NEW.values()) == 171
     assert len(S4_NEW) == len(S4R_WM)
 
 
