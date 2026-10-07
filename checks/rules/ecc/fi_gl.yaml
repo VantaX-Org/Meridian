@@ -2061,3 +2061,697 @@ rules:
     fix_map:
       __other__: Create the country chart of accounts (OB13) or correct the assignment in OB62.
     record_fix_template: 'Company code {T001.BUKRS}: country chart of accounts {T001.KTOP2} does not exist.'
+
+# Depth pass 2: G/L account master, chart and company code settings, posting keys, document types (GL227 onward)
+  - id: GL227
+    field: SKB1.MWSKZ
+    check_class: exists_check
+    target_table: T007A
+    target_fields:
+    - MWSKZ
+    applies_when:
+      SKB1.MWSKZ:
+        populated: true
+        not_in:
+        - +
+        - '-'
+        - '*'
+        - <
+        - '>'
+    severity: medium
+    dimension: consistency
+    message: Tax category of the G/L account is not a defined tax code
+    why_it_matters: The tax category in FS00 is either a control character (+, -, *, <, >) or a tax code that postings default
+      to and are limited to. A code that is not in T007A cannot be found at posting time.
+    rule_authority: sap_hard_constraint
+    sap_impact: FB50 and invoice postings to the account stop with a tax code error, or the account cannot be posted to at all.
+    fix_map:
+      __other__: Correct the tax category in FS00 to a code that exists in FTXP for the company code's tax procedure.
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: tax category {SKB1.MWSKZ} is not defined as a tax
+      code.'
+  - id: GL228
+    field: SKB1.HKTID
+    fields:
+    - SKB1.BUKRS
+    - SKB1.HBKID
+    - SKB1.HKTID
+    check_class: exists_check
+    target_table: T012K
+    target_fields:
+    - BUKRS
+    - HBKID
+    - HKTID
+    applies_when:
+      SKB1.HBKID:
+        populated: true
+      SKB1.HKTID:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: G/L account points to a house bank account that is not defined
+    why_it_matters: A bank G/L account carries the house bank and account ID so that the bank statement, payment run and cash
+      position find it. When the pair is not defined in FI12 the account is orphaned from the bank configuration.
+    rule_authority: sap_hard_constraint
+    sap_impact: Electronic bank statement posting and the payment run cannot derive the G/L account, and bank reconciliation
+      has to be done by hand.
+    fix_map:
+      __other__: Correct the house bank and account ID in FS00 or create the house bank account in FI12.
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: house bank {SKB1.HBKID} account ID {SKB1.HKTID} is
+      not defined in T012K.'
+  - id: GL229
+    field: SKB1.HBKID
+    check_class: cross_field_check
+    fail_when: '`SKB1.HBKID`.notna() & `SKB1.HKTID`.isna()'
+    severity: medium
+    dimension: completeness
+    message: G/L account has a house bank but no account ID
+    why_it_matters: The house bank short key and the account ID are a pair. With only the bank filled the account cannot be
+      tied to one bank account of that house bank.
+    rule_authority: best_practice
+    sap_impact: Bank statement and cash management derivation of the G/L account is ambiguous when the house bank has more than
+      one account.
+    fix_map:
+      __other__: Enter the account ID in FS00 (the account ID defined in FI12).
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: house bank {SKB1.HBKID} without account ID.'
+  - id: GL230
+    field: SKB1.VZSKZ
+    check_class: cross_field_check
+    fail_when: (`SKB1.DATLZ`.notna() | `SKB1.ZINDT`.notna()) & `SKB1.VZSKZ`.isna()
+    severity: medium
+    dimension: consistency
+    message: G/L account has interest calculation dates but no interest calculation indicator
+    why_it_matters: The key date and last run date of the interest calculation only mean something with an interest indicator
+      (T056) that selects the interest calculation rule. Without it the dates are left over from a removed setup.
+    rule_authority: best_practice
+    sap_impact: The interest calculation program (F.2A / F.2B) skips the account, so interest is not computed although the dates
+      suggest it is.
+    fix_map:
+      __other__: Set the interest calculation indicator in FS00, or clear the stale dates when the account is not interest bearing.
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: interest dates present, interest indicator empty.'
+  - id: GL231
+    field: SKB1.XLGCLR
+    check_class: cross_field_check
+    fail_when: (`SKB1.XLGCLR` == 'X') & `SKB1.XOPVW`.isna()
+    severity: medium
+    dimension: consistency
+    message: Ledger group specific clearing is on but the account has no open item management
+    why_it_matters: Clearing specific to ledger groups only applies to accounts managed on an open item basis. On an account
+      without open item management the flag has no function and misleads the closing team.
+    rule_authority: sap_hard_constraint
+    sap_impact: Clearing in F-03 and FAGLF03 is not offered per ledger group; parallel-ledger reconciliation by account is not
+      possible.
+    fix_map:
+      __other__: Switch on open item management in FS00 or clear the ledger group clearing flag.
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: ledger group clearing on without open item management.'
+  - id: GL232
+    field: SKB1.BUSAB
+    fields:
+    - SKB1.BUKRS
+    - SKB1.BUSAB
+    check_class: exists_check
+    target_table: T001S
+    target_fields:
+    - BUKRS
+    - BUSAB
+    applies_when:
+      SKB1.BUSAB:
+        populated: true
+    severity: low
+    dimension: consistency
+    message: Accounting clerk of the G/L account is not defined in the company code
+    why_it_matters: The accounting clerk identification routes dunning and open item responsibility. An ID that is not in T001S
+      for the company code names nobody.
+    rule_authority: best_practice
+    sap_impact: Open item and reconciliation worklists by clerk (FBL3N, correspondence) miss the account.
+    fix_map:
+      __other__: Create the clerk in OB-style customising (T001S) or correct the ID in FS00.
+    record_fix_template: 'Company code {SKB1.BUKRS} account {SKB1.SAKNR}: accounting clerk {SKB1.BUSAB} is not defined.'
+  - id: GL233
+    field: SKA1.FUNC_AREA
+    check_class: cross_field_check
+    fail_when: (`SKA1.XBILK` == 'X') & `SKA1.FUNC_AREA`.notna()
+    severity: medium
+    dimension: consistency
+    message: Balance sheet account carries a functional area
+    why_it_matters: The functional area only classifies P&L accounts for cost of sales reporting. On a balance sheet account
+      it is ignored in the statement but still copied to postings, which pollutes functional area reports.
+    rule_authority: best_practice
+    sap_impact: Cost of sales statements (functional area) show balance sheet lines, and S/4HANA migration carries the invalid
+      assignment.
+    fix_map:
+      __other__: Clear the functional area in FS00 for balance sheet accounts.
+    record_fix_template: 'Chart {SKA1.KTOPL} account {SKA1.SAKNR}: balance sheet account with functional area {SKA1.FUNC_AREA}.'
+  - id: GL234
+    field: SKA1.SAKNR
+    check_class: exists_check
+    target_table: SKB1
+    target_fields:
+    - SAKNR
+    severity: low
+    dimension: completeness
+    message: Chart of accounts G/L account is not extended to any company code
+    why_it_matters: An account that exists only at chart level cannot be posted to. It is either unfinished master data or an
+      account that was never rolled out and clutters the chart.
+    rule_authority: best_practice
+    sap_impact: Reports of the chart list the account but no company code can post to it; migration scope includes dead accounts.
+    fix_map:
+      __other__: Extend the account to the using company codes in FS00 or flag it for deletion.
+    record_fix_template: 'Chart {SKA1.KTOPL} account {SKA1.SAKNR}: not assigned to any company code.'
+  - id: GL235
+    field: SKA1.SAKNR
+    check_class: cross_field_check
+    fail_when: '`SKA1.SAKNR` < `T077S.VONNR` | `SKA1.SAKNR` > `T077S.BISNR`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: G/L account number is outside the number range of its account group
+    why_it_matters: The account group (T077S) defines the number interval the accounts of that group must lie in. An account
+      outside the interval was created before the interval was changed or by a different group, and the group no longer describes
+      the account.
+    rule_authority: sap_hard_constraint
+    sap_impact: Group-driven field status and number assignment no longer apply as designed; FS00 refuses changes to the account
+      group, and reports by account group are misleading.
+    fix_map:
+      __other__: Change the account group in FS00 to the group whose interval holds the number, or adjust the interval in OBD4.
+    record_fix_template: 'Chart {SKA1.KTOPL} account {SKA1.SAKNR}: outside the number interval of group {SKA1.KTOKS}.'
+  - id: GL236
+    field: T077S.VONNR
+    check_class: cross_field_check
+    fail_when: '`T077S.VONNR` > `T077S.BISNR`'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Account group number interval is inverted
+    why_it_matters: The lower limit of the account group interval is above the upper limit, so no account number can ever fall
+      in the group.
+    rule_authority: sap_hard_constraint
+    sap_impact: New accounts of the group cannot be created in FS00 because no number is valid.
+    fix_map:
+      __other__: Correct the interval in OBD4.
+    record_fix_template: 'Chart {T077S.KTOPL} account group {T077S.KTOKS}: lower limit above upper limit.'
+  - id: GL237
+    field: T077S.KTOPL
+    check_class: exists_check
+    target_table: T004
+    target_fields:
+    - KTOPL
+    severity: medium
+    dimension: consistency
+    message: Account group belongs to a chart of accounts that does not exist
+    why_it_matters: An account group record for an undefined chart is leftover configuration from a deleted chart and misleads
+      transports.
+    rule_authority: best_practice
+    sap_impact: Transports and client copies carry orphaned configuration.
+    fix_map:
+      __other__: Delete the group in OBD4 or restore the chart in OB13.
+    record_fix_template: 'Account group {T077S.KTOKS}: chart {T077S.KTOPL} is not defined.'
+  - id: GL238
+    field: T077S.VONNR
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Account group has no number interval
+    why_it_matters: Without a lower limit the group has no defined number range, so account numbers are not controlled by the
+      group.
+    rule_authority: sap_hard_constraint
+    sap_impact: Account creation under the group is not restricted, and numbering conflicts appear between groups.
+    fix_map:
+      __other__: Maintain the interval in OBD4.
+    record_fix_template: 'Chart {T077S.KTOPL} account group {T077S.KTOKS}: number interval is empty.'
+  - id: GL239
+    field: T004.KKTPL
+    check_class: exists_check
+    target_table: T004
+    target_fields:
+    - KTOPL
+    applies_when:
+      T004.KKTPL:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Group chart of accounts of a chart does not exist
+    why_it_matters: The group chart of accounts is the consolidation chart the operating chart maps to. A pointer to a chart
+      that is not defined makes every group account assignment invalid.
+    rule_authority: sap_hard_constraint
+    sap_impact: Group account numbers (SKA1.BILKT) cannot be validated and consolidation reporting on group accounts fails.
+    fix_map:
+      __other__: Create the group chart in OB13 or correct the assignment.
+    record_fix_template: 'Chart {T004.KTOPL}: group chart {T004.KKTPL} is not defined.'
+  - id: GL240
+    field: T004.DSPRA
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Chart of accounts has no maintenance language
+    why_it_matters: The maintenance language is the language in which account texts must be maintained. Without it the system
+      cannot tell whether texts are complete.
+    rule_authority: best_practice
+    sap_impact: Missing-text checks in FS00 and the account text report cannot work, and other languages stay empty.
+    fix_map:
+      __other__: Set the maintenance language in OB13.
+    record_fix_template: 'Chart {T004.KTOPL}: maintenance language is empty.'
+  - id: GL241
+    field: T001.KTOPL
+    check_class: exists_check
+    negate: true
+    target_table: T004
+    target_fields:
+    - KTOPL
+    target_when:
+      XSPER:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Company code uses a chart of accounts that is blocked
+    why_it_matters: A blocked chart of accounts (T004.XSPER) cannot be changed or extended. A company code that still uses it
+      cannot get new accounts.
+    rule_authority: sap_hard_constraint
+    sap_impact: FS00 refuses new accounts for the company code, which blocks new postings that need a new account.
+    fix_map:
+      __other__: Lift the block in OB13 or move the company code to an open chart.
+    record_fix_template: 'Company code {T001.BUKRS}: chart {T001.KTOPL} is blocked.'
+  - id: GL242
+    field: T001.PERIV
+    check_class: exists_check
+    target_table: T009
+    target_fields:
+    - PERIV
+    applies_when:
+      T001.PERIV:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Company code's fiscal year variant does not exist
+    why_it_matters: The fiscal year variant defines periods for every posting. A variant that is not in T009 makes the posting
+      date unresolvable.
+    rule_authority: sap_hard_constraint
+    sap_impact: Every posting in the company code fails with a fiscal year variant error.
+    fix_map:
+      __other__: Create the variant in OB29 or correct the assignment in OX02.
+    record_fix_template: 'Company code {T001.BUKRS}: fiscal year variant {T001.PERIV} is not defined.'
+  - id: GL243
+    field: T001.WAERS
+    check_class: exists_check
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    applies_when:
+      T001.WAERS:
+        populated: true
+    severity: high
+    dimension: validity
+    message: Company code currency is not a defined currency
+    why_it_matters: The company code currency is the local currency of every document. If it is not in TCURC no exchange rate
+      can be derived.
+    rule_authority: sap_hard_constraint
+    sap_impact: Postings, valuation and closing are impossible without a valid local currency.
+    fix_map:
+      __other__: Correct the currency in OX02 or create it in OY04.
+    record_fix_template: 'Company code {T001.BUKRS}: currency {T001.WAERS} is not defined.'
+  - id: GL244
+    field: T001.MWSKV
+    check_class: exists_check
+    target_table: T007A
+    target_fields:
+    - MWSKZ
+    applies_when:
+      T001.MWSKV:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Default input tax code for non-taxable transactions does not exist
+    why_it_matters: The company code defaults the input tax code for non-taxable transactions. A code that is not defined falls
+      through to the posting screen.
+    rule_authority: sap_hard_constraint
+    sap_impact: Non-taxable transactions raise a tax code error and the user has to enter a code by hand.
+    fix_map:
+      __other__: Create the tax code in FTXP or correct the default in OBY6.
+    record_fix_template: 'Company code {T001.BUKRS}: input tax code {T001.MWSKV} is not defined.'
+  - id: GL245
+    field: T001.MWSKA
+    check_class: exists_check
+    target_table: T007A
+    target_fields:
+    - MWSKZ
+    applies_when:
+      T001.MWSKA:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Default output tax code for non-taxable transactions does not exist
+    why_it_matters: The company code defaults the output tax code for non-taxable transactions. A code that is not defined falls
+      through to the posting screen.
+    rule_authority: sap_hard_constraint
+    sap_impact: Non-taxable sales postings raise a tax code error.
+    fix_map:
+      __other__: Create the tax code in FTXP or correct the default in OBY6.
+    record_fix_template: 'Company code {T001.BUKRS}: output tax code {T001.MWSKA} is not defined.'
+  - id: GL246
+    field: T001.PERIV
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Company code has no fiscal year variant
+    why_it_matters: No posting period can be derived without a fiscal year variant.
+    rule_authority: sap_hard_constraint
+    sap_impact: No document can be posted in the company code.
+    fix_map:
+      __other__: Assign the variant in OX02.
+    record_fix_template: 'Company code {T001.BUKRS}: fiscal year variant is empty.'
+  - id: GL247
+    field: T001.FSTVA
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Company code has no field status variant
+    why_it_matters: The field status variant gives the company code its field status groups. Without it the field status group
+      of every G/L account is unresolved.
+    rule_authority: sap_hard_constraint
+    sap_impact: Postings to G/L accounts cannot determine field status and screen layout is undefined.
+    fix_map:
+      __other__: Assign the variant in OBC5 / OX02.
+    record_fix_template: 'Company code {T001.BUKRS}: field status variant is empty.'
+  - id: GL248
+    field: T001.BUKRS
+    check_class: exists_check
+    target_table: TKA02
+    target_fields:
+    - BUKRS
+    severity: low
+    dimension: consistency
+    message: Company code is not assigned to any controlling area
+    why_it_matters: A company code outside every controlling area posts to P&L accounts without cost objects. Where the code
+      is meant to be in CO the assignment was forgotten.
+    rule_authority: best_practice
+    sap_impact: Postings to cost elements fail for cost objects, or controlling reports miss the company code entirely.
+    fix_map:
+      __other__: Assign the company code in OKKP (Assignment of company code) or confirm it is outside CO.
+    record_fix_template: 'Company code {T001.BUKRS}: no controlling area assignment.'
+  - id: GL249
+    field: TBSL.STBSL
+    check_class: exists_check
+    target_table: TBSL
+    target_fields:
+    - BSCHL
+    applies_when:
+      TBSL.STBSL:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Reversal posting key does not exist
+    why_it_matters: The reversal key is used by FB08 to reverse a line. A key that is not in TBSL makes the reversal impossible.
+    rule_authority: sap_hard_constraint
+    sap_impact: Document reversal fails for every line posted with the key.
+    fix_map:
+      __other__: Correct the reversal key in OB41.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: reversal key {TBSL.STBSL} is not defined.'
+  - id: GL250
+    field: TBSL.STBSL
+    fields:
+    - TBSL.STBSL
+    - TBSL.SHKZG
+    check_class: exists_check
+    negate: true
+    target_table: TBSL
+    target_fields:
+    - BSCHL
+    - SHKZG
+    applies_when:
+      TBSL.STBSL:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Reversal posting key has the same debit/credit sign as the key
+    why_it_matters: A reversal has to post the opposite side. If the reversal key debits and the original key also debits, the
+      reversal doubles the entry instead of cancelling it.
+    rule_authority: sap_hard_constraint
+    sap_impact: Reversals double the original posting; balances and subledgers are wrong until corrected.
+    fix_map:
+      __other__: Correct the reversal key in OB41 to a key with the opposite debit/credit indicator.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: reversal key {TBSL.STBSL} has the same debit/credit sign.'
+  - id: GL251
+    field: TBSL.STBSL
+    fields:
+    - TBSL.STBSL
+    - TBSL.KOART
+    check_class: exists_check
+    target_table: TBSL
+    target_fields:
+    - BSCHL
+    - KOART
+    applies_when:
+      TBSL.STBSL:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Reversal posting key is for another account type than the key
+    why_it_matters: A reversal has to hit the same type of account as the original line. A reversal key for another type cannot
+      cancel the line.
+    rule_authority: sap_hard_constraint
+    sap_impact: FB08 refuses the reversal or posts to the wrong account type.
+    fix_map:
+      __other__: Correct the reversal key in OB41.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: reversal key {TBSL.STBSL} does not match its account type.'
+  - id: GL252
+    field: TBSL.STBSL
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Posting key has no reversal posting key
+    why_it_matters: Every posting key needs a reversal key so documents can be reversed (FB08 and clearing reset).
+    rule_authority: sap_hard_constraint
+    sap_impact: Lines posted with the key cannot be reversed.
+    fix_map:
+      __other__: Maintain the reversal key in OB41.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: no reversal key.'
+  - id: GL253
+    field: TBSL.XSONU
+    check_class: cross_field_check
+    fail_when: (`TBSL.XSONU` == 'X') & (`TBSL.KOART` == 'S')
+    severity: medium
+    dimension: consistency
+    message: Special G/L posting key is defined for G/L accounts
+    why_it_matters: Special G/L postings (down payments, bills of exchange) only exist for customer, vendor and asset accounts.
+      On an account-type S key the flag has no meaning and the key behaves inconsistently.
+    rule_authority: sap_hard_constraint
+    sap_impact: Special G/L transactions cannot be posted with the key; users are confused by a key that offers a special G/L
+      indicator for G/L accounts.
+    fix_map:
+      __other__: Clear the special G/L flag in OB41.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: special G/L flag on a G/L account key.'
+  - id: GL254
+    field: TBSL.XZAHL
+    check_class: cross_field_check
+    fail_when: (`TBSL.XZAHL` == 'X') & (`TBSL.KOART` == 'S')
+    severity: low
+    dimension: consistency
+    message: Payment-transaction posting key is defined for G/L accounts
+    why_it_matters: A posting key flagged as used in payment transactions is read by the payment program for customer and vendor
+      lines. On a G/L key it is never read.
+    rule_authority: best_practice
+    sap_impact: The key is listed as a payment key but is ignored by the payment program.
+    fix_map:
+      __other__: Clear the payment-transaction flag in OB41.
+    record_fix_template: 'Posting key {TBSL.BSCHL}: payment flag on a G/L account key.'
+  - id: GL255
+    field: T003.STBLA
+    check_class: exists_check
+    target_table: T003
+    target_fields:
+    - BLART
+    applies_when:
+      T003.STBLA:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Reversal document type does not exist
+    why_it_matters: FB08 posts the reversal with the reversal document type. A type that is not in T003 cannot be used.
+    rule_authority: sap_hard_constraint
+    sap_impact: Document reversal fails for every document of the type.
+    fix_map:
+      __other__: Correct the reversal type in OBA7.
+    record_fix_template: 'Document type {T003.BLART}: reversal type {T003.STBLA} is not defined.'
+  - id: GL256
+    field: T003.NUMKR
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Document type has no number range
+    why_it_matters: A document type without a number range key cannot assign a document number.
+    rule_authority: sap_hard_constraint
+    sap_impact: No posting with the document type is possible.
+    fix_map:
+      __other__: Assign a number range in OBA7 and maintain it in FBN1.
+    record_fix_template: 'Document type {T003.BLART}: number range is empty.'
+  - id: GL257
+    field: T003.XKOAS
+    check_class: cross_field_check
+    fail_when: (`T003.XKOAS` != 'X') & (`T003.XKOAD` != 'X') & (`T003.XKOAK` != 'X') & (`T003.XKOAA` != 'X') & (`T003.XKOAM`
+      != 'X')
+    severity: high
+    dimension: consistency
+    message: Document type permits no account type
+    why_it_matters: A document type with no allowed account type (G/L, customer, vendor, asset, material) cannot hold any line.
+    rule_authority: sap_hard_constraint
+    sap_impact: The document type is unusable; interfaces that try it fail.
+    fix_map:
+      __other__: Set the permitted account types in OBA7 or remove the document type.
+    record_fix_template: 'Document type {T003.BLART}: no permitted account type.'
+  - id: GL258
+    field: T042Z.BLART
+    check_class: exists_check
+    target_table: T003
+    target_fields:
+    - BLART
+    applies_when:
+      T042Z.BLART:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Payment method document type does not exist
+    why_it_matters: The payment run posts the payment document with the document type of the payment method. A type that is
+      not in T003 stops the posting.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payment run (F110) ends with an error for the payment method.
+    fix_map:
+      __other__: Correct the document type in FBZP.
+    record_fix_template: 'Payment method {T042Z.ZLSCH}, country {T042Z.LAND1}: document type {T042Z.BLART} is not defined.'
+  - id: S4-CE-PRIMARY-BS
+    field: CSKB.KSTAR
+    fields:
+    - TKA01.KTOPL
+    - CSKB.KSTAR
+    check_class: exists_check
+    negate: true
+    grain: CSKB
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    target_when:
+      XBILK:
+      - X
+    applies_when:
+      CSKB.KATYP:
+      - '01'
+      - '03'
+      - '04'
+      - '11'
+      - '12'
+      - '22'
+      - '90'
+    baseline: s4_target
+    severity: high
+    dimension: consistency
+    message: 'S/4HANA readiness: primary cost element number is a balance sheet G/L account in the chart of accounts of its
+      controlling area - simplification item S4TWL Cost Elements, SAP Note 2270419'
+    why_it_matters: In S/4HANA a primary cost element is a P&L G/L account with a cost element category. A balance sheet account
+      with the same number cannot also be a primary cost element.
+    rule_authority: sap_hard_constraint
+    sap_impact: The cost element migration stops on the account that is a balance sheet account.
+    fix_map:
+      __other__: Move the cost element to a number that is a P&L account, or correct the account type of the G/L account, before
+        the conversion.
+    record_fix_template: 'Cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account {CSKB.KSTAR} in chart {TKA01.KTOPL}
+      is a balance sheet account.'
+  - id: S4-CE-GL-DELETED
+    field: CSKB.KSTAR
+    fields:
+    - TKA01.KTOPL
+    - CSKB.KSTAR
+    check_class: exists_check
+    negate: true
+    grain: CSKB
+    target_table: SKA1
+    target_fields:
+    - KTOPL
+    - SAKNR
+    target_when:
+      XLOEV:
+      - X
+    applies_when:
+      CSKB.KATYP:
+      - '01'
+      - '03'
+      - '04'
+      - '11'
+      - '12'
+      - '22'
+      - '90'
+    baseline: s4_target
+    severity: medium
+    dimension: consistency
+    message: 'S/4HANA readiness: primary cost element maps to a G/L account that is flagged for deletion in the chart of accounts
+      - simplification item S4TWL Cost Elements, SAP Note 2270419'
+    why_it_matters: Cost elements become G/L accounts in S/4HANA. A G/L account flagged for deletion in the chart cannot take
+      postings, so the cost element would be migrated into an unusable account.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cost postings to the migrated cost element are rejected after the conversion.
+    fix_map:
+      __other__: Remove the deletion flag in FSP0 or delete the unused cost element (KA04) before the conversion.
+    record_fix_template: 'Cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account in chart {TKA01.KTOPL} is
+      flagged for deletion.'
+  - id: S4-CE-NO-COMPANY-CODE
+    field: CSKB.KSTAR
+    check_class: exists_check
+    grain: CSKB
+    target_table: SKB1
+    target_fields:
+    - SAKNR
+    applies_when:
+      CSKB.KATYP:
+      - '01'
+      - '03'
+      - '04'
+      - '11'
+      - '12'
+      - '22'
+      - '90'
+      CSKB.DATBI:
+      - '99991231'
+    baseline: s4_target
+    severity: medium
+    dimension: completeness
+    message: 'S/4HANA readiness: current primary cost element has a G/L account that is created in no company code - simplification
+      item S4TWL Cost Elements, SAP Note 2270419'
+    why_it_matters: A G/L account takes postings only through a company code segment. A cost element whose account has no segment
+      in any company code cannot be posted to after cost elements become G/L accounts.
+    rule_authority: best_practice
+    sap_impact: The migrated cost element is unusable until a company code segment exists.
+    fix_map:
+      __other__: Create the company code segment in FS00 or delete the unused cost element (KA04).
+    record_fix_template: 'Cost element {CSKB.KSTAR} in controlling area {CSKB.KOKRS}: G/L account has no company code segment.'
+  - id: S4-CO-PRCTR-SEGMENT
+    field: CEPC.SEGMENT
+    check_class: null_check
+    applies_when:
+      CEPC.DATBI:
+      - '99991231'
+    baseline: s4_target
+    severity: low
+    dimension: completeness
+    message: 'S/4HANA readiness: current profit centre has no segment - simplification item S4TWL Data Model Changes in Financials
+      - Universal Journal'
+    why_it_matters: In S/4HANA the segment of a journal line is derived from its profit centre. Segment reporting and document
+      splitting by segment find nothing for a profit centre without a segment.
+    rule_authority: s4hana_migration
+    sap_impact: Segment reports and splitting show the postings of the profit centre as unassigned.
+    fix_map:
+      __other__: Assign the segment in KE52 before the conversion.
+    record_fix_template: 'Profit centre {CEPC.PRCTR}: no segment.'
+  - id: GL259
+    field: T001.BUKRS
+    check_class: exists_check
+    target_table: SKB1
+    target_fields:
+    - BUKRS
+    severity: low
+    dimension: completeness
+    message: Company code has no G/L accounts and can be excluded from the migration
+    why_it_matters: A company code with no G/L account segment holds no balances or postings. Migrating it carries an empty
+      organisational unit.
+    rule_authority: best_practice
+    sap_impact: Empty company codes add migration objects and reconciliation work with no data.
+    fix_map:
+      __other__: Delete the company code (OX02) or create its accounts (FS00).
+    record_fix_template: 'Company code {T001.BUKRS}: no G/L accounts created.'

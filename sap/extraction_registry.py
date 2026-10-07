@@ -651,7 +651,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="EDIDC",
             fields=[
                 "DOCNUM", "STATUS", "DIRECT", "MESTYP", "IDOCTP", "SNDPRN", "SNDPRT",
-                "RCVPRN", "RCVPRT", "CREDAT", "CRETIM", "UPDDAT", "UPDTIM",
+                "RCVPRN", "RCVPRT", "CREDAT", "CRETIM", "UPDDAT", "UPDTIM", "TEST", "SNDPOR", "RCVPOR",
             ],
             filter="CREDAT >= '{days_ago:90}'",
             max_rows=500_000,
@@ -659,21 +659,21 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="EDIDS",
-            fields=["DOCNUM", "COUNTR", "STATUS", "LOGDAT", "LOGTIM", "STAMID", "STAMNO", "STATXT"],
+            fields=["DOCNUM", "COUNTR", "STATUS", "LOGDAT", "LOGTIM", "STAMID", "STAMNO", "STATXT", "STATYP"],
             filter="LOGDAT >= '{days_ago:90}'",
             max_rows=500_000,
             description="IDoc status records (last 90 days)",
         ),
         ExtractionTarget(
             source="TRFCQOUT",
-            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS"],
+            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS", "NOSEND"],
             filter="QRFCDATUM >= '{days_ago:365}'",
             max_rows=100_000,
             description="qRFC outbound queue entries",
         ),
         ExtractionTarget(
             source="TRFCQIN",
-            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS"],
+            fields=["QNAME", "DEST", "QSTATE", "QRFCFNAM", "QRFCDATUM", "QRFCUZEIT", "ERRMESS", "RETRYNR"],
             filter="QRFCDATUM >= '{days_ago:365}'",
             max_rows=100_000,
             description="qRFC inbound queue entries",

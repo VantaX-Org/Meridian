@@ -21,7 +21,7 @@ def _by_id(results):
 
 def test_overlay_and_size():
     assert is_overlay("banking_tax")
-    assert 40 <= len(_rules()) <= 80
+    assert 40 <= len(_rules()) <= 100
 
 
 def test_metadata_complete_and_ids_unique():

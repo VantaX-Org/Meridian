@@ -1389,3 +1389,260 @@ rules:
   fix_map:
     __other__: Correct the target code in FTXP.
   record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: target code is itself.'
+
+# Depth pass 2: bank master, house banks, payment methods, tax codes (BKT095 onward)
+- id: BKT095
+  field: BNKA.SWIFT
+  check_class: regex_check
+  pattern: ^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$
+  applies_when:
+    BNKA.SWIFT:
+      populated: true
+  severity: medium
+  dimension: validity
+  message: Bank SWIFT/BIC code is not in the ISO 9362 format
+  why_it_matters: 'A BIC has 8 or 11 characters: 4 letter bank code, 2 letter country, 2 character location, optional 3 character
+    branch. Other shapes are rejected by the bank in cross-border and SEPA files.'
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment media with an invalid BIC are rejected by the bank; the whole batch can fail validation.
+  fix_map:
+    __other__: Correct the SWIFT code in FI02 against the bank directory.
+  record_fix_template: 'Bank in country {BNKA.BANKS}: the SWIFT/BIC code is not valid.'
+- id: BKT096
+  field: T012.HBKID
+  fields:
+  - T012.BUKRS
+  - T012.HBKID
+  check_class: exists_check
+  target_table: T012K
+  target_fields:
+  - BUKRS
+  - HBKID
+  severity: high
+  dimension: completeness
+  message: House bank has no bank account
+  why_it_matters: A house bank is only a bank key. Payments, statements and cash management work on its accounts (T012K).
+  rule_authority: sap_hard_constraint
+  sap_impact: F110 cannot select a bank account and statement import has nothing to post to.
+  fix_map:
+    __other__: Create the account in FI12 > Bank accounts or delete the unused house bank.
+  record_fix_template: 'Company code {T012.BUKRS} house bank {T012.HBKID}: no bank account defined.'
+- id: BKT097
+  field: T012K.HBID1
+  fields:
+  - T012K.BUKRS
+  - T012K.HBID1
+  - T012K.HKID1
+  check_class: exists_check
+  target_table: T012K
+  target_fields:
+  - BUKRS
+  - HBKID
+  - HKTID
+  applies_when:
+    T012K.HBID1:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Alternative house bank account for bill of exchange debit memo does not exist
+  why_it_matters: The debit memo for a presented bill is posted to this account. An account that is not defined cannot take
+    the posting.
+  rule_authority: sap_hard_constraint
+  sap_impact: Bill of exchange presentation for discounting stops with an error.
+  fix_map:
+    __other__: Correct the account in FI12 or create it.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: debit memo account not
+    defined.'
+- id: BKT098
+  field: T012K.WIKON
+  fields:
+  - T012K.BUKRS
+  - T012K.WIKON
+  check_class: exists_check
+  target_table: SKB1
+  target_fields:
+  - BUKRS
+  - SAKNR
+  applies_when:
+    T012K.WIKON:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Bill of exchange collection sub account is not created in the company code
+  why_it_matters: Bills of exchange sent for collection post to this sub account. It must exist in the company code chart.
+  rule_authority: sap_hard_constraint
+  sap_impact: Posting of bill of exchange collection fails.
+  fix_map:
+    __other__: Create the account in FS00 or correct it in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: collection sub account
+    {T012K.WIKON} not created in the company code.'
+- id: BKT099
+  field: T012K.WEKON
+  fields:
+  - T012K.BUKRS
+  - T012K.WEKON
+  check_class: exists_check
+  target_table: SKB1
+  target_fields:
+  - BUKRS
+  - SAKNR
+  applies_when:
+    T012K.WEKON:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Bill of exchange discounting sub account is not created in the company code
+  why_it_matters: Bills presented for discounting post to this sub account. It must exist in the company code chart.
+  rule_authority: sap_hard_constraint
+  sap_impact: Posting of bill of exchange discounting fails.
+  fix_map:
+    __other__: Create the account in FS00 or correct it in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: discounting sub account
+    {T012K.WEKON} not created in the company code.'
+- id: BKT100
+  field: T012K.ABWAE
+  check_class: exists_check
+  target_table: TCURC
+  target_fields:
+  - WAERS
+  applies_when:
+    T012K.ABWAE:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: Settlement currency of the house bank account does not exist
+  why_it_matters: The settlement currency drives currency conversion in bank transfers. An unknown code cannot be converted.
+  rule_authority: sap_hard_constraint
+  sap_impact: Transfers in the settlement currency fail.
+  fix_map:
+    __other__: Correct the currency in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: settlement currency {T012K.ABWAE}
+    unknown.'
+- id: BKT101
+  field: T012K.FDGRP
+  check_class: exists_check
+  target_table: T035
+  target_fields:
+  - GRUPP
+  applies_when:
+    T012K.FDGRP:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: House bank account planning group does not exist
+  why_it_matters: The planning group feeds the account into cash position and liquidity forecast. An undefined group drops
+    the account from them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Cash position (FF7A) misses the bank balance.
+  fix_map:
+    __other__: Create the group in OT12 or correct it in FI12.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: planning group {T012K.FDGRP}
+    not defined.'
+- id: BKT102
+  field: T012K.HKONT
+  check_class: cross_field_check
+  fail_when: '`SKB1.XKRES`.isna()'
+  applies_when:
+    T012K.HKONT:
+      populated: true
+  severity: medium
+  dimension: consistency
+  message: House bank G/L account does not allow line item display
+  why_it_matters: Statement reconciliation and cash reporting need the line items of the bank account. Without the line item
+    display flag they cannot be listed.
+  rule_authority: best_practice
+  sap_impact: FBL3N cannot show items; manual bank reconciliation is not possible.
+  fix_map:
+    __other__: Set the line item display flag in FS00.
+  record_fix_template: 'Company code {T012K.BUKRS} house bank {T012K.HBKID} account {T012K.HKTID}: G/L account {T012K.HKONT}
+    has no line item display.'
+- id: BKT103
+  field: T012K.HKONT
+  fields:
+  - T012K.BUKRS
+  - T012K.HKONT
+  check_class: uniqueness_check
+  grain: T012K
+  severity: medium
+  dimension: uniqueness
+  message: One G/L account is the bank account of several house bank accounts
+  why_it_matters: Each bank account needs its own G/L account so the statement reconciles to one bank balance. Sharing mixes
+    balances of different accounts.
+  rule_authority: best_practice
+  sap_impact: Bank reconciliation of the shared account never closes.
+  fix_map:
+    __other__: Use a separate G/L account per bank account in FI12 and FS00.
+  record_fix_template: 'Company code {T012K.BUKRS}: G/L account {T012K.HKONT} is shared by several house bank accounts.'
+- id: BKT104
+  field: T042Z.XSEPA
+  check_class: cross_field_check
+  fail_when: (`T042Z.XSEPA` == 'X') & `T042Z.XIBAN`.isna()
+  severity: medium
+  dimension: consistency
+  message: Payment method requires a SEPA mandate but not IBAN or SWIFT
+  why_it_matters: SEPA direct debits are processed by IBAN and BIC. A payment method that needs a mandate without requiring
+    them accepts partners that cannot be debited.
+  rule_authority: best_practice
+  sap_impact: Direct debit files contain partners without IBAN and fail the bank validation.
+  fix_map:
+    __other__: Set the IBAN/SWIFT required flag in FBZP > Payment methods in country.
+  record_fix_template: 'Country {T042Z.LAND1} payment method {T042Z.ZLSCH}: SEPA mandate without IBAN requirement.'
+- id: BKT105
+  field: T007A.MWSKZ
+  fields:
+  - T007A.KALSM
+  - T007A.MWSKZ
+  check_class: exists_check
+  target_table: T007S
+  target_fields:
+  - KALSM
+  - MWSKZ
+  severity: low
+  dimension: completeness
+  message: Tax code has no description
+  why_it_matters: Users choose a tax code by its text. Without it only the 2-character code is shown and the choice is a guess.
+  rule_authority: best_practice
+  sap_impact: Wrong tax codes are chosen in FB60 and MIRO.
+  fix_map:
+    __other__: Maintain the text in FTXP.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: no text.'
+- id: BKT106
+  field: T007S.MWSKZ
+  fields:
+  - T007S.KALSM
+  - T007S.MWSKZ
+  check_class: exists_check
+  target_table: T007A
+  target_fields:
+  - KALSM
+  - MWSKZ
+  severity: low
+  dimension: consistency
+  message: Tax code text exists for a tax code that is not defined
+  why_it_matters: The text belongs to a code that no longer exists. It is a leftover of a deleted tax code.
+  rule_authority: best_practice
+  sap_impact: Orphan text; it clutters the migration of tax codes.
+  fix_map:
+    __other__: Delete the text or recreate the tax code in FTXP.
+  record_fix_template: 'Tax procedure {T007S.KALSM} code {T007S.MWSKZ}: text without tax code.'
+- id: BKT107
+  field: T007A.MWART
+  check_class: domain_value_check
+  allowed_values:
+  - A
+  - V
+  applies_when:
+    T007A.MWART:
+      populated: true
+  valid_values_with_labels:
+    A: Output tax
+    V: Input tax
+  severity: high
+  dimension: validity
+  message: Tax type is not A (output tax) or V (input tax)
+  why_it_matters: The tax type decides which tax account is used. Only A and V are valid.
+  rule_authority: sap_hard_constraint
+  sap_impact: Tax account determination returns no account.
+  fix_map:
+    __other__: Correct the tax type in FTXP.
+  record_fix_template: 'Tax procedure {T007A.KALSM} code {T007A.MWSKZ}: tax type {T007A.MWART} invalid.'

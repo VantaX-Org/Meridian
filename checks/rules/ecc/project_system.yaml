@@ -1888,3 +1888,844 @@ rules:
   fix_map:
     __blank__: Enter a short text in CN22.
   record_fix_template: 'Order activity {AFVC.VORNR}: description is {actual_value}.'
+- id: PS116
+  field: PROJ.STSPD
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: User status profile of the project definition is not defined in customizing
+  why_it_matters: The user status profile controls which business transactions are allowed at each project stage. A profile
+    that is not in TJ20 cannot be read, so status-based controls on the project stop working.
+  rule_authority: sap_hard_constraint
+  sap_impact: Setting a user status on the project fails; transaction control by status is lost.
+  fix_map:
+    __other__: Profile '{invalid_value}' is not defined in TJ20. Assign a defined status profile in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPID}: status profile of the project definition is not defined in TJ20.'
+- id: PS117
+  field: PROJ.STSPR
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Default user status profile for WBS elements is not defined in customizing
+  why_it_matters: New WBS elements inherit this status profile from the project definition. An undefined profile makes every
+    new WBS element on the project fail to create or start without status control.
+  rule_authority: sap_hard_constraint
+  sap_impact: Creating WBS elements under the project fails or produces elements without status control.
+  fix_map:
+    __other__: Profile '{invalid_value}' is not defined in TJ20. Assign a defined WBS status profile in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPID}: WBS status profile is not defined in TJ20.'
+- id: PS118
+  field: PROJ.ZTEHT
+  check_class: referential_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Time unit for project scheduling is not defined in customizing
+  why_it_matters: The time unit converts durations in project scheduling. An undefined unit stops scheduling of the project
+    and its networks.
+  rule_authority: sap_hard_constraint
+  sap_impact: Project scheduling cannot convert durations and ends with an error.
+  fix_map:
+    __other__: Unit '{invalid_value}' is not defined in T006. Correct the time unit in the project definition.
+  record_fix_template: 'Project {PROJ.PSPID}: scheduling time unit is not defined in T006.'
+- id: PS119
+  field: PROJ.TXTSP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Language of the project definition texts is not defined in customizing
+  why_it_matters: Project texts are stored in the text language. An undefined language key makes descriptions and long texts
+    unreadable in reports.
+  rule_authority: sap_hard_constraint
+  sap_impact: Long texts are not found; project reports show no description.
+  fix_map:
+    __other__: Language '{invalid_value}' is not defined in T002. Correct the language in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPID}: text language is not defined in T002.'
+- id: PS120
+  field: PROJ.PROFL
+  check_class: null_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Active project definition has no project profile
+  why_it_matters: The project profile carries the defaults and control parameters for the whole project (planning, budgeting,
+    settlement, scheduling). A project without a profile was loaded outside the standard dialogue and every new WBS element
+    lacks its defaults.
+  rule_authority: sap_hard_constraint
+  sap_impact: CJ20N cannot process the project; new WBS elements miss their profile defaults.
+  fix_map:
+    __blank__: Assign the correct project profile to the project definition.
+  record_fix_template: 'Project {PROJ.PSPID}: no project profile.'
+- id: PS121
+  field: PROJ.PLSEZ
+  check_class: cross_field_check
+  fail_when: '`JEST.STAT`.fillna('''') != ''I0046'''
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+    PROJ.PLSEZ:
+      older_than_days: 365
+  severity: medium
+  dimension: timeliness
+  message: Project is not closed more than a year after its planned finish
+  why_it_matters: A project that runs a year past its planned finish without being closed either has an outdated plan or
+    was never closed. Open projects still accept postings, keep commitments alive and must be migrated as active objects.
+  rule_authority: s4hana_migration
+  sap_impact: Costs can still post to finished projects; period-end settlement and the conversion carry them as open.
+  fix_map:
+    __other__: Update the planned finish or technically complete and close the project in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPID}: still open more than a year after its planned finish.'
+- id: PS122
+  field: PROJ.KALID
+  check_class: null_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Active project definition has no factory calendar
+  why_it_matters: The factory calendar defines working days for project and network scheduling. Without it scheduling falls
+    back to defaults and dates do not match the plant calendar.
+  rule_authority: best_practice
+  sap_impact: Scheduled dates of the project ignore holidays and non-working days.
+  fix_map:
+    __blank__: Assign the factory calendar of the executing plant to the project definition.
+  record_fix_template: 'Project {PROJ.PSPID}: no factory calendar.'
+- id: PS123
+  field: PROJ.PRCTR
+  check_class: null_check
+  applies_when:
+    PROJ.LOEVM:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Active project definition has no profit centre
+  why_it_matters: New WBS elements take the profit centre from the project definition. A project without a profit centre
+    creates WBS elements that post to the dummy profit centre and break segment and profit-centre reporting.
+  rule_authority: s4hana_migration
+  sap_impact: Postings fall on the dummy profit centre; in S/4HANA document splitting needs a profit centre on every line.
+  fix_map:
+    __blank__: Assign the profit centre to the project definition in CJ20N.
+  record_fix_template: 'Project {PROJ.PSPID}: no profit centre.'
+- id: PS124
+  field: PRPS.TXTSP
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Language of the WBS element texts is not defined in customizing
+  why_it_matters: WBS texts are stored in the text language. An undefined language key makes descriptions and long texts
+    unreadable in reports.
+  rule_authority: sap_hard_constraint
+  sap_impact: Long texts are not found; reports show no description for the element.
+  fix_map:
+    __other__: Language '{invalid_value}' is not defined in T002. Correct the language in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: text language is not defined in T002.'
+- id: PS125
+  field: PRPS.ERDAT
+  check_class: cross_field_check
+  fail_when: '`PRPS.ERDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: WBS element created in the future
+  why_it_matters: The creation date is set by the system. A future date comes from a load that wrote the field directly and
+    misleads every age-based check and archiving residence time.
+  rule_authority: best_practice
+  sap_impact: Archiving and freshness evaluations treat the element as new.
+  fix_map:
+    __other__: Trace the load that wrote the date and correct the creation date at source.
+  record_fix_template: 'WBS element {PRPS.POSID}: creation date is in the future.'
+- id: PS126
+  field: PRPS.PRART
+  check_class: null_check
+  applies_when:
+    PRPS.LOEVM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Active WBS element has no project type
+  why_it_matters: The project type classifies WBS elements (capital, customer, overhead) and drives selection in settlement,
+    results analysis and reporting. Elements without a type fall out of these selections.
+  rule_authority: best_practice
+  sap_impact: Type-based reports and settlement selections miss the element.
+  fix_map:
+    __blank__: Assign the project type to the WBS element in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: no project type.'
+- id: PS127
+  field: PRPS.FKSTL
+  check_class: null_check
+  applies_when:
+    PRPS.BELKZ:
+    - X
+    PRPS.LOEVM:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: Account assignment WBS element has no responsible cost centre
+  why_it_matters: The responsible cost centre identifies the department accountable for the element and is a common default
+    for settlement and overhead. Account assignment elements without one leave costs without an owner.
+  rule_authority: best_practice
+  sap_impact: Responsibility reports omit the element; settlement defaults are missing.
+  fix_map:
+    __blank__: Enter the responsible cost centre in CJ20N > Responsibilities.
+  record_fix_template: 'WBS element {PRPS.POSID}: account assignment element without a responsible cost centre.'
+- id: PS128
+  field: PRPS.FKOKR
+  check_class: cross_field_check
+  fail_when: '`PRPS.FKOKR` != `PRPS.PKOKR`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Controlling area of the responsible cost centre differs from the WBS controlling area
+  why_it_matters: A WBS element can only reference cost centres in its own controlling area. A different controlling area on
+    the responsible cost centre comes from a load or a reorganisation and points at a cost centre the element cannot use.
+  rule_authority: sap_hard_constraint
+  sap_impact: CJ20N rejects the element on the next change; responsibility reporting is wrong.
+  fix_map:
+    __other__: Reassign the responsible cost centre from the WBS controlling area in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: responsible cost centre is in controlling area {PRPS.FKOKR}, element is in
+    {PRPS.PKOKR}.'
+- id: PS129
+  field: PRPS.AKOKR
+  check_class: cross_field_check
+  fail_when: '`PRPS.AKOKR` != `PRPS.PKOKR`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Controlling area of the requesting cost centre differs from the WBS controlling area
+  why_it_matters: The requesting cost centre must belong to the controlling area of the WBS element. A mismatch points at a
+    cost centre the element cannot reference.
+  rule_authority: sap_hard_constraint
+  sap_impact: CJ20N rejects the element on the next change; requester reporting is wrong.
+  fix_map:
+    __other__: Reassign the requesting cost centre from the WBS controlling area in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: requesting cost centre is in controlling area {PRPS.AKOKR}, element is in
+    {PRPS.PKOKR}.'
+- id: PS130
+  field: PRPS.POST1
+  check_class: similarity_check
+  block_by:
+  - PRPS.PSPHI
+  threshold: 0.95
+  exact_rule: false
+  evidence_key: PRPS.PSPNR
+  grain: PRPS
+  severity: low
+  dimension: uniqueness
+  message: Near-duplicate WBS element descriptions within one project
+  why_it_matters: Two WBS elements of one project with almost the same description are often duplicates created by copying,
+    and costs then split between them. Users cannot tell which element to post to.
+  rule_authority: best_practice
+  sap_impact: Costs split across duplicate elements; project reports double count planned work.
+  fix_map:
+    __other__: Compare the elements; merge postings to one and flag the duplicate for deletion.
+  record_fix_template: 'WBS element {PRPS.POSID}: description nearly matches another element of the same project.'
+- id: PS131
+  field: PRPS.FAKKZ
+  check_class: cross_field_check
+  fail_when: '`JEST.STAT`.fillna('''') != ''I0046'''
+  applies_when:
+    PRPS.FAKKZ:
+    - X
+    PRPS.LOEVM:
+      blank: true
+    PRPS.AEDAT:
+      older_than_days: 1095
+  severity: low
+  dimension: timeliness
+  message: Billing element of an open project unchanged for three years
+  why_it_matters: Billing elements carry revenue and resource-related billing. One that has not changed in three years on a
+    project that is not closed is usually finished business that still accepts revenue postings.
+  rule_authority: s4hana_migration
+  sap_impact: Revenue can still post; results analysis and the conversion carry the element as active.
+  fix_map:
+    __other__: Confirm the billing is complete, then technically complete or close the element in CJ20N.
+  record_fix_template: 'WBS element {PRPS.POSID}: billing element unchanged for over three years on an open project.'
+- id: PS132
+  field: PRPS.ABUKR
+  check_class: referential_check
+  severity: low
+  dimension: validity
+  message: Requesting company code of the WBS element is not defined
+  why_it_matters: The requesting company code identifies who ordered the work. An undefined company code cannot be reported
+    or used in intercompany evaluations.
+  rule_authority: sap_hard_constraint
+  sap_impact: CJ20N rejects the element on the next change; intercompany reports omit it.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not defined in T001. Correct the requesting company code.
+  record_fix_template: 'WBS element {PRPS.POSID}: requesting company code is not defined in T001.'
+- id: PS133
+  field: AUFK.WAERS
+  check_class: null_check
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Active order has no order currency
+  why_it_matters: The order currency is the currency for planning and reporting on the order. An order without one was loaded
+    outside the standard dialogue and plan values cannot be entered.
+  rule_authority: sap_hard_constraint
+  sap_impact: Planning on the order fails; order reports show values without a currency.
+  fix_map:
+    __blank__: Set the order currency (usually the controlling area or company code currency) on the order.
+  record_fix_template: 'Order {AUFK.AUFNR}: no order currency.'
+- id: PS134
+  field: AUFK.WAERS
+  check_class: referential_check
+  severity: medium
+  dimension: validity
+  message: Order currency is not defined in customizing
+  why_it_matters: An order currency that is not in TCURC cannot be translated, so plan and actual values on the order cannot
+    be valued.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings and planning on the order fail with a currency error.
+  fix_map:
+    __other__: Currency '{invalid_value}' is not defined in TCURC. Correct the order currency.
+  record_fix_template: 'Order {AUFK.AUFNR}: order currency is not defined in TCURC.'
+- id: PS135
+  field: AUFK.WERKS
+  check_class: referential_check
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Plant of the order is not defined in customizing
+  why_it_matters: The plant on the order drives material staging, capacity and valuation. A plant that is not in T001W cannot be
+    used by any logistics function.
+  rule_authority: sap_hard_constraint
+  sap_impact: Goods movements and confirmations against the order fail.
+  fix_map:
+    __other__: Plant '{invalid_value}' is not defined in T001W. Correct the plant on the order.
+  record_fix_template: 'Order {AUFK.AUFNR}: plant is not defined in T001W.'
+- id: PS136
+  field: AUFK.KOSTL
+  check_class: exists_check
+  fields:
+  - AUFK.KOKRS
+  - AUFK.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Cost centre of the order does not exist in the controlling area
+  why_it_matters: Statistical orders post to the real cost centre on the order. A cost centre that does not exist in the
+    controlling area makes those postings fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Postings to the statistical order are rejected; cost centre reports miss the costs.
+  fix_map:
+    __other__: Correct the cost centre on the order (KO02) to one in the order's controlling area.
+  record_fix_template: 'Order {AUFK.AUFNR}: cost centre does not exist in controlling area {AUFK.KOKRS}.'
+- id: PS137
+  field: AUFK.ABUKR
+  check_class: cross_field_check
+  fail_when: '`AUFK.ABUKR` != `AUFK.BUKRS`'
+  require_populated: true
+  applies_when:
+    AUFK.LOEKZ:
+      blank: true
+  severity: low
+  dimension: consistency
+  message: Requesting company code of the order differs from the order company code
+  why_it_matters: A different requesting company code means the order serves another legal entity. That is valid only with
+    intercompany settlement in place; otherwise costs stay in the wrong company.
+  rule_authority: best_practice
+  sap_impact: Costs remain in the executing company unless an intercompany settlement rule exists.
+  fix_map:
+    __other__: Confirm the intercompany setup or correct the requesting company code on the order.
+  record_fix_template: 'Order {AUFK.AUFNR}: requesting company code {AUFK.ABUKR} differs from company code {AUFK.BUKRS}.'
+- id: PS138
+  field: AUFK.IDAT1
+  check_class: cross_field_check
+  fail_when: '`AUFK.IDAT1` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Order release date is in the future
+  why_it_matters: The release date is set when the order is released. A future date comes from a load that wrote the field
+    directly and misleads ageing and freshness evaluations.
+  rule_authority: best_practice
+  sap_impact: Order ageing and lifecycle reports are wrong.
+  fix_map:
+    __other__: Trace the load that wrote the date and correct the release date at source.
+  record_fix_template: 'Order {AUFK.AUFNR}: release date is in the future.'
+- id: PS139
+  field: AUFK.AEDAT
+  check_class: cross_field_check
+  fail_when: '`AUFK.AEDAT` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Order changed in the future
+  why_it_matters: The change date is set by the system. A future value comes from a direct load or a wrong clock and breaks
+    every freshness and delta evaluation on orders.
+  rule_authority: best_practice
+  sap_impact: Delta extraction and freshness checks skip or misread the order.
+  fix_map:
+    __other__: Trace the load that wrote the date and correct the change date at source.
+  record_fix_template: 'Order {AUFK.AUFNR}: change date is in the future.'
+- id: PS140
+  field: AUFK.OBJNR
+  check_class: exists_check
+  target_table: COBRB
+  target_fields:
+  - OBJNR
+  negate: true
+  applies_when:
+    AUFK.ASTKZ:
+    - X
+  severity: low
+  dimension: consistency
+  message: Statistical order carries a settlement rule
+  why_it_matters: A statistical order only mirrors costs that post to a real object, so it is never settled. A settlement rule
+    on it is left over from a type change and confuses period-end settlement runs.
+  rule_authority: best_practice
+  sap_impact: Settlement runs list the order as an error; users expect settlement that never happens.
+  fix_map:
+    __other__: Delete the settlement rule or correct the statistical indicator on the order.
+  record_fix_template: 'Order {AUFK.AUFNR}: statistical order with a settlement rule.'
+- id: PS141
+  field: AUFK.KDPOS
+  check_class: cross_field_check
+  fail_when: '`AUFK.KDAUF`.notna()'
+  applies_when:
+    AUFK.KDPOS:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: Order is assigned to a sales order without a sales order item
+  why_it_matters: Make-to-order and customer-service costs are collected per sales order item. A sales order without an item
+    cannot be resolved, so costs and revenue cannot be matched in results analysis.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement to the sales order item fails; results analysis on the item misses the costs.
+  fix_map:
+    __other__: Enter the sales order item on the order or remove the sales order assignment.
+  record_fix_template: 'Order {AUFK.AUFNR}: sales order assignment without an item.'
+- id: PS142
+  field: AFKO.PNETSTARTD
+  check_class: cross_field_check
+  fail_when: '`AFKO.PNETSTARTD` > `AFKO.PNETENDD`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Network planned start is after the planned finish
+  why_it_matters: The planned network dates frame the activities and their capacity requirements. A start after the finish
+    is impossible and makes scheduling and capacity planning unreliable.
+  rule_authority: sap_hard_constraint
+  sap_impact: Network scheduling fails or produces negative durations; capacity loads are wrong.
+  fix_map:
+    __other__: Correct the planned dates and reschedule the network in CN22.
+  record_fix_template: 'Order {AFKO.AUFNR}: planned network start is after the planned finish.'
+- id: PS143
+  field: AFKO.GSTRP
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Order header has no basic start date
+  why_it_matters: The basic start date anchors scheduling of the order or network. Without it scheduling cannot place the
+    activities and capacity requirements are not created.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling fails; material and capacity requirements have no date.
+  fix_map:
+    __blank__: Enter the basic start date and reschedule the order.
+  record_fix_template: 'Order {AFKO.AUFNR}: no basic start date.'
+- id: PS144
+  field: AFKO.GLTRS
+  check_class: cross_field_check
+  fail_when: (`AFKO.GLTRS` - `AFKO.GLTRP`).dt.days > 365
+  require_populated: true
+  severity: low
+  dimension: accuracy
+  message: Scheduled finish is more than a year after the basic finish
+  why_it_matters: The scheduled finish should lie close to the basic finish. A gap of more than a year points at wrong
+    durations, a wrong calendar or a basic date that was never updated, so the schedule is not credible.
+  rule_authority: best_practice
+  sap_impact: Requirement dates and capacity loads sit a year or more away from the planned dates.
+  fix_map:
+    __other__: Review activity durations and the factory calendar, then reschedule the order.
+  record_fix_template: 'Order {AFKO.AUFNR}: scheduled finish is more than a year after the basic finish.'
+- id: PS145
+  field: AFKO.GSTRI
+  check_class: cross_field_check
+  fail_when: '`AFKO.GETRI`.notna() & `AFKO.GSTRI`.isna()'
+  severity: medium
+  dimension: consistency
+  message: Order has an actual finish but no actual start
+  why_it_matters: Confirmations set the actual start before the actual finish. A finish without a start comes from a direct
+    load or a reversed confirmation and breaks lead-time analysis.
+  rule_authority: best_practice
+  sap_impact: Lead-time and on-time reports cannot compute the actual duration.
+  fix_map:
+    __other__: Check the confirmations and correct the actual dates of the order.
+  record_fix_template: 'Order {AFKO.AUFNR}: actual finish without an actual start.'
+- id: PS146
+  field: AFKO.GSTRI
+  check_class: cross_field_check
+  fail_when: '`AFKO.GSTRI` > @today'
+  severity: medium
+  dimension: accuracy
+  message: Order actual start is in the future
+  why_it_matters: The actual start is set by the first confirmation, which cannot happen in the future. A future date is a
+    load error or a wrongly keyed confirmation.
+  rule_authority: best_practice
+  sap_impact: Progress and lead-time reports count work that has not happened.
+  fix_map:
+    __other__: Reverse the wrong confirmation or correct the actual start at source.
+  record_fix_template: 'Order {AFKO.AUFNR}: actual start is in the future.'
+- id: PS147
+  field: AFVC.EKORG
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Purchasing organisation of the activity is not defined in customizing
+  why_it_matters: External activities create purchase requisitions for the purchasing organisation on the activity. An
+    undefined organisation makes the requisition fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: No purchase requisition is created for the external activity.
+  fix_map:
+    __other__: Purchasing organisation '{invalid_value}' is not defined in T024E. Correct the activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: purchasing organisation is not defined in
+    T024E.'
+- id: PS148
+  field: AFVC.EKGRP
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Purchasing group of the activity is not defined in customizing
+  why_it_matters: The purchasing group on an external activity is copied to the purchase requisition. An undefined group makes
+    the requisition fail or land with no buyer.
+  rule_authority: sap_hard_constraint
+  sap_impact: The requisition is not created or is not routed to a buyer.
+  fix_map:
+    __other__: Purchasing group '{invalid_value}' is not defined in T024. Correct the activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: purchasing group is not defined in T024.'
+- id: PS149
+  field: AFVC.MATKL
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Material group of the activity is not defined in customizing
+  why_it_matters: The material group on an external activity drives account determination and purchasing statistics for the
+    requisition. An undefined group stops the requisition.
+  rule_authority: sap_hard_constraint
+  sap_impact: The purchase requisition is not created; spend analysis misses the activity.
+  fix_map:
+    __other__: Material group '{invalid_value}' is not defined in T023. Correct the activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: material group is not defined in T023.'
+- id: PS150
+  field: AFVC.EKORG
+  check_class: null_check
+  applies_when:
+    AFVC.LIFNR:
+      populated: true
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: completeness
+  message: External activity with a vendor has no purchasing organisation
+  why_it_matters: An activity with a vendor is processed externally and needs a purchasing organisation to create the
+    requisition. Without it the external work is never procured.
+  rule_authority: sap_hard_constraint
+  sap_impact: No purchase requisition is created; the external work is not ordered.
+  fix_map:
+    __blank__: Enter the purchasing organisation on the external activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: external activity without a purchasing
+    organisation.'
+- id: PS151
+  field: AFVC.PREIS
+  check_class: cross_field_check
+  fail_when: '`AFVC.PREIS`.fillna(0) <= 0'
+  applies_when:
+    AFVC.LIFNR:
+      populated: true
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: accuracy
+  message: External activity with a vendor has no price
+  why_it_matters: The price of an external activity drives planned costs and the requisition value. A zero price understates
+    project costs and leaves the buyer without a reference value.
+  rule_authority: best_practice
+  sap_impact: Planned costs of the network are understated; requisitions carry no value for release strategies.
+  fix_map:
+    __other__: Enter the agreed price or link a purchasing info record to the activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: external activity without a price.'
+- id: PS152
+  field: AFVC.WAERS
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: medium
+  dimension: validity
+  message: Currency of the activity price is not defined in customizing
+  why_it_matters: The activity price cannot be valued in an undefined currency, so planned costs and requisitions for the
+    activity fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Costing of the activity and creation of the requisition fail.
+  fix_map:
+    __other__: Currency '{invalid_value}' is not defined in TCURC. Correct the activity currency.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: currency is not defined in TCURC.'
+- id: PS153
+  field: AFVC.KALID
+  check_class: referential_check
+  applies_when:
+    AFVC.LOEKZ:
+      blank: true
+  severity: low
+  dimension: validity
+  message: Factory calendar of the activity is not defined in customizing
+  why_it_matters: The activity calendar decides working days for scheduling. An undefined calendar stops scheduling of the
+    activity.
+  rule_authority: sap_hard_constraint
+  sap_impact: Scheduling of the order fails at this activity.
+  fix_map:
+    __other__: Calendar '{invalid_value}' is not defined in TFACD. Correct the activity calendar.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: factory calendar is not defined in TFACD.'
+- id: PS154
+  field: AFVC.SAKTO
+  check_class: null_check
+  applies_when:
+    AFVC.LIFNR:
+      populated: true
+    AFVC.LOEKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: External activity with a vendor has no cost element
+  why_it_matters: The cost element on an external activity decides the account the purchase posts to. Without it the
+    requisition relies on defaults that may post to the wrong account.
+  rule_authority: best_practice
+  sap_impact: External costs post to a default cost element; project cost reports misclassify them.
+  fix_map:
+    __blank__: Enter the cost element on the external activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: external activity without a cost element.'
+- id: PS155
+  field: AFVC.MATKL
+  check_class: null_check
+  applies_when:
+    AFVC.LIFNR:
+      populated: true
+    AFVC.LOEKZ:
+      blank: true
+  severity: low
+  dimension: completeness
+  message: External activity with a vendor has no material group
+  why_it_matters: The material group classifies external spend and drives account determination in purchasing. Without it the
+    requisition cannot be created or spend analysis misses the work.
+  rule_authority: best_practice
+  sap_impact: The purchase requisition fails; spend reports omit the activity.
+  fix_map:
+    __blank__: Enter the material group on the external activity.
+  record_fix_template: 'Order operation list {AFVC.AUFPL}, activity {AFVC.VORNR}: external activity without a material group.'
+- id: PS156
+  field: COBRA.AEDAT
+  check_class: cross_field_check
+  fail_when: '`COBRA.AEDAT` < `COBRA.ERDAT`'
+  require_populated: true
+  severity: low
+  dimension: accuracy
+  message: Settlement rule changed before it was created
+  why_it_matters: A change date before the creation date is impossible. It comes from a load that wrote audit fields directly,
+    and the audit trail of the settlement rule cannot be trusted.
+  rule_authority: best_practice
+  sap_impact: Audit and change reports on settlement rules are wrong.
+  fix_map:
+    __other__: Trace the load that wrote the dates and correct the audit fields at source.
+  record_fix_template: 'Settlement rule of object {COBRA.OBJNR}: changed before it was created.'
+- id: PS157
+  field: COBRB.KONTY
+  check_class: null_check
+  grain: COBRB
+  severity: high
+  dimension: completeness
+  message: Settlement distribution rule has no receiver category
+  why_it_matters: The receiver category (cost centre, order, WBS element, G/L account, asset) tells settlement where to post.
+    A distribution rule without one cannot be executed.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails; costs stay on the sender.
+  fix_map:
+    __blank__: Delete the distribution rule and create it again with a receiver in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: no receiver category.'
+- id: PS158
+  field: COBRB.KOSTL
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: '`COBRB.OBJNR`.notna()'
+  applies_when:
+    COBRB.KONTY:
+    - KS
+    COBRB.KOSTL:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Settlement to a cost centre has no receiver cost centre
+  why_it_matters: A distribution rule with receiver category cost centre must name the cost centre. Without it settlement has
+    no receiver and the sender keeps its costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails; period-end close stalls.
+  fix_map:
+    __other__: Enter the receiver cost centre in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: cost centre receiver without a cost centre.'
+- id: PS159
+  field: COBRB.AUFNR
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: '`COBRB.OBJNR`.notna()'
+  applies_when:
+    COBRB.KONTY:
+    - OR
+    COBRB.AUFNR:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Settlement to an order has no receiver order
+  why_it_matters: A distribution rule with receiver category order must name the order. Without it settlement has no receiver
+    and the sender keeps its costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails; period-end close stalls.
+  fix_map:
+    __other__: Enter the receiver order in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: order receiver without an order.'
+- id: PS160
+  field: COBRB.PS_PSP_PNR
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: '`COBRB.OBJNR`.notna()'
+  applies_when:
+    COBRB.KONTY:
+    - PR
+    COBRB.PS_PSP_PNR:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Settlement to a WBS element has no receiver WBS element
+  why_it_matters: A distribution rule with receiver category WBS element must name the element. Without it settlement has no
+    receiver and the sender keeps its costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails; period-end close stalls.
+  fix_map:
+    __other__: Enter the receiver WBS element in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: WBS receiver without a WBS element.'
+- id: PS161
+  field: COBRB.HKONT
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: '`COBRB.OBJNR`.notna()'
+  applies_when:
+    COBRB.KONTY:
+    - SK
+    COBRB.HKONT:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Settlement to a G/L account has no receiver account
+  why_it_matters: A distribution rule with receiver category G/L account must name the account. Without it settlement has no
+    receiver and the sender keeps its costs.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails; period-end close stalls.
+  fix_map:
+    __other__: Enter the receiver G/L account in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: G/L receiver without an account.'
+- id: PS162
+  field: COBRB.ANLN1
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: '`COBRB.OBJNR`.notna()'
+  applies_when:
+    COBRB.KONTY:
+    - AN
+    COBRB.ANLN1:
+      blank: true
+  severity: high
+  dimension: completeness
+  message: Settlement to an asset has no receiver asset
+  why_it_matters: A distribution rule with receiver category asset must name the asset, usually the asset under construction
+    of a capital project. Without it capitalisation cannot run.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement and capitalisation of the sender fail; assets under construction are not capitalised.
+  fix_map:
+    __other__: Enter the receiver asset in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: asset receiver without an asset.'
+- id: PS163
+  field: COBRB.BUKRS
+  check_class: referential_check
+  grain: COBRB
+  severity: medium
+  dimension: validity
+  message: Company code of the settlement receiver is not defined
+  why_it_matters: Settlement posts to the receiver's company code. An undefined company code makes the settlement posting
+    fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement of the sender fails at this distribution rule.
+  fix_map:
+    __other__: Company code '{invalid_value}' is not defined in T001. Correct the receiver in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: receiver company code is not defined in
+    T001.'
+- id: PS164
+  field: COBRB.PROZS
+  check_class: cross_field_check
+  grain: COBRB
+  fail_when: (`COBRB.PROZS`.fillna(0) == 0) & (`COBRB.AQZIF`.fillna(0) == 0) & (`COBRB.BETRR`.fillna(0) == 0)
+  applies_when:
+    COBRB.KONTY:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Settlement distribution rule has no percentage, equivalence number or amount
+  why_it_matters: Each distribution rule must say how much of the cost it takes, as a percentage, an equivalence number or a
+    fixed amount. A rule with none of them takes nothing and leaves costs on the sender.
+  rule_authority: sap_hard_constraint
+  sap_impact: Settlement finds no share for the receiver; costs remain on the sender or settle with an error.
+  fix_map:
+    __other__: Enter the percentage, equivalence number or amount for the distribution rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: no settlement share.'
+- id: PS165
+  field: COBRB.KOSTL
+  check_class: exists_check
+  grain: COBRB
+  fields:
+  - COBRB.KOKRS
+  - COBRB.KOSTL
+  target_table: CSKS
+  target_fields:
+  - KOKRS
+  - KOSTL
+  target_when:
+    DATBI:
+      within_days: 0
+  applies_when:
+    COBRB.KONTY:
+    - KS
+  severity: medium
+  dimension: timeliness
+  message: Settlement receiver cost centre is no longer valid
+  why_it_matters: A cost centre whose validity has ended cannot receive postings. Settlement rules that still point at it fail
+    at the next period-end, usually after a cost centre reorganisation.
+  rule_authority: s4hana_migration
+  sap_impact: Settlement fails at period-end; costs stay on the sender until the rule is corrected.
+  fix_map:
+    __other__: Replace the expired receiver with its successor cost centre in the settlement rule.
+  record_fix_template: 'Settlement rule of object {COBRB.OBJNR}, line {COBRB.LFDNR}: receiver cost centre is no longer valid.'
