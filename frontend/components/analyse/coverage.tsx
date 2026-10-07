@@ -10,10 +10,12 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart } from "@/components/aurora";
+import { BarChart, Tooltip } from "@/components/aurora";
 import { Banner, EmptyState, FilterBar, PageHeader, SectionCard, TableSkeleton, Tally } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { useUrlState } from "@/hooks/use-url-state";
+import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
+import { getSystems } from "@/lib/api/connectivity";
 import { getRuleCoverage, type CoverageObject } from "@/lib/api/rules";
 import { checkClassLabel, DIMENSIONS, formatModuleName } from "@/lib/format";
 import { ObjectCoverage } from "./coverage-object";
@@ -27,6 +29,19 @@ export function RuleCoverage() {
   return object ? <ObjectCoverage object={object} /> : <Matrix />;
 }
 
+function ConfigCells({ m }: { m: ConfigAwareModule | undefined }) {
+  if (!m) return <><td>{"—"}</td><td>{"—"}</td><td>{"—"}</td><td>{"—"}</td></>;
+  const reason = m.not_applicable_reasons[0]?.reason;
+  return (
+    <>
+      <td className="aurora-number">{(m.applicable - m.by_default).toLocaleString()}</td>
+      <td className="aurora-number">{m.by_default.toLocaleString()}</td>
+      <td className="aurora-number">{m.not_applicable === 0 ? "–" : reason ? <Tooltip label={reason} fallback>{m.not_applicable.toLocaleString()}</Tooltip> : m.not_applicable.toLocaleString()}</td>
+      <td className="aurora-number">{m.applicable === 0 ? "—" : `${m.passes.toLocaleString()} of ${m.applicable.toLocaleString()}`}</td>
+    </>
+  );
+}
+
 function Matrix() {
   const router = useRouter();
   const [sort, setSort] = useUrlState("sort", "total:desc");
@@ -38,6 +53,11 @@ function Matrix() {
     queryKey: ["rules.coverage", { system, authority, checkClass, state }],
     queryFn: () => getRuleCoverage({ system: system || undefined, authority: authority || undefined, check_class: checkClass || undefined, enabled: state ? state === "enabled" : undefined }),
   });
+  const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
+  const systems = useQuery({ queryKey: ["systems"], queryFn: getSystems, meta: { ignoreError: true } });
+  const aware = useQuery({ queryKey: ["config-aware-score", "coverage", cfgSystem], retry: false, meta: { ignoreError: true },
+    queryFn: () => getConfigAwareScore({ system_id: cfgSystem || undefined }) });
+  const awareByModule = useMemo(() => new Map((aware.data?.modules ?? []).map((m) => [m.module, m])), [aware.data]);
   const [key, dir] = sort.split(":");
   const rows = useMemo(() => {
     const val = (o: CoverageObject) => (key === "object" ? formatModuleName(o.module) : key === "total" ? o.total : o.by_dimension[key] ?? 0);
@@ -59,6 +79,10 @@ function Matrix() {
       options: (q.data?.check_classes ?? []).filter((c) => c.check_class).map((c) => ({ value: c.check_class!, label: checkClassLabel(c.check_class!), count: c.count })) },
     { id: "state", label: "State", value: state, allLabel: "Enabled and disabled", onChange: setState, options: [{ value: "enabled", label: "Enabled" }, { value: "disabled", label: "Disabled" }] },
   ];
+  if ((systems.data?.length ?? 0) > 1) {
+    groups.push({ id: "config_system", label: "Configuration", value: cfgSystem, allLabel: "All systems", onChange: setCfgSystem,
+      options: (systems.data ?? []).map((x) => ({ value: x.id, label: x.name })) });
+  }
   const chart = (q.data?.check_classes ?? []).filter((c) => c.check_class).slice(0, 12).map((c) => ({ type: checkClassLabel(c.check_class!), rules: c.count, id: c.check_class! }));
 
   return (
@@ -95,6 +119,10 @@ function Matrix() {
                     <th scope="col" aria-sort={key === "total" ? (dir === "asc" ? "ascending" : "descending") : undefined}>
                       <button type="button" className="ui-cov__sort" aria-pressed={key === "total"} onClick={() => clickSort("total")}>Total</button>
                     </th>
+                    <th scope="col">Configured</th>
+                    <th scope="col">Applies by default</th>
+                    <th scope="col">Does not apply</th>
+                    <th scope="col">Passing applicable</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,6 +134,7 @@ function Matrix() {
                           href={`${RULES}?${qs({ module: o.module, dimension: d.id, ...filterQs })}`} />
                       ))}
                       <Count n={o.total} thin={false} label={formatModuleName(o.module)} href={`${RULES}?${qs({ module: o.module, ...filterQs })}`} />
+                      <ConfigCells m={awareByModule.get(o.module)} />
                     </tr>
                   ))}
                 </tbody>
