@@ -30,7 +30,7 @@ PACKS = {
     "warehouse/mdg_master_data": ("MDG", 27, 9),
     "warehouse/cross_system_integration": ("XSYS", 28, 5),
     "ariba/ariba_procurement": ("ARP", 17, 11),
-    "ariba/ariba_contracts": ("ARC", 10, 7),
+    "ariba/ariba_contracts": ("ARC", 10, 33),
     "ariba/ariba_supplier": ("ARS", 8, 33),
     "concur/concur_expense": ("CNE", 21, 20),
     "concur/concur_users": ("CNU", 10, 32),
@@ -88,7 +88,7 @@ def test_ids_unique_and_contiguous(pack):
 
 
 def test_total_new_rules():
-    assert sum(len(v) for v in NEW.values()) == 216
+    assert sum(len(v) for v in NEW.values()) == 242
     assert len(S4_NEW) == len(S4R_WM)
 
 
