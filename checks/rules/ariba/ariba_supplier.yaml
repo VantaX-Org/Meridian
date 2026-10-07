@@ -494,7 +494,7 @@ rules:
   sap_impact: Country-dependent address validation and screening cannot run for this record.
   fix_map:
     __other__: Maintain the country for the city already on file.
-  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city {ARIBA_SUPPLIER.CITY} but no country.'
+  record_fix_template: 'Ariba supplier {ARIBA_SUPPLIER.VENDOR_ID}: city {actual_value} but no country.'
 - id: ARS035
   field: ARIBA_SUPPLIER.LAST_UPDATED
   check_class: cross_field_check
