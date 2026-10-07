@@ -18,7 +18,7 @@ EXPECTED_COUNTS = {
     "cross_system_integration": 26,
     "transport_management": 48,
     "batch_management": 35,
-    "wm_interface": 32,
+    "wm_interface": 40,
     "grc_compliance": 40,
     "mdg_master_data": 40,
 }
