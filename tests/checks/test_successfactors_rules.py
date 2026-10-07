@@ -15,11 +15,11 @@ EXPECTED_COUNTS = {
     "employee_central": 142,
     "compensation": 28,
     "recruiting_onboarding": 40,
-    "learning_management": 22,
+    "learning_management": 40,
     "performance_goals": 40,
     "succession_planning": 12,
     "time_attendance": 40,
-    "benefits": 15,
+    "benefits": 40,
     "payroll_integration": 59,
 }
 
