@@ -141,7 +141,7 @@ async def rules_coverage_module(
 
 _NARRATIVE_KEYS = (
     "id", "module", "field", "check_class", "severity", "dimension", "message", "why_it_matters",
-    "rule_authority", "sap_impact", "fix_map", "record_fix_template", "grain", "id_field", "scope_field",
+    "rule_authority", "sap_impact", "fix_map", "record_fix_template", "auto_fix", "grain", "id_field", "scope_field",
     "max_depth", "applies_when", "fail_when", "target_table", "target_fields", "reference_table",
     "reference_field", "pattern", "allowed_values", "valid_values_with_labels", "group_by",
     "max_age_hours", "baseline", "simplification_item", "transaction", "category",

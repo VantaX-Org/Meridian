@@ -46,6 +46,31 @@ BAPI_MAP = {
 }
 
 
+# BAPI -> {TABLE.FIELD: (key params, data structure, BAPI field)} for fixes a BAPI can carry.
+# ponytail: empty until each BAPI's structure is verified against a test system; until then every
+# fix is refused and loaded through a remediation batch export instead of an RFC call with guessed params.
+BAPI_FIELDS: dict[str, dict[str, tuple[dict[str, str], str, str]]] = {}
+
+
+def _structured(fix) -> bool:
+    """A structured auto_fix proposal: field, full record key and proposed value (never instruction text)."""
+    return isinstance(fix, dict) and bool(fix.get("auto_fix") and fix.get("record_key")
+                                          and fix.get("field") and fix.get("proposed_value") is not None)
+
+
+def _bapi_params(bapi: str, fix: dict) -> Optional[dict]:
+    """BAPI parameters built from the fix's table, field, record key and proposed value; None when unmapped."""
+    m = BAPI_FIELDS.get(bapi, {}).get(fix["field"])
+    if m is None:
+        return None
+    keys = dict(p.split("=", 1) for p in fix["record_key"].split("|") if "=" in p)
+    key_params, structure, bapi_field = m
+    if any(k not in keys for k in key_params):
+        return None
+    return {**{param: keys[k] for k, param in key_params.items()},
+            structure: {bapi_field: fix["proposed_value"]}, structure + "X": {bapi_field: "X"}}
+
+
 class SAPConnection(BaseModel):
     host: str
     client: str
@@ -125,11 +150,11 @@ async def create_writeback(
 
     module = finding[1]
 
-    # Filter: only fixes with sql_statement (deterministic fixes only)
+    # Filter: only structured auto_fix proposals (deterministic fixes only)
     valid_fixes = []
     skipped = 0
     for fix in body.record_fixes:
-        if fix.get("sql_statement"):
+        if _structured(fix):
             valid_fixes.append(fix)
         else:
             skipped += 1
@@ -139,7 +164,7 @@ async def create_writeback(
         return WriteBackResponse(
             applied=0,
             skipped=skipped,
-            errors=["No fixes with sql_statement found — nothing to apply"],
+            errors=["No structured auto_fix proposals found — nothing to apply"],
             dry_run=body.dry_run,
             pending_approval_id=None,
         )
@@ -290,7 +315,7 @@ async def approve_writeback(
     record_fixes = finding[1] or []
 
     # Filter to deterministic fixes only
-    valid_fixes = [f for f in record_fixes if isinstance(f, dict) and f.get("sql_statement")]
+    valid_fixes = [f for f in record_fixes if _structured(f)]
 
     bapi = BAPI_MAP.get(module)
     errors: list[str] = []
@@ -349,11 +374,13 @@ async def approve_writeback(
                     with get_connector() as conn:
                         conn.connect(params)
                         for fix in valid_fixes:
+                            bapi_params = _bapi_params(bapi, fix)
+                            if bapi_params is None:
+                                _errors.append(f"No {bapi} parameter mapping for {fix.get('field', '?')} "
+                                               f"({fix.get('record_key')}); load it via a remediation batch")
+                                continue
                             try:
-                                conn.execute_bapi(BAPICall(
-                                    bapi_name=bapi,
-                                    params=fix.get("bapi_params", {}),
-                                ))
+                                conn.execute_bapi(BAPICall(bapi_name=bapi, params=bapi_params))
                                 _applied += 1
                             except SAPConnectorError as e:
                                 _errors.append(f"BAPI call failed for {fix.get('field', '?')}: {str(e)}")

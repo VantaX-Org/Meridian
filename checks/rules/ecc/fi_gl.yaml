@@ -195,6 +195,11 @@ rules:
     record_fix_template: >-
       GL Account {SKA1.SAKNR}: WAERS is '{actual_value}'. Set to a valid ISO
       currency code via FS00 / Fiori app F2735.
+    auto_fix:  # ' eur' -> 'EUR'; anything still not 3 letters stays with the steward
+      steps:
+        - op: strip
+        - op: upper
+      confidence: high
 
 
   - id: GL012
@@ -1149,6 +1154,11 @@ rules:
     fix_map:
       __blank__: 'Set "Line item display" in FS00 > Control data and run RFSEPA01 to build the line-item index (S/4: always on, F0731 Manage G/L Account Master Data).'
     record_fix_template: 'GL Account {SKB1.SAKNR} in company code {SKB1.BUKRS}: open-item managed without line-item display.'
+    auto_fix:
+      steps:
+        - op: set
+          value: X
+      confidence: high
 
   - id: GL060
     field: BKPF.BUDAT
@@ -1778,6 +1788,12 @@ rules:
         has no postings in the old currency).
     record_fix_template: 'P&L account {SKB1.SAKNR} in company code {SKB1.BUKRS}: account currency {SKB1.WAERS}, company code
       currency {T001.WAERS}.'
+    auto_fix:  # medium: only allowed once the account has no postings in the old currency
+      when: T001.WAERS.notna()
+      steps:
+        - op: copy
+          from: T001.WAERS
+      confidence: medium
 
   - id: GL215
     field: SKB1.FSTAG

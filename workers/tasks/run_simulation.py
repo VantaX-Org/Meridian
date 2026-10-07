@@ -162,7 +162,8 @@ def simulate(tenant_id: str, simulation_id: str, version_id: str, request: dict)
         rule, res = rules.get(cid), by_id.get(cid)
         if rule is None or res is None or res.passed:
             continue
-        rule = {**rule, "fix_value": f["fix_value"]} if f.get("fix_value") is not None else rule
+        if f.get("fix_value") is not None:  # a requested fix_value replaces the rule's own auto_fix
+            rule = {**{k: v for k, v in rule.items() if k != "auto_fix"}, "fix_value": f["fix_value"]}
         fixes = rule_record_fixes(rule, res, frames)
         if fixes:
             groups[f"rule:{cid}"] = {"label": f"{cid} · {rule.get('field', '')}", "record_fixes": fixes}

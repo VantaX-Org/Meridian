@@ -1,11 +1,10 @@
 """Deterministic fix generator — pure Python, no LLM.
 
 Reads fix_map and record_fix_template from YAML rule definitions and produces
-per-value and per-record fix recommendations including SQL statements for
-unambiguous fixes.
+per-value and per-record fix recommendations. SQL is built only from a
+structured auto_fix proposal (checks/auto_fix.py), never from instruction text.
 """
 
-import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -15,7 +14,7 @@ class ValueFix:
     invalid_value: str
     fix_instruction: str
     suggested_value: Optional[str]  # populated if determinable from fix_map
-    sql_statement: Optional[str]    # populated for unambiguous fixes only
+    sql_statement: Optional[str]    # always None: value fixes carry no record key
 
 
 @dataclass
@@ -24,7 +23,12 @@ class RecordFix:
     id_field: str            # which field was used as the identifier
     invalid_value: str       # the actual bad value
     fix_instruction: str     # specific instruction for this record
-    sql_statement: Optional[str]
+    sql_statement: Optional[str]   # only for a structured auto_fix proposal
+    record_key: Optional[str] = None       # full SAP key, e.g. BUKRS=1000|SAKNR=0000400000
+    proposed_value: Optional[str] = None   # auto_fix value (checks/auto_fix.py)
+    confidence: Optional[str] = None       # high | medium | low
+    auto_fix: bool = False
+    field: Optional[str] = None            # TABLE.FIELD the proposal writes
 
 
 class FixGenerator:
@@ -96,8 +100,13 @@ class FixGenerator:
         fix_map: dict,
         record_fix_template: Optional[str],
         table_name: Optional[str] = None,
+        proposals: Optional[dict[str, tuple[str, str]]] = None,
     ) -> list[RecordFix]:
-        """Build a per-record fix for each sample failing record."""
+        """Build a per-record fix for each failing record.
+
+        ``proposals`` maps a record's ``record_key`` to its auto_fix
+        ``(value, confidence)`` (checks/auto_fix.py); only those records get a
+        proposed value and an UPDATE statement."""
 
         fixes = []
         for record in sample_failing_records:
@@ -107,98 +116,34 @@ class FixGenerator:
 
             # Render the record_fix_template if provided
             if record_fix_template:
-                try:
-                    # Manual replacement for dotted keys (e.g. {BUT000.PARTNER})
-                    # since Python .format() doesn't support dots in kwarg names
-                    rendered = record_fix_template
-                    rendered = rendered.replace("{actual_value}", str(invalid_value))
-                    rendered = rendered.replace("{fix_instruction}", instruction)
-                    for k, v in record.items():
-                        rendered = rendered.replace("{" + k + "}", str(v))
-                except (KeyError, ValueError):
-                    rendered = instruction
+                # Manual replacement for dotted keys (e.g. {BUT000.PARTNER})
+                # since Python .format() doesn't support dots in kwarg names
+                rendered = record_fix_template
+                rendered = rendered.replace("{actual_value}", str(invalid_value))
+                rendered = rendered.replace("{fix_instruction}", instruction)
+                for k, v in record.items():
+                    rendered = rendered.replace("{" + k + "}", str(v))
             else:
                 rendered = instruction
 
-            # Generate SQL only for unambiguous single-value fixes
-            sql = self._generate_sql(
-                table_name, id_field, record_id, check_field, invalid_value, fix_map
-            )
-
-            fixes.append(
-                RecordFix(
-                    record_id=record_id,
-                    id_field=id_field,
-                    invalid_value=invalid_value,
-                    fix_instruction=rendered,
-                    sql_statement=sql,
-                )
-            )
+            key = record.get("record_key")
+            hit = (proposals or {}).get(key) if key else None
+            fixes.append(RecordFix(
+                record_id=record_id, id_field=id_field, invalid_value=invalid_value,
+                fix_instruction=rendered,
+                sql_statement=sql_for(table_name, check_field, key, hit[0]) if hit else None,
+                record_key=key, proposed_value=hit[0] if hit else None,
+                confidence=hit[1] if hit else None, auto_fix=bool(hit), field=check_field,
+            ))
         return fixes
 
-    def _generate_sql(
-        self,
-        table: Optional[str],
-        id_field: str,
-        id_value: str,
-        fix_field: str,
-        current_value: str,
-        fix_map: dict,
-    ) -> Optional[str]:
-        """Generate a SQL UPDATE only when the fix is unambiguous.
-        Never generates SQL when human judgement is required (blank BU_TYPE,
-        free-text fields, etc.)."""
 
-        if not table:
-            return None
-
-        # Only generate SQL if the fix_map entry explicitly states a
-        # concrete replacement value using the pattern "set to X" or
-        # "replace with X"
-        instruction = self.get_fix_instruction(current_value, fix_map)
-        if (
-            "set to" not in instruction.lower()
-            and "replace with" not in instruction.lower()
-        ):
-            return None
-
-        # Extract the suggested value from the instruction
-        match = re.search(
-            r"(?:set to|replace with)\s+[\"']?(\w+)[\"']?", instruction, re.I
-        )
-        if not match:
-            return None
-
-        suggested_value = match.group(1)
-        # Strip table prefix from id_field for SQL (BUT000.PARTNER → PARTNER)
-        id_col = id_field.split(".")[-1]
-        fix_col = fix_field.split(".")[-1]
-        table_name = table.split(".")[-1]
-
-        # Escape single quotes in values
-        safe_id = id_value.replace("'", "''")
-        safe_val = suggested_value.replace("'", "''")
-
-        return (
-            f"UPDATE {table_name} "
-            f"SET {fix_col} = '{safe_val}' "
-            f"WHERE {id_col} = '{safe_id}';"
-        )
-
-
-def proposed_value(rule: dict, current: Optional[str]) -> Optional[str]:
-    """Machine-applicable fix from the rule's optional ``fix_value`` YAML field.
-
-    ``fix_value: "X"`` proposes X for every failing record; a mapping proposes
-    by current value (``__blank__`` for an empty field, ``__other__`` as the
-    catch-all). None = no rule-defined value, a steward enters it by hand.
-    """
-    fv = rule.get("fix_value")
-    if fv is None:
+def sql_for(table: Optional[str], field: str, record_key: Optional[str], value: str) -> Optional[str]:
+    """UPDATE for one structured proposal: the record's key fields (``BUKRS=1000|SAKNR=...``)
+    become the WHERE clause. None when the record has no SAP key."""
+    keys = dict(p.split("=", 1) for p in (record_key or "").split("|") if "=" in p)
+    if not table or not keys:
         return None
-    if not isinstance(fv, dict):
-        return str(fv)
-    cur = "" if current is None else str(current).strip()
-    hit = fv.get("__blank__") if cur == "" else fv.get(cur)
-    hit = fv.get("__other__") if hit is None else hit
-    return None if hit is None else str(hit)
+    q = lambda v: "'" + str(v).replace("'", "''") + "'"  # noqa: E731
+    where = " AND ".join(f"{k} = {q(v)}" for k, v in keys.items())
+    return f"UPDATE {table.split('.')[-1]} SET {field.split('.')[-1]} = {q(value)} WHERE {where};"

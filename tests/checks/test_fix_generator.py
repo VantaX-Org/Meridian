@@ -1,6 +1,6 @@
 """Tests for the deterministic fix generator."""
 
-from checks.fix_generator import FixGenerator, RecordFix, ValueFix
+from checks.fix_generator import FixGenerator, RecordFix, ValueFix, sql_for
 
 
 class TestGetFixInstruction:
@@ -72,36 +72,19 @@ class TestBuildValueFixMap:
         assert result["bad"].suggested_value is None
 
 
-class TestGenerateSQL:
+class TestSqlFor:
 
-    def setup_method(self):
-        self.gen = FixGenerator()
+    def test_update_from_structured_proposal(self):
+        sql = sql_for("BUT000", "BUT000.BU_TYPE", "PARTNER=0000012345", "2")
+        assert sql == "UPDATE BUT000 SET BU_TYPE = '2' WHERE PARTNER = '0000012345';"
 
-    def test_generates_sql_for_set_to_instruction(self):
-        fix_map = {"__blank__": "Field is empty. Set to 2 (Organisation) via BP."}
-        sql = self.gen._generate_sql(
-            "BUT000", "BUT000.PARTNER", "0000012345",
-            "BUT000.BU_TYPE", "", fix_map,
-        )
-        assert sql is not None
-        assert "UPDATE BUT000" in sql
-        assert "SET BU_TYPE = '2'" in sql
-        assert "WHERE PARTNER = '0000012345'" in sql
+    def test_compound_key_and_quote_escaping(self):
+        sql = sql_for("SKB1", "SKB1.FSTAG", "BUKRS=1000|SAKNR=O'1", "G001")
+        assert sql == "UPDATE SKB1 SET FSTAG = 'G001' WHERE BUKRS = '1000' AND SAKNR = 'O''1';"
 
-    def test_returns_none_for_ambiguous_instruction(self):
-        fix_map = {"__blank__": "Determine the correct category from the business record."}
-        sql = self.gen._generate_sql(
-            "BUT000", "BUT000.PARTNER", "0000012345",
-            "BUT000.BU_TYPE", "", fix_map,
-        )
-        assert sql is None
-
-    def test_returns_none_when_no_table(self):
-        fix_map = {"__blank__": "Set to 2."}
-        sql = self.gen._generate_sql(
-            None, "PARTNER", "123", "BU_TYPE", "", fix_map,
-        )
-        assert sql is None
+    def test_none_without_table_or_key(self):
+        assert sql_for(None, "BU_TYPE", "PARTNER=1", "2") is None
+        assert sql_for("BUT000", "BU_TYPE", None, "2") is None
 
 
 class TestBuildRecordFixes:
@@ -160,8 +143,13 @@ class TestBuildRecordFixes:
             record_fix_template=None,
             table_name="BUT000",
         )
-        assert fixes[0].sql_statement is not None
-        assert "UPDATE BUT000" in fixes[0].sql_statement
+        assert fixes[0].sql_statement is None  # instruction text is never scraped into SQL
+        samples[0]["record_key"] = "PARTNER=0000012345"
+        fixes = self.gen.build_record_fixes(samples, "BUT000.PARTNER", "BUT000.BU_TYPE", fix_map, None, "BUT000",
+                                            proposals={"PARTNER=0000012345": ("2", "high")})
+        f = fixes[0]
+        assert (f.proposed_value, f.confidence, f.auto_fix, f.field) == ("2", "high", True, "BUT000.BU_TYPE")
+        assert f.sql_statement == "UPDATE BUT000 SET BU_TYPE = '2' WHERE PARTNER = '0000012345';"
 
     def test_handles_empty_inputs(self):
         fixes = self.gen.build_record_fixes(
