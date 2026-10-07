@@ -532,3 +532,210 @@ rules:
     fix_map:
       __other__: Use a pay grade of at most 8 characters or add a mapping in the integration.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay grade does not fit the 8-character pay scale group. Correct in Compensation Information.'
+  - id: COMP031
+    field: COMPINFO.EFFECTIVE_DATE_COMP
+    check_class: null_check
+    applies_when:
+      COMPINFO.SALARY:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Recurring pay component has an amount but no component-level effective date
+    why_it_matters: EFFECTIVE_DATE_COMP is the start date of the individual recurring pay component (EmpPayCompRecurring),
+      distinct from the compensation record's own EFFECTIVE_DATE. Without it, the component cannot be prorated for a mid-period
+      change or correctly sequenced in pay component history.
+    rule_authority: best_practice
+    sap_impact: Pay component proration and history sequencing cannot be determined; payroll replication may pick up the
+      wrong component version.
+    fix_map:
+      __blank__: Set the pay component's own effective date in Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} has an amount but no component effective date.'
+  - id: COMP032
+    field: COMPINFO.COMPA_RATIO
+    check_class: cross_field_check
+    fail_when: (`COMPINFO.COMPA_RATIO` < 0.3) | (`COMPINFO.COMPA_RATIO` > 3.0)
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Compa-ratio is an implausible outlier
+    why_it_matters: A compa-ratio below 0.3 or above 3.0 is outside any realistic pay-range penetration and almost always
+      indicates a unit or decimal error (e.g. salary entered in cents, or compa-ratio stored as a percentage rather than a
+      ratio) rather than a genuine pay position. This check is independent of COMP011, which flags salary falling outside
+      the grade's own min/max.
+    rule_authority: best_practice
+    sap_impact: Compensation planning worksheets and pay equity dashboards show a nonsensical outlier that skews averages
+      and merit budget calculations.
+    fix_map:
+      __other__: Recalculate compa-ratio as SALARY / PAY_RANGE_MID and verify the unit of both inputs.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compa-ratio {COMPINFO.COMPA_RATIO} is an implausible outlier. Verify the underlying salary and pay range mid.'
+  - id: COMP033
+    field: COMPINFO.PAY_GRADE
+    check_class: cross_field_check
+    fail_when: '`COMPINFO.PAY_GRADE`.notna() & `COMPINFO.PAY_RANGE_MIN`.isna() & `COMPINFO.PAY_RANGE_MID`.isna() & `COMPINFO.PAY_RANGE_MAX`.isna()'
+    severity: medium
+    dimension: completeness
+    message: Employee has a pay grade but the grade has no pay range at all
+    why_it_matters: A pay grade exists to anchor a pay range. When none of PAY_RANGE_MIN, PAY_RANGE_MID or PAY_RANGE_MAX is
+      populated for a graded employee, the grade is effectively unconfigured — this is distinct from COMP008/COMP009/COMP015,
+      which each flag a single missing boundary, and from COMP028, which only fires when a salary is also present.
+    rule_authority: best_practice
+    sap_impact: Compensation planning worksheet shows a grade with no range; compa-ratio and range penetration cannot be
+      calculated for anyone in that grade.
+    fix_map:
+      __other__: Maintain the pay range (minimum, midpoint, maximum) for this pay grade in Foundation Objects > Pay Range.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has no pay range configured at all.'
+  - id: COMP034
+    field: COMPINFO.PAY_RANGE_MIN
+    check_class: cross_field_check
+    fail_when: (`COMPINFO.PAY_RANGE_MIN` == `COMPINFO.PAY_RANGE_MAX`) & `COMPINFO.PAY_RANGE_MIN`.notna() & (`COMPINFO.PAY_RANGE_MIN`
+      != 0)
+    severity: low
+    dimension: validity
+    message: Pay range minimum equals its maximum — zero-width pay band
+    why_it_matters: A pay range with minimum equal to maximum gives the grade no room for salary progression. This usually
+      means the range was never configured and the same placeholder value was copied into both fields, which is a different
+      defect from COMP019 (minimum above maximum).
+    rule_authority: best_practice
+    sap_impact: Every employee in the grade sits at exactly the range maximum, so merit increases cannot be guided by range
+      penetration and compa-ratio is always 1.0 regardless of actual pay position.
+    fix_map:
+      __other__: Correct the pay range minimum and maximum for this grade in Foundation Objects > Pay Range so they differ.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay range minimum equals maximum ({COMPINFO.PAY_RANGE_MIN}) — zero-width band.'
+  - id: COMP035
+    field: COMPINFO.PAY_GROUP
+    check_class: referential_check
+    severity: high
+    dimension: accuracy
+    message: Pay group must reference a valid FO Pay Group
+    why_it_matters: PAY_GROUP decides which payroll run and pay calendar the employee is picked up by (distinct from COMP025's
+      completeness check and COMP029's length check — this checks the value actually exists as a configured Foundation
+      Object). A pay group that is populated but not a real FO Pay Group is silently skipped by payroll just as an empty one
+      would be.
+    rule_authority: sap_hard_constraint
+    sap_impact: Employee Central Payroll and payroll integrations do not recognise the pay group and the employee is excluded
+      from the payroll run.
+    fix_map:
+      __other__: Pay group '{invalid_value}' is not in FOPayGroup. Reassign via Compensation Information, or configure the
+        missing pay group in Admin Center > Foundation Objects > Pay Group.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay group ''{actual_value}'' is not in FOPayGroup.'
+  - id: COMP036
+    field: COMPINFO.USERID
+    check_class: uniqueness_check
+    fields:
+    - COMPINFO.USERID
+    - COMPINFO.PAY_TYPE
+    - COMPINFO.EFFECTIVE_DATE_COMP
+    severity: medium
+    dimension: uniqueness
+    message: Duplicate recurring pay component for the same employee, pay type, and component start date
+    why_it_matters: This checks for duplication at the recurring-pay-component grain (EmpPayCompRecurring), which is finer
+      than COMP016's uniqueness check on the compensation header record (EFFECTIVE_DATE + PAY_TYPE). Two rows for the same
+      component starting the same day double the amount payroll replicates for that component.
+    rule_authority: best_practice
+    sap_impact: Payroll replication sums or picks an arbitrary one of the duplicate pay components, doubling or randomising
+      that part of pay.
+    fix_map:
+      __blank__: Review the duplicate recurring pay component rows in Admin Center > Compensation Import and remove or
+        end-date the extra one.
+    record_fix_template: 'Employee {COMPINFO.USERID}: duplicate recurring pay component {COMPINFO.PAY_TYPE} with the same component start date.'
+  - id: COMP037
+    field: COMPINFO.EVENT_REASON
+    check_class: null_check
+    applies_when:
+      COMPINFO.SALARY:
+        populated: true
+    severity: low
+    dimension: completeness
+    message: Compensation change has no event reason
+    why_it_matters: EVENT_REASON records why the compensation change was made (merit, promotion, market adjustment, correction).
+      Without it, compensation history cannot be audited or reported on by change type, and approval workflows tied to the
+      event reason do not trigger.
+    rule_authority: best_practice
+    sap_impact: Compensation change audit trail and merit-vs-promotion reporting cannot classify this change; event-driven
+      approval workflow is bypassed.
+    fix_map:
+      __blank__: Set the event reason for this compensation change via Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation change on {COMPINFO.EFFECTIVE_DATE} has no event reason.'
+  - id: COMP038
+    field: COMPINFO.EVENT_REASON
+    check_class: referential_check
+    severity: medium
+    dimension: consistency
+    message: Compensation event reason must reference a valid FO Event Reason
+    why_it_matters: An event reason that is populated but not a configured Foundation Object cannot drive the event-triggered
+      workflow (pay-change approval routing, compensation statement wording) — the record saves but the downstream process
+      silently does not run.
+    rule_authority: best_practice
+    sap_impact: Event-triggered compensation workflow and reporting by change reason silently skip the record.
+    fix_map:
+      __other__: Event reason '{invalid_value}' is not in FOEventReason. Reassign via Compensation Information, or configure
+        the missing reason in Admin Center > Foundation Objects > Event Reason.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation event reason ''{actual_value}'' is not in FOEventReason.'
+  - id: COMP039
+    field: COMPINFO.PAY_SCALE_TYPE
+    check_class: null_check
+    applies_when:
+      COMPINFO.PAY_GRADE:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Pay scale type is missing though a pay grade is assigned
+    why_it_matters: PAY_SCALE_TYPE maps to the SAP pay scale type (infotype 0008 TRFAR). A graded employee without it cannot
+      have their scale pay data replicated to SAP payroll, which is a different replication gap from the pay grade (TRFGR)
+      checks in COMP018/COMP030.
+    rule_authority: sap_hard_constraint
+    sap_impact: Infotype 0008 pay scale type (TRFAR) cannot be derived; the SAP payroll replication of scale-based pay fails
+      or defaults incorrectly.
+    fix_map:
+      __blank__: Set the pay scale type for this employee's job information via Admin Center > Job Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} assigned but pay scale type is missing.'
+  - id: COMP040
+    field: COMPINFO.PAY_SCALE_AREA
+    check_class: null_check
+    applies_when:
+      COMPINFO.PAY_GRADE:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Pay scale area is missing though a pay grade is assigned
+    why_it_matters: PAY_SCALE_AREA maps to the SAP pay scale area (infotype 0008 TRFGB), which together with pay scale type
+      and level determines the applicable collective pay agreement. A graded employee without it cannot be matched to the
+      correct scale structure in SAP payroll.
+    rule_authority: sap_hard_constraint
+    sap_impact: Infotype 0008 pay scale area (TRFGB) cannot be derived; the employee cannot be matched to a collective pay
+      agreement during replication.
+    fix_map:
+      __blank__: Set the pay scale area for this employee's job information via Admin Center > Job Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} assigned but pay scale area is missing.'
+  - id: COMP041
+    field: COMPINFO.PAY_SCALE_LEVEL
+    check_class: regex_check
+    pattern: ^[A-Za-z0-9]{1,2}$
+    severity: medium
+    dimension: validity
+    message: Pay scale level does not fit the 2 characters of the SAP pay scale level
+    why_it_matters: The pay scale level is mapped to infotype 0008's TRFST field, a 2-character key. A longer value cannot
+      be replicated and either truncates silently or is rejected by the integration.
+    rule_authority: best_practice
+    sap_impact: The pay scale level is truncated or rejected in the replication, so scale-based pay cannot be determined.
+    fix_map:
+      __other__: Use a pay scale level of at most 2 characters or add a mapping in the integration.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay scale level does not fit the 2-character SAP field. Correct in Job Information.'
+  - id: COMP042
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`COMPINFO.EFFECTIVE_DATE` - @today).dt.days > 730
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Compensation effective date is more than two years in the future
+    why_it_matters: A compensation change dated more than two years ahead is almost always a data entry error (wrong century
+      or transposed digits) rather than a genuine forward-dated change, since compensation planning cycles do not schedule
+      changes that far out. This checks against the calendar date, distinct from COMP022/COMP023, which compare the
+      effective date to the employment start/end dates.
+    rule_authority: best_practice
+    sap_impact: The record is excluded from the current compensation cycle and from payroll until the implausible future
+      date arrives, effectively freezing the employee's pay.
+    fix_map:
+      __other__: Verify and correct the compensation effective date via Compensation Information.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation effective date {COMPINFO.EFFECTIVE_DATE} is more than two years in the future.'

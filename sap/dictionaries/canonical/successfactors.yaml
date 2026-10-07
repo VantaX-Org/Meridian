@@ -96,7 +96,7 @@ tables:
       USERID:              {source: EmpCompensation.userId, type: STRING, length: 100}
       EFFECTIVE_DATE:      {source: EmpCompensation.startDate, type: DATE}
       EFFECTIVE_DATE_COMP: {source: EmpPayCompRecurring.startDate, type: DATE, description: Pay component effective date}
-      PAY_GROUP:           {source: EmpCompensation.payGroup, type: STRING, length: 128, description: Pay group}
+      PAY_GROUP:           {source: EmpCompensation.payGroup, type: STRING, length: 128, check_table: FOPayGroup, description: Pay group}
       PAY_GRADE:           {source: EmpJob.payGrade, type: STRING, length: 128, check_table: FOPayGrade}
       PAY_TYPE:            {source: EmpPayCompRecurring.payComponent, type: STRING, length: 32, check_table: FOPayComponent, description: Pay component}
       SALARY:              {source: EmpPayCompRecurring.paycompvalue, type: DECIMAL, description: Pay component amount}
@@ -106,6 +106,10 @@ tables:
       PAY_RANGE_MID:       {source: FOPayRange.midPoint, type: DECIMAL}
       PAY_RANGE_MAX:       {source: FOPayRange.maximumPay, type: DECIMAL}
       COMPA_RATIO:         {source: EmpCompensationCalculatedNavigation.compaRatio, type: DECIMAL, verify: true}
+      EVENT_REASON:        {source: EmpCompensation.eventReason, type: STRING, length: 128, check_table: FOEventReason, verify: true, description: Compensation change reason}
+      PAY_SCALE_TYPE:      {source: EmpJob.payScaleType, type: STRING, length: 32, verify: true, description: SAP pay scale type (PA0008.TRFAR)}
+      PAY_SCALE_AREA:      {source: EmpJob.payScaleArea, type: STRING, length: 32, verify: true, description: SAP pay scale area (PA0008.TRFGB)}
+      PAY_SCALE_LEVEL:     {source: EmpJob.payScaleLevel, type: STRING, length: 32, verify: true, description: SAP pay scale level (PA0008.TRFST)}
 
   PAYRESULT:
     description: Payroll results (Employee Central Payroll export / Payroll Control Center)
