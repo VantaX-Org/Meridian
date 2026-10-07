@@ -739,3 +739,216 @@ rules:
       __other__: Check the time zone of the warehouse and of the device or interface that confirmed the task.
     record_fix_template: 'Warehouse {/SCWM/ORDIM_C.LGNUM} task {/SCWM/ORDIM_C.TANUM}/{/SCWM/ORDIM_C.TAPOS}: confirmed
       {/SCWM/ORDIM_C.CONFIRMED_AT} before created {/SCWM/ORDIM_C.CREATED_AT}.'
+
+  - id: EWTO109
+    field: LTAK.BDATU
+    check_class: freshness_check
+    max_age_hours: 2160
+    applies_when:
+      LTAK.KQUIT:
+      - ''
+    severity: high
+    dimension: timeliness
+    message: Transfer order has been open for over 90 days
+    why_it_matters: A transfer order open for a quarter is almost certainly abandoned. It still reserves stock and bin capacity.
+    rule_authority: best_practice
+    sap_impact: Stock stays reserved and the bin shows as occupied.
+    fix_map:
+      __other__: Confirm or cancel the transfer order (LT12, LT15).
+    record_fix_template: Transfer order {LTAK.LGNUM}/{LTAK.TANUM} open since {actual_value}.
+
+  - id: EWTO110
+    field: LTAP.LGNUM
+    check_class: exists_check
+    fields:
+    - LTAP.LGNUM
+    - LTAP.VLTYP
+    - LTAP.VLPLA
+    target_table: LAGP
+    target_fields:
+    - LGNUM
+    - LGTYP
+    - LGPLA
+    applies_when:
+      LTAP.VLPLA:
+        populated: true
+      LTAP.VLTYP:
+        not_in:
+        - '901'
+        - '902'
+        - '910'
+        - '914'
+        - '915'
+        - '916'
+        - '999'
+    severity: medium
+    dimension: consistency
+    message: Transfer order source bin does not exist
+    why_it_matters: An item with a source bin that has no master cannot be picked from a known location.
+    rule_authority: sap_hard_constraint
+    sap_impact: The pick cannot be confirmed against a real bin.
+    fix_map:
+      __other__: Create the bin or correct the source bin. Interim types create bins on demand, so review only non-interim types.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: source bin {LTAP.VLTYP}/{LTAP.VLPLA} not
+      in LAGP.'
+
+  - id: EWTO111
+    field: LTAP.LGNUM
+    check_class: exists_check
+    fields:
+    - LTAP.LGNUM
+    - LTAP.NLTYP
+    - LTAP.NLPLA
+    target_table: LAGP
+    target_fields:
+    - LGNUM
+    - LGTYP
+    - LGPLA
+    applies_when:
+      LTAP.NLPLA:
+        populated: true
+      LTAP.NLTYP:
+        not_in:
+        - '901'
+        - '902'
+        - '910'
+        - '914'
+        - '915'
+        - '916'
+        - '999'
+    severity: medium
+    dimension: consistency
+    message: Transfer order destination bin does not exist
+    why_it_matters: An item with a destination bin that has no master cannot be put away to a known location.
+    rule_authority: sap_hard_constraint
+    sap_impact: The putaway cannot be confirmed against a real bin.
+    fix_map:
+      __other__: Create the bin or correct the destination bin. Interim types create bins on demand, so review only non-interim
+        types.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: destination bin {LTAP.NLTYP}/{LTAP.NLPLA}
+      not in LAGP.'
+
+  - id: EWTO112
+    field: LTAP.LGNUM
+    check_class: exists_check
+    fields:
+    - LTAP.LGNUM
+    - LTAP.VLENR
+    target_table: LEIN
+    target_fields:
+    - LGNUM
+    - LENUM
+    applies_when:
+      LTAP.VLENR:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Transfer order source storage unit does not exist
+    why_it_matters: A pick of a storage unit that has no header cannot complete.
+    rule_authority: sap_hard_constraint
+    sap_impact: The unit pick fails at confirmation.
+    fix_map:
+      __other__: Cancel the transfer order or recreate the storage unit.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: source unit {LTAP.VLENR} not in LEIN.'
+
+  - id: EWTO113
+    field: LTAP.MATNR
+    check_class: exists_check
+    fields:
+    - LTAP.MATNR
+    - LTAP.WERKS
+    target_table: MARC
+    target_fields:
+    - MATNR
+    - WERKS
+    severity: high
+    dimension: consistency
+    message: Transfer order item material has no plant data
+    why_it_matters: The item plant must have plant data for the material.
+    rule_authority: sap_hard_constraint
+    sap_impact: Goods movement postings from the transfer order fail.
+    fix_map:
+      __other__: Extend the material to the plant or correct the plant on the item.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: {LTAP.MATNR} not in plant {LTAP.WERKS}.'
+
+  - id: EWTO114
+    field: LTAP.MATNR
+    check_class: exists_check
+    fields:
+    - LTAP.MATNR
+    - LTAP.LGNUM
+    target_table: MLGN
+    target_fields:
+    - MATNR
+    - LGNUM
+    severity: high
+    dimension: consistency
+    message: Transfer order item material has no warehouse management view
+    why_it_matters: A transfer order for a material needs its warehouse data in the warehouse.
+    rule_authority: sap_hard_constraint
+    sap_impact: Strategies and unit-of-measure conversions fall back to defaults.
+    fix_map:
+      __other__: Extend the material to the warehouse number (MM50).
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: {LTAP.MATNR} has no warehouse data.'
+
+  - id: EWTO115
+    field: LTAK.QDATU
+    check_class: cross_field_check
+    fail_when: '`LTAK.QDATU` > @today'
+    applies_when:
+      LTAK.KQUIT:
+      - X
+    severity: low
+    dimension: validity
+    message: Transfer order confirmation date is in the future
+    why_it_matters: A date of confirmation later than today means the date was set wrongly.
+    rule_authority: sap_hard_constraint
+    sap_impact: Open-order ageing reports are wrong.
+    fix_map:
+      __other__: Correct the confirmation date.
+    record_fix_template: 'Transfer order {LTAK.LGNUM}/{LTAK.TANUM}: confirmation date {actual_value} is in the future.'
+
+  - id: EWTO116
+    field: LTAP.SONUM
+    check_class: cross_field_check
+    fail_when: '`LTAP.SOBKZ`.isin([''E'', ''Q'', ''K'', ''O'']) & `LTAP.SONUM`.isna()'
+    severity: high
+    dimension: completeness
+    message: Special stock transfer order item has no special stock number
+    why_it_matters: Sales order, project, consignment and subcontract stock needs its special stock number to find the right
+      quant.
+    rule_authority: sap_hard_constraint
+    sap_impact: The item picks from or puts away to the wrong stock.
+    fix_map:
+      __other__: Enter the special stock number or cancel the item.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: indicator {LTAP.SOBKZ} with no number.'
+
+  - id: EWTO117
+    field: LTAP.NLPLA
+    check_class: cross_field_check
+    fail_when: (`LTAP.VLTYP` == `LTAP.NLTYP`) & (`LTAP.VLPLA` == `LTAP.NLPLA`) & `LTAP.VLPLA`.notna() & (`LTAP.VLENR`.isna()
+      | (`LTAP.VLENR` == `LTAP.NLENR`))
+    severity: medium
+    dimension: consistency
+    message: Transfer order item moves stock to the same bin
+    why_it_matters: Source and destination are the same bin. The movement changes nothing and wastes a pick.
+    rule_authority: best_practice
+    sap_impact: Pointless pick tasks load the warehouse floor.
+    fix_map:
+      __other__: Cancel the transfer order item.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: source equals destination {LTAP.NLTYP}/{LTAP.NLPLA}.'
+
+  - id: EWTO118
+    field: LTAP.NISTM
+    check_class: cross_field_check
+    fail_when: (`LTAP.PQUIT` == 'X') & ((`LTAP.NISTM`.isna()) | (`LTAP.NISTM` <= 0)) & ((`LTAP.VISTM`.isna()) | (`LTAP.VISTM`
+      <= 0)) & (`LTAP.NISTA`.isna() | (`LTAP.NISTA` <= 0))
+    severity: medium
+    dimension: completeness
+    message: Confirmed transfer order item has no actual quantity
+    why_it_matters: A confirmed item with no actual quantity in any unit means nothing moved but the item is closed.
+    rule_authority: sap_hard_constraint
+    sap_impact: Stock stays in the source bin while the order shows as done.
+    fix_map:
+      __other__: Reopen the item or confirm it with the quantity moved.
+    record_fix_template: 'Transfer order {LTAP.LGNUM}/{LTAP.TANUM} item {LTAP.TAPOS}: confirmed with no actual quantity.'
