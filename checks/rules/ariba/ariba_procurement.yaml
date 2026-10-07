@@ -393,3 +393,210 @@ rules:
   fix_map:
     __other__: Maintain the supplier on the order.
   record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no supplier.
+- id: ARP028
+  field: ARIBA_PO.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Ordered
+  - Approved
+  - Received
+  - Invoiced
+  - Closed
+  - Canceled
+  - Cancelled
+  severity: medium
+  dimension: validity
+  message: Purchase order status is not a recognised lifecycle state
+  why_it_matters: The order's workflow stage drives who may still act on it (receive goods, invoice, cancel). An
+    unrecognised status cannot be routed to the right workflow step.
+  rule_authority: best_practice
+  sap_impact: The order is excluded from lifecycle-based spend and ageing reports; the ERP PO status mapping fails.
+  valid_values_with_labels:
+    Ordered: Ordered — sent to the supplier, awaiting receipt
+    Approved: Approved — through requisition approval, not yet sent
+    Received: Received — goods or services receipted
+    Invoiced: Invoiced — matched to at least one invoice
+    Closed: Closed — fully received and invoiced
+    Canceled: Canceled — withdrawn before completion
+    Cancelled: Cancelled — withdrawn before completion (alternate spelling)
+  fix_map:
+    __other__: Correct the status to a recognised lifecycle state, or re-extract the order.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: status ''{actual_value}'' is not a recognised state.'
+- id: ARP029
+  field: ARIBA_INVOICE.STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Submitted
+  - Approved
+  - Paid
+  - Rejected
+  - Disputed
+  severity: medium
+  dimension: validity
+  message: Invoice status is not a recognised lifecycle state
+  why_it_matters: The invoice's workflow stage decides whether it is still payable, already paid or returned to the
+    supplier. An unrecognised status cannot be routed to the right approval or payment step.
+  rule_authority: best_practice
+  sap_impact: The invoice is excluded from payment-run and ageing reports; the ERP invoice status mapping fails.
+  valid_values_with_labels:
+    Submitted: Submitted — received, not yet reviewed
+    Approved: Approved — cleared for payment
+    Paid: Paid — settled to the supplier
+    Rejected: Rejected — returned to the supplier
+    Disputed: Disputed — held pending resolution
+  fix_map:
+    __other__: Correct the status to a recognised lifecycle state, or re-extract the invoice.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: status ''{actual_value}'' is not a recognised state.'
+- id: ARP030
+  field: ARIBA_PO.ORDER_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Purchase order has no order date
+  why_it_matters: The order date anchors ageing, cycle-time and maverick-buying analysis, and is required on the ERP PO.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP purchase order cannot be created; ageing reports exclude the order.
+  fix_map:
+    __blank__: Re-extract the order; a blank order date points to an incomplete page.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: order date is {actual_value}.'
+- id: ARP031
+  field: ARIBA_PO.TITLE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Purchase order has no title
+  why_it_matters: The title is how buyers, approvers and suppliers identify the order; without it every list and search
+    falls back to the order ID alone.
+  rule_authority: best_practice
+  sap_impact: Order lists and approval inboxes show a blank description.
+  fix_map:
+    __blank__: Maintain a title on the requisition before it is ordered.
+  record_fix_template: Ariba order {ARIBA_PO.ORDER_ID} has no title.
+- id: ARP032
+  field: ARIBA_INVOICE.TOTAL_AMOUNT
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Invoice has no total amount
+  why_it_matters: An invoice with no amount cannot be matched to the order or paid.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP invoice cannot be posted; three-way match has nothing to compare.
+  fix_map:
+    __blank__: Reject the invoice back to the supplier for re-issue with its amount.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: total amount is {actual_value}.'
+- id: ARP033
+  field: ARIBA_INVOICE.TOTAL_AMOUNT
+  check_class: cross_field_check
+  fail_when: '`ARIBA_INVOICE.TOTAL_AMOUNT` <= 0'
+  applies_when:
+    ARIBA_INVOICE.TOTAL_AMOUNT:
+      populated: true
+  severity: medium
+  dimension: accuracy
+  message: Invoice has a zero or negative total
+  why_it_matters: An invoice with no value settles no spend; a negative value needs to be a credit memo, not an invoice.
+  rule_authority: best_practice
+  sap_impact: The ERP invoice posting is rejected or nets to zero against the PO.
+  fix_map:
+    __other__: Correct the invoice total, or reissue it as a credit memo.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: total is {actual_value}.'
+- id: ARP034
+  field: ARIBA_PO.STATUS
+  check_class: cross_field_check
+  grain: ARIBA_INVOICE
+  fail_when: "`ARIBA_PO.STATUS`.isin(['Canceled', 'Cancelled'])"
+  severity: critical
+  dimension: consistency
+  message: Invoice references a canceled purchase order
+  why_it_matters: A canceled order committed no spend. An invoice against it is either late cancellation data or an
+    attempt to bill for a withdrawn order.
+  rule_authority: sap_hard_constraint
+  sap_impact: Payment is made against an order that no longer exists in the ERP; the invoice fails PO-status validation.
+  fix_map:
+    __other__: Reject the invoice, or reinstate the order if the cancellation was made in error.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: PO {ARIBA_INVOICE.PURCHASE_ORDER_ID} is canceled.'
+- id: ARP035
+  field: ARIBA_INVOICE.PAYMENT_TERMS
+  check_class: regex_check
+  pattern: ^(N\d{1,3}|\d{1,2}/\d{1,2}\s*N\d{1,3}|Due on receipt)$
+  severity: low
+  dimension: validity
+  message: Invoice payment terms are not a recognised format
+  why_it_matters: Payment terms in a free-text or malformed shape cannot be parsed into a due date or cash discount.
+  rule_authority: best_practice
+  sap_impact: The ERP payment terms code cannot be derived; the invoice falls back to a default due date.
+  fix_map:
+    __other__: Maintain payment terms in a standard form (e.g. N30, 2/10 N30, Due on receipt).
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: payment terms ''{actual_value}'' are not recognised.'
+- id: ARP036
+  field: ARIBA_PO.CURRENCY_CODE
+  check_class: dependency_check
+  determinant: ARIBA_PO.SUPPLIER
+  severity: low
+  dimension: consistency
+  message: Order currency differs from the supplier's usual currency
+  why_it_matters: A supplier is normally invoiced in one currency. An order in a different currency for the same
+    supplier is either a data entry mistake or a change the supplier record has not caught up with.
+  rule_authority: best_practice
+  sap_impact: Currency-based spend analysis by supplier is split across currencies that should be one.
+  fix_map:
+    __other__: Confirm the currency with the supplier; correct the order or update the supplier's default currency.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: currency {actual_value} differs from supplier {ARIBA_PO.SUPPLIER}''s
+    usual currency.'
+- id: ARP037
+  field: ARIBA_PO.ORDER_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_PO.SUPPLIER
+  - ARIBA_PO.TOTAL_AMOUNT
+  - ARIBA_PO.ORDER_DATE
+  severity: medium
+  dimension: uniqueness
+  message: Possible duplicate purchase order (same supplier, amount and date)
+  why_it_matters: Two orders to the same supplier, for the same amount, placed on the same day, are the classic sign
+    of a requisition submitted twice.
+  rule_authority: best_practice
+  sap_impact: Spend is double-counted; the supplier may ship or invoice against both orders.
+  fix_map:
+    __other__: Compare the orders and cancel the duplicate.
+  record_fix_template: 'Ariba PO {ARIBA_PO.ORDER_ID}: supplier {ARIBA_PO.SUPPLIER}, amount {ARIBA_PO.TOTAL_AMOUNT}
+    and date match another order.'
+- id: ARP038
+  field: ARIBA_INVOICE.INVOICE_DATE
+  check_class: cross_field_check
+  fail_when: '`ARIBA_INVOICE.INVOICE_DATE` > @today'
+  severity: medium
+  dimension: validity
+  message: Invoice date is in the future
+  why_it_matters: An invoice cannot be dated later than today.
+  rule_authority: sap_hard_constraint
+  sap_impact: Ageing and payment-due reports are wrong.
+  fix_map:
+    __other__: Correct the invoice date.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: date {actual_value}, in the future.'
+- id: ARP039
+  field: ARIBA_PO.TOTAL_AMOUNT
+  check_class: cross_field_check
+  fail_when: "`ARIBA_PO.STATUS`.isin(['Canceled', 'Cancelled']) & (`ARIBA_PO.TOTAL_AMOUNT` > 0)"
+  severity: medium
+  dimension: accuracy
+  message: Canceled order still carries a value
+  why_it_matters: A canceled order should commit no spend. A positive total on a canceled order overstates open
+    commitments.
+  rule_authority: best_practice
+  sap_impact: Open commitment and spend reports overstate committed spend.
+  fix_map:
+    __other__: Zero out the order total, or reinstate the order if cancellation was made in error.
+  record_fix_template: 'Ariba order {ARIBA_PO.ORDER_ID}: canceled but total is {actual_value}.'
+- id: ARP040
+  field: ARIBA_INVOICE.SUPPLIER
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Invoice has no supplier
+  why_it_matters: An invoice without a supplier cannot be paid to a verified payee.
+  rule_authority: sap_hard_constraint
+  sap_impact: The ERP invoice cannot be posted; there is no vendor to pay.
+  fix_map:
+    __blank__: Reject the invoice back to the supplier for re-issue with the supplier identified.
+  record_fix_template: 'Ariba invoice {ARIBA_INVOICE.INVOICE_ID}: supplier is {actual_value}.'
