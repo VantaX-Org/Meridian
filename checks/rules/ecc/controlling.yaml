@@ -1789,7 +1789,7 @@ rules:
   rule_authority: sap_hard_constraint
   sap_impact: Cost centre selection lists, KSB1 and S_ALR_87013611 show the cost centre with a blank name.
   fix_map:
-    __blank__: Enter the short and long text in KS02 (Basic data) for the English language.
+    __other__: Enter the short and long text in KS02 (Basic data) for the English language.
   record_fix_template: 'Cost centre {CSKT.KOSTL} in controlling area {CSKT.KOKRS}: no description.'
 
 - id: CO095
@@ -1827,11 +1827,11 @@ rules:
   rule_authority: best_practice
   sap_impact: Order lists and approval workflows display the order with a blank description.
   fix_map:
-    __blank__: Enter the order description in KO02 (Header).
+    __other__: Enter the order description in KO02 (Header).
   record_fix_template: 'Internal order {AUFK.AUFNR}: no description.'
 
 - id: CO097
-  field: AUFK.PSPNR
+  field: AUFK.PSPEL
   check_class: exists_check
   target_table: PRPS
   target_fields:
@@ -1839,19 +1839,19 @@ rules:
   applies_when:
     AUFK.AUTYP:
     - '01'
-    AUFK.PSPNR:
+    AUFK.PSPEL:
       populated: true
   severity: medium
   dimension: consistency
   message: Internal order's WBS element does not exist
-  why_it_matters: An order can be assigned to a WBS element (AUFK.PSPNR) of a project for joint reporting and
+  why_it_matters: An order can be assigned to a WBS element (AUFK.PSPEL) of a project for joint reporting and
     settlement. A WBS element that is not a row of PRPS was deleted or never created, leaving the assignment pointing
     nowhere.
   rule_authority: sap_hard_constraint
   sap_impact: Project-related reports (CJI3, CNS41) and settlement to the WBS element omit the order's costs.
   fix_map:
     __other__: Correct the WBS element in KO02, or remove the assignment if the project was deleted.
-  record_fix_template: 'Internal order {AUFK.AUFNR}: WBS element {AUFK.PSPNR} does not exist.'
+  record_fix_template: 'Internal order {AUFK.AUFNR}: WBS element {AUFK.PSPEL} does not exist.'
 
 - id: CO098
   field: COBRB.PROZS
@@ -1880,6 +1880,6 @@ rules:
   rule_authority: sap_hard_constraint
   sap_impact: The activity type cannot be selected in KP26, KB21N or routings.
   fix_map:
-    __blank__: Recreate the activity type with a valid number in KL01.
+    __other__: Recreate the activity type with a valid number in KL01.
   record_fix_template: 'Activity type in controlling area {CSLA.KOKRS}: LSTAR is ''{actual_value}''. Correct it in
     KL02.'
