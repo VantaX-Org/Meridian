@@ -89,6 +89,72 @@ def sample_regex(pattern: str) -> str | None:
     return s if re.match(pattern, s) else None
 
 
+def sample_regex_violation(pattern: str) -> str | None:
+    """One string that trips ``pattern``'s first negative lookahead (e.g. ``(?!.*\\.\\.)``),
+    i.e. a value the pattern is designed to reject. None if there is no such lookahead,
+    or embedding its forbidden content does not actually break the match."""
+    try:
+        tree = sre_parse.parse(pattern)
+    except Exception:
+        return None
+    hit = []
+
+    def gen(items) -> str:
+        out = []
+        for op, av in items:
+            if op is sre_constants.LITERAL:
+                out.append(chr(av))
+            elif op is sre_constants.NOT_LITERAL:
+                out.append("A" if av != ord("A") else "B")
+            elif op is sre_constants.ANY:
+                out.append("A")
+            elif op is sre_constants.IN:
+                out.append(_in(av))
+            elif op in (sre_constants.MAX_REPEAT, sre_constants.MIN_REPEAT):
+                lo, hi, sub = av
+                out.append(gen(sub) * max(lo, 1 if hi and hi >= 1 else 0))
+            elif op is sre_constants.SUBPATTERN:
+                out.append(gen(av[-1]))
+            elif op is sre_constants.BRANCH:
+                out.append(gen(av[1][0]))
+            elif op is sre_constants.ASSERT_NOT:
+                if not hit:
+                    hit.append(True)
+                    out.append(gen(av[1]))  # embed exactly what the lookahead forbids
+            elif op in (sre_constants.AT, sre_constants.ASSERT):
+                continue
+            elif op is sre_constants.GROUPREF:
+                out.append("")
+            else:
+                raise ValueError(op)
+        return "".join(out)
+
+    def _in(items) -> str:
+        for op, av in items:
+            if op is sre_constants.NEGATE:
+                return "A"
+            if op is sre_constants.LITERAL:
+                return chr(av)
+            if op is sre_constants.RANGE:
+                return chr(av[0])
+            if op is sre_constants.CATEGORY:
+                name = str(av).split(".")[-1]
+                forbidden = {"CATEGORY_NOT_SPACE": " ", "CATEGORY_NOT_DIGIT": "1", "CATEGORY_NOT_WORD": "!"}
+                if not hit and name in forbidden:
+                    hit.append(True)
+                    return forbidden[name]  # embed what a negated class (\S, \D, \W) forbids
+                return {"CATEGORY_DIGIT": "1", "CATEGORY_WORD": "A", "CATEGORY_SPACE": " "}.get(name, "A")
+        return "A"
+
+    try:
+        s = gen(tree)
+    except Exception:
+        return None
+    if hit and not s.strip():
+        s = f"A{s}A"  # whitespace-only violation reads as blank; pad so it stays populated
+    return s if hit and not re.match(pattern, s) else None
+
+
 def _kind(dictionary, col: str) -> str:
     f = dictionary.resolve(col)
     t = (f.type or "").upper() if f else ""
@@ -140,6 +206,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             if rule.get("pattern"):
                 s = sample_regex(rule["pattern"])
                 vals += [s] if s is not None else []
+                bad = sample_regex_violation(rule["pattern"])
+                vals += [bad] if bad is not None else []
             f = dictionary.resolve(c)
             vals += sorted(f.allowed_values())[:3] if f is not None and f.allowed_values() else []
         aw = (rule.get("applies_when") or {}).get(c)
@@ -149,7 +217,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [str(v) for v in (aw.get("contains_any") or [])[:2]]
             if "gt" in aw:
                 vals.append(str(float(aw["gt"]) + 1))
-            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else ["X"]  # inside the scope
+            in_scope = {"date": TODAY, "num": "1", "timestamp": TODAY + "000000"}.get(_kind(dictionary, c), "X")
+            vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else [in_scope]  # inside the scope
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
                 vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
@@ -157,6 +226,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4]
+            if re.search(rf"`{re.escape(c)}`[^`]*\.str\.islower\(\)", expr):
+                vals.append("a")  # case-check rule: a lowercase-first candidate to trip it
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
