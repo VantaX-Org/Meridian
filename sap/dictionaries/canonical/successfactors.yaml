@@ -155,6 +155,7 @@ tables:
       EMPLOYEE_COST:  {source: BenefitEnrollment.employeeContribution, type: DECIMAL, verify: true}
       EMPLOYER_COST:  {source: BenefitEnrollment.employerContribution, type: DECIMAL, verify: true}
       DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
+      STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)

@@ -276,3 +276,478 @@ rules:
     fix_map:
       __other__: Correct the effective date.
     record_fix_template: Benefit enrolment for user {BENEFITENROLLMENT.USERID} starts more than a year in the future. Correct the date.
+
+  - id: BEN020
+    field: BENEFITENROLLMENT.COVERAGE_LEVEL
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Coverage level is mandatory — determines dependent eligibility and premium tier
+    why_it_matters: COVERAGE_LEVEL (employee only, employee+spouse, employee+child, family) drives which premium tier is
+      charged and which dependents the carrier will cover. Without it the carrier feed cannot price or scope the enrolment.
+    rule_authority: best_practice
+    sap_impact: Carrier feed rejects or mis-prices the enrolment. Dependents may be left uncovered without the employee
+      knowing.
+    fix_map:
+      __blank__: Set the coverage level via Admin Center > Benefits > Enrolment Import, matching the employee's election
+        form.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: COVERAGE_LEVEL is missing for plan {BENEFITENROLLMENT.PLAN_ID}.
+      Set via Admin Center > Benefits > Enrolment Import.'
+
+  - id: BEN021
+    field: BENEFITENROLLMENT.COVERAGE_LEVEL
+    check_class: domain_value_check
+    allowed_values:
+    - EMP_ONLY
+    - EMP_SPOUSE
+    - EMP_CHILD
+    - EMP_SPOUSE_CHILD
+    - FAMILY
+    severity: medium
+    dimension: accuracy
+    message: 'Coverage level must be a valid tier code: EMP_ONLY, EMP_SPOUSE, EMP_CHILD, EMP_SPOUSE_CHILD or FAMILY'
+    why_it_matters: An invalid coverage level cannot be mapped to a premium tier, so the carrier feed and payroll deduction
+      cannot be priced for this enrolment.
+    rule_authority: best_practice
+    sap_impact: Carrier feed and payroll deduction cannot be priced. Benefit statement shows an unrecognised tier.
+    valid_values_with_labels:
+      EMP_ONLY: Employee only
+      EMP_SPOUSE: Employee + spouse
+      EMP_CHILD: Employee + child(ren)
+      EMP_SPOUSE_CHILD: Employee + spouse + child(ren)
+      FAMILY: Family
+    fix_map:
+      __blank__: Set the coverage level to one of EMP_ONLY, EMP_SPOUSE, EMP_CHILD, EMP_SPOUSE_CHILD, FAMILY via Admin
+        Center > Benefits > Enrolment Import.
+      __other__: Coverage level '{invalid_value}' is not valid. Use EMP_ONLY, EMP_SPOUSE, EMP_CHILD, EMP_SPOUSE_CHILD
+        or FAMILY via Admin Center > Benefits > Enrolment Import.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: COVERAGE_LEVEL ''{actual_value}'' is invalid. Set to
+      EMP_ONLY, EMP_SPOUSE, EMP_CHILD, EMP_SPOUSE_CHILD or FAMILY via Admin Center > Benefits > Enrolment Import.'
+
+  - id: BEN022
+    field: BENEFITENROLLMENT.STATUS
+    check_class: null_check
+    severity: critical
+    dimension: completeness
+    message: Enrolment status is mandatory — determines whether coverage and deductions are active
+    why_it_matters: STATUS tells payroll and the carrier feed whether this enrolment is active, pending approval, terminated
+      or waived. Without it, the system cannot decide whether to deduct a premium or report the enrolment to the carrier.
+    rule_authority: best_practice
+    sap_impact: Payroll cannot decide whether to deduct. Carrier feed may include or exclude the enrolment incorrectly.
+    fix_map:
+      __blank__: Set the enrolment status via Admin Center > Benefits > Enrolment Import, matching the employee's current
+        election state.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: STATUS is missing for plan {BENEFITENROLLMENT.PLAN_ID}.
+      Set via Admin Center > Benefits > Enrolment Import.'
+
+  - id: BEN023
+    field: BENEFITENROLLMENT.STATUS
+    check_class: domain_value_check
+    allowed_values:
+    - A
+    - P
+    - T
+    - W
+    - E
+    severity: high
+    dimension: accuracy
+    message: 'Enrolment status must be a valid code: A (active), P (pending), T (terminated), W (waived), E (error)'
+    why_it_matters: An unrecognised status code cannot be interpreted by payroll or the carrier feed, so the enrolment
+      is silently dropped from processing rather than deducted, reported or waived as intended.
+    rule_authority: best_practice
+    sap_impact: Enrolment dropped from payroll and carrier processing. Benefit statement shows an unrecognised state.
+    valid_values_with_labels:
+      A: Active
+      P: Pending approval
+      T: Terminated
+      W: Waived
+      E: Error (flagged by source system)
+    fix_map:
+      __blank__: Set the status to A, P, T, W or E via Admin Center > Benefits > Enrolment Import.
+      __other__: Status '{invalid_value}' is not valid. Use A, P, T, W or E via Admin Center > Benefits > Enrolment Import.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: STATUS ''{actual_value}'' is invalid. Set to A, P, T, W
+      or E via Admin Center > Benefits > Enrolment Import.'
+
+  - id: BEN024
+    field: BENEFITENROLLMENT.PLAN_TYPE
+    check_class: dependency_check
+    determinant: BENEFITENROLLMENT.PLAN_ID
+    severity: medium
+    dimension: consistency
+    message: Plan ID resolves to a different benefit type than its other enrolment records
+    why_it_matters: A given PLAN_ID should always resolve to the same benefit type (medical, life, retirement, etc). A
+      plan ID that carries a different type than its own majority usually means the plan was recoded, merged with another
+      plan, or the enrolment was tagged to the wrong plan.
+    rule_authority: best_practice
+    sap_impact: Carrier routing and tax treatment for this enrolment are based on the wrong benefit type.
+    fix_map:
+      __other__: Confirm the correct benefit type for this plan and correct the outlier enrolment, via Manage Data >
+        Benefit or Admin Center > Benefits.
+    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: plan {BENEFITENROLLMENT.PLAN_ID} has benefit type {BENEFITENROLLMENT.PLAN_TYPE},
+      inconsistent with this plan''s other enrolments. Correct the outlier.'
+
+  - id: BEN025
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'T') & (`BENEFITENROLLMENT.EMPLOYEE_COST` > 0)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Terminated enrolment still carries an employee deduction
+    why_it_matters: A terminated enrolment should no longer deduct a premium. A positive employee cost on a terminated
+      record means the termination was not propagated to payroll before the next deduction cycle.
+    rule_authority: best_practice
+    sap_impact: Payroll keeps deducting premiums for coverage that no longer exists; the employee is overcharged.
+    fix_map:
+      __other__: Zero out the employee cost on the terminated enrolment or confirm the termination date, via Admin Center
+        > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: terminated enrolment still has a positive employee cost.
+      Correct the record.'
+
+  - id: BEN026
+    field: BENEFITENROLLMENT.EMPLOYER_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'T') & (`BENEFITENROLLMENT.EMPLOYER_COST` > 0)
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Terminated enrolment still carries an employer contribution
+    why_it_matters: A terminated enrolment should no longer carry an employer contribution. A positive value means the
+      termination has not been reflected in the cost record.
+    rule_authority: best_practice
+    sap_impact: Benefit cost reporting continues to accrue an employer contribution for coverage that no longer exists.
+    fix_map:
+      __other__: Zero out the employer cost on the terminated enrolment via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: terminated enrolment still has a positive employer cost.
+      Correct the record.'
+
+  - id: BEN027
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'W') & (`BENEFITENROLLMENT.EMPLOYEE_COST` > 0)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Waived enrolment carries an employee deduction
+    why_it_matters: A waived benefit means the employee declined coverage. A positive employee cost on a waived record
+      means payroll will deduct a premium for coverage the employee opted out of.
+    rule_authority: best_practice
+    sap_impact: Payroll deducts a premium the employee never agreed to; likely to trigger a payroll dispute.
+    fix_map:
+      __other__: Zero out the employee cost on the waived enrolment via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: waived enrolment still has a positive employee cost. Correct
+      the record.'
+
+  - id: BEN028
+    field: BENEFITENROLLMENT.EMPLOYER_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'W') & (`BENEFITENROLLMENT.EMPLOYER_COST` > 0)
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Waived enrolment carries an employer contribution
+    why_it_matters: A waived benefit has no coverage to fund. A positive employer cost on a waived record overstates
+      the employer's benefit spend for coverage that was declined.
+    rule_authority: best_practice
+    sap_impact: Benefit cost reporting and budget forecasting overstate employer spend.
+    fix_map:
+      __other__: Zero out the employer cost on the waived enrolment via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: waived enrolment still has a positive employer cost. Correct
+      the record.'
+
+  - id: BEN029
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.COVERAGE_LEVEL`.isin([''EMP_SPOUSE'',''EMP_CHILD'',''EMP_SPOUSE_CHILD'',''FAMILY''])
+      & `BENEFITENROLLMENT.DEPENDENT_LINK`.isna()'
+    severity: medium
+    dimension: consistency
+    message: Coverage level implies dependents but none are linked
+    why_it_matters: A coverage level of employee+spouse, employee+child or family implies at least one dependent is covered.
+      Without a linked dependent, the carrier feed has nobody to add to the policy.
+    rule_authority: best_practice
+    sap_impact: Carrier feed enrols the tier but has no dependent to cover; dependent claims are rejected at the carrier.
+    fix_map:
+      __blank__: Link the covered dependent(s) via Admin Center > Benefits > Enrolment Import, or correct the coverage
+        level to EMP_ONLY if there are no dependents.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: coverage level {BENEFITENROLLMENT.COVERAGE_LEVEL} implies
+      dependents but DEPENDENT_LINK is blank. Link the dependent or correct the coverage level.'
+
+  - id: BEN030
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: cross_field_check
+    fail_when: '(`BENEFITENROLLMENT.COVERAGE_LEVEL` == ''EMP_ONLY'') & `BENEFITENROLLMENT.DEPENDENT_LINK`.notna()'
+    severity: low
+    dimension: consistency
+    message: Employee-only coverage has a dependent linked
+    why_it_matters: Employee-only coverage should have no dependent on the policy. A linked dependent on an employee-only
+      enrolment means either the dependent link is stale or the coverage level was not updated when a dependent was added.
+    rule_authority: best_practice
+    sap_impact: Carrier feed may enrol a dependent the coverage tier was never priced for, creating a billing dispute.
+    fix_map:
+      __other__: Remove the stale dependent link, or correct the coverage level to match the dependents actually covered,
+        via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: coverage level EMP_ONLY has a dependent linked. Remove
+      the link or correct the coverage level.'
+
+  - id: BEN031
+    field: BENEFITENROLLMENT.USERID
+    check_class: uniqueness_check
+    fields:
+    - BENEFITENROLLMENT.USERID
+    - BENEFITENROLLMENT.PLAN_TYPE
+    applies_when:
+      BENEFITENROLLMENT.STATUS:
+      - A
+    severity: high
+    dimension: uniqueness
+    message: Employee has more than one active enrolment of the same benefit type
+    why_it_matters: An employee should have at most one active enrolment per benefit type (e.g. one active medical plan).
+      Two simultaneous active enrolments of the same type usually means an old plan was never terminated when the employee
+      switched plans.
+    rule_authority: best_practice
+    sap_impact: Payroll deducts two premiums for overlapping coverage of the same type; the carrier feed reports conflicting
+      enrolments.
+    fix_map:
+      __other__: End-date or terminate the superseded enrolment in Admin Center > Benefits so only one active enrolment
+        remains per benefit type.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: more than one active enrolment for benefit type {BENEFITENROLLMENT.PLAN_TYPE}.
+      Terminate the superseded enrolment.'
+
+  - id: BEN032
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'A') & (`EMPEMPLOYMENT.END_DATE` < @today)
+    severity: high
+    dimension: consistency
+    message: Enrolment is still active after the employee's employment ended
+    why_it_matters: An employee who has left should have their benefit enrolments terminated, not left active. An active
+      enrolment past the employment end date means offboarding did not reach the benefits module.
+    rule_authority: best_practice
+    sap_impact: The carrier continues to bill for a leaver; payroll may keep deducting premiums from final pay runs.
+    fix_map:
+      __other__: Terminate the enrolment effective the employment end date via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment still active after employment ended on {EMPEMPLOYMENT.END_DATE}.
+      Terminate the enrolment.'
+
+  - id: BEN033
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'A') & (`BENEFITENROLLMENT.EFFECTIVE_DATE` > @today)
+    severity: medium
+    dimension: consistency
+    message: Enrolment is marked active before its effective date has arrived
+    why_it_matters: An enrolment cannot be active before its coverage has started. A status of active with a future effective
+      date usually means the status was set too early or the effective date is wrong.
+    rule_authority: best_practice
+    sap_impact: Carrier feed and payroll may treat coverage as live before the premium or eligibility window actually
+      begins.
+    fix_map:
+      __other__: Set the status to pending until the effective date arrives, or correct the effective date, via Admin
+        Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: status is active but effective date {BENEFITENROLLMENT.EFFECTIVE_DATE}
+      is in the future. Correct the status or the date.'
+
+  - id: BEN034
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.ENROL_DATE` > @today'
+    severity: low
+    dimension: timeliness
+    message: Enrolment was recorded with a future date
+    why_it_matters: ENROL_DATE records when the election was made and should never be later than today. A future enrolment
+      date is almost always a typed year or a system clock issue on import.
+    rule_authority: best_practice
+    sap_impact: Audit trail of when the election was made is unreliable.
+    fix_map:
+      __other__: Correct the enrolment date to the actual election date.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment date {BENEFITENROLLMENT.ENROL_DATE} is in the
+      future. Correct the date.'
+
+  - id: BEN035
+    field: BENEFITENROLLMENT.EMPLOYEE_COST
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'A') & (`BENEFITENROLLMENT.EMPLOYEE_COST` == 0) & (`BENEFITENROLLMENT.EMPLOYER_COST`
+      == 0)
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Active enrolment carries no premium on either side
+    why_it_matters: An active enrolment with both employee and employer cost at zero usually means the contribution amounts
+      were never loaded, rather than a genuinely free benefit. It should be confirmed rather than assumed correct.
+    rule_authority: best_practice
+    sap_impact: Benefit cost reporting and total compensation statements show zero cost for coverage that may actually
+      carry a premium.
+    fix_map:
+      __other__: Confirm whether the plan is genuinely fully subsidised; if not, load the correct employee and employer
+        cost via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: active enrolment has zero employee and employer cost. Confirm
+      or correct.'
+
+  - id: BEN036
+    field: BENEFITENROLLMENT.EMPLOYER_COST
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.PLAN_TYPE`.isin([''FSA'',''HSA'']) & (`BENEFITENROLLMENT.EMPLOYER_COST` > 0)'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Employee-funded account shows an employer contribution — confirm it is a genuine employer match
+    why_it_matters: FSA and HSA balances are normally employee-funded through salary deferral. An employer cost on these
+      plan types is not necessarily wrong (some employers match HSA contributions) but is uncommon enough to warrant review
+      before it is relied on for tax reporting.
+    rule_authority: best_practice
+    sap_impact: Tax-advantaged account reporting may misclassify an employer match, affecting contribution-limit tracking.
+    fix_map:
+      __other__: Confirm the employer contribution is a genuine match; if not, correct it via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan type {BENEFITENROLLMENT.PLAN_TYPE} has an employer
+      cost. Confirm it is a genuine contribution.'
+
+  - id: BEN037
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: (`BENEFITENROLLMENT.STATUS` == 'P') & (`BENEFITENROLLMENT.EFFECTIVE_DATE` < @today)
+    severity: medium
+    dimension: timeliness
+    message: Enrolment is still pending after its effective date has passed
+    why_it_matters: A pending enrolment whose effective date has already passed means the approval workflow stalled.
+      Coverage that should be active or declined by now is stuck in limbo.
+    rule_authority: best_practice
+    sap_impact: Carrier feed cannot determine whether to add this person to the policy; the employee may be uncovered
+      despite believing they elected coverage.
+    fix_map:
+      __other__: Complete or reject the pending enrolment via Admin Center > Benefits so the status reflects reality.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment is still pending past its effective date {BENEFITENROLLMENT.EFFECTIVE_DATE}.
+      Complete or reject the enrolment.'
+
+  - id: BEN038
+    field: BENEFITENROLLMENT.STATUS
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.STATUS` == ''E'''
+    severity: high
+    dimension: validity
+    message: Enrolment is flagged with an error status by the source system
+    why_it_matters: An error status means SuccessFactors itself could not process the enrolment (e.g. a failed carrier
+      acknowledgement or a validation failure). It needs to be resolved at source, not just re-reported here.
+    rule_authority: best_practice
+    sap_impact: The enrolment is excluded from downstream processing until the source error is resolved; coverage may
+      not exist despite the employee believing it does.
+    fix_map:
+      __other__: Investigate and resolve the error in Admin Center > Benefits, then re-run the enrolment.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment is flagged with an error status. Investigate
+      and resolve at source.'
+
+  - id: BEN039
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: freshness_check
+    max_age_hours: 17520
+    applies_when:
+      BENEFITENROLLMENT.STATUS:
+      - A
+    severity: low
+    dimension: timeliness
+    message: Active enrolment has not been re-confirmed in over two years
+    why_it_matters: Benefit elections are normally re-confirmed at least annually during open enrolment. An active enrolment
+      whose last recorded election is more than two years old may no longer reflect the employee's actual coverage choice
+      or dependents.
+    rule_authority: best_practice
+    sap_impact: Carrier feed and payroll continue to use an election that was never re-confirmed through a recent open
+      enrolment cycle.
+    fix_map:
+      __blank__: Confirm the enrolment at the next open enrolment cycle, or re-elect via Admin Center > Benefits if it
+        has lapsed.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: active enrolment last confirmed on {BENEFITENROLLMENT.ENROL_DATE},
+      over two years ago. Re-confirm at next open enrolment.'
+
+  - id: BEN040
+    field: BENEFITENROLLMENT.COVERAGE_LEVEL
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.PLAN_TYPE`.isin([''LIFE'',''AD_D'',''DISABILITY_STD'',''DISABILITY_LTD'',''RETIREMENT'',''FSA'',''HSA'',''COMMUTER''])
+      & `BENEFITENROLLMENT.COVERAGE_LEVEL`.isin([''EMP_SPOUSE'',''EMP_CHILD'',''EMP_SPOUSE_CHILD'',''FAMILY''])'
+    severity: medium
+    dimension: consistency
+    message: Non-health benefit type carries a dependent coverage tier
+    why_it_matters: Dependent coverage tiers (employee+spouse, employee+child, family) apply to health-type benefits such
+      as medical, dental and vision. Life, disability, retirement, FSA, HSA and commuter benefits are employee-only and
+      should not carry a dependent tier.
+    rule_authority: best_practice
+    sap_impact: Carrier or plan administrator feed receives a dependent tier it cannot apply, and may reject or mis-price
+      the enrolment.
+    fix_map:
+      __other__: Correct the coverage level to EMP_ONLY for this plan type, via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: plan type {BENEFITENROLLMENT.PLAN_TYPE} has dependent coverage
+      level {BENEFITENROLLMENT.COVERAGE_LEVEL}. Correct to EMP_ONLY.'
+
+  - id: BEN041
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: regex_check
+    pattern: ^[a-zA-Z0-9._@-]+(;[a-zA-Z0-9._@-]+)*$
+    severity: medium
+    dimension: validity
+    message: Dependent link must contain only valid identifiers, semicolon-separated for multiple dependents
+    why_it_matters: DEPENDENT_LINK is used as a key to resolve the covered dependent(s) in the carrier feed. Free text,
+      names or special characters outside the allowed identifier format cannot be resolved to a dependent record.
+    rule_authority: best_practice
+    sap_impact: Carrier feed cannot resolve the dependent; the dependent is dropped from the policy rather than covered.
+    fix_map:
+      __other__: Replace the dependent link with the dependent's identifier(s), semicolon-separated for multiple dependents
+        (not a name or free text), via Admin Center > Benefits > Enrolment Import.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: DEPENDENT_LINK ''{actual_value}'' contains invalid characters.
+      Replace with the dependent identifier(s).'
+
+  - id: BEN042
+    field: BENEFITENROLLMENT.DEPENDENT_LINK
+    check_class: uniqueness_check
+    fields:
+    - BENEFITENROLLMENT.USERID
+    - BENEFITENROLLMENT.DEPENDENT_LINK
+    - BENEFITENROLLMENT.PLAN_ID
+    - BENEFITENROLLMENT.EFFECTIVE_DATE
+    applies_when:
+      BENEFITENROLLMENT.DEPENDENT_LINK:
+        populated: true
+    severity: medium
+    dimension: uniqueness
+    message: Same dependent enrolled more than once on the same plan and effective date
+    why_it_matters: A dependent should appear once per plan per effective date. A duplicate dependent line usually comes
+      from a repeated import rather than a genuine second enrolment.
+    rule_authority: best_practice
+    sap_impact: Carrier feed may bill or cover the same dependent twice under the same plan.
+    fix_map:
+      __other__: Remove the duplicate dependent line via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: dependent {BENEFITENROLLMENT.DEPENDENT_LINK} is enrolled
+      more than once on plan {BENEFITENROLLMENT.PLAN_ID} for the same effective date. Remove the duplicate.'
+
+  - id: BEN043
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.ENROL_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Enrolment was recorded before the employee's employment started
+    why_it_matters: ENROL_DATE is when the election was made. An election recorded before the hire date usually means
+      the record was copied from a prior employment or the hire date is wrong.
+    rule_authority: best_practice
+    sap_impact: Benefit election audit trail predates the employee's employment, which will not pass an audit of enrolment
+      timing.
+    fix_map:
+      __other__: Correct the enrolment date or the employment start date, whichever is wrong.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment recorded on {BENEFITENROLLMENT.ENROL_DATE}, before
+      employment started on {EMPEMPLOYMENT.START_DATE}.'
+
+  - id: BEN044
+    field: BENEFITENROLLMENT.ENROL_DATE
+    check_class: cross_field_check
+    fail_when: '`BENEFITENROLLMENT.ENROL_DATE` > `EMPEMPLOYMENT.END_DATE`'
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Enrolment was recorded after the employee's employment ended
+    why_it_matters: An election recorded after the employment end date means a leaver's benefits were changed after they
+      left, which is usually a processing error rather than a genuine election.
+    rule_authority: best_practice
+    sap_impact: The carrier and payroll may act on an election made for someone no longer employed.
+    fix_map:
+      __other__: Review and, if the election is not genuine, remove or correct the enrolment via Admin Center > Benefits.
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment recorded on {BENEFITENROLLMENT.ENROL_DATE}, after
+      employment ended on {EMPEMPLOYMENT.END_DATE}.'
