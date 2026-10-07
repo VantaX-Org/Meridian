@@ -58,7 +58,7 @@ def fire(rid: str, tables: dict[str, pd.DataFrame], refs: dict | None = None) ->
 # ---- integrity ----------------------------------------------------------------------------------------------------
 
 def test_new_rule_count_and_contiguous_ids_per_pack():
-    assert len(NEW) == 111
+    assert len(NEW) == 134
     for module, (prefix, start) in PACKS.items():
         nums = sorted(int(r["id"][len(prefix):]) for m, r in NEW
                       if m == module and r["id"][len(prefix):].isdigit())

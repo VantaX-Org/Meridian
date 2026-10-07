@@ -38,7 +38,7 @@ def test_pack_loads_with_unique_contiguous_ids():
     assert len(ids) == len(set(ids))
     new = sorted(int(r["id"][2:]) for r in NEW)
     assert new == list(range(START, START + len(new)))
-    assert len(new) == 51
+    assert len(new) == 58
 
 
 def test_every_new_rule_has_full_metadata():

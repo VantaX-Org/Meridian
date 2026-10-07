@@ -14,12 +14,12 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 EXPECTED_COUNTS = {
     "employee_central": 142,
     "compensation": 28,
-    "recruiting_onboarding": 21,
-    "learning_management": 22,
-    "performance_goals": 19,
+    "recruiting_onboarding": 40,
+    "learning_management": 40,
+    "performance_goals": 40,
     "succession_planning": 46,
-    "time_attendance": 17,
-    "benefits": 15,
+    "time_attendance": 40,
+    "benefits": 40,
     "payroll_integration": 59,
 }
 
@@ -139,12 +139,12 @@ def test_ec_null_check_finds_failures_with_enrichment():
 # ---- Test 5: Total rule count across all SF modules ----
 
 def test_total_sf_rule_count():
-    """Total across all 9 SF modules should be 168 rules."""
+    """Total across all 9 SF modules should be 441 rules."""
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 369, f"Expected 369 total SF rules, got {total}"
+    assert total == 475, f"Expected 475 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----
