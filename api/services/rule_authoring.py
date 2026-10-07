@@ -14,6 +14,7 @@ from typing import Optional
 
 import yaml
 
+from checks import auto_fix
 from checks.profiling import is_sensitive
 from checks.runner import REGISTRY, rule_columns, run_rule
 from api.services.remediation import module_rules
@@ -80,7 +81,8 @@ def build_prompt(description: str, ctx: dict) -> str:
         f"Required keys: {', '.join(REQUIRED)}. severity is one of {sorted(SEVERITIES)}; "
         f"dimension is one of {sorted(DIMENSIONS)}; check_class is one of {ctx['check_classes']}.\n"
         "Use only TABLE.FIELD names listed below. Follow the shape of the example rules.\n"
-        "Optional: fix_value — the corrected value, or a map {current: corrected, __blank__: x, __other__: y}.\n\n"
+        "Optional: auto_fix — {when: <expression>, steps: [{op: ...}], confidence: high|medium|low}; ops: "
+        f"{', '.join(auto_fix.OPS)}. A legacy fix_value (value or map) is shorthand for a set/map step.\n\n"
         f"Module: {ctx['module']}\n"
         f"Fields (metadata and aggregate statistics only):\n{json.dumps(ctx['fields'], default=str)}\n\n"
         f"Example rules:\n{yaml.safe_dump(ctx['examples'], sort_keys=False)}\n"
@@ -126,6 +128,7 @@ def validate_rule_yaml(text_: str, module: str, dictionary) -> tuple[Optional[di
         errors.append(f"severity must be one of {sorted(SEVERITIES)}")
     if rule.get("dimension") and rule["dimension"] not in DIMENSIONS:
         errors.append(f"dimension must be one of {sorted(DIMENSIONS)}")
+    errors += auto_fix.validate_auto_fix(rule)
     if rule.get("id") in module_rules(module):
         errors.append(f"id {rule['id']} already exists in {module}")
     if rule.get("check_class") in REGISTRY:

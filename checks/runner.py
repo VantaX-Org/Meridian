@@ -7,10 +7,11 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from checks import cost
-from checks.base import BaseCheck, CheckResult, as_of_time, sap_number
+from checks import auto_fix, cost
+from checks.base import BaseCheck, CheckResult, as_of_time, failing_values, record_keys, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
+from checks.profiling import is_sensitive
 from checks.fix_generator import FixGenerator
 from checks.types.null_check import NullCheck
 from checks.types.regex_check import RegexCheck
@@ -236,7 +237,8 @@ def get_required_columns(module_name: str) -> set[str]:
     """Return every column referenced by the rules of a module (for column pruning)."""
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
-    cols = {c for rule in config.get("rules", []) for c in rule_columns(rule) + target_columns(rule)}
+    cols = {c for rule in config.get("rules", [])
+            for c in rule_columns(rule) + target_columns(rule) + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
 
@@ -293,9 +295,12 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             except ValueError:
                 pass
         cf = (rule.get("_cost") or {}).get("field")
-        if cf and cf not in frame.columns and grain:
-            try:  # the cost field (EKPO.NETWR) joins at the same grain; else cost falls back to severity
-                wider = frames.frame_for(list(dict.fromkeys(cols + need + [cf])), grain=grain)
+        # the cost field (EKPO.NETWR) and auto_fix inputs (guard, copy, lookup keys) join at
+        # the same grain; else cost falls back to severity and auto_fix proposes nothing
+        extra = [c for c in [cf, *auto_fix.columns(rule)] if c and c not in frame.columns]
+        if extra and grain:
+            try:
+                wider = frames.frame_for(list(dict.fromkeys(cols + need + extra)), grain=grain)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
@@ -309,10 +314,39 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         if result is not None:
             result.details["baseline"] = baseline_of(rule)
             result.details.update({"target": target_of(rule), **{k: rule[k] for k in S4_KEYS if rule.get(k)}})
+        if result is not None and result.affected_count and not result.error and auto_fix.enabled(rule):
+            result.record_fixes = _auto_fixes(rule, check_cls(rule), scoped, result, frames)
         return rule, result
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+
+
+def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: CheckResult,
+                frames: TableFrames) -> list[dict] | None:
+    """Self-verified auto_fix record fixes for every failing record (capped at auto_fix.MAX_PROPOSALS)."""
+    field = rule.get("field", "")
+    table, _, name = field.rpartition(".")
+    if field not in scoped.columns or is_sensitive(table, name):
+        return None  # personal data never leaves the extraction as a proposed value
+    ev = check.evaluate(scoped)
+    if ev is None:
+        return None
+    hits = auto_fix.proposals(rule, scoped, ev.failing, frames.frames, check.evaluate)
+    if not hits:
+        return None
+    keys = result.details.get("record_key_fields") or []
+    rows = scoped.iloc[sorted(hits)]
+    shown = [c for c in dict.fromkeys(keys + check.columns()) if c in rows.columns]
+    recs = failing_values(rows, shown)
+    rk = record_keys(rows, keys).tolist()
+    for rec, k in zip(recs, rk):
+        rec["record_key"] = str(k)
+    props = {str(k): hits[p] for k, p in zip(rk, sorted(hits))}
+    fixes = FixGenerator().build_record_fixes(
+        recs, result.details.get("id_field_used") or "record_key", field, rule.get("fix_map") or {},
+        rule.get("record_fix_template"), table or None, props)
+    return [asdict(f) for f in fixes]
 
 
 def run_checks(
@@ -412,27 +446,28 @@ def run_checks(
                 )
                 value_fix_map = {k: asdict(v) for k, v in vfm.items()}
 
-            # Build record_fixes from sample_failing_records in details
-            record_fixes = None
-            samples = result.details.get("sample_failing_records", [])
+            # record_fixes: auto_fix proposals (run_rule) plus advisory fixes for the
+            # sample records without one
+            record_fixes = list(result.record_fixes or [])
+            covered = {f.get("record_key") for f in record_fixes}
+            samples = [r for r in result.details.get("sample_failing_records", [])
+                       if r.get("record_key") not in covered]
             if samples:
-                table_name = rule["field"].split(".")[0] if "." in rule["field"] else None
-                check_field = rule["field"].split(".")[-1] if "." in rule["field"] else rule["field"]
-                id_field = result.details.get("id_field_used") or "record_key"
+                field = rule.get("field", "")
                 rf_list = fix_gen.build_record_fixes(
                     sample_failing_records=samples,
-                    id_field=id_field,
-                    check_field=check_field,
+                    id_field=result.details.get("id_field_used") or "record_key",
+                    check_field=field,
                     fix_map=fix_map,
                     record_fix_template=rule.get("record_fix_template"),
-                    table_name=table_name,
+                    table_name=field.split(".")[0] if "." in field else None,
                 )
-                record_fixes = [asdict(rf) for rf in rf_list]
+                record_fixes += [asdict(rf) for rf in rf_list]
 
             results[i] = result.model_copy(update={
                 "rule_context": rule_context or None,
                 "value_fix_map": value_fix_map,
-                "record_fixes": record_fixes,
+                "record_fixes": record_fixes or None,
             })
         except Exception as e:
             logger.warning(f"Fix enrichment failed for {result.check_id}: {e}")

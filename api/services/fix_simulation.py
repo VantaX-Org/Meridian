@@ -6,7 +6,7 @@ the worker's memory for the duration of the task. Fix sources:
 
 * uploaded value maps — ``{"LFB1.ZTERM": {"0001": "Z030", "__blank__": "Z030"}}``,
   applied to every row of the column;
-* a rule's ``fix_value`` (scalar or map with ``__blank__`` / ``__other__``) or its
+* a rule's ``auto_fix`` / ``fix_value`` (checks/auto_fix.propose) or its
   single-option ``value_fix_map`` suggestion, applied to the rule's failing records;
 * remediation batch items (``field``, ``record_key``, ``proposed_value``), applied per record.
 
@@ -20,6 +20,7 @@ from typing import Iterable, Optional
 
 import pandas as pd
 
+from checks import auto_fix
 from checks.base import CheckResult, is_blank, pass_rate_of, record_keys
 from checks.frames import TableFrames
 
@@ -30,50 +31,39 @@ OTHER = "__other__"
 # ── fix plan ─────────────────────────────────────────────────────────────────
 
 
-def proposed_value(rule: dict, current: Optional[str]) -> Optional[str]:
-    """Same semantics as ``checks.fix_generator.proposed_value`` in the remediation
-    batch work (rule ``fix_value``: scalar, or a map by current value with
-    ``__blank__`` / ``__other__``)."""
-    # ponytail: local copy until the remediation-batch branch lands; then import it
-    fv = rule.get("fix_value")
-    if fv is None:
-        return None
-    if not isinstance(fv, dict):
-        return str(fv)
-    cur = "" if current is None else str(current).strip()
-    hit = fv.get(BLANK) if cur == "" else fv.get(cur)
-    hit = fv.get(OTHER) if hit is None else hit
-    return None if hit is None else str(hit)
-
-
 def _suggested(result: CheckResult, current: Optional[str]) -> Optional[str]:
     """The FixGenerator's single-option suggestion for this invalid value, if any."""
     entry = (result.value_fix_map or {}).get("" if current is None else str(current).strip())
     return (entry or {}).get("suggested_value") or None
 
 
+def _frame(frames: TableFrames, cols: list[str], grain: Optional[str]):
+    try:
+        return frames.frame_for(list(dict.fromkeys(cols)), grain=grain)
+    except ValueError:
+        return None
+
+
 def rule_record_fixes(rule: dict, result: CheckResult, frames: TableFrames) -> list[dict]:
     """Record fixes for one failing rule: ``[{field, record_key, new_value}]``.
 
-    The proposal comes from the rule's ``fix_value``, else from the value fix map's
+    The proposal comes from the rule's ``auto_fix`` / ``fix_value`` (checks/auto_fix.propose), else from the value fix map's
     single-option suggestion. Records with no proposal are left alone."""
     field, keys = rule.get("field") or result.field, set(result.failing_record_keys or [])
     if not field or "." not in field or not keys:
         return []
-    try:
-        built = frames.frame_for([field], grain=result.grain or rule.get("grain"))
-    except ValueError:
-        built = None
+    built = _frame(frames, [field, *auto_fix.columns(rule)], result.grain or rule.get("grain")) \
+        or _frame(frames, [field], result.grain or rule.get("grain"))
     if built is None:
         return []
     df, _, key_cols = built
     rk = record_keys(df, key_cols)
     hit = rk.isin(keys)
     out = []
-    for key, cur in zip(rk[hit], df.loc[hit, field]):
-        cur = None if pd.isna(cur) else str(cur)
-        new = proposed_value(rule, cur)
-        new = _suggested(result, cur) if new is None else new
+    for key, rec in zip(rk[hit], df[hit].to_dict("records")):
+        cur = None if pd.isna(rec[field]) else str(rec[field])
+        p = auto_fix.propose(rule, rec, frames.frames)
+        new = _suggested(result, cur) if p is None else p[0]
         if new is not None and new != (cur or "").strip():
             out.append({"field": field, "record_key": str(key), "new_value": new})
     return out

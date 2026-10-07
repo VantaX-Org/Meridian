@@ -3,20 +3,8 @@
 import pandas as pd
 
 from api.services import remediation
-from checks.fix_generator import proposed_value
 from checks.frames import TableFrames
 from sap.ddic import get_dictionary
-
-
-def test_proposed_value_sources():
-    assert proposed_value({}, "X") is None  # no fix logic: manual
-    assert proposed_value({"fix_value": "KG"}, "") == "KG"
-    m = {"fix_value": {"KGS": "KG", "__blank__": "EA", "__other__": "ST"}}
-    assert proposed_value(m, "KGS") == "KG"
-    assert proposed_value(m, "  ") == "EA"
-    assert proposed_value(m, None) == "EA"
-    assert proposed_value(m, "LB") == "ST"
-    assert proposed_value({"fix_value": {"A": "B"}}, "C") is None
 
 
 def _frames():
@@ -26,13 +14,15 @@ def _frames():
 
 def test_build_items_reads_current_and_rule_fix(monkeypatch):
     monkeypatch.setattr(remediation, "module_rules",
-                        lambda m: {"AP_T": {"id": "AP_T", "fix_value": {"__blank__": "DE"}}})
+                        lambda m: {"AP_T": {"id": "AP_T", "check_class": "null_check", "field": "LFA1.LAND1",
+                                         "fix_value": {"__blank__": "DE"}}})
     issues = [{"issue_id": "i1", "scope": "upload", "module": "accounts_payable", "check_id": "AP_T",
                "record_key": "LIFNR=0000100002", "grain": "LFA1", "field": "LFA1.LAND1"},
               {"issue_id": "i2", "scope": "upload", "module": "accounts_payable", "check_id": "AP_T",
                "record_key": "LIFNR=0000100001", "grain": "LFA1", "field": "LFA1.LAND1"}]
     a, b = remediation.build_items(issues, _frames())
     assert (a["current_value"], a["proposed_value"], a["proposal_source"]) == (None, "DE", "rule")
+    assert a["confidence"] == "medium" and b["confidence"] is None
     assert (b["current_value"], b["proposed_value"], b["proposal_source"]) == ("ZZ", None, "manual")
 
 

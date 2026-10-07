@@ -951,6 +951,8 @@ class RemediationItem(Base):
     current_value = Column(Text, nullable=True)
     proposed_value = Column(Text, nullable=True)
     proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual
+    confidence = Column(Text, nullable=True)  # auto_fix confidence of a rule proposal: high|medium|low
+    accepted = Column(Boolean, nullable=False, server_default=text("false"))  # proposal accepted by a second person
     recon_status = Column(Text, nullable=True)  # fixed|still_failing after the next extraction
     recon_version = Column(UUID(as_uuid=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=text("now()"))

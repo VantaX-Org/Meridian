@@ -2,8 +2,9 @@
 
 Meridian never writes to SAP. A batch is a file a human loads through their own
 controlled process (Migration Cockpit staging, LSMW, mass change). Proposed
-values come from the rule's ``fix_value`` (checks/fix_generator.proposed_value),
-a steward's entry, or stay blank for manual correction.
+values come from the rule's ``auto_fix`` (checks/auto_fix.py, self-verified against
+the rule), a steward's entry, or stay blank for manual correction. High-confidence
+rule proposals can be bulk-accepted by a second person (four eyes).
 
 Reconciliation rides on the record-issue lifecycle (api/services/record_issues.track):
 on the next extraction every exported item whose check ran is marked
@@ -21,7 +22,7 @@ import yaml
 from sqlalchemy import text
 
 from checks.base import record_keys
-from checks.fix_generator import proposed_value
+from checks import auto_fix
 
 
 @lru_cache(maxsize=64)
@@ -38,29 +39,52 @@ def _value(v) -> Optional[str]:
     return None if v is None or (not isinstance(v, str) and pd.isna(v)) else str(v)
 
 
+def _rule_frame(frames, rule: dict, field: str, grain):
+    for cols in ([field, *auto_fix.columns(rule)], [field]):
+        try:
+            built = frames.frame_for(list(dict.fromkeys(cols)), grain=grain)
+        except ValueError:
+            built = None
+        if built is not None:
+            return built
+    return None
+
+
 def build_items(issues: Iterable[dict], frames) -> list[dict]:
-    """Batch rows for record issues: current value read from the extraction, proposed value from the rule."""
-    lookups: dict[tuple, dict[str, Optional[str]]] = {}
-    out = []
+    """Batch rows for record issues: current value read from the extraction, proposed
+    value and confidence from the rule's auto_fix, verified by re-running the rule."""
+    from checks.runner import REGISTRY
+    issues = list(issues)
+    found: dict[tuple, dict[str, tuple]] = {}  # (check, field, grain) -> record_key -> (current, proposal)
     for i in issues:
         field, grain = i.get("field"), i.get("grain")
-        current = None
-        if field and frames is not None:
-            if (field, grain) not in lookups:
-                lookups[(field, grain)] = {}
-                try:
-                    built = frames.frame_for([field], grain=grain)
-                except ValueError:
-                    built = None
-                if built is not None:
-                    df, _, key_cols = built
-                    lookups[(field, grain)] = dict(zip(record_keys(df, key_cols), [_value(v) for v in df[field]]))
-            current = lookups[(field, grain)].get(i["record_key"])
+        ck = (i["module"], i["check_id"], field, grain)
+        if not field or frames is None or ck in found:
+            continue
+        found[ck] = {}
         rule = module_rules(i["module"]).get(i["check_id"], {})
-        proposed = proposed_value(rule, current) if field else None
+        built = _rule_frame(frames, rule, field, grain)
+        if built is None:
+            continue
+        df, _, key_cols = built
+        keys = record_keys(df, key_cols)
+        wanted = {x["record_key"] for x in issues if (x["module"], x["check_id"], x.get("field"), x.get("grain")) == ck}
+        rows = pd.Series([k in wanted for k in keys])
+        check = REGISTRY.get(rule.get("check_class", ""))
+        props = auto_fix.proposals(rule, df.reset_index(drop=True), rows, frames.frames,
+                                   check(rule).evaluate if check else None) if auto_fix.enabled(rule) else {}
+        found[ck] = {k: (_value(v), props.get(n)) for n, (k, v) in enumerate(zip(keys, df[field])) if k in wanted}
+    out = []
+    for i in issues:
+        field = i.get("field")
+        ck = (i["module"], i["check_id"], field, i.get("grain"))
+        current, hit = found.get(ck, {}).get(i["record_key"], (None, None))
+        if hit is None and field and frames is None:  # dataset gone: unverified, never auto-approvable
+            hit = auto_fix.propose(module_rules(i["module"]).get(i["check_id"], {}), {field: None})
+            hit = hit and (hit[0], "low")
         out.append({**{k: i.get(k) for k in ("issue_id", "scope", "module", "check_id", "record_key", "grain")},
-                    "field": field, "current_value": current, "proposed_value": proposed,
-                    "proposal_source": "rule" if proposed is not None else "manual"})
+                    "field": field, "current_value": current, "proposed_value": hit[0] if hit else None,
+                    "confidence": hit[1] if hit else None, "proposal_source": "rule" if hit else "manual"})
     return out
 
 

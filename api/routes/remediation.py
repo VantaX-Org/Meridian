@@ -1,6 +1,7 @@
 """Remediation batches — fix files for a human-controlled SAP load.
 
-draft (steward edits proposed values) → approved (a second person) → exported
+draft (steward edits proposed values; a second person may bulk-accept the
+high-confidence auto_fix proposals) → approved (a second person) → exported
 (Migration Cockpit staging XLSX/CSV or a generic LSMW / mass-change CSV).
 Meridian never posts to SAP; see api/services/remediation.py.
 """
@@ -60,7 +61,13 @@ async def _batch(db: AsyncSession, tenant: Tenant, batch_id: uuid.UUID) -> dict:
 async def _items(db: AsyncSession, batch_id) -> list[dict]:
     rows = await db.execute(text("SELECT * FROM remediation_items WHERE batch_id = :id "
                                  "ORDER BY module, check_id, record_key"), {"id": batch_id})
-    return [_row(r) for r in rows.fetchall()]
+    return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i)} for r in rows.fetchall()]
+
+
+def _auto_approvable(item: dict) -> bool:
+    """A self-verified high-confidence rule proposal a second person may accept in bulk."""
+    return item.get("proposal_source") == "rule" and item.get("confidence") == "high" \
+        and item.get("proposed_value") is not None
 
 
 async def _event(db, tenant, batch_id, action, request, item_ids=None, to_value=None):
@@ -135,9 +142,10 @@ async def create_batch(
     for chunk in range(0, len(items), 1000):
         await db.execute(text("""
             INSERT INTO remediation_items (tenant_id, batch_id, issue_id, scope, module, check_id, record_key,
-                                           grain, field, current_value, proposed_value, proposal_source)
+                                           grain, field, current_value, proposed_value, proposal_source, confidence)
             SELECT :tid, :bid, (x->>'issue_id')::uuid, x->>'scope', x->>'module', x->>'check_id', x->>'record_key',
-                   x->>'grain', x->>'field', x->>'current_value', x->>'proposed_value', x->>'proposal_source'
+                   x->>'grain', x->>'field', x->>'current_value', x->>'proposed_value', x->>'proposal_source',
+                   x->>'confidence'
               FROM jsonb_array_elements(CAST(:items AS jsonb)) x
             ON CONFLICT DO NOTHING
         """), {"tid": str(tenant.id), "bid": batch_id,
@@ -145,7 +153,8 @@ async def create_batch(
     await _event(db, tenant, batch_id, "created", request)
     await db.commit()
     return {"id": str(batch_id), "status": "draft", "items": len(items),
-            "with_proposal": sum(1 for i in items if i["proposed_value"] is not None)}
+            "with_proposal": sum(1 for i in items if i["proposed_value"] is not None),
+            "auto_approvable": sum(1 for i in items if _auto_approvable(i))}
 
 
 @router.get("/batches")
@@ -158,6 +167,7 @@ async def list_batches(
     rows = await db.execute(text("""
         SELECT b.*, COUNT(i.id) AS items,
                COUNT(i.id) FILTER (WHERE i.proposed_value IS NOT NULL) AS with_proposal,
+               COUNT(i.id) FILTER (WHERE i.proposal_source = 'rule' AND i.confidence = 'high') AS auto_approvable,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'fixed') AS fixed,
                COUNT(i.id) FILTER (WHERE i.recon_status = 'still_failing') AS still_failing
           FROM remediation_batches b LEFT JOIN remediation_items i ON i.batch_id = b.id
@@ -211,7 +221,7 @@ async def update_item(
     if not old:
         raise HTTPException(status_code=404, detail="Item not found")
     await db.execute(text("UPDATE remediation_items SET proposed_value = :v, proposal_source = :src, "
-                          "updated_at = now() WHERE id = :id"),
+                          "confidence = NULL, accepted = false, updated_at = now() WHERE id = :id"),
                      {"v": body.proposed_value, "id": item_id,
                       "src": "manual" if body.proposed_value is None else "steward"})
     await db.execute(text("INSERT INTO remediation_events (tenant_id, batch_id, item_id, user_id, user_label, action, "
@@ -221,6 +231,30 @@ async def update_item(
                       "label": current_user_label(), "old": old[0], "new": body.proposed_value})
     await db.commit()
     return {"id": str(item_id), "proposed_value": body.proposed_value}
+
+
+@router.post("/batches/{batch_id}/accept-high-confidence")
+async def accept_high_confidence(
+    batch_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("approve")),
+):
+    """Accept every high-confidence rule proposal in a draft batch. Four eyes: not the batch creator."""
+    b = await _batch(db, tenant, batch_id)
+    if b["status"] != "draft":
+        raise HTTPException(status_code=409, detail=f"Batch is already {b['status']}.")
+    uid = current_user_id(request)
+    if b["created_by"] and uid == b["created_by"]:
+        raise HTTPException(status_code=403, detail="The batch creator cannot accept its proposals.")
+    ids = [r[0] for r in (await db.execute(text(
+        "UPDATE remediation_items SET accepted = true, updated_at = now() WHERE batch_id = :bid "
+        "AND proposal_source = 'rule' AND confidence = 'high' AND proposed_value IS NOT NULL AND NOT accepted "
+        "RETURNING id"), {"bid": batch_id})).fetchall()]
+    await _event(db, tenant, batch_id, "accepted", request, item_ids=ids)
+    await db.commit()
+    return {"id": str(batch_id), "accepted": len(ids), "accepted_by": current_user_label()}
 
 
 @router.post("/batches/{batch_id}/approve")
