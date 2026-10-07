@@ -394,6 +394,11 @@ rules:
     __blank__: Correct the requisition status to one of the recognised lifecycle values via Recruiting > Requisition Management.
   record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: STATUS value is not recognised. Correct via Recruiting >
     Requisition Management.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: medium
 - id: REC028
   field: JOBREQUISITION.NUM_OPENINGS
   check_class: null_check
@@ -492,6 +497,11 @@ rules:
     __blank__: Correct the application status to one of the recognised pipeline stages via Recruiting > Application Management.
   record_fix_template: 'Application {JOBAPPLICATION.CANDIDATE_ID}: STATUS value is not recognised. Correct via Recruiting
     > Application Management.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: medium
 - id: REC033
   field: JOBAPPLICATION.RATING
   check_class: null_check
@@ -594,6 +604,11 @@ rules:
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: TASK_COMPLETION value is not recognised. Correct
     via Onboarding > Candidate Management.'
   grain: ONBOARDINGCANDIDATEINFO
+  auto_fix:
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
 - id: REC038
   field: ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS
   check_class: null_check
@@ -637,6 +652,11 @@ rules:
   record_fix_template: 'Onboarding candidate {ONBOARDINGCANDIDATEINFO.USERID}: BACKGROUND_CHECK_STATUS value is not recognised.
     Correct via Onboarding > Candidate Management.'
   grain: ONBOARDINGCANDIDATEINFO
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: high
 - id: REC040
   field: JOBOFFER.OFFER_STATUS
   check_class: null_check
@@ -676,6 +696,11 @@ rules:
     __blank__: Correct the offer status to Extended, Accepted, Declined, or Rescinded via Recruiting > Offer Management.
   record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: OFFER_STATUS value is not recognised. Correct via Recruiting > Offer
     Management.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: title
+    confidence: high
 - id: REC042
   field: JOBOFFER.START_DATE
   check_class: cross_field_check
@@ -728,3 +753,682 @@ rules:
   fix_map:
     __other__: Correct the candidate reference on the offer, or create the missing application record if the offer is legitimate.
   record_fix_template: 'Offer {JOBOFFER.OFFER_ID}: CANDIDATE_ID does not match an existing application. Correct the offer.'
+- id: REC045
+  field: JOBREQUISITION.POSITION_NUMBER
+  check_class: null_check
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Open
+  severity: medium
+  dimension: completeness
+  message: Open requisition is not linked to a position
+  why_it_matters: With position management the requisition fills a specific position; the link pre-fills job data at hire
+    and closes the vacancy. Without it the new hire's position must be assigned by hand.
+  rule_authority: best_practice
+  sap_impact: Hire creates an employee without a position; vacancy stays open.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Link the position.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: no position.'
+- id: REC046
+  field: JOBREQUISITION.POSITION_NUMBER
+  check_class: exists_check
+  target_table: POSITION
+  target_fields:
+  - CODE
+  target_when:
+    EFFECTIVE_STATUS:
+    - A
+  severity: medium
+  dimension: consistency
+  message: Requisition position does not exist or is inactive
+  why_it_matters: The requisition's position must be an active position; otherwise hiring into it fails in Employee Central.
+  rule_authority: best_practice
+  sap_impact: Hire-to-EC integration error.
+  fix_map:
+    __other__: Correct the requisition in Recruiting > Job Requisitions. Link an active position.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: position {JOBREQUISITION.POSITION_NUMBER} not active.'
+- id: REC047
+  field: JOBREQUISITION.SALARY_MIN
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.SALARY_MIN` > `JOBREQUISITION.SALARY_MAX`'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Requisition salary minimum is above the maximum
+  why_it_matters: The salary range guides the offer and pay transparency postings. An inverted range makes every offer fall
+    outside it.
+  rule_authority: best_practice
+  sap_impact: Offer approval and posted pay range wrong.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Correct the salary range.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: salary range inverted.'
+- id: REC048
+  field: JOBREQUISITION.SALARY_MAX
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.SALARY_MAX` <= 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Requisition salary maximum is zero or negative
+  why_it_matters: A non-positive maximum is a placeholder; posted salary ranges (required by pay transparency laws in several
+    jurisdictions) would show nonsense.
+  rule_authority: best_practice
+  sap_impact: Posted pay range invalid.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Enter the real salary range.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: salary maximum not positive.'
+- id: REC049
+  field: JOBOFFER.SALARY
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.SALARY` < `JOBREQUISITION.SALARY_MIN`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Offer salary is below the requisition's salary minimum
+  why_it_matters: Offers below range breach pay-equity policy and usually need extra approval.
+  rule_authority: best_practice
+  sap_impact: Pay-equity exposure; offer approved outside policy.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Re-approve or correct the offer salary.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): salary below requisition range.'
+- id: REC050
+  field: JOBOFFER.SALARY
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.SALARY` > `JOBREQUISITION.SALARY_MAX`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Offer salary is above the requisition's salary maximum
+  why_it_matters: Offers above range exceed the approved budget for the requisition and need exception approval.
+  rule_authority: best_practice
+  sap_impact: Budget overrun; compression with existing staff.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Re-approve or correct the offer salary.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): salary above requisition range.'
+- id: REC051
+  field: JOBOFFER.CURRENCY
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.CURRENCY` != `JOBREQUISITION.CURRENCY`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Offer currency differs from the requisition currency
+  why_it_matters: Salary comparisons and the hire's compensation record assume one currency. A different offer currency makes
+    range checks meaningless and may pay in the wrong currency.
+  rule_authority: best_practice
+  sap_impact: Compensation created in wrong currency.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Correct the offer currency.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): offer currency {JOBOFFER.CURRENCY},
+    requisition {JOBREQUISITION.CURRENCY}.'
+- id: REC052
+  field: JOBOFFER.SALARY
+  check_class: null_check
+  applies_when:
+    JOBOFFER.OFFER_STATUS:
+    - Extended
+    - Accepted
+  severity: high
+  dimension: completeness
+  message: Extended or accepted offer has no salary
+  why_it_matters: The offer salary becomes the new hire's base pay in Employee Central. Without it the hire is created with
+    no compensation.
+  rule_authority: best_practice
+  sap_impact: New hire created without pay; first payroll misses them.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Enter the offer salary.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): no salary.'
+- id: REC053
+  field: JOBOFFER.SALARY
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.SALARY` <= 0'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: Offer salary is zero or negative
+  why_it_matters: A non-positive salary is a placeholder that would flow into the new hire's compensation.
+  rule_authority: best_practice
+  sap_impact: New hire paid nothing.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Enter the real offer salary.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): salary not positive.'
+- id: REC054
+  field: JOBAPPLICATION.EMAIL
+  check_class: uniqueness_check
+  fields:
+  - JOBAPPLICATION.JOB_REQ_ID
+  - JOBAPPLICATION.EMAIL
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: Same e-mail address has applied to one requisition more than once
+  why_it_matters: Duplicate applications split interview feedback and can lead to two offers for one person.
+  rule_authority: best_practice
+  sap_impact: Duplicate offers; skewed pipeline metrics.
+  fix_map:
+    __blank__: Merge the duplicate applications (Candidate Workbench > Merge).
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    duplicate application for the same e-mail.'
+- id: REC055
+  field: JOBAPPLICATION.EMAIL
+  check_class: regex_check
+  pattern: ^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$
+  severity: medium
+  dimension: validity
+  message: Applicant e-mail address is malformed
+  why_it_matters: Recruiting sends interview invitations, offers and onboarding links by e-mail. A malformed address silently
+    drops all candidate communication.
+  rule_authority: best_practice
+  sap_impact: Candidate never receives offer or onboarding mail.
+  fix_map:
+    __other__: Correct the application in Recruiting > Candidate Workbench. Correct the candidate's e-mail address.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    e-mail address is malformed.'
+  auto_fix:
+    steps:
+    - op: strip
+    - op: lower
+    confidence: medium
+- id: REC056
+  field: JOBAPPLICATION.CANDIDATE_ID
+  check_class: exists_check
+  fields:
+  - JOBAPPLICATION.CANDIDATE_ID
+  - JOBAPPLICATION.JOB_REQ_ID
+  target_table: JOBOFFER
+  target_fields:
+  - CANDIDATE_ID
+  - JOB_REQ_ID
+  target_when:
+    OFFER_STATUS:
+    - Accepted
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Hired
+  severity: high
+  dimension: consistency
+  message: Hired application has no accepted offer
+  why_it_matters: Hiring follows an accepted offer; the offer carries the agreed salary and start date into Employee Central.
+    A hire without one bypassed offer approval.
+  rule_authority: best_practice
+  sap_impact: Hire data has no approved offer; audit finding.
+  fix_map:
+    __other__: Record the accepted offer or correct the application status.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    hired without an accepted offer.'
+- id: REC057
+  field: JOBAPPLICATION.STATUS
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.STATUS` == ''Cancelled'''
+  require_populated: true
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Hired
+  severity: high
+  dimension: consistency
+  message: Candidate hired on a cancelled requisition
+  why_it_matters: A cancelled requisition has no approved headcount. Hiring against it creates an unbudgeted employee.
+  rule_authority: best_practice
+  sap_impact: Unbudgeted hire.
+  fix_map:
+    __blank__: Move the hire to an approved requisition or reopen the requisition.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    hired on cancelled requisition.'
+- id: REC058
+  field: JOBAPPLICATION.STATUS
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.STATUS`.isin([''Closed'',''Filled'',''Cancelled''])'
+  require_populated: true
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Applied
+    - Screening
+    - Interview
+    - Offer
+  severity: medium
+  dimension: consistency
+  message: Active application on a closed, filled or cancelled requisition
+  why_it_matters: Candidates still in the pipeline of a closed requisition are never dispositioned and never told.
+  rule_authority: best_practice
+  sap_impact: Poor candidate experience; pipeline metrics inflated.
+  fix_map:
+    __blank__: Correct the application in Recruiting > Candidate Workbench. Disposition the remaining candidates.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    status {JOBAPPLICATION.STATUS}, requisition {JOBREQUISITION.STATUS}.'
+- id: REC059
+  field: JOBREQUISITION.OPENINGS_FILLED
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.OPENINGS_FILLED` > `JOBREQUISITION.NUM_OPENINGS`'
+  require_populated: true
+  severity: high
+  dimension: validity
+  message: More openings filled than the requisition has
+  why_it_matters: Filled openings beyond the approved number are hires without headcount approval.
+  rule_authority: best_practice
+  sap_impact: Unbudgeted hires.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Increase the approved openings or move the extra
+      hire.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: {JOBREQUISITION.OPENINGS_FILLED} filled of {JOBREQUISITION.NUM_OPENINGS}.'
+- id: REC060
+  field: JOBREQUISITION.OPENINGS_FILLED
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.OPENINGS_FILLED` < 0'
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Openings filled is negative
+  why_it_matters: A negative filled count is a data error.
+  rule_authority: best_practice
+  sap_impact: Headcount reports wrong.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Correct the filled count.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: openings filled {JOBREQUISITION.OPENINGS_FILLED}.'
+- id: REC061
+  field: JOBREQUISITION.OPENINGS_FILLED
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.OPENINGS_FILLED` < `JOBREQUISITION.NUM_OPENINGS`'
+  require_populated: true
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Filled
+  severity: medium
+  dimension: consistency
+  message: Requisition is Filled but not all openings are filled
+  why_it_matters: Filled closes the requisition. Unfilled openings on a filled requisition disappear from the open-headcount
+    view.
+  rule_authority: best_practice
+  sap_impact: Approved headcount lost from recruiting.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Reopen the requisition or reduce the openings.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: filled with {JOBREQUISITION.OPENINGS_FILLED} of {JOBREQUISITION.NUM_OPENINGS}.'
+- id: REC062
+  field: JOBREQUISITION.OPENINGS_FILLED
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.OPENINGS_FILLED` >= `JOBREQUISITION.NUM_OPENINGS`'
+  require_populated: true
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Open
+  severity: low
+  dimension: consistency
+  message: Requisition is still open although all openings are filled
+  why_it_matters: An open requisition with no openings left keeps attracting applicants for a job that is gone.
+  rule_authority: best_practice
+  sap_impact: Wasted recruiter time; candidates rejected late.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Close the requisition as Filled.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: open with {JOBREQUISITION.OPENINGS_FILLED} of {JOBREQUISITION.NUM_OPENINGS}
+    filled.'
+- id: REC063
+  field: JOBREQUISITION.CLOSE_DATE
+  check_class: null_check
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Closed
+    - Filled
+    - Cancelled
+  severity: medium
+  dimension: completeness
+  message: Closed, filled or cancelled requisition has no close date
+  why_it_matters: Time-to-fill is measured from open to close date. Without the close date the requisition is excluded from
+    time-to-fill.
+  rule_authority: best_practice
+  sap_impact: Time-to-fill metrics incomplete.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Record the close date.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: no close date.'
+- id: REC064
+  field: JOBREQUISITION.CLOSE_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.CLOSE_DATE`.dt.normalize() < @today'
+  require_populated: true
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Open
+  severity: medium
+  dimension: consistency
+  message: Requisition is open but its close date has passed
+  why_it_matters: The posting may have expired on the career site while the requisition still counts as open.
+  rule_authority: best_practice
+  sap_impact: Open-requisition reports overstated.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Close the requisition or extend its close date.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: open, close date {JOBREQUISITION.CLOSE_DATE}.'
+- id: REC065
+  field: JOBREQUISITION.OPEN_DATE
+  check_class: cross_field_check
+  fail_when: (@today - `JOBREQUISITION.OPEN_DATE`.dt.normalize()).dt.days > 365
+  require_populated: true
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Open
+  severity: low
+  dimension: timeliness
+  message: Requisition has been open for more than a year
+  why_it_matters: Requisitions open for over a year are usually abandoned and should be closed or re-approved.
+  rule_authority: best_practice
+  sap_impact: Stale requisitions inflate open headcount.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Close or re-approve the requisition.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: open since {JOBREQUISITION.OPEN_DATE}.'
+- id: REC066
+  field: JOBAPPLICATION.REJECT_REASON
+  check_class: cross_field_check
+  fail_when: '`JOBAPPLICATION.REJECT_REASON`.notna()'
+  applies_when:
+    JOBAPPLICATION.STATUS:
+      populated: true
+      not_in:
+      - Rejected
+      - Withdrawn
+  severity: low
+  dimension: consistency
+  message: Application has a rejection reason but is not rejected
+  why_it_matters: A rejection reason on an active application is a leftover from a reversed decision and corrupts rejection-reason
+    reporting.
+  rule_authority: best_practice
+  sap_impact: Rejection analytics wrong.
+  fix_map:
+    __blank__: Correct the application in Recruiting > Candidate Workbench. Clear the reason or reject the application.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    reason set, status {JOBAPPLICATION.STATUS}.'
+- id: REC067
+  field: JOBAPPLICATION.LAST_MODIFIED
+  check_class: freshness_check
+  max_age_hours: 1440
+  applies_when:
+    JOBAPPLICATION.STATUS:
+    - Applied
+    - Screening
+  severity: low
+  dimension: timeliness
+  message: Early-stage application has had no activity for more than 60 days
+  why_it_matters: Candidates waiting two months without a decision are effectively abandoned and often withdraw; GDPR retention
+    clocks also run on inactive applications.
+  rule_authority: best_practice
+  sap_impact: Poor candidate experience; retention policy breached.
+  fix_map:
+    __blank__: Correct the application in Recruiting > Candidate Workbench. Move the candidate forward or disposition them.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    last change {JOBAPPLICATION.LAST_MODIFIED}.'
+- id: REC068
+  field: JOBAPPLICATION.START_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBAPPLICATION.START_DATE` < `JOBAPPLICATION.APPLICATION_DATE`.dt.normalize()'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Candidate start date is before the application date
+  why_it_matters: A start date before the candidate applied is impossible and flows into the hire record.
+  rule_authority: best_practice
+  sap_impact: Hire created with a wrong start date.
+  fix_map:
+    __blank__: Correct the application in Recruiting > Candidate Workbench. Correct the start date.
+  record_fix_template: 'Application of candidate {JOBAPPLICATION.CANDIDATE_ID} to requisition {JOBAPPLICATION.JOB_REQ_ID}:
+    start {JOBAPPLICATION.START_DATE}, applied {JOBAPPLICATION.APPLICATION_DATE}.'
+- id: REC069
+  field: JOBOFFER.APPLICATION_ID
+  check_class: exists_check
+  target_table: JOBAPPLICATION
+  target_fields:
+  - APPLICATION_ID
+  severity: medium
+  dimension: consistency
+  message: Offer references an application that does not exist
+  why_it_matters: Offers are generated from an application; an unknown application ID breaks the link to the candidate's pipeline
+    and to the hire.
+  rule_authority: best_practice
+  sap_impact: Hire cannot be traced to its application.
+  fix_map:
+    __other__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Link the right application.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): application {JOBOFFER.APPLICATION_ID}
+    not found.'
+- id: REC070
+  field: JOBOFFER.START_DATE
+  check_class: cross_field_check
+  fail_when: '`JOBOFFER.START_DATE` < @today'
+  require_populated: true
+  applies_when:
+    JOBOFFER.OFFER_STATUS:
+    - Extended
+  severity: medium
+  dimension: timeliness
+  message: Extended offer's start date has already passed
+  why_it_matters: An offer still only Extended after the start date was never accepted or declined; the hire date is now wrong.
+  rule_authority: best_practice
+  sap_impact: Hire may be created with a past start date; retro pay.
+  fix_map:
+    __blank__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Close the offer or re-extend it with a new
+      start date.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): extended, start {JOBOFFER.START_DATE}.'
+- id: REC071
+  field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.HIRE_DATE` != `EMPEMPLOYMENT.START_DATE`'
+  require_populated: true
+  applies_when: &id002
+    ONBOARDINGCANDIDATEINFO.CANCELLED_ON: &id001
+      blank: true
+  severity: medium
+  dimension: consistency
+  message: Onboarding hire date differs from the employment start date
+  why_it_matters: The onboarding hire date is passed to Employee Central at the hire step. A different employment start date
+    means the hire was re-dated after onboarding or the wrong employment was linked; tasks and day-one provisioning run on
+    one date and payroll on the other.
+  rule_authority: best_practice
+  sap_impact: Payroll start, benefits eligibility and onboarding tasks run on different dates.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Align the onboarding hire date with the
+      Employee Central start date (or correct the hire).
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: onboarding hire date {ONBOARDINGCANDIDATEINFO.HIRE_DATE},
+    employment start {EMPEMPLOYMENT.START_DATE}.'
+- id: REC072
+  field: ONBOARDINGCANDIDATEINFO.TASK_COMPLETION
+  check_class: cross_field_check
+  fail_when: (@today - `ONBOARDINGCANDIDATEINFO.HIRE_DATE`).dt.days > 30
+  require_populated: true
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.TASK_COMPLETION:
+    - NOT_STARTED
+    - IN_PROGRESS
+    ONBOARDINGCANDIDATEINFO.CANCELLED_ON: *id001
+  severity: medium
+  dimension: timeliness
+  message: Onboarding tasks are still open more than 30 days after the hire date
+  why_it_matters: Onboarding tasks (equipment, compliance forms, I-9 / right-to-work) have legal deadlines around day one.
+    Tasks open a month later are overdue.
+  rule_authority: best_practice
+  sap_impact: Statutory onboarding deadlines missed.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Complete or close the outstanding tasks.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: tasks {ONBOARDINGCANDIDATEINFO.TASK_COMPLETION}, hired
+    {ONBOARDINGCANDIDATEINFO.HIRE_DATE}.'
+- id: REC073
+  field: ONBOARDINGCANDIDATEINFO.CANCEL_REASON
+  check_class: null_check
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.CANCELLED_ON:
+      populated: true
+  severity: low
+  dimension: completeness
+  message: Cancelled onboarding has no cancellation reason
+  why_it_matters: The reason (no-show, offer withdrawn, duplicate) drives reporting and whether a hire must be reversed.
+  rule_authority: best_practice
+  sap_impact: No-show and reneging analytics incomplete.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Record the cancellation reason.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: cancelled with no reason.'
+- id: REC074
+  field: ONBOARDINGCANDIDATEINFO.CANCELLED_ON
+  check_class: null_check
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.CANCEL_REASON:
+      populated: true
+  severity: medium
+  dimension: completeness
+  message: Onboarding has a cancellation reason but no cancellation date
+  why_it_matters: A reason without a date means the cancellation was not completed — the process may still run tasks.
+  rule_authority: best_practice
+  sap_impact: Tasks and provisioning continue for a cancelled hire.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Complete the cancellation.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: reason set, no cancellation date.'
+- id: REC075
+  field: ONBOARDINGCANDIDATEINFO.CANCELLED_ON
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.CANCELLED_ON`.dt.normalize() > `ONBOARDINGCANDIDATEINFO.HIRE_DATE`'
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Onboarding was cancelled after the hire date
+  why_it_matters: After the hire date the employee exists in Employee Central; cancelling onboarding does not undo the hire,
+    so a no-show must also be terminated.
+  rule_authority: best_practice
+  sap_impact: Employee may remain active and paid.
+  fix_map:
+    __blank__: Terminate the no-show in Employee Central (event reason no-show).
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: cancelled {ONBOARDINGCANDIDATEINFO.CANCELLED_ON},
+    hired {ONBOARDINGCANDIDATEINFO.HIRE_DATE}.'
+- id: REC076
+  field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
+  check_class: cross_field_check
+  fail_when: (`ONBOARDINGCANDIDATEINFO.HIRE_DATE` - @today).dt.days > 365
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Hire date is more than a year in the future
+  why_it_matters: Hire dates are weeks or months out; over a year is a year typo.
+  rule_authority: best_practice
+  sap_impact: Onboarding tasks scheduled a year late.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Correct the hire date.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: hire date {ONBOARDINGCANDIDATEINFO.HIRE_DATE}.'
+- id: REC077
+  field: ONBOARDINGCANDIDATEINFO.MANAGER_ID
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.MANAGER_ID` == `ONBOARDINGCANDIDATEINFO.USERID`'
+  require_populated: true
+  severity: medium
+  dimension: accuracy
+  message: New hire is recorded as their own manager
+  why_it_matters: The onboarding manager approves tasks and receives the new hire. Self-management routes all tasks to the
+    new hire.
+  rule_authority: best_practice
+  sap_impact: Onboarding tasks routed to the new hire.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Set the real manager.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: own manager.'
+- id: REC078
+  field: ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS` == ''Failed'''
+  require_populated: true
+  applies_when: *id002
+  severity: high
+  dimension: accuracy
+  message: Onboarding continues although the background check failed
+  why_it_matters: A failed background check normally stops the hire (subject to adjudication). Continuing onboarding exposes
+    the company to the risk the check was meant to prevent.
+  rule_authority: best_practice
+  sap_impact: Unvetted hire.
+  fix_map:
+    __blank__: 'Adjudicate the result: cancel onboarding or record a waiver.'
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: background check failed.'
+- id: REC079
+  field: ONBOARDINGCANDIDATEINFO.HIRE_DATE
+  check_class: cross_field_check
+  fail_when: '`ONBOARDINGCANDIDATEINFO.HIRE_DATE` < @today'
+  require_populated: true
+  applies_when:
+    ONBOARDINGCANDIDATEINFO.BACKGROUND_CHECK_STATUS:
+    - Pending
+    ONBOARDINGCANDIDATEINFO.CANCELLED_ON: *id001
+  severity: high
+  dimension: timeliness
+  message: New hire started while the background check is still pending
+  why_it_matters: Policy normally requires a cleared check before day one. A pending check after the hire date means the person
+    started unvetted.
+  rule_authority: best_practice
+  sap_impact: Unvetted employee on site.
+  fix_map:
+    __blank__: Escalate the check or document the exception.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: started {ONBOARDINGCANDIDATEINFO.HIRE_DATE} with check
+    pending.'
+- id: REC080
+  field: ONBOARDINGCANDIDATEINFO.PROCESS_ID
+  check_class: uniqueness_check
+  fields:
+  - ONBOARDINGCANDIDATEINFO.PROCESS_ID
+  severity: high
+  dimension: uniqueness
+  message: Onboarding process ID is used for more than one new hire
+  why_it_matters: The process ID identifies one onboarding process; two hires sharing it overwrite each other's tasks.
+  rule_authority: best_practice
+  sap_impact: Tasks and documents mixed between new hires.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Re-extract; each hire must have its own
+      process.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: process {ONBOARDINGCANDIDATEINFO.PROCESS_ID} shared.'
+- id: REC081
+  field: ONBOARDINGCANDIDATEINFO.PROCESS_ID
+  check_class: null_check
+  severity: medium
+  dimension: completeness
+  message: Onboarding record has no process ID
+  why_it_matters: Without the process ID the record cannot be tied to its onboarding tasks and documents.
+  rule_authority: best_practice
+  sap_impact: Onboarding progress cannot be tracked.
+  fix_map:
+    __blank__: Correct the onboarding process in Onboarding > Onboarding Dashboard. Re-extract with the process ID.
+  record_fix_template: 'Onboarding of {ONBOARDINGCANDIDATEINFO.USERID}: no process ID.'
+- id: REC082
+  field: JOBREQUISITION.DELETED
+  check_class: cross_field_check
+  fail_when: '`JOBREQUISITION.DELETED`.str.lower().isin([''true'',''y'',''1'',''x''])'
+  require_populated: true
+  applies_when:
+    JOBREQUISITION.STATUS:
+    - Open
+  severity: medium
+  dimension: consistency
+  message: Deleted requisition is still open
+  why_it_matters: A requisition flagged deleted should not accept applications; if it is still open it may remain posted.
+  rule_authority: best_practice
+  sap_impact: Applications to a deleted job.
+  fix_map:
+    __blank__: Correct the requisition in Recruiting > Job Requisitions. Close the requisition or restore it.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: deleted but open.'
+- id: REC083
+  field: JOBREQUISITION.CURRENCY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Requisition currency is not a 3-letter ISO 4217 code
+  why_it_matters: Salary ranges are compared and posted in the requisition currency; a non-ISO code breaks conversion.
+  rule_authority: best_practice
+  sap_impact: Salary range checks and postings fail.
+  fix_map:
+    __other__: Correct the requisition in Recruiting > Job Requisitions. Use the ISO currency code.
+  record_fix_template: 'Requisition {JOBREQUISITION.JOB_REQ_ID}: currency ''{actual_value}'' is not ISO 4217.'
+  auto_fix: &id003
+    steps:
+    - op: strip
+    - op: upper
+    confidence: high
+- id: REC084
+  field: JOBOFFER.CURRENCY
+  check_class: regex_check
+  pattern: ^[A-Z]{3}$
+  severity: medium
+  dimension: validity
+  message: Offer currency is not a 3-letter ISO 4217 code
+  why_it_matters: The offer currency becomes the new hire's pay currency in Employee Central; a non-ISO code fails the hire.
+  rule_authority: best_practice
+  sap_impact: Compensation record rejected at hire.
+  fix_map:
+    __other__: Correct the offer in Recruiting > Offer Approval / Offer Detail. Use the ISO currency code.
+  record_fix_template: 'Offer {JOBOFFER.OFFER_ID} (requisition {JOBOFFER.JOB_REQ_ID}): currency ''{actual_value}'' is not
+    ISO 4217.'
+  auto_fix: *id003

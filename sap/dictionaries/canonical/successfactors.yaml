@@ -144,6 +144,28 @@ tables:
       SUBMITTED_DATE:     {source: EmployeeTimeSheet.submittedDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
       LAST_MODIFIED_DATE: {source: EmployeeTime.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified timestamp of the time record}
       QUANTITY_IN_DAYS:   {source: EmployeeTime.quantityInDays, type: DECIMAL, verify: true, description: Absence quantity expressed in days (full/half day)}
+      ENTRY_TIME_TYPE:     {source: EmployeeTimeSheetEntry.timeType, type: STRING, length: 128, verify: true, description: Attendance time type of the entry}
+      ENTRY_START_TIME:    {source: EmployeeTimeSheetEntry.startTime, type: STRING, length: 8, verify: true, description: Clock-in time (HH:MM or HH:MM:SS)}
+      ENTRY_END_TIME:      {source: EmployeeTimeSheetEntry.endTime, type: STRING, length: 8, verify: true, description: Clock-out time (HH:MM or HH:MM:SS)}
+      SHEET_START_DATE:    {source: EmployeeTimeSheet.startDate, type: DATE, verify: true, description: Timesheet period start}
+      SHEET_END_DATE:      {source: EmployeeTimeSheet.endDate, type: DATE, verify: true, description: Timesheet period end}
+      ABSENCE_ID:          {source: EmployeeTime.externalCode, type: STRING, length: 128, verify: true, description: Absence record ID}
+      ABSENCE_START_DATE:  {source: EmployeeTime.startDate, type: DATE, verify: true, description: Absence start}
+      ABSENCE_END_DATE:    {source: EmployeeTime.endDate, type: DATE, verify: true, description: Absence end}
+      ABSENCE_APPROVAL_STATUS: {source: EmployeeTime.approvalStatus, type: STRING, length: 32, verify: true, description: Absence approval status}
+      ABSENCE_HOURS:       {source: EmployeeTime.quantityInHours, type: DECIMAL, verify: true, description: Absence quantity in hours}
+      UNDETERMINED_END:    {source: EmployeeTime.undeterminedEndDate, type: BOOLEAN, verify: true, description: Absence has an open (undetermined) end date}
+      TIME_ACCOUNT_ID:     {source: TimeAccount.externalCode, type: STRING, length: 128, verify: true, description: Time account ID}
+      ACCOUNT_START_DATE:  {source: TimeAccount.startDate, type: DATE, verify: true, description: Time account validity start}
+      ACCOUNT_END_DATE:    {source: TimeAccount.endDate, type: DATE, verify: true, description: Time account validity end}
+      BOOKING_START_DATE:  {source: TimeAccount.bookingStartDate, type: DATE, verify: true, description: First date bookable against the account}
+      BOOKING_END_DATE:    {source: TimeAccount.bookingEndDate, type: DATE, verify: true, description: Last date bookable against the account}
+      ACCOUNT_CLOSED:      {source: TimeAccount.accountClosed, type: BOOLEAN, verify: true, description: Time account closed}
+      WORK_SCHEDULE:       {source: EmpJob.workscheduleCode, type: STRING, length: 128, verify: true, description: Work schedule of the employee}
+      HOLIDAY_CALENDAR:    {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar of the employee}
+      TIME_TYPE_PROFILE:   {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true, description: Time profile (allowed time types)}
+      TIME_RECORDING_PROFILE: {source: EmpJob.timeRecordingProfileCode, type: STRING, length: 128, verify: true, description: Time recording profile}
+      TIME_RECORDING_VARIANT: {source: EmpJob.timeRecordingVariant, type: STRING, length: 32, verify: true, description: DURATION or CLOCK_TIME recording}
 
   BENEFITENROLLMENT:
     description: Benefit enrolments
@@ -177,6 +199,14 @@ tables:
       GOAL_CATEGORY:       {source: Goal.category, type: STRING, length: 128, picklist: goalCategory, verify: true, description: Goal category (individual/team/organizational/development)}
       CASCADED_FROM:       {source: Goal.cascadeParentId, type: STRING, length: 38, verify: true, description: Parent goal this goal was cascaded/aligned from}
       COMPLETION_PERCENT:  {source: Goal.metricAchievement, type: DECIMAL, verify: true, description: Percent of goal achievement recorded against its metric}
+      GOAL_PLAN_ID:        {source: GoalPlanTemplate.id, type: INTEGER, verify: true, description: Goal plan (template) the goal belongs to}
+      PLAN_START_DATE:     {source: GoalPlanTemplate.startDate, type: DATE, verify: true, description: Goal plan period start}
+      PLAN_END_DATE:       {source: GoalPlanTemplate.dueDate, type: DATE, verify: true, description: Goal plan period end (plan due date)}
+      LAST_MODIFIED:       {source: Goal.lastModified, type: DATETIME, verify: true, description: Goal last modified}
+      VISIBILITY_FLAG:     {source: Goal.flag, type: INTEGER, verify: true, description: 0 public / 1 private goal}
+      ACTUAL_ACHIEVEMENT:  {source: Goal.actualAchievement, type: DECIMAL, verify: true, description: Actual achievement recorded against the metric}
+      CURRENT_OWNER:       {source: Goal.currentOwner, type: STRING, length: 100, verify: true, description: User currently owning the goal}
+      MODIFIER:            {source: Goal.modifier, type: STRING, length: 100, verify: true, description: User who last modified the goal}
 
   PMREVIEWRESULT:
     description: Performance review forms
@@ -192,6 +222,16 @@ tables:
       SELF_RATING:    {source: FormSummarySection.overallFormRating (self step), type: DECIMAL, verify: true}
       FORM_TEMPLATE_ID: {source: FormHeader.templateId, type: STRING, length: 38, verify: true, description: Review form template}
       SIGNOFF_DATE:     {source: FormHeader.signOffDate, type: DATE, verify: true, description: Employee sign-off date}
+      FORM_DATA_ID:       {source: FormHeader.formDataId, type: INTEGER, verify: true, description: Form instance ID}
+      FORM_TEMPLATE_TYPE: {source: FormHeader.formTemplateType, type: STRING, length: 32, verify: true, description: Template type such as Review or 360}
+      FORM_TITLE:         {source: FormHeader.formTitle, type: STRING, length: 255, verify: true, description: Form title}
+      REVIEW_END_DATE:    {source: FormHeader.formReviewEndDate, type: DATE, verify: true, description: Review period end}
+      REVIEW_DUE_DATE:    {source: FormHeader.formReviewDueDate, type: DATE, verify: true, description: Form due date}
+      CREATION_DATE:      {source: FormHeader.creationDate, type: DATETIME, verify: true, description: Form launched on}
+      CURRENT_STEP:       {source: FormHeader.currentStep, type: STRING, length: 255, verify: true, description: Route-map step the form sits in}
+      STEP_DUE_DATE:      {source: FormHeader.stepDueDate, type: DATE, verify: true, description: Due date of the current route-map step}
+      FORM_ORIGINATOR:    {source: FormHeader.formOriginator, type: STRING, length: 100, verify: true, description: User who launched the form}
+      IS_RATED:           {source: FormHeader.isRated, type: BOOLEAN, verify: true, description: Form carries an overall rating}
 
   SUCCESSIONCANDIDATE:
     description: Succession nominations
@@ -205,6 +245,25 @@ tables:
       RANKING:        {source: Successor.rank, type: INTEGER, verify: true}
       RISK_OF_LOSS:   {source: User.riskOfLoss, type: STRING, verify: true}
       IMPACT_OF_LOSS: {source: User.impactOfLoss, type: STRING, verify: true}
+      TALENT_POOL_ID:            {source: TalentPool.id, type: STRING, length: 128, verify: true, description: Talent pool the candidate is assigned to}
+      DEVELOPMENT_PLAN_ID:       {source: DevelopmentGoal.planId, type: STRING, length: 128, verify: true, description: Linked development plan}
+      NINE_BOX_RATING:           {source: Successor.nineBoxRating, type: STRING, verify: true, description: Performance/potential grid position (1-9)}
+      PERFORMANCE_RATING:        {source: User.performanceRating, type: STRING, verify: true, description: Latest performance rating (1-5)}
+      POTENTIAL_RATING:          {source: User.potentialRating, type: STRING, verify: true, description: Potential rating (LOW/MEDIUM/HIGH)}
+      CALIBRATION_STATUS:        {source: Successor.calibrationStatus, type: STRING, verify: true, description: Talent review calibration status}
+      CALIBRATION_DATE:          {source: Successor.calibrationDate, type: DATETIME, verify: true, description: Date the nomination was last calibrated}
+      APPROVAL_STATUS:           {source: Successor.approvalStatus, type: STRING, verify: true, description: Approval status of the nomination}
+      NOMINATED_BY:               {source: Successor.nominatedBy, type: STRING, length: 100, verify: true, description: User ID of the nominating manager}
+      SUCCESSOR_TYPE:             {source: Successor.successorType, type: STRING, verify: true, description: INTERNAL or EXTERNAL candidate}
+      EMERGENCY_SUCCESSOR_FLAG:   {source: Successor.emergencySuccessor, type: BOOLEAN, verify: true, description: Flagged as an emergency (interim) successor}
+      BACKUP_SUCCESSOR_FLAG:      {source: Successor.backupSuccessor, type: BOOLEAN, verify: true, description: Flagged as a backup (non-primary) successor}
+      MOBILITY_FLAG:              {source: User.mobilityFlag, type: BOOLEAN, verify: true, description: Candidate is willing to relocate/transfer}
+      DIVERSITY_CANDIDATE_FLAG:   {source: User.diversityCandidate, type: BOOLEAN, verify: true, description: Flagged as a diverse-slate candidate for the plan}
+      ELIGIBLE_SUCCESSOR_FLAG:    {source: Successor.eligibilityFlag, type: BOOLEAN, verify: true, description: Meets the position's minimum eligibility criteria}
+      RETENTION_RISK_SCORE:       {source: User.retentionRiskScore, type: DECIMAL, verify: true, description: Flight-risk score (0-100) used for retention prioritisation}
+      TARGET_READY_DATE:          {source: Successor.targetReadyDate, type: DATE, verify: true, description: Date the candidate is targeted to be ready}
+      EFFECTIVE_START_DATE:       {source: Successor.startDate, type: DATE, verify: true, description: Effective start date of this nomination record}
+      EFFECTIVE_END_DATE:         {source: Successor.endDate, type: DATE, verify: true, description: Effective end date of this nomination record}
 
   JOBREQUISITION:
     description: Job requisitions (Recruiting)
@@ -220,6 +279,17 @@ tables:
       CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
       NUM_OPENINGS:   {source: JobRequisition.numberOfOpenings, type: INTEGER, verify: true}
       DEPARTMENT:     {source: JobRequisition.department, type: STRING, length: 128, verify: true}
+      POSITION_NUMBER: {source: JobRequisition.positionNumber, type: STRING, length: 128, verify: true, description: Position the requisition fills}
+      SALARY_MIN:      {source: JobRequisition.salaryMin, type: DECIMAL, verify: true, description: Pay range minimum}
+      SALARY_MAX:      {source: JobRequisition.salaryMax, type: DECIMAL, verify: true, description: Pay range maximum}
+      CURRENCY:        {source: JobRequisition.currency, type: STRING, length: 20, verify: true, description: Pay range currency}
+      JOB_CODE:        {source: JobRequisition.jobCode, type: STRING, length: 128, verify: true, description: Job classification}
+      COUNTRY:         {source: JobRequisition.country, type: STRING, length: 128, verify: true, description: Country of the job}
+      LOCATION:        {source: JobRequisition.location, type: STRING, length: 128, verify: true, description: Location of the job}
+      OPENINGS_FILLED: {source: JobRequisition.openingsFilled, type: INTEGER, verify: true, description: Openings already filled}
+      DELETED:         {source: JobRequisition.deleted, type: STRING, length: 16, verify: true, description: Requisition deleted flag}
+      INTERNAL_STATUS: {source: JobRequisition.internalStatus, type: STRING, length: 32, verify: true, description: Approval state such as Pre-Approved or Approved}
+      LAST_MODIFIED:   {source: JobRequisition.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified}
 
   JOBAPPLICATION:
     description: Job applications (Recruiting)
@@ -233,6 +303,10 @@ tables:
       APPLICATION_DATE: {source: JobApplication.applicationDate, type: DATETIME, verify: true}
       RATING:           {source: JobApplication.averageRating, type: DECIMAL, verify: true}
       REJECT_REASON:    {source: JobApplication.rejectReason, type: STRING, verify: true}
+      APPLICATION_ID:   {source: JobApplication.applicationId, type: INTEGER, verify: true, description: Application ID}
+      EMAIL:            {source: JobApplication.contactEmail, type: STRING, length: 255, verify: true, description: Candidate contact e-mail}
+      START_DATE:       {source: JobApplication.startDate, type: DATE, verify: true, description: Agreed start date on the application}
+      LAST_MODIFIED:    {source: JobApplication.lastModifiedDateTime, type: DATETIME, verify: true, description: Last status change}
 
   ONBOARDINGCANDIDATEINFO:
     description: Onboarding processes (Onboarding 2.0)
@@ -246,6 +320,11 @@ tables:
       MANAGER_ID:              {source: EmpJob.managerId, type: STRING, length: 100}
       TASK_COMPLETION:         {source: ONB2Process.processTrigger, type: STRING, verify: true}
       BACKGROUND_CHECK_STATUS: {source: ONB2Process.backgroundCheckStatus, type: STRING, verify: true}
+      PROCESS_ID:              {source: ONB2Process.processId, type: STRING, length: 128, verify: true, description: Onboarding process ID}
+      CANCELLED_ON:            {source: ONB2Process.cancelledOn, type: DATETIME, verify: true, description: Process cancelled on}
+      CANCEL_REASON:           {source: ONB2Process.cancelEventReason, type: STRING, length: 128, verify: true, description: Cancellation event reason}
+      HIRE_STATUS:             {source: ONB2Process.onboardingHireStatus, type: STRING, length: 32, verify: true, description: Hire status of the onboardee}
+      INTERNAL_HIRE:           {source: ONB2Process.onboardingInternalHire, type: BOOLEAN, verify: true, description: Internal hire / rehire flag}
 
   JOBOFFER:
     description: Job offers (Recruiting)
@@ -258,6 +337,10 @@ tables:
       OFFER_STATUS:  {source: JobOffer.status, type: STRING, verify: true}
       OFFER_DATE:    {source: JobOffer.offerDate, type: DATETIME, verify: true}
       START_DATE:    {source: JobOffer.startDate, type: DATE, verify: true}
+      APPLICATION_ID: {source: JobOffer.applicationId, type: INTEGER, verify: true, description: Application the offer belongs to}
+      SALARY:         {source: JobOffer.salaryBase, type: DECIMAL, verify: true, description: Offered base salary}
+      CURRENCY:       {source: JobOffer.currency, type: STRING, length: 20, verify: true, description: Offer currency}
+      LAST_MODIFIED:  {source: JobOffer.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified}
 
   LEARNINGASSIGNMENT:
     description: Learning assignments (SAP SuccessFactors Learning OData)
@@ -276,6 +359,12 @@ tables:
       CURRICULUM_ID:   {source: learning.curriculumID, type: STRING, length: 90, verify: true}
       CLASS_START_DATE: {source: learning.sessionStartDate, type: DATETIME, verify: true}
       CLASS_END_DATE:   {source: learning.sessionEndDate, type: DATETIME, verify: true}
+      REVISION_DATE:    {source: learning.revisionDate, type: DATETIME, verify: true, description: Item revision assigned}
+      EXPIRATION_DATE:  {source: learning.expirationDate, type: DATETIME, verify: true, description: Curriculum / certification expiry}
+      SCHEDULE_ID:      {source: learning.scheduleID, type: STRING, length: 90, verify: true, description: Scheduled offering (class) ID}
+      INSTRUCTOR_ID:    {source: learning.instructorID, type: STRING, length: 90, verify: true, description: Primary instructor of the scheduled offering}
+      ITEM_ACTIVE:      {source: Item.active, type: BOOLEAN, verify: true, description: Learning item is active in the catalogue}
+      ASSIGNMENT_TYPE:  {source: learning.assignmentTypeID, type: STRING, length: 90, verify: true, description: Assignment type (required/optional source)}
 
   LEARNINGCOMPLETION:
     description: Learning history / completions
@@ -289,6 +378,12 @@ tables:
       SCORE:           {source: learningHistory.score, type: DECIMAL, verify: true}
       CREDIT_HOURS:    {source: learningHistory.creditHours, type: DECIMAL, verify: true}
       PASSING_SCORE:   {source: learningHistory.cutScore, type: DECIMAL, verify: true}
+      REVISION_DATE:   {source: learningHistory.revisionDate, type: DATETIME, verify: true, description: Item revision completed}
+      ITEM_TYPE:       {source: learningHistory.componentTypeID, type: STRING, length: 90, verify: true, description: Item type}
+      TOTAL_HOURS:     {source: learningHistory.totalHours, type: DECIMAL, verify: true, description: Total hours of the item}
+      CONTACT_HOURS:   {source: learningHistory.contactHours, type: DECIMAL, verify: true, description: Contact (instructor-led) hours}
+      CPE_HOURS:       {source: learningHistory.cpeHours, type: DECIMAL, verify: true, description: Continuing professional education hours}
+      GRADE:           {source: learningHistory.grade, type: STRING, length: 90, verify: true, description: Grade awarded}
 
   POSITION:
     description: Positions (Position Management), current record
@@ -302,6 +397,7 @@ tables:
       COST_CENTER:      {source: Position.costCenter, type: STRING, length: 128, verify: true, description: Cost centre of the position}
       VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
       EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
+      CRITICALITY:      {source: Position.criticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
 
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
