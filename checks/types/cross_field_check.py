@@ -35,12 +35,15 @@ def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         elif f is None and pd.api.types.is_numeric_dtype(s):
             v = s  # unknown (e.g. customer Z) field already numeric
         elif f is None:
-            txt = s.astype("string").str.strip()
+            txt = s.astype("string[python]").str.strip()
             num = pd.to_numeric(txt, errors="coerce")
             # infer numbers only when every populated value parses as one
             v = num if num[~blank].notna().all() and (~blank).any() else txt
         else:
-            v = s.astype("string").str.strip()
+            # python-backed (not arrow) string dtype: arrow-backed comparisons return
+            # bool[pyarrow] while .str.contains() returns numpy "boolean" — combining
+            # the two with & raises "boolean value of NA is ambiguous" (pandas 3.x).
+            v = s.astype("string[python]").str.strip()
         out[c] = v.mask(blank)
     return pd.DataFrame(out, index=df.index)
 
