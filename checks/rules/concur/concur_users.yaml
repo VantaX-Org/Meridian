@@ -208,3 +208,401 @@ rules:
   fix_map:
     __other__: Correct the flag.
   record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: active flag is {actual_value}.'
+- id: CNU015
+  field: CONCUR_USER.LOGIN_ID
+  check_class: regex_check
+  pattern: ^\S+$
+  severity: medium
+  dimension: validity
+  message: Login ID contains whitespace
+  why_it_matters: Single sign-on and the HR feed match the login ID as an exact string. An embedded space or tab, usually a
+    copy-paste artifact, never matches the identity provider's stored value.
+  rule_authority: best_practice
+  sap_impact: Single sign-on fails for the user; the HR import creates a second profile because the key does not match.
+  fix_map:
+    __other__: Re-extract the user list; trim the login ID in the source system if the value itself carries the space.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: login ID contains whitespace.'
+- id: CNU016
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: regex_check
+  pattern: ^\S+$
+  severity: medium
+  dimension: validity
+  message: Employee ID contains whitespace
+  why_it_matters: The employee ID is matched byte-for-byte against the HR feed and the ERP employee vendor master. A stray
+    space breaks the match even though the value looks identical on screen.
+  rule_authority: best_practice
+  sap_impact: The employee match fails silently; reimbursement posting creates a new employee instead of matching the
+    existing one.
+  fix_map:
+    __other__: Re-extract the user list; trim the employee ID in the source system.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID contains whitespace.'
+- id: CNU017
+  field: CONCUR_USER.EMAIL
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_USER.EMAIL
+  case_insensitive: true
+  severity: medium
+  dimension: uniqueness
+  message: E-mail address is shared by more than one Concur user
+  why_it_matters: Two different logins pointing at the same mailbox means approval and receipt-forwarding e-mails for both
+    profiles land in one inbox and cannot be told apart.
+  rule_authority: best_practice
+  sap_impact: Notifications for two different employees cannot be distinguished; one profile's workflow e-mails are lost in
+    the other's mailbox.
+  fix_map:
+    __other__: Give each user their own e-mail address, or merge the duplicate profiles.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: e-mail {actual_value} is used by another user.'
+- id: CNU018
+  field: CONCUR_USER.FIRST_NAME
+  check_class: regex_check
+  pattern: ^[A-Za-z][A-Za-z'\-. ]*$
+  severity: low
+  dimension: validity
+  message: First name contains characters other than letters, apostrophe, hyphen or space
+  why_it_matters: A first name with digits or stray punctuation is almost always a merge or OCR error that carried a
+    neighbouring field's content into the name.
+  rule_authority: best_practice
+  sap_impact: Payment files and audit trails carry a corrupted payee name.
+  fix_map:
+    __other__: Correct the first name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} looks corrupted.'
+- id: CNU019
+  field: CONCUR_USER.LAST_NAME
+  check_class: regex_check
+  pattern: ^[A-Za-z][A-Za-z'\-. ]*$
+  severity: low
+  dimension: validity
+  message: Last name contains characters other than letters, apostrophe, hyphen or space
+  why_it_matters: A last name with digits or stray punctuation is almost always a merge or OCR error that carried a
+    neighbouring field's content into the name.
+  rule_authority: best_practice
+  sap_impact: Payment files and audit trails carry a corrupted payee name.
+  fix_map:
+    __other__: Correct the last name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name {actual_value} looks corrupted.'
+- id: CNU020
+  field: CONCUR_USER.LAST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.LAST_NAME`.str.upper().isin(['TEST','UNKNOWN','TBD','N/A','XXX'])"
+  severity: low
+  dimension: validity
+  message: Last name looks like placeholder or test data
+  why_it_matters: Profiles created for testing or left incomplete during onboarding sometimes carry a placeholder surname
+    instead of being deleted, and that value then flows into production reporting.
+  rule_authority: best_practice
+  sap_impact: Test or placeholder identities appear as real payees in the audit trail and headcount reporting.
+  fix_map:
+    __other__: Delete the test profile or maintain the real surname.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name {actual_value} looks like placeholder data.'
+- id: CNU021
+  field: CONCUR_USER.FIRST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.FIRST_NAME`.str.upper().isin(['TEST','UNKNOWN','TBD','N/A','XXX'])"
+  severity: low
+  dimension: validity
+  message: First name looks like placeholder or test data
+  why_it_matters: Profiles created for testing or left incomplete during onboarding sometimes carry a placeholder first name
+    instead of being deleted, and that value then flows into production reporting.
+  rule_authority: best_practice
+  sap_impact: Test or placeholder identities appear as real payees in the audit trail and headcount reporting.
+  fix_map:
+    __other__: Delete the test profile or maintain the real first name.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} looks like placeholder data.'
+- id: CNU022
+  field: CONCUR_REPORT.APPROVER_LOGIN_ID
+  check_class: exists_check
+  target_table: CONCUR_USER
+  target_fields:
+  - LOGIN_ID
+  grain: CONCUR_REPORT
+  applies_when:
+    CONCUR_REPORT.APPROVER_LOGIN_ID:
+      populated: true
+  severity: high
+  dimension: consistency
+  message: Expense report approver is not a Concur user
+  why_it_matters: Concur routes the approval to whoever's login matches the approver field. When that login is not a current
+    Concur user the workflow has no one to route to.
+  rule_authority: sap_hard_constraint
+  sap_impact: The approval workflow stalls with no valid user to route to; the report cannot move past the approver step.
+  fix_map:
+    __other__: Restore the approver's profile or reassign the report to a current approver.
+  record_fix_template: 'Expense report {CONCUR_REPORT.REPORT_ID}: approver {CONCUR_REPORT.APPROVER_LOGIN_ID} is not a Concur
+    user.'
+- id: CNU023
+  field: CONCUR_USER.EMAIL
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.EMAIL` != `CONCUR_USER.EMAIL`.str.lower()'
+  severity: low
+  dimension: validity
+  message: E-mail address is not stored in lowercase
+  why_it_matters: The canonical Concur extract normalises e-mail addresses to lowercase. A mixed-case value means the
+    normalisation was bypassed, and case-sensitive downstream matching (SMTP routing, de-duplication) treats it as a
+    different address.
+  rule_authority: best_practice
+  sap_impact: Case-sensitive matching against the HR feed or the mail system misses the user.
+  fix_map:
+    __other__: Re-extract the user list, or lower-case the e-mail address at the source.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: e-mail {actual_value} is not lowercase.'
+- id: CNU024
+  field: CONCUR_USER.FIRST_NAME
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.FIRST_NAME`.str.len() == 1'
+  severity: low
+  dimension: validity
+  message: First name is a single character
+  why_it_matters: A one-character first name is usually a truncated value, cut short by a fixed-width export or a
+    spreadsheet column that was too narrow.
+  rule_authority: best_practice
+  sap_impact: The payee name on payment files and reports shows only an initial instead of the full first name.
+  fix_map:
+    __other__: Maintain the full first name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} is suspiciously short.'
+- id: CNU025
+  field: CONCUR_USER.LAST_NAME
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.LAST_NAME`.str.len() == 1'
+  severity: low
+  dimension: validity
+  message: Last name is a single character
+  why_it_matters: A one-character last name is usually a truncated value, cut short by a fixed-width export or a
+    spreadsheet column that was too narrow.
+  rule_authority: best_practice
+  sap_impact: The payee name on payment files and reports shows only an initial instead of the full surname.
+  fix_map:
+    __other__: Maintain the full last name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name {actual_value} is suspiciously short.'
+- id: CNU026
+  field: CONCUR_USER.ACTIVE
+  check_class: cross_field_check
+  fail_when: "(`CONCUR_USER.ACTIVE` == 'true') & `CONCUR_USER.EMAIL`.isna() & `CONCUR_USER.COST_CENTER`.isna() & `CONCUR_USER.EMPLOYEE_ID`.isna()"
+  severity: medium
+  dimension: completeness
+  message: Active Concur user has no e-mail, cost centre or employee ID
+  why_it_matters: An active profile with every linking field blank is the signature of a test or onboarding record that was
+    never completed, not a real active employee.
+  rule_authority: best_practice
+  sap_impact: A ghost active profile sits in headcount and licence counts, and cannot be matched to HR, payroll or
+    controlling data if it is ever used.
+  fix_map:
+    __other__: Complete the profile or deactivate it.
+  record_fix_template: Concur user {CONCUR_USER.LOGIN_ID} is active but has no e-mail, cost centre or employee ID.
+- id: CNU027
+  field: CONCUR_USER.FIRST_NAME
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.FIRST_NAME`.str.upper() == `CONCUR_USER.LAST_NAME`.str.upper()'
+  severity: low
+  dimension: validity
+  message: First name and last name are identical
+  why_it_matters: When both name fields hold the same value, the HR feed's name-split logic likely failed and wrote the
+    same token into both halves of the identity.
+  rule_authority: best_practice
+  sap_impact: The payee name is printed as a doubled token, e.g. 'Doe Doe', on payment files and expense reports.
+  fix_map:
+    __other__: Correct the first or last name in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name and last name are both {actual_value}.'
+- id: CNU028
+  field: CONCUR_USER.LOGIN_ID
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.LOGIN_ID`.str.contains('@') & (`CONCUR_USER.LOGIN_ID`.str.lower() != `CONCUR_USER.EMAIL`.str.lower())"
+  severity: medium
+  dimension: consistency
+  message: Login ID looks like an e-mail address but does not match the user's e-mail
+  why_it_matters: When the login is formatted as an address, the identity provider usually requires it to match the mailbox
+    exactly. A mismatch is typically a leftover from a mailbox rename that never propagated to the login.
+  rule_authority: best_practice
+  sap_impact: Single sign-on challenges the user against a mailbox that no longer matches the login, so authentication
+    fails.
+  fix_map:
+    __other__: Update the login ID to match the current e-mail address, or correct the e-mail address.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: login does not match e-mail {actual_value}.'
+- id: CNU029
+  field: CONCUR_USER.COST_CENTER
+  check_class: regex_check
+  pattern: ^[A-Z0-9][A-Z0-9\-]*$
+  severity: low
+  dimension: validity
+  message: Cost centre contains lowercase letters or punctuation other than a hyphen
+  why_it_matters: SAP cost centre codes are stored upper-case and alphanumeric. A lower-case or punctuated value usually
+    means the record came from a system that did not normalise it, or passed through a spreadsheet that reformatted it as
+    a number (adding a trailing '.0').
+  rule_authority: best_practice
+  sap_impact: Cost centre lookup and validation against the controlling master fails on the case or punctuation mismatch.
+  fix_map:
+    __other__: Correct the cost centre code to the ERP's upper-case alphanumeric value.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: cost centre {actual_value} is not a valid SAP code.'
+- id: CNU030
+  field: CONCUR_USER.ORG_UNIT
+  check_class: regex_check
+  pattern: ^\S+$
+  severity: medium
+  dimension: validity
+  message: Organisation unit contains whitespace
+  why_it_matters: The organisation unit is matched as an exact string against the company code mapping table. An embedded
+    space breaks that match.
+  rule_authority: best_practice
+  sap_impact: The expense cannot be mapped to a company code even though the value looks correct on screen.
+  fix_map:
+    __other__: Trim the organisation unit value at the source.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: organisation unit contains whitespace.'
+- id: CNU031
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9\-]+$
+  severity: medium
+  dimension: validity
+  message: Employee ID contains characters other than letters, digits or hyphen
+  why_it_matters: Personnel numbers extracted from the HR system are alphanumeric. Punctuation other than a hyphen usually
+    means two CSV fields were merged into one during the HR feed export.
+  rule_authority: best_practice
+  sap_impact: The match against the HR employee master fails because the corrupted value has no counterpart.
+  fix_map:
+    __other__: Re-extract the employee ID from the HR feed without the extra punctuation.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID {actual_value} has unexpected characters.'
+- id: CNU032
+  field: CONCUR_USER.LOGIN_ID
+  check_class: regex_check
+  pattern: ^[A-Za-z0-9._@\-]+$
+  severity: medium
+  dimension: validity
+  message: Login ID contains unexpected characters
+  why_it_matters: Logins are composed of letters, digits, dots, '@' and hyphen. Any other character is almost always a
+    copy-paste artifact (a smart quote, a control character) that never matches the identity provider's stored value.
+  rule_authority: best_practice
+  sap_impact: Single sign-on fails because the stored login differs from the identity provider's value.
+  fix_map:
+    __other__: Re-extract the login ID from the source system.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: login ID has unexpected characters.'
+- id: CNU033
+  field: CONCUR_USER.EMAIL
+  check_class: regex_check
+  pattern: ^(?!.*\.\.).+$
+  severity: medium
+  dimension: validity
+  message: E-mail address contains consecutive dots
+  why_it_matters: An address with consecutive dots is not deliverable by any mail system, even though it can still look
+    superficially well formed.
+  rule_authority: best_practice
+  sap_impact: Workflow e-mails and receipt forwarding bounce.
+  fix_map:
+    __other__: Correct the e-mail address in the user profile or the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: e-mail {actual_value} contains consecutive dots.'
+- id: CNU034
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.EMPLOYEE_ID` == `CONCUR_USER.LOGIN_ID`'
+  severity: low
+  dimension: validity
+  message: Employee ID is identical to the login ID
+  why_it_matters: The employee ID (HR) and the login ID (IT) are assigned by different systems. An exact match is the
+    signature of a placeholder value copied from one field into the other during a bulk load, not a real personnel number.
+  rule_authority: best_practice
+  sap_impact: The vendor/employee match in FI uses the employee ID as a key; a copied-over login string never matches a
+    real HR personnel number.
+  fix_map:
+    __other__: Maintain the real personnel number as the employee ID.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID is identical to the login ID.'
+- id: CNU035
+  field: CONCUR_USER.EMPLOYEE_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.EMPLOYEE_ID`.str.len() < 2'
+  severity: low
+  dimension: validity
+  message: Employee ID is implausibly short
+  why_it_matters: Personnel numbers in the source HR system are always at least two characters. A single character almost
+    always means the value was truncated by a fixed-width export or a spreadsheet.
+  rule_authority: best_practice
+  sap_impact: A truncated employee ID fails to match any real HR personnel number, breaking expense-to-payroll
+    reconciliation.
+  fix_map:
+    __other__: Re-extract the full employee ID from the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: employee ID {actual_value} is implausibly short.'
+- id: CNU036
+  field: CONCUR_USER.LOGIN_ID
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.LOGIN_ID`.str.len() < 2'
+  severity: low
+  dimension: validity
+  message: Login ID is implausibly short
+  why_it_matters: A one-character login is almost always a truncated value from a fixed-width export or a spreadsheet
+    column that was too narrow, not a real identity-provider login.
+  rule_authority: best_practice
+  sap_impact: A truncated login never matches the identity provider's stored value, so single sign-on fails.
+  fix_map:
+    __other__: Re-extract the full login ID from the source system.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: login ID is implausibly short.'
+- id: CNU037
+  field: CONCUR_USER.ORG_UNIT
+  check_class: cross_field_check
+  fail_when: '`CONCUR_USER.ORG_UNIT`.notna() & (`CONCUR_USER.ORG_UNIT` == `CONCUR_USER.COST_CENTER`)'
+  severity: medium
+  dimension: consistency
+  message: Organisation unit is identical to the cost centre
+  why_it_matters: The organisation unit (company code mapping) and the cost centre (controlling object) come from
+    different parts of the HR master. An exact match is the signature of a column-order error in the import file where one
+    value was copied into both fields.
+  rule_authority: best_practice
+  sap_impact: The employee's company-code and cost-centre assignment is built on a corrupted key and may misroute postings.
+  fix_map:
+    __other__: Correct the organisation unit or the cost centre in the HR feed.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: organisation unit and cost centre are both {actual_value}.'
+- id: CNU038
+  field: CONCUR_USER.FIRST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.FIRST_NAME`.str.len() > 1 & `CONCUR_USER.FIRST_NAME`.str.isupper()"
+  severity: low
+  dimension: validity
+  message: First name is stored in all capital letters
+  why_it_matters: Names copied from legacy mainframe HR extracts are often stored in all capitals. An all-caps name was
+    never normalised after migration.
+  rule_authority: best_practice
+  sap_impact: The payee name on payment files is in ALL CAPS, inconsistent with normalised HR records, and flags during
+    bank file reconciliation.
+  fix_map:
+    __other__: Normalise the first name to mixed case.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} is all capitals.'
+- id: CNU039
+  field: CONCUR_USER.LAST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.LAST_NAME`.str.len() > 1 & `CONCUR_USER.LAST_NAME`.str.isupper()"
+  severity: low
+  dimension: validity
+  message: Last name is stored in all capital letters
+  why_it_matters: Names copied from legacy mainframe HR extracts are often stored in all capitals. An all-caps name was
+    never normalised after migration.
+  rule_authority: best_practice
+  sap_impact: The payee name on payment files is in ALL CAPS, inconsistent with normalised HR records, and flags during
+    bank file reconciliation.
+  fix_map:
+    __other__: Normalise the last name to mixed case.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name {actual_value} is all capitals.'
+- id: CNU040
+  field: CONCUR_USER.LAST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.LAST_NAME`.str[0].str.islower()"
+  severity: low
+  dimension: validity
+  message: Last name does not start with a capital letter
+  why_it_matters: Surnames are conventionally capitalised. A lower-case initial letter usually means the value was
+    lower-cased by an upstream system (for example a username-style extract) rather than the properly cased HR value.
+  rule_authority: best_practice
+  sap_impact: The payee name appears without proper capitalisation on payment advices and expense reports.
+  fix_map:
+    __other__: Capitalise the first letter of the last name.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: last name {actual_value} is not capitalised.'
+- id: CNU041
+  field: CONCUR_USER.FIRST_NAME
+  check_class: cross_field_check
+  fail_when: "`CONCUR_USER.FIRST_NAME`.str[0].str.islower()"
+  severity: low
+  dimension: validity
+  message: First name does not start with a capital letter
+  why_it_matters: First names are conventionally capitalised. A lower-case initial letter usually means the value was
+    lower-cased by an upstream system (for example a username-style extract) rather than the properly cased HR value.
+  rule_authority: best_practice
+  sap_impact: The payee name appears without proper capitalisation on payment advices and expense reports.
+  fix_map:
+    __other__: Capitalise the first letter of the first name.
+  record_fix_template: 'Concur user {CONCUR_USER.LOGIN_ID}: first name {actual_value} is not capitalised.'
