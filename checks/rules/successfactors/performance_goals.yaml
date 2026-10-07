@@ -316,3 +316,404 @@ rules:
   fix_map:
     __other__: Correct the rating.
   record_fix_template: 'Review for user {PMREVIEWRESULT.USERID}: overall rating is negative. Correct the review.'
+- id: PERF023
+  field: PMREVIEWRESULT.SELF_RATING
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Self rating is missing on a completed review — self-assessment step was skipped
+  why_it_matters: SELF_RATING captures the employee's own assessment, which calibration sessions compare against the manager's
+    rating to spot over/under-confidence patterns. A completed form with no self rating means the self-assessment step of
+    the workflow was bypassed or the form was configured without one.
+  rule_authority: best_practice
+  sap_impact: Calibration dashboards cannot compare self vs manager perception for this employee. Self-assessment completion
+    metrics undercount.
+  fix_map:
+    __blank__: Check the form's route map for a self-assessment step. If the step exists but was skipped, reopen the form
+      at that step; if the template has no self step, this is expected and the rule can be scoped out for that template.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: SELF_RATING is missing on a completed form. Check the
+    self-assessment step.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED
+- id: PERF024
+  field: GOALPLAN.GOAL_STATUS
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Goal status is missing — cannot tell if the goal is active, completed or cancelled
+  why_it_matters: GOAL_STATUS drives whether a goal counts toward an employee's active goal-plan weight and whether its
+    achievement feeds the performance review. Without it, the goal cannot be reliably included in or excluded from rollups.
+  rule_authority: best_practice
+  sap_impact: Goal achievement dashboards and weighted score rollups cannot determine whether to include this goal.
+  fix_map:
+    __blank__: Set the goal state via the Goal Plan editor (active, completed or cancelled).
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_STATUS is missing. Set via the Goal
+    Plan editor.'
+- id: PERF025
+  field: GOALPLAN.GOAL_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - Active
+  - On Track
+  - Behind
+  - At Risk
+  - Completed
+  - Cancelled
+  - Deleted
+  severity: medium
+  dimension: accuracy
+  message: Goal status must be one of the configured goal plan states
+  why_it_matters: GOAL_STATUS is a tenant-configured picklist that downstream reporting filters on. A value outside the
+    configured set is either a migration artefact or an integration write using a stale state code, and such goals are
+    silently excluded from every status-filtered report.
+  rule_authority: customer_configured
+  sap_impact: Goal is invisible to status-filtered dashboards and cannot be routed by workflow rules that branch on state.
+  valid_values_with_labels:
+    Active: Active — currently being worked, on-pace status not yet assessed
+    On Track: On track — progressing as planned
+    Behind: Behind — progress is behind plan
+    At Risk: At risk — unlikely to be met without intervention
+    Completed: Completed — achievement recorded
+    Cancelled: Cancelled — no longer pursued
+    Deleted: Deleted — removed from the plan
+  fix_map:
+    __other__: Goal status '{invalid_value}' is not a configured state. Correct it via the Goal Plan editor or Admin Center
+      > Performance & Goals > Goal Plan Template picklist configuration.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: GOAL_STATUS ''{invalid_value}'' is not a configured state. Correct via the
+    Goal Plan editor.'
+- id: PERF026
+  field: PMREVIEWRESULT.FORM_STATUS
+  check_class: domain_value_check
+  allowed_values:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  severity: medium
+  dimension: accuracy
+  message: Form status must be a recognised workflow status code
+  why_it_matters: FORM_STATUS is the review form's route-map status code. Reporting and the extraction's own applies_when
+    filters key off these codes to decide whether a form is in scope for completion rate and calibration metrics. An unrecognised
+    code means the form cannot be classified into any stage.
+  rule_authority: customer_configured
+  sap_impact: Form cannot be classified as not-started, in-progress, pending-signature or completed; completion-rate reporting
+    excludes it.
+  valid_values_with_labels:
+    '1': Not started
+    '2': In progress
+    '3': Completed
+    '4': In signature / routing
+  fix_map:
+    __other__: Form status '{invalid_value}' is not a recognised code. Check Admin Center > Performance > Form Management
+      for the form's actual route step.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: FORM_STATUS ''{invalid_value}'' is not recognised.'
+- id: PERF027
+  field: PMREVIEWRESULT.SELF_RATING
+  check_class: cross_field_check
+  fail_when: (`PMREVIEWRESULT.SELF_RATING` - `PMREVIEWRESULT.MANAGER_RATING` > 2) | (`PMREVIEWRESULT.MANAGER_RATING` - `PMREVIEWRESULT.SELF_RATING`
+    > 2)
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Self rating and manager rating differ by more than 2 points
+  why_it_matters: A large gap between the employee's self-assessment and the manager's rating is exactly the pattern calibration
+    sessions are designed to surface and resolve before the overall rating is finalised. Flagging it before sign-off avoids
+    a dispute after the fact.
+  rule_authority: best_practice
+  sap_impact: Calibration session has to re-open an already-signed-off form to resolve the discrepancy; merit cycle timeline
+    slips.
+  fix_map:
+    __other__: Route the form back to manager/employee discussion before final sign-off, or flag for the calibration committee.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: self rating and manager rating differ by more than 2
+    points. Flag for calibration.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED
+- id: PERF028
+  field: PMREVIEWRESULT.OVERALL_RATING
+  check_class: cross_field_check
+  fail_when: '`PMREVIEWRESULT.OVERALL_RATING` > 5'
+  severity: medium
+  dimension: validity
+  message: Overall rating exceeds the top of the rating scale
+  why_it_matters: SuccessFactors rating scales are configured with a maximum value (typically 5). A rating above the scale
+    maximum is outside every configured rating scale and cannot be plotted on a calibration grid.
+  rule_authority: best_practice
+  sap_impact: Calibration grid and compensation matrix cannot place this rating; merit calculation referencing the rating
+    band fails or defaults.
+  fix_map:
+    __other__: Correct the rating, or confirm the review template's rating scale maximum if ratings above 5 are configured.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: overall rating exceeds the scale maximum. Correct the
+    review.'
+- id: PERF029
+  field: GOALPLAN.TARGET_DATE
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.TARGET_DATE` < `GOALPLAN.GOAL_START_DATE`'
+  require_populated: true
+  severity: low
+  dimension: validity
+  message: Goal target date is before the goal's own start date
+  why_it_matters: A goal due before it starts is a data entry or migration error — the deadline and start date were likely
+    swapped, or one of the two was carried over from a different cycle.
+  rule_authority: best_practice
+  sap_impact: Overdue-alert logic and timeliness metrics compute a negative duration for the goal.
+  fix_map:
+    __other__: Check whether TARGET_DATE and GOAL_START_DATE were swapped; correct via the Goal Plan editor.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: target date is before the goal start date.
+    Check for swapped dates.'
+- id: PERF030
+  field: GOALPLAN.GOAL_START_DATE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Goal start date is missing — cannot calculate goal duration or detect goals started before employment
+  why_it_matters: GOAL_START_DATE anchors the goal to a point on the employee's timeline. Without it, the system cannot
+    calculate how long the goal has been open or validate that it was not started before the employee joined.
+  rule_authority: best_practice
+  sap_impact: Goal duration and pacing metrics cannot be calculated for this goal. Goal-plan audit trail has a gap.
+  fix_map:
+    __blank__: Set the goal start date via the Goal Plan editor. Align with the performance cycle start or the goal plan
+      launch date.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_START_DATE is missing. Set via the Goal
+    Plan editor.'
+- id: PERF031
+  field: GOALPLAN.GOAL_START_DATE
+  check_class: cross_field_check
+  fail_when: '`GOALPLAN.GOAL_START_DATE` < `EMPEMPLOYMENT.START_DATE`'
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Goal starts before the employee's employment started
+  why_it_matters: A goal cannot have been assigned before the employee joined the company. This pattern usually means the
+    goal was copied from a template with a fixed cycle-start date rather than set per employee, or the employment start
+    date itself is wrong.
+  rule_authority: best_practice
+  sap_impact: Goal timeline predates the employee's tenure, confusing pacing and audit reports.
+  fix_map:
+    __other__: Correct the goal start date, or verify the employment start date is accurate.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: goal start date is before the employee''s
+    employment start date. Review.'
+- id: PERF032
+  field: GOALPLAN.USERID
+  check_class: uniqueness_check
+  fields:
+  - GOALPLAN.USERID
+  - GOALPLAN.GOAL_NAME
+  - GOALPLAN.GOAL_START_DATE
+  severity: medium
+  dimension: uniqueness
+  message: Employee has more than one goal with the same name starting the same day — likely a duplicate goal entry
+  why_it_matters: The same goal name created twice for the same employee in the same cycle is almost always a duplicate
+    entry (double-click on "add goal", or a failed integration retry that re-created the goal), which inflates the goal
+    count and distorts weighted-score rollups.
+  rule_authority: best_practice
+  sap_impact: Weighted goal score rollup double-counts the duplicated goal; goal count metrics are inflated.
+  fix_map:
+    __blank__: Identify the duplicate goal in the Goal Plan editor. Delete the redundant entry and keep the one with recorded
+      progress.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: duplicate goal name for the same start date.
+    Remove the redundant entry.'
+- id: PERF033
+  field: PMREVIEWRESULT.FORM_TEMPLATE_ID
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Form template ID is missing — cannot determine which rating scale or route map applies
+  why_it_matters: FORM_TEMPLATE_ID identifies the form template that defines the rating scale, sections and route map used
+    to produce this review. Without it, the review's rating cannot be interpreted against the correct scale during migration
+    or analytics.
+  rule_authority: best_practice
+  sap_impact: Rating cannot be mapped to its originating scale; cross-template rating comparisons and migration mapping
+    fail for this review.
+  fix_map:
+    __blank__: Identify the form template from the performance cycle configuration in Admin Center > Performance > Form
+      Template Settings and populate FORM_TEMPLATE_ID.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: FORM_TEMPLATE_ID is missing. Identify from the performance
+    cycle configuration.'
+- id: PERF034
+  field: GOALPLAN.CASCADED_FROM
+  check_class: exists_check
+  target_table: GOALPLAN
+  target_fields:
+  - GOAL_ID
+  severity: medium
+  dimension: consistency
+  message: Goal is cascaded from a parent goal that does not exist
+  why_it_matters: CASCADED_FROM links a goal to the higher-level (e.g. manager or departmental) goal it was aligned from.
+    A reference to a parent goal ID that is not in the extract means the alignment chain is broken — either the parent
+    was deleted or the ID was mistyped during manual cascade.
+  rule_authority: best_practice
+  sap_impact: Goal alignment / cascade reporting cannot trace this goal to its organisational objective, breaking strategy-to-execution
+    dashboards.
+  fix_map:
+    __other__: Correct CASCADED_FROM to the correct parent goal ID, or clear it if the goal is not actually cascaded.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: cascaded-from parent goal does not exist. Correct or clear CASCADED_FROM.'
+- id: PERF035
+  field: GOALPLAN.COMPLETION_PERCENT
+  check_class: cross_field_check
+  fail_when: (`GOALPLAN.COMPLETION_PERCENT` < 0) | (`GOALPLAN.COMPLETION_PERCENT` > 100)
+  require_populated: true
+  severity: medium
+  dimension: validity
+  message: Goal completion percentage must be between 0 and 100
+  why_it_matters: COMPLETION_PERCENT is the measured achievement against the goal's metric. A value outside 0-100 is not
+    a valid percentage and distorts any rollup of goal achievement into the overall performance score.
+  rule_authority: best_practice
+  sap_impact: Weighted goal achievement rollup and performance review goal section show an impossible completion value.
+  fix_map:
+    __other__: Correct the completion percentage (0-100) in the Goal Plan editor.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: completion percent is outside 0-100. Correct
+    it.'
+- id: PERF036
+  field: GOALPLAN.COMPLETION_PERCENT
+  check_class: cross_field_check
+  fail_when: (`GOALPLAN.GOAL_STATUS` == 'Completed') & (`GOALPLAN.COMPLETION_PERCENT` < 100)
+  require_populated: true
+  severity: medium
+  dimension: consistency
+  message: Goal is marked completed but its recorded achievement is below 100 percent
+  why_it_matters: A goal state of "Completed" asserts the goal was fully achieved. A completion percentage below 100 on
+    a completed goal is an inconsistency between the workflow state and the measured outcome — either the state was advanced
+    without updating the metric, or the goal was closed early.
+  rule_authority: best_practice
+  sap_impact: Goal achievement dashboards report 100% completion for a goal that only partially met its metric, overstating
+    performance.
+  fix_map:
+    __other__: Update the completion percentage to reflect actual achievement, or revert the goal status if it was closed
+      prematurely.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: marked completed but achievement is below
+    100%. Reconcile status and completion percent.'
+- id: PERF037
+  field: GOALPLAN.GOAL_CATEGORY
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Goal category is missing — cannot classify the goal for strategic alignment reporting
+  why_it_matters: GOAL_CATEGORY classifies a goal as individual, team, organisational or development, which strategic-alignment
+    dashboards use to show the mix of goal types across the workforce. Without it, the goal falls into an "uncategorised"
+    bucket that managers cannot act on.
+  rule_authority: best_practice
+  sap_impact: Strategic alignment and goal-mix dashboards show an uncategorised goal, undermining workforce planning reports.
+  fix_map:
+    __blank__: Assign a goal category via the Goal Plan editor.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: GOAL_CATEGORY is missing. Assign via the
+    Goal Plan editor.'
+- id: PERF038
+  field: GOALPLAN.GOAL_CATEGORY
+  check_class: domain_value_check
+  allowed_values:
+  - Individual
+  - Team
+  - Organizational
+  - Development
+  severity: low
+  dimension: accuracy
+  message: Goal category must be one of the configured categories
+  why_it_matters: GOAL_CATEGORY is a tenant-configured picklist used to classify goals for strategic-alignment reporting.
+    A value outside the configured set cannot be bucketed into any reported category.
+  rule_authority: customer_configured
+  sap_impact: Goal is excluded from category-based strategic alignment dashboards.
+  valid_values_with_labels:
+    Individual: Individual goal
+    Team: Team goal
+    Organizational: Organisational / company goal
+    Development: Development goal
+  fix_map:
+    __other__: Goal category '{invalid_value}' is not configured. Correct via the Goal Plan editor or Admin Center > Performance
+      & Goals picklist configuration.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: GOAL_CATEGORY ''{invalid_value}'' is not a configured category. Correct
+    via the Goal Plan editor.'
+- id: PERF039
+  field: PMREVIEWRESULT.SIGNOFF_DATE
+  check_class: cross_field_check
+  fail_when: '`PMREVIEWRESULT.SIGNOFF_DATE` < `PMREVIEWRESULT.REVIEW_PERIOD`'
+  require_populated: true
+  severity: low
+  dimension: timeliness
+  message: Employee sign-off date is before the review period even started
+  why_it_matters: Sign-off happens at the end of the review workflow, after the review period has begun. A sign-off date
+    earlier than the review period start indicates a migrated or mistyped date that cannot reflect a real sign-off event.
+  rule_authority: best_practice
+  sap_impact: Audit trail shows an impossible sign-off sequence; completion-timeliness analytics for this review are unreliable.
+  fix_map:
+    __other__: Check the form's actual sign-off date against its route history; correct SIGNOFF_DATE.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: sign-off date is before the review period start. Correct
+    it.'
+- id: PERF040
+  field: PMREVIEWRESULT.SIGNOFF_DATE
+  check_class: null_check
+  severity: low
+  dimension: completeness
+  message: Sign-off date is missing on a completed review — audit trail is incomplete
+  why_it_matters: SIGNOFF_DATE records when the employee formally acknowledged the final review, closing the audit trail
+    for the performance cycle. A completed form without a recorded sign-off date cannot evidence that the employee saw
+    the final rating, which matters for dispute and compliance purposes.
+  rule_authority: best_practice
+  sap_impact: Compliance and audit reporting cannot evidence employee acknowledgement of the completed review.
+  fix_map:
+    __blank__: Check the form's route history for the sign-off step date in Admin Center > Performance > Form Management
+      and populate SIGNOFF_DATE.
+  record_fix_template: 'Review for employee {PMREVIEWRESULT.USERID}: SIGNOFF_DATE is missing on a completed form. Check
+    the route history.'
+  applies_when:
+    PMREVIEWRESULT.FORM_STATUS:
+    - '3'
+    - Completed
+    - COMPLETED
+- id: PERF041
+  field: GOALPLAN.CASCADED_FROM
+  check_class: hierarchy_check
+  id_field: GOALPLAN.GOAL_ID
+  severity: medium
+  dimension: validity
+  message: Goal is cascaded from itself
+  why_it_matters: A goal cannot be its own parent in the alignment chain. This is always a data error — either a copy-paste
+    mistake when cascading goals, or an integration bug that wrote the goal's own ID into CASCADED_FROM.
+  rule_authority: best_practice
+  sap_impact: Alignment/cascade reporting loops on this goal, potentially breaking recursive cascade traversal.
+  fix_map:
+    __other__: Clear CASCADED_FROM or point it at the correct parent goal.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID}: CASCADED_FROM references itself. Clear it or point at the correct parent
+    goal.'
+- id: PERF042
+  field: GOALPLAN.GOAL_WEIGHT
+  check_class: cross_field_check
+  fail_when: (`GOALPLAN.GOAL_STATUS` == 'Cancelled') & (`GOALPLAN.GOAL_WEIGHT` > 0)
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Cancelled goal still carries a non-zero weight
+  why_it_matters: A cancelled goal should no longer contribute to the weighted goal-achievement rollup. A non-zero weight
+    left on a cancelled goal will still be counted by any rollup that does not explicitly exclude cancelled goals, silently
+    distorting the result.
+  rule_authority: best_practice
+  sap_impact: Weighted goal score includes a goal the employee is no longer pursuing, overstating or understating the
+    overall rollup depending on whether downstream logic excludes it.
+  fix_map:
+    __other__: Set the weight to 0 on the cancelled goal, or redistribute its weight across the remaining active goals.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: cancelled goal still has non-zero weight.
+    Set weight to 0 or redistribute.'
+- id: PERF043
+  field: GOALPLAN.GOAL_WEIGHT
+  check_class: cross_field_check
+  fail_when: (`GOALPLAN.GOAL_WEIGHT` == 0) & (`GOALPLAN.GOAL_STATUS` == 'Active')
+  require_populated: true
+  severity: low
+  dimension: consistency
+  message: Active goal has zero weight — it cannot contribute to the weighted achievement rollup
+  why_it_matters: An active goal with a weight of zero is excluded from any weighted achievement calculation, meaning the
+    employee can be fully assessed on this goal in the review form while it contributes nothing to the overall score —
+    a mismatch between what the manager rates and what rolls up.
+  rule_authority: best_practice
+  sap_impact: Manager rates goal achievement in the review form, but the weighted rollup ignores it entirely; overall score
+    does not reflect the assessed work.
+  fix_map:
+    __other__: Assign a non-zero weight to the active goal via the Goal Plan editor, or confirm the zero weight is intentional
+      for an informational-only goal.
+  record_fix_template: 'Goal {GOALPLAN.GOAL_ID} for employee {GOALPLAN.USERID}: active goal has zero weight. Assign a weight
+    or confirm it is informational only.'
