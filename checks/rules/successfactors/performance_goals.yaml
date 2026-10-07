@@ -667,9 +667,8 @@ rules:
     - COMPLETED
 - id: PERF041
   field: GOALPLAN.CASCADED_FROM
-  check_class: cross_field_check
-  fail_when: '`GOALPLAN.CASCADED_FROM` == `GOALPLAN.GOAL_ID`'
-  require_populated: true
+  check_class: hierarchy_check
+  id_field: GOALPLAN.GOAL_ID
   severity: medium
   dimension: validity
   message: Goal is cascaded from itself
