@@ -47,11 +47,21 @@ def run_load_config(self, tenant_id, system_id, load_id, job_id):
             session.commit()
             jobs.update_job(tenant_id, job_id, stage="read", message="Reading configuration")
 
+            from api.services.config_areas import build_areas
+
+            seen: list[str] = []
+
             def progress(done: int, total: int, name: str) -> None:
+                if name and name not in seen:
+                    seen.append(name)
+                areas = build_areas(system_type or "", done=set(seen[:done]), current=name or None)
                 jobs.update_job(tenant_id, job_id, stage="read", percent=int(90 * done / total) if total else 0,
-                                message=f"Reading {name}" if name else "Storing snapshot")
+                                message=f"Reading {name}" if name else "Storing snapshot", areas=areas)
 
             result = ConnectivityManager(session, tenant_id).load_config(system_id, load_id, progress)
+            objects = session.execute(text("SELECT objects FROM config_loads WHERE id = :lid AND tenant_id = :tid"),
+                                      {"lid": load_id, "tid": tenant_id}).scalar()
+            jobs.update_job(tenant_id, job_id, areas=build_areas(system_type or "", objects or []))
             jobs.finish_job(tenant_id, job_id, "completed", result=result)
             return result
         except SoftTimeLimitExceeded:

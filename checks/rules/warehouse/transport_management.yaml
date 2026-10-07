@@ -661,3 +661,210 @@ rules:
       __other__: Assign an active carrier in VT02N, or remove the deletion flag on the vendor (XK06) if it is still
         used.
     record_fix_template: 'Shipment {VTTK.TKNUM}: carrier {VTTK.TDLNR} missing or flagged for deletion.'
+
+  - id: TM038
+    field: VTTK.ROUTE
+    check_class: exists_check
+    fields:
+    - VTTK.ROUTE
+    target_table: TVRO
+    target_fields:
+    - ROUTE
+    applies_when:
+      VTTK.ROUTE:
+        populated: true
+    severity: high
+    dimension: consistency
+    message: Shipment route does not exist
+    why_it_matters: Route determines distance, transit times and the stages of the shipment.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment cost and scheduling fall back to manual values.
+    fix_map:
+      __other__: Correct the route on the shipment or create the route (OVTC).
+    record_fix_template: 'Shipment {VTTK.TKNUM}: route {VTTK.ROUTE} not in TVRO.'
+
+  - id: TM039
+    field: VTTK.STLBG
+    check_class: cross_field_check
+    fail_when: '`VTTK.STLAD`.notna() & `VTTK.STLBG`.isna()'
+    severity: low
+    dimension: completeness
+    message: Loading end set without loading start
+    why_it_matters: A completed loading with no start date cannot be measured for dwell time.
+    rule_authority: best_practice
+    sap_impact: Loading duration reports are wrong.
+    fix_map:
+      __other__: Enter the loading start date.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: loading end {VTTK.STLAD} with no start.'
+
+  - id: TM040
+    field: VTTK.STTBG
+    check_class: cross_field_check
+    fail_when: '`VTTK.STTEN`.notna() & `VTTK.STTBG`.isna()'
+    severity: low
+    dimension: completeness
+    message: Shipment end set without shipment start
+    why_it_matters: A completed shipment with no start date cannot be measured for transit time.
+    rule_authority: best_practice
+    sap_impact: Transit duration reports are wrong.
+    fix_map:
+      __other__: Enter the shipment start date.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: shipment end {VTTK.STTEN} with no start.'
+
+  - id: TM041
+    field: VTTK.DPTEN
+    check_class: freshness_check
+    max_age_hours: 24
+    applies_when:
+      VTTK.STTRG:
+        not_in:
+        - '7'
+      VTTK.STTEN:
+        blank: true
+    severity: medium
+    dimension: timeliness
+    message: Planned shipment end date has passed and the shipment is not completed
+    why_it_matters: A shipment past its planned end that is not complete is late or abandoned.
+    rule_authority: best_practice
+    sap_impact: Freight is not settled and the carrier is not rated on delivery.
+    fix_map:
+      __other__: Complete the shipment (VT02N) or cancel it.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: planned end was {actual_value}.'
+
+  - id: TM042
+    field: VTTK.SIGNI
+    check_class: cross_field_check
+    fail_when: (`VTTK.STTBG`.notna()) & `VTTK.SIGNI`.isna()
+    severity: low
+    dimension: completeness
+    message: Started shipment has no vehicle identification
+    why_it_matters: A shipment that has started should name the vehicle or container.
+    rule_authority: best_practice
+    sap_impact: Gate and yard checks cannot match the vehicle.
+    fix_map:
+      __other__: Enter the vehicle or container identification.
+    record_fix_template: Shipment {VTTK.TKNUM} started {VTTK.STTBG} with no vehicle identification.
+
+  - id: TM043
+    field: VTTK.ERDAT
+    check_class: cross_field_check
+    fail_when: '`VTTK.ERDAT` > @today'
+    severity: medium
+    dimension: validity
+    message: Shipment creation date is in the future
+    why_it_matters: A creation date later than today means the date was interfaced wrongly.
+    rule_authority: sap_hard_constraint
+    sap_impact: Ageing and cycle-time reports are wrong.
+    fix_map:
+      __other__: Correct the creation date at the source.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: created {actual_value}, in the future.'
+
+  - id: TM044
+    field: VTTK.AEDAT
+    check_class: cross_field_check
+    fail_when: '`VTTK.AEDAT` < `VTTK.ERDAT`'
+    severity: low
+    dimension: consistency
+    message: Shipment changed before it was created
+    why_it_matters: A change date earlier than the creation date points to a bad interface load.
+    rule_authority: sap_hard_constraint
+    sap_impact: Change history is unreliable.
+    fix_map:
+      __other__: Correct the dates at the source.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: changed {VTTK.AEDAT}, created {VTTK.ERDAT}.'
+
+  - id: TM045
+    field: VTTK.DISTZ
+    check_class: cross_field_check
+    fail_when: '`VTTK.DISTZ` < 0'
+    severity: medium
+    dimension: validity
+    message: Shipment distance is negative
+    why_it_matters: Distance cannot be below zero.
+    rule_authority: sap_hard_constraint
+    sap_impact: Freight cost based on distance is wrong.
+    fix_map:
+      __other__: Correct the distance.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: distance is {actual_value}.'
+
+  - id: TM046
+    field: VTTK.GESZT
+    check_class: cross_field_check
+    fail_when: (`VTTK.GESZT` > 0) & (`VTTK.FAHZT` > `VTTK.GESZT`)
+    severity: low
+    dimension: consistency
+    message: Driving time exceeds total shipment time
+    why_it_matters: Total time includes driving time. The driving time cannot be larger.
+    rule_authority: sap_hard_constraint
+    sap_impact: Scheduling and driver-hours checks are wrong.
+    fix_map:
+      __other__: Correct the times.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: driving {VTTK.FAHZT}, total {VTTK.GESZT}.'
+
+  - id: TM047
+    field: TVRO.TDLNR
+    check_class: exists_check
+    fields:
+    - TVRO.TDLNR
+    target_table: LFA1
+    target_fields:
+    - LIFNR
+    applies_when:
+      TVRO.TDLNR:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Route default carrier does not exist
+    why_it_matters: A default forwarding agent that is not a vendor cannot be paid.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipments on the route default to a vendor that cannot be invoiced.
+    fix_map:
+      __other__: Correct the forwarding agent on the route.
+    record_fix_template: 'Route {TVRO.ROUTE}: carrier {TVRO.TDLNR} not in vendor master.'
+
+  - id: TM048
+    field: TVRO.MEDST
+    check_class: cross_field_check
+    fail_when: (`TVRO.DISTZ` > 0) & `TVRO.MEDST`.isna()
+    severity: medium
+    dimension: completeness
+    message: Route distance has no unit
+    why_it_matters: A distance without a unit cannot be converted.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipments on the route get unconvertible distances.
+    fix_map:
+      __other__: Enter the distance unit on the route.
+    record_fix_template: 'Route {TVRO.ROUTE}: distance {TVRO.DISTZ} has no unit.'
+
+  - id: TM049
+    field: VTTP.TKNUM
+    check_class: uniqueness_check
+    fields:
+    - VTTP.TKNUM
+    - VTTP.VBELN
+    severity: high
+    dimension: uniqueness
+    message: Delivery is assigned twice to the same shipment
+    why_it_matters: A delivery appears once per shipment. A duplicate double-counts weight and freight.
+    rule_authority: sap_hard_constraint
+    sap_impact: Freight cost and load planning double-count the delivery.
+    fix_map:
+      __other__: Remove the duplicate assignment (VT02N).
+    record_fix_template: 'Shipment {VTTP.TKNUM}: delivery {VTTP.VBELN} assigned more than once.'
+
+  - id: TM050
+    field: VTTK.VBTYP
+    check_class: domain_value_check
+    allowed_values:
+    - '8'
+    valid_values_with_labels:
+      '8': Shipment
+    severity: medium
+    dimension: validity
+    message: Shipment has an unexpected document category
+    why_it_matters: Shipments carry category 8. Another value means a foreign document sits in the shipment table.
+    rule_authority: sap_hard_constraint
+    sap_impact: Shipment processing treats the document as a different type.
+    fix_map:
+      __other__: Review and correct the document category.
+    record_fix_template: 'Shipment {VTTK.TKNUM}: category {actual_value}.'
