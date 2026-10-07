@@ -110,6 +110,40 @@ tables:
       PAY_SCALE_TYPE:      {source: EmpJob.payScaleType, type: STRING, length: 32, verify: true, description: SAP pay scale type (PA0008.TRFAR)}
       PAY_SCALE_AREA:      {source: EmpJob.payScaleArea, type: STRING, length: 32, verify: true, description: SAP pay scale area (PA0008.TRFGB)}
       PAY_SCALE_LEVEL:     {source: EmpJob.payScaleLevel, type: STRING, length: 32, verify: true, description: SAP pay scale level (PA0008.TRFST)}
+      END_DATE:            {source: EmpCompensation.endDate, type: DATE, verify: true, description: End of the compensation record's validity}
+      PAYCOMP_END_DATE:    {source: EmpPayCompRecurring.endDate, type: DATE, verify: true, description: End of the recurring pay component's validity}
+      PAYROLL_ID:          {source: EmpCompensation.payrollId, type: STRING, length: 256, verify: true, description: Personnel number in the payroll system (EC Payroll PERNR)}
+      PAYROLL_SYSTEM_ID:   {source: EmpCompensation.payrollSystemId, type: STRING, length: 128, verify: true, description: Payroll system the employee is replicated to}
+      PAY_GRADE_STATUS:    {source: FOPayGrade.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_RANGE_CURRENCY:  {source: FOPayRange.currency, type: STRING, length: 20, verify: true, description: Currency of the pay range}
+      PAY_RANGE_FREQUENCY: {source: FOPayRange.frequencyCode, type: STRING, length: 32, verify: true, description: Frequency the pay range is expressed in}
+      PAY_RANGE_STATUS:    {source: FOPayRange.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_COMPONENT_TYPE:  {source: FOPayComponent.payComponentType, type: STRING, length: 32, verify: true, description: Pay component type (AMOUNT / PERCENTAGE / NUMBER)}
+      PAY_COMPONENT_RECURRING: {source: FOPayComponent.recurring, type: BOOLEAN, verify: true, description: Pay component is a recurring component}
+      PAY_COMPONENT_CURRENCY:  {source: FOPayComponent.currency, type: STRING, length: 20, verify: true, description: Default currency of the pay component}
+      PAY_COMPONENT_FREQUENCY: {source: FOPayComponent.frequencyCode, type: STRING, length: 32, verify: true, description: Default frequency of the pay component}
+      PAY_COMPONENT_STATUS:    {source: FOPayComponent.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      PAY_COMPONENT_IS_EARNING: {source: FOPayComponent.isEarning, type: BOOLEAN, verify: true, description: Pay component is an earning (not a deduction)}
+      PAY_COMPONENT_CAN_OVERRIDE: {source: FOPayComponent.canOverride, type: BOOLEAN, verify: true, description: Default value of the pay component may be overridden}
+      PAY_COMPONENT_DEFAULT:   {source: FOPayComponent.payComponentValue, type: DECIMAL, verify: true, description: Default value of the pay component}
+      ANNUALIZATION_FACTOR:    {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year of the pay component frequency}
+      ANNUAL_SALARY:       {source: EmpCompensationCalculatedNavigation.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
+      RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: Calculated position in the pay range (0 at minimum, 1 at maximum)}
+
+  PAYCOMPNONREC:
+    description: One-time pay components (EmpPayCompNonRecurring)
+    source: EmpPayCompNonRecurring
+    keys: [USERID, PAY_COMPONENT, PAY_DATE]
+    fields:
+      USERID:          {source: EmpPayCompNonRecurring.userId, type: STRING, length: 100}
+      PAY_COMPONENT:   {source: EmpPayCompNonRecurring.payComponentCode, type: STRING, length: 32, verify: true, description: One-time pay component}
+      PAY_DATE:        {source: EmpPayCompNonRecurring.payDate, type: DATE}
+      VALUE:           {source: EmpPayCompNonRecurring.value, type: DECIMAL}
+      CURRENCY:        {source: EmpPayCompNonRecurring.currencyCode, type: STRING, length: 20}
+      ALT_COST_CENTER: {source: EmpPayCompNonRecurring.alternativeCostCenter, type: STRING, length: 128, verify: true, description: Cost centre charged instead of the employee's own}
+      SEQUENCE_NUMBER: {source: EmpPayCompNonRecurring.sequenceNumber, type: STRING, length: 32, verify: true, description: Sequence of several payments of one component on one date}
+      NUMBER_OF_UNITS: {source: EmpPayCompNonRecurring.numberOfUnits, type: DECIMAL, verify: true, description: Quantity paid (units-based component)}
+      UNIT_OF_MEASURE: {source: EmpPayCompNonRecurring.unitOfMeasure, type: STRING, length: 32, verify: true, description: Unit of the quantity paid}
 
   PAYRESULT:
     description: Payroll results (Employee Central Payroll export / Payroll Control Center)
@@ -129,6 +163,26 @@ tables:
       DEDUCTIONS:   {source: payroll_export.deductions, type: DECIMAL, verify: true}
       CURRENCY:     {source: payroll_export.currency, type: STRING, length: 5, verify: true}
       DELTA_FLAG:   {source: payroll_export.delta_flag, type: STRING, length: 1, verify: true}
+
+  PAYMENTINFO:
+    description: Payment information detail (PaymentInformationDetailV3 under PaymentInformationV3)
+    source: PaymentInformationV3, PaymentInformationDetailV3
+    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
+    fields:
+      USERID:         {source: PaymentInformationV3.worker, type: STRING, length: 100}
+      EFFECTIVE_DATE: {source: PaymentInformationV3.effectiveStartDate, type: DATE}
+      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, description: Sequence of the payment detail}
+      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment / regular / bonus / expenses}
+      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true, description: Bank transfer / cheque / cash}
+      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true}
+      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true, description: Bank (Bank foundation object)}
+      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
+      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
+      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC of the bank}
+      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Bank routing / branch code}
+      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
+      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true, description: Fixed amount paid to this account}
+      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true, description: Share of net pay paid to this account}
 
   TIMESHEET:
     description: Time recording (EmployeeTimeSheetEntry, EmployeeTime, TimeAccount)
@@ -164,6 +218,19 @@ tables:
       EMPLOYER_COST:  {source: BenefitEnrollment.employerContribution, type: DECIMAL, verify: true}
       DEPENDENT_LINK: {source: BenefitEnrollment.dependents, type: STRING, verify: true}
       STATUS:         {source: BenefitEnrollment.status, type: STRING, length: 128, verify: true}
+
+  DEPENDENT:
+    description: Dependents and beneficiaries (PerPersonRelationship ⋈ related PerPerson)
+    source: PerPersonRelationship, PerPerson
+    keys: [PERSON_ID, RELATED_PERSON_ID, START_DATE]
+    fields:
+      PERSON_ID:         {source: PerPersonRelationship.personIdExternal, type: STRING, length: 100}
+      RELATED_PERSON_ID: {source: PerPersonRelationship.relatedPersonIdExternal, type: STRING, length: 100}
+      RELATIONSHIP_TYPE: {source: PerPersonRelationship.relationshipType, type: STRING, length: 128, verify: true, description: Picklist relation (spouse, child, ...)}
+      START_DATE:        {source: PerPersonRelationship.startDate, type: DATE}
+      END_DATE:          {source: PerPersonRelationship.endDate, type: DATE}
+      IS_BENEFICIARY:    {source: PerPersonRelationship.isBeneficiary, type: BOOLEAN, verify: true}
+      DEPENDENT_BIRTH:   {source: PerPerson.dateOfBirth (related person), type: DATE, verify: true, description: Date of birth of the dependent}
 
   GOALPLAN:
     description: Performance goals (Goal_<planId>)

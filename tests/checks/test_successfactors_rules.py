@@ -13,14 +13,14 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 # Expected rule counts per module
 EXPECTED_COUNTS = {
     "employee_central": 142,
-    "compensation": 40,
+    "compensation": 92,
     "recruiting_onboarding": 40,
     "learning_management": 40,
     "performance_goals": 40,
     "succession_planning": 12,
     "time_attendance": 40,
-    "benefits": 40,
-    "payroll_integration": 59,
+    "benefits": 81,
+    "payroll_integration": 109,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -144,7 +144,7 @@ def test_total_sf_rule_count():
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 453, f"Expected 453 total SF rules, got {total}"
+    assert total == 596, f"Expected 596 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

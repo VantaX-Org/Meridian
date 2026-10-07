@@ -243,6 +243,9 @@ edges:
   - {parent: EMPEMPLOYMENT, child: GOALPLAN, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: PMREVIEWRESULT, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: PAYRESULT, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: PAYCOMPNONREC, join: {USERID: USERID}, cardinality: many}
+  - {parent: EMPEMPLOYMENT, child: PAYMENTINFO, join: {USERID: USERID}, cardinality: many}
+  - {parent: PERINFO, child: DEPENDENT, join: {PERSON_ID: PERSON_ID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: LEARNINGASSIGNMENT, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: LEARNINGCOMPLETION, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: ONBOARDINGCANDIDATEINFO, join: {USERID: USERID}, cardinality: one}

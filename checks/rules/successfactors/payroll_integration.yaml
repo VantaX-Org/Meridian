@@ -92,6 +92,11 @@ rules:
     record_fix_template: >-
       Payroll result {PAYRESULT.USERID}: CURRENCY '{actual_value}' is invalid. Set to
       valid ISO 4217 code via Payroll Control Center.
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
 
   - id: PAY005
     field: PAYRESULT.COST_CENTRE
@@ -372,6 +377,11 @@ rules:
     fix_map:
       __other__: Payroll area '{invalid_value}' is not an ABKRS code. Export the two-character payroll area (e.g. Z1).
     record_fix_template: 'Payroll result {PAYRESULT.USERID}: payroll area ''{actual_value}'' is not a payroll area code.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
   - id: PAY019
     field: PAYRESULT.COMPANY
     check_class: regex_check
@@ -387,6 +397,11 @@ rules:
       __other__: Company '{invalid_value}' is not a company code. Map the legal entity to its FI company code in the payroll
         export.
     record_fix_template: 'Payroll result {PAYRESULT.USERID}: company ''{actual_value}'' is not a company code.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
   - id: HPY001
     field: PA0008.BSGRD
     check_class: cross_field_check
@@ -865,6 +880,11 @@ rules:
     fix_map:
       __other__: Align the currencies in PA30 infotype 0008.
     record_fix_template: 'Employee {PA0008.PERNR}: has an annual salary currency that differs from the pay currency. Correct in PA30 infotype 0008.'
+    auto_fix:
+      steps:
+      - op: copy
+        from: PA0008.WAERS
+      confidence: medium
   - id: HPY025
     field: PA0008.LGA01
     check_class: exists_check
@@ -1098,3 +1118,805 @@ rules:
     fix_map:
       __other__: Review the payroll result for the employee.
     record_fix_template: Payroll result for employee {PAYRESULT.USERID} has zero net pay with positive gross pay. Review the run.
+  - id: PAY031
+    field: PAYRESULT.TAX_AMOUNT
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.TAX_AMOUNT` > `PAYRESULT.GROSS_PAY`'
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Tax exceeds gross pay
+    why_it_matters: Income tax is a share of gross pay. Tax above gross means the amounts were swapped or tax was loaded in another currency.
+    rule_authority: best_practice
+    sap_impact: Year-end tax certificates and reconciliation are wrong.
+    fix_map:
+      __other__: Check the payroll result amounts at source.
+    record_fix_template: 'Payroll result for employee {PAYRESULT.USERID} period {PAYRESULT.PAY_PERIOD}: tax exceeds gross pay. Check the source result.'
+  - id: PAY032
+    field: PAYRESULT.DEDUCTIONS
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.DEDUCTIONS` > `PAYRESULT.GROSS_PAY`'
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Deductions exceed gross pay
+    why_it_matters: Deductions above gross mean negative net pay or a mis-mapped amount.
+    rule_authority: best_practice
+    sap_impact: Statutory minimum net pay rules are breached; recoveries are misstated.
+    fix_map:
+      __other__: Check the payroll result amounts at source.
+    record_fix_template: 'Payroll result for employee {PAYRESULT.USERID} period {PAYRESULT.PAY_PERIOD}: deductions exceed gross pay. Check the source result.'
+  - id: PAY033
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.PAY_DATE` - @today).dt.days > 365
+    require_populated: true
+    severity: medium
+    dimension: validity
+    message: Payroll result pay date is more than a year in the future
+    why_it_matters: Payroll results are produced for current or past periods. A pay date over a year ahead is a wrong year.
+    rule_authority: best_practice
+    sap_impact: Results appear in the wrong tax year.
+    fix_map:
+      __other__: Correct the pay date at source.
+    record_fix_template: 'Payroll result for employee {PAYRESULT.USERID} period {PAYRESULT.PAY_PERIOD}: pay date {PAYRESULT.PAY_DATE} is more than a year ahead. Check the source.'
+  - id: PAY034
+    field: PAYRESULT.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: high
+    dimension: consistency
+    message: Payroll result belongs to a user without employment
+    why_it_matters: Every payroll result must belong to an employment. Orphans come from purged or re-keyed users.
+    rule_authority: best_practice
+    sap_impact: Cost and tax history cannot be linked to an employee.
+    fix_map:
+      __other__: Link the result to the correct user.
+    record_fix_template: 'Payroll result for employee {PAYRESULT.USERID} period {PAYRESULT.PAY_PERIOD}: user has no employment record. Review.'
+  - id: PAY035
+    field: PAYMENTINFO.PAYMENT_METHOD
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Payment information has no payment method
+    why_it_matters: The payment method (bank transfer, cheque, cash) drives infotype 0009 ZLSCH and the payment run.
+    rule_authority: best_practice
+    sap_impact: The employee is excluded from the DME file.
+    fix_map:
+      __blank__: Maintain the payment method.
+      __other__: Maintain the payment method.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information has no payment method. Maintain it.'
+  - id: PAY036
+    field: PAYMENTINFO.CURRENCY
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Payment information has no currency
+    why_it_matters: The payment currency is infotype 0009 WAERS. Without it a fixed amount cannot be paid.
+    rule_authority: best_practice
+    sap_impact: The bank transfer is rejected.
+    fix_map:
+      __blank__: Maintain the payment currency.
+      __other__: Maintain the payment currency.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information has no currency. Maintain it.'
+  - id: PAY037
+    field: PAYMENTINFO.BANK_COUNTRY
+    check_class: null_check
+    applies_when:
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Bank account has no bank country
+    why_it_matters: The bank country is the first key of the bank in BNKA and decides the account format checks.
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 BANKS is blank and the record is rejected.
+    fix_map:
+      __blank__: Maintain the bank country.
+      __other__: Maintain the bank country.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account has no bank country. Maintain it.'
+  - id: PAY038
+    field: PAYMENTINFO.BANK
+    check_class: null_check
+    applies_when:
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        populated: true
+    severity: high
+    dimension: completeness
+    message: Bank account has no bank
+    why_it_matters: The bank key identifies the branch. An account number without a bank cannot be paid.
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 BANKL is blank and the transfer fails.
+    fix_map:
+      __blank__: Maintain the bank.
+      __other__: Maintain the bank.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank account has no bank. Maintain it.'
+  - id: PAY039
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: cross_field_check
+    fail_when: '`PAYMENTINFO.BANK`.notna() & `PAYMENTINFO.ACCOUNT_NUMBER`.isna() & `PAYMENTINFO.IBAN`.isna()'
+    severity: high
+    dimension: completeness
+    message: Bank given but no account number or IBAN
+    why_it_matters: A bank without an account number or IBAN cannot receive a transfer.
+    rule_authority: best_practice
+    sap_impact: The employee is not paid by transfer.
+    fix_map:
+      __other__: Maintain the account number or IBAN.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information has a bank but no account. Maintain it.'
+  - id: PAY040
+    field: PAYMENTINFO.PERCENT
+    check_class: cross_field_check
+    fail_when: (`PAYMENTINFO.PERCENT` < 0) | (`PAYMENTINFO.PERCENT` > 100)
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Payment split percentage is outside 0 to 100
+    why_it_matters: A payment split percentage is a share of net pay and must lie between 0 and 100.
+    rule_authority: best_practice
+    sap_impact: The payment run pays more or less than net pay.
+    fix_map:
+      __other__: Correct the percentage.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment split percentage is outside 0-100. Correct it.'
+  - id: PAY041
+    field: PAYMENTINFO.AMOUNT
+    check_class: cross_field_check
+    fail_when: '`PAYMENTINFO.AMOUNT` < 0'
+    require_populated: true
+    severity: high
+    dimension: validity
+    message: Payment split amount is negative
+    why_it_matters: A fixed payment amount is paid to the account. A negative amount cannot be transferred.
+    rule_authority: best_practice
+    sap_impact: The payment run fails for the employee.
+    fix_map:
+      __other__: Correct the amount.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment split amount is negative. Correct it.'
+  - id: PAY042
+    field: PAYMENTINFO.AMOUNT
+    check_class: cross_field_check
+    fail_when: '`PAYMENTINFO.AMOUNT`.notna() & `PAYMENTINFO.PERCENT`.notna() & (`PAYMENTINFO.AMOUNT` != 0) & (`PAYMENTINFO.PERCENT` != 0)'
+    severity: medium
+    dimension: consistency
+    message: Payment split has both an amount and a percentage
+    why_it_matters: A split is either a fixed amount or a percentage. Both together make the split ambiguous.
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 takes BETRG or ANZHL depending on mapping; the result is unpredictable.
+    fix_map:
+      __other__: Keep either the amount or the percentage.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment split has both an amount and a percentage. Keep one.'
+  - id: PAY043
+    field: PAYMENTINFO.BIC
+    check_class: regex_check
+    pattern: ^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$
+    severity: medium
+    dimension: validity
+    message: BIC/SWIFT code is not 8 or 11 characters in the ISO 9362 format
+    why_it_matters: The BIC identifies the bank for cross-border and SEPA transfers. A wrong format is rejected by the bank.
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 SWIFT fails the format check; payments are returned.
+    fix_map:
+      __other__: Correct the BIC.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: BIC has an invalid format. Correct it.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: high
+  - id: PAY044
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$
+    severity: high
+    dimension: validity
+    message: IBAN does not follow the ISO 13616 structure
+    why_it_matters: An IBAN is two letters, two check digits and up to 30 alphanumeric characters, stored without spaces.
+    rule_authority: best_practice
+    sap_impact: The bank rejects the transfer and the employee is not paid.
+    fix_map:
+      __other__: Correct the IBAN; store it without spaces.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN has an invalid structure. Correct it.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: high
+  - id: PAY045
+    field: PAYMENTINFO.CURRENCY
+    check_class: regex_check
+    pattern: ^[A-Z]{3}$
+    severity: medium
+    dimension: validity
+    message: Payment currency is not a 3-letter ISO 4217 code
+    why_it_matters: The currency is replicated to infotype 0009 WAERS, checked against TCURC.
+    rule_authority: best_practice
+    sap_impact: The payment information is rejected.
+    fix_map:
+      __other__: Use the uppercase ISO code.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment currency ''{actual_value}'' is not an ISO code. Correct it.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: PAY046
+    field: PAYMENTINFO.BANK_COUNTRY
+    check_class: regex_check
+    pattern: ^[A-Z]{2}$
+    severity: medium
+    dimension: validity
+    message: Bank country is not a 2-letter ISO 3166 code
+    why_it_matters: Bank country is BNKA BANKS, a 2-letter ISO code.
+    rule_authority: best_practice
+    sap_impact: The bank lookup fails and infotype 0009 is rejected.
+    fix_map:
+      __other__: Use the uppercase ISO country code.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank country ''{actual_value}'' is not an ISO code. Correct it.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: high
+  - id: PAY047
+    field: PAYMENTINFO.BANK_COUNTRY
+    check_class: exists_check
+    target_table: T005
+    target_fields:
+    - LAND1
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+        populated: true
+    severity: medium
+    dimension: consistency
+    message: Bank country does not exist in the country table
+    why_it_matters: The bank country must exist in T005 for the bank and account checks to run.
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 is rejected.
+    fix_map:
+      __other__: Use a country code that exists in T005.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank country {PAYMENTINFO.BANK_COUNTRY} is not in T005. Correct it.'
+  - id: PAY048
+    field: PAYMENTINFO.IBAN
+    check_class: cross_field_check
+    fail_when: '`PAYMENTINFO.IBAN`.str.slice(0, 2) != `PAYMENTINFO.BANK_COUNTRY`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: IBAN country prefix differs from the bank country
+    why_it_matters: The first two characters of an IBAN are the country of the account. They must equal the bank country.
+    rule_authority: best_practice
+    sap_impact: The bank lookup uses the wrong country and the transfer is rejected.
+    fix_map:
+      __other__: Correct the IBAN or the bank country.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN country prefix differs from bank country {PAYMENTINFO.BANK_COUNTRY}. Correct one.'
+  - id: PAY049
+    field: PAYMENTINFO.PAY_TYPE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Payment information line has no pay type
+    why_it_matters: The pay type separates the main salary account from expense or bonus accounts. Without it the line cannot be mapped to an infotype 0009 subtype (main bank, other bank, travel expenses).
+    rule_authority: best_practice
+    sap_impact: Infotype 0009 subtype cannot be derived, so the bank line is not replicated.
+    fix_map:
+      __blank__: Maintain the pay type on the payment information line.
+      __other__: Maintain the pay type on the payment information line.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information line effective {PAYMENTINFO.EFFECTIVE_DATE} has no pay type. Maintain it.'
+  - id: PAY050
+    field: PAYMENTINFO.CURRENCY
+    check_class: cross_field_check
+    fail_when: '`PAYMENTINFO.CURRENCY` != `FOCOMPANY.CURRENCY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Payment currency differs from the company currency
+    why_it_matters: Net pay is normally paid in the company currency. A foreign-currency payment needs a conversion and is often a copy error.
+    rule_authority: best_practice
+    sap_impact: The payment run converts net pay or rejects the record.
+    fix_map:
+      __other__: Confirm the payment currency.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment currency {PAYMENTINFO.CURRENCY} differs from company currency {FOCOMPANY.CURRENCY}. Review.'
+  - id: PAY051
+    field: PAYMENTINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYMENTINFO.EFFECTIVE_DATE` - `EMPEMPLOYMENT.START_DATE`).dt.days > 31
+    require_populated: true
+    severity: medium
+    dimension: timeliness
+    message: Payment information starts more than a month after hire
+    why_it_matters: Bank details are captured at hire. If the first record starts more than 31 days after hire, the first salary has no account.
+    rule_authority: best_practice
+    sap_impact: The first payroll cannot pay by transfer; a manual cheque is needed.
+    fix_map:
+      __other__: Back-date the payment information to the hire date.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information starts {PAYMENTINFO.EFFECTIVE_DATE}, more than a month after hire. Review.'
+  - id: PAY052
+    field: PAYMENTINFO.USERID
+    check_class: uniqueness_check
+    fields:
+    - PAYMENTINFO.USERID
+    - PAYMENTINFO.EFFECTIVE_DATE
+    - PAYMENTINFO.PAY_TYPE
+    - PAYMENTINFO.ACCOUNT_NUMBER
+    severity: high
+    dimension: uniqueness
+    message: Same bank account entered twice for one pay type
+    why_it_matters: The same account entered twice on one effective date splits net pay into the same account twice.
+    rule_authority: best_practice
+    sap_impact: The payment run pays the employee twice or rejects the split.
+    fix_map:
+      __other__: Delete the duplicate account line.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: the same bank account is entered twice for one pay type. Delete one.'
+  - id: PAY053
+    field: PAYMENTINFO.USERID
+    check_class: exists_check
+    target_table: EMPEMPLOYMENT
+    target_fields:
+    - USERID
+    severity: high
+    dimension: consistency
+    message: Payment information belongs to a user without employment
+    why_it_matters: Bank details must belong to an employment. Orphans are usually from deleted users.
+    rule_authority: best_practice
+    sap_impact: Orphaned bank data is migrated without an owner.
+    fix_map:
+      __other__: Delete the orphan record.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information for a user with no employment. Review.'
+  - id: HPY031
+    field: HRPY_RGDIR.ABKRS
+    check_class: exists_check
+    target_table: T549A
+    target_fields:
+    - ABKRS
+    applies_when:
+      HRPY_RGDIR.ABKRS:
+        populated: true
+    grain: HRPY_RGDIR
+    severity: high
+    dimension: consistency
+    message: Payroll result payroll area does not exist
+    why_it_matters: Every payroll result belongs to a payroll area in T549A. A missing area means the area was deleted after results exist.
+    rule_authority: sap_hard_constraint
+    sap_impact: Retro accounting and posting cannot read the period control.
+    fix_map:
+      __other__: Restore the payroll area or correct the configuration.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: payroll area {HRPY_RGDIR.ABKRS} is not in T549A. Review.'
+  - id: HPY032
+    field: HRPY_RGDIR.FPPER
+    check_class: regex_check
+    pattern: ^\d{4}(0[1-9]|[1-4]\d|5[0-3])$
+    applies_when:
+      HRPY_RGDIR.PAYTY:
+        blank: true
+    grain: HRPY_RGDIR
+    severity: high
+    dimension: validity
+    message: For-period is not in YYYYPP format
+    why_it_matters: 'FPPER is the for-period: a 4-digit year and a 2-digit period of up to 53.'
+    rule_authority: sap_hard_constraint
+    sap_impact: Retro and evaluation reports cannot sort the result.
+    fix_map:
+      __other__: Investigate the corrupt directory entry.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: for-period {HRPY_RGDIR.FPPER} is not YYYYPP. Investigate.'
+  - id: HPY033
+    field: HRPY_RGDIR.INPER
+    check_class: cross_field_check
+    fail_when: '`HRPY_RGDIR.INPER` < `HRPY_RGDIR.FPPER`'
+    require_populated: true
+    applies_when:
+      HRPY_RGDIR.PAYTY:
+        blank: true
+    grain: HRPY_RGDIR
+    severity: high
+    dimension: consistency
+    message: In-period is earlier than for-period
+    why_it_matters: A result is calculated in the in-period for the for-period. Retro runs recalculate older for-periods, so INPER is never earlier than FPPER.
+    rule_authority: sap_hard_constraint
+    sap_impact: Cluster reads order results wrongly and retro differences are lost.
+    fix_map:
+      __other__: Investigate the directory entry.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: in-period {HRPY_RGDIR.INPER} is before for-period {HRPY_RGDIR.FPPER}. Investigate.'
+  - id: HPY034
+    field: HRPY_RGDIR.PAYDT
+    check_class: cross_field_check
+    fail_when: (`HRPY_RGDIR.FPBEG` - `HRPY_RGDIR.PAYDT`).dt.days > 31
+    require_populated: true
+    grain: HRPY_RGDIR
+    severity: medium
+    dimension: consistency
+    message: Pay date is more than a month before the period starts
+    why_it_matters: Pay date falls in or shortly after the period. More than 31 days before the period begins is a wrong period control.
+    rule_authority: best_practice
+    sap_impact: Tax is assigned to the wrong tax period.
+    fix_map:
+      __other__: Check the pay date in the period control (T549S).
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: pay date {HRPY_RGDIR.PAYDT} is more than a month before the period. Check T549S.'
+  - id: HPY035
+    field: HRPY_RGDIR.MOLGA
+    check_class: null_check
+    grain: HRPY_RGDIR
+    severity: medium
+    dimension: completeness
+    message: Payroll result has no country grouping
+    why_it_matters: MOLGA selects the country-specific cluster (RX for ZA, RU for US). Without it the result cannot be read.
+    rule_authority: best_practice
+    sap_impact: Payroll results cannot be read by country reports and migration.
+    fix_map:
+      __blank__: Investigate the directory entry.
+      __other__: Investigate the directory entry.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: payroll result has no country grouping. Investigate.'
+  - id: HPY036
+    field: HRPY_RGDIR.VOIDR
+    check_class: null_check
+    applies_when:
+      HRPY_RGDIR.VOID:
+      - X
+    grain: HRPY_RGDIR
+    severity: low
+    dimension: completeness
+    message: Voided payroll result has no void reason
+    why_it_matters: 'A void must carry a reason for audit: why a paid result was cancelled.'
+    rule_authority: best_practice
+    sap_impact: Audit cannot explain why a paid result was cancelled.
+    fix_map:
+      __blank__: Maintain the void reason via PUOC.
+      __other__: Maintain the void reason via PUOC.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: voided result has no reason. Maintain the void reason.'
+  - id: HPY037
+    field: HRPY_RGDIR.OOSDATE
+    check_class: null_check
+    applies_when:
+      HRPY_RGDIR.OUTOFSEQ:
+      - X
+    grain: HRPY_RGDIR
+    severity: low
+    dimension: completeness
+    message: Out-of-sequence result has no out-of-sequence date
+    why_it_matters: An out-of-sequence check must carry the date it was issued.
+    rule_authority: best_practice
+    sap_impact: The out-of-sequence result cannot be reconciled with the bank.
+    fix_map:
+      __blank__: Investigate the out-of-sequence result.
+      __other__: Investigate the out-of-sequence result.
+    record_fix_template: 'Employee {HRPY_RGDIR.PERNR} sequence {HRPY_RGDIR.SEQNR}: out-of-sequence result has no date. Investigate.'
+  - id: HPY038
+    field: PA0008.WAERS
+    check_class: exists_check
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    applies_when:
+      PA0008.WAERS:
+        populated: true
+    grain: PA0008
+    severity: high
+    dimension: validity
+    message: Basic pay currency does not exist
+    why_it_matters: WAERS on infotype 0008 must exist in TCURC.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll cannot valuate the wage types.
+    fix_map:
+      __other__: Correct the currency in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: basic pay currency {PA0008.WAERS} is not in TCURC. Correct it.'
+  - id: HPY039
+    field: PA0008.TRFGB
+    check_class: exists_check
+    fields:
+    - PA0008.TRFAR
+    - PA0008.TRFGB
+    target_table: T510F
+    target_fields:
+    - TRFAR
+    - TRFGB
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+      PA0008.TRFGB:
+        populated: true
+    grain: PA0008
+    severity: high
+    dimension: consistency
+    message: Pay scale type and area combination does not exist
+    why_it_matters: The pay scale type and area pair must exist in T510F for the pay scale tables to be read.
+    rule_authority: sap_hard_constraint
+    sap_impact: Indirect valuation and pay scale reclassification fail.
+    fix_map:
+      __other__: Correct the pay scale type or area in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: pay scale type {PA0008.TRFAR} with area {PA0008.TRFGB} is not in T510F. Correct it.'
+  - id: HPY040
+    field: PA0008.DIVGV
+    check_class: cross_field_check
+    fail_when: '`PA0008.DIVGV` <= 0'
+    require_populated: true
+    applies_when:
+      PA0008.ENDDA:
+      - '99991231'
+    grain: PA0008
+    severity: high
+    dimension: validity
+    message: Working hours per payroll period is zero or negative
+    why_it_matters: DIVGV divides monthly pay to derive the hourly rate. Zero or negative gives an invalid rate.
+    rule_authority: best_practice
+    sap_impact: Overtime and unpaid-leave deductions are valued at zero or fail.
+    fix_map:
+      __other__: Re-derive working hours from infotype 0007 or correct in infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: working hours per period is zero or negative. Correct it.'
+  - id: HPY041
+    field: PA0008.EIN01
+    check_class: cross_field_check
+    fail_when: (`PA0008.ANZ01` > 0) & `PA0008.EIN01`.isna()
+    grain: PA0008
+    severity: medium
+    dimension: completeness
+    message: First wage type has a number but no unit
+    why_it_matters: A number without a unit cannot be valuated.
+    rule_authority: best_practice
+    sap_impact: Valuation uses the wrong rate.
+    fix_map:
+      __other__: Maintain the unit in PA30 infotype 0008.
+    record_fix_template: 'Employee {PA0008.PERNR}: first wage type has a number but no unit. Maintain it.'
+  - id: HPY042
+    field: PA0009.ZLSCH
+    check_class: exists_check
+    fields:
+    - PA0009.BANKS
+    - PA0009.ZLSCH
+    target_table: T042Z
+    target_fields:
+    - LAND1
+    - ZLSCH
+    applies_when:
+      PA0009.ZLSCH:
+        populated: true
+    grain: PA0009
+    severity: high
+    dimension: consistency
+    message: Payment method is not valid for the bank country
+    why_it_matters: The payment method must be defined for the bank country in T042Z.
+    rule_authority: sap_hard_constraint
+    sap_impact: The DME run excludes the employee.
+    fix_map:
+      __other__: Correct the payment method in PA30 infotype 0009.
+    record_fix_template: 'Employee {PA0009.PERNR}: payment method {PA0009.ZLSCH} is not defined for the bank country. Correct it.'
+  - id: HPY043
+    field: PA0009.SWIFT
+    check_class: regex_check
+    pattern: ^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$
+    grain: PA0009
+    severity: medium
+    dimension: validity
+    message: SWIFT/BIC code has an invalid format
+    why_it_matters: The SWIFT/BIC is 8 or 11 characters in the ISO 9362 format.
+    rule_authority: best_practice
+    sap_impact: Cross-border payments are rejected.
+    fix_map:
+      __other__: Correct the SWIFT code in PA30 infotype 0009.
+    record_fix_template: 'Employee {PA0009.PERNR}: SWIFT/BIC has an invalid format. Correct it.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: high
+  - id: HPY044
+    field: PA0009.WAERS
+    check_class: exists_check
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    applies_when:
+      PA0009.WAERS:
+        populated: true
+    grain: PA0009
+    severity: high
+    dimension: validity
+    message: Bank details currency does not exist
+    why_it_matters: WAERS on infotype 0009 must exist in TCURC.
+    rule_authority: sap_hard_constraint
+    sap_impact: The payment of a fixed amount fails.
+    fix_map:
+      __other__: Correct the currency in PA30 infotype 0009.
+    record_fix_template: 'Employee {PA0009.PERNR}: bank details currency {PA0009.WAERS} is not in TCURC. Correct it.'
+  - id: HPY045
+    field: PA0009.WAERS
+    check_class: cross_field_check
+    fail_when: '`PA0009.WAERS`.isna() & (`PA0009.BETRG` > 0)'
+    grain: PA0009
+    severity: high
+    dimension: completeness
+    message: Bank details fixed amount has no currency
+    why_it_matters: A fixed transfer amount needs a currency.
+    rule_authority: best_practice
+    sap_impact: The fixed amount cannot be paid.
+    fix_map:
+      __other__: Maintain the currency in PA30 infotype 0009.
+    record_fix_template: 'Employee {PA0009.PERNR}: bank details amount has no currency. Maintain it.'
+  - id: HPY046
+    field: PA0009.BETRG
+    check_class: cross_field_check
+    fail_when: (`PA0009.SUBTY` == '0') & (`PA0009.BETRG` > 0)
+    require_populated: true
+    grain: PA0009
+    severity: medium
+    dimension: consistency
+    message: Main bank details carry a fixed amount
+    why_it_matters: Subtype 0 (main bank) receives the remainder of net pay. A fixed amount belongs on an other-bank subtype.
+    rule_authority: best_practice
+    sap_impact: Part of net pay is unpaid or paid twice.
+    fix_map:
+      __other__: Move the fixed amount to an other-bank record (subtype 1).
+    record_fix_template: 'Employee {PA0009.PERNR}: main bank details have a fixed amount. Move it to subtype 1.'
+  - id: HPY047
+    field: PA0014.ZEINH
+    check_class: cross_field_check
+    fail_when: (`PA0014.ANZHL` > 0) & `PA0014.ZEINH`.isna()
+    grain: PA0014
+    severity: medium
+    dimension: completeness
+    message: Recurring payment has a number but no unit
+    why_it_matters: A number of units without a time/measurement unit cannot be valuated.
+    rule_authority: best_practice
+    sap_impact: Indirect valuation uses the wrong rate.
+    fix_map:
+      __other__: Maintain the unit in PA30 infotype 0014.
+    record_fix_template: 'Employee {PA0014.PERNR}: recurring payment {PA0014.LGART} has a number but no unit. Maintain it.'
+  - id: HPY048
+    field: PA0014.BETRG
+    check_class: cross_field_check
+    fail_when: ((`PA0014.BETRG`.isna()) | (`PA0014.BETRG` == 0)) & ((`PA0014.ANZHL`.isna()) | (`PA0014.ANZHL` == 0)) & `PA0014.INDBW`.isna()
+    grain: PA0014
+    severity: medium
+    dimension: completeness
+    message: Recurring payment has neither amount nor number
+    why_it_matters: Without amount, number or indirect valuation the wage type pays nothing.
+    rule_authority: best_practice
+    sap_impact: An empty record clutters payroll and may block a correct entry.
+    fix_map:
+      __other__: Enter the amount or number, or delete the record in PA30 infotype 0014.
+    record_fix_template: 'Employee {PA0014.PERNR}: recurring payment {PA0014.LGART} has no amount or number. Complete or delete.'
+  - id: HPY049
+    field: PA0014.WAERS
+    check_class: exists_check
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    applies_when:
+      PA0014.WAERS:
+        populated: true
+    grain: PA0014
+    severity: high
+    dimension: validity
+    message: Recurring payment currency does not exist
+    why_it_matters: WAERS on infotype 0014 must exist in TCURC.
+    rule_authority: sap_hard_constraint
+    sap_impact: The wage type cannot be paid.
+    fix_map:
+      __other__: Correct the currency in PA30 infotype 0014.
+    record_fix_template: 'Employee {PA0014.PERNR}: recurring payment currency {PA0014.WAERS} is not in TCURC. Correct it.'
+  - id: HPY050
+    field: PA0015.ZEINH
+    check_class: cross_field_check
+    fail_when: (`PA0015.ANZHL` > 0) & `PA0015.ZEINH`.isna()
+    grain: PA0015
+    severity: medium
+    dimension: completeness
+    message: Additional payment has a number but no unit
+    why_it_matters: A number of units without a time/measurement unit cannot be valuated.
+    rule_authority: best_practice
+    sap_impact: Indirect valuation uses the wrong rate.
+    fix_map:
+      __other__: Maintain the unit in PA30 infotype 0015.
+    record_fix_template: 'Employee {PA0015.PERNR}: additional payment {PA0015.LGART} has a number but no unit. Maintain it.'
+  - id: HPY051
+    field: PA0015.BETRG
+    check_class: cross_field_check
+    fail_when: ((`PA0015.BETRG`.isna()) | (`PA0015.BETRG` == 0)) & ((`PA0015.ANZHL`.isna()) | (`PA0015.ANZHL` == 0)) & `PA0015.INDBW`.isna()
+    grain: PA0015
+    severity: medium
+    dimension: completeness
+    message: Additional payment has neither amount nor number
+    why_it_matters: Without amount, number or indirect valuation the wage type pays nothing.
+    rule_authority: best_practice
+    sap_impact: An empty record clutters payroll and may block a correct entry.
+    fix_map:
+      __other__: Enter the amount or number, or delete the record in PA30 infotype 0015.
+    record_fix_template: 'Employee {PA0015.PERNR}: additional payment {PA0015.LGART} has no amount or number. Complete or delete.'
+  - id: HPY052
+    field: PA0015.WAERS
+    check_class: exists_check
+    target_table: TCURC
+    target_fields:
+    - WAERS
+    applies_when:
+      PA0015.WAERS:
+        populated: true
+    grain: PA0015
+    severity: high
+    dimension: validity
+    message: Additional payment currency does not exist
+    why_it_matters: WAERS on infotype 0015 must exist in TCURC.
+    rule_authority: sap_hard_constraint
+    sap_impact: The wage type cannot be paid.
+    fix_map:
+      __other__: Correct the currency in PA30 infotype 0015.
+    record_fix_template: 'Employee {PA0015.PERNR}: additional payment currency {PA0015.WAERS} is not in TCURC. Correct it.'
+  - id: HPY053
+    field: PA0014.ZFPER
+    check_class: cross_field_check
+    fail_when: '`PA0014.ZDATE`.notna() & `PA0014.ZFPER`.notna()'
+    grain: PA0014
+    severity: low
+    dimension: consistency
+    message: Recurring payment has both a first payment date and a first payment period
+    why_it_matters: Infotype 0014 accepts either a first payment date or a first payment period. Both together are ambiguous.
+    rule_authority: best_practice
+    sap_impact: The first payment may be made in the wrong period.
+    fix_map:
+      __other__: Keep only one of the two in PA30 infotype 0014.
+    record_fix_template: 'Employee {PA0014.PERNR}: recurring payment {PA0014.LGART} has both a first date and a first period. Keep one.'
+  - id: HPY054
+    field: ZMERIDIAN_PAYRT.LGART
+    check_class: exists_check
+    target_table: T512W
+    target_fields:
+    - LGART
+    grain: ZMERIDIAN_PAYRT
+    severity: high
+    dimension: consistency
+    message: Payroll result wage type does not exist
+    why_it_matters: Every wage type in the results table must exist in T512W for the country.
+    rule_authority: sap_hard_constraint
+    sap_impact: Posting and evaluation skip the wage type.
+    fix_map:
+      __other__: Restore the wage type configuration.
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR}: result wage type {ZMERIDIAN_PAYRT.LGART} is not in T512W. Review.'
+  - id: HPY055
+    field: ZMERIDIAN_PAYRT.WAERS
+    check_class: cross_field_check
+    fail_when: '`ZMERIDIAN_PAYRT.WAERS`.isna() & (`ZMERIDIAN_PAYRT.BETRG` != 0)'
+    grain: ZMERIDIAN_PAYRT
+    severity: high
+    dimension: completeness
+    message: Payroll result amount has no currency
+    why_it_matters: A result amount without currency cannot be posted or reconciled.
+    rule_authority: best_practice
+    sap_impact: Posting to accounting fails.
+    fix_map:
+      __other__: Investigate the payroll result.
+    record_fix_template: 'Employee {ZMERIDIAN_PAYRT.PERNR}: result wage type {ZMERIDIAN_PAYRT.LGART} has an amount but no currency. Investigate.'
+  - id: HPY056
+    field: PA0003.KOABR
+    check_class: cross_field_check
+    fail_when: '`PA0003.KOABR` == ''X'''
+    grain: PA0003
+    severity: medium
+    dimension: timeliness
+    message: Employee is flagged for a correction run
+    why_it_matters: KOABR is set when payroll rejected the employee. Payroll stays blocked until the error is fixed and the correction run completes.
+    rule_authority: best_practice
+    sap_impact: The employee is not paid in the regular run.
+    fix_map:
+      __other__: Fix the payroll error and run the correction run.
+    record_fix_template: 'Employee {PA0003.PERNR}: is flagged for a payroll correction run. Fix the error and rerun.'
+  - id: HPY057
+    field: PA0003.ABRDT
+    check_class: cross_field_check
+    fail_when: (`PA0003.ABRDT` - @today).dt.days > 62
+    require_populated: true
+    grain: PA0003
+    severity: medium
+    dimension: validity
+    message: Accounted-to date is more than two months ahead
+    why_it_matters: ABRDT is the end of the last period paid. More than two months ahead means payroll was run for a future period or the date was set manually.
+    rule_authority: best_practice
+    sap_impact: Changes for the skipped periods are not picked up by retro accounting.
+    fix_map:
+      __other__: Correct the accounted-to date in PU03.
+    record_fix_template: 'Employee {PA0003.PERNR}: accounted-to date is more than two months ahead. Correct in PU03.'
