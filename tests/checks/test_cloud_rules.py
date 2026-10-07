@@ -14,7 +14,7 @@ from sap.extraction_plan import MODULES_BY_SYSTEM
 
 D = get_dictionary("s4hana")
 MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 14,
-           "ariba_supplier": 14, "ariba_contracts": 16, "ariba_procurement": 27}
+           "ariba_supplier": 40, "ariba_contracts": 16, "ariba_procurement": 27}
 ENRICHMENT = ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template")
 
 
