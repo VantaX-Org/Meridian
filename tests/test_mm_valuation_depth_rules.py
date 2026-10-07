@@ -136,7 +136,7 @@ def test_block_ids_are_in_range_and_contiguous():
     assert 60 <= len(ids) <= 100
     assert ids == list(range(800, 800 + len(ids)))
     pos = [i for i, r in enumerate(PACK) if r in BLOCK]
-    assert pos == list(range(len(PACK) - len(BLOCK), len(PACK)))  # one block at the end of the pack
+    assert pos == list(range(pos[0], pos[0] + len(BLOCK)))  # one contiguous block in the pack
 
 
 def test_block_has_full_metadata():

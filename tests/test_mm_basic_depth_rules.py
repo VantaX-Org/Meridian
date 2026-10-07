@@ -43,7 +43,8 @@ def test_new_ids_are_contiguous_from_mm600():
     new = [int(r["id"][2:]) for r in NEW]
     assert new == list(range(600, 600 + len(new)))
     assert 60 <= len(new) <= 100
-    assert ids[-len(new):] == [r["id"] for r in NEW]  # one block at the end of the pack
+    start = ids.index(NEW[0]["id"])
+    assert ids[start:start + len(new)] == [r["id"] for r in NEW]  # one contiguous block in the pack
 
 
 def test_every_new_rule_has_full_metadata():

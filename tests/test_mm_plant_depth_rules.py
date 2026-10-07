@@ -128,8 +128,9 @@ def test_ids_in_range_and_contiguous():
     ids = sorted(int(r["id"][2:]) for r in PLANT)
     assert ids == list(range(700, 700 + len(ids)))
     assert 60 <= len(ids) <= 100
-    # one block at the end of the pack
-    assert [r["id"] for r in PACK[-len(PLANT):]] == [r["id"] for r in PLANT]
+    # one contiguous block in the pack
+    start = PACK.index(PLANT[0])
+    assert [r["id"] for r in PACK[start:start + len(PLANT)]] == [r["id"] for r in PLANT]
     assert all(r["field"].split(".")[0] in OWN_TABLES for r in PLANT)
 
 
