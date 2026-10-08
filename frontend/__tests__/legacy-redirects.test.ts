@@ -20,6 +20,9 @@ const EXPECTED: Record<string, string> = {
   "/command-centre": "/?tab=live",
   "/executive-report": "/insights/exec",
   "/connectivity": "/data",
+  "/contracts": "/rules/contracts",
+  "/settings/scoring": "/rules/scoring",
+  "/settings/exception-billing": "/admin/billing",
   "/run-sync": "/data",
   "/migration": "/data?tab=migration",
   "/analytics": "/insights/forecast",
@@ -39,6 +42,8 @@ const EXPECTED: Record<string, string> = {
   "/lineage": "/insights/lineage",
   "/mining": "/insights/mining",
   "/relationships": "/insights/mining",
+  "/upload": "/import",
+  "/settings/rules": "/rules",
 };
 
 describe("legacy route redirects", () => {

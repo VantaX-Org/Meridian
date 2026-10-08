@@ -52,6 +52,11 @@ const nextConfig: NextConfig = {
       { source: "/lineage", destination: "/insights/lineage", permanent: false },
       { source: "/mining", destination: "/insights/mining", permanent: false },
       { source: "/relationships", destination: "/insights/mining", permanent: false },
+      { source: "/contracts", destination: "/rules/contracts", permanent: false },
+      { source: "/settings/scoring", destination: "/rules/scoring", permanent: false },
+      { source: "/settings/exception-billing", destination: "/admin/billing", permanent: false },
+      { source: "/upload", destination: "/import", permanent: false },
+      { source: "/settings/rules", destination: "/rules", permanent: false },
     ];
   },
 

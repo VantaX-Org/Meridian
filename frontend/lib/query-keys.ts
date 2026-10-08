@@ -83,6 +83,46 @@ export const queryKeys = {
   processModelVersionsAll: () => ["process-model-versions"] as const,
   processOverlayAll: () => ["process-overlay"] as const,
   processVariantsAll: () => ["process-variants"] as const,
+  // Chain B fix pass — appended, see lib/query-keys.ts's module doc.
+  systemModules: (systemId: string) => ["system-modules", systemId] as const,
+  systemAgg: (systemId: string, versionId: string | undefined) => ["system-agg", systemId, versionId] as const,
+  design: (systemId: string) => ["design", systemId] as const,
+  configLoadJobId: (systemId: string) => ["config-load-job-id", systemId] as const,
+  configLoadJob: (jobId: string | null) => ["config-load-job", jobId] as const,
+  configLoad: (systemId: string) => ["config-load", systemId] as const,
+  versionsList: (filters: Record<string, unknown>) => ["versions-list", normalizeFilters(filters)] as const,
+  rules: (filters: Record<string, unknown>) => ["rules", normalizeFilters(filters)] as const,
+  rulesSummary: () => ["rules", "summary"] as const,
+  ruleDetail: (ruleId: string) => ["rule-detail", ruleId] as const,
+  authRoles: () => ["auth-roles"] as const,
+  auditEntries: (limit: number) => ["audit-entries", limit] as const,
+  usersAssignable: () => ["users-assignable"] as const,
+  fieldMappings: () => ["field-mappings"] as const,
+  llmProviders: () => ["llm-providers"] as const,
+  llmConfig: () => ["llm-config"] as const,
+  licenceManifest: () => ["licence-manifest"] as const,
+  systemUpdateStatus: () => ["system-update-status"] as const,
+  triageTeams: () => ["triage-teams"] as const,
+  triageRules: () => ["triage-rules"] as const,
+  triageSla: () => ["triage-sla"] as const,
+  triageSettings: () => ["triage-settings"] as const,
+  adminDoctor: () => ["admin-doctor"] as const,
+  contracts: (filters: Record<string, unknown>) => ["contracts", normalizeFilters(filters)] as const,
+  contractCompliance: (id: string) => ["contract-compliance", id] as const,
+  scoringSettings: () => ["scoring-settings"] as const,
+  findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
+  exceptionBilling: (period: string) => ["exception-billing", period] as const,
+  pilotScorecard: (systemId: string) => ["pilot-scorecard", systemId] as const,
+  systemObjects: (systemId: string) => ["system-objects", systemId] as const,
+  referenceLists: (systemId: string) => ["reference", systemId] as const,
+  syncProfiles: (systemId: string) => ["sync-profiles", systemId] as const,
+  designTables: (systemId: string, filters: Record<string, unknown>) => ["design-tables", systemId, normalizeFilters(filters)] as const,
+  designTable: (systemId: string, table: string | null) => ["design-table", systemId, table] as const,
+  designConfig: (systemId: string, table: string) => ["design-config", systemId, table] as const,
+  designConfigDeviation: (systemId: string) => ["design-config-deviation", systemId] as const,
+  designCoverage: (systemId: string) => ["design-coverage", systemId] as const,
+  designSnapshots: (systemId: string) => ["design-snapshots", systemId] as const,
+  designDiff: (systemId: string, a: string, b: string) => ["design-diff", systemId, a, b] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
@@ -96,4 +136,43 @@ export type TouchedEntity =
   | "systems"
   | "shell-counts"
   | "insights"
-  | "users";
+  | "users"
+  | "system-versions"
+  | "system-modules"
+  | "system-agg"
+  | "design"
+  | "config-load-job-id"
+  | "config-load-job"
+  | "config-load"
+  | "versions-list"
+  | "rules"
+  | "rule-detail"
+  | "auth-roles"
+  | "audit-entries"
+  | "users-assignable"
+  | "field-mappings"
+  | "llm-providers"
+  | "llm-config"
+  | "licence-manifest"
+  | "system-update-status"
+  | "triage-teams"
+  | "triage-rules"
+  | "triage-sla"
+  | "triage-settings"
+  | "admin-doctor"
+  | "contracts"
+  | "contract-compliance"
+  | "scoring-settings"
+  | "findings-aggregate"
+  | "exception-billing"
+  | "pilot-scorecard"
+  | "system-objects"
+  | "reference"
+  | "sync-profiles"
+  | "design-tables"
+  | "design-table"
+  | "design-config"
+  | "design-config-deviation"
+  | "design-coverage"
+  | "design-snapshots"
+  | "design-diff";
