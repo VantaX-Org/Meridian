@@ -1203,6 +1203,30 @@ class SyncRun(Base):
     )
 
 
+class AnalysisRunStep(Base):
+    """One step of one analysis or sync run — durable counterpart to the Redis-only
+    task_progress mechanism in api/services/task_progress.py. Written by
+    workers/tasks/run_checks.py and workers/tasks/run_sync.py, read by
+    GET /api/v1/runs/{id}/steps."""
+
+    __tablename__ = "analysis_run_steps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="CASCADE"), nullable=False)
+    step_number = Column(Integer, nullable=False)
+    step_name = Column(Text, nullable=False)
+    status = Column(Text, nullable=False, server_default="running")
+    started_at = Column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    error_detail = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_analysis_run_steps_tenant_version_step", "tenant_id", "version_id", "step_number"),
+    )
+
+
 class AIFeedbackLog(Base):
     __tablename__ = "ai_feedback_log"
 
