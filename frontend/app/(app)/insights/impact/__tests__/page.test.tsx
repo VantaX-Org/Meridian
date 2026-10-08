@@ -25,6 +25,7 @@ describe("ImpactPage", () => {
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
     expect(screen.getByText("blocked")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByText(/6[,.  ]?300/)).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while the request is in flight", () => {
