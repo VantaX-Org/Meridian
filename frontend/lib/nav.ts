@@ -17,6 +17,7 @@ import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  BarChart3,
   Brain,
   Copy,
   Eraser,
@@ -114,6 +115,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
       { href: "/issues", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
       { href: "/versions", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
+    ],
+  },
+  {
+    group: "Insights",
+    anyOf: ["view"],
+    items: [
+      { href: "/insights", label: "Insights", icon: BarChart3, anyOf: ["view"], keywords: "readiness impact owners duplicates executive summary" },
+      { href: "/insights/readiness", label: "Readiness", icon: BarChart3, anyOf: ["view"], keywords: "waves go no-go blockers" },
+      { href: "/insights/impact", label: "Value at risk", icon: BarChart3, anyOf: ["view"], keywords: "impact features cost" },
+      { href: "/insights/owners", label: "Owner scorecards", icon: BarChart3, anyOf: ["view"], keywords: "digest score steward" },
+      { href: "/insights/duplicates", label: "Duplicate clusters", icon: BarChart3, anyOf: ["view"], keywords: "dedup merge graph cluster" },
+      { href: "/insights/exec", label: "Executive summary", icon: BarChart3, anyOf: ["view"], keywords: "exec report narrative pdf" },
     ],
   },
   {
