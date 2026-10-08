@@ -13,7 +13,9 @@ test("lead reaches a failing record in three clicks", async ({ app }) => {
   await expect(app.getByText("MM551")).toBeVisible();
 
   // Click 2: object detail -> rule detail.
-  await app.getByText("MM551").click();
+  // The rules DataTable only wraps its first cell (severity) in a clickable
+  // button; "MM551" itself lives in the unwrapped second (check_id) cell.
+  await app.getByRole("row", { name: /MM551/ }).getByRole("button").first().click();
   await expect(app).toHaveURL(/\/objects\/material_master\/rules\/MM551\?run=/);
   const fixSheetLink = app.getByRole("link", { name: /open fix sheet/i });
   await expect(fixSheetLink).toBeVisible();

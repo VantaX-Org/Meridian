@@ -6,7 +6,14 @@ export interface NarrativeInput {
 }
 
 function worstFirst(objects: ObjectSummary[]): ObjectSummary[] {
-  return [...objects].sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
+  // Unanalysed objects (composite_score null) have no score to rank by, so
+  // they sort after every scored object rather than being treated as the
+  // worst (which a `?? 0` fallback would do).
+  return [...objects].sort((a, b) => {
+    if (a.composite_score == null) return b.composite_score == null ? 0 : 1;
+    if (b.composite_score == null) return -1;
+    return a.composite_score - b.composite_score;
+  });
 }
 
 /**

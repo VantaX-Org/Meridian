@@ -27,4 +27,13 @@ describe("buildNarrative", () => {
     expect(buildNarrative({ role: "steward", objects }).trim().split(". ").filter(Boolean)).toHaveLength(3);
     expect(buildNarrative({ role: "basis", objects }).trim().split(". ").filter(Boolean)).toHaveLength(3);
   });
+
+  it("names the real failing object, not an unanalysed null-score object", () => {
+    const withUnanalysed: ObjectSummary[] = [
+      { module: "unanalysed", label: "Unanalysed Object", composite_score: null, readiness: null, failing_checks: 0, affected_records: 0 },
+      { module: "material_master", label: "Material Master", composite_score: 60, readiness: "fail", failing_checks: 12, affected_records: 500 },
+    ];
+    const text = buildNarrative({ role: "lead", objects: withUnanalysed });
+    expect(text).toContain("Material Master");
+  });
 });
