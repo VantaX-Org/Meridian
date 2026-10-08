@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { Mono } from "@/components/ui-core";
+import { Mono } from "@/design";
 import type { DqColour, Evidence } from "@/types/process-model";
 
 const ALIGN: Record<DqColour, string> = { green: "aligned", amber: "drifting", red: "blocked" };

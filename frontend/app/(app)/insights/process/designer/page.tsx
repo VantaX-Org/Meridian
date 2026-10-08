@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banner, Button, EmptyState, FilterBar, Input, Mono, PageHeader, SegmentedControl, Select, TableSkeleton, Tally, useDrawerParam } from "@/components/ui-core";
+import { Button, EmptyState, Mono, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
@@ -11,17 +11,30 @@ import {
 } from "@/lib/api/process-designer";
 import { downloadAuthenticated } from "@/lib/api/download";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
-import { AttributeDrawer } from "./attributes";
-import { DesignerCanvas } from "./canvas";
-import { Discovered, skeletonFrom } from "./discovered";
-import * as D from "./doc";
-import { LevelTable } from "./level-table";
-import { ProcessTree, type TreeActions } from "./tree";
-import { OldVersionBanner, VersionsMenu } from "./versions";
+import { AttributeDrawer } from "./_components/attributes";
+import { DesignerCanvas } from "./_components/canvas";
+import { Discovered, skeletonFrom } from "./_components/discovered";
+import * as D from "./_components/doc";
+import { LevelTable } from "./_components/level-table";
+import { ProcessTree, type TreeActions } from "./_components/tree";
+import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
 
-export function ProcessDesigner() {
+function Banner({ tone, title, children, action }: { tone: "info" | "warning" | "danger"; title: string; children?: React.ReactNode; action?: React.ReactNode }) {
+  const border = tone === "danger" ? "var(--m-critical)" : tone === "warning" ? "var(--m-warning)" : "var(--m-line)";
+  return (
+    <div className="rounded border p-3 flex items-start justify-between gap-3" style={{ borderColor: border, background: "var(--m-sheet-2)" }}>
+      <div>
+        <strong>{title}</strong>
+        {children ? <div className="ui-note">{children}</div> : null}
+      </div>
+      {action ? <span className="flex gap-2">{action}</span> : null}
+    </div>
+  );
+}
+
+export default function ProcessDesigner() {
   const sp = useSearchParams();
   const model = sp.get("model") ?? "reference";
   const v = sp.get("v");
@@ -48,9 +61,12 @@ export function ProcessDesigner() {
   const failed = reference ? ref.error : saved.error;
   if (!doc) {
     return (
-      <div className="ui-page">
-        <PageHeader title="Process designer" summary="Design the process model and see where the data behind it breaks." />
-        {failed ? <EmptyState>The process model could not be read. Check the model in the address bar, or open the reference model.</EmptyState> : <TableSkeleton rows={6} />}
+      <div className="flex flex-col gap-4 p-6">
+        <div>
+          <h2 className="text-[22px] font-semibold">Process designer</h2>
+          <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
+        </div>
+        {failed ? <EmptyState title="The process model could not be read. Check the model in the address bar, or open the reference model." /> : <Skeleton height={240} />}
       </div>
     );
   }
@@ -82,7 +98,7 @@ function Editor(p: EditorProps) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const qc = useQueryClient();
-  const attr = useDrawerParam("attr");
+  const attr = sp.get("attr");
   const node = sp.get("node");
   const reference = model === "reference";
   const editable = !reference && !viewingOld;
@@ -148,7 +164,6 @@ function Editor(p: EditorProps) {
   const blocked = () => { if (reference) setPrompt(true); };
   const edit = (fn: (d: ProcessModelDocument) => ProcessModelDocument) => { if (editable) setDoc(fn); else blocked(); };
 
-  // What the URL points at.
   const located = node ? D.locate(doc, node) : null;
   const found = node && !located ? D.findActivity(doc, node) : null;
   const l4: L4 | null = located?.level === 4 ? (located.item as L4) : found?.l4 ?? null;
@@ -179,38 +194,43 @@ function Editor(p: EditorProps) {
     signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
 
   return (
-    <div className="ui-page">
-      <PageHeader title="Process designer"
-        summary={reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
-        actions={
-          <>
-            <Select aria-label="Model" value={model} disabled={dirty}
-              options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
-              onValueChange={(m) => go({ model: m, v: null, attr: null, node: null })} />
-            {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
-            <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button>
-            <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button>
-          </>
-        } />
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[22px] font-semibold">Process designer</h2>
+          <p style={{ color: "var(--m-ink-2)" }}>
+            {reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={model}
+            options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
+            onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
+          {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
+          <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button>
+          <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button>
+        </div>
+      </div>
 
       {naming !== null ? (
-        <form className="aurora-designer__bar" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
-          <Input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)} />
-          <Button size="sm" variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>Create from {reference ? "reference" : "this model"}</Button>
-          <Button size="sm" variant="ghost" onClick={() => setNaming(null)}>Close</Button>
+        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
+          <input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)}
+            className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+          <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>Create from {reference ? "reference" : "this model"}</Button>
+          <Button variant="ghost" onClick={() => setNaming(null)}>Close</Button>
         </form>
       ) : null}
 
       {prompt ? (
         <Banner tone="info" title="Create a model from the reference to edit it"
-          action={<><Button size="sm" variant="primary" disabled={create.isPending} onClick={() => create.mutate({ name: "My process model", from: "reference" })}>Create model</Button>{" "}<Button size="sm" variant="ghost" onClick={() => setPrompt(false)}>Not now</Button></>}>
+          action={<><Button variant="primary" disabled={create.isPending} onClick={() => create.mutate({ name: "My process model", from: "reference" })}>Create model</Button><Button variant="ghost" onClick={() => setPrompt(false)}>Not now</Button></>}>
           The reference model is shared and read-only.
         </Banner>
       ) : null}
       {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={() => restore.mutate()} onLatest={() => go({ v: null })} /> : null}
       {fail?.kind === "stale" ? (
         <Banner tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
-          action={<><Button size="sm" variant="secondary" onClick={() => { setFail(null); setDoc(initial); refresh(); }}>Reload</Button>{" "}<Button size="sm" variant="secondary" disabled={copy.isPending} onClick={() => copy.mutate()}>Save as a copy</Button></>}>
+          action={<><Button variant="secondary" onClick={() => { setFail(null); setDoc(initial); refresh(); }}>Reload</Button><Button variant="secondary" disabled={copy.isPending} onClick={() => copy.mutate()}>Save as a copy</Button></>}>
           Reload to take their version, or save your changes as a copy.
         </Banner>
       ) : null}
@@ -221,49 +241,46 @@ function Editor(p: EditorProps) {
       ) : null}
       {fail?.kind === "other" ? <Banner tone="danger" title="The model was not saved">{fail.message}</Banner> : null}
       {dirty && editable ? (
-        <form className="aurora-designer__bar" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
           <span>Unsaved changes</span>
-          <Input aria-label="Version note" placeholder="What changed" value={note} onChange={(e) => setNote(e.target.value)} />
-          <Button size="sm" variant="primary" type="submit" disabled={save.isPending}>Save</Button>
-          <Button size="sm" variant="ghost" onClick={() => { setDoc(initial); setFail(null); }}>Discard</Button>
+          <input aria-label="Version note" placeholder="What changed" value={note} onChange={(e) => setNote(e.target.value)}
+            className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+          <Button variant="primary" type="submit" disabled={save.isPending}>Save</Button>
+          <Button variant="ghost" onClick={() => { setDoc(initial); setFail(null); }}>Discard</Button>
         </form>
       ) : null}
 
-      <FilterBar>
+      <div className="flex items-center gap-2">
         <span>Overlay</span>
-        <SegmentedControl ariaLabel="Overlay" value={overlayOn ? "latest" : "none"}
-          options={[{ id: "latest", label: "Latest analysis" }, { id: "none", label: "None" }]}
-          onChange={(id) => go({ overlay: id === "none" ? "none" : null })} />
-      </FilterBar>
+        <Button variant={overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: null })}>Latest analysis</Button>
+        <Button variant={!overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: "none" })}>None</Button>
+      </div>
 
-      <Tally level={3} label="Process model" figures={[
-        { label: "Activities", value: acts.length, href: `/process/designer?model=${model}`, verdict: `${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.` },
-        { label: "Blocked", value: ov ? count("red") : null, href: "/process?tab=readiness", tone: count("red") ? "danger" : undefined,
-          verdict: noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.") },
-        { label: "Degraded", value: ov ? count("amber") : null, href: "/process?tab=readiness", tone: count("amber") ? "warning" : undefined,
-          verdict: noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is degraded.") },
-        { label: "Discovered variants", value: p.latestId ? p.variants.length : null, href: "/process",
-          verdict: p.latestId ? "Document types found in the data." : "Run an analysis to discover variants." },
-        { label: "Unmapped", value: p.latestId ? unmapped.length : null, href: `/process/designer?model=${model}#discovered`,
-          verdict: p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants." },
-      ]} />
+      <div className="flex gap-6 flex-wrap">
+        <Stat label="Activities" value={acts.length} delta={`${D.allL4(doc).length} sub-processes in ${doc.l1.length} processes.`} />
+        <Stat label="Blocked" value={ov ? count("red") : "—"} delta={noOverlay ?? (count("red") ? "Activities with a blocking failure." : "No activity is blocked.")} />
+        <Stat label="Degraded" value={ov ? count("amber") : "—"} delta={noOverlay ?? (count("amber") ? "Activities with some failing fields." : "No activity is degraded.")} />
+        <Stat label="Discovered variants" value={p.latestId ? p.variants.length : "—"} delta={p.latestId ? "Document types found in the data." : "Run an analysis to discover variants."} />
+        <Stat label="Unmapped" value={p.latestId ? unmapped.length : "—"}
+          delta={p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants."} />
+      </div>
 
-      <div className="aurora-designer">
-        <aside className="aurora-designer__rail" aria-label="Process tree">
+      <div className="flex gap-4">
+        <aside className="w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Process tree">
           <ProcessTree doc={doc} selected={node} editable={editable} onBlocked={blocked} actions={actions}
             colour={(item, level) => (ov ? D.worstUnder(item, level, actColour) : null)}
             onSelect={(id) => go({ node: id, attr: null })} />
           <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} />
         </aside>
-        <section className="aurora-designer__main" aria-label="Process view">
+        <section className="flex-1" aria-label="Process view">
           {l4 ? (
             <>
-              <div className="aurora-designer__bar">
-                <h2 className="aurora-designer__rail-title">{l4.name}</h2>
-                <Button size="sm" variant="secondary" onClick={() => attr.setValue(l4.id, { replace: true })}>Sub-process details</Button>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h2 className="text-[17px] font-semibold">{l4.name}</h2>
+                <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
-              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr.value} editable={editable} onBlocked={blocked}
-                onSelect={(id) => attr.setValue(id, { replace: true })}
+              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} onBlocked={blocked}
+                onSelect={(id) => go({ attr: id })}
                 onMove={(id, x, y) => edit((d) => D.moveNode(d, l4.id, id, x, y))}
                 onConnect={(s, t) => edit((d) => D.connect(d, l4.id, s, t))}
                 onDeleteNode={(id, withAct) => edit((d) => D.removeNode(d, l4.id, id, withAct))}
@@ -272,7 +289,7 @@ function Editor(p: EditorProps) {
                   if (!editable) return blocked();
                   const r = D.addNode(doc, l4.id, type);
                   setDoc(r.doc);
-                  attr.setValue(r.actId ?? r.nodeId, { replace: true });
+                  go({ attr: r.actId ?? r.nodeId });
                 }}
                 onLayout={() => edit((d) => D.autoLayout(d, l4.id))} />
             </>
@@ -283,7 +300,7 @@ function Editor(p: EditorProps) {
         </section>
       </div>
 
-      <AttributeDrawer doc={doc} attr={attr.value} editable={editable} onBlocked={blocked} onClose={attr.close}
+      <AttributeDrawer doc={doc} attr={attr} editable={editable} onBlocked={blocked} onClose={() => go({ attr: null })}
         overlay={ov} unmapped={unmapped} canAdopt={editable && !dirty}
         onAdopt={(variantId, l4Id) => adopt.mutate({ variantId, l4Id })} findingHref={p.findingHref}
         patchActivity={(id, patch) => edit((d) => D.patchActivity(d, id, patch))}

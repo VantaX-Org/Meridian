@@ -38,8 +38,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
   "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
-  "/process": named(() => import("@/app/(dashboard)/process/map"), "ProcessMapPage"),
-  "/business-process": named(() => import("@/components/process/readiness"), "ProcessReadiness"),
   "/lineage": named(() => import("@/components/process/lineage"), "LineageSurface"),
   "/mining": named(() => import("@/components/process/graph"), "GraphSurface"),
   "/relationships": named(() => import("@/components/process/graph"), "GraphSurface"),
@@ -57,5 +55,4 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/contracts": named(() => import("@/components/admin/contracts"), "ContractsSurface"),
 
   "/analyse/coverage": named(() => import("@/components/analyse/coverage"), "RuleCoverage"),
-  "/process/designer": named(() => import("@/components/process/designer/page"), "ProcessDesigner"),
 };

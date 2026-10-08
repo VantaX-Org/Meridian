@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
-import { Button, DataTable, EmptyState } from "@/components/ui-core";
+import { Button, DataTable, EmptyState } from "@/design";
 import type { DqColour } from "@/types/process-model";
 import { activitiesUnder, childrenOf, type Doc, type Level, type TreeItem } from "./doc";
 import type { TreeActions } from "./tree";
@@ -32,7 +32,7 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
   }), [list, level, colour]);
   const guard = (fn: () => void) => (editable ? fn() : onBlocked());
 
-  const columns: ColumnDef<Row, unknown>[] = [
+  const columns: ColumnDef<Row>[] = [
     { id: "name", header: "Name", accessorFn: (r) => r.item.name, cell: ({ row }) => (
       <button type="button" className="ui-link-button" onClick={() => onOpen(row.original.item.id)}>{row.original.item.name}</button>
     ) },
@@ -43,8 +43,8 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
       const r = row.original;
       return (
         <span className="aurora-designer__actions" data-open>
-          <Button size="sm" variant="ghost" disabled={r.index === 0} aria-label={`Move ${r.item.name} up`} onClick={() => guard(() => actions.move(r.item.id, -1))}>Up</Button>
-          <Button size="sm" variant="ghost" disabled={r.index === r.count - 1} aria-label={`Move ${r.item.name} down`} onClick={() => guard(() => actions.move(r.item.id, 1))}>Down</Button>
+          <Button variant="ghost" disabled={r.index === 0} aria-label={`Move ${r.item.name} up`} onClick={() => guard(() => actions.move(r.item.id, -1))}>Up</Button>
+          <Button variant="ghost" disabled={r.index === r.count - 1} aria-label={`Move ${r.item.name} down`} onClick={() => guard(() => actions.move(r.item.id, 1))}>Down</Button>
         </span>
       );
     } },
@@ -53,13 +53,13 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
   return (
     <div className="aurora-designer__level">
       <div className="aurora-designer__toolbar">
-        <Button size="sm" variant="secondary" disabled={level > 4} onClick={() => guard(() => actions.add(parent?.id ?? null))}>
+        <Button variant="secondary" disabled={level > 4} onClick={() => guard(() => actions.add(parent?.id ?? null))}>
           {`Add L${level}`}
         </Button>
       </div>
-      <DataTable columns={columns} data={data} getRowId={(r) => r.item.id} ariaLabel={`Level ${level} items`} maxHeight="60vh"
-        onRowActivate={(r) => onOpen(r.item.id)}
-        empty={<EmptyState>Nothing at this level yet. Add the first item.</EmptyState>} />
+      {data.length ? (
+        <DataTable columns={columns} data={data} getRowId={(r) => r.item.id} onRowClick={(r) => onOpen(r.item.id)} />
+      ) : <EmptyState title="Nothing at this level yet. Add the first item." />}
     </div>
   );
 }

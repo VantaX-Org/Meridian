@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { Button, Input, Mono } from "@/components/ui-core";
+import { Button, Mono } from "@/design";
 import type { DqColour } from "@/types/process-model";
 import { childrenOf, type Doc, type Level, type TreeItem } from "./doc";
 
@@ -83,7 +83,8 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
               aria-expanded={kids.length ? open.has(id) : undefined} className="aurora-designer__item">
               <div className="aurora-designer__row" data-level={r.level} data-selected={id === selected || undefined}>
                 {renaming === id ? (
-                  <Input autoFocus defaultValue={r.item.name} aria-label="Name" maxLength={200}
+                  <input autoFocus defaultValue={r.item.name} aria-label="Name" maxLength={200}
+                    className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== r.item.name) actions.rename(id, v); setRenaming(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenaming(null); }} />
                 ) : (
@@ -100,16 +101,16 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
                 {confirm === id ? (
                   <span className="aurora-designer__actions" data-open>
                     <span className="ui-note">Delete with everything below?</span>
-                    <Button size="sm" variant="secondary" onClick={() => { actions.remove(id); setConfirm(null); }}>Delete</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>Keep</Button>
+                    <Button variant="secondary" onClick={() => { actions.remove(id); setConfirm(null); }}>Delete</Button>
+                    <Button variant="ghost" onClick={() => setConfirm(null)}>Keep</Button>
                   </span>
                 ) : renaming === id ? null : (
                   <span className="aurora-designer__actions">
-                    <Button size="sm" variant="ghost" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}>Rename</Button>
-                    {r.level < 4 ? <Button size="sm" variant="ghost" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}>Add</Button> : null}
-                    <Button size="sm" variant="ghost" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}>Up</Button>
-                    <Button size="sm" variant="ghost" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}>Down</Button>
-                    <Button size="sm" variant="ghost" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}>Delete</Button>
+                    <Button variant="ghost" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}>Rename</Button>
+                    {r.level < 4 ? <Button variant="ghost" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}>Add</Button> : null}
+                    <Button variant="ghost" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}>Up</Button>
+                    <Button variant="ghost" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}>Down</Button>
+                    <Button variant="ghost" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}>Delete</Button>
                   </span>
                 )}
               </div>
@@ -117,7 +118,7 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
           );
         })}
       </ul>
-      <Button size="sm" variant="ghost" onClick={() => guard(() => actions.add(null))}>Add L1 process</Button>
+      <Button variant="ghost" onClick={() => guard(() => actions.add(null))}>Add L1 process</Button>
     </div>
   );
 }

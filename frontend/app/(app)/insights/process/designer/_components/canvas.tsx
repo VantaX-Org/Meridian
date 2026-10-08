@@ -6,7 +6,7 @@ import {
   type Edge, type Node, type NodeChange,
 } from "@xyflow/react";
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { Button } from "@/components/ui-core";
+import { Button } from "@/design";
 import type { ActivityOverlay, L4, NodeType } from "@/types/process-model";
 import { layoutDiagram } from "./layout";
 import { nodeTypes, type MarkData, type TaskData } from "./nodes";
@@ -92,19 +92,19 @@ function CanvasInner(p: CanvasProps) {
   return (
     <div className="aurora-designer__canvas-wrap" onKeyDown={onKeyDown}>
       <div className="aurora-designer__toolbar" role="toolbar" aria-label="Diagram tools">
-        <Button size="sm" variant="secondary" onClick={guard(() => p.onAdd("task"))}>Add activity</Button>
-        <Button size="sm" variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
-        <Button size="sm" variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
-        <Button size="sm" variant="secondary" onClick={guard(p.onLayout)}>Auto-layout</Button>
-        <Button size="sm" variant={connectMode ? "primary" : "secondary"} aria-pressed={connectMode}
+        <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}>Add activity</Button>
+        <Button variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
+        <Button variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
+        <Button variant="secondary" onClick={guard(p.onLayout)}>Auto-layout</Button>
+        <Button variant={connectMode ? "primary" : "secondary"} aria-pressed={connectMode}
           onClick={() => (p.editable ? setConnectMode((v) => !v) : p.onBlocked())}>Connect mode</Button>
-        <Button size="sm" variant="ghost" disabled={!selNode && !selFlow} onClick={remove}>Delete selected</Button>
+        <Button variant="ghost" disabled={!selNode && !selFlow} onClick={remove}>Delete selected</Button>
         {askDelete ? (
           <span className="aurora-designer__ask" role="alertdialog" aria-label="Delete activity">
             Also delete the activity?
-            <Button size="sm" variant="secondary" onClick={() => { p.onDeleteNode(askDelete, true); setAskDelete(null); }}>Delete both</Button>
-            <Button size="sm" variant="ghost" onClick={() => { p.onDeleteNode(askDelete, false); setAskDelete(null); }}>Step only</Button>
-            <Button size="sm" variant="ghost" onClick={() => setAskDelete(null)}>Keep both</Button>
+            <Button variant="secondary" onClick={() => { p.onDeleteNode(askDelete, true); setAskDelete(null); }}>Delete both</Button>
+            <Button variant="ghost" onClick={() => { p.onDeleteNode(askDelete, false); setAskDelete(null); }}>Step only</Button>
+            <Button variant="ghost" onClick={() => setAskDelete(null)}>Keep both</Button>
           </span>
         ) : null}
       </div>

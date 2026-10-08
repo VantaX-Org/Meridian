@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button, Mono } from "@/components/ui-core";
+import { Button, Mono } from "@/design";
 import type { ProcessVariant } from "@/types/process-model";
 import { addChild, newId, type Doc } from "./doc";
 
@@ -62,7 +62,7 @@ export function Discovered({ variants, onCreate }: { variants: ProcessVariant[];
                 {g.tables.length} {g.tables.length === 1 ? "step" : "steps"}
               </span>
             </div>
-            <Button size="sm" variant="ghost" onClick={() => onCreate(g)}>Create L1 from discovered</Button>
+            <Button variant="ghost" onClick={() => onCreate(g)}>Create L1 from discovered</Button>
           </li>
         ))}
       </ul>

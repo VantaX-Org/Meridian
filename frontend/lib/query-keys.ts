@@ -44,6 +44,19 @@ export const queryKeys = {
   matchRules: (domain?: string) => ["match-rules", domain ?? ""] as const,
   pairConstraints: (filters: Record<string, unknown>) =>
     ["pair-constraints", normalizeFilters(filters)] as const,
+  businessProcess: (versionId?: string, module?: string) =>
+    ["business-process", versionId ?? "", module ?? ""] as const,
+  configImpact: (versionId?: string) => ["config-impact", versionId ?? ""] as const,
+  configAwareScore: (versionId?: string, systemId?: string) =>
+    ["config-aware-score", versionId ?? "", systemId ?? ""] as const,
+  processMiningGraph: (versionId?: string, module?: string | null) =>
+    ["process-mining-graph", versionId ?? "", module ?? ""] as const,
+  processModels: () => ["process-models"] as const,
+  processModel: (id: string, version?: string) => ["process-model", id, version ?? ""] as const,
+  processModelVersions: (id: string) => ["process-model-versions", id] as const,
+  processOverlay: (id: string, versionId?: string) =>
+    ["process-overlay", id, versionId ?? ""] as const,
+  processVariants: (versionId?: string) => ["process-variants", versionId ?? ""] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

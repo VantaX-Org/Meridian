@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Chip, DetailDrawer, Field, FieldChip, Input, Mono, StatusBadge, Textarea, type Status } from "@/components/ui-core";
+import { Button, Drawer, Field, Mono, Pill, type PillTone } from "@/design";
 import { getDdicFields } from "@/lib/api/rules";
 import { formatModuleName } from "@/lib/format";
 import type { ActivityOverlay, Classification, FieldRef, L4, ProcessVariant } from "@/types/process-model";
@@ -11,10 +11,14 @@ import { allL4, findActivity, l1Of, locate, type Doc } from "./doc";
 const CLASS_LABEL: Record<Classification, string> = {
   implemented: "Implemented", dormant: "Dormant", configured_not_used: "Configured, not used", customer_specific: "Customer-specific",
 };
-const DQ: Record<ActivityOverlay["dq_status"], { status: Status; label: string }> = {
-  green: { status: "ok", label: "Passing" }, amber: { status: "medium", label: "Some fields failing" }, red: { status: "critical", label: "Blocking failures" },
+const DQ: Record<ActivityOverlay["dq_status"], { tone: PillTone; label: string }> = {
+  green: { tone: "go", label: "Passing" }, amber: { tone: "at-risk", label: "Some fields failing" }, red: { tone: "no-go", label: "Blocking failures" },
 };
 const FIELD = /^[A-Z0-9_/]+\.[A-Z0-9_/]+$/;
+
+function FieldChip({ table, field }: { table: string; field: string }) {
+  return <Pill>{`${table}.${field}`}</Pill>;
+}
 
 export interface AttributeProps {
   doc: Doc;
@@ -42,31 +46,33 @@ export function AttributeDrawer(p: AttributeProps) {
     : undefined;
   const title = hit?.act.name ?? l4?.name ?? (diag?.flow ? "Flow" : diag?.node ? "Decision" : "Details");
   return (
-    <DetailDrawer open={!!(hit || l4 || diag)} onClose={p.onClose} ariaLabel={title}
-      header={<div className="ui-drawer-head"><h2 className="ui-drawer-head__title">{title}</h2></div>}>
-      <div className="ui-detail">
+    <Drawer open={!!(hit || l4 || diag)} onOpenChange={(o) => { if (!o) p.onClose(); }} title={title}>
+      <div className="ui-detail flex flex-col gap-3">
         {hit ? <Activity {...p} hit={hit} /> : null}
         {l4 ? <SubProcess {...p} l4={l4} /> : null}
         {diag?.node && diag.node.type !== "task" ? (
-          <Field label="Label">{({ controlId }) => (
-            <Input id={controlId} key={diag.node!.id} defaultValue={diag.node!.label ?? ""} disabled={!p.editable}
+          <Field label="Label">
+            <input key={diag.node.id} defaultValue={diag.node.label ?? ""} disabled={!p.editable}
+              className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
               onBlur={(e) => e.target.value !== (diag.node!.label ?? "") && p.patchNode(diag.x.id, diag.node!.id, e.target.value)} />
-          )}</Field>
+          </Field>
         ) : null}
         {diag?.flow ? (
           <>
-            <Field label="Label">{({ controlId }) => (
-              <Input id={controlId} key={`${diag.flow!.id}l`} defaultValue={diag.flow!.label ?? ""} disabled={!p.editable}
+            <Field label="Label">
+              <input key={`${diag.flow.id}l`} defaultValue={diag.flow.label ?? ""} disabled={!p.editable}
+                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
                 onBlur={(e) => e.target.value !== (diag.flow!.label ?? "") && p.patchFlow(diag.x.id, diag.flow!.id, { label: e.target.value || null })} />
-            )}</Field>
-            <Field label="Condition">{({ controlId }) => (
-              <Input id={controlId} key={`${diag.flow!.id}c`} defaultValue={diag.flow!.condition ?? ""} disabled={!p.editable}
+            </Field>
+            <Field label="Condition">
+              <input key={`${diag.flow.id}c`} defaultValue={diag.flow.condition ?? ""} disabled={!p.editable}
+                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
                 onBlur={(e) => e.target.value !== (diag.flow!.condition ?? "") && p.patchFlow(diag.x.id, diag.flow!.id, { condition: e.target.value || null })} />
-            )}</Field>
+            </Field>
           </>
         ) : null}
       </div>
-    </DetailDrawer>
+    </Drawer>
   );
 }
 
@@ -93,22 +99,25 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
   const link = (check: string) => l1.modules.map((m) => p.findingHref(m, check)).find(Boolean);
   return (
     <>
-      <Field label="Name">{({ controlId }) => (
-        <Input id={controlId} key={act.id} defaultValue={act.name} disabled={!p.editable}
+      <Field label="Name">
+        <input key={act.id} defaultValue={act.name} disabled={!p.editable}
+          className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
           onBlur={(e) => e.target.value.trim() && e.target.value !== act.name && p.patchActivity(act.id, { name: e.target.value.trim() })} />
-      )}</Field>
-      <Field label="Description">{({ controlId }) => (
-        <Textarea id={controlId} key={`${act.id}d`} rows={3} defaultValue={act.description} disabled={!p.editable}
+      </Field>
+      <Field label="Description">
+        <textarea key={`${act.id}d`} rows={3} defaultValue={act.description} disabled={!p.editable}
+          className="rounded border px-2 py-1 text-[13px] w-full" style={{ borderColor: "var(--m-line)" }}
           onBlur={(e) => e.target.value !== act.description && p.patchActivity(act.id, { description: e.target.value })} />
-      )}</Field>
-      <Field label="T-code">{({ controlId }) => (
-        <Input id={controlId} key={`${act.id}t`} defaultValue={act.tcode ?? ""} disabled={!p.editable}
+      </Field>
+      <Field label="T-code">
+        <input key={`${act.id}t`} defaultValue={act.tcode ?? ""} disabled={!p.editable}
+          className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
           onBlur={(e) => e.target.value !== (act.tcode ?? "") && p.patchActivity(act.id, { tcode: e.target.value.trim().toUpperCase() || null })} />
-      )}</Field>
+      </Field>
       {act.evidence === "not_extracted" ? <p className="ui-note">No document table extracted for this step.</p> : null}
       {dq ? (
         <p className="ui-note">
-          <StatusBadge status={DQ[dq.dq_status].status}>{DQ[dq.dq_status].label}</StatusBadge>{" "}
+          <Pill tone={DQ[dq.dq_status].tone}>{DQ[dq.dq_status].label}</Pill>{" "}
           {dq.finding_count.toLocaleString()} {dq.finding_count === 1 ? "check has" : "checks have"} findings, {dq.affected_count.toLocaleString()} records affected.
         </p>
       ) : null}
@@ -134,7 +143,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
                   <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
                     onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
                 </label>
-                <Button size="sm" variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
+                <Button variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
                   onClick={() => set(act.fields.filter((x) => x !== f))}>Remove</Button>
               </li>
             );
@@ -142,13 +151,15 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
         </ul>
         {p.editable ? (
           <form className="aurora-designer__addrow" onSubmit={(e) => { e.preventDefault(); void add(); }}>
-            <Field label="Add field" helper="Table name, a dot, then the field name." error={error ?? undefined}>{({ controlId }) => (
-              <Input id={controlId} value={row.field} onChange={(e) => setRow({ ...row, field: e.target.value })} invalid={!!error} />
-            )}</Field>
-            <Field label="Rule">{({ controlId }) => (
-              <Input id={controlId} value={row.check} onChange={(e) => setRow({ ...row, check: e.target.value })} />
-            )}</Field>
-            <Button size="sm" variant="secondary" type="submit">Add field</Button>
+            <Field label="Add field" error={error ?? undefined}>
+              <input value={row.field} placeholder="Table name, a dot, then the field name." onChange={(e) => setRow({ ...row, field: e.target.value })}
+                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: error ? "var(--m-critical)" : "var(--m-line)" }} />
+            </Field>
+            <Field label="Rule">
+              <input value={row.check} onChange={(e) => setRow({ ...row, check: e.target.value })}
+                className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+            </Field>
+            <Button variant="secondary" type="submit">Add field</Button>
           </form>
         ) : <p className="ui-note"><button type="button" className="ui-link-button" onClick={p.onBlocked}>Create a model to edit fields.</button></p>}
       </section>
@@ -161,10 +172,11 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
   const tables = new Set(l4.activities.flatMap((a) => a.sap_tables));
   const candidates = p.unmapped.filter((v) => tables.has(v.sap_table)).slice(0, 12);
   const text = (label: string, key: "name" | "tcode" | "config_dependency") => (
-    <Field label={label}>{({ controlId }) => (
-      <Input id={controlId} key={`${l4.id}${key}`} defaultValue={l4[key] ?? ""} disabled={!p.editable}
+    <Field label={label}>
+      <input key={`${l4.id}${key}`} defaultValue={l4[key] ?? ""} disabled={!p.editable}
+        className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
         onBlur={(e) => e.target.value !== (l4[key] ?? "") && p.patchL4(l4.id, { [key]: key === "name" ? e.target.value.trim() || l4.name : e.target.value.trim() || null })} />
-    )}</Field>
+    </Field>
   );
   return (
     <>
@@ -179,7 +191,7 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
               <li key={`${v.sap_table}.${v.sap_field}.${v.value}`}>
                 <div className="ui-ranked__row">
                   <span className="ui-ranked__title"><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></span>
-                  <span className="ui-ranked__num"><Chip>{CLASS_LABEL[v.classification]}</Chip></span>
+                  <span className="ui-ranked__num"><Pill>{CLASS_LABEL[v.classification]}</Pill></span>
                 </div>
               </li>
             ))}
@@ -195,9 +207,9 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
               <li key={v.id ?? `${v.sap_table}${v.sap_field}${v.value}`}>
                 <div className="ui-ranked__row">
                   <span className="ui-ranked__title"><FieldChip table={v.sap_table} field={v.sap_field} /> <Mono>{v.value}</Mono></span>
-                  <span className="ui-ranked__num"><Chip>{CLASS_LABEL[v.classification]}</Chip></span>
+                  <span className="ui-ranked__num"><Pill>{CLASS_LABEL[v.classification]}</Pill></span>
                 </div>
-                <Button size="sm" variant="secondary" disabled={!p.canAdopt || !v.id} onClick={() => v.id && p.onAdopt(v.id, l4.id)}>Adopt</Button>
+                <Button variant="secondary" disabled={!p.canAdopt || !v.id} onClick={() => v.id && p.onAdopt(v.id, l4.id)}>Adopt</Button>
               </li>
             ))}
           </ul>

@@ -39,6 +39,9 @@ const nextConfig: NextConfig = {
       { source: "/match-rules", destination: "/mdm/match-rules", permanent: false },
       { source: "/match-rules/constraints", destination: "/mdm/match-rules", permanent: false },
       { source: "/match-rules/tuning", destination: "/mdm/match-rules", permanent: false },
+      { source: "/business-process", destination: "/insights/process", permanent: false },
+      { source: "/process", destination: "/insights/process", permanent: false },
+      { source: "/process/designer", destination: "/insights/process/designer", permanent: false },
     ];
   },
 
