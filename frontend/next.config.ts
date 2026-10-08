@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
         destination: "/data/runs/:versionId?tab=profile",
         permanent: false,
       },
+      { source: "/glossary", destination: "/mdm/glossary", permanent: false },
+      { source: "/glossary/:id", destination: "/mdm/glossary/:id", permanent: false },
     ];
   },
 

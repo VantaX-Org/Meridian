@@ -32,6 +32,9 @@ export const queryKeys = {
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
+  glossary: (scope: string, filters: Record<string, unknown>) =>
+    ["glossary", scope, normalizeFilters(filters)] as const,
+  glossaryTerm: (id: string) => ["glossary", id] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

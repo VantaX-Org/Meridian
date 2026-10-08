@@ -19,6 +19,8 @@ const EXPECTED: Record<string, string> = {
   "/golden-records/:id/merge": "/golden-records/:id?tab=merge",
   "/systems/:id/pilot": "/systems/:id?tab=pilot",
   "/systems/:id/versions/:versionId/profile": "/data/runs/:versionId?tab=profile",
+  "/glossary": "/mdm/glossary",
+  "/glossary/:id": "/mdm/glossary/:id",
 };
 
 describe("legacy route redirects", () => {
