@@ -110,12 +110,12 @@ export default function InboxPage() {
       enabled: !isExceptions,
     })),
   });
-  const weekQ = useQuery({ queryKey: ["triage.metrics", 8], queryFn: () => getTriageMetrics(8), refetchInterval: 60_000, enabled: !isExceptions });
-  const metricsQ = useQuery({ queryKey: ["stewardship.metrics"], queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
+  const weekQ = useQuery({ queryKey: queryKeys.triageMetrics(8), queryFn: () => getTriageMetrics(8), refetchInterval: 60_000, enabled: !isExceptions });
+  const metricsQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, refetchInterval: 60_000, enabled: !isExceptions });
   // The user list needs `manage_users`; without it assignees show as "You" or an id prefix.
-  const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers, enabled: can("manage_users") });
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers, enabled: can("manage_users") });
   // Unread notifications: shown as a header stat regardless of which kind is active (spec 6.2 fallback).
-  const unreadQ = useQuery({ queryKey: ["notifications.unread-count"], queryFn: getUnreadCount, refetchInterval: 30_000 });
+  const unreadQ = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 30_000 });
 
   const excQ = useQuery({
     queryKey: queryKeys.inbox({ kind: "exception", per_page: 200 }),
@@ -123,8 +123,8 @@ export default function InboxPage() {
     refetchInterval: 60_000,
     enabled: isExceptions,
   });
-  const excMetricsQ = useQuery({ queryKey: ["exceptions.metrics"], queryFn: () => getExceptionMetrics(), enabled: isExceptions });
-  const excRulesQ = useQuery({ queryKey: ["exceptions.rules"], queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
+  const excMetricsQ = useQuery({ queryKey: queryKeys.exceptionMetrics(), queryFn: () => getExceptionMetrics(), enabled: isExceptions });
+  const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
   const isLoading = queues.some((q) => q.isLoading);
   const isError = queues.some((q) => q.isError);
@@ -183,9 +183,9 @@ export default function InboxPage() {
 
   const refresh = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["inbox"] });
-    void qc.invalidateQueries({ queryKey: ["stewardship.metrics"] });
-    void qc.invalidateQueries({ queryKey: ["exceptions.metrics"] });
-    void qc.invalidateQueries({ queryKey: ["notifications.unread-count"] });
+    void qc.invalidateQueries({ queryKey: queryKeys.stewardshipMetrics() });
+    void qc.invalidateQueries({ queryKey: queryKeys.exceptionMetrics() });
+    void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
   }, [qc]);
   const done = useCallback((verb: string, r: { ok: number; failed: number }) => {
     if (r.ok) toastManager.add({ title: `${verb} ${plural(r.ok, "task")}` });
@@ -266,13 +266,13 @@ export default function InboxPage() {
     onSuccess: () => {
       toastManager.add({ title: "Exception rule created" });
       setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
-      void qc.invalidateQueries({ queryKey: ["exceptions.rules"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
     onError: (e) => toastManager.add({ title: (e as Error).message || "Rule not created" }),
   });
   const toggleRule = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateExceptionRule(id, { is_active }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["exceptions.rules"] }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() }),
   });
 
   const columns = useMemo<ColumnDef<StewardshipQueueItem>[]>(() => [
