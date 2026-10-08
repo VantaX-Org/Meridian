@@ -35,6 +35,12 @@ export const queryKeys = {
   glossary: (scope: string, filters: Record<string, unknown>) =>
     ["glossary", scope, normalizeFilters(filters)] as const,
   glossaryTerm: (id: string) => ["glossary", id] as const,
+  masterRecords: (filters: Record<string, unknown>) =>
+    ["master-records", normalizeFilters(filters)] as const,
+  masterRecord: (id: string) => ["master-records", id] as const,
+  masterRecordHistory: (id: string) => ["master-records", id, "history"] as const,
+  relationships: (filters: Record<string, unknown>) =>
+    ["relationships", normalizeFilters(filters)] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

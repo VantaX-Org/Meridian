@@ -25,7 +25,6 @@ const nextConfig: NextConfig = {
       { source: "/run-sync", destination: "/data", permanent: false },
       { source: "/migration", destination: "/data?tab=migration", permanent: false },
       { source: "/analytics", destination: "/", permanent: false },
-      { source: "/golden-records/:id/merge", destination: "/golden-records/:id?tab=merge", permanent: false },
       { source: "/systems/:id/pilot", destination: "/systems/:id?tab=pilot", permanent: false },
       {
         source: "/systems/:id/versions/:versionId/profile",
@@ -34,6 +33,9 @@ const nextConfig: NextConfig = {
       },
       { source: "/glossary", destination: "/mdm/glossary", permanent: false },
       { source: "/glossary/:id", destination: "/mdm/glossary/:id", permanent: false },
+      { source: "/golden-records", destination: "/mdm/golden", permanent: false },
+      { source: "/golden-records/:id", destination: "/mdm/golden/:id", permanent: false },
+      { source: "/golden-records/:id/merge", destination: "/mdm/golden/merge", permanent: false },
     ];
   },
 
