@@ -50,6 +50,7 @@ export const test = base.extend<{ app: Page }>({
     await mockDepth(page);
     await mockMaterial(page);
     await mockObjects(page);
+    await mockInsightsReadiness(page);
     await provide(page);
   },
 });
@@ -174,6 +175,15 @@ async function mockObjects(page: Page) {
     })));
   await page.route(new RegExp(`/api/v1/objects/material_master/records/${OBJECT_MATNR}`), (r) =>
     r.fulfill(json(MATERIAL[String(Number(OBJECT_MATNR))].material)));
+}
+
+/** Insights readiness endpoint is not in the recording: one no_go cell on material_master, for the drill-through journey. */
+async function mockInsightsReadiness(page: Page) {
+  await page.route(/\/api\/v1\/insights\/readiness(\?.*)?$/, (r) => r.fulfill(json({
+    version_id: VERSION_ID,
+    threshold: 90,
+    cells: [{ module: OBJECT_SUMMARY.module, wave: "wave_1", verdict: "no_go", blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+  })));
 }
 
 export { expect };
