@@ -189,7 +189,8 @@ class ConnectivityManager:
 
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
                 scope: Optional[dict] = None,
-                progress: Optional[Callable[[dict], None]] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                progress: Optional[Callable[[dict], None]] = None,
+                sink: Optional[Callable[[str, pd.DataFrame, dict], None]] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
@@ -200,6 +201,12 @@ class ConnectivityManager:
         percent, tables}`` — ``tables`` being one ``{table, status, rows,
         expected}`` snapshot per planned table (status queued · running · live ·
         failed · …) so a caller can draw one bar per table and one overall.
+
+        ``sink(table, frame, coverage_entry)`` receives every live ABAP data table
+        as soon as it is read, and that table is then dropped instead of being
+        returned in ``frames``: the caller stores one table at a time and the
+        process never holds the whole system (18M-row MARC and MBEW together
+        killed a 30 GiB worker). Configuration tables are always returned.
         """
         import os
 
@@ -234,6 +241,8 @@ class ConnectivityManager:
                     if t in plans:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
                 raw: dict[str, pd.DataFrame] = {}
+                # raw frames a later read filters by (via) or derives from (payroll); nothing else is kept
+                needed_raw = {p.via for p in plans.values() if p.via} | {"HRPY_RGDIR"}
                 # reconciliation: an unfiltered read must return exactly SAP's own row count
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
@@ -310,8 +319,8 @@ class ConnectivityManager:
                     df = df.drop_duplicates()
                     keys = [k for k in t.keys if k in df.columns]
                     dup_keys = int(df.duplicated(subset=keys).sum()) if keys else 0
-                    raw[table] = df
-                    frames[table] = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+                    if table in needed_raw or sink is None:
+                        raw[table] = df
                     entry = {"table": table, "status": "live", "rows": len(df), "purpose": plan.purpose,
                              "partial": plan.partial, "modules": sorted(plan.modules),
                              "window": where if where and not where.startswith(tuple(
@@ -325,6 +334,12 @@ class ConnectivityManager:
                         entry["duplicate_keys"] = dup_keys
                     coverage.append(entry)
                     logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
+                    framed = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
+                    del df
+                    if sink is not None and plan.purpose == "data":
+                        sink(table, framed, entry)
+                    else:
+                        frames[table] = framed
                 i = len(order)
                 report()  # final state of every table
             elif system_type == "successfactors":
