@@ -11,6 +11,11 @@ const PUBLIC = ["/sign-in", "/sign-up", "/login", "/accept-invite", "/forgot-pas
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  // The component gallery is dev-only; the page itself 404s via notFound(),
+  // but that still ships the route's JS in production. Stop it at the edge too.
+  if (pathname === "/design" && process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   if (PUBLIC.some((p) => pathname === p || pathname.startsWith(p + "/")) || req.cookies.has("mn_session")) {
     return NextResponse.next();
   }
