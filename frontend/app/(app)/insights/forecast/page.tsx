@@ -34,6 +34,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, Line, Pill, ReportPage, Select, type PillTone } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning } from "@/lib/api/analytics";
 import { formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const SIGNAL_TONE: Record<EarlyWarning["signal"], PillTone> = {
   red: "no-go",
@@ -53,8 +54,8 @@ const warningColumns: ColumnDef<EarlyWarning>[] = [
 ];
 
 export default function ForecastPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["analytics.predictive"],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.analyticsPredictive(),
     queryFn: () => getPredictiveAnalytics(),
   });
   const forecasts = useMemo(() => data?.forecasts ?? [], [data]);
@@ -91,7 +92,10 @@ export default function ForecastPage() {
       </div>
       <ReportPage
         state={state}
-        errorProps={{ message: "Could not load the forecast." }}
+        errorProps={{
+          message: error instanceof Error ? error.message : "Could not load the forecast.",
+          onRetry: () => refetch(),
+        }}
         emptyProps={{ title: "No forecast yet — run a sync and a check batch to build one." }}
         narrative={
           selected

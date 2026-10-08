@@ -1,4 +1,4 @@
-import { waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as miningApi from "@/lib/api/mining";
@@ -39,5 +39,20 @@ describe("MiningPage", () => {
     vi.spyOn(miningApi, "getMiningPatterns").mockResolvedValue({ patterns: [] });
     renderWithQuery(<MiningPage />);
     await waitFor(() => expect(relationshipsApi.getRelationships).toHaveBeenCalled());
+  });
+
+  it("shows the API error message for entity links and retries on click", async () => {
+    vi.spyOn(miningApi, "getMiningSummary").mockResolvedValue({
+      window_days: 30, total_patterns: 0, new_anomalies: 0, stable_patterns: 0,
+      coverage_pct: 0, runs_total: 0, cost_usd: 0,
+    });
+    vi.spyOn(relationshipsApi, "getRelationships").mockRejectedValue(new Error("relationships unavailable"));
+    renderWithQuery(<MiningPage />);
+    await screen.findByText("relationships unavailable");
+    const calls = (relationshipsApi.getRelationships as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() =>
+      expect((relationshipsApi.getRelationships as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls),
+    );
   });
 });

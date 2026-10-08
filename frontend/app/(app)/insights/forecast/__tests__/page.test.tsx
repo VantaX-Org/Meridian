@@ -1,4 +1,4 @@
-import { waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as analyticsApi from "@/lib/api/analytics";
@@ -33,5 +33,16 @@ describe("ForecastPage", () => {
     vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
     renderWithQuery(<ForecastPage />);
     await waitFor(() => expect(analyticsApi.getPredictiveAnalytics).toHaveBeenCalled());
+  });
+
+  it("shows the API error message and retries on click", async () => {
+    vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockRejectedValue(new Error("forecast service unavailable"));
+    renderWithQuery(<ForecastPage />);
+    await screen.findByText("forecast service unavailable");
+    const calls = (analyticsApi.getPredictiveAnalytics as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() =>
+      expect((analyticsApi.getPredictiveAnalytics as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls),
+    );
   });
 });

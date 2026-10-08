@@ -62,6 +62,14 @@ export const queryKeys = {
   lineageGraph: (node: string, direction: string, depth: number) => ["lineage-graph", node, direction, depth] as const,
   lineageGuards: (node: string, versionId?: string) => ["lineage-guards", node, versionId ?? ""] as const,
   lineageBlast: (versionId: string, checkId: string) => ["lineage-blast", versionId, checkId] as const,
+  miningSummary: (days: number) => ["mining-summary", days] as const,
+  miningPatterns: (filters: Record<string, unknown>) =>
+    ["mining-patterns", normalizeFilters(filters)] as const,
+  systemVersions: (systemId: string) => ["system-versions", systemId] as const,
+  versionProfile: (systemId: string, versionId: string, object?: string) =>
+    ["version-profile", systemId, versionId, object ?? ""] as const,
+  pdReference: () => ["pd-reference"] as const,
+  analyticsPredictive: () => ["analytics-predictive"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

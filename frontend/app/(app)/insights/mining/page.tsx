@@ -59,7 +59,7 @@ const SEVERITY_LABEL: Record<MiningPattern["severity"], string> = {
 
 function GraphTally() {
   const rel = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
-  const sum = useQuery({ queryKey: ["mining.summary"], queryFn: () => getMiningSummary(30) });
+  const sum = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
   const rels = rel.data?.relationships ?? [];
   const domains = new Set(rels.flatMap((r) => [r.from_domain, r.to_domain])).size;
   const anomalies = sum.data?.new_anomalies ?? 0;
@@ -115,7 +115,14 @@ function EntityLinks() {
     { id: "found", header: "Discovered", cell: ({ row }) => relativeTime(row.original.discovered_at) },
   ], []);
 
-  if (q.error) return <ErrorState message="Relationships could not be loaded." onRetry={() => void q.refetch()} />;
+  if (q.error) {
+    return (
+      <ErrorState
+        message={q.error instanceof Error ? q.error.message : "Relationships could not be loaded."}
+        onRetry={() => void q.refetch()}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,12 +150,12 @@ function Dependencies() {
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const sid = systemId || systems.data?.[0]?.id || "";
   const versions = useQuery({
-    queryKey: ["system-versions", sid], queryFn: () => getSystemVersions(sid), enabled: !!sid,
+    queryKey: queryKeys.systemVersions(sid), queryFn: () => getSystemVersions(sid), enabled: !!sid,
     select: (d) => d.versions,
   });
   const vid = versionId || versions.data?.[0]?.id || "";
   const profile = useQuery({
-    queryKey: ["version-profile", sid, vid, object],
+    queryKey: queryKeys.versionProfile(sid, vid, object),
     queryFn: () => getVersionProfile(sid, vid, object || undefined),
     enabled: !!sid && !!vid,
   });
@@ -191,7 +198,12 @@ function Dependencies() {
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
       </div>
-      {profile.error ? <ErrorState message="The profile for this version could not be loaded." /> : null}
+      {profile.error ? (
+        <ErrorState
+          message={profile.error instanceof Error ? profile.error.message : "The profile for this version could not be loaded."}
+          onRetry={() => void profile.refetch()}
+        />
+      ) : null}
       <div>
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           One field decides another in at least 99 % of records. Click a field to open its profile.
@@ -209,9 +221,9 @@ function Dependencies() {
 
 function Patterns() {
   const [type, setType] = useState("");
-  const summary = useQuery({ queryKey: ["mining.summary"], queryFn: () => getMiningSummary(30) });
+  const summary = useQuery({ queryKey: queryKeys.miningSummary(30), queryFn: () => getMiningSummary(30) });
   const patterns = useQuery({
-    queryKey: ["mining.patterns", { type }],
+    queryKey: queryKeys.miningPatterns({ type }),
     queryFn: () => getMiningPatterns({ pattern_type: type || undefined, limit: 200 }),
   });
   const list = patterns.data?.patterns ?? [];
@@ -227,7 +239,15 @@ function Patterns() {
     { id: "rule", header: "", cell: ({ row }) => row.original.promoted_to_rule ? <Pill tone="go">is a rule</Pill> : null },
   ], []);
 
-  if (summary.error || patterns.error) return <ErrorState message="Patterns could not be loaded." />;
+  if (summary.error || patterns.error) {
+    const err = patterns.error ?? summary.error;
+    return (
+      <ErrorState
+        message={err instanceof Error ? err.message : "Patterns could not be loaded."}
+        onRetry={() => { void summary.refetch(); void patterns.refetch(); }}
+      />
+    );
+  }
   return (
     <div className="flex flex-col gap-6">
       <Select placeholder="All types" value={type} onValueChange={setType}
