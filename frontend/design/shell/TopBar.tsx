@@ -14,7 +14,7 @@ export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?
         <Breadcrumb />
       </Suspense>
       <div className="flex items-center gap-3">
-        {runSelector}
+        <Suspense fallback={null}>{runSelector}</Suspense>
         {commandPalette}
         <JobTray />
         {userMenu}

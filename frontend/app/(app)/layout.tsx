@@ -1,15 +1,32 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Rail, TopBar, CommandPalette, ToastViewport } from "@/design";
+import { useQuery } from "@tanstack/react-query";
+import { Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
 import { AuthGuard } from "@/components/shell/widgets";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
+import { getVersions } from "@/lib/api/versions";
+import { formatDate, formatModuleName } from "@/lib/format";
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: item.href })));
   return <CommandPalette items={items} />;
+}
+
+function RunSelectorSlot() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["run", "list"],
+    queryFn: () => getVersions(),
+  });
+  if (isLoading || isError || !data) return null;
+
+  const runs: RunOption[] = data.versions.map((v) => ({
+    id: v.id,
+    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
+  }));
+  return <RunSelector runs={runs} />;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -18,7 +35,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex h-screen">
         <Rail />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <TopBar commandPalette={<CommandPaletteSlot />} />
+          <TopBar runSelector={<RunSelectorSlot />} commandPalette={<CommandPaletteSlot />} />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             {children}
           </main>
