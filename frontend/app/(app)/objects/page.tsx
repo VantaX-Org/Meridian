@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, Pill, ScoreRing, SeverityDot, type PillTone } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { queryKeys } from "@/lib/query-keys";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
   pass: "Go",
@@ -61,8 +62,8 @@ export default function ObjectsPage() {
   const router = useRouter();
   const run = search.get("run") ?? "";
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["objects", run],
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: queryKeys.objects(run),
     queryFn: () => getObjects(run),
     enabled: !!run,
   });
@@ -93,8 +94,8 @@ export default function ObjectsPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: "Couldn't load objects. Try again, or pick a different run.",
-        onRetry: () => router.push(`/objects?run=${run}`),
+        message: `Couldn't load objects. ${error?.message ?? ""}`.trim(),
+        onRetry: () => refetch(),
       }}
     />
   );

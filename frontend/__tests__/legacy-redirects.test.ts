@@ -2,13 +2,29 @@
 import { describe, expect, it } from "vitest";
 import nextConfig from "../next.config";
 
+const EXPECTED: Record<string, string> = {
+  "/stewardship": "/workbench?tab=queue",
+  "/stewardship/metrics": "/workbench?tab=queue",
+  "/home": "/home/lead",
+  "/findings": "/objects",
+  "/versions": "/runs",
+  "/analyse/object/:module": "/objects/:module",
+  "/analyse/material/:matnr": "/objects/material_master/records/:matnr",
+  "/command-centre": "/?tab=live",
+  "/connectivity": "/data",
+  "/run-sync": "/data",
+  "/migration": "/data?tab=migration",
+  "/analytics": "/",
+  "/golden-records/:id/merge": "/golden-records/:id?tab=merge",
+  "/systems/:id/pilot": "/systems/:id?tab=pilot",
+  "/systems/:id/versions/:versionId/profile": "/data/runs/:versionId?tab=profile",
+};
+
 describe("legacy route redirects", () => {
-  it("redirects every Wave 1b legacy route to its replacement", async () => {
+  it("redirects every legacy route to its replacement, and nothing else", async () => {
     const redirects = await nextConfig.redirects!();
-    const bySource = new Map(redirects.map((r) => [r.source, r.destination]));
-    expect(bySource.get("/findings")).toBe("/objects");
-    expect(bySource.get("/versions")).toBe("/runs");
-    expect(bySource.get("/analyse/object/:module")).toBe("/objects/:module");
-    expect(bySource.get("/analyse/material/:matnr")).toBe("/objects/material_master/records/:matnr");
+    const actual = Object.fromEntries(redirects.map((r) => [r.source, r.destination]));
+    expect(actual).toEqual(EXPECTED);
+    for (const r of redirects) expect(r.permanent).toBe(false);
   });
 });

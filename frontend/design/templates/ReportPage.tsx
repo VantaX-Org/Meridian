@@ -14,7 +14,7 @@ export function ReportPage({
   emptyProps,
   errorProps,
 }: {
-  narrative: string;
+  narrative: ReactNode;
   charts: ReactNode;
   tables?: ReactNode;
   onExport?: () => void;

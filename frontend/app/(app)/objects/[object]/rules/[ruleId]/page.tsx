@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/[object]/rules/[ruleId]/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -20,31 +20,34 @@ export default function RuleDetailPage() {
   const run = search.get("run") ?? "";
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [...queryKeys.rule(ruleId, run), page],
     queryFn: () => getFindingRecords(run, ruleId, { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     enabled: !!run,
   });
 
-  const columns: ColumnDef<FindingRecord>[] = [
-    { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
-    { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-    { accessorKey: "module", header: "Module" },
-    {
-      id: "fix",
-      header: "",
-      cell: ({ row }) => (
-        // DrillLink can only target /objects/[object] and /objects/[object]/rules/[ruleId];
-        // it has no way to address the record fix-sheet route, so this is a plain Link.
-        <Link
-          href={`/objects/${object}/records/${encodeURIComponent(row.original.record_key)}?run=${run}`}
-          style={{ color: "var(--m-accent)" }}
-        >
-          Open fix sheet
-        </Link>
-      ),
-    },
-  ];
+  const columns = useMemo<ColumnDef<FindingRecord>[]>(
+    () => [
+      { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
+      { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
+      { accessorKey: "module", header: "Module" },
+      {
+        id: "fix",
+        header: "Fix sheet",
+        cell: ({ row }) => (
+          // DrillLink can only target /objects/[object] and /objects/[object]/rules/[ruleId];
+          // it has no way to address the record fix-sheet route, so this is a plain Link.
+          <Link
+            href={`/objects/${object}/records/${encodeURIComponent(row.original.record_key)}?run=${run}`}
+            style={{ color: "var(--m-accent)" }}
+          >
+            Open fix sheet
+          </Link>
+        ),
+      },
+    ],
+    [object, run],
+  );
 
   if (!run) {
     return <EmptyState title="Select a run to see this rule's failing records." />;
@@ -59,7 +62,12 @@ export default function RuleDetailPage() {
     );
   }
   if (isError) {
-    return <ErrorState message="Couldn't load this rule's failing records. Try again." />;
+    return (
+      <ErrorState
+        message={`Couldn't load this rule's failing records. ${error?.message ?? ""}`.trim()}
+        onRetry={() => refetch()}
+      />
+    );
   }
   if (!data || data.records.length === 0) {
     return <EmptyState title="No failing records for this rule on this run." />;

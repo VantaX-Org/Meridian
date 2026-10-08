@@ -10,6 +10,7 @@ import { getVersions } from "@/lib/api/versions";
 import { getSystems } from "@/lib/api/systems";
 import type { Version } from "@/types/api";
 import { formatDate, formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 function makeColumns(systemName: Map<string, string>): ColumnDef<Version>[] {
   return [
@@ -35,11 +36,11 @@ function makeColumns(systemName: Map<string, string>): ColumnDef<Version>[] {
 export default function RunsPage() {
   const router = useRouter();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["run", "list"],
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: queryKeys.run("list"),
     queryFn: () => getVersions(),
   });
-  const systemsQuery = useQuery({ queryKey: ["systems", "list"], queryFn: getSystems });
+  const systemsQuery = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systemName = useMemo(
     () => new Map((systemsQuery.data ?? []).map((s) => [s.id, s.name])),
     [systemsQuery.data],
@@ -67,7 +68,7 @@ export default function RunsPage() {
       }
       state={state}
       emptyProps={{ title: "No runs yet. Upload a file or connect a system to start a run." }}
-      errorProps={{ message: "Couldn't load runs. Try again.", onRetry: () => router.refresh() }}
+      errorProps={{ message: `Couldn't load runs. ${error?.message ?? ""}`.trim(), onRetry: () => refetch() }}
     />
   );
 }

@@ -2,12 +2,13 @@
 
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
+import { Button, Pill, Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
 import { AuthGuard } from "@/components/shell/widgets";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
@@ -16,15 +17,24 @@ function CommandPaletteSlot() {
 }
 
 function RunSelectorSlot() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["run", "list"],
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: queryKeys.run("list"),
     queryFn: () => getVersions(),
   });
-  if (isLoading || isError || !data) return null;
+  if (isLoading) return null;
+  if (isError || !data) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <RunSelector runs={[]} />
+        <Pill tone="no-go">Runs unavailable</Pill>
+        <Button variant="ghost" onClick={() => refetch()}>Retry</Button>
+      </span>
+    );
+  }
 
   const runs: RunOption[] = data.versions.map((v) => ({
     id: v.id,
-    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
+    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
   }));
   return <RunSelector runs={runs} />;
 }

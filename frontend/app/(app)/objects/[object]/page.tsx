@@ -31,7 +31,7 @@ export default function ObjectDetailPage() {
   const object = params.object;
   const run = search.get("run") ?? "";
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.object(object, run),
     queryFn: () => getObject(object, run),
     enabled: !!run,
@@ -77,8 +77,8 @@ export default function ObjectDetailPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: "Couldn't load this object. Try again, or pick a different run.",
-        onRetry: () => router.push(`/objects/${object}?run=${run}`),
+        message: `Couldn't load this object. ${error?.message ?? ""}`.trim(),
+        onRetry: () => refetch(),
       }}
     />
   );

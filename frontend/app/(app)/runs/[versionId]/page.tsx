@@ -50,19 +50,33 @@ export default function RunDetailPage() {
   });
 
   if (version.isError || steps.isError) {
-    return <ErrorState message="Couldn't load this run. Try again." />;
+    const failed = version.isError ? version : steps;
+    return (
+      <ErrorState
+        message={`Couldn't load this run. ${failed.error?.message ?? ""}`.trim()}
+        onRetry={() => {
+          if (version.isError) version.refetch();
+          if (steps.isError) steps.refetch();
+        }}
+      />
+    );
   }
 
   const isLoading = version.isLoading || steps.isLoading;
   const stepRows = steps.data?.steps ?? [];
-  const narrative = version.data
-    ? `${version.data.label ?? versionId} — started ${formatDate(version.data.run_at, "datetime")}.`
-    : "Loading this run...";
+  const narrative = version.data ? (
+    <>
+      {version.data.label ?? versionId} — started {formatDate(version.data.run_at, "datetime")}.{" "}
+      <Pill tone={statusTone(version.data.status)}>{labelOf(version.data.status)}</Pill>
+    </>
+  ) : (
+    "Loading this run..."
+  );
 
   return (
     <ReportPage
       narrative={narrative}
-      charts={version.data ? <Pill tone={statusTone(version.data.status)}>{labelOf(version.data.status)}</Pill> : null}
+      charts={null}
       tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
       state={isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No step history for this run yet." }}

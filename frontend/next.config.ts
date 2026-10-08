@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/stewardship", destination: "/workbench?tab=queue", permanent: false },
       { source: "/stewardship/metrics", destination: "/workbench?tab=queue", permanent: false },
+      { source: "/home", destination: "/home/lead", permanent: false },
       { source: "/findings", destination: "/objects", permanent: false },
       { source: "/versions", destination: "/runs", permanent: false },
       { source: "/analyse/object/:module", destination: "/objects/:module", permanent: false },
