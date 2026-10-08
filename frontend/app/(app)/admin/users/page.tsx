@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -14,6 +14,7 @@ import { downloadBlob } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import type { User, UserRole } from "@/types/api";
 
 // ponytail: getAssignableUsers() is unused here, same as the legacy component it replaces.
@@ -73,7 +74,7 @@ function UsersView() {
   const [invite, setInvite] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
 
-  const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers });
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
   const active = users.filter((u) => u.is_active);
   const [mountedAt] = useState(() => Date.now());
@@ -82,7 +83,7 @@ function UsersView() {
     [users, mountedAt],
   );
   const neverSignedIn = active.filter((u) => !u.last_login).length;
-  const refresh = () => qc.invalidateQueries({ queryKey: ["users.list"] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.users() });
 
   const del = useMutation({
     mutationFn: (u: User) => deleteUser(u.id),
@@ -134,7 +135,9 @@ function UsersView() {
         <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
       </div>
 
-      {usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
+      {usersQ.isError ? (
+        <ErrorState message={(usersQ.error as Error)?.message || "Could not load users."} onRetry={() => usersQ.refetch()} />
+      ) : usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
         <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
       ) : (
         <EmptyState title="No users yet. Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
@@ -159,8 +162,8 @@ function UsersView() {
 }
 
 function RolesView() {
-  const matrixQ = useQuery({ queryKey: ["auth.roles"], queryFn: getRoleMatrix });
-  const usersQ = useQuery({ queryKey: ["users.list"], queryFn: getUsers });
+  const matrixQ = useQuery({ queryKey: queryKeys.authRoles(), queryFn: getRoleMatrix });
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = (usersQ.data?.users ?? []).filter((u) => u.is_active);
   const matrix = matrixQ.data;
   const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
@@ -168,7 +171,9 @@ function RolesView() {
   return (
     <div className="flex flex-col gap-6 pt-4">
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API&apos;s role matrix. The frontend never keeps its own copy.</p>
-      {matrix ? (
+      {matrixQ.isError ? (
+        <ErrorState message={(matrixQ.error as Error)?.message || "Could not load the role matrix."} onRetry={() => matrixQ.refetch()} />
+      ) : matrix ? (
         <section>
           <h2 className="text-[13px] font-semibold mb-2">Role matrix</h2>
           <div className="overflow-x-auto">
@@ -204,7 +209,7 @@ function RolesView() {
 }
 
 function AuditView() {
-  const auditQ = useQuery({ queryKey: ["audit.entries", 50], queryFn: () => getAuditEntries({ limit: 50 }) });
+  const auditQ = useQuery({ queryKey: queryKeys.auditEntries(50), queryFn: () => getAuditEntries({ limit: 50 }) });
   const entries: AuditEntry[] = auditQ.data?.entries ?? [];
 
   return (
@@ -214,7 +219,9 @@ function AuditView() {
           Export audit log
         </Button>
       </div>
-      {auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
+      {auditQ.isError ? (
+        <ErrorState message={(auditQ.error as Error)?.message || "Could not load the audit log."} onRetry={() => auditQ.refetch()} />
+      ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
         <div className="overflow-x-auto">
           <table className="text-[12px]" aria-label="Audit log">
             <thead><tr><th className="text-left pr-3">When</th><th className="text-left pr-3">Actor</th><th className="text-left pr-3">Action</th><th className="text-left pr-3">Context</th></tr></thead>

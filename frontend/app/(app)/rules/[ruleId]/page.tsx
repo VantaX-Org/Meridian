@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button, DrillLink, ErrorState, Mono, Pill, Skeleton } from "@/design";
 import { getRule, updateRule } from "@/lib/api/rules";
 import { checkClassLabel, formatModuleName, labelOf } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const SEV_TONE: Record<string, "no-go" | "at-risk" | "neutral"> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", info: "neutral" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -15,10 +16,10 @@ const conditionList = (conditions: Record<string, unknown>[] | Record<string, un
 export default function RulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const qc = useQueryClient();
-  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["rules.detail", ruleId], queryFn: () => getRule(ruleId) });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.ruleDetail(ruleId), queryFn: () => getRule(ruleId) });
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateRule(ruleId, { enabled }),
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["rules.detail", ruleId] }); qc.invalidateQueries({ queryKey: ["rules.list"] }); },
+    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: queryKeys.ruleDetail(ruleId) }); qc.invalidateQueries({ queryKey: ["rules"] }); },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
 

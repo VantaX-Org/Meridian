@@ -3,11 +3,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, Mono, Pill, Select, Skeleton } from "@/design";
+import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 type Draft = Pick<FieldMapping, "customer_field" | "customer_label" | "notes">;
 
@@ -51,14 +52,14 @@ export default function AdminMappingsPage() {
   const [object, setObject] = useState("");
   const [search, setSearch] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
-  const all = useQuery({ queryKey: ["field-mappings"], queryFn: () => getFieldMappings() });
+  const all = useQuery({ queryKey: queryKeys.fieldMappings(), queryFn: () => getFieldMappings() });
   const mappings = useMemo(() => all.data?.mappings ?? [], [all.data]);
   const objects = useMemo(() => Array.from(new Set(mappings.map((m) => m.module))).sort(), [mappings]);
   const term = search.trim().toLowerCase();
   const shown = mappings.filter((m) => (!object || m.module === object)
     && (!term || [m.standard_field, m.standard_label, m.customer_field, m.customer_label].some((v) => v?.toLowerCase().includes(term))));
   const mapped = shown.filter((m) => m.is_mapped).length;
-  const refresh = () => qc.invalidateQueries({ queryKey: ["field-mappings"] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.fieldMappings() });
   const reset = useMutation({
     mutationFn: () => resetFieldMappings(object || undefined),
     onSuccess: (r) => { refresh(); setConfirmReset(false); toast.success(`${r.reset_count} mappings reset to defaults`); },
@@ -109,10 +110,8 @@ export default function AdminMappingsPage() {
       </div>
 
       {all.isLoading ? <Skeleton height={320} />
-        : all.error ? (
-          <div role="alert" className="text-[13px]" style={{ color: "var(--m-critical)" }}>
-            Field mappings could not be read. {apiErrorMessage(all.error)}
-          </div>
+        : all.isError ? (
+          <ErrorState message={apiErrorMessage(all.error) || "Field mappings could not be read."} onRetry={() => all.refetch()} />
         ) : !shown.length ? <EmptyState title="No standard field matches this filter." />
         : (
           <section>
