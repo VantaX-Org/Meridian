@@ -13,7 +13,7 @@ import yaml
 
 from checks.base import sap_number
 
-_SECTIONS = ("severity", "modules", "rules")
+_SECTIONS = ("severity", "modules", "rules", "features")
 # Same ratio as analytics_engine.SEVERITY_WEIGHTS (40/30/20/10).
 SEVERITY_FACTOR = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 

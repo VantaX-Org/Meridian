@@ -247,15 +247,23 @@ async def explain_record(record_id: uuid.UUID, _: str = Depends(require_permissi
                            thresholds={"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR})
 
 
+async def build_cluster_graph(db: AsyncSession, tid: str, record_id: uuid.UUID) -> tuple[Any, dict]:
+    """Shared by this module's own /cluster-graph route and insights.py's
+    /duplicates/{object}/{record_id} route — raises 404 via _cluster() when the
+    record doesn't resolve for this tenant."""
+    head, members = await _cluster(db, tid, record_id)
+    keys = [head.sap_object_key, *(m.sap_object_key for m in members)]
+    g = cluster_graph(keys, await _pairs(db, tid, head.domain, keys),
+                      await _constraints(db, tid, head.domain, keys), AUTO_MERGE)
+    return head, g
+
+
 @router.get("/master-records/{record_id}/cluster-graph", response_model=ClusterGraphResponse)
 async def get_cluster_graph(record_id: uuid.UUID, _: str = Depends(require_permission("view")),
                             db: AsyncSession = Depends(get_db),
                             tenant: Tenant = Depends(get_tenant)) -> ClusterGraphResponse:
     tid = await _rls(db, tenant)
-    head, members = await _cluster(db, tid, record_id)
-    keys = [head.sap_object_key, *(m.sap_object_key for m in members)]
-    g = cluster_graph(keys, await _pairs(db, tid, head.domain, keys),
-                      await _constraints(db, tid, head.domain, keys), AUTO_MERGE)
+    head, g = await build_cluster_graph(db, tid, record_id)
     return ClusterGraphResponse(
         golden_record_id=str(head.id),
         nodes=[GraphNode(**n, is_survivor=n["key"] == head.sap_object_key) for n in g["nodes"]],

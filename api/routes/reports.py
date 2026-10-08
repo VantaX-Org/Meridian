@@ -175,6 +175,7 @@ _NOT_FOUND = {
     "extraction": "No extraction run found for this version. Extraction reports exist only for runs read from SAP.",
     "cleaning": "Run not found.",
     "comparison": "One or both runs not found.",
+    "executive": "Run not found.",
 }
 
 
@@ -218,6 +219,12 @@ async def cleaning_report_pdf(version_id: Optional[uuid.UUID] = None,
     """Cleaning and fixes report for one run, or for the whole organisation without ``version_id``."""
     name = f"meridian_cleaning_{version_id}.pdf" if version_id else "meridian_cleaning.pdf"
     return await _pdf(tenant, "cleaning", name, version_id)
+
+
+@router.get("/reports/executive/{version_id}.pdf")
+async def executive_report_pdf(version_id: uuid.UUID, tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Executive report: ai summary, scores, readiness, management overview."""
+    return await _pdf(tenant, "executive", f"meridian_executive_{version_id}.pdf", version_id)
 
 
 @router.get("/reports/compare.pdf")
