@@ -23,6 +23,8 @@ describe("queryKeys", () => {
       "material_master/000101",
     ]);
     expect(queryKeys.insights("exec")).toEqual(["insights", "exec"]);
+    expect(queryKeys.objects("v1")).toEqual(["object", "list", "v1"]);
+    expect(queryKeys.mergeExplain("rec-1")).toEqual(["merge-explain", "rec-1"]);
   });
 
   it("normalizes filters so key order and undefined padding do not fragment the cache", () => {

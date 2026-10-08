@@ -14,6 +14,7 @@ import {
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
+import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -23,7 +24,7 @@ export default function DuplicatesPage() {
   const run = search.get("run") ?? "";
 
   const objects = useQuery({
-    queryKey: ["objects", run],
+    queryKey: queryKeys.objects(run),
     queryFn: () => getObjects(run),
     enabled: !!run,
   });
@@ -39,7 +40,15 @@ export default function DuplicatesPage() {
   });
 
   const nodes = useMemo(() => cluster.data?.nodes ?? [], [cluster.data]);
-  const edges = useMemo(() => cluster.data?.edges ?? [], [cluster.data]);
+
+  // The underlying match_score_id for each pair is carried in `label` by the
+  // cluster endpoint (see insights.ts's DuplicateClusterResponse); copy it
+  // into `id` here so the graph's dedicated id field, not a re-purposed
+  // display label, is what the merge-proposal payload reads.
+  const edges = useMemo(
+    () => (cluster.data?.edges ?? []).map((e) => ({ ...e, id: e.label })),
+    [cluster.data],
+  );
 
   // The cluster endpoint carries only record-level nodes/edges (no per-field
   // diff), so "pick from master" is one radio per candidate record, not per
@@ -49,27 +58,23 @@ export default function DuplicatesPage() {
     [edges, masterId],
   );
 
-  // "Documents that would move": the size of every non-master node directly
-  // paired with the chosen master.
-  const mergeImpactCount = useMemo(() => {
-    if (!masterId) return 0;
-    const byId = new Map(nodes.map((n) => [n.id, n] as const));
-    return edgesTouchingMaster.reduce((sum, e) => {
-      const otherId = e.source === masterId ? e.target : e.source;
-      return sum + (byId.get(otherId)?.size ?? 0);
-    }, 0);
-  }, [edgesTouchingMaster, masterId, nodes]);
+  const pairs = useMemo(
+    () => edgesTouchingMaster.filter((e) => e.id).map((e) => ({ match_score_id: e.id as string, priority: 1 })),
+    [edgesTouchingMaster],
+  );
 
-  const canPropose = masterId !== null && edgesTouchingMaster.length > 0;
+  // "Documents that would move": the explain endpoint's member list for the
+  // chosen master, minus the master itself.
+  const explain = useQuery({
+    queryKey: queryKeys.mergeExplain(masterId ?? ""),
+    queryFn: () => getMergeExplanation(masterId as string),
+    enabled: !!masterId,
+  });
+  const mergeImpactCount = explain.data ? Math.max(explain.data.members.length - 1, 0) : 0;
+
+  const canPropose = masterId !== null && pairs.length > 0;
 
   async function handleCreateMergeProposals() {
-    // The graph's edge has no dedicated id field; its `label` is the
-    // underlying match_score_id for the pair (see insights.ts's
-    // DuplicateClusterResponse — documented assumption, no other field
-    // carries it).
-    const pairs = edgesTouchingMaster
-      .filter((e) => e.label)
-      .map((e) => ({ match_score_id: e.label as string, priority: 1 }));
     if (pairs.length === 0) return;
     const result = await createMergeProposals(pairs);
     toastManager.add({
@@ -124,7 +129,10 @@ export default function DuplicatesPage() {
       }
       state={state}
       emptyProps={{ title: !object || !recordId ? "Pick an object and a record to see its duplicate cluster." : "No duplicate cluster found for this record." }}
-      errorProps={{ message: "Couldn't load the duplicate cluster. Try again." }}
+      errorProps={{
+        message: cluster.error instanceof Error ? cluster.error.message : "Couldn't load the duplicate cluster. Try again.",
+        onRetry: () => cluster.refetch(),
+      }}
     />
   );
 }

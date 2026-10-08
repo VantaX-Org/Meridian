@@ -28,6 +28,8 @@ export const queryKeys = {
   shellCounts: () => ["shell-counts"] as const,
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
+  objects: (run: string) => ["object", "list", run] as const,
+  mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

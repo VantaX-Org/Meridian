@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
 import { ToastViewport } from "@/design";
 import DuplicatesPage from "../page";
@@ -17,6 +18,20 @@ vi.mock("next/navigation", () => ({
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
+function explainWithMembers(members: string[]): mergeExplainApi.ExplainResponse {
+  return {
+    golden_record_id: members[0] ?? "000101",
+    key: "000101",
+    domain: "material_master",
+    members,
+    golden_fields: {},
+    steward_overrides: {},
+    survivorship: {},
+    pairs: [],
+    thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+  };
 }
 
 async function pickObjectAndRecord() {
@@ -51,6 +66,9 @@ describe("DuplicatesPage", () => {
       edges: [{ source: "000101", target: "000102", label: "ms-1", weight: 0.97 }],
       thresholds: { auto_merge: 0.95, review_floor: 0.3 },
     });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue(
+      explainWithMembers(["000101", "000102a", "000102b", "000102c"]),
+    );
     renderWithQuery(<DuplicatesPage />);
 
     await pickObjectAndRecord();
@@ -78,6 +96,7 @@ describe("DuplicatesPage", () => {
     const createMergeProposals = vi
       .spyOn(insightsApi, "createMergeProposals")
       .mockResolvedValue({ created: ["mp-1"] });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue(explainWithMembers(["000101", "000102"]));
 
     renderWithQuery(
       <>
@@ -96,6 +115,28 @@ describe("DuplicatesPage", () => {
     expect(await screen.findByText(/created 1 merge proposal/i)).toBeInTheDocument();
   });
 
+  it("disables the create-merge-proposal button when no pair has a usable id", async () => {
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
+    });
+    vi.spyOn(insightsApi, "getDuplicateCluster").mockResolvedValue({
+      nodes: [
+        { id: "000101", size: 1, label: "000101" },
+        { id: "000102", size: 3, label: "000102" },
+      ],
+      edges: [{ source: "000101", target: "000102", weight: 0.97 }],
+      thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+    });
+    vi.spyOn(mergeExplainApi, "getMergeExplanation").mockResolvedValue(explainWithMembers(["000101", "000102"]));
+
+    renderWithQuery(<DuplicatesPage />);
+    await pickObjectAndRecord();
+    fireEvent.click(await screen.findByRole("radio", { name: "000101" }));
+
+    expect(await screen.findByRole("button", { name: /create merge proposal/i })).toBeDisabled();
+  });
+
   it("shows an error state when the cluster request fails", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
@@ -104,6 +145,29 @@ describe("DuplicatesPage", () => {
     vi.spyOn(insightsApi, "getDuplicateCluster").mockRejectedValue(new Error("network error"));
     renderWithQuery(<DuplicatesPage />);
     await pickObjectAndRecord();
-    await waitFor(() => expect(screen.getByText(/couldn't load the duplicate cluster/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+  });
+
+  it("retries the cluster request when the retry button is clicked", async () => {
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v1",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
+    });
+    const getDuplicateCluster = vi
+      .spyOn(insightsApi, "getDuplicateCluster")
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({
+        nodes: [{ id: "000101", size: 1, label: "000101" }],
+        edges: [],
+        thresholds: { auto_merge: 0.95, review_floor: 0.3 },
+      });
+    renderWithQuery(<DuplicatesPage />);
+    await pickObjectAndRecord();
+
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: "000101" })).toBeInTheDocument());
+    expect(getDuplicateCluster).toHaveBeenCalledTimes(2);
   });
 });

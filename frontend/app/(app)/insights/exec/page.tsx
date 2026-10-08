@@ -42,7 +42,7 @@ export default function ExecPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", run),
     queryFn: () => getExec({ version_id: run }),
   });
@@ -87,7 +87,10 @@ export default function ExecPage() {
       }
       state={state}
       emptyProps={{ title: "No executive summary data for this run yet." }}
-      errorProps={{ message: "Couldn't load the executive summary. Try again." }}
+      errorProps={{
+        message: error instanceof Error ? error.message : "Couldn't load the executive summary. Try again.",
+        onRetry: () => refetch(),
+      }}
     />
   );
 }

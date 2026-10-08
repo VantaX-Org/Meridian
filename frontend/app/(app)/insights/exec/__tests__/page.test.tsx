@@ -1,5 +1,5 @@
 // frontend/app/(app)/insights/exec/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -35,6 +35,27 @@ describe("ExecPage", () => {
   it("shows an error state when the exec request fails", async () => {
     vi.spyOn(insightsApi, "getExec").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ExecPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load the executive summary/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+  });
+
+  it("retries the exec request when the retry button is clicked", async () => {
+    const getExec = vi
+      .spyOn(insightsApi, "getExec")
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({
+        version_id: "v1",
+        narrative: "Recovered after retry.",
+        readiness_cells: [],
+        waterfall: [],
+        impact_rows: [],
+        owner_rows: [],
+      });
+    renderWithQuery(<ExecPage />);
+
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.getByText(/recovered after retry/i)).toBeInTheDocument());
+    expect(getExec).toHaveBeenCalledTimes(2);
   });
 });
