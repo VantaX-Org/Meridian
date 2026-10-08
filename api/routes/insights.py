@@ -12,6 +12,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.config_impact import get_config_impact
 from api.routes.record_issues import _rls
 from api.services.insights_impact import value_at_risk
+from api.services.insights_owners import OWNER_ISSUE_SQL, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_readiness_grid
 from api.services.rbac import require_permission
 
@@ -127,3 +128,22 @@ async def get_impact(
             "causing_rules": r["blocking_findings"],
         })
     return {"version_id": str(version_id), "rows": rows}
+
+
+@router.get("/owners", dependencies=[Depends(require_permission("view"))])
+async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    await _rls(db, tenant)
+    result = await db.execute(text(OWNER_ISSUE_SQL), {"tid": str(tenant.id)})
+    issue_rows = [dict(r._mapping) for r in result.fetchall()]
+    aggregates = load_owner_aggregates(issue_rows)
+
+    rows = []
+    for owner, agg in aggregates.items():
+        card = build_owner_card(owner, agg["score"], agg["delta"], agg["open_by_severity"],
+                                 agg["fixed_since_baseline"], agg["oldest_item_age_days"])
+        last_sent = (await db.execute(
+            text("SELECT MAX(created_at) FROM notifications WHERE tenant_id = :t AND user_id = :u AND type = 'digest'"),
+            {"t": str(tenant.id), "u": agg["user_id"]},
+        )).scalar()
+        rows.append({**card.__dict__, "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
+    return {"owners": rows}
