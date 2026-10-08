@@ -38,6 +38,51 @@ export const queryKeys = {
   exceptionRules: () => ["inbox", "exception-rules"] as const,
   unreadNotifications: () => ["inbox", "unread-notifications"] as const,
   users: () => ["users"] as const,
+  glossary: (scope: string, filters: Record<string, unknown>) =>
+    ["glossary", scope, normalizeFilters(filters)] as const,
+  glossaryTerm: (id: string) => ["glossary", id] as const,
+  masterRecords: (filters: Record<string, unknown>) =>
+    ["master-records", normalizeFilters(filters)] as const,
+  masterRecord: (id: string) => ["master-records", id] as const,
+  masterRecordHistory: (id: string) => ["master-records", id, "history"] as const,
+  relationships: (filters: Record<string, unknown>) =>
+    ["relationships", normalizeFilters(filters)] as const,
+  matchRules: (domain?: string) => ["match-rules", domain ?? ""] as const,
+  pairConstraints: (filters: Record<string, unknown>) =>
+    ["pair-constraints", normalizeFilters(filters)] as const,
+  businessProcess: (versionId?: string, module?: string) =>
+    ["business-process", versionId ?? "", module ?? ""] as const,
+  configImpact: (versionId?: string) => ["config-impact", versionId ?? ""] as const,
+  configAwareScore: (versionId?: string, systemId?: string) =>
+    ["config-aware-score", versionId ?? "", systemId ?? ""] as const,
+  processMiningGraph: (versionId?: string, module?: string | null) =>
+    ["process-mining-graph", versionId ?? "", module ?? ""] as const,
+  processModels: () => ["process-models"] as const,
+  processModel: (id: string, version?: string) => ["process-model", id, version ?? ""] as const,
+  processModelVersions: (id: string) => ["process-model-versions", id] as const,
+  processOverlay: (id: string, versionId?: string) =>
+    ["process-overlay", id, versionId ?? ""] as const,
+  processVariants: (versionId?: string) => ["process-variants", versionId ?? ""] as const,
+  lineageModel: () => ["lineage-model"] as const,
+  lineageImpact: (versionId?: string) => ["lineage-impact", versionId ?? ""] as const,
+  lineageGraph: (node: string, direction: string, depth: number) => ["lineage-graph", node, direction, depth] as const,
+  lineageGuards: (node: string, versionId?: string) => ["lineage-guards", node, versionId ?? ""] as const,
+  lineageBlast: (versionId: string, checkId: string) => ["lineage-blast", versionId, checkId] as const,
+  miningSummary: (days: number) => ["mining-summary", days] as const,
+  miningPatterns: (filters: Record<string, unknown>) =>
+    ["mining-patterns", normalizeFilters(filters)] as const,
+  systemVersions: (systemId: string) => ["system-versions", systemId] as const,
+  versionProfile: (systemId: string, versionId: string, object?: string) =>
+    ["version-profile", systemId, versionId, object ?? ""] as const,
+  pdReference: () => ["pd-reference"] as const,
+  analyticsPredictive: () => ["analytics-predictive"] as const,
+  matchRulesAll: () => ["match-rules"] as const,
+  pairConstraintsAll: () => ["pair-constraints"] as const,
+  processReference: () => ["process-reference"] as const,
+  processModelAll: () => ["process-model"] as const,
+  processModelVersionsAll: () => ["process-model-versions"] as const,
+  processOverlayAll: () => ["process-overlay"] as const,
+  processVariantsAll: () => ["process-variants"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
