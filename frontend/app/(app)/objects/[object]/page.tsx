@@ -4,7 +4,7 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, DataTable, ReportPage, SeverityDot, type Severity } from "@/design";
+import { Bar, DataTable, ReportPage, SeverityDot, isSeverity } from "@/design";
 import { getObject, type ObjectRule } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -12,7 +12,8 @@ const columns: ColumnDef<ObjectRule>[] = [
   {
     accessorKey: "severity",
     header: "Severity",
-    cell: ({ row }) => <SeverityDot severity={row.original.severity as Severity} />,
+    cell: ({ row }) =>
+      isSeverity(row.original.severity) ? <SeverityDot severity={row.original.severity} /> : row.original.severity,
   },
   { accessorKey: "check_id", header: "Check" },
   { accessorKey: "dimension", header: "Dimension" },

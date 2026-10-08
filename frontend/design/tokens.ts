@@ -51,3 +51,8 @@ export const severityColor: Record<Severity, string> = {
   low: mColor.ink3,
   pass: mColor.pass,
 };
+
+/** Narrows a severity string from the API to the five values the design system paints. */
+export function isSeverity(value: string): value is Severity {
+  return value in severityColor;
+}
