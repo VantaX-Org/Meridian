@@ -10,6 +10,14 @@ const nextConfig: NextConfig = {
     return [
       { source: "/stewardship", destination: "/workbench?tab=queue", permanent: false },
       { source: "/stewardship/metrics", destination: "/workbench?tab=queue", permanent: false },
+      { source: "/findings", destination: "/objects", permanent: false },
+      { source: "/versions", destination: "/runs", permanent: false },
+      { source: "/analyse/object/:module", destination: "/objects/:module", permanent: false },
+      {
+        source: "/analyse/material/:matnr",
+        destination: "/objects/material_master/records/:matnr",
+        permanent: false,
+      },
       { source: "/command-centre", destination: "/?tab=live", permanent: false },
       { source: "/connectivity", destination: "/data", permanent: false },
       { source: "/run-sync", destination: "/data", permanent: false },
