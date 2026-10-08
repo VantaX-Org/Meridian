@@ -32,6 +32,10 @@ class AlertThresholds(BaseModel):
     dqs_drop_threshold: float = Field(5, ge=0)
     # module -> minimum DQS; an analysis scoring a module below its floor raises an alert
     module_floors: dict[str, Annotated[float, Field(ge=0, le=100)]] = Field(default_factory=dict)
+    # readiness grid (api/services/insights_readiness.py): DQS floor for a module/wave cell
+    # to read "ready", and the tenant's wave -> [module] grouping for that grid.
+    readiness_dqs_threshold: int = Field(70, ge=0, le=100)
+    readiness_waves: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class PlannerConfig(BaseModel):
@@ -246,6 +250,9 @@ class CostModel(BaseModel):
     severity: dict[str, dict] = {}
     modules: dict[str, dict] = {}
     rules: dict[str, dict] = {}
+    # feature -> ZAR value per blocked record (api/services/insights_impact.py value_at_risk).
+    # Plain floats, not cost specs: not routed through validate_spec's per_record/field shapes.
+    features: dict[str, float] = {}
 
 
 @router.get("/cost-model", dependencies=[Depends(require_permission("view"))])
