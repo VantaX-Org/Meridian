@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Pill, Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
-import { AuthGuard } from "@/components/shell/widgets";
+import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";

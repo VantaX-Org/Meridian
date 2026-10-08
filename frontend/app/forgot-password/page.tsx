@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
-import { AuthFrame } from "@/components/auth/auth-frame";
-import { Banner, Button, Field, Input } from "@/components/ui-core";
+import { AuthFrame, AuthNotice, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button, Field } from "@/design";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -35,24 +35,24 @@ export default function ForgotPasswordPage() {
       lead={submitted ? undefined : "Enter the email you sign in with. If it belongs to an account, we send a reset link."}>
       {submitted ? (
         <>
-          <Banner tone="success" title="Check your email">
+          <AuthNotice tone="success" title="Check your email">
             If an account uses {email.trim()}, a reset link is on its way. The link is valid for one hour.
-          </Banner>
-          <p className="ui-auth__lead">No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
+          </AuthNotice>
+          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
         </>
       ) : (
-        <form className="ui-form" onSubmit={onSubmit} noValidate>
-          {error ? <Banner tone="danger">{error}</Banner> : null}
-          <Field label="Work email" required>
-            {({ controlId }) => <Input id={controlId} type="email" required autoComplete="email" autoFocus
-              value={email} onChange={(e) => setEmail(e.target.value)} />}
+        <form className={authFormClass} onSubmit={onSubmit} noValidate>
+          {error ? <AuthNotice tone="danger">{error}</AuthNotice> : null}
+          <Field label="Work email">
+            <input className={authInputClass} style={authInputStyle} type="email" required autoComplete="email" autoFocus
+              aria-label="Work email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <div className="ui-form__actions">
+          <div className={authActionsClass}>
             <Button type="submit" disabled={submitting}>{submitting ? "Sending" : "Send reset link"}</Button>
           </div>
         </form>
       )}
-      <Link className="ui-link" href="/sign-in">Back to sign in</Link>
+      <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>
     </AuthFrame>
   );
 }

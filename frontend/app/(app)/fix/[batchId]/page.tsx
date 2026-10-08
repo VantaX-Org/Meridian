@@ -16,7 +16,7 @@ import {
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
-// Same bulk-approve confidence threshold as components/workbench/cleaning.tsx's BULK_CONFIDENCE (85%).
+// Same bulk-approve confidence threshold as the legacy cleaning surface used (85%).
 const HIGH_CONFIDENCE = 0.85;
 
 export default function BatchPage() {

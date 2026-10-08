@@ -5,7 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, ExplorerPage, Pill, type PillTone } from "@/design";
-import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
+import { HEALTH_LABEL, latestDqs } from "./_health";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { queryKeys } from "@/lib/query-keys";

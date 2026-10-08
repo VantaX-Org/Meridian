@@ -20,8 +20,7 @@ import {
 } from "@/design";
 import { Bar } from "@/design/charts/Bar";
 import { Line } from "@/design/charts/Line";
-import { ConnectionTestButton, type ConnectionTestState } from "@/components/aurora/moments/interactions";
-import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
+import { HEALTH_LABEL, latestDqs } from "../_health";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
@@ -389,7 +388,13 @@ function Health({ id, system, canSync, canManage, onChanged }: {
     onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); onChanged(); },
     onError: (e) => toast.error((e as Error).message || "Connection test failed"),
   });
-  const testState: ConnectionTestState = test.isPending ? "testing" : test.isError ? "error" : test.data ? (test.data.status === "healthy" ? "success" : "error") : "idle";
+  const testLabel = test.isPending
+    ? "Testing"
+    : test.isError || (test.data && test.data.status !== "healthy")
+      ? "Test failed, retry"
+      : test.data
+        ? "Connection tested"
+        : "Test connection";
   const cfg = useConfigLoad(id);
   const discover = useMutation({
     mutationFn: () => discoverSystem(id),
@@ -407,7 +412,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Connection</p>
           <div className="flex gap-2">
-            {canSync ? <ConnectionTestButton state={testState} onTest={() => test.mutate()} /> : null}
+            {canSync ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
             {canSync && !hasNoConfig(system.system_type) ? (
               <ConfigLoadButton running={cfg.running} loaded={!!cfg.load} onClick={() => cfg.start.mutate()} />
             ) : null}
@@ -426,7 +431,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
           <Field label="SAP release"><Mono>{design?.sap_release ?? "Unknown"}</Mono></Field>
         </dl>
         {snap?.error ? (
-          <div className="mt-2 rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-warn)", color: "var(--m-warn)" }}>
+          <div className="mt-2 rounded border px-3 py-2 text-[13px]" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
             Discovery {labelOf(snap.status)}: {snap.error}
           </div>
         ) : null}

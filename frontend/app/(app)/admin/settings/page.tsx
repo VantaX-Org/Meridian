@@ -11,7 +11,7 @@ import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 // ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
-// components/admin/parts.tsx pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
+// the legacy admin surface, pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
 // which no longer exist — updated to the real standalone pages built in Task 15.
 const FIX_HREF: Record<string, string> = { llm: "/admin/ai", licence: "/admin/licence" };
 const doctorLabel = (s: string) => s.replace(/\s*\(\s*\)/g, "").trim();

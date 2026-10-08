@@ -18,8 +18,8 @@ import { queryKeys } from "@/lib/query-keys";
 import type { MatchRule, MatchType, SimulationResult } from "@/types/api";
 
 // ponytail: folds the three legacy /match-rules, /match-rules/constraints and
-// /match-rules/tuning pages (really one MatchRulesSurface with a view param,
-// see components/workbench/match-rules.tsx) into one page with design-system tabs.
+// /match-rules/tuning pages (really one surface with a view param) into one
+// page with design-system tabs.
 // The brief's Tuning tab description (AI-proposed-rule review via
 // getProposedRules/approveProposedRule/rejectProposedRule/submitAiFeedback) does not
 // match the real legacy "tuning" view, which is a weight/threshold dry run

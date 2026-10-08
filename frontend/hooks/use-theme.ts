@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { DEFAULT_DENSITY, DENSITY_STORAGE_KEY, type DensityTier } from "@/lib/aurora";
+/** Row density, kept here because the legacy token module is retired. */
+export type DensityTier = "compact" | "default" | "comfortable";
+const DENSITY_STORAGE_KEY = "aurora:density";
+const DEFAULT_DENSITY: DensityTier = "default";
 
 export type Theme = "dark" | "light";
 const THEME_KEY = "aurora:theme";

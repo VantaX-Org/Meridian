@@ -1,7 +1,7 @@
 // frontend/app/(app)/insights/forecast/page.tsx
 /**
  * Port of the predictive-analytics forecast (previously only shown inline on
- * the command-centre overview, components/command-centre/overview.tsx) onto
+ * the legacy command-centre overview) onto
  * @/design, as its own report page.
  *
  * Deviations from the task-25 brief:
@@ -11,13 +11,12 @@
  *   one forecast per module) — ported against the real shape.
  * - `getPredictiveAnalytics` takes a bare `moduleId?: string`, not a params
  *   object — called with no args here, same as the legacy overview widget.
- * - There is no standalone legacy `/analytics` page to delete — the dashboard
- *   never had one; the forecast was embedded inline in
- *   `components/command-centre/overview.tsx` and `components/workbench/progress.tsx`.
- *   Both are left untouched (out of scope for this task); only the
- *   `/analytics` redirect destination changes, from `/` to `/insights/forecast`.
+ * - There was no standalone legacy `/analytics` page to delete — the dashboard
+ *   never had one; the forecast was embedded inline in the command-centre
+ *   overview and the workbench progress widget. Only the `/analytics` redirect
+ *   destination changes, from `/` to `/insights/forecast`.
  * - `queryKeys` has no `analytics` factory; reused the pre-existing ad-hoc
- *   `["analytics.predictive"]` array already used by overview.tsx, per
+ *   `["analytics.predictive"]` array the legacy overview already used, per
  *   ponytail rung 2 (reuse, don't wrap).
  * - `ReportPage`'s real props are `{narrative, charts, tables?, onExport?,
  *   state?, emptyProps?, errorProps?}`, not the brief's placeholder

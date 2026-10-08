@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Chip, Input, Panel, Select, Stack, Text } from "@/components/aurora";
+import { Button, Pill, Select } from "@/design";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
-const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
-const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)]";
+const th = "px-3 py-2 text-left font-medium";
+const thStyle = { color: "var(--m-ink-3)" };
+const td = "px-3 py-1.5 border-t";
+const tdStyle = { borderColor: "var(--m-line)" };
 
 const CUSTOM = "custom";
 const PRESETS = [
@@ -28,18 +30,19 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
   const [custom, setCustom] = useState(!PRESETS.some((p) => p.value === value));
   const [text, setText] = useState(value);
   return (
-    <Stack direction="row" gap={2}>
+    <div className="flex gap-2">
       <div style={{ width: 200 }}>
-        <Select aria-label="Schedule" disabled={disabled} options={PRESETS} value={custom ? CUSTOM : value}
+        <Select options={PRESETS} value={custom ? CUSTOM : value}
           onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
       </div>
       {custom && (
-        <Input aria-label="Cron expression" placeholder="min hour day month weekday" className="font-mono" disabled={disabled}
+        <input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
+          className="rounded border px-3 py-1.5 text-[13px] font-mono" style={{ borderColor: "var(--m-line)" }}
           value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) onChange(text.trim()); }}
           onBlur={() => { if (text.trim() && text.trim() !== value) onChange(text.trim()); }} />
       )}
-    </Stack>
+    </div>
   );
 }
 
@@ -69,34 +72,36 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const addable = (catalogue?.objects ?? []).filter((o) => !scheduled.has(o.object));
 
   return (
-    <Panel title="Scheduled re-evaluation">
-      <Stack gap={3}>
-        <Text variant="text-small" tone="secondary">
+    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
+      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Scheduled re-evaluation</p>
+      <div className="mt-2 flex flex-col gap-3">
+        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
           Times are server time; the scheduler looks for due runs every 5 minutes.
-        </Text>
+        </p>
         {profiles.length ? (
           <table className="w-full text-[13px]">
             <thead><tr>
-              <th className={th}>Object</th><th className={th}>Schedule</th><th className={th}>Last run</th>
-              <th className={th}>Next run</th><th className={th}>Status</th><th className={th} />
+              <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>Schedule</th>
+              <th className={th} style={thStyle}>Last run</th><th className={th} style={thStyle}>Next run</th>
+              <th className={th} style={thStyle}>Status</th><th className={th} style={thStyle} />
             </tr></thead>
             <tbody>
               {profiles.map((p) => (
                 <tr key={p.id}>
-                  <td className={td}>{formatModuleName(p.domain)}</td>
-                  <td className={td}>
+                  <td className={td} style={tdStyle}>{formatModuleName(p.domain)}</td>
+                  <td className={td} style={tdStyle}>
                     {canManage
                       ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
                           onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
                       : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
                   </td>
-                  <td className={td}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
-                  <td className={td}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
-                  <td className={td}><Chip tone={p.active ? "success" : "neutral"}>{p.active ? "active" : "paused"}</Chip></td>
-                  <td className={td}>
+                  <td className={td} style={tdStyle}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
+                  <td className={td} style={tdStyle}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
+                  <td className={td} style={tdStyle}><Pill tone={p.active ? "go" : "neutral"}>{p.active ? "active" : "paused"}</Pill></td>
+                  <td className={td} style={tdStyle}>
                     {canManage && (
-                      <Button variant="ghost" size="sm" disabled={update.isPending}
+                      <Button variant="ghost" disabled={update.isPending}
                         onClick={() => update.mutate({ p, body: { active: !p.active } })}>
                         {p.active ? "Pause" : "Resume"}
                       </Button>
@@ -106,20 +111,22 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
               ))}
             </tbody>
           </table>
-        ) : <Text tone="muted">No schedules yet — objects are only re-evaluated when someone downloads them.</Text>}
+        ) : (
+          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            No schedules yet — objects are only re-evaluated when someone downloads them.
+          </p>
+        )}
         {canManage && addable.length > 0 && (
-          <Stack direction="row" gap={2} align="center" wrap>
+          <div className="flex flex-wrap items-center gap-2">
             <div style={{ width: 220 }}>
-              <Select aria-label="Object to schedule" placeholder="Schedule an object…" value={adding}
+              <Select placeholder="Schedule an object…" value={adding}
                 options={addable.map((o) => ({ value: o.object, label: formatModuleName(o.object) }))} onValueChange={setAdding} />
             </div>
             <CronPicker value={cron} onChange={setCron} />
-            <Button size="sm" disabled={!adding || create.isPending} onClick={() => create.mutate()}>Add schedule</Button>
-          </Stack>
+            <Button disabled={!adding || create.isPending} onClick={() => create.mutate()}>Add schedule</Button>
+          </div>
         )}
-      </Stack>
-    </Panel>
+      </div>
+    </div>
   );
 }
-
-// ── object × version heatmap ─────────────────────────────────────────────────

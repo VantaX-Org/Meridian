@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Steward inbox: every open stewardship task in one list. Ports
- * components/workbench/inbox.tsx's data wiring (views, sorts, assign,
- * resolve, escalate, bulk approve, AI feedback) onto @/design. Replaces the
+ * Steward inbox: every open stewardship task in one list. Ports the legacy
+ * workbench inbox's data wiring (views, sorts, assign, resolve, escalate,
+ * bulk approve, AI feedback) onto @/design. Replaces the
  * legacy A/R/E/N/X/. keymap with j/k row focus + enter to open the fix sheet
  * (spec 6.2); the actions themselves move to buttons so nothing is dropped.
  */

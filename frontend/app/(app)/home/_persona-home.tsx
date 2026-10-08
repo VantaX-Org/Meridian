@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorState, HomePage, Skeleton } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
@@ -7,8 +8,9 @@ import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import { queryKeys } from "@/lib/query-keys";
 
 /** Shared by the three persona pages (lead/steward/basis) — same fetch and
- * loading/error handling, only the role (and the resulting narrative) differs. */
-export function PersonaHomePage({ role }: { role: NarrativeInput["role"] }) {
+ * loading/error handling, only the role (and the resulting narrative) differs.
+ * `lists` fills the template's list slot, e.g. live operations on Basis. */
+export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["role"]; lists?: ReactNode }) {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.objects("latest"),
     queryFn: () => getObjects("latest"),
@@ -34,5 +36,5 @@ export function PersonaHomePage({ role }: { role: NarrativeInput["role"] }) {
   }
 
   const narrative = buildNarrative({ role, objects: data.objects });
-  return <HomePage persona={role} headline={narrative} tiles={[]} lists={null} />;
+  return <HomePage persona={role} headline={narrative} tiles={[]} lists={lists} />;
 }

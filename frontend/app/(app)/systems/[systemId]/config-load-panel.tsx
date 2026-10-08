@@ -1,13 +1,9 @@
 "use client";
 
 /**
- * Configuration load: ponytail port of components/data/config-load.tsx's
- * UI pieces (ConfigLoadCard/ConfigLoadBody/ConfigLoadButton) onto @/design
- * only, since the aurora/ui-core retirement deletes that module's imports
- * (Banner/Stack/Text/KeyValue/SectionCard from aurora+ui-core, StageStepper
- * from job-card.tsx which also imports aurora). Logic (useConfigLoad,
- * configStatus, hasNoConfig) is ported too rather than imported, so this
- * page has zero dependency on the retiring module.
+ * Configuration load for one system: the card, its body and the start button,
+ * built on @/design only. The load logic (useConfigLoad, configStatus,
+ * hasNoConfig) lives here as well, so the panel owns everything it needs.
  */
 
 import Link from "next/link";

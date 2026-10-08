@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Chip, Panel, Stack, Text } from "@/components/aurora";
+import { Button, Pill } from "@/design";
 import {
   getReferenceLists,
   uploadBicDirectory,
@@ -33,13 +33,14 @@ const KINDS = [
 export function ReferencePanel({ id }: { id: string }) {
   const { data: lists = [] } = useQuery({ queryKey: queryKeys.referenceLists(id), queryFn: () => getReferenceLists(id) });
   return (
-    <Panel title="Reference data">
-      <Stack gap={3}>
+    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
+      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Reference data</p>
+      <div className="mt-2 flex flex-col gap-3">
         {KINDS.map((k) => (
           <ReferenceRow key={k.kind} id={id} spec={k} list={lists.find((l) => l.kind === k.kind)} />
         ))}
-      </Stack>
-    </Panel>
+      </div>
+    </div>
   );
 }
 
@@ -55,20 +56,20 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
     onError: () => toast.error(spec.error),
   });
   return (
-    <Stack direction="row" gap={3} align="center" wrap>
-      <Text tone="muted">{spec.help}</Text>
+    <div className="flex flex-wrap items-center gap-3">
+      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{spec.help}</p>
       {list ? (
-        <Chip tone="success">
+        <Pill tone="go">
           {list.records.toLocaleString()} {spec.unit}, {list.countries.join(", ")}
-        </Chip>
+        </Pill>
       ) : (
-        <Chip>none loaded</Chip>
+        <Pill>none loaded</Pill>
       )}
       <input ref={input} type="file" accept=".csv,text/csv" className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) upload.mutate(f); e.target.value = ""; }} />
-      <Button size="sm" variant="ghost" disabled={upload.isPending} onClick={() => input.current?.click()}>
+      <Button variant="ghost" disabled={upload.isPending} onClick={() => input.current?.click()}>
         {list ? "Replace list" : "Upload list"}
       </Button>
-    </Stack>
+    </div>
   );
 }

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { AuthFrame, PasswordField } from "@/components/auth/auth-frame";
-import { Banner, Button, Field, Input } from "@/components/ui-core";
+import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button, Field } from "@/design";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -42,8 +42,8 @@ export default function SignInPage() {
     <AuthFrame title="Sign in" lead="Use the work email your administrator invited."
       side={
         <>
-          <h2 className="ui-auth__title">Your SAP data stays on this server</h2>
-          <ol className="ui-auth__steps">
+          <h2 className="text-[17px] leading-6 font-semibold" style={{ color: "var(--m-ink)" }}>Your SAP data stays on this server</h2>
+          <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13px]" style={{ color: "var(--m-ink-2)" }}>
             <li><strong>Extracts and uploads</strong> are checked here, inside your own deployment.</li>
             <li><strong>Findings, records and reports</strong> are stored in this deployment&apos;s database.</li>
             <li><strong>The AI assistant</strong> sees field names and aggregate counts, never record values. A cloud model provider, if your administrator picked one, receives only those.</li>
@@ -51,17 +51,17 @@ export default function SignInPage() {
           </ol>
         </>
       }>
-      <form className="ui-form" onSubmit={handleSubmit} noValidate>
-        {notice && !error ? <Banner tone="success">{notice}</Banner> : null}
-        {error ? <Banner tone="danger" title="Not signed in">{error}</Banner> : null}
-        <Field label="Work email" required>
-          {({ controlId }) => <Input id={controlId} type="email" required autoComplete="email" placeholder="you@company.com"
-            value={email} onChange={(e) => setEmail(e.target.value)} />}
+      <form className={authFormClass} onSubmit={handleSubmit} noValidate>
+        {notice && !error ? <AuthNotice tone="success">{notice}</AuthNotice> : null}
+        {error ? <AuthNotice tone="danger" title="Not signed in">{error}</AuthNotice> : null}
+        <Field label="Work email">
+          <input className={authInputClass} style={authInputStyle} type="email" required autoComplete="email" placeholder="you@company.com"
+            aria-label="Work email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password" />
-        <div className="ui-form__actions">
+        <div className={authActionsClass}>
           <Button type="submit" disabled={loading || !email || !password}>{loading ? "Signing in" : "Sign in"}</Button>
-          <Link className="ui-link" href="/forgot-password">Forgot password</Link>
+          <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password</Link>
         </div>
       </form>
     </AuthFrame>

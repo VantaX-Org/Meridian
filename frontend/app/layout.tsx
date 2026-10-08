@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Public_Sans, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Toaster } from "@/components/shell/toaster";
+import { Toaster } from "@/design";
 import { Providers } from "@/lib/providers";
 import "./globals.css";
 
