@@ -32,6 +32,12 @@ export const queryKeys = {
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
+  triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,
+  stewardshipMetrics: () => ["inbox", "stewardship-metrics"] as const,
+  exceptionMetrics: () => ["inbox", "exception-metrics"] as const,
+  exceptionRules: () => ["inbox", "exception-rules"] as const,
+  unreadNotifications: () => ["inbox", "unread-notifications"] as const,
+  users: () => ["users"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
@@ -44,4 +50,5 @@ export type TouchedEntity =
   | "inbox"
   | "systems"
   | "shell-counts"
-  | "insights";
+  | "insights"
+  | "users";

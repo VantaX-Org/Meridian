@@ -3,8 +3,15 @@ import { describe, expect, it } from "vitest";
 import nextConfig from "../next.config";
 
 const EXPECTED: Record<string, string> = {
-  "/stewardship": "/workbench?tab=queue",
-  "/stewardship/metrics": "/workbench?tab=queue",
+  "/stewardship": "/inbox",
+  "/stewardship/metrics": "/inbox",
+  "/workbench": "/inbox",
+  "/workbench/triage": "/inbox",
+  "/workbench/progress": "/inbox",
+  "/workbench/report": "/inbox",
+  "/workbench/record/:issueId": "/inbox",
+  "/exceptions": "/inbox?kind=exception",
+  "/exceptions/rules": "/inbox?kind=exception",
   "/home": "/home/lead",
   "/findings": "/objects",
   "/versions": "/runs",
