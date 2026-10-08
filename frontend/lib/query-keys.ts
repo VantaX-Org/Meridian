@@ -57,6 +57,11 @@ export const queryKeys = {
   processOverlay: (id: string, versionId?: string) =>
     ["process-overlay", id, versionId ?? ""] as const,
   processVariants: (versionId?: string) => ["process-variants", versionId ?? ""] as const,
+  lineageModel: () => ["lineage-model"] as const,
+  lineageImpact: (versionId?: string) => ["lineage-impact", versionId ?? ""] as const,
+  lineageGraph: (node: string, direction: string, depth: number) => ["lineage-graph", node, direction, depth] as const,
+  lineageGuards: (node: string, versionId?: string) => ["lineage-guards", node, versionId ?? ""] as const,
+  lineageBlast: (versionId: string, checkId: string) => ["lineage-blast", versionId, checkId] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
