@@ -17,6 +17,12 @@ describe("queryKeys", () => {
     expect(queryKeys.shellCounts()).toEqual(["shell-counts"]);
     expect(queryKeys.insights("readiness", "v1")).toEqual(["insights", "readiness", "v1"]);
     expect(queryKeys.insights("impact")).toEqual(["insights", "impact"]);
+    expect(queryKeys.insights("duplicates", "material_master/000101")).toEqual([
+      "insights",
+      "duplicates",
+      "material_master/000101",
+    ]);
+    expect(queryKeys.insights("exec")).toEqual(["insights", "exec"]);
   });
 
   it("normalizes filters so key order and undefined padding do not fragment the cache", () => {

@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import type { GraphEdge, GraphNode } from "@/design";
 
 /* ─── Readiness (spec 8.1) ─── */
 
@@ -62,5 +63,34 @@ export interface OwnersResponse {
 
 export async function getOwners(): Promise<OwnersResponse> {
   const { data } = await apiClient.get<OwnersResponse>("/api/v1/insights/owners");
+  return data;
+}
+
+/* ─── Duplicate cluster graph + merge proposals (spec 8.4) ─── */
+
+export interface DuplicateClusterResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  thresholds: { auto_merge: number; review_floor: number };
+}
+
+export async function getDuplicateCluster(object: string, recordId: string): Promise<DuplicateClusterResponse> {
+  const { data } = await apiClient.get<DuplicateClusterResponse>(
+    `/api/v1/insights/duplicates/${encodeURIComponent(object)}/${encodeURIComponent(recordId)}`,
+  );
+  return data;
+}
+
+export interface MergeProposalsResponse {
+  created: string[];
+}
+
+export async function createMergeProposals(
+  pairs: { match_score_id: string; priority?: number }[],
+): Promise<MergeProposalsResponse> {
+  const { data } = await apiClient.post<MergeProposalsResponse>(
+    "/api/v1/insights/duplicates/merge-proposals",
+    { pairs },
+  );
   return data;
 }

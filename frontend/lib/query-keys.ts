@@ -26,7 +26,7 @@ export const queryKeys = {
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,
   systems: () => ["systems"] as const,
   shellCounts: () => ["shell-counts"] as const,
-  insights: (kind: "readiness" | "impact" | "owners", run?: string) =>
+  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
 };
 
