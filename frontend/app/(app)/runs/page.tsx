@@ -1,24 +1,36 @@
 // frontend/app/(app)/runs/page.tsx
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage } from "@/design";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/systems";
 import type { Version } from "@/types/api";
 import { formatDate, formatModuleName } from "@/lib/format";
 
-const columns: ColumnDef<Version>[] = [
-  { accessorKey: "label", header: "Run", cell: ({ row }) => row.original.label ?? row.original.id },
-  { accessorKey: "status", header: "Status" },
-  { accessorKey: "run_at", header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
-  {
-    id: "modules",
-    header: "Modules",
-    cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", "),
-  },
-];
+function makeColumns(systemName: Map<string, string>): ColumnDef<Version>[] {
+  return [
+    { accessorKey: "label", header: "Run", cell: ({ row }) => row.original.label ?? row.original.id },
+    { accessorKey: "status", header: "Status" },
+    { accessorKey: "run_at", header: "Started", cell: ({ row }) => formatDate(row.original.run_at, "datetime") },
+    {
+      id: "system",
+      header: "System",
+      cell: ({ row }) => {
+        const systemId = row.original.metadata?.system_id;
+        return systemId ? systemName.get(systemId) ?? systemId : "—";
+      },
+    },
+    {
+      id: "modules",
+      header: "Modules",
+      cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", "),
+    },
+  ];
+}
 
 export default function RunsPage() {
   const router = useRouter();
@@ -27,6 +39,12 @@ export default function RunsPage() {
     queryKey: ["run", "list"],
     queryFn: () => getVersions(),
   });
+  const systemsQuery = useQuery({ queryKey: ["systems", "list"], queryFn: getSystems });
+  const systemName = useMemo(
+    () => new Map((systemsQuery.data ?? []).map((s) => [s.id, s.name])),
+    [systemsQuery.data],
+  );
+  const columns = useMemo(() => makeColumns(systemName), [systemName]);
 
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading) {
