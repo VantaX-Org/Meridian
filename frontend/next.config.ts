@@ -43,6 +43,8 @@ const nextConfig: NextConfig = {
       { source: "/process", destination: "/insights/process", permanent: false },
       { source: "/process/designer", destination: "/insights/process/designer", permanent: false },
       { source: "/lineage", destination: "/insights/lineage", permanent: false },
+      { source: "/mining", destination: "/insights/mining", permanent: false },
+      { source: "/relationships", destination: "/insights/mining", permanent: false },
     ];
   },
 

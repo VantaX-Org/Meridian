@@ -30,6 +30,8 @@ const EXPECTED: Record<string, string> = {
   "/process": "/insights/process",
   "/process/designer": "/insights/process/designer",
   "/lineage": "/insights/lineage",
+  "/mining": "/insights/mining",
+  "/relationships": "/insights/mining",
 };
 
 describe("legacy route redirects", () => {

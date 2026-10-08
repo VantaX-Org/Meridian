@@ -38,9 +38,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/glossary": named(() => import("@/components/workbench/glossary"), "GlossarySurface"),
   "/reports": named(() => import("@/components/workbench/reports"), "ReportsSurface"),
 
-  "/mining": named(() => import("@/components/process/graph"), "GraphSurface"),
-  "/relationships": named(() => import("@/components/process/graph"), "GraphSurface"),
-
   "/admin": named(() => import("@/components/admin/users"), "UsersSurface"),
   "/settings": named(() => import("@/components/admin/settings"), "SettingsSurface"),
   "/settings/rules": named(() => import("@/components/admin/rules"), "RulesSurface"),
