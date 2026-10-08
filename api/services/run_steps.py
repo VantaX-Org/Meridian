@@ -46,6 +46,17 @@ def record_step(
                     "  WHERE tenant_id = :t AND version_id = :v AND step_number = :n AND finished_at IS NULL"
                     ")"
                 ), {"t": tenant_id, "v": version_id, "n": step_number, "name": step_name})
+            elif status == "failed":
+                # Idempotency guarantees at most one open row per version, so the
+                # open row (whichever step_number it's actually on) is the one that
+                # failed — match on finished_at IS NULL alone, not step_number, so a
+                # failure after a later step has already opened isn't lost against a
+                # step_number that's no longer open.
+                conn.execute(text(
+                    "UPDATE analysis_run_steps SET status = 'failed', finished_at = now(), "
+                    "duration_ms = EXTRACT(EPOCH FROM (now() - started_at)) * 1000, error_detail = :err "
+                    "WHERE tenant_id = :t AND version_id = :v AND finished_at IS NULL"
+                ), {"err": error_detail, "t": tenant_id, "v": version_id})
             else:
                 conn.execute(text(
                     "UPDATE analysis_run_steps SET status = :status, finished_at = now(), "
