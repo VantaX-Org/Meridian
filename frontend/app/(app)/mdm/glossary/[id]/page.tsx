@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, EmptyState, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, toastManager, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { queryKeys } from "@/lib/query-keys";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -24,20 +24,26 @@ export default function GlossaryTermPage() {
     queryFn: () => getGlossaryTerm(id),
   });
 
+  const onMutationError = (error: unknown) => {
+    toastManager.add({ title: error instanceof Error ? error.message : "Something went wrong." });
+  };
   const save = useMutation({
     mutationFn: (body: Parameters<typeof updateGlossaryTerm>[1]) => updateGlossaryTerm(id, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.glossaryTerm(id) });
       setEditDef(null);
     },
+    onError: onMutationError,
   });
   const review = useMutation({
     mutationFn: () => reviewGlossaryTerm(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.glossaryTerm(id) }),
+    onError: onMutationError,
   });
   const autoDraft = useMutation({
     mutationFn: () => requestAIDraft(id),
     onSuccess: setDraft,
+    onError: onMutationError,
   });
 
   if (termQuery.isLoading) {
@@ -45,6 +51,16 @@ export default function GlossaryTermPage() {
       <div className="flex flex-col gap-2 p-6">
         <Skeleton height={32} />
         <Skeleton height={120} />
+      </div>
+    );
+  }
+  if (termQuery.isError) {
+    return (
+      <div className="p-6">
+        <ErrorState
+          message={termQuery.error instanceof Error ? termQuery.error.message : "This glossary term could not be read."}
+          onRetry={() => void termQuery.refetch()}
+        />
       </div>
     );
   }

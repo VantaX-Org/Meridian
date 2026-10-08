@@ -1,5 +1,5 @@
 // frontend/app/(app)/mdm/glossary/[id]/__tests__/page.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as glossaryApi from "@/lib/api/glossary";
@@ -43,8 +43,17 @@ describe("GlossaryTermPage", () => {
   });
 
   it("shows an empty state when the term does not exist", async () => {
-    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(undefined as unknown as GlossaryTermDetail);
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockResolvedValue(null as unknown as GlossaryTermDetail);
     renderWithQuery(<GlossaryTermPage />);
     await waitFor(() => expect(screen.getByText(/no longer exists/i)).toBeInTheDocument());
+  });
+
+  it("shows the API error message and retries on click", async () => {
+    vi.spyOn(glossaryApi, "getGlossaryTerm").mockRejectedValue(new Error("glossary term service unavailable"));
+    renderWithQuery(<GlossaryTermPage />);
+    await screen.findByText("glossary term service unavailable");
+    const calls = (glossaryApi.getGlossaryTerm as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect((glossaryApi.getGlossaryTerm as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
   });
 });

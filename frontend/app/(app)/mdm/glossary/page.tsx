@@ -83,7 +83,10 @@ export default function GlossaryPage() {
       }
       state={state}
       emptyProps={{ title: "No glossary terms match these filters." }}
-      errorProps={{ message: "Could not load the glossary.", onRetry: () => query.refetch() }}
+      errorProps={{
+        message: query.error instanceof Error ? query.error.message : "Could not load the glossary.",
+        onRetry: () => query.refetch(),
+      }}
     />
   );
 }
