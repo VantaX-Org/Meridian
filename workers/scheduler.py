@@ -947,6 +947,10 @@ celery_app.conf.beat_schedule = {
         "task": "workers.scheduler.weekly_cleaning_batch",
         "schedule": crontab(hour=1, minute=0, day_of_week=1),  # 01:00 UTC Monday = 03:00 SAST
     },
+    "weekly_owner_digest": {
+        "task": "workers.tasks.send_owner_digests.send_owner_digests",
+        "schedule": crontab(hour=3, minute=30, day_of_week=1),  # Mon 03:30 UTC = 05:30 SAST, after weekly_cleaning
+    },
     "monthly-report-1st-04am": {
         "task": "workers.scheduler.monthly_report",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),  # 02:00 UTC 1st = 04:00 SAST
