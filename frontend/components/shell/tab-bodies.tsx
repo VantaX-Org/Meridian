@@ -30,6 +30,7 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
 
   "/workbench": named(() => import("@/components/workbench/inbox"), "StewardInboxSurface"),
   "/cleaning": named(() => import("@/components/workbench/cleaning"), "CleaningSurface"),
+  "/remediation": named(() => import("@/components/workbench/batches"), "FixBatchesSurface"),
   "/exceptions": named(() => import("@/components/workbench/exceptions"), "ExceptionsSurface"),
   "/exceptions/rules": named(() => import("@/components/workbench/exception-rules"), "ExceptionRulesSurface"),
   "/dedup": named(() => import("@/components/workbench/dedup"), "DedupSurface"),

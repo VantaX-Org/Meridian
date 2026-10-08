@@ -598,6 +598,12 @@ button.ui-state-toggle:focus-visible { outline: var(--aurora-focus-ring-width) s
 .ui-detail-part__title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--aurora-fg-primary); }
 
 .ui-plain-list { margin: 0; padding-left: var(--aurora-space-4); font-size: 14px; line-height: 20px; color: var(--aurora-fg-secondary); }
+
+/* One monitored system's baseline-vs-latest comparison, in the fix batches monitoring section. */
+.ui-monitor-row { display: flex; flex-direction: column; gap: var(--aurora-space-3); padding: var(--aurora-space-4) 0; border-bottom: 1px solid var(--aurora-canvas-line); }
+.ui-monitor-row:last-child { border-bottom: 0; }
+.ui-monitor-row__identity { display: flex; align-items: baseline; gap: var(--aurora-space-3); font-size: 14px; color: var(--aurora-fg-primary); }
+.ui-monitor-row__changed { font-size: 14px; line-height: 20px; color: var(--aurora-fg-secondary); }
 .ui-keys { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2) var(--aurora-space-4); margin: 0; padding: 0; list-style: none; font-size: 13px; }
 
 .ui-mini-table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 16px; }

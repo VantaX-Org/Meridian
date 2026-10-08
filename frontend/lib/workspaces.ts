@@ -81,6 +81,7 @@ export const WORKSPACES: readonly Workspace[] = [
       { id: "record", label: "Record report", href: "/workbench/record", hidden: true },
       { id: "dedup", label: "Duplicates", href: "/dedup" },
       { id: "cleaning", label: "Cleaning", href: "/cleaning" },
+      { id: "batches", label: "Fix batches", href: "/remediation", anyOf: ["approve", "apply", "export"] },
       { id: "exceptions", label: "Exceptions", href: "/exceptions" },
       { id: "golden", label: "Golden records", href: "/golden-records" },
       { id: "ai-rules", label: "AI rule review", href: "/ai/rules" },
