@@ -5,6 +5,7 @@ import { Moon, Rows3, Sun } from "lucide-react";
 import { Rail, TopBar, CommandPalette } from "@/design";
 import { AuthGuard, HeaderExportMenu, NotificationBell, UserButton } from "@/components/shell/widgets";
 import { useVisibleNav } from "@/hooks/use-nav";
+import { useRole } from "@/hooks/use-role";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 import { flattenNav } from "@/lib/nav";
 
@@ -18,10 +19,11 @@ function CommandPaletteSlot() {
 
 function UserMenu() {
   const { theme, density, setTheme, setDensity } = useAuroraPrefs();
+  const { can } = useRole();
   return (
     <div className="flex items-center gap-2">
       <NotificationBell />
-      <HeaderExportMenu />
+      {can("export") ? <HeaderExportMenu /> : null}
       <button
         type="button"
         className="aurora-topbar__icon aurora-focus-ring"
