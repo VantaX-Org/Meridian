@@ -8,6 +8,7 @@ import { Button, DataTable, Drawer, ExplorerPage, Field, Mono, Pill, Select, typ
 import { useRole } from "@/hooks/use-role";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import type { Contract, ContractStatus } from "@/types/api";
 
 const STATUSES: ("all" | ContractStatus)[] = ["all", "active", "pending_approval", "draft", "expired"];
@@ -26,12 +27,12 @@ export default function ContractsPage() {
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const q = useQuery({ queryKey: ["contracts.list", { status }], queryFn: () => getContracts(status === "all" ? undefined : status) });
+  const q = useQuery({ queryKey: queryKeys.contracts({ status }), queryFn: () => getContracts(status === "all" ? undefined : status) });
   const all = useMemo(() => q.data?.contracts ?? [], [q.data]);
   const term = search.trim().toLowerCase();
   const visible = all.filter((c) => !term || [c.name, c.producer, c.consumer, c.description ?? ""].join(" ").toLowerCase().includes(term));
   const selected = selectedId ? all.find((c) => c.id === selectedId) ?? null : null;
-  const refresh = () => qc.invalidateQueries({ queryKey: ["contracts.list"] });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["contracts"] });
 
   const counts = {
     active: all.filter((c) => c.status === "active").length,
@@ -136,7 +137,7 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
     onSuccess: () => { toast.success(`${c.name} is active`); onChanged(); },
     onError: (e) => toast.error((e as Error).message || "Not activated"),
   });
-  const compliance = useQuery({ queryKey: ["contracts.compliance", c.id], queryFn: () => getContractCompliance(c.id) });
+  const compliance = useQuery({ queryKey: queryKeys.contractCompliance(c.id), queryFn: () => getContractCompliance(c.id) });
   const terms = TERMS.filter(([k]) => c[k] && Object.keys(c[k] as object).length);
   const history = compliance.data?.compliance_history ?? [];
 
