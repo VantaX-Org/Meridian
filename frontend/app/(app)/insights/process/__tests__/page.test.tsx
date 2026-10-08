@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
@@ -41,9 +41,19 @@ describe("ProcessInsightsPage", () => {
     vi.spyOn(miningApi, "getMiningGraph").mockResolvedValue({
       version_id: "v1", module: "material_master", activities: [], transitions: [], variants: [], cases: [], cases_supported: false,
     });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
     await waitFor(() => expect(screen.getByText("Procure to pay — gates")).toBeInTheDocument());
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
+  });
+
+  it("shows the API error message for readiness and retries on click", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockRejectedValue(new Error("versions service unavailable"));
+    renderWithQuery(<ProcessInsightsPage />);
+    await screen.findByText("versions service unavailable");
+    const calls = (versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect((versionsApi.getVersions as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
   });
 });

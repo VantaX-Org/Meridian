@@ -7,10 +7,6 @@
  * `/process` Aurora pages onto @/design.
  *
  * Deviations from the legacy pages (see task-22-report.md for the full list):
- * - Dropped the config-aware "Rules by process step" breakdown and the
- *   system/config-load-aware tally figure — no light-UI equivalent exists for
- *   `ProcessReport`'s nested rule blocks, and this is a secondary, config-load
- *   tier feature. Readiness here is scored purely from field DQ status.
  * - The L1-L5 hierarchy drill-down (aurora's `ProcessReport`) is replaced with
  *   a flat L3 "gates" table plus plain blocking-findings/recommendations
  *   lists, since no @/design equivalent exists for that component.
@@ -27,7 +23,8 @@ import {
   type PillTone,
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
-import { getBusinessProcess, getConfigImpact } from "@/lib/api/connectivity";
+import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
+import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -58,6 +55,43 @@ const ORDER = { blocked: 0, degraded: 1, ok: 2 } as const;
 
 /* ---------- Readiness ---------- */
 
+const fmt1 = (n: number) => n.toFixed(1);
+const records = (n: number) => `${n.toLocaleString()} ${n === 1 ? "record" : "records"}`;
+const AWARE_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", warning: "at-risk", low: "go" };
+const AWARE_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", warning: "Warning", low: "Low" };
+
+function RulesBlock({ title, t, findingHref }: {
+  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+}) {
+  const failing = t.applicable - t.passes;
+  return (
+    <div className="flex flex-col gap-1">
+      <h4 className="font-medium">{title}</h4>
+      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        {t.score === null ? "No rules apply" : `${fmt1(t.score)}%, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
+      </p>
+      {t.top_failing.length ? (
+        <ul className="flex flex-col gap-1" aria-label={`Top failing rules, ${title}`}>
+          {t.top_failing.slice(0, 5).map((f) => (
+            <li key={f.check_id} className="flex items-center gap-3">
+              <Pill tone={AWARE_TONE[f.severity] ?? "neutral"}>{AWARE_LABEL[f.severity] ?? f.severity}</Pill>
+              <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
+                <Mono>{f.check_id}</Mono>
+              </Link>
+              <span className="text-[13px]">{records(f.affected_count)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {t.not_applicable ? (
+        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+          Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
   const sorted = useMemo(
     () => [...results].sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.total_affected_records - a.total_affected_records),
@@ -82,7 +116,7 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
 }
 
 function ReadinessView() {
-  const { latest, isLoading: versionsLoading, error: versionsError } = useLatestVersion();
+  const { latest, isLoading: versionsLoading, error: versionsError, refetch: refetchVersions } = useLatestVersion();
   const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const [objectChoice, setObject] = useState("");
   const object = objectChoice || modules[0] || "";
@@ -101,12 +135,22 @@ function ReadinessView() {
     meta: { ignoreError: true },
   });
   const findingHref = useFindingHref(latest?.id);
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const [systemChoice, setSystem] = useState("all");
+  const systemId = systemChoice === "all" ? undefined : systemChoice;
+  const aware = useQuery({
+    queryKey: queryKeys.configAwareScore(latest?.id, systemId),
+    queryFn: () => getConfigAwareScore({ version_id: latest!.id, system_id: systemId }),
+    enabled: !!latest,
+    retry: false,
+    meta: { ignoreError: true },
+  });
 
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
 
   if (versionsLoading || bp.isLoading) return <Skeleton height={240} />;
-  if (versionsError) return <ErrorState message={versionsError.message} />;
+  if (versionsError) return <ErrorState message={versionsError.message} onRetry={() => void refetchVersions()} />;
   if (!latest) {
     return <EmptyState title="Readiness is read from the latest completed analysis. Sync a system and run an analysis."
       action={<Link href="/data" className="underline">Open sync</Link>} />;
@@ -137,6 +181,7 @@ function ReadinessView() {
       return { l3, score: score(f3), blocking: red(f3) };
     }));
   const blockedGates = gates.filter((g) => g.blocking).length;
+  const awareL1: ConfigAwareL1 | undefined = aware.data?.processes.find((p) => p.l1 === l1.l1_id || p.name === l1.l1_name);
 
   const blockingFindings = l1.l2_groups.flatMap((l2) => l2.l3_processes.flatMap((l3) =>
     l3.l4_subprocesses.flatMap((l4) => l4Fields(l4).filter((f) => f.dq_status === "red").map((f) => ({
@@ -168,6 +213,11 @@ function ReadinessView() {
         {objectPicker}
         {processes.length > 1 ? (
           <Select value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
+        ) : null}
+        {(systems.data?.length ?? 0) > 1 ? (
+          <Select value={systemChoice}
+            options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
+            onValueChange={setSystem} />
         ) : null}
         <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
           Version {latest.label ?? latest.id.slice(0, 8)}, run {formatDate(latest.run_at, "datetime")}
@@ -227,6 +277,19 @@ function ReadinessView() {
         </div>
       </div>
 
+      {awareL1 ? (
+        <div id="applicability" className="flex flex-col gap-3">
+          <h3 className="font-semibold">Rules by process step</h3>
+          {!aware.data?.config_load ? (
+            <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              All {awareL1.applicable.toLocaleString()} rules apply by default. Load configuration to narrow this.
+            </p>
+          ) : null}
+          <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
+          {awareL1.l2.map((l2) => <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} />)}
+        </div>
+      ) : null}
+
       {impact.data ? <FeaturesList results={impact.data.results} /> : null}
     </div>
   );
@@ -240,7 +303,7 @@ const READINESS_LABEL: Record<MiningVariant["readiness"], string> = { green: "Re
 const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
 
 function MapView() {
-  const { latest, isLoading, error } = useLatestVersion();
+  const { latest, isLoading, error, refetch } = useLatestVersion();
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -276,7 +339,7 @@ function MapView() {
   })), [graphQ.data]);
 
   if (isLoading) return <Skeleton height={240} />;
-  if (error) return <ErrorState message={error.message} />;
+  if (error) return <ErrorState message={error.message} onRetry={() => void refetch()} />;
   if (!latest) {
     return <EmptyState title="The map is mined from a completed analysis. Sync a system and run an analysis to see its process."
       action={<Link href="/data" className="underline">Open sync</Link>} />;
@@ -291,7 +354,9 @@ function MapView() {
         <Select value={active ?? ""} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={setModule} />
       ) : null}
 
-      {graphQ.isLoading ? <Skeleton height={240} /> : graphQ.error ? <ErrorState message={(graphQ.error as Error).message} /> : (
+      {graphQ.isLoading ? <Skeleton height={240} /> : graphQ.error ? (
+        <ErrorState message={(graphQ.error as Error).message} onRetry={() => void graphQ.refetch()} />
+      ) : (
         <>
           <div className="flex gap-6 flex-wrap">
             <Stat label="Steps mapped" value={activities.length} />

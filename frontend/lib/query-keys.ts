@@ -72,6 +72,11 @@ export const queryKeys = {
   analyticsPredictive: () => ["analytics-predictive"] as const,
   matchRulesAll: () => ["match-rules"] as const,
   pairConstraintsAll: () => ["pair-constraints"] as const,
+  processReference: () => ["process-reference"] as const,
+  processModelAll: () => ["process-model"] as const,
+  processModelVersionsAll: () => ["process-model-versions"] as const,
+  processOverlayAll: () => ["process-overlay"] as const,
+  processVariantsAll: () => ["process-variants"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

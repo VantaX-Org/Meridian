@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, Menu } from "@/design";
 import { listModelVersions } from "@/lib/api/process-designer";
 import { formatDate } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 /** Versions menu: picking one opens it read-only. */
 export function VersionsMenu({ modelId, shown, onPick }: { modelId: string; shown: number | null; onPick: (no: number | null) => void }) {
-  const q = useQuery({ queryKey: ["pd.versions", modelId], queryFn: () => listModelVersions(modelId) });
+  const q = useQuery({ queryKey: queryKeys.processModelVersions(modelId), queryFn: () => listModelVersions(modelId) });
   const rows = q.data ?? [];
   const items = rows.length
     ? rows.map((r, i) => ({

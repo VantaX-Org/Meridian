@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, Mono, Select, Skeleton, Stat } from "@/design";
+import { Button, ErrorState, Mono, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
   signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
 import { downloadAuthenticated } from "@/lib/api/download";
+import { queryKeys } from "@/lib/query-keys";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
@@ -41,16 +42,18 @@ export default function ProcessDesigner() {
   const overlayOn = sp.get("overlay") !== "none";
   const reference = model === "reference";
 
-  const models = useQuery({ queryKey: ["pd.models"], queryFn: listModels });
-  const ref = useQuery({ queryKey: ["pd.reference"], queryFn: getReference, enabled: reference });
-  const saved = useQuery({ queryKey: ["pd.model", model, v], queryFn: () => getModel(model, v ? Number(v) : undefined), enabled: !reference });
+  const models = useQuery({ queryKey: queryKeys.processModels(), queryFn: listModels });
+  const ref = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference, enabled: reference });
+  const saved = useQuery({
+    queryKey: queryKeys.processModel(model, v ?? undefined), queryFn: () => getModel(model, v ? Number(v) : undefined), enabled: !reference,
+  });
   const { latest } = useLatestVersion();
   const overlay = useQuery({
-    queryKey: ["pd.overlay", model, latest?.id], enabled: !reference && !!latest && overlayOn, retry: false, meta: { ignoreError: true },
+    queryKey: queryKeys.processOverlay(model, latest?.id), enabled: !reference && !!latest && overlayOn, retry: false, meta: { ignoreError: true },
     queryFn: () => getOverlay(model, latest!.id),
   });
   const variants = useQuery({
-    queryKey: ["pd.variants", latest?.id], enabled: !!latest, retry: false, meta: { ignoreError: true },
+    queryKey: queryKeys.processVariants(latest?.id), enabled: !!latest, retry: false, meta: { ignoreError: true },
     queryFn: () => listVariants(latest!.id),
   });
   const findingHref = useFindingHref(latest?.id);
@@ -66,7 +69,10 @@ export default function ProcessDesigner() {
           <h2 className="text-[22px] font-semibold">Process designer</h2>
           <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
         </div>
-        {failed ? <EmptyState title="The process model could not be read. Check the model in the address bar, or open the reference model." /> : <Skeleton height={240} />}
+        {failed ? (
+          <ErrorState message={failed instanceof Error ? failed.message : "The process model could not be read."}
+            onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
+        ) : <Skeleton height={240} />}
       </div>
     );
   }
@@ -116,11 +122,14 @@ function Editor(p: EditorProps) {
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
-  const refresh = () => ["pd.model", "pd.models", "pd.versions", "pd.overlay", "pd.variants"].forEach((k) => void qc.invalidateQueries({ queryKey: [k] }));
+  const refresh = () => {
+    [queryKeys.processModelAll(), queryKeys.processModels(), queryKeys.processModelVersionsAll(), queryKeys.processOverlayAll(), queryKeys.processVariantsAll()]
+      .forEach((queryKey) => void qc.invalidateQueries({ queryKey }));
+  };
 
   const create = useMutation({
     mutationFn: (a: { name: string; from: string }) => createModel(a.name, a.from),
-    onSuccess: (r) => { void qc.invalidateQueries({ queryKey: ["pd.models"] }); setNaming(null); setPrompt(false); go({ model: r.model.id, v: null, attr: null }); },
+    onSuccess: (r) => { void qc.invalidateQueries({ queryKey: queryKeys.processModels() }); setNaming(null); setPrompt(false); go({ model: r.model.id, v: null, attr: null }); },
   });
   const save = useMutation({
     mutationFn: () => saveModel(model, { document: doc, note, base_version: versionNo }),
