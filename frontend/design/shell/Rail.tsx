@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -24,10 +24,11 @@ const RAIL_KEY = "meridian:rail";
 
 export function Rail() {
   const pathname = usePathname();
-  const [expanded, setExpanded] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.localStorage.getItem(RAIL_KEY) !== "collapsed";
-  });
+  const [expanded, setExpanded] = useState(true);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage after mount
+    if (window.localStorage.getItem(RAIL_KEY) === "collapsed") setExpanded(false);
+  }, []);
   const { data: counts } = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts });
 
   const toggle = () => {
