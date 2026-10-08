@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 from api.services import jobs
+from api.services.run_steps import record_step
 
 logger = logging.getLogger("meridian.worker.run_sync")
 
@@ -274,6 +275,8 @@ def run_sync(self, profile_id: str, tenant_id: str):
             {"pid": profile_id},
         )
         session.commit()
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="running")
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="complete")
 
     jobs.finish_job(tenant_id, sync_run_id, "completed",
                     result={"version_id": version_id, "rows_extracted": total_rows})
@@ -356,9 +359,19 @@ def run_sync(self, profile_id: str, tenant_id: str):
     }
 
 
-def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str) -> None:
-    """Mark a sync run as failed."""
+def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str,
+                    version_id: str | None = None) -> None:
+    """Mark a sync run as failed.
+
+    ``version_id`` is only available once this sync run's ``analysis_versions``
+    row has been created (see Step 7 in ``run_sync``); when given, the decisive
+    failure is also recorded as a step-0 row in ``analysis_run_steps`` so the
+    run detail page can show why a sync-type run died.
+    """
     logger.error(f"Sync run {sync_run_id} failed: {error_detail}")
+    if version_id:
+        record_step(engine, tenant_id, version_id, 0, "Sync failed", status="running")
+        record_step(engine, tenant_id, version_id, 0, "Sync failed", status="failed", error_detail=error_detail)
     try:
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
