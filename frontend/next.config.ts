@@ -10,6 +10,18 @@ const nextConfig: NextConfig = {
     return [
       { source: "/stewardship", destination: "/workbench?tab=queue", permanent: false },
       { source: "/stewardship/metrics", destination: "/workbench?tab=queue", permanent: false },
+      { source: "/command-centre", destination: "/?tab=live", permanent: false },
+      { source: "/connectivity", destination: "/data", permanent: false },
+      { source: "/run-sync", destination: "/data", permanent: false },
+      { source: "/migration", destination: "/data?tab=migration", permanent: false },
+      { source: "/analytics", destination: "/", permanent: false },
+      { source: "/golden-records/:id/merge", destination: "/golden-records/:id?tab=merge", permanent: false },
+      { source: "/systems/:id/pilot", destination: "/systems/:id?tab=pilot", permanent: false },
+      {
+        source: "/systems/:id/versions/:versionId/profile",
+        destination: "/data/runs/:versionId?tab=profile",
+        permanent: false,
+      },
     ];
   },
 
