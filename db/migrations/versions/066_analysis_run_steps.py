@@ -22,6 +22,14 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _rls(table: str) -> None:
+    op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+    op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
+    op.execute(f"DROP POLICY IF EXISTS {table}_rls ON {table}")
+    op.execute(f"CREATE POLICY {table}_rls ON {table} "
+               "USING (tenant_id = current_setting('app.tenant_id')::uuid)")
+
+
 def upgrade() -> None:
     op.create_table(
         "analysis_run_steps",
@@ -41,8 +49,10 @@ def upgrade() -> None:
         "analysis_run_steps",
         ["tenant_id", "version_id", "step_number"],
     )
+    _rls("analysis_run_steps")
 
 
 def downgrade() -> None:
+    op.execute("DROP POLICY IF EXISTS analysis_run_steps_rls ON analysis_run_steps")
     op.drop_index("ix_analysis_run_steps_tenant_version_step", table_name="analysis_run_steps")
     op.drop_table("analysis_run_steps")
