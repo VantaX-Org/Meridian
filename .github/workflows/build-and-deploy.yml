@@ -19,6 +19,12 @@ env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/vantax-org/meridian
 
+# One release build at a time: two overlapping builds race to push :latest,
+# and the older commit can win.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   # Release gate: no image is published from a commit whose test suite fails.
   tests:
