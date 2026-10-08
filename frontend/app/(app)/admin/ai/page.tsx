@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Field, Select } from "@/design";
+import { Button, ErrorState, Field, Select } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/llm-settings";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatDate } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 function note(children: ReactNode, tone: "info" | "success" | "danger" = "info") {
   const color = tone === "danger" ? "var(--m-critical)" : tone === "success" ? "var(--m-pass)" : "var(--m-ink-3)";
@@ -28,13 +29,24 @@ function note(children: ReactNode, tone: "info" | "success" | "danger" = "info")
 
 export default function AdminAIPage() {
   const allowed = useRole().can("manage_llm");
-  const providers = useQuery({ queryKey: ["llm.providers"], queryFn: getLLMProviders, enabled: allowed });
-  const config = useQuery({ queryKey: ["llm.config"], queryFn: getLLMConfig, enabled: allowed });
+  const providers = useQuery({ queryKey: queryKeys.llmProviders(), queryFn: getLLMProviders, enabled: allowed });
+  const config = useQuery({ queryKey: queryKeys.llmConfig(), queryFn: getLLMConfig, enabled: allowed });
 
   if (!allowed) {
     return (
       <div className="flex flex-col gap-6 p-6">
         {note("Administrators change the language model. Ask an administrator to change the provider, model or endpoint.")}
+      </div>
+    );
+  }
+
+  if (providers.isError || config.isError) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <ErrorState
+          message={(providers.error as Error)?.message || (config.error as Error)?.message || "Could not load the language-model settings."}
+          onRetry={() => { providers.refetch(); config.refetch(); }}
+        />
       </div>
     );
   }
@@ -100,7 +112,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
     onSuccess: () => {
       toast.success("Language-model settings saved");
       setApiKey("");
-      qc.invalidateQueries({ queryKey: ["llm.config"] });
+      qc.invalidateQueries({ queryKey: queryKeys.llmConfig() });
     },
     onError: (e) => toast.error(`Settings not saved. ${apiErrorMessage(e)}`),
   });

@@ -1,16 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Pill, Skeleton } from "@/design";
+import { Button, ErrorState, Pill, Skeleton } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 export default function AdminLicencePage() {
-  const q = useQuery({ queryKey: ["licence.manifest"], queryFn: getLicenceManifest });
+  const q = useQuery({ queryKey: queryKeys.licenceManifest(), queryFn: getLicenceManifest });
   const l = q.data;
   const modules = l?.enabled_modules ?? [];
   const all = modules.includes("*");
@@ -68,10 +69,8 @@ export default function AdminLicencePage() {
       ) : null}
 
       {q.isLoading ? <Skeleton height={120} /> : null}
-      {q.error ? (
-        <div role="alert" className="text-[13px]" style={{ color: "var(--m-critical)" }}>
-          The licence could not be read. {apiErrorMessage(q.error)}
-        </div>
+      {q.isError ? (
+        <ErrorState message={apiErrorMessage(q.error) || "The licence could not be read."} onRetry={() => q.refetch()} />
       ) : null}
 
       {l ? (
@@ -123,7 +122,7 @@ function PlatformVersion() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const { open } = useUpdateModal();
-  const q = useQuery({ queryKey: ["system-update-status"], queryFn: getUpdateStatus, enabled: isAdmin, staleTime: 60_000 });
+  const q = useQuery({ queryKey: queryKeys.systemUpdateStatus(), queryFn: getUpdateStatus, enabled: isAdmin, staleTime: 60_000 });
   if (!isAdmin) return null;
   const s = q.data;
   return (
@@ -134,10 +133,8 @@ function PlatformVersion() {
       </h2>
       {q.isLoading ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the running version.</p>
-      ) : q.error || !s ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-medium)", color: "var(--m-medium)" }}>
-          The update status could not be read. The update-status endpoint did not answer; the deployment itself is running.
-        </div>
+      ) : q.isError || !s ? (
+        <ErrorState message="The update status could not be read. The update-status endpoint did not answer; the deployment itself is running." onRetry={() => q.refetch()} />
       ) : (
         <div className="flex flex-col gap-2">
           <dl className="grid grid-cols-[160px_1fr] gap-y-1 text-[13px]">
