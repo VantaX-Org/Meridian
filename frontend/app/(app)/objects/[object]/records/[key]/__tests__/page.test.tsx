@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/[object]/records/[key]/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import { AxiosError, type AxiosResponse } from "axios";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as materialsApi from "@/lib/api/materials";
@@ -11,11 +11,6 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master", key: "100001" }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 const material: materialsApi.Material360 = {
   matnr: "100001",

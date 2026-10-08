@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
 import ObjectsPage from "../page";
 
@@ -9,11 +9,6 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 describe("ObjectsPage", () => {
   it("renders one row per object with its readiness", async () => {

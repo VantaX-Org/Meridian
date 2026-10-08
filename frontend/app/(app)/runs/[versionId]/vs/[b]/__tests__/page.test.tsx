@@ -1,16 +1,11 @@
 // frontend/app/(app)/runs/[versionId]/vs/[b]/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as versionsApi from "@/lib/api/versions";
 import CompareRunsPage from "../page";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ versionId: "v1", b: "v2" }) }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 describe("CompareRunsPage", () => {
   it("renders the rule delta table with new/resolved/persisting counts", async () => {

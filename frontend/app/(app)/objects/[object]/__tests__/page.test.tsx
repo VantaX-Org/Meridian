@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/[object]/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
 import ObjectDetailPage from "../page";
 
@@ -10,11 +10,6 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 describe("ObjectDetailPage", () => {
   it("renders the narrative, dimension chart and rules table", async () => {

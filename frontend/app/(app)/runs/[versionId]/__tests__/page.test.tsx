@@ -1,17 +1,12 @@
 // frontend/app/(app)/runs/[versionId]/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as versionsApi from "@/lib/api/versions";
 import RunDetailPage from "../page";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ versionId: "v1" }) }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 describe("RunDetailPage", () => {
   it("renders the decisive error of a failed step", async () => {
@@ -22,7 +17,7 @@ describe("RunDetailPage", () => {
       run_at: "2026-10-08T00:00:00Z",
       dqs_summary: null,
       metadata: null,
-    } as never);
+    });
     vi.spyOn(runsApi, "getRunSteps").mockResolvedValue({
       version_id: "v1",
       steps: [

@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/[object]/rules/[ruleId]/__tests__/page.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as versionsApi from "@/lib/api/versions";
 import RuleDetailPage from "../page";
 
@@ -9,11 +9,6 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master", ruleId: "mm_missing_desc" }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
-
-function renderWithQuery(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
 
 describe("RuleDetailPage", () => {
   it("renders failing records with a link into each record's fix sheet", async () => {
