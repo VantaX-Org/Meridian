@@ -10,6 +10,8 @@ const EXPECTED: Record<string, string> = {
   "/workbench/progress": "/inbox",
   "/workbench/report": "/inbox",
   "/workbench/record/:issueId": "/inbox",
+  "/exceptions": "/inbox?kind=exception",
+  "/exceptions/rules": "/inbox?kind=exception",
   "/home": "/home/lead",
   "/findings": "/objects",
   "/versions": "/runs",
