@@ -49,6 +49,7 @@ export const test = base.extend<{ app: Page }>({
     await mockSteward(page);
     await mockDepth(page);
     await mockMaterial(page);
+    await mockObjects(page);
     await provide(page);
   },
 });
@@ -139,6 +140,40 @@ async function mockMaterial(page: Page) {
     const body = MATERIAL[id]?.[sub ?? "material"];
     return body ? r.fulfill(json(body)) : r.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"Not found"}' });
   });
+}
+
+/**
+ * Object endpoints are not in the recording: one object (material_master) with a
+ * critical failing rule (MM551, reusing the material-360.json fixture's own failing
+ * rule and record so the record fix sheet below renders real findings/supersession
+ * data for free via mockMaterial) whose record leads to material 101.
+ */
+const OBJECT_MATNR = "000000000000000101";
+const OBJECT_RECORD_KEY = `MATNR=${OBJECT_MATNR}|WERKS=3000`;
+const OBJECT_SUMMARY = {
+  module: "material_master", label: "Material master", composite_score: 72,
+  readiness: "fail" as const, failing_checks: 3, affected_records: 2,
+};
+
+async function mockObjects(page: Page) {
+  await page.route(/\/api\/v1\/objects\?/, (r) =>
+    r.fulfill(json({ run_id: VERSION_ID, objects: [OBJECT_SUMMARY] })));
+  await page.route(/\/api\/v1\/objects\/material_master(\?.*)?$/, (r) =>
+    r.fulfill(json({
+      ...OBJECT_SUMMARY,
+      dimension_scores: { consistency: 70, completeness: 80 },
+      rules: [
+        { check_id: "MM551", severity: "critical", dimension: "consistency", affected_count: 1, total_count: 418, pass_rate: 0.9976 },
+        { check_id: "MM132", severity: "medium", dimension: "completeness", affected_count: 1, total_count: 418, pass_rate: 0.9976 },
+      ],
+    })));
+  await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/MM551\/records/, (r) =>
+    r.fulfill(json({
+      version_id: VERSION_ID, check_id: "MM551", total: 1,
+      records: [{ record_key: OBJECT_RECORD_KEY, grain: "MARC", module: "material_master", field_values: { "MARC.NFMAT": "000000000000000102" } }],
+    })));
+  await page.route(new RegExp(`/api/v1/objects/material_master/records/${OBJECT_MATNR}`), (r) =>
+    r.fulfill(json(MATERIAL[String(Number(OBJECT_MATNR))].material)));
 }
 
 export { expect };

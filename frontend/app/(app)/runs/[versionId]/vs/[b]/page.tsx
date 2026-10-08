@@ -1,4 +1,4 @@
-// frontend/app/(app)/runs/[a]/vs/[b]/page.tsx
+// frontend/app/(app)/runs/[versionId]/vs/[b]/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,7 +9,7 @@ import { DataTable, EmptyState, ErrorState, Mono, ReportPage, Skeleton, Sparklin
 import { compareRecordKeys, compareRecords, type RecordDiffCheck } from "@/lib/api/versions";
 
 export default function CompareRunsPage() {
-  const { a, b } = useParams<{ a: string; b: string }>();
+  const { versionId: a, b } = useParams<{ versionId: string; b: string }>();
   const [selectedCheck, setSelectedCheck] = useState<RecordDiffCheck | null>(null);
 
   const { data, isLoading, isError } = useQuery({
