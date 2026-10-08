@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
         destination: "/data/runs/:versionId?tab=profile",
         permanent: false,
       },
+      { source: "/contracts", destination: "/rules/contracts", permanent: false },
     ];
   },
 

@@ -13,6 +13,7 @@ const EXPECTED: Record<string, string> = {
   "/command-centre": "/?tab=live",
   "/executive-report": "/insights/exec",
   "/connectivity": "/data",
+  "/contracts": "/rules/contracts",
   "/run-sync": "/data",
   "/migration": "/data?tab=migration",
   "/analytics": "/",
