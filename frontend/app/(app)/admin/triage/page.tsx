@@ -35,7 +35,7 @@ function useUsers() {
   const q = useQuery({ queryKey: queryKeys.usersAssignable(), queryFn: getAssignableUsers, enabled: can("assign") });
   const users: User[] = q.data ?? [];
   const name = (id: string | null) => (!id ? "None" : users.find((u) => u.id === id)?.name ?? id.slice(0, 8));
-  return { users, name };
+  return { users, name, isError: q.isError, error: q.error, refetch: q.refetch };
 }
 
 function Toggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -75,15 +75,16 @@ export default function AdminTriagePage() {
   const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const ruleQ = useQuery({ queryKey: queryKeys.triageRules(), queryFn: getRules });
   const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
+  const usersQ = useUsers();
   const idle = (ruleQ.data ?? []).filter((r) => !r.enabled).length;
   const custom = (sla.data ?? []).filter((p) => !p.is_default).length;
 
-  if (teams.isError || ruleQ.isError || sla.isError) {
+  if (teams.isError || ruleQ.isError || sla.isError || usersQ.isError) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <ErrorState
-          message={errText(teams.error ?? ruleQ.error ?? sla.error, "Triage could not be read.")}
-          onRetry={() => { teams.refetch(); ruleQ.refetch(); sla.refetch(); }}
+          message={errText(teams.error ?? ruleQ.error ?? sla.error ?? usersQ.error, "Triage could not be read.")}
+          onRetry={() => { teams.refetch(); ruleQ.refetch(); sla.refetch(); usersQ.refetch(); }}
         />
       </div>
     );
