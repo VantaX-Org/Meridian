@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { getJobs, streamJobs } from "@/lib/api/jobs";
+import { toastManager } from "@/design/primitives/Toast";
 import type { Job } from "@/types/jobs";
 
 export const JOBS_QUERY_KEY = ["jobs"] as const;
 const ACTIVE = new Set(["queued", "running"]);
 
-/** Query-key prefixes a run (sync, checks, batch) changes. Wave 1 reads this from the job's `touches`. */
-export const RUN_TOUCHED_KEYS: ReadonlySet<string> = new Set([
-  "issues", "issue", "version", "versions", "system-versions", "material",
-  "config-impact", "pilot-scorecard", "notifications-unread-count",
-]);
+/**
+ * True for a query key whose first element is in `touches`. Absent `touches`
+ * matches nothing — the caller is expected to offer a manual "Refresh" toast
+ * instead of guessing (spec section 9.1).
+ */
+export function touchedPredicate(touches: string[] | undefined) {
+  const set = new Set(touches ?? []);
+  return (query: { queryKey: QueryKey }) => set.has(String(query.queryKey[0]));
+}
 
 /**
  * The tenant's jobs, kept live: one SSE stream patches the react-query cache
@@ -34,8 +39,17 @@ export function useJobStream(): void {
             ...prev.filter((j) => j.id !== job.id),
           ]);
           if (job.status === "completed") {
-            // a finished job changed only the run-scoped data; everything else keeps its cache
-            qc.invalidateQueries({ predicate: (q) => RUN_TOUCHED_KEYS.has(String(q.queryKey[0])) });
+            if (job.touches && job.touches.length > 0) {
+              qc.invalidateQueries({ predicate: touchedPredicate(job.touches) });
+            } else {
+              toastManager.add({
+                title: `${job.label} finished`,
+                actionProps: {
+                  children: "Refresh",
+                  onClick: () => qc.invalidateQueries(),
+                },
+              });
+            }
           }
         },
         () => {
