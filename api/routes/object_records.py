@@ -21,10 +21,24 @@ from api.deps import Tenant, get_db, get_tenant
 from api.routes.materials import Material360Out, _norm, _tables
 from api.services import material_360 as m360
 from api.services.rbac import require_permission
+from sap.data_dictionary import DATA_DICTIONARY
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
 _SUPPORTED = {"material_master", "business_partner"}
+
+# BUT000 fields worth surfacing in the Identity "labels" bag, in priority order.
+_BP_LABEL_FIELDS = ("PARTNER", "BU_TYPE", "NAME1", "NAME_ORG1")
+
+
+def _bp_label(field: str, raw: Optional[str]) -> Optional[str]:
+    """Human-readable value for a BUT000 field: decode via the data dictionary's
+    standard_values (e.g. BU_TYPE "2" -> "Organisation (legal entity)") when
+    available, else the raw field value as-is."""
+    if raw is None:
+        return None
+    standard_values = DATA_DICTIONARY.get("BUT000", {}).get(field, {}).get("standard_values") or {}
+    return standard_values.get(raw, raw)
 
 
 def _business_partner_record(tables: dict, partner: str) -> Optional[dict[str, Any]]:
@@ -43,10 +57,12 @@ def _business_partner_record(tables: dict, partner: str) -> Optional[dict[str, A
         return None
     r = row.iloc[0]
     mara = {c: m360._s(r[c]) for c in but000.columns}
+    description = mara.get("NAME1") or mara.get("PARTNER")
+    labels = {f: _bp_label(f, mara.get(f)) for f in _BP_LABEL_FIELDS if f in but000.columns}
     return {
-        "matnr": mara.get("PARTNER") or partner, "description": None, "language": None,
+        "matnr": mara.get("PARTNER") or partner, "description": description, "language": None,
         "mara": mara, "makt": [], "marm": [], "mean": [], "marc": [], "mvke": [], "mbew": [],
-        "mard": [], "mlgn": [], "labels": {},
+        "mard": [], "mlgn": [], "labels": labels,
         "expected_views": None, "expected_known": False,
         "levels": [{"id": "client", "kind": "client", "plant": None}], "levels_total": 1,
         "views": [],

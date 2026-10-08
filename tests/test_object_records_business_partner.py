@@ -31,7 +31,8 @@ class _Db:
 
 def _but000_tables():
     return {"BUT000": pd.DataFrame([
-        {"PARTNER": "0000100001", "TYPE": "2", "BPKIND": "0001", "BU_GROUP": "BP01"},
+        {"PARTNER": "0000100001", "TYPE": "2", "BPKIND": "0001", "BU_GROUP": "BP01",
+         "BU_TYPE": "2", "NAME1": "Acme Logistics GmbH"},
     ])}
 
 
@@ -64,6 +65,9 @@ def test_business_partner_record_fix_sheet(monkeypatch):
     assert body["mara"]["BU_GROUP"] == "BP01"
     assert body["views"] == []
     assert body["makt"] == []
+    assert body["description"] == "Acme Logistics GmbH"
+    assert body["labels"]["BU_TYPE"] == "Organisation (legal entity)"
+    assert body["labels"]["NAME1"] == "Acme Logistics GmbH"
 
 
 def test_business_partner_record_not_found(monkeypatch):
