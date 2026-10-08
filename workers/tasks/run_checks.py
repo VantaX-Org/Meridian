@@ -10,6 +10,7 @@ import yaml
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services.run_steps import record_step
 from api.services.task_progress import (
     STEP_FINALISE,
     STEP_RUN_CHECKS,
@@ -181,6 +182,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
 
     # Announce "Running data quality checks" as soon as the worker picks up the job.
     check_step_num, check_step_name = STEP_RUN_CHECKS
+    record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
     update_task_progress(
         version_id,
         status="processing",
@@ -262,6 +264,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             'message': f'Loaded {row_count} rows, {col_count} columns',
             'progress': 10,
         })
+        record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
         update_task_progress(
             version_id,
             current_step=check_step_name,
@@ -341,6 +344,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             # Interpolate row progress across modules so the bar moves smoothly
             # even for a single-module run with 2000 rows.
             rows_done_before = int((idx / module_count) * row_count)
+            record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
             update_task_progress(
                 version_id,
                 current_step=f"{check_step_name} — {module_name}",
@@ -371,6 +375,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                     logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
+            record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
             update_task_progress(
                 version_id,
                 current_step=f"{check_step_name} — {module_name}",
@@ -554,6 +559,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             })
             # Checks finished + deterministic report ready — mark as completed.
             final_step_num, final_step_name = STEP_FINALISE
+            record_step(engine, tenant_id, version_id, final_step_num, final_step_name, status="running")
             update_task_progress(
                 version_id,
                 status="completed",
@@ -564,6 +570,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 total_rows=row_count,
                 percent_complete=100,
             )
+            record_step(engine, tenant_id, version_id, final_step_num, final_step_name, status="complete")
 
             if reanalyse:
                 # checks that no longer run (disabled / removed) drop out of this version,
@@ -849,6 +856,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                 {"vid": version_id, "tid": tenant_id},
             )
             session.commit()
+        record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
+                    error_detail=str(e) or e.__class__.__name__)
         update_task_progress(
             version_id,
             status="failed",
