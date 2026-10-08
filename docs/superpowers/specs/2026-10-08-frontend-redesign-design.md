@@ -283,10 +283,9 @@ All are tenant-scoped through the existing middleware. Existing endpoints are re
 
 Shipped alone on the current shell before any new code:
 
-1. `hooks/use-jobs.ts`: replace the predicate that invalidates every non-jobs query with invalidation of the keys named in the job's `touches` field; until the API sends `touches`, invalidate `['findings']`, `['versions']` and `['metrics']` only.
-2. `components/shell/tab-bodies.tsx`: the blank `analyse/coverage` and `process/designer` tabs render their pages or are removed from the tab list.
-3. Stub pages under `admin/settings` and `exceptions` billing render a real page or are removed from navigation.
-4. Tables above 2,000 rows that are not virtualised switch to the existing virtualiser.
+1. `hooks/use-jobs.ts`: replace the predicate that invalidates every non-jobs query with invalidation of the keys named in the job's `touches` field. Until the API sends `touches`, invalidate only the keys that a run changes today: `issues`, `issue`, `version`, `versions`, `system-versions`, `material`, `config-impact`, `pilot-scorecard`, `notifications-unread-count`.
+2. `components/shell/tab-bodies.tsx`: add entries for `/analyse/coverage` (`components/analyse/coverage` `RuleCoverage`) and `/process/designer` (`components/process/designer/page` `ProcessDesigner`). `WorkspaceHub` renders nothing when a tab has no entry, which is why these two tabs are blank.
+3. Tables above 2,000 rows that are not virtualised switch to the existing virtualiser.
 
 ## 12. Waves
 
