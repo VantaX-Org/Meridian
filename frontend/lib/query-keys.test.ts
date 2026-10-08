@@ -17,6 +17,15 @@ describe("queryKeys", () => {
     expect(queryKeys.shellCounts()).toEqual(["shell-counts"]);
   });
 
+  it("normalizes filters so key order and undefined padding do not fragment the cache", () => {
+    expect(queryKeys.records("MARA", { b: 1, a: 2 })).toEqual(
+      queryKeys.records("MARA", { a: 2, b: 1, c: undefined }),
+    );
+    expect(queryKeys.inbox({ status: "open", owner: "me" })).toEqual(
+      queryKeys.inbox({ owner: "me", status: "open", assignee: undefined }),
+    );
+  });
+
   it("every key's first element is a stable string prefix", () => {
     const prefixes = [
       queryKeys.object("a", "b")[0],
