@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 OWNER_ISSUE_SQL = """
     SELECT ri.assigned_to AS user_id, u.name AS owner, ri.severity, ri.status,
            ri.first_seen_at, ri.resolved_at
-    FROM record_issues ri JOIN users u ON u.id = ri.assigned_to
+    FROM record_issues ri JOIN users u ON u.id = ri.assigned_to AND u.tenant_id = :tid
     WHERE ri.tenant_id = :tid AND ri.assigned_to IS NOT NULL
 """
 

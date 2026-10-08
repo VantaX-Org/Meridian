@@ -76,6 +76,62 @@ def _patch_tenant(monkeypatch, tenant_id: str):
     )
 
 
+@pytest.fixture
+def tenant_a_issue_assigned_to_tenant_b_user():
+    """record_issues.assigned_to on tenant A points at a user id that only exists
+    in tenant B's users table (e.g. stale FK after a user moved tenants). The
+    OWNER_ISSUE_SQL join must filter on u.tenant_id too, or this cross-tenant
+    user would appear in tenant A's owner aggregates."""
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    t1, t2 = str(uuid.uuid4()), str(uuid.uuid4())
+    user_b_id = str(uuid.uuid4())
+    version_id = str(uuid.uuid4())
+    with engine.begin() as conn:
+        for t in (t1, t2):
+            conn.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": t})
+        conn.execute(
+            text("INSERT INTO users (id, tenant_id, email, name) VALUES (:id, :t, 'b@example.com', 'B. Owner')"),
+            {"id": user_b_id, "t": t2},
+        )
+        conn.execute(
+            text("INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:id, :t, 'complete')"),
+            {"id": version_id, "t": t1},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO record_issues "
+                "(id, tenant_id, scope, module, check_id, record_key, severity, status, "
+                " assigned_to, first_seen_version, last_seen_version) "
+                "VALUES (:id, :t, 'upload', 'material_master', 'MM-001', 'REC-1', 'high', 'open', "
+                " :uid, :vid, :vid)"
+            ),
+            {"id": str(uuid.uuid4()), "t": t1, "uid": user_b_id, "vid": version_id},
+        )
+    yield t1, t2
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM record_issues WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
+        conn.execute(text("DELETE FROM analysis_versions WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
+        conn.execute(text("DELETE FROM users WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
+        conn.execute(text("DELETE FROM tenants WHERE id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
+
+
+@pytest.mark.anyio
+async def test_owners_excludes_cross_tenant_assigned_to_user(
+    tenant_a_issue_assigned_to_tenant_b_user, monkeypatch
+):
+    t1, t2 = tenant_a_issue_assigned_to_tenant_b_user
+    headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
+
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/api/v1/insights/owners", headers=headers)
+    assert r.status_code == 200
+    # the record_issue's assigned_to only resolves against tenant B's users table,
+    # so with the tenant-filtered join it must not produce an owner row for tenant A.
+    assert r.json()["owners"] == []
+
+
 @pytest.mark.anyio
 async def test_owners_is_tenant_isolated(tenant_a_with_owner, monkeypatch):
     t1, t2 = tenant_a_with_owner
