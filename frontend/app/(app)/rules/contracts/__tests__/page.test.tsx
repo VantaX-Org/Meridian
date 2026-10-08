@@ -9,6 +9,7 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const CONTRACT: Contract = {
   id: "c1",
+  tenant_id: "t1",
   name: "Vendor master to S/4HANA",
   producer: "ECC PRD",
   consumer: "S/4HANA Cloud",
