@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, Field, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
+import { queryKeys } from "@/lib/query-keys";
 import type { ExceptionBilling } from "@/types/api";
 
 const TIERS = [1, 2, 3, 4] as const;
@@ -23,7 +24,7 @@ interface TierRow { tier: Tier; count: number; amount: number }
 export default function ExceptionBillingPage() {
   const [period, setPeriod] = useState(thisMonth);
   const q = useQuery({
-    queryKey: ["exceptions.billing", period],
+    queryKey: queryKeys.exceptionBilling(period),
     queryFn: () => getExceptionBilling(period),
     enabled: /^\d{4}-\d{2}$/.test(period),
   });
