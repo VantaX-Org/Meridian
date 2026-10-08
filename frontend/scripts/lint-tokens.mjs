@@ -15,6 +15,7 @@ const TOKEN_FILES = new Set([
   "app/globals.css",
   "lib/aurora/tokens.ts",
   "components/aurora/data/chart-theme.ts",
+  "design/tokens.css",
 ]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 const RULES = [
