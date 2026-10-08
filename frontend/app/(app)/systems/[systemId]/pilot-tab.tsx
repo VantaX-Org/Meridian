@@ -10,6 +10,7 @@ import { EmptyState, Mono, SectionCard, StatusBadge, TableSkeleton, Tally } from
 import { getScorecard, uploadKnownIssues, type KnownIssue, type RuleScore } from "@/lib/api/pilot";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const meta = (m: AuroraColumnMeta) => m;
 const pct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}%`);
@@ -20,12 +21,12 @@ export function PilotTab({ id }: { id: string }) {
   const { can } = useRole();
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const q = useQuery({ queryKey: ["pilot-scorecard", id], queryFn: () => getScorecard(id) });
+  const q = useQuery({ queryKey: queryKeys.pilotScorecard(id), queryFn: () => getScorecard(id) });
   const upload = useMutation({
     mutationFn: (file: File) => uploadKnownIssues(id, file),
     onSuccess: (r) => {
       toast.success(`${n(r.records)} known issues loaded${r.rejected ? `, ${r.rejected} rows rejected` : ""}`);
-      void qc.invalidateQueries({ queryKey: ["pilot-scorecard", id] });
+      void qc.invalidateQueries({ queryKey: queryKeys.pilotScorecard(id) });
     },
     onError: () => toast.error("Upload failed. Expected a CSV with columns object,record,note."),
   });

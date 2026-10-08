@@ -63,6 +63,17 @@ export const queryKeys = {
   scoringSettings: () => ["scoring-settings"] as const,
   findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
   exceptionBilling: (period: string) => ["exception-billing", period] as const,
+  pilotScorecard: (systemId: string) => ["pilot-scorecard", systemId] as const,
+  systemObjects: (systemId: string) => ["system-objects", systemId] as const,
+  referenceLists: (systemId: string) => ["reference", systemId] as const,
+  syncProfiles: (systemId: string) => ["sync-profiles", systemId] as const,
+  designTables: (systemId: string, filters: Record<string, unknown>) => ["design-tables", systemId, normalizeFilters(filters)] as const,
+  designTable: (systemId: string, table: string | null) => ["design-table", systemId, table] as const,
+  designConfig: (systemId: string, table: string) => ["design-config", systemId, table] as const,
+  designConfigDeviation: (systemId: string) => ["design-config-deviation", systemId] as const,
+  designCoverage: (systemId: string) => ["design-coverage", systemId] as const,
+  designSnapshots: (systemId: string) => ["design-snapshots", systemId] as const,
+  designDiff: (systemId: string, a: string, b: string) => ["design-diff", systemId, a, b] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
@@ -104,4 +115,15 @@ export type TouchedEntity =
   | "contract-compliance"
   | "scoring-settings"
   | "findings-aggregate"
-  | "exception-billing";
+  | "exception-billing"
+  | "pilot-scorecard"
+  | "system-objects"
+  | "reference"
+  | "sync-profiles"
+  | "design-tables"
+  | "design-table"
+  | "design-config"
+  | "design-config-deviation"
+  | "design-coverage"
+  | "design-snapshots"
+  | "design-diff";

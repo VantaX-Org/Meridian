@@ -13,6 +13,7 @@ import {
   getDesignTables,
 } from "@/lib/api/source-design";
 import { relativeTime, formatDate } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const PAGE = 100;
 const STATUS_TONE: Record<string, ChipTone> = {
@@ -30,7 +31,7 @@ export function TablesTab({ id }: { id: string }) {
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const { data } = useQuery({
-    queryKey: ["design-tables", id, search, customerOnly, offset],
+    queryKey: queryKeys.designTables(id, { search, customerOnly, offset }),
     queryFn: () => getDesignTables(id, { search: search || undefined, customer_only: customerOnly, limit: PAGE, offset }),
   });
   const total = data?.total ?? 0;
@@ -70,7 +71,7 @@ export function TablesTab({ id }: { id: string }) {
 
 function TableDrawer({ id, table, onClose }: { id: string; table: string | null; onClose: () => void }) {
   const { data, error } = useQuery({
-    queryKey: ["design-table", id, table],
+    queryKey: queryKeys.designTable(id, table),
     queryFn: () => getDesignTable(id, table as string),
     enabled: Boolean(table),
   });
@@ -121,7 +122,7 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
 
 export function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope: string; rows: number; source: string; synced_at: string | null }[] }) {
   const [open, setOpen] = useState(tables[0]?.table ?? "");
-  const { data } = useQuery({ queryKey: ["design-config", id, open], queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
+  const { data } = useQuery({ queryKey: queryKeys.designConfig(id, open), queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
   const cols = data?.rows[0] ? Object.keys(data.rows[0]) : [];
   if (!tables.length) return <Text tone="muted">No configuration read yet.</Text>;
   return (
@@ -153,7 +154,7 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
 
 /** Live check-table values against the SAP-standard lists the rules fall back to. */
 function DeviationPanel({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: ["design-config-deviation", id], queryFn: () => getConfigDeviation(id) });
+  const { data } = useQuery({ queryKey: queryKeys.designConfigDeviation(id), queryFn: () => getConfigDeviation(id) });
   if (!data?.tables.length) return null;
   const list = (vals: string[]) => (vals.length ? vals.slice(0, 12).join(", ") + (vals.length > 12 ? ` +${vals.length - 12}` : "") : "—");
   return (
@@ -175,7 +176,7 @@ function DeviationPanel({ id }: { id: string }) {
 }
 
 export function CoverageTab({ id }: { id: string }) {
-  const { data } = useQuery({ queryKey: ["design-coverage", id], queryFn: () => getDesignCoverage(id) });
+  const { data } = useQuery({ queryKey: queryKeys.designCoverage(id), queryFn: () => getDesignCoverage(id) });
   const parts = Object.entries(data?.coverage ?? {});
   return (
     <Stack gap={4}>
@@ -200,13 +201,13 @@ export function CoverageTab({ id }: { id: string }) {
 }
 
 export function SnapshotsTab({ id }: { id: string }) {
-  const { data: snaps = [] } = useQuery({ queryKey: ["design-snapshots", id], queryFn: () => getDesignSnapshots(id) });
+  const { data: snaps = [] } = useQuery({ queryKey: queryKeys.designSnapshots(id), queryFn: () => getDesignSnapshots(id) });
   const done = snaps.filter((s) => s.status !== "failed" && s.status !== "running");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const a = from || done[1]?.id || "";
   const b = to || done[0]?.id || "";
-  const { data: diff } = useQuery({ queryKey: ["design-diff", id, a, b], queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
+  const { data: diff } = useQuery({ queryKey: queryKeys.designDiff(id, a, b), queryFn: () => getDesignDiff(id, a, b), enabled: Boolean(a && b && a !== b) });
   const opts = done.map((s) => ({ value: s.id, label: `${s.started_at ? formatDate(s.started_at, "datetime") : s.id}, ${s.tables} tables` }));
   return (
     <Stack gap={4}>

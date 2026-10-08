@@ -10,6 +10,7 @@ import {
   uploadPostalCodes,
   type ReferenceList,
 } from "@/lib/api/system-objects";
+import { queryKeys } from "@/lib/query-keys";
 
 const KINDS = [
   {
@@ -30,7 +31,7 @@ const KINDS = [
 
 /** Licensed reference lists the customer supplies (never read from SAP): postal codes, SWIFT directory. */
 export function ReferencePanel({ id }: { id: string }) {
-  const { data: lists = [] } = useQuery({ queryKey: ["reference", id], queryFn: () => getReferenceLists(id) });
+  const { data: lists = [] } = useQuery({ queryKey: queryKeys.referenceLists(id), queryFn: () => getReferenceLists(id) });
   return (
     <Panel title="Reference data">
       <Stack gap={3}>
@@ -49,7 +50,7 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
     mutationFn: (file: File) => spec.upload(id, file),
     onSuccess: (r) => {
       toast.success(`${r.records.toLocaleString()} ${spec.unit} loaded for ${r.countries.join(", ")}`);
-      void qc.invalidateQueries({ queryKey: ["reference", id] });
+      void qc.invalidateQueries({ queryKey: queryKeys.referenceLists(id) });
     },
     onError: () => toast.error(spec.error),
   });

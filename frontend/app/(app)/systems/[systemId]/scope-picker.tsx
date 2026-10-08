@@ -8,6 +8,7 @@ import { Banner, Button, DataTable, Field, Input, Stack, type AuroraColumnMeta }
 import { EmptyState, Mono, SectionCard, TableSkeleton } from "@/components/ui-core";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const SCOPE_LABEL: Record<ScopeKey, string> = {
   company_codes: "Company codes",
@@ -21,7 +22,7 @@ const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()
 /** Choose objects and scope, confirm inline, then extract into a new run. */
 export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: () => void }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["system-objects", id], queryFn: () => getSystemObjects(id) });
+  const { data, isLoading } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
@@ -47,7 +48,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
     onSuccess: (_, analyse) => {
       toast.success(analyse ? "Extraction started. Analysis follows." : "Extraction started. A new run appears under Runs.");
       setPicked(new Set()); setConfirm(null);
-      qc.invalidateQueries({ queryKey: ["system-versions", id] });
+      qc.invalidateQueries({ queryKey: queryKeys.systemVersions(id) });
       onDownloaded();
     },
     onError: (e) => toast.error((e as Error).message || "Extraction refused"),

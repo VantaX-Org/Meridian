@@ -8,6 +8,7 @@ import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 const th = "px-3 py-2 text-left font-medium text-[var(--aurora-fg-tertiary)]";
 const td = "px-3 py-1.5 border-t border-[var(--aurora-canvas-line)]";
@@ -44,11 +45,11 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
 
 export function SchedulesPanel({ id, canManage }: { id: string; canManage: boolean }) {
   const qc = useQueryClient();
-  const { data: profiles = [] } = useQuery({ queryKey: ["sync-profiles", id], queryFn: () => getSyncProfiles(id) });
-  const { data: catalogue } = useQuery({ queryKey: ["system-objects", id], queryFn: () => getSystemObjects(id), enabled: canManage });
+  const { data: profiles = [] } = useQuery({ queryKey: queryKeys.syncProfiles(id), queryFn: () => getSyncProfiles(id) });
+  const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
   const [adding, setAdding] = useState("");
   const [cron, setCron] = useState(PRESETS[1].value);
-  const refresh = () => qc.invalidateQueries({ queryKey: ["sync-profiles", id] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.syncProfiles(id) });
   const onError = (e: unknown) => toast.error((e as Error).message || "Could not save the schedule");
 
   const update = useMutation({
