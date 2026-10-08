@@ -39,7 +39,8 @@ export function Rail() {
   const renderItem = (item: NavItem) => {
     const countKey = COUNT_KEY[item.href];
     const count = countKey ? counts?.[countKey] ?? 0 : 0;
-    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    const itemPath = item.href.split("?")[0];
+    const active = pathname === itemPath || pathname.startsWith(itemPath + "/");
     return (
       <li key={item.href}>
         <Link

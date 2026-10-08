@@ -46,7 +46,6 @@ import {
   SparklesNavIcon,
   UploadIcon,
   AlertIcon,
-  WorkflowIcon,
 } from "@/components/meridian/nav-icons";
 
 export type NavIcon =
@@ -86,7 +85,7 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/settings/rules", label: "Rules engine", icon: Sliders, anyOf: ["manage_rules"], licenceKey: "rules_engine", keywords: "checks triggers schedule" },
+  { href: "/rules", label: "Rules engine", icon: Sliders, anyOf: ["manage_rules"], licenceKey: "rules_engine", keywords: "checks triggers schedule" },
   { href: "/admin/triage", label: "Triage", icon: Timer, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
   { href: "/settings/field-mapping", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
   { href: "/settings/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
@@ -104,17 +103,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Systems and data",
     items: [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
-      { href: "/upload", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
       { href: "/sync", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
-      { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
+      { href: "/data?tab=migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
     ],
   },
   {
     group: "Quality",
     items: [
-      { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
+      { href: "/objects", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
       { href: "/issues", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
-      { href: "/versions", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
+      { href: "/runs", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
     ],
   },
   {
@@ -133,30 +132,36 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Fix",
     anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"],
     items: [
-      { href: "/workbench", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
+      { href: "/inbox", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
       { href: "/cleaning", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
-      { href: "/exceptions", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
+      { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
       { href: "/dedup", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
       { href: "/ai/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
     ],
   },
   {
-    group: "Master data",
+    group: "MDM",
     items: [
-      { href: "/golden-records", label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
-      { href: "/glossary", label: "Glossary", icon: BookIcon, keywords: "terms business" },
-      { href: "/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
-      { href: "/relationships", label: "Relationships", icon: Network, keywords: "lineage graph" },
+      { href: "/mdm/golden", label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
+      { href: "/mdm/glossary", label: "Glossary", icon: BookIcon, keywords: "terms business" },
+      { href: "/mdm/match-rules", label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
     ],
   },
   {
     group: "Process and impact",
     items: [
-      { href: "/process", label: "Process map", icon: WorkflowIcon, keywords: "process mining flow" },
-      { href: "/business-process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc" },
-      { href: "/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
-      { href: "/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
-      { href: "/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering" },
+      { href: "/insights/process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc process map" },
+      { href: "/insights/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
+      { href: "/insights/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
+      { href: "/insights/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering relationships graph" },
+    ],
+  },
+  {
+    group: "Rules",
+    items: [
+      { href: "/rules", label: "Rules", icon: Sliders, keywords: "rules checks catalogue yaml" },
+      { href: "/rules/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
+      { href: "/rules/scoring", label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
     ],
   },
   {
@@ -168,7 +173,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Admin",
     items: [
-      { href: "/admin", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/users", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
       { href: "/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
@@ -178,16 +183,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
   "/executive-report": "Executive report",
-  "/match-rules": "Match rules",
-  "/match-rules/tuning": "Match tuning",
-  "/match-rules/constraints": "Pair constraints",
-  "/exceptions/rules": "Exception rules",
-  "/settings/exception-billing": "Exception billing",
-  "/settings/scoring": "Scoring and alerts",
+  "/data": "Connect and load",
+  "/admin/billing": "Exception billing",
   "/workbench/record": "Record report",
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
-  "/notifications": "Notifications",
 };
 
 /** Items and their sub-pages (Settings tabs) as one flat list. */
