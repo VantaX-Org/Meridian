@@ -800,10 +800,11 @@ button.ui-state-toggle:focus-visible { outline: var(--aurora-focus-ring-width) s
 .ui-o360__charts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: var(--aurora-space-4); }
 @media (max-width: 800px) { .ui-o360__charts { grid-template-columns: minmax(0, 1fr); } }
 .ui-o360__dims { display: flex; flex-wrap: wrap; gap: var(--aurora-space-3); margin-top: var(--aurora-space-3); font-size: 13px; }
-.ui-o360__cap { margin: 0; padding-left: var(--aurora-space-3); border-left: 3px solid var(--aurora-status-danger-500); font-size: 13px; color: var(--aurora-fg-primary); }
+.ui-o360__cap { margin: 0; font-size: 13px; color: var(--aurora-fg-primary); }
+.ui-o360__cap > strong { color: var(--aurora-status-danger-500); font-weight: 600; }
 .ui-o360__features { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--aurora-space-4); }
-.ui-o360__features > li { display: grid; gap: var(--aurora-space-1); padding-left: var(--aurora-space-4); border-left: 3px solid var(--aurora-status-warning-500); }
-.ui-o360__features > li[data-status="blocked"] { border-left-color: var(--aurora-status-danger-500); }
+.ui-o360__features > li { display: grid; gap: var(--aurora-space-1); }
+.ui-o360__features > li + li { padding-top: var(--aurora-space-4); border-top: 1px solid var(--aurora-canvas-line); }
 .ui-o360__features p { margin: 0; color: var(--aurora-fg-secondary); }
 .ui-o360__feature-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--aurora-space-3); }
 .ui-o360__tcodes { display: flex; flex-wrap: wrap; gap: var(--aurora-space-2); }
