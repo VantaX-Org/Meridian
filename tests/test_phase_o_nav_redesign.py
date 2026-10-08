@@ -113,10 +113,16 @@ def test_sidebar_reports_and_admin_items():
 
 
 def test_pages_removed_from_nav_stay_routable():
-    """Off-nav pages keep their routes; live ones get a header title, the rest redirect."""
+    """Off-nav pages keep their routes; live ones get a header title, the rest redirect.
+
+    A retired page may redirect from next.config.ts instead of from a page file.
+    """
     content = _nav()
+    next_config = Path("frontend/next.config.ts").read_text(encoding="utf-8")
     for href in ("/command-centre", "/connectivity", "/run-sync"):
         assert f'href: "{href}"' not in content, f"{href} should no longer be a nav item"
+        if f'source: "{href}"' in next_config:
+            continue
         page = Path(f"frontend/app/(dashboard){href}/page.tsx")
         assert page.exists()
         if "redirect(" not in page.read_text():
