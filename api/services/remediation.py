@@ -88,6 +88,65 @@ def build_items(issues: Iterable[dict], frames) -> list[dict]:
     return out
 
 
+def auto_approvable(item: dict) -> bool:
+    """A self-verified high-confidence rule proposal a second person may accept in bulk."""
+    return item.get("proposal_source") == "rule" and item.get("confidence") == "high" \
+        and item.get("proposed_value") is not None
+
+
+def draft_batch(session, tenant_id: str, name: str, filter_json: str, issues: list[dict],
+                user_id: Optional[str], user_label: Optional[str]) -> dict:
+    """Insert a draft batch for record issues (rows of issue_id, scope, module, check_id,
+    record_key, grain, last_seen_version, field). Current values come from each issue's
+    latest extraction, read locally. Sync: the API calls it through ``run_sync``, the
+    monitor from the worker. ``user_id`` None marks a system-drafted batch."""
+    import json
+    import uuid
+
+    from api.services.source_design import dictionary_for
+    from workers.dataset import load_dataset
+
+    items = []
+    for vid in {i["last_seen_version"] for i in issues}:
+        group = [i for i in issues if i["last_seen_version"] == vid]
+        meta = session.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v"),
+                               {"v": vid}).scalar() or {}
+        frames = None
+        if meta.get("dataset_path"):
+            fields = {i["field"] for i in group if i["field"]}
+            try:
+                # ponytail: loads the version's dataset per batch; move to a worker task if batches get slow
+                frames = load_dataset(meta["dataset_path"], dictionary_for(session, meta.get("system_id")),
+                                      sorted({i["module"] for i in group}), fields)[0]
+            except Exception:
+                frames = None  # dataset gone: current values stay blank
+        items += build_items(group, frames)
+
+    batch_id = uuid.uuid4()
+    session.execute(text("""
+        INSERT INTO remediation_batches (id, tenant_id, name, filter, created_by, created_by_label)
+        VALUES (:id, :tid, :name, CAST(:filter AS jsonb), CAST(:uid AS uuid), :label)
+    """), {"id": batch_id, "tid": tenant_id, "name": name, "filter": filter_json, "uid": user_id,
+           "label": user_label})
+    for chunk in range(0, len(items), 1000):
+        session.execute(text("""
+            INSERT INTO remediation_items (tenant_id, batch_id, issue_id, scope, module, check_id, record_key,
+                                           grain, field, current_value, proposed_value, proposal_source, confidence)
+            SELECT :tid, :bid, (x->>'issue_id')::uuid, x->>'scope', x->>'module', x->>'check_id', x->>'record_key',
+                   x->>'grain', x->>'field', x->>'current_value', x->>'proposed_value', x->>'proposal_source',
+                   x->>'confidence'
+              FROM jsonb_array_elements(CAST(:items AS jsonb)) x
+            ON CONFLICT DO NOTHING
+        """), {"tid": tenant_id, "bid": batch_id, "items": json.dumps(items[chunk:chunk + 1000], default=str)})
+    session.execute(text("INSERT INTO remediation_events (tenant_id, batch_id, item_id, user_id, user_label, action) "
+                         "SELECT :tid, :bid, id, CAST(:uid AS uuid), :label, 'created' "
+                         "FROM remediation_items WHERE batch_id = :bid"),
+                    {"tid": tenant_id, "bid": batch_id, "uid": user_id, "label": user_label})
+    return {"id": str(batch_id), "status": "draft", "items": len(items),
+            "with_proposal": sum(1 for i in items if i["proposed_value"] is not None),
+            "auto_approvable": sum(1 for i in items if auto_approvable(i))}
+
+
 # ── export files ─────────────────────────────────────────────────────────────
 
 
