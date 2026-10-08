@@ -2,9 +2,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toastManager, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { useRole } from "@/hooks/use-role";
@@ -16,6 +17,7 @@ export default function MasterRecordPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const canApprove = useRole().can("approve");
+  const [confirmPromote, setConfirmPromote] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
     queryKey: queryKeys.masterRecord(id),
@@ -38,10 +40,16 @@ export default function MasterRecordPage() {
   };
   const promote = useMutation({
     mutationFn: () => promoteMasterRecord(id, true),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate(); setConfirmPromote(false); },
+    onError: (error) => {
+      toastManager.add({ title: error instanceof Error ? error.message : "Promote failed." });
+    },
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
+    onError: (error) => {
+      toastManager.add({ title: error instanceof Error ? error.message : "Writeback failed." });
+    },
   });
 
   if (recordQuery.isLoading) {
@@ -49,6 +57,16 @@ export default function MasterRecordPage() {
       <div className="flex flex-col gap-2 p-6">
         <Skeleton height={32} />
         <Skeleton height={120} />
+      </div>
+    );
+  }
+  if (recordQuery.isError) {
+    return (
+      <div className="p-6">
+        <ErrorState
+          message={recordQuery.error instanceof Error ? recordQuery.error.message : "This master record could not be read."}
+          onRetry={() => void recordQuery.refetch()}
+        />
       </div>
     );
   }
@@ -75,7 +93,10 @@ export default function MasterRecordPage() {
         </Pill>
         <Pill tone="neutral">{Math.round(record.overall_confidence * 100)}% confidence</Pill>
         {canApprove ? (
-          <Button disabled={record.status === "golden" || promote.isPending} onClick={() => promote.mutate()}>
+          <Button
+            disabled={record.status === "golden" || record.status === "superseded" || promote.isPending}
+            onClick={() => setConfirmPromote(true)}
+          >
             {promote.isPending ? "Promoting…" : "Promote"}
           </Button>
         ) : null}
@@ -90,6 +111,18 @@ export default function MasterRecordPage() {
       {writeback.data ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>
       ) : null}
+
+      <Dialog open={confirmPromote} onOpenChange={setConfirmPromote} title="Promote to golden record?">
+        <p className="text-[13px] mb-4" style={{ color: "var(--m-ink-2)" }}>
+          This replaces the current golden fields for {record.sap_object_key} with the merged values. This cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmPromote(false)}>Keep as is</Button>
+          <Button disabled={promote.isPending} onClick={() => promote.mutate()}>
+            {promote.isPending ? "Promoting…" : "Promote"}
+          </Button>
+        </div>
+      </Dialog>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Golden fields ({fields.length})</h2>

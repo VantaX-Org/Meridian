@@ -1,5 +1,5 @@
 // frontend/app/(app)/mdm/golden/__tests__/page.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as masterRecordsApi from "@/lib/api/master-records";
@@ -38,5 +38,26 @@ describe("GoldenRecordsPage", () => {
     vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(screen.getByText(/no master records/i)).toBeInTheDocument());
+  });
+
+  it("shows the API error message and retries on click", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockRejectedValue(new Error("master records service unavailable"));
+    renderWithQuery(<GoldenRecordsPage />);
+    await screen.findByText("master records service unavailable");
+    const calls = (masterRecordsApi.getMasterRecords as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect((masterRecordsApi.getMasterRecords as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("includes max_confidence in the request when set", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
+    renderWithQuery(<GoldenRecordsPage />);
+    await waitFor(() => expect(masterRecordsApi.getMasterRecords).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText("Max confidence %"), { target: { value: "80" } });
+    await waitFor(() =>
+      expect(masterRecordsApi.getMasterRecords).toHaveBeenLastCalledWith(
+        expect.objectContaining({ max_confidence: 0.8 })
+      )
+    );
   });
 });

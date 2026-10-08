@@ -1,5 +1,5 @@
 // frontend/app/(app)/mdm/golden/[id]/__tests__/page.test.tsx
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as masterRecordsApi from "@/lib/api/master-records";
@@ -41,9 +41,26 @@ describe("MasterRecordPage", () => {
   });
 
   it("shows an empty state when the record does not exist", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(undefined as unknown as MasterRecordDetail);
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(null as unknown as MasterRecordDetail);
     vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
     renderWithQuery(<MasterRecordPage />);
     await waitFor(() => expect(screen.getByText(/no longer exists/i)).toBeInTheDocument());
+  });
+
+  it("shows the API error message and retries on click", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockRejectedValue(new Error("master record service unavailable"));
+    renderWithQuery(<MasterRecordPage />);
+    await screen.findByText("master record service unavailable");
+    const calls = (masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect((masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("disables Promote when the record is superseded", async () => {
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue({ ...record, status: "superseded" });
+    vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
+    vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({ relationships: [], total: 0 });
+    renderWithQuery(<MasterRecordPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Promote" })).toBeDisabled());
   });
 });

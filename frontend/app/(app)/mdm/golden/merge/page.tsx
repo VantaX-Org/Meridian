@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, Mono, Skeleton } from "@/design";
+import { EmptyState, ErrorState, Mono, Skeleton } from "@/design";
 import { getMasterRecord } from "@/lib/api/master-records";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -35,6 +35,16 @@ export default function GoldenRecordMergePage() {
       <div className="flex flex-col gap-2 p-6">
         <Skeleton height={32} />
         <Skeleton height={120} />
+      </div>
+    );
+  }
+  if (query.isError) {
+    return (
+      <div className="p-6">
+        <ErrorState
+          message={query.error instanceof Error ? query.error.message : "This master record could not be read."}
+          onRetry={() => void query.refetch()}
+        />
       </div>
     );
   }

@@ -39,11 +39,13 @@ export default function GoldenRecordsPage() {
   const [domain, setDomain] = useState("all");
   const [status, setStatus] = useState("all");
   const [minConfidence, setMinConfidence] = useState("");
+  const [maxConfidence, setMaxConfidence] = useState("");
 
   const filters = {
     domain: domain === "all" ? undefined : domain,
     status: status === "all" ? undefined : status,
     min_confidence: minConfidence ? Number(minConfidence) / 100 : undefined,
+    max_confidence: maxConfidence ? Number(maxConfidence) / 100 : undefined,
   };
 
   const query = useQuery({
@@ -66,8 +68,20 @@ export default function GoldenRecordsPage() {
           </Field>
           <Field label="Min confidence %">
             <input
+              aria-label="Min confidence %"
               value={minConfidence}
               onChange={(e) => setMinConfidence(e.target.value)}
+              placeholder="0-100"
+              inputMode="numeric"
+              className="rounded border px-3 py-1.5 text-[13px]"
+              style={{ borderColor: "var(--m-line)", width: 90 }}
+            />
+          </Field>
+          <Field label="Max confidence %">
+            <input
+              aria-label="Max confidence %"
+              value={maxConfidence}
+              onChange={(e) => setMaxConfidence(e.target.value)}
               placeholder="0-100"
               inputMode="numeric"
               className="rounded border px-3 py-1.5 text-[13px]"
@@ -86,7 +100,10 @@ export default function GoldenRecordsPage() {
       }
       state={state}
       emptyProps={{ title: "No master records match these filters." }}
-      errorProps={{ message: "Could not load golden records.", onRetry: () => query.refetch() }}
+      errorProps={{
+        message: query.error instanceof Error ? query.error.message : "Could not load golden records.",
+        onRetry: () => query.refetch(),
+      }}
     />
   );
 }
