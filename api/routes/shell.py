@@ -16,8 +16,6 @@ async def shell_counts(
     _role: str = Depends(require_permission("view")),
 ) -> dict[str, int]:
     """Fix = cleaning proposals awaiting review; Inbox = open stewardship items."""
-    await db.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant.id)})
-
     fix_result = await db.execute(
         text("SELECT COUNT(*) FROM cleaning_queue WHERE tenant_id = :tid AND status = 'detected'"),
         {"tid": str(tenant.id)},
