@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, DrillLink, ReportPage } from "@/design";
 import { getImpact, type ImpactRow } from "@/lib/api/insights";
+import { queryKeys } from "@/lib/query-keys";
 
 const columns: ColumnDef<ImpactRow>[] = [
   {
@@ -31,7 +32,7 @@ export default function ImpactPage() {
   const run = search.get("run") ?? undefined;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["insights", "impact", run],
+    queryKey: queryKeys.insights("impact", run),
     queryFn: () => getImpact({ version_id: run }),
   });
 

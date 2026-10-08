@@ -2,8 +2,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Delta, ExplorerPage, Stat } from "@/design";
+import { Delta, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
 import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
+import { queryKeys } from "@/lib/query-keys";
+
+/** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
+function severityTone(severity: string): PillTone {
+  if (severity === "critical" || severity === "high") return "no-go";
+  if (severity === "medium") return "at-risk";
+  return "neutral";
+}
 
 function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
   return (
@@ -16,11 +24,11 @@ function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
         <span className="font-semibold">{owner.owner}</span>
         <Stat label="Score" value={owner.score} delta={<Delta value={owner.delta} />} />
       </div>
-      <div className="flex gap-3 text-[13px]">
+      <div className="flex gap-2 text-[13px]">
         {Object.entries(owner.open_by_severity).map(([severity, count]) => (
-          <span key={severity}>
+          <Pill key={severity} tone={severityTone(severity)}>
             {severity}: {count}
-          </span>
+          </Pill>
         ))}
       </div>
       <div className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
@@ -36,7 +44,7 @@ function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
 
 export default function OwnersPage() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["insights", "owners"],
+    queryKey: queryKeys.insights("owners"),
     queryFn: () => getOwners(),
   });
 

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
+import { queryKeys } from "@/lib/query-keys";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -23,7 +24,7 @@ export default function ReadinessPage() {
   const run = search.get("run") ?? undefined;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["insights", "readiness", run],
+    queryKey: queryKeys.insights("readiness", run),
     queryFn: () => getReadiness({ version_id: run }),
   });
 
@@ -60,6 +61,7 @@ export default function ReadinessPage() {
                   if (!cell) return <td key={wave} className="p-2">—</td>;
                   return (
                     <td key={wave} className="p-2">
+                      {/* DrillLink filters is Record<string, string>; stringify the boolean */}
                       <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
                         <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
                       </DrillLink>
