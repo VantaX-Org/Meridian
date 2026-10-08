@@ -59,6 +59,29 @@ The new shell lives under `frontend/app/(app)/`. Routes are object-centred, not 
 | `/admin/users`, `/admin/mappings`, `/admin/ai`, `/admin/licence`, `/admin/triage`, `/admin/settings` | Explorer | Admin pages. |
 | `/search` | Explorer | Global search results (object, material, rule id, batch, run). |
 
+Legacy pages the table above does not name are rebuilt in Wave 3 under these routes, on the Explorer template unless stated:
+
+| Legacy route | New route | Note |
+|---|---|---|
+| `/glossary`, `/glossary/[id]` | `/mdm/glossary`, `/mdm/glossary/[id]` | |
+| `/golden-records`, `/golden-records/[id]`, `/golden-records/merge` | `/mdm/golden`, `/mdm/golden/[id]`, `/mdm/golden/merge` | Merge links to `/insights/duplicates`. |
+| `/match-rules*` | `/mdm/match-rules` | |
+| `/business-process`, `/process`, `/process/designer` | `/insights/process` (Report), `/insights/process/designer` | |
+| `/lineage`, `/relationships` | `/insights/lineage` (Report) | One page, two tabs. |
+| `/mining` | `/insights/mining` (Report) | |
+| `/migration` | `/insights/readiness` | Folded into the cockpit. |
+| `/analytics` | `/insights/forecast` (Report) | DQS forecast. |
+| `/contracts` | `/rules/contracts` | Data contracts beside rule packs. |
+| `/reports` | `/insights` | The index lists generated reports. |
+| `/exceptions*` | `/inbox?kind=exception` | Exceptions are inbox items with a kind filter. |
+| `/settings/exception-billing` | `/admin/billing` | |
+| `/settings/scoring` | `/rules/scoring` | DQS weights and caps. |
+| `/notifications` | job tray plus `/inbox` | No page. |
+| `/command-centre` (live) | `/home/basis` | Live section on the Basis home. |
+| `/versions` | `/runs` | |
+
+The rail gains an **MDM** section between Fix and Inbox for `/mdm/*`.
+
 Legacy routes under `app/(dashboard)/*` keep working during the waves. A single adapter layout `app/(dashboard)/layout.tsx` renders the legacy page inside the new shell from Wave 1 day one. When a page is rebuilt, its legacy route becomes a `next.config.ts` redirect to the new route and the legacy files are deleted. The nine redirect-shim pages that exist today are replaced by `next.config.ts` redirects in Wave 1.
 
 ### 3.2 Shell
@@ -294,7 +317,7 @@ Shipped alone on the current shell before any new code:
 | 0 | Section 11. | No freeze on job completion; no blank tab. |
 | 1 | Design package, shell, templates, adapter layout, persona homes, `/objects`, `/objects/[object]`, rule page, record fix sheet for material master, `/runs`, run page, run diff. API: shell counts, objects, record, steps. | Every legacy page renders inside the new shell. Drill contract works end to end for material master. |
 | 2 | Insights: readiness, impact, owners, duplicates, executive report. Scheduled digests. | Each insight page's chart points drill to rows. |
-| 3 | Fix batches, inbox, systems, extractions, import, rules, admin, search, business partner record. Delete legacy shell, Aurora, ui-core, legacy routes and lint allowlist. | No file imports from `lib/aurora`, `components/aurora`, `components/ui-core`. `npm run lint:tokens` passes with an empty allowlist. |
+| 3 | Fix batches, inbox, MDM pages, remaining insights (process, lineage, mining, forecast), contracts, scoring, billing, systems, extractions, import, rules, admin, search, business partner record. Delete legacy shell, Aurora, ui-core, legacy routes and lint allowlist. | No file imports from `lib/aurora`, `components/aurora`, `components/ui-core`. `npm run lint:tokens` passes with an empty allowlist. |
 
 ## 13. Testing
 
