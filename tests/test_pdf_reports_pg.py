@@ -101,13 +101,14 @@ def test_reports_are_tenant_scoped(app_engine, monkeypatch):
     with tenant_session(app_eng, a) as s:
         for kind, vid, vid1 in (("analysis", v["v2"], None), ("extraction", v["v2"], None),
                                 ("cleaning", v["v2"], None), ("cleaning", None, None),
-                                ("comparison", v["v2"], v["v1"])):
+                                ("comparison", v["v2"], v["v1"]), ("executive", v["v2"], None)):
             assert build(s, a, kind, vid, vid1).startswith(b"%PDF"), kind
         assert build(s, a, "extraction", v["upload"]) is None  # an upload has no extraction report
 
     with tenant_session(app_eng, b) as s:
         for kind, vid, vid1 in (("analysis", v["v2"], None), ("extraction", v["v2"], None),
-                                ("cleaning", v["v2"], None), ("comparison", v["v2"], v["v1"])):
+                                ("cleaning", v["v2"], None), ("comparison", v["v2"], v["v1"]),
+                                ("executive", v["v2"], None)):
             assert build(s, b, kind, vid, vid1) is None, kind
 
     monkeypatch.setattr(workers.db, "get_sync_engine", lambda: app_eng)
