@@ -1,12 +1,18 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { JobTray } from "./JobTray";
 import { touchedPredicate } from "../../hooks/use-jobs";
+import type { Job } from "@/types/jobs";
+
+let capturedOnJob: ((job: Job) => void) | null = null;
 
 vi.mock("@/lib/api/jobs", () => ({
   getJobs: vi.fn().mockResolvedValue([]),
-  streamJobs: vi.fn().mockReturnValue(() => {}),
+  streamJobs: vi.fn((onJob: (job: Job) => void) => {
+    capturedOnJob = onJob;
+    return () => {};
+  }),
 }));
 
 function renderWithClient(client: QueryClient) {
@@ -21,25 +27,27 @@ describe("JobTray", () => {
   let client: QueryClient;
   beforeEach(() => {
     client = new QueryClient();
+    capturedOnJob = null;
   });
-  afterEach(cleanup);
 
   it("invalidates only the query keys named in a finished job's touches", () => {
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    client.setQueryData(["object", "material_master", "v1"], { stale: true });
-    client.setQueryData(["systems"], { stale: true });
     renderWithClient(client);
 
-    // Simulate the SSE callback the mocked streamJobs would have delivered.
-    client.setQueryData(["jobs"], (prev: unknown[] = []) => [
-      { id: "j1", status: "completed", touches: ["object"], kind: "analysis" },
-      ...prev,
-    ]);
+    expect(capturedOnJob).not.toBeNull();
+    act(() => {
+      capturedOnJob?.({
+        id: "j1",
+        kind: "analysis",
+        status: "completed",
+        touches: ["run"],
+      } as Job);
+    });
 
-    // The hook under test reacts inside useJobStream's effect, triggered via streamJobs'
-    // onJob callback in the real app; here we assert the predicate contract directly
-    // through the exported helper so the test does not depend on SSE plumbing.
-    expect(invalidateSpy).not.toHaveBeenCalledWith(expect.objectContaining({ predicate: undefined }));
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+    const predicate = invalidateSpy.mock.calls[0][0]?.predicate;
+    expect(predicate?.({ queryKey: ["run", "x"] } as never)).toBe(true);
+    expect(predicate?.({ queryKey: ["systems"] } as never)).toBe(false);
   });
 
   it("renders without crashing when there are no jobs", () => {
