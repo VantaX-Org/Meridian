@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
+from api.services import jobs
 
 logger = logging.getLogger("meridian.worker.run_sync")
 
@@ -84,6 +85,9 @@ def run_sync(self, profile_id: str, tenant_id: str):
         sysnr = profile_row[5]
         system_name = profile_row[6]
         system_id = str(profile_row[7])
+
+        jobs.start_job(tenant_id, sync_run_id, "extraction", f"Sync · {system_name}",
+                       status="running", system_id=system_id)
 
         # Load encrypted credentials
         result = session.execute(
@@ -271,6 +275,9 @@ def run_sync(self, profile_id: str, tenant_id: str):
         )
         session.commit()
 
+    jobs.finish_job(tenant_id, sync_run_id, "completed",
+                    result={"version_id": version_id, "rows_extracted": total_rows})
+
     # Step 10: Relationship discovery + AI impact scoring
     try:
         from api.services.relationship_discovery import (
@@ -364,5 +371,6 @@ def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str) 
                 {"err": error_detail, "rid": sync_run_id},
             )
             session.commit()
+        jobs.finish_job(tenant_id, sync_run_id, "failed", error=error_detail)
     except Exception as e:
         logger.error(f"Failed to update sync_runs status: {e}")
