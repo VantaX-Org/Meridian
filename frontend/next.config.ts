@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
       { source: "/connectivity", destination: "/data", permanent: false },
       { source: "/run-sync", destination: "/data", permanent: false },
       { source: "/migration", destination: "/data?tab=migration", permanent: false },
-      { source: "/analytics", destination: "/", permanent: false },
+      { source: "/analytics", destination: "/insights/forecast", permanent: false },
       { source: "/systems/:id/pilot", destination: "/systems/:id?tab=pilot", permanent: false },
       {
         source: "/systems/:id/versions/:versionId/profile",

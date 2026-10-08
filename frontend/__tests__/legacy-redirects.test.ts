@@ -15,7 +15,7 @@ const EXPECTED: Record<string, string> = {
   "/connectivity": "/data",
   "/run-sync": "/data",
   "/migration": "/data?tab=migration",
-  "/analytics": "/",
+  "/analytics": "/insights/forecast",
   "/systems/:id/pilot": "/systems/:id?tab=pilot",
   "/systems/:id/versions/:versionId/profile": "/data/runs/:versionId?tab=profile",
   "/glossary": "/mdm/glossary",
