@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -166,3 +167,46 @@ async def get_duplicate_cluster(
     edges = [{"source": e["source"], "target": e["target"], "label": f"{e['total']:.2f}" if e["total"] is not None else ""}
               for e in g["edges"]]
     return {"nodes": nodes, "edges": edges, "thresholds": {"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR}}
+
+
+class MergeProposalPair(BaseModel):
+    match_score_id: uuid.UUID
+    priority: int = 3
+    due_at: Optional[str] = None
+
+
+class MergeProposalsBody(BaseModel):
+    pairs: list[MergeProposalPair]
+
+
+@router.post("/duplicates/merge-proposals", dependencies=[Depends(require_permission("approve"))])
+async def create_merge_proposals(
+    body: MergeProposalsBody,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Queues steward review for picked match_scores pairs, same shape as the
+    automated populate_stewardship_queue.py._populate_merge_decisions() insert
+    (sla_hours=48 — confirmed from that job, not the brief's draft 72)."""
+    await _rls(db, tenant)
+    created = []
+    for pair in body.pairs:
+        row = (await db.execute(
+            text("SELECT domain FROM match_scores WHERE id = :id AND tenant_id = :t"),
+            {"id": str(pair.match_score_id), "t": str(tenant.id)},
+        )).fetchone()
+        if not row:
+            raise HTTPException(404, f"match_scores {pair.match_score_id} not found")
+        new_id = uuid.uuid4()
+        await db.execute(text("""
+            INSERT INTO stewardship_queue
+              (id, tenant_id, item_type, source_id, domain, priority, due_at, status, sla_hours)
+            VALUES (:id, :t, 'merge_decision', :source_id, :domain, :priority, :due_at, 'open', :sla_hours)
+        """), {
+            "id": str(new_id), "t": str(tenant.id), "source_id": str(pair.match_score_id),
+            "domain": row[0], "priority": pair.priority, "due_at": pair.due_at,
+            "sla_hours": 48,
+        })
+        created.append(str(new_id))
+    await db.commit()
+    return {"created": created}
