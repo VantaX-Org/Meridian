@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.config_impact import get_config_impact
+from api.routes.merge_explain import AUTO_MERGE, REVIEW_FLOOR, build_cluster_graph
 from api.routes.record_issues import _rls
 from api.services.insights_impact import value_at_risk
 from api.services.insights_owners import OWNER_ISSUE_SQL, build_owner_card, load_owner_aggregates
@@ -147,3 +148,21 @@ async def get_owners(db: AsyncSession = Depends(get_db), tenant: Tenant = Depend
         )).scalar()
         rows.append({**card.__dict__, "schedule": "weekly", "last_sent": last_sent.isoformat() if last_sent else None})
     return {"owners": rows}
+
+
+@router.get("/duplicates/{object}/{record_id}", dependencies=[Depends(require_permission("view"))])
+async def get_duplicate_cluster(
+    object: str, record_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
+):
+    """Reuses merge_explain.py's existing cluster_graph builder verbatim, reshaped
+    to the nodes/edges/thresholds graph-widget contract for the duplicates page."""
+    await _rls(db, tenant)
+    head, g = await build_cluster_graph(db, str(tenant.id), record_id)
+    # ponytail: node size = 1 for every object. A real BOM-usage count (material_360's
+    # bom_usage over STPO/MAST) needs a version_id and dataset_path this route doesn't
+    # have, so it's left as a known gap rather than invented here.
+    nodes = [{"id": n["key"], "size": 1, "label": n["key"]} for n in g["nodes"]]
+    edges = [{"source": e["source"], "target": e["target"], "label": f"{e['total']:.2f}" if e["total"] is not None else ""}
+              for e in g["edges"]]
+    return {"nodes": nodes, "edges": edges, "thresholds": {"auto_merge": AUTO_MERGE, "review_floor": REVIEW_FLOOR}}
