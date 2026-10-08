@@ -15,6 +15,7 @@ const EXPECTED: Record<string, string> = {
   "/connectivity": "/data",
   "/contracts": "/rules/contracts",
   "/settings/scoring": "/rules/scoring",
+  "/settings/exception-billing": "/admin/billing",
   "/run-sync": "/data",
   "/migration": "/data?tab=migration",
   "/analytics": "/",

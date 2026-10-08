@@ -34,6 +34,7 @@ const nextConfig: NextConfig = {
       },
       { source: "/contracts", destination: "/rules/contracts", permanent: false },
       { source: "/settings/scoring", destination: "/rules/scoring", permanent: false },
+      { source: "/settings/exception-billing", destination: "/admin/billing", permanent: false },
     ];
   },
 
