@@ -3,6 +3,8 @@ import {
   Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
 } from "@/design";
 
+export const dynamic = "force-dynamic";
+
 /** Storybook-free visual check (spec section 13). Dev only — 404s in production. */
 export default function DesignGalleryPage() {
   if (process.env.NODE_ENV === "production") notFound();
