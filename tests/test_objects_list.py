@@ -71,6 +71,20 @@ async def test_objects_list_is_tenant_isolated(two_tenants_with_findings, monkey
     assert resp.status_code in (404, 403)
 
 
+@pytest.mark.anyio
+async def test_objects_list_resolves_latest(two_tenants_with_findings, monkeypatch):
+    t1, _t2, v1, _v2 = two_tenants_with_findings
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get(
+            "/api/v1/objects?run=latest",
+            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["run_id"] == v1
+
+
 def _patch_tenant(monkeypatch, tenant_id: str):
     """Same inline helper as tests/test_runs_steps.py's _patch_tenant (Task 4) — there is no
     shared tests/conftest.py fixture for this, so it is defined identically, inline, in each

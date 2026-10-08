@@ -41,13 +41,28 @@ class ObjectsListOut(BaseModel):
     objects: list[ObjectSummaryOut]
 
 
+async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> str:
+    """Resolve the literal `run=latest` to the tenant's newest completed run,
+    otherwise pass the value through as-is (a run id)."""
+    if run == "latest":
+        row = (await db.execute(text(
+            "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = 'complete' "
+            "ORDER BY run_at DESC LIMIT 1"
+        ), {"t": str(tenant.id)})).fetchone()
+        if not row:
+            raise HTTPException(404, "No completed run yet")
+        return row[0]
+    return run
+
+
 @router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view"))])
-async def list_objects(run: uuid.UUID = Query(..., alias="run"),
+async def list_objects(run: str = Query(..., alias="run"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
+    run_id = await _resolve_run(db, tenant, run)
     version = (await db.execute(text(
         "SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"
-    ), {"v": str(run), "t": str(tenant.id)})).fetchone()
+    ), {"v": run_id, "t": str(tenant.id)})).fetchone()
     if not version:
         raise HTTPException(404, "Run not found")
     summary = version[0] or {}
@@ -59,7 +74,7 @@ async def list_objects(run: uuid.UUID = Query(..., alias="run"),
         "SELECT module, count(*) AS failing, coalesce(sum(affected_count), 0) AS affected "
         "FROM findings WHERE version_id = :v AND tenant_id = :t AND affected_count > 0 "
         "GROUP BY module"
-    ), {"v": str(run), "t": str(tenant.id)})).fetchall()
+    ), {"v": run_id, "t": str(tenant.id)})).fetchall()
     by_module = {r[0]: (r[1], r[2]) for r in rows}
 
     modules = sorted(set(summary.keys()) | set(by_module.keys()))
@@ -76,7 +91,7 @@ async def list_objects(run: uuid.UUID = Query(..., alias="run"),
             "failing_checks": failing,
             "affected_records": affected,
         })
-    return {"run_id": str(run), "objects": objects}
+    return {"run_id": run_id, "objects": objects}
 
 
 class ObjectRuleOut(BaseModel):
