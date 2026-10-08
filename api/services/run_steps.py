@@ -30,15 +30,27 @@ def record_step(
         with engine.begin() as conn:
             conn.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             if status == "running":
+                # Starting a later step means any earlier, still-open steps are done.
+                conn.execute(text(
+                    "UPDATE analysis_run_steps SET status = 'complete', finished_at = now(), "
+                    "duration_ms = EXTRACT(EPOCH FROM (now() - started_at)) * 1000 "
+                    "WHERE tenant_id = :t AND version_id = :v AND step_number < :n AND finished_at IS NULL"
+                ), {"t": tenant_id, "v": version_id, "n": step_number})
+                # Idempotent: only insert if this step has no open row yet (repeated
+                # "running" calls for the same step_number produce a single row).
                 conn.execute(text(
                     "INSERT INTO analysis_run_steps (tenant_id, version_id, step_number, step_name, status) "
-                    "VALUES (:t, :v, :n, :name, 'running')"
+                    "SELECT :t, :v, :n, :name, 'running' "
+                    "WHERE NOT EXISTS ("
+                    "  SELECT 1 FROM analysis_run_steps "
+                    "  WHERE tenant_id = :t AND version_id = :v AND step_number = :n AND finished_at IS NULL"
+                    ")"
                 ), {"t": tenant_id, "v": version_id, "n": step_number, "name": step_name})
             else:
                 conn.execute(text(
                     "UPDATE analysis_run_steps SET status = :status, finished_at = now(), "
                     "duration_ms = EXTRACT(EPOCH FROM (now() - started_at)) * 1000, error_detail = :err "
-                    "WHERE tenant_id = :t AND version_id = :v AND step_number = :n"
+                    "WHERE tenant_id = :t AND version_id = :v AND step_number = :n AND finished_at IS NULL"
                 ), {"status": status, "err": error_detail, "t": tenant_id, "v": version_id, "n": step_number})
     except Exception as exc:  # pragma: no cover - defensive, mirrors task_progress.py
         logger.warning("Failed to record run step %s for version %s: %s", step_number, version_id, exc)
