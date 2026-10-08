@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Pill } from "@/design";
+import { Button, ErrorState, Pill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
+import { apiErrorMessage } from "@/lib/api/optional";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 // ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
 // components/admin/parts.tsx pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
@@ -22,9 +24,17 @@ const DOCTOR_TONE: Record<DoctorItem["status"], "go" | "at-risk" | "no-go"> = { 
 
 export default function AdminSettingsPage() {
   const { can } = useRole();
-  const licence = useQuery({ queryKey: ["licence.manifest"], queryFn: getLicenceManifest });
-  const doctor = useQuery({ queryKey: ["admin.doctor"], queryFn: getDoctor, enabled: can("manage_system"), refetchInterval: 30_000 });
+  const licence = useQuery({ queryKey: queryKeys.licenceManifest(), queryFn: getLicenceManifest });
+  const doctor = useQuery({ queryKey: queryKeys.adminDoctor(), queryFn: getDoctor, enabled: can("manage_system"), refetchInterval: 30_000 });
   const l = licence.data;
+
+  if (licence.isError) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <ErrorState message={apiErrorMessage(licence.error) || "The licence could not be read."} onRetry={() => licence.refetch()} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -51,6 +61,9 @@ export default function AdminSettingsPage() {
         </dl>
       </section>
 
+      {can("manage_system") && doctor.isError ? (
+        <ErrorState message={apiErrorMessage(doctor.error) || "Health checks could not be read."} onRetry={() => doctor.refetch()} />
+      ) : null}
       {can("manage_system") && doctor.data ? (
         <section className="flex flex-col gap-2">
           <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog, Field, Pill, Select } from "@/design";
+import { Button, Dialog, ErrorState, Field, Pill, Select } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -13,6 +13,7 @@ import {
 import { getAssignableUsers } from "@/lib/api/users";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName, labelOf } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 
 type User = { id: string; name: string; email: string };
 const SEVERITIES: TriageSeverity[] = ["critical", "high", "medium", "low"];
@@ -31,7 +32,7 @@ const mins = (m: number | null) => (m == null ? "None" : m % 1440 === 0 ? `${m /
 
 function useUsers() {
   const { can } = useRole();
-  const q = useQuery({ queryKey: ["users.assignable"], queryFn: getAssignableUsers, enabled: can("assign") });
+  const q = useQuery({ queryKey: queryKeys.usersAssignable(), queryFn: getAssignableUsers, enabled: can("assign") });
   const users: User[] = q.data ?? [];
   const name = (id: string | null) => (!id ? "None" : users.find((u) => u.id === id)?.name ?? id.slice(0, 8));
   return { users, name };
@@ -71,11 +72,22 @@ export default function AdminTriagePage() {
   const { can } = useRole();
   const rules = can("manage_rules");
   const settings = can("manage_settings");
-  const teams = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
-  const ruleQ = useQuery({ queryKey: ["triage.rules"], queryFn: getRules });
-  const sla = useQuery({ queryKey: ["triage.sla"], queryFn: getSlaPolicies });
+  const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
+  const ruleQ = useQuery({ queryKey: queryKeys.triageRules(), queryFn: getRules });
+  const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
   const idle = (ruleQ.data ?? []).filter((r) => !r.enabled).length;
   const custom = (sla.data ?? []).filter((p) => !p.is_default).length;
+
+  if (teams.isError || ruleQ.isError || sla.isError) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <ErrorState
+          message={errText(teams.error ?? ruleQ.error ?? sla.error, "Triage could not be read.")}
+          onRetry={() => { teams.refetch(); ruleQ.refetch(); sla.refetch(); }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -129,17 +141,19 @@ export default function AdminTriagePage() {
 function TeamsSection({ write }: { write: boolean }) {
   const qc = useQueryClient();
   const { users } = useUsers();
-  const teams = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
+  const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const [editing, setEditing] = useState<TriageTeam | "new" | null>(null);
   const del = useMutation({
     mutationFn: (id: string) => deleteTeam(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.teams"] }); toast.success("Team deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team deleted"); },
     onError: (e) => toast.error(errText(e, "Team not deleted.")),
   });
 
   return (
     <Section title="Teams" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add team</Button> : undefined}>
-      {teams.isLoading ? (
+      {teams.isError ? (
+        <ErrorState message={errText(teams.error, "Teams could not be read.")} onRetry={() => teams.refetch()} />
+      ) : teams.isLoading ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading teams.</p>
       ) : !teams.data?.length ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No teams yet.</p>
@@ -195,7 +209,7 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
         await createTeam({ ...body, member_ids: members });
       }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.teams"] }); toast.success("Team saved"); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team saved"); onClose(); },
     onError: (e) => toast.error(errText(e, "Team not saved.")),
   });
 
@@ -240,13 +254,13 @@ function matchText(m: RuleMatch): string {
 function RulesSection({ write }: { write: boolean }) {
   const qc = useQueryClient();
   const { name } = useUsers();
-  const teams = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
-  const ruleQ = useQuery({ queryKey: ["triage.rules"], queryFn: getRules });
+  const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
+  const ruleQ = useQuery({ queryKey: queryKeys.triageRules(), queryFn: getRules });
   const [editing, setEditing] = useState<AssignmentRule | "new" | null>(null);
   const teamName = (id: string | null) => (!id ? null : teams.data?.find((t) => t.id === id)?.name ?? id.slice(0, 8));
   const target = (r: AssignmentRule) => (r.assign_team_id ? `Team: ${teamName(r.assign_team_id)}` : r.assign_user_id ? `User: ${name(r.assign_user_id)}` : "Fallback user");
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["triage.rules"] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.triageRules() });
   const toggle = useMutation({
     mutationFn: (r: AssignmentRule) => updateRule(r.id, { name: r.name, match: r.match, assign_user_id: r.assign_user_id, assign_team_id: r.assign_team_id, enabled: !r.enabled, position: r.position }),
     onSuccess: invalidate,
@@ -272,7 +286,9 @@ function RulesSection({ write }: { write: boolean }) {
 
   return (
     <Section title="Assignment rules" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add rule</Button> : undefined}>
-      {ruleQ.isLoading ? (
+      {ruleQ.isError ? (
+        <ErrorState message={errText(ruleQ.error, "Rules could not be read.")} onRetry={() => ruleQ.refetch()} />
+      ) : ruleQ.isLoading ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading rules.</p>
       ) : !sorted.length ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No rules yet. New items go to the fallback user.</p>
@@ -315,7 +331,7 @@ function RulesSection({ write }: { write: boolean }) {
 function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () => void }) {
   const qc = useQueryClient();
   const { users } = useUsers();
-  const teams = useQuery({ queryKey: ["triage.teams"], queryFn: getTeams });
+  const teams = useQuery({ queryKey: queryKeys.triageTeams(), queryFn: getTeams });
   const [name, setName] = useState(rule?.name ?? "");
   const [assignee, setAssignee] = useState(rule?.assign_team_id ? `team:${rule.assign_team_id}` : rule?.assign_user_id ? `user:${rule.assign_user_id}` : "");
   const [severity, setSeverity] = useState<TriageSeverity[]>(rule?.match.severity ?? []);
@@ -339,7 +355,7 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
       };
       return rule ? updateRule(rule.id, { ...body, position: rule.position }) : createRule(body);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.rules"] }); toast.success("Rule saved"); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageRules() }); toast.success("Rule saved"); onClose(); },
     onError: (e) => toast.error(errText(e, "Rule not saved.")),
   });
 
@@ -383,17 +399,19 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
 
 function PoliciesSection({ write }: { write: boolean }) {
   const qc = useQueryClient();
-  const sla = useQuery({ queryKey: ["triage.sla"], queryFn: getSlaPolicies });
+  const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
   const [editing, setEditing] = useState<SlaPolicy | "new" | null>(null);
   const del = useMutation({
     mutationFn: (id: string) => deleteSlaPolicy(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.sla"] }); toast.success("Policy deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy deleted"); },
     onError: (e) => toast.error(errText(e, "Policy not deleted.")),
   });
 
   return (
     <Section title="SLA policies" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add override</Button> : undefined}>
-      {sla.isLoading ? (
+      {sla.isError ? (
+        <ErrorState message={errText(sla.error, "Policies could not be read.")} onRetry={() => sla.refetch()} />
+      ) : sla.isLoading ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading policies.</p>
       ) : (
         <table className="text-[13px] w-full">
@@ -447,7 +465,7 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
       severity, module: module.trim() || null, ack_minutes: ack.trim() ? Number(ack) : null,
       resolve_minutes: resolveNum, at_risk_pct: atRiskNum, business_hours: businessHours,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.sla"] }); toast.success("Policy saved"); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy saved"); onClose(); },
     onError: (e) => toast.error(errText(e, "Policy not saved.")),
   });
 
@@ -477,7 +495,14 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
 // ---------------------------------------------------------------- Calendar
 
 function CalendarSection({ write }: { write: boolean }) {
-  const settings = useQuery({ queryKey: ["triage.settings"], queryFn: getTriageSettings });
+  const settings = useQuery({ queryKey: queryKeys.triageSettings(), queryFn: getTriageSettings });
+  if (settings.isError) {
+    return (
+      <Section title="Working calendar">
+        <ErrorState message={errText(settings.error, "The calendar could not be read.")} onRetry={() => settings.refetch()} />
+      </Section>
+    );
+  }
   if (settings.isLoading) return <Section title="Working calendar"><p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the calendar.</p></Section>;
   return (
     <Section title="Working calendar">
@@ -507,7 +532,7 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
       timezone, work_days: workDays, work_start: workStart, work_end: workEnd,
       holidays: list(holidaysText), fallback_user_id: fallback || null,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["triage.settings"] }); toast.success("Calendar saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
     onError: (e) => toast.error(errText(e, "Calendar not saved.")),
   });
 
