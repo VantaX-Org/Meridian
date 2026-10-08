@@ -42,6 +42,21 @@ describe("ObjectDetailPage", () => {
     expect(screen.getByText("mm_missing_desc")).toBeInTheDocument();
   });
 
+  it("shows an empty state with no rules", async () => {
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({
+      module: "material_master",
+      label: "Material Master",
+      composite_score: null,
+      readiness: null,
+      failing_checks: 0,
+      affected_records: 0,
+      dimension_scores: {},
+      rules: [],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    await waitFor(() => expect(screen.getByText(/no rules/i)).toBeInTheDocument());
+  });
+
   it("shows an error state when the request fails", async () => {
     vi.spyOn(objectsApi, "getObject").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ObjectDetailPage />);

@@ -47,10 +47,10 @@ export default function ObjectDetailPage() {
     state = "error";
   } else if (data && data.rules.length === 0) {
     state = "empty";
-    emptyProps = { title: "No checks have run against this object yet." };
+    emptyProps = { title: "No rules have run against this object yet." };
   }
 
-  const failing = data?.rules.filter((rule) => rule.affected_count > 0).length ?? 0;
+  const failing = data?.failing_checks ?? 0;
   const total = data?.rules.length ?? 0;
   const narrative = data
     ? `${failing} of ${total} checks fail. Composite score ${data.composite_score ?? "—"}.`

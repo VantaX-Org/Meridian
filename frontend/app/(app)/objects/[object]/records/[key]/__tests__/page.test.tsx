@@ -54,6 +54,21 @@ describe("RecordFixSheetPage", () => {
     expect(screen.getByText(/basic data: 1\/1 maintained/i)).toBeInTheDocument();
   });
 
+  it("shows a not-yet-available state for an unsupported object", async () => {
+    vi.spyOn(objectsApi, "getObjectRecord").mockRejectedValue({ response: { status: 501 } });
+    vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
+      matnr: "100001", version_id: "v1", rules_total: 0, by_view: [],
+    });
+    vi.spyOn(materialsApi, "getMaterialSupersession").mockResolvedValue({
+      matnr: "100001", plants: [], bom_usage: null,
+    });
+    vi.spyOn(materialsApi, "getMaterialDuplicates").mockResolvedValue({
+      matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [],
+    });
+    renderWithQuery(<RecordFixSheetPage />);
+    await waitFor(() => expect(screen.getByText(/not yet available/i)).toBeInTheDocument());
+  });
+
   it("shows an error state when the request fails", async () => {
     vi.spyOn(objectsApi, "getObjectRecord").mockRejectedValue(new Error("network error"));
     vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({

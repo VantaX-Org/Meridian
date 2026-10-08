@@ -3,7 +3,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type PillTone } from "@/design";
+import { EmptyState, ErrorState, Mono, RecordPage, Skeleton } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 
@@ -18,6 +18,7 @@ export default function RecordFixSheetPage() {
     queryKey: ["object-record", object, key, run],
     queryFn: () => getObjectRecord(object, key, { version_id: run }),
     enabled: !!run,
+    retry: false,
   });
   const findingsQuery = useQuery({
     queryKey: ["object-record-findings", object, key, run],
@@ -46,6 +47,11 @@ export default function RecordFixSheetPage() {
       </div>
     );
   }
+  if (
+    (recordQuery.error as { response?: { status?: number } } | null)?.response?.status === 501
+  ) {
+    return <EmptyState title={`Not yet available. The record fix sheet for ${object} isn't built yet.`} />;
+  }
   if (recordQuery.isError) {
     return <ErrorState message="Couldn't load this record. Try again." />;
   }
@@ -55,7 +61,6 @@ export default function RecordFixSheetPage() {
   }
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
-  const statusTone: PillTone = hasMissing ? "at-risk" : "go";
   const statusLabel = hasMissing ? "Incomplete" : "Complete";
 
   const findings = findingsQuery.data;
@@ -63,7 +68,7 @@ export default function RecordFixSheetPage() {
   const duplicates = duplicatesQuery.data;
 
   return (
-    <RecordPage recordKey={material.matnr} object={object} status={<Pill tone={statusTone}>{statusLabel}</Pill>}>
+    <RecordPage recordKey={material.matnr} object={object} status={statusLabel}>
       <section className="flex flex-col gap-2">
         <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Identity</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
