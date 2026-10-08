@@ -24,7 +24,8 @@ def test_analysis_run_steps_table_shape():
     assert expected <= set(cols)
 
 
-def test_analysis_run_steps_cascades_on_version_delete():
+@pytest.fixture
+def tenant_and_version():
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
     tenant_id = str(uuid.uuid4())
     version_id = str(uuid.uuid4())
@@ -33,6 +34,15 @@ def test_analysis_run_steps_cascades_on_version_delete():
         conn.execute(text(
             "INSERT INTO analysis_versions (id, tenant_id, status) VALUES (:v, :t, 'complete')"
         ), {"v": version_id, "t": tenant_id})
+    yield engine, tenant_id, version_id
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM analysis_versions WHERE id = :v"), {"v": version_id})
+        conn.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+
+
+def test_analysis_run_steps_cascades_on_version_delete(tenant_and_version):
+    engine, tenant_id, version_id = tenant_and_version
+    with engine.begin() as conn:
         conn.execute(text(
             "INSERT INTO analysis_run_steps (tenant_id, version_id, step_number, step_name) "
             "VALUES (:t, :v, 1, 'Uploading and validating file')"
@@ -41,5 +51,4 @@ def test_analysis_run_steps_cascades_on_version_delete():
         remaining = conn.execute(text(
             "SELECT count(*) FROM analysis_run_steps WHERE version_id = :v"
         ), {"v": version_id}).scalar()
-        assert remaining == 0
-        conn.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+    assert remaining == 0

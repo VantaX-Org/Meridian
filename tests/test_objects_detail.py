@@ -6,9 +6,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, text
 
-from api.deps import Tenant, get_tenant
 from api.main import app
 from api import deps as api_deps
+from tests.route_auth import HEADERS, patch_tenant
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL"
@@ -39,12 +39,12 @@ def tenant_with_material_findings():
 @pytest.mark.anyio
 async def test_object_detail_returns_rules(tenant_with_material_findings, monkeypatch):
     t1, v1 = tenant_with_material_findings
-    _patch_tenant(monkeypatch, t1)
+    patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/objects/material_master?run={v1}",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 200
     body = resp.json()
@@ -56,30 +56,12 @@ async def test_object_detail_returns_rules(tenant_with_material_findings, monkey
 async def test_object_detail_is_tenant_isolated(tenant_with_material_findings, monkeypatch):
     other_tenant = str(uuid.uuid4())
     _, v1 = tenant_with_material_findings
-    _patch_tenant(monkeypatch, other_tenant)
+    patch_tenant(monkeypatch, other_tenant)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/objects/material_master?run={v1}",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 404
 
-
-def _patch_tenant(monkeypatch, tenant_id: str):
-    """Same inline helper as tests/test_runs_steps.py and tests/test_objects_list.py (Tasks 4, 5),
-    including the LocalAuthMiddleware bypass (see Task 4's identical fix for why it's needed)."""
-    monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
-    monkeypatch.setattr(
-        "api.middleware.local_auth.decode_access_token",
-        lambda token, secret: {
-            "sub": "00000000-0000-0000-0000-000000000002",
-            "email": "dev@example.com",
-            "role": "admin",
-        },
-    )
-    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
-    monkeypatch.setitem(
-        app.dependency_overrides, get_tenant,
-        lambda: Tenant(uuid.UUID(tenant_id), "T", []),
-    )

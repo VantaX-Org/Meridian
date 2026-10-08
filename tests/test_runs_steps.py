@@ -6,9 +6,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, text
 
-from api.deps import Tenant, get_tenant
 from api.main import app
 from api import deps as api_deps
+from tests.route_auth import HEADERS, patch_tenant
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL"
@@ -38,12 +38,12 @@ def two_tenants_with_steps():
 @pytest.mark.anyio
 async def test_runs_steps_returns_own_tenant_steps(two_tenants_with_steps, monkeypatch):
     t1, _t2, v1, _v2 = two_tenants_with_steps
-    _patch_tenant(monkeypatch, t1)
+    patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/runs/{v1}/steps",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 200
     body = resp.json()
@@ -56,41 +56,12 @@ async def test_runs_steps_returns_own_tenant_steps(two_tenants_with_steps, monke
 async def test_runs_steps_is_tenant_isolated(two_tenants_with_steps, monkeypatch):
     """Tenant 2 must never see tenant 1's run steps, even by guessing tenant 1's version id."""
     t1, t2, v1, _v2 = two_tenants_with_steps
-    _patch_tenant(monkeypatch, t2)
+    patch_tenant(monkeypatch, t2)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/runs/{v1}/steps",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 404
 
-
-def _patch_tenant(monkeypatch, tenant_id: str):
-    """Override get_tenant on the live api.main.app, and turn on the dev role-header
-    escape hatch (api/services/rbac.py:dev_role_override), the same two-part mechanism
-    tests/test_material_360_routes.py uses for api.routes.materials, here on the real
-    app, since this test exercises a live Postgres session via the real get_db
-    dependency. monkeypatch.setitem on a dict reverts itself at test teardown, so this
-    never leaks an override into another test.
-
-    The real app also runs LocalAuthMiddleware (api/middleware/local_auth.py) ahead of
-    FastAPI dependency injection, since AUTH_MODE defaults to "local" — it 401s before
-    get_tenant's override above ever runs. tests/test_pyrfc_connector.py establishes the
-    project's existing pattern for bypassing it against the real app: stub the two module-
-    level functions it calls on every request (not cached per middleware instance, so safe
-    to monkeypatch per-test) and send a Bearer token so it takes the decode path."""
-    monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
-    monkeypatch.setattr(
-        "api.middleware.local_auth.decode_access_token",
-        lambda token, secret: {
-            "sub": "00000000-0000-0000-0000-000000000002",
-            "email": "dev@example.com",
-            "role": "admin",
-        },
-    )
-    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
-    monkeypatch.setitem(
-        app.dependency_overrides, get_tenant,
-        lambda: Tenant(uuid.UUID(tenant_id), "T", []),
-    )
