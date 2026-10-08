@@ -18,7 +18,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/command-centre": named(() => import("@/components/command-centre/live"), "LiveOperationsPage"),
   "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": named(() => import("@/components/analyse/records"), "RecordsSurface"),
-  "/workbench/progress": named(() => import("@/components/workbench/progress"), "ProgressSurface"),
   "/notifications": named(() => import("@/components/command-centre/notifications"), "NotificationsSurface"),
 
   "/systems": named(() => import("@/components/data/systems"), "SystemsSurface"),
@@ -47,7 +46,6 @@ export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/settings": named(() => import("@/components/admin/settings"), "SettingsSurface"),
   "/settings/rules": named(() => import("@/components/admin/rules"), "RulesSurface"),
   "/settings/scoring": named(() => import("@/components/admin/scoring"), "ScoringSettings"),
-  "/workbench/triage": named(() => import("@/components/workbench/triage-queue"), "TriageQueueSurface"),
   "/admin/triage": named(() => import("@/components/admin/triage"), "TriageAdminSurface"),
   "/settings/field-mapping": named(() => import("@/components/admin/field-mapping"), "FieldMappingSettings"),
   "/settings/ai": named(() => import("@/components/admin/ai"), "AISurface"),
