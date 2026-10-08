@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * One system: Overview, Objects, Runs, Health, Pilot tabs (now @/design's
- * uncontrolled Tabs, no ?tab= — brief 9.2's query-synced tabs need Tabs.onValueChange,
- * which @/design's Tabs does not have; ponytail: deep link to a specific tab is lost).
+ * One system: Overview, Objects, Runs, Health, Pilot tabs. @/design's Tabs
+ * is uncontrolled, so the ?tab= deep link is read once (useSearchParams)
+ * and passed as defaultValue — enough to land `/systems/:id/pilot`'s
+ * redirect to `?tab=pilot` on the right tab; no live two-way sync.
  * Edit via a Drawer.
  */
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -21,7 +22,7 @@ import { Bar } from "@/design/charts/Bar";
 import { Line } from "@/design/charts/Line";
 import { ConnectionTestButton, type ConnectionTestState } from "@/components/aurora/moments/interactions";
 import { HEALTH_LABEL, latestDqs } from "@/components/data/systems";
-import { ConfigLoadButton, ConfigLoadCard, configStatus, hasNoConfig, useConfigLoad } from "@/components/data/config-load";
+import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
@@ -80,15 +81,17 @@ function runColumns(): ColumnDef<SystemVersion>[] {
 export default function SystemPage() {
   const { systemId } = useParams<{ systemId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
+  const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const system = systemsQ.data?.find((s) => s.id === systemId);
-  const modulesQ = useQuery({ queryKey: ["system-modules", systemId], queryFn: () => getSystemModules(systemId) });
+  const modulesQ = useQuery({ queryKey: queryKeys.systemModules(systemId), queryFn: () => getSystemModules(systemId) });
   const versionsQ = useQuery({
-    queryKey: ["system-versions", systemId],
+    queryKey: queryKeys.systemVersions(systemId),
     queryFn: () => getSystemVersions(systemId),
     refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.download?.status ?? "") ? 4000 : false),
   });
@@ -99,13 +102,16 @@ export default function SystemPage() {
   );
   const { dqs, version: latest } = latestDqs(versions);
   const aggQ = useQuery({
-    queryKey: ["system-agg", systemId, latest?.id],
+    queryKey: queryKeys.systemAgg(systemId, latest?.id),
     queryFn: () => getFindingsAggregate(latest!.id),
     enabled: !!latest,
   });
 
   const refresh = () => {
-    for (const k of ["systems", "system-modules", "system-versions", "design"]) qc.invalidateQueries({ queryKey: [k] });
+    qc.invalidateQueries({ queryKey: queryKeys.systems() });
+    qc.invalidateQueries({ queryKey: queryKeys.systemModules(systemId) });
+    qc.invalidateQueries({ queryKey: queryKeys.systemVersions(systemId) });
+    qc.invalidateQueries({ queryKey: queryKeys.design(systemId) });
   };
 
   const analyse = useMutation({
@@ -166,7 +172,12 @@ export default function SystemPage() {
       </div>
 
       <Tabs
-        defaultValue="overview"
+        defaultValue={initialTab}
+        onValueChange={(tab) => {
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("tab", tab);
+          router.replace(`/systems/${systemId}?${params.toString()}`, { scroll: false });
+        }}
         items={[
           { value: "overview", label: "Overview", content: <Overview versions={versions} modules={modules} /> },
           {
@@ -365,7 +376,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
   onChanged: () => void;
 }) {
   const designQ = useQuery({
-    queryKey: ["design", id],
+    queryKey: queryKeys.design(id),
     queryFn: () => getDesign(id),
     refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.discovery_status ?? "") ? 3000 : false),
   });
@@ -421,7 +432,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
         ) : null}
       </div>
 
-      <ConfigLoadCard systemId={id} systemType={system.system_type} canLoad={canSync} />
+      <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 

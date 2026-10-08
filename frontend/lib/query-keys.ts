@@ -32,6 +32,37 @@ export const queryKeys = {
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
+  // Chain B fix pass — appended, see lib/query-keys.ts's module doc.
+  systemVersions: (systemId: string) => ["system-versions", systemId] as const,
+  systemModules: (systemId: string) => ["system-modules", systemId] as const,
+  systemAgg: (systemId: string, versionId: string | undefined) => ["system-agg", systemId, versionId] as const,
+  design: (systemId: string) => ["design", systemId] as const,
+  configLoadJobId: (systemId: string) => ["config-load-job-id", systemId] as const,
+  configLoadJob: (jobId: string | null) => ["config-load-job", jobId] as const,
+  configLoad: (systemId: string) => ["config-load", systemId] as const,
+  versionsList: (filters: Record<string, unknown>) => ["versions-list", normalizeFilters(filters)] as const,
+  rules: (filters: Record<string, unknown>) => ["rules", normalizeFilters(filters)] as const,
+  rulesSummary: () => ["rules", "summary"] as const,
+  ruleDetail: (ruleId: string) => ["rule-detail", ruleId] as const,
+  users: () => ["users"] as const,
+  authRoles: () => ["auth-roles"] as const,
+  auditEntries: (limit: number) => ["audit-entries", limit] as const,
+  usersAssignable: () => ["users-assignable"] as const,
+  fieldMappings: () => ["field-mappings"] as const,
+  llmProviders: () => ["llm-providers"] as const,
+  llmConfig: () => ["llm-config"] as const,
+  licenceManifest: () => ["licence-manifest"] as const,
+  systemUpdateStatus: () => ["system-update-status"] as const,
+  triageTeams: () => ["triage-teams"] as const,
+  triageRules: () => ["triage-rules"] as const,
+  triageSla: () => ["triage-sla"] as const,
+  triageSettings: () => ["triage-settings"] as const,
+  adminDoctor: () => ["admin-doctor"] as const,
+  contracts: (filters: Record<string, unknown>) => ["contracts", normalizeFilters(filters)] as const,
+  contractCompliance: (id: string) => ["contract-compliance", id] as const,
+  scoringSettings: () => ["scoring-settings"] as const,
+  findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
+  exceptionBilling: (period: string) => ["exception-billing", period] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
@@ -44,4 +75,33 @@ export type TouchedEntity =
   | "inbox"
   | "systems"
   | "shell-counts"
-  | "insights";
+  | "insights"
+  | "system-versions"
+  | "system-modules"
+  | "system-agg"
+  | "design"
+  | "config-load-job-id"
+  | "config-load-job"
+  | "config-load"
+  | "versions-list"
+  | "rules"
+  | "rule-detail"
+  | "users"
+  | "auth-roles"
+  | "audit-entries"
+  | "users-assignable"
+  | "field-mappings"
+  | "llm-providers"
+  | "llm-config"
+  | "licence-manifest"
+  | "system-update-status"
+  | "triage-teams"
+  | "triage-rules"
+  | "triage-sla"
+  | "triage-settings"
+  | "admin-doctor"
+  | "contracts"
+  | "contract-compliance"
+  | "scoring-settings"
+  | "findings-aggregate"
+  | "exception-billing";

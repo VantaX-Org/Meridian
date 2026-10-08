@@ -25,7 +25,7 @@ export default function SystemsPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systems = data ?? [];
   const versionsQ = useQueries({
-    queries: systems.map((s) => ({ queryKey: ["system-versions", s.id], queryFn: () => getSystemVersions(s.id) })),
+    queries: systems.map((s) => ({ queryKey: queryKeys.systemVersions(s.id), queryFn: () => getSystemVersions(s.id) })),
   });
   const dqsById = new Map(
     systems.map((s, i) => [s.id, versionsQ[i]?.data ? latestDqs(versionsQ[i]!.data!.versions).dqs : null]),

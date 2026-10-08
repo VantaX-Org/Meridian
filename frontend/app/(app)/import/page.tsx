@@ -11,6 +11,7 @@ import { getSystems } from "@/lib/api/systems";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import { formatSize, readHeaderSample } from "@/lib/upload-preview";
 import type { Version } from "@/types/api";
 
@@ -38,9 +39,9 @@ export default function ImportPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const systemsQ = useQuery({ queryKey: ["systems.list"], queryFn: getSystems, staleTime: 60_000 });
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, staleTime: 60_000 });
   const recent = useQuery({
-    queryKey: ["versions.list", { limit: 50 }],
+    queryKey: queryKeys.versionsList({ limit: 50 }),
     queryFn: () => getVersions({ limit: 50 }),
     refetchInterval: (q) => (q.state.data?.versions.some((v) => !TERMINAL.has(v.status)) ? 5000 : false),
   });
@@ -72,7 +73,7 @@ export default function ImportPage() {
       return final;
     },
     onSuccess: (s) => {
-      qc.invalidateQueries({ queryKey: ["versions.list"] });
+      qc.invalidateQueries({ queryKey: ["versions-list"] });
       if (s.status === "completed") toast.success("Import analysed"); else toast.error(s.error || "Analysis failed");
     },
     onError: (e) => { toast.error((e as Error).message || "Import failed"); setJob((j) => j ? { ...j, status: "failed", error: (e as Error).message } : null); },

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
 import * as runsApi from "@/lib/api/v1/runs";
 import ExtractionPage from "../page";
 
@@ -15,12 +15,7 @@ describe("extraction run page", () => {
         { step_number: 2, step_name: "extract_MARA", status: "failed", started_at: "2026-01-01T00:00:01Z", finished_at: "2026-01-01T00:00:01Z", duration_ms: 400, error_detail: "RFC_COMMUNICATION_FAILURE: connection reset" },
       ],
     });
-    const qc = new QueryClient();
-    render(
-      <QueryClientProvider client={qc}>
-        <ExtractionPage />
-      </QueryClientProvider>,
-    );
+    renderWithQuery(<ExtractionPage />);
     await waitFor(() => expect(screen.getByText(/RFC_COMMUNICATION_FAILURE/)).toBeInTheDocument());
   });
 });

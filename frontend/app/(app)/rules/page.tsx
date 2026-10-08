@@ -27,6 +27,8 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
+import { MM_VIEWS } from "@/lib/material-views";
+import { queryKeys } from "@/lib/query-keys";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -39,6 +41,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
 const codeOf = (r: Rule) => r.name.match(CODE_PREFIX)?.[1] ?? (UUID.test(r.id) ? "" : r.id);
 const nameOf = (r: Rule) => r.name.replace(CODE_PREFIX, "");
 const authority = (r: Rule) => (r.source === "mined" || r.source === "custom" ? "customer" : "shipped");
+/** The SAP table a rule is anchored on: the prefix of its first condition's field. */
+const tableOf = (r: Rule) => {
+  const f = conditionList(r)[0]?.field;
+  return typeof f === "string" && f.includes(".") ? f.slice(0, f.indexOf(".")) : "";
+};
+/** Material master only: a rule is in a view when the view lists its table. A heuristic; the coverage page has the authoritative map. */
+const inView = (r: Rule, module: string, view: string) =>
+  (!module || module === "material_master") && (MM_VIEWS.find((v) => v.id === view)?.tables as readonly string[] | undefined)?.includes(tableOf(r)) === true;
 /** Shipped rules carry a list of conditions; mined/custom rules one rule object. */
 const conditionList = (r: Rule) => (Array.isArray(r.conditions) ? r.conditions : r.conditions ? [r.conditions] : []);
 const valuesOf = (r: Rule, key: "check_class" | "dimension") =>
@@ -68,12 +78,14 @@ export default function RulesPage() {
   const [severity, setSeverity] = useUrlState("severity", "");
   const [auth, setAuth] = useUrlState("authority", "");
   const [source, setSource] = useUrlState("source", "");
+  const [table, setTable] = useUrlState("table", "");
+  const [view, setView] = useUrlState("view", "");
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const summary = useQuery({ queryKey: ["rules.summary"], queryFn: getRulesSummary });
-  const rulesQ = useQuery({ queryKey: ["rules.list", { category }], queryFn: () => getAllRules(category === "all" ? undefined : category) });
+  const summary = useQuery({ queryKey: queryKeys.rulesSummary(), queryFn: getRulesSummary });
+  const rulesQ = useQuery({ queryKey: queryKeys.rules({ category }), queryFn: () => getAllRules(category === "all" ? undefined : category) });
   const rules = useMemo(() => rulesQ.data ?? [], [rulesQ.data]);
   const facets = useMemo(() => ({
     modules: uniq(rules.map((r) => r.module)),
@@ -88,11 +100,13 @@ export default function RulesPage() {
     severity: (r) => !severity || r.severity === severity,
     authority: (r) => !auth || authority(r) === auth,
     source: (r) => !source || r.source === source,
+    table: (r) => !table || tableOf(r) === table,
+    view: (r) => !view || inView(r, module, view),
   };
   const passing = (r: Rule) => matches(r, search) && Object.values(tests).every((t) => t(r));
   const visible = rules.filter(passing);
-  const filtered = !!(search || module || check || dimension || severity || auth || source || category !== "all");
-  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setCategory("all"); };
+  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || category !== "all");
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setCategory("all"); };
 
   const selected = selectedId ? rules.find((r) => r.id === selectedId) ?? null : null;
   const totals = useMemo(() => {
@@ -102,7 +116,7 @@ export default function RulesPage() {
   }, [summary.data]);
   const toggle = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => updateRule(id, { enabled }),
-    onSuccess: (_d, v) => { toast.success(v.enabled ? "Rule enabled" : "Rule disabled"); qc.invalidateQueries({ queryKey: ["rules.list"] }); qc.invalidateQueries({ queryKey: ["rules.summary"] }); },
+    onSuccess: (_d, v) => { toast.success(v.enabled ? "Rule enabled" : "Rule disabled"); qc.invalidateQueries({ queryKey: ["rules"] }); },
     onError: (e) => toast.error((e as Error).message || "Rule not updated"),
   });
 
@@ -260,7 +274,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
   const [error, setError] = useState<string | null>(null);
   const setDraft = (patch: Partial<CustomRuleDraft>) => { setDraftState((d) => ({ ...d, ...patch })); setResult(null); setError(null); };
   const versions = useQuery({
-    queryKey: ["versions", draft.module],
+    queryKey: queryKeys.versionsList({ module: draft.module, limit: 20 }),
     queryFn: () => getVersions({ module: draft.module, limit: 20 }),
     enabled: open && !!draft.module,
     select: (d) => d.versions,
@@ -281,7 +295,7 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
     mutationFn: () => createCustomRule(body),
     onSuccess: (r) => {
       toast.success(`${r.name.split(":")[0]} saved; it runs on the next analysis`);
-      qc.invalidateQueries({ queryKey: ["rules.list"] }); qc.invalidateQueries({ queryKey: ["rules.summary"] });
+      qc.invalidateQueries({ queryKey: ["rules"] });
       setDraftState(EMPTY); setValues(""); setResult(null); onClose();
     },
     onError: (e) => setError(detail(e)),

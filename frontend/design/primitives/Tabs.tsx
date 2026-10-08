@@ -7,9 +7,11 @@ export interface TabItem {
   content: ReactNode;
 }
 
-export function Tabs({ items, defaultValue }: { items: TabItem[]; defaultValue?: string }) {
+export function Tabs({
+  items, defaultValue, onValueChange,
+}: { items: TabItem[]; defaultValue?: string; onValueChange?: (value: string) => void }) {
   return (
-    <BaseTabs.Root defaultValue={defaultValue ?? items[0]?.value}>
+    <BaseTabs.Root defaultValue={defaultValue ?? items[0]?.value} onValueChange={(v) => onValueChange?.(v as string)}>
       <BaseTabs.List className="flex gap-4 border-b" style={{ borderColor: "var(--m-line)" }}>
         {items.map((item) => (
           <BaseTabs.Tab
