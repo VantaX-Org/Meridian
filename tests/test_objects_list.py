@@ -6,9 +6,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, text
 
-from api.deps import Tenant, get_tenant
 from api.main import app
 from api import deps as api_deps
+from tests.route_auth import HEADERS, patch_tenant
 
 pytestmark = pytest.mark.skipif(
     not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL"
@@ -44,12 +44,12 @@ def two_tenants_with_findings():
 @pytest.mark.anyio
 async def test_objects_list_returns_own_tenant_modules(two_tenants_with_findings, monkeypatch):
     t1, _t2, v1, _v2 = two_tenants_with_findings
-    _patch_tenant(monkeypatch, t1)
+    patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/objects?run={v1}",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 200
     body = resp.json()
@@ -61,51 +61,59 @@ async def test_objects_list_returns_own_tenant_modules(two_tenants_with_findings
 @pytest.mark.anyio
 async def test_objects_list_is_tenant_isolated(two_tenants_with_findings, monkeypatch):
     t1, t2, v1, _v2 = two_tenants_with_findings
-    _patch_tenant(monkeypatch, t2)
+    patch_tenant(monkeypatch, t2)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             f"/api/v1/objects?run={v1}",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
-    assert resp.status_code in (404, 403)
+    assert resp.status_code == 404
 
 
 @pytest.mark.anyio
 async def test_objects_list_resolves_latest(two_tenants_with_findings, monkeypatch):
     t1, _t2, v1, _v2 = two_tenants_with_findings
-    _patch_tenant(monkeypatch, t1)
+    patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
             "/api/v1/objects?run=latest",
-            headers={"X-User-Role": "steward", "Authorization": "Bearer test-token"},
+            headers=HEADERS,
         )
     assert resp.status_code == 200
     assert resp.json()["run_id"] == v1
 
 
-def _patch_tenant(monkeypatch, tenant_id: str):
-    """Same inline helper as tests/test_runs_steps.py's _patch_tenant (Task 4) — there is no
-    shared tests/conftest.py fixture for this, so it is defined identically, inline, in each
-    of this plan's route test files, following tests/test_material_360_routes.py's
-    dependency-override pattern for api.deps.get_tenant plus the MERIDIAN_DEV_ROLE_HEADER
-    escape hatch.
+@pytest.mark.anyio
+async def test_objects_list_latest_includes_agents_complete_runs(two_tenants_with_findings, monkeypatch):
+    """run_agents.py moves a run from 'complete' to 'agents_complete'; `latest` must still find it."""
+    t1, _t2, v1, _v2 = two_tenants_with_findings
+    v3 = str(uuid.uuid4())
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO analysis_versions (id, tenant_id, status, dqs_summary, run_at) "
+            "VALUES (:v, :t, 'agents_complete', '{}', now() + interval '1 minute')"
+        ), {"v": v3, "t": t1})
+    try:
+        patch_tenant(monkeypatch, t1)
+        await api_deps.engine.dispose()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/api/v1/objects?run=latest", headers=HEADERS)
+        assert resp.status_code == 200
+        assert resp.json()["run_id"] == v3
+    finally:
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM analysis_versions WHERE id = :v"), {"v": v3})
 
-    Also bypasses LocalAuthMiddleware (api/middleware/local_auth.py), which runs ahead of
-    FastAPI dependency injection whenever AUTH_MODE=local (the default) and would otherwise
-    401 every request regardless of app.dependency_overrides — see Task 4's identical fix."""
-    monkeypatch.setattr("api.middleware.local_auth._load_jwt_secret", lambda: "test-secret")
-    monkeypatch.setattr(
-        "api.middleware.local_auth.decode_access_token",
-        lambda token, secret: {
-            "sub": "00000000-0000-0000-0000-000000000002",
-            "email": "dev@example.com",
-            "role": "admin",
-        },
-    )
-    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
-    monkeypatch.setitem(
-        app.dependency_overrides, get_tenant,
-        lambda: Tenant(uuid.UUID(tenant_id), "T", []),
-    )
+
+@pytest.mark.anyio
+async def test_objects_list_rejects_non_uuid_run(two_tenants_with_findings, monkeypatch):
+    t1, _t2, _v1, _v2 = two_tenants_with_findings
+    patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/api/v1/objects?run=garbage", headers=HEADERS)
+    assert resp.status_code == 422
+

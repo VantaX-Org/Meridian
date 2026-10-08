@@ -55,3 +55,14 @@ def test_material_master_record_delegates_to_material_360(monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["description"].startswith("Hydraulic")
+
+
+def test_composite_record_key_selects_matnr_and_plant(monkeypatch):
+    """The rule page links `MATNR=...|WERKS=...`; MATNR drives the lookup and WERKS caps the
+    levels to that plant (plus the plant-independent ones), exactly like `?plant=`."""
+    key = f"MATNR={A}|WERKS=3000"
+    resp = _get(_app(monkeypatch), f"/api/v1/objects/material_master/records/{key}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["description"].startswith("Hydraulic")
+    assert {lv["plant"] for lv in body["levels"]} - {None} == {"3000"}

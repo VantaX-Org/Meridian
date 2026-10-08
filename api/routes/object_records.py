@@ -23,6 +23,21 @@ router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 _SUPPORTED = {"material_master"}
 
 
+def _parse_key(key: str) -> tuple[str, Optional[str]]:
+    """(material number, plant) from a record key.
+
+    The rule page links composite keys as `FIELD=value|FIELD=value`
+    (e.g. `MATNR=000000000000000101|WERKS=3000`); a key without `=` is a bare matnr.
+    """
+    if "=" not in key:
+        return key, None
+    fields = dict(part.split("=", 1) for part in key.split("|") if "=" in part)
+    matnr = fields.get("MATNR")
+    if not matnr:
+        raise HTTPException(422, "Composite record key must include MATNR")
+    return matnr, fields.get("WERKS") or None
+
+
 @router.get("/{object}/records/{key}", response_model=Material360Out,
             dependencies=[Depends(require_permission("view"))])
 async def get_object_record(object: str, key: str, version_id: Optional[uuid.UUID] = None,
@@ -30,8 +45,10 @@ async def get_object_record(object: str, key: str, version_id: Optional[uuid.UUI
                             db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     if object not in _SUPPORTED:
         raise HTTPException(501, f"Record fix sheet not yet available for object '{object}'")
+    matnr, key_plant = _parse_key(key)
+    plant = plant or key_plant
     vid, tables = await _tables(db, tenant, version_id, set(m360.CORE_TABLES) | set(m360.OPTIONAL_TABLES))
-    out = m360.build_material(tables, _norm(key))
+    out = m360.build_material(tables, _norm(matnr))
     if out is None:
         raise HTTPException(404, "Record not found")
     out["levels"], out["levels_total"] = m360.cap_levels(out["levels"], plant)

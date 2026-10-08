@@ -6,6 +6,7 @@ workers/tasks/run_sync.py via api/services/run_steps.py. Tenant-isolated via
 RLS plus an explicit tenant_id filter.
 """
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,8 +25,8 @@ class RunStepOut(BaseModel):
     step_number: int
     step_name: str
     status: str
-    started_at: str
-    finished_at: Optional[str] = None
+    started_at: datetime
+    finished_at: Optional[datetime] = None
     duration_ms: Optional[int] = None
     error_detail: Optional[str] = None
 
@@ -46,7 +47,7 @@ async def get_run_steps(version_id: uuid.UUID, db: AsyncSession = Depends(get_db
     if not exists:
         raise HTTPException(404, "Run not found")
     rows = (await db.execute(text(
-        "SELECT step_number, step_name, status, started_at::text, finished_at::text, "
+        "SELECT step_number, step_name, status, started_at, finished_at, "
         "duration_ms, error_detail FROM analysis_run_steps "
         "WHERE version_id = :v AND tenant_id = :t ORDER BY step_number"
     ), {"v": str(version_id), "t": str(tenant.id)})).fetchall()

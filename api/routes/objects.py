@@ -5,7 +5,6 @@ analysis_versions.dqs_summary by run_checks.py with a failing-check count
 from findings, for one run. No new scoring logic — see api/services/scoring.py
 for tier()/scoring_config(), which this reuses unchanged.
 """
-import re
 import uuid
 from typing import Optional
 
@@ -41,18 +40,40 @@ class ObjectsListOut(BaseModel):
     objects: list[ObjectSummaryOut]
 
 
+# Finished runs, as api/routes/versions.py's _DONE minus 'failed': run_agents.py and
+# ai_enrich_report.py move a run past 'complete' once checks are in, so the newest
+# finished run is often not status = 'complete'.
+_FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
+
+
 async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> str:
-    """Resolve the literal `run=latest` to the tenant's newest completed run,
-    otherwise pass the value through as-is (a run id)."""
+    """Resolve the literal `run=latest` to the tenant's newest finished run,
+    otherwise validate the value as a run id."""
     if run == "latest":
         row = (await db.execute(text(
-            "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = 'complete' "
+            "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = ANY(:done) "
             "ORDER BY run_at DESC LIMIT 1"
-        ), {"t": str(tenant.id)})).fetchone()
+        ), {"t": str(tenant.id), "done": list(_FINISHED)})).fetchone()
         if not row:
             raise HTTPException(404, "No completed run yet")
         return row[0]
+    try:
+        uuid.UUID(run)
+    except ValueError:
+        raise HTTPException(422, "run must be a version id or 'latest'")
     return run
+
+
+async def _version_summary(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[dict, dict]:
+    """(dqs_summary of the run, tenant scoring thresholds); 404 when the run is not this tenant's."""
+    version = (await db.execute(text(
+        "SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"
+    ), {"v": run_id, "t": str(tenant.id)})).fetchone()
+    if not version:
+        raise HTTPException(404, "Run not found")
+    raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
+                                    {"t": str(tenant.id)})).scalar() or {}
+    return version[0] or {}, scoring_config(raw_scoring)["thresholds"]
 
 
 @router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view"))])
@@ -60,15 +81,7 @@ async def list_objects(run: str = Query(..., alias="run"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     run_id = await _resolve_run(db, tenant, run)
-    version = (await db.execute(text(
-        "SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"
-    ), {"v": run_id, "t": str(tenant.id)})).fetchone()
-    if not version:
-        raise HTTPException(404, "Run not found")
-    summary = version[0] or {}
-    raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
-                                    {"t": str(tenant.id)})).scalar() or {}
-    thresholds = scoring_config(raw_scoring)["thresholds"]
+    summary, thresholds = await _version_summary(db, tenant, run_id)
 
     rows = (await db.execute(text(
         "SELECT module, count(*) AS failing, coalesce(sum(affected_count), 0) AS affected "
@@ -116,15 +129,8 @@ class ObjectDetailOut(BaseModel):
 async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
-    version = (await db.execute(text(
-        "SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"
-    ), {"v": str(run), "t": str(tenant.id)})).fetchone()
-    if not version:
-        raise HTTPException(404, "Run not found")
-    mod_summary = (version[0] or {}).get(module) or {}
-    raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
-                                    {"t": str(tenant.id)})).scalar() or {}
-    thresholds = scoring_config(raw_scoring)["thresholds"]
+    summary, thresholds = await _version_summary(db, tenant, str(run))
+    mod_summary = summary.get(module) or {}
     score = mod_summary.get("composite_score")
 
     rows = (await db.execute(text(
