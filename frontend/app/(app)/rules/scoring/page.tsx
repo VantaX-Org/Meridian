@@ -15,6 +15,7 @@ import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
 import { formatModuleName } from "@/lib/format";
+import { queryKeys } from "@/lib/query-keys";
 import type { AlertThresholds, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
@@ -36,7 +37,7 @@ function composite(scores: Record<string, number>, weights: DimensionScores): nu
 }
 
 export default function ScoringPage() {
-  const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings });
+  const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   if (!settings.data) {
     return (
       <div className="flex flex-col gap-4 p-6">
@@ -59,7 +60,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   const qc = useQueryClient();
   const { can } = useRole();
   const write = can("manage_settings");
-  const agg = useQuery({ queryKey: ["findings.aggregate"], queryFn: () => getFindingsAggregate() });
+  const agg = useQuery({ queryKey: queryKeys.findingsAggregate("current"), queryFn: () => getFindingsAggregate() });
 
   const [weights, setWeights] = useState<DimensionScores>(initial.dqs_weights ?? DEFAULT);
   const [thresholds, setThresholds] = useState<AlertThresholds>({ ...DEFAULT_THRESHOLDS, ...initial.alert_thresholds });
@@ -92,22 +93,22 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
 
   const saveWeights = useMutation({
     mutationFn: () => updateDqsWeights(normalised),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); toast.success("Weights saved. They apply from the next analysis run"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Weights saved. They apply from the next analysis run"); },
     onError: (e) => toast.error((e as Error).message || "Weights not saved"),
   });
   const saveThresholds = useMutation({
     mutationFn: () => updateAlertThresholds(thresholds),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); toast.success("Alert thresholds saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Alert thresholds saved"); },
     onError: (e) => toast.error((e as Error).message || "Thresholds not saved"),
   });
   const savePlanner = useMutation({
     mutationFn: () => savePlannerConfig(planner),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); qc.invalidateQueries({ queryKey: ["analytics.prescriptive"] }); toast.success("Planner assumptions saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); qc.invalidateQueries({ queryKey: ["analytics.prescriptive"] }); toast.success("Planner assumptions saved"); },
     onError: (e) => toast.error((e as Error).message || "Assumptions not saved"),
   });
   const saveNotify = useMutation({
     mutationFn: () => saveNotificationSettings(notify),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["settings"] }); toast.success("Notification settings saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.scoringSettings() }); toast.success("Notification settings saved"); },
     onError: (e) => toast.error((e as Error).message || "Notification settings not saved"),
   });
 
