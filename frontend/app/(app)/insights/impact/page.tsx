@@ -31,7 +31,7 @@ export default function ImpactPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("impact", run),
     queryFn: () => getImpact({ version_id: run }),
   });
@@ -45,7 +45,10 @@ export default function ImpactPage() {
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => row.feature} />}
       state={isLoading ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No blocked or degraded features for this run yet." }}
-      errorProps={{ message: "Couldn't load feature impact. Try again." }}
+      errorProps={{
+        message: error instanceof Error ? error.message : "Couldn't load feature impact. Try again.",
+        onRetry: () => refetch(),
+      }}
     />
   );
 }

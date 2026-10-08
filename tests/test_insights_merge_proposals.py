@@ -87,3 +87,21 @@ async def test_merge_proposal_rejects_other_tenants_match_score(tenant_a_match_s
             headers=headers,
         )
     assert r.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_merge_proposal_rejects_invalid_due_at(tenant_a_match_score, monkeypatch):
+    """due_at is Optional[datetime] — a value that isn't a date must 422, not
+    reach the DB and raise a raw DataError."""
+    t1, t2, match_score_id = tenant_a_match_score
+    headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
+
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.post(
+            "/api/v1/insights/duplicates/merge-proposals",
+            json={"pairs": [{"match_score_id": match_score_id, "due_at": "not-a-date"}]},
+            headers=headers,
+        )
+    assert r.status_code == 422

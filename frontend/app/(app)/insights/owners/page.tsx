@@ -43,7 +43,7 @@ function OwnerCard({ owner }: { owner: OwnerCardResponse }) {
 }
 
 export default function OwnersPage() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("owners"),
     queryFn: () => getOwners(),
   });
@@ -61,7 +61,10 @@ export default function OwnersPage() {
       }
       state={isLoading ? "loading" : isError ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No owner digests for this run yet." }}
-      errorProps={{ message: "Couldn't load owner digests. Try again." }}
+      errorProps={{
+        message: error instanceof Error ? error.message : "Couldn't load owner digests. Try again.",
+        onRetry: () => refetch(),
+      }}
     />
   );
 }

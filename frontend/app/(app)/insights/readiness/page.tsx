@@ -23,7 +23,7 @@ export default function ReadinessPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("readiness", run),
     queryFn: () => getReadiness({ version_id: run }),
   });
@@ -75,7 +75,10 @@ export default function ReadinessPage() {
       }
       state={state}
       emptyProps={{ title: "No readiness data for this run yet." }}
-      errorProps={{ message: "Couldn't load readiness. Try again." }}
+      errorProps={{
+        message: error instanceof Error ? error.message : "Couldn't load readiness. Try again.",
+        onRetry: () => refetch(),
+      }}
     />
   );
 }

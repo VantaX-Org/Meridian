@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -48,6 +48,20 @@ describe("OwnersPage", () => {
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getOwners").mockRejectedValue(new Error("network error"));
     renderWithQuery(<OwnersPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load owner digests/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+  });
+
+  it("retries the owners request when the retry button is clicked", async () => {
+    const getOwners = vi
+      .spyOn(insightsApi, "getOwners")
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({ owners: [] });
+    renderWithQuery(<OwnersPage />);
+
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.getByText(/no owner digests/i)).toBeInTheDocument());
+    expect(getOwners).toHaveBeenCalledTimes(2);
   });
 });

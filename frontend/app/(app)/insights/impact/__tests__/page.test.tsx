@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -43,6 +43,20 @@ describe("ImpactPage", () => {
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getImpact").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ImpactPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load feature impact/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+  });
+
+  it("retries the impact request when the retry button is clicked", async () => {
+    const getImpact = vi
+      .spyOn(insightsApi, "getImpact")
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({ version_id: "v1", rows: [] });
+    renderWithQuery(<ImpactPage />);
+
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.getByText(/no blocked or degraded features/i)).toBeInTheDocument());
+    expect(getImpact).toHaveBeenCalledTimes(2);
   });
 });

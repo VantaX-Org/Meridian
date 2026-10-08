@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
@@ -41,6 +41,20 @@ describe("ReadinessPage", () => {
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ReadinessPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load readiness/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+  });
+
+  it("retries the readiness request when the retry button is clicked", async () => {
+    const getReadiness = vi
+      .spyOn(insightsApi, "getReadiness")
+      .mockRejectedValueOnce(new Error("network error"))
+      .mockResolvedValueOnce({ version_id: "v1", threshold: 70, cells: [] });
+    renderWithQuery(<ReadinessPage />);
+
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.getByText(/no readiness data/i)).toBeInTheDocument());
+    expect(getReadiness).toHaveBeenCalledTimes(2);
   });
 });
