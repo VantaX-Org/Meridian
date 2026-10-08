@@ -879,14 +879,16 @@ def sync_profile_scheduler():
             with Session(engine) as session:
                 _set_rls(session, tid)
 
-                # run_sync's hard time_limit is 660s; a run still 'running' after an
-                # hour was killed (time limit, worker restart) and will never finish.
+                # run_sync's hard time_limit is EXTRACT_TIME_LIMIT + 60s; a run still
+                # 'running' past that was killed (time limit, worker restart) and will
+                # never finish. Sweeping earlier marks live multi-hour extractions failed.
+                from workers.tasks.run_extraction import EXTRACT_TIME_LIMIT
                 session.execute(text("""
                     UPDATE sync_runs SET status = 'failed', completed_at = now(),
                         error_detail = 'Interrupted: worker stopped before the run finished'
                     WHERE tenant_id = :tid AND status = 'running'
-                      AND started_at < now() - interval '1 hour'
-                """), {"tid": tid})
+                      AND started_at < now() - make_interval(secs => :stale_after)
+                """), {"tid": tid, "stale_after": EXTRACT_TIME_LIMIT + 600})
 
                 # Find due profiles: active, with a schedule, and next_run_at <= now
                 result = session.execute(text("""
