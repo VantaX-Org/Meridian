@@ -92,7 +92,9 @@ export default function RulesPage() {
     checks: uniq(rules.flatMap((r) => valuesOf(r, "check_class"))),
     dimensions: uniq(rules.flatMap((r) => valuesOf(r, "dimension"))),
     sources: uniq(rules.map((r) => r.source)),
-  }), [rules]);
+    tables: uniq(rules.map(tableOf).filter(Boolean)),
+    views: module === "material_master" ? MM_VIEWS.map((v) => v.id) : [],
+  }), [rules, module]);
   const tests: Record<string, (r: Rule) => boolean> = {
     module: (r) => !module || r.module === module,
     check: (r) => !check || valuesOf(r, "check_class").includes(check),
@@ -188,6 +190,8 @@ export default function RulesPage() {
       </Field>
       {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
       {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
+      {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
+      {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
       {filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
       {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
     </div>
