@@ -69,6 +69,14 @@ export default function SearchPage() {
 
   const results = rankResults(q, candidates);
   const loading = rules.isLoading || systems.isLoading || batches.isLoading || runs.isLoading || (!!run && objects.isLoading);
+  const failedQuery = [rules, systems, batches, objects, runs].find((query) => query.isError);
+  const refetchAll = () => {
+    void rules.refetch();
+    void systems.refetch();
+    void batches.refetch();
+    if (run) void objects.refetch();
+    void runs.refetch();
+  };
 
   return (
     <ExplorerPage
@@ -99,8 +107,12 @@ export default function SearchPage() {
           onRowClick={(r) => router.push(r.href)}
         />
       }
-      state={loading ? "loading" : q && results.length === 0 ? "empty" : undefined}
+      state={loading ? "loading" : failedQuery ? "error" : q && results.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No matches. Try an object id, a rule id, a batch id or a run id." }}
+      errorProps={{
+        message: failedQuery?.error instanceof Error ? failedQuery.error.message : "Could not load search results.",
+        onRetry: refetchAll,
+      }}
     />
   );
 }
