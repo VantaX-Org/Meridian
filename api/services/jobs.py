@@ -57,6 +57,9 @@ TOUCHES: dict[str, list[str]] = {
     "analysis": ["object", "rule", "records", "run", "shell-counts"],
     "upload": ["object", "rule", "records", "run", "shell-counts"],
     "extraction": ["systems", "run"],
+    "simulation": ["records", "batch", "shell-counts"],
+    "config_sync": ["systems", "run"],
+    "config_load": ["systems", "run"],
 }
 
 # analysis progress (task_progress step numbers) → analysis job stage
