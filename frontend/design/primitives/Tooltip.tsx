@@ -5,7 +5,7 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
   return (
     <BaseTooltip.Provider>
       <BaseTooltip.Root>
-        <BaseTooltip.Trigger render={<span />}>{children}</BaseTooltip.Trigger>
+        <BaseTooltip.Trigger>{children}</BaseTooltip.Trigger>
         <BaseTooltip.Portal>
           <BaseTooltip.Positioner>
             <BaseTooltip.Popup

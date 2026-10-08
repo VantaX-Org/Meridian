@@ -7,7 +7,7 @@ export function Dialog({
   return (
     <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
       <BaseDialog.Portal>
-        <BaseDialog.Backdrop className="fixed inset-0 bg-black/20" />
+        <BaseDialog.Backdrop className="fixed inset-0" style={{ background: "var(--m-scrim)" }} />
         <BaseDialog.Popup
           className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded shadow-lg p-4 w-[420px]"
           style={{ background: "var(--m-sheet)", borderRadius: "var(--m-radius-sheet)" }}

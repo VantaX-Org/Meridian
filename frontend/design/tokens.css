@@ -27,6 +27,7 @@
   --m-viz-6: #B3261E;
   --m-viz-7: #BE185D;
   --m-viz-8: #4D7C0F;
+  --m-scrim: rgb(0 0 0 / 0.2);
 
   /* Type */
   --m-font-sans: var(--m-font-sans-loaded, "Public Sans", system-ui, sans-serif);
@@ -53,7 +54,7 @@
   --m-motion-ease: ease-out;
 }
 
-:root[data-theme="dark"] {
+[data-theme="dark"] {
   --m-canvas: #0F1417;
   --m-sheet: #171D21;
   --m-sheet-raised: #1E262B;
@@ -67,6 +68,7 @@
   --m-high: #F0A35C;
   --m-medium: #D9B64A;
   --m-pass: #6CCB8E;
+  --m-scrim: rgb(0 0 0 / 0.5);
 }
 
 @media (prefers-color-scheme: dark) {

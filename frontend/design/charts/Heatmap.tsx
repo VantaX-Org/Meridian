@@ -40,12 +40,16 @@ export function Heatmap({
             {cols.map((c) => {
               const cell = byKey.get(`${r}:${c}`);
               return (
-                <td
-                  key={c}
-                  onClick={() => cell && onPointClick?.(cell)}
-                  className="w-8 h-8 cursor-pointer"
-                  style={{ background: cell ? CELL_COLOR[cell.value] : "var(--m-line)" }}
-                />
+                <td key={c} className="p-0">
+                  <button
+                    type="button"
+                    onClick={() => cell && onPointClick?.(cell)}
+                    disabled={!cell}
+                    aria-label={cell ? `${r} ${c}: ${cell.value}` : `${r} ${c}: no data`}
+                    className="w-8 h-8 block border-0 p-0"
+                    style={{ background: cell ? CELL_COLOR[cell.value] : "var(--m-line)", cursor: cell ? "pointer" : "default" }}
+                  />
+                </td>
               );
             })}
           </tr>

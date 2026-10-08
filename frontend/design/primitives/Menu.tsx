@@ -9,7 +9,7 @@ export interface MenuItemDef {
 export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDef[] }) {
   return (
     <BaseMenu.Root>
-      <BaseMenu.Trigger render={<span />}>{trigger}</BaseMenu.Trigger>
+      <BaseMenu.Trigger>{trigger}</BaseMenu.Trigger>
       <BaseMenu.Portal>
         <BaseMenu.Positioner>
           <BaseMenu.Popup className="rounded border shadow-sm py-1" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>

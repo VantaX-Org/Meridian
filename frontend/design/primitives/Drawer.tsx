@@ -8,7 +8,7 @@ export function Drawer({
   return (
     <BaseDrawer.Root open={open} onOpenChange={onOpenChange}>
       <BaseDrawer.Portal>
-        <BaseDrawer.Backdrop className="fixed inset-0 bg-black/20" />
+        <BaseDrawer.Backdrop className="fixed inset-0" style={{ background: "var(--m-scrim)" }} />
         <BaseDrawer.Popup
           className="fixed right-0 top-0 h-full w-[420px] shadow-lg flex flex-col"
           style={{ background: "var(--m-sheet)", transitionDuration: "var(--m-motion-duration)", transitionTimingFunction: "var(--m-motion-ease)" }}
