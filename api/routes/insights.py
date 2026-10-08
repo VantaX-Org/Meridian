@@ -1,5 +1,6 @@
 """GET endpoints backing the /insights/* pages (spec 8). All computation is
 deterministic — no LLM calls anywhere in this module."""
+import asyncio
 import uuid
 from types import SimpleNamespace
 from typing import Optional
@@ -210,3 +211,39 @@ async def create_merge_proposals(
         created.append(str(new_id))
     await db.commit()
     return {"created": created}
+
+
+def _gather_exec_sync(tenant_id: str, tenant_name: str, version_id: str) -> Optional[dict]:
+    from api.services.pdf_reports import executive_context, gather_executive_data
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as s:
+        d = gather_executive_data(s, tenant_id, version_id)
+        if not d:
+            return None
+        return executive_context(d["report_json"], d["supplementary"], d["version"], d["findings"],
+                                  tenant_name=tenant_name, system=d["system"])
+
+
+@router.get("/exec", dependencies=[Depends(require_permission("view"))])
+async def get_exec(
+    version_id: Optional[uuid.UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Same report_json/supplementary data as the executive PDF (api/routes/reports.py's
+    executive_report_pdf) — reuses gather_executive_data/executive_context rather than
+    inventing a parallel readiness/waterfall/owner JSON shape that doesn't exist in the
+    backend (deviation from the brief, same reasoning as Task 14's PDF wiring)."""
+    await _rls(db, tenant)
+    if version_id is None:
+        version_id = (await db.execute(
+            text("SELECT id FROM analysis_versions WHERE tenant_id = :t ORDER BY run_at DESC LIMIT 1"),
+            {"t": str(tenant.id)},
+        )).scalar()
+        if version_id is None:
+            raise HTTPException(404, "No analysis run found")
+    ctx = await asyncio.to_thread(_gather_exec_sync, str(tenant.id), tenant.name, str(version_id))
+    if ctx is None:
+        raise HTTPException(404, "Run not found.")
+    return ctx
