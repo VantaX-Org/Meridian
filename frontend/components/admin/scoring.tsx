@@ -23,7 +23,10 @@ const HREF = "/admin?tab=scoring";
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
 const DEFAULT: DimensionScores = { completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1 };
-const DEFAULT_THRESHOLDS: AlertThresholds = { critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {} };
+const DEFAULT_THRESHOLDS: AlertThresholds = {
+  critical_threshold: 1, high_threshold: 10, dqs_drop_threshold: 5, module_floors: {},
+  readiness_dqs_threshold: 70, readiness_waves: {},
+};
 const DEFAULT_NOTIFY = { email: "", teams_webhook: "", daily_digest: false, weekly_summary: true, monthly_report: true };
 const DEFAULT_PLANNER: PlannerConfig = { minutes_per_record: 3, investigation_hours: 1, cleaning_item_hours: 0.25, exception_hours: 2, sprint_hours: 40, cost_per_record: null, currency: "ZAR" };
 
