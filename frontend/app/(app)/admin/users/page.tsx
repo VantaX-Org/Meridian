@@ -64,9 +64,9 @@ export default function AdminUsersPage() {
       />
     </div>
   );
-  // ponytail: dropped URL-sync for the active tab. @/design's Tabs is uncontrolled
-  // (defaultValue only, no value/onChange) so there's nothing to sync against. Each
-  // view is its own component below, so its query only runs once its panel mounts.
+  // ponytail: dropped URL-sync for the active tab. Tabs now takes onValueChange, but
+  // each view is its own component below and its query only runs once its panel
+  // mounts, so a tab switch needs no URL state to work correctly.
 }
 
 function UsersView() {
