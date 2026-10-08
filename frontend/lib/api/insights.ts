@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { GraphEdge, GraphNode } from "@/design";
+import type { ChartPoint, GraphEdge, GraphNode } from "@/design";
 
 /* ─── Readiness (spec 8.1) ─── */
 
@@ -92,5 +92,21 @@ export async function createMergeProposals(
     "/api/v1/insights/duplicates/merge-proposals",
     { pairs },
   );
+  return data;
+}
+
+/* ─── Executive summary (spec 8.5) ─── */
+
+export interface ExecResponse {
+  version_id: string;
+  narrative: string;
+  readiness_cells: ReadinessCell[];
+  waterfall: ChartPoint[];
+  impact_rows: ImpactRow[];
+  owner_rows: OwnerCardResponse[];
+}
+
+export async function getExec(params?: { version_id?: string }): Promise<ExecResponse> {
+  const { data } = await apiClient.get<ExecResponse>("/api/v1/insights/exec", { params });
   return data;
 }
