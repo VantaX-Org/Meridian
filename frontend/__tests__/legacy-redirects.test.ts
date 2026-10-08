@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import nextConfig from "../next.config";
 
 const EXPECTED: Record<string, string> = {
-  "/stewardship": "/workbench?tab=queue",
-  "/stewardship/metrics": "/workbench?tab=queue",
+  "/stewardship": "/inbox",
+  "/stewardship/metrics": "/inbox",
+  "/workbench": "/inbox",
   "/home": "/home/lead",
   "/findings": "/objects",
   "/versions": "/runs",

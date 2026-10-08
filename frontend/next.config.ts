@@ -8,8 +8,9 @@ const nextConfig: NextConfig = {
   async redirects() {
     // The steward inbox (Workbench → Steward inbox) replaced the team workload and metrics pages.
     return [
-      { source: "/stewardship", destination: "/workbench?tab=queue", permanent: false },
-      { source: "/stewardship/metrics", destination: "/workbench?tab=queue", permanent: false },
+      { source: "/stewardship", destination: "/inbox", permanent: false },
+      { source: "/stewardship/metrics", destination: "/inbox", permanent: false },
+      { source: "/workbench", destination: "/inbox", permanent: false },
       { source: "/home", destination: "/home/lead", permanent: false },
       { source: "/findings", destination: "/objects", permanent: false },
       { source: "/versions", destination: "/runs", permanent: false },
