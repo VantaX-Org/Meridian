@@ -15,7 +15,6 @@ const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, 
 
 export const TAB_BODIES: Readonly<Record<string, ComponentType>> = {
   "/": named(() => import("@/components/command-centre/overview"), "CommandCentreOverview"),
-  "/executive-report": named(() => import("@/components/command-centre/executive-report"), "ExecutiveReport"),
   "/command-centre": named(() => import("@/components/command-centre/live"), "LiveOperationsPage"),
   "/findings": named(() => import("@/components/command-centre/findings"), "FindingsSurface"),
   "/issues": named(() => import("@/components/analyse/records"), "RecordsSurface"),
