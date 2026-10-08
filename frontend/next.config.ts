@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/contracts", destination: "/rules/contracts", permanent: false },
+      { source: "/settings/scoring", destination: "/rules/scoring", permanent: false },
     ];
   },
 
