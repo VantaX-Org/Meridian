@@ -8,6 +8,12 @@ import type { Job } from "@/types/jobs";
 export const JOBS_QUERY_KEY = ["jobs"] as const;
 const ACTIVE = new Set(["queued", "running"]);
 
+/** Query-key prefixes a run (sync, checks, batch) changes. Wave 1 reads this from the job's `touches`. */
+export const RUN_TOUCHED_KEYS: ReadonlySet<string> = new Set([
+  "issues", "issue", "version", "versions", "system-versions", "material",
+  "config-impact", "pilot-scorecard", "notifications-unread-count",
+]);
+
 /**
  * The tenant's jobs, kept live: one SSE stream patches the react-query cache
  * (newest first), with a 15 s poll as the fallback while the stream is down.
@@ -28,8 +34,8 @@ export function useJobStream(): void {
             ...prev.filter((j) => j.id !== job.id),
           ]);
           if (job.status === "completed") {
-            // a finished job changed data the pages show
-            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "jobs" });
+            // a finished job changed only the run-scoped data; everything else keeps its cache
+            qc.invalidateQueries({ predicate: (q) => RUN_TOUCHED_KEYS.has(String(q.queryKey[0])) });
           }
         },
         () => {
