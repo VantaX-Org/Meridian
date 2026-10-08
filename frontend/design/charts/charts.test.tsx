@@ -1,6 +1,7 @@
 // frontend/design/charts/charts.test.tsx
 import { describe, expect, it, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
+import { Heatmap } from "./Heatmap";
 import { Line } from "./Line";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
@@ -11,14 +12,25 @@ const data = [
 ];
 
 describe("charts onPointClick contract", () => {
-  it("Line calls onPointClick with the clicked point", () => {
+  it("Heatmap labels every cell and calls onPointClick with the clicked cell", () => {
+    // recharts does not lay out under jsdom, so the click contract is exercised on the
+    // Heatmap, which is a plain table and shares the same onPointClick shape.
     const onPointClick = vi.fn();
-    const { container } = render(<Line data={data} onPointClick={onPointClick} />);
-    const dot = container.querySelector(".recharts-dot") ?? container.querySelector("svg");
-    if (dot) fireEvent.click(dot);
-    // recharts renders dots lazily under jsdom; assert the prop wiring exists rather than
-    // the exact DOM click path, since recharts' own click dispatch is covered by its tests.
-    expect(typeof onPointClick).toBe("function");
+    const cells = [
+      { row: "material_master", col: "FI", value: "go" as const },
+      { row: "material_master", col: "MM", value: "no-go" as const },
+    ];
+    render(<Heatmap rows={["material_master"]} cols={["FI", "MM", "SD"]} cells={cells} onPointClick={onPointClick} />);
+    expect(screen.getByLabelText("material_master FI: go")).toBeEnabled();
+    expect(screen.getByLabelText("material_master SD: no data")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("material_master MM: no-go"));
+    expect(onPointClick).toHaveBeenCalledTimes(1);
+    expect(onPointClick).toHaveBeenCalledWith(cells[1]);
+  });
+
+  it("Line renders an svg with the shared theme", () => {
+    const { container } = render(<Line data={data} />);
+    expect(container.querySelector("svg") ?? container.querySelector(".recharts-responsive-container")).toBeTruthy();
   });
 
   it("Sparkline renders without a theme prop (uses the shared chartTheme)", () => {

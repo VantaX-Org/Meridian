@@ -17,5 +17,6 @@ export const chartTheme = {
   series: mColor.viz,
   critical: mColor.critical,
   high: mColor.high,
+  medium: mColor.medium,
   pass: mColor.pass,
 };

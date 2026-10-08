@@ -9,7 +9,7 @@ export interface HeatmapCell {
 
 const CELL_COLOR: Record<HeatmapCell["value"], string> = {
   go: chartTheme.pass,
-  "at-risk": chartTheme.high,
+  "at-risk": chartTheme.medium,
   "no-go": chartTheme.critical,
 };
 

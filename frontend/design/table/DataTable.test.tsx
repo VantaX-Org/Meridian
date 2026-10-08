@@ -50,6 +50,31 @@ describe("DataTable", () => {
     expect(fetchDetail).toHaveBeenCalledTimes(1);
   });
 
+  it("activates a row from any cell by click and by keyboard, but not from the select checkbox", () => {
+    const onRowClick = vi.fn();
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(r) => r.id}
+        onRowClick={onRowClick}
+        bulkActions={() => null}
+      />,
+    );
+    fireEvent.click(screen.getByText("Alpha"));
+    expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "1" }));
+
+    const bravoRow = screen.getByText("Bravo").closest("tr") as HTMLTableRowElement;
+    expect(bravoRow).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(bravoRow, { key: "Enter" });
+    expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "2" }));
+    fireEvent.keyDown(bravoRow, { key: " " });
+    expect(onRowClick).toHaveBeenCalledTimes(3);
+
+    fireEvent.click(screen.getByLabelText("Select row 1"));
+    expect(onRowClick).toHaveBeenCalledTimes(3);
+  });
+
   it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
     const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });

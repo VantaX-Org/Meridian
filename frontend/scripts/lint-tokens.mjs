@@ -25,7 +25,9 @@ const RULES = [
   // Rule 13: shadows come from --aurora-elev-* only.
   { name: "box-shadow literal", re: /box-shadow\s*:[^;]*(?:#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:black|white)\b|var\(--aurora-elev-[\w-]+\s*,)/i },
   // Rule 15: no all-caps eyebrows.
-  { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|\buppercase\b(?=[^\n]*(?:className|class=|@apply))/ },
+  // Catches the CSS declaration, the Tailwind utility inside a className/class string (before or after
+  // the attribute name), and `@apply uppercase`.
+  { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|(?:className|class)=[^\n]*\buppercase\b|\buppercase\b(?=[^\n]*(?:className|class=|@apply))|@apply[^\n;]*\buppercase\b/ },
   // Rule 11: motion lives in the Aurora style files only.
   { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css", "app/styles/aurora-components.css"]) },
   { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },

@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { Button } from "../primitives/Button";
+
+const noSubscribe = () => () => {};
+const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
 
 export interface CommandItem {
   label: string;
@@ -12,6 +15,8 @@ export interface CommandItem {
 
 export function CommandPalette({ items }: { items: CommandItem[] }) {
   const [open, setOpen] = useState(false);
+  // Server snapshot is "not Mac", so SSR and hydration agree; the client reads the real platform.
+  const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
   const router = useRouter();
 
   useEffect(() => {
@@ -28,7 +33,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
   return (
     <>
       <Button variant="ghost" onClick={() => setOpen(true)} aria-label="Search">
-        Search <kbd style={{ marginLeft: 6, color: "var(--m-ink-3)" }}>⌘K</kbd>
+        Search <kbd style={{ marginLeft: 6, color: "var(--m-ink-3)" }}>{isMac ? "⌘K" : "Ctrl+K"}</kbd>
       </Button>
       <Command.Dialog open={open} onOpenChange={setOpen} label="Command palette">
         <Command.Input placeholder="Jump to..." />

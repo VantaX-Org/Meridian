@@ -149,40 +149,38 @@ export function DataTable<T>({
           <tbody style={shouldVirtualize ? { position: "relative", height: virtualizer.getTotalSize() } : undefined}>
             {visibleRows.map((row, i) => {
               const virtualRow = virtualItems?.[i];
-              const cells = row.getVisibleCells();
-              const [firstCell, ...restCells] = cells;
+              const activate = onRowClick || renderDrawer
+                ? () => {
+                    onRowClick?.(row.original);
+                    if (renderDrawer) setOpenRow(row.original);
+                  }
+                : undefined;
               return (
                 <tr
                   key={row.id}
                   className="border-b"
+                  tabIndex={activate ? 0 : undefined}
+                  onClick={activate}
+                  onKeyDown={
+                    activate
+                      ? (e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            activate();
+                          }
+                        }
+                      : undefined
+                  }
                   style={{
                     borderColor: "var(--m-line)",
+                    cursor: activate ? "pointer" : undefined,
                     ...(virtualRow
                       ? { position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${virtualRow.start}px)` }
                       : {}),
                   }}
                 >
-                  {firstCell && (
-                    <td className="px-2 py-1.5">
-                      {firstCell.column.id === SELECT_COLUMN_ID ? (
-                        flexRender(firstCell.column.columnDef.cell, firstCell.getContext())
-                      ) : onRowClick || renderDrawer ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onRowClick?.(row.original);
-                            if (renderDrawer) setOpenRow(row.original);
-                          }}
-                          className="text-left"
-                        >
-                          {flexRender(firstCell.column.columnDef.cell, firstCell.getContext())}
-                        </button>
-                      ) : (
-                        flexRender(firstCell.column.columnDef.cell, firstCell.getContext())
-                      )}
-                    </td>
-                  )}
-                  {restCells.map((cell) => (
+                  {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-2 py-1.5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>

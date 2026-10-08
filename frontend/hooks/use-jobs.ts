@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { getJobs, streamJobs } from "@/lib/api/jobs";
-import { toastManager } from "@/design/primitives/Toast";
+import { toastManager } from "@/design";
 import type { Job } from "@/types/jobs";
 
 export const JOBS_QUERY_KEY = ["jobs"] as const;

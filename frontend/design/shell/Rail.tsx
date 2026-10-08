@@ -71,7 +71,7 @@ export function Rail() {
       {groups.map((group) => (
         <div key={group.group} className="flex flex-col gap-1 px-2 mb-2">
           {expanded && (
-            <p className="px-2 text-[11px] uppercase tracking-wide" style={{ color: "var(--m-ink-3)" }}>
+            <p className="px-2 text-[11px]" style={{ color: "var(--m-ink-3)" }}>
               {group.group}
             </p>
           )}
