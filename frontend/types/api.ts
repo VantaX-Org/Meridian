@@ -277,6 +277,20 @@ export interface AlertThresholds {
   dqs_drop_threshold: number;
   /** module → minimum DQS; a run scoring the module below it raises an alert */
   module_floors?: Record<string, number>;
+  /** Go/At-risk/No-go DQS cutoff for the readiness grid (spec 8.1) */
+  readiness_dqs_threshold: number;
+  /** wave name → the migration-engine module names it covers (spec 8.1) */
+  readiness_waves: Record<string, string[]>;
+}
+
+/** Cost model used to price findings and features (spec 8.2's value-at-risk). */
+export interface CostModel {
+  currency: string;
+  severity: Record<string, number>;
+  modules: Record<string, number>;
+  rules: Record<string, number>;
+  /** feature name (e.g. "MIGO") → value per blocked record */
+  features: Record<string, number>;
 }
 
 export interface TenantSettings {

@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/command-centre", destination: "/?tab=live", permanent: false },
+      { source: "/executive-report", destination: "/insights/exec", permanent: false },
       { source: "/connectivity", destination: "/data", permanent: false },
       { source: "/run-sync", destination: "/data", permanent: false },
       { source: "/migration", destination: "/data?tab=migration", permanent: false },
