@@ -70,6 +70,8 @@ export const queryKeys = {
     ["version-profile", systemId, versionId, object ?? ""] as const,
   pdReference: () => ["pd-reference"] as const,
   analyticsPredictive: () => ["analytics-predictive"] as const,
+  matchRulesAll: () => ["match-rules"] as const,
+  pairConstraintsAll: () => ["pair-constraints"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

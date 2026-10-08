@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, Field, Pill, Select, Skeleton, Tabs } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Field, Pill, Select, Skeleton, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, updateMatchRule,
@@ -86,7 +86,7 @@ function RulesTab() {
   const list = rulesQuery.data?.rules ?? [];
   const close = () => { setDraft(null); setEditing(null); };
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["match-rules"] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.matchRulesAll() });
   const save = useMutation({
     mutationFn: (d: Draft) => (editing ? updateMatchRule(editing.id, d) : createMatchRule(d)),
     onSuccess: () => { refresh(); close(); },
@@ -136,6 +136,11 @@ function RulesTab() {
 
       {rulesQuery.isLoading ? (
         <Skeleton height={200} />
+      ) : rulesQuery.error ? (
+        <ErrorState
+          message={rulesQuery.error instanceof Error ? rulesQuery.error.message : "Match rules could not be loaded."}
+          onRetry={() => void rulesQuery.refetch()}
+        />
       ) : list.length ? (
         <DataTable<MatchRule>
           columns={columns}
@@ -228,6 +233,11 @@ function TuningTab() {
         <EmptyState title="Pick a domain to tune." />
       ) : rulesQuery.isLoading ? (
         <Skeleton height={160} />
+      ) : rulesQuery.error ? (
+        <ErrorState
+          message={rulesQuery.error instanceof Error ? rulesQuery.error.message : "Match rules could not be loaded."}
+          onRetry={() => void rulesQuery.refetch()}
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {fields.length ? (
@@ -303,7 +313,7 @@ function ConstraintsTab() {
   const list = useQuery({ queryKey: queryKeys.pairConstraints(params), queryFn: () => getPairConstraints(params) });
   const clear = useMutation({
     mutationFn: (c: PairConstraint) => clearPairConstraint(c.id, window.prompt("Why clear this constraint? (optional)") ?? undefined),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["pair-constraints"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pairConstraintsAll() }),
   });
   const rows = list.data ?? [];
 
@@ -339,6 +349,11 @@ function ConstraintsTab() {
       {!write ? <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Clearing a constraint needs the approve permission.</p> : null}
       {list.isLoading ? (
         <Skeleton height={200} />
+      ) : list.error ? (
+        <ErrorState
+          message={list.error instanceof Error ? list.error.message : "Pair constraints could not be loaded."}
+          onRetry={() => void list.refetch()}
+        />
       ) : rows.length ? (
         <DataTable<PairConstraint> columns={columns} data={rows} getRowId={(c) => c.id} />
       ) : (
