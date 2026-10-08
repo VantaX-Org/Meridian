@@ -10,7 +10,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Field, Select, Skeleton } from "@/design";
+import { Button, ErrorState, Field, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
@@ -122,6 +122,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       </header>
       {!write ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Read only. Changing these settings needs the manage_settings permission.</p> : null}
 
+      {agg.isError ? (
+        <ErrorState message={(agg.error as Error).message || "The latest findings could not be read."} onRetry={() => agg.refetch()} />
+      ) : (
       <section className="flex gap-6">
         <div className="flex flex-col gap-1">
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Score now</span>
@@ -143,6 +146,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{sumOk ? "Sums to one." : "Must sum to 1.00 before you can save."}</span>
         </div>
       </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[13px] font-semibold">Dimension weights</h2>
