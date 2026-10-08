@@ -11,6 +11,7 @@ const EXPECTED: Record<string, string> = {
   "/analyse/object/:module": "/objects/:module",
   "/analyse/material/:matnr": "/objects/material_master/records/:matnr",
   "/command-centre": "/?tab=live",
+  "/executive-report": "/insights/exec",
   "/connectivity": "/data",
   "/run-sync": "/data",
   "/migration": "/data?tab=migration",
