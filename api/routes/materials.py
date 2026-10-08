@@ -160,18 +160,19 @@ class DuplicatesOut(BaseModel):
     items: list[DuplicateItem]
 
 
-async def _tables(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID], names: set[str]):
-    """(version id, {TABLE: frame}) for the requested or newest finished version."""
+async def _tables(db: AsyncSession, tenant: Tenant, version_id: Optional[uuid.UUID], names: set[str],
+                  module: str = m360.MODULE):
+    """(version id, {TABLE: frame}) for the requested or newest finished version of ``module``."""
     await _rls(db, tenant)
     if version_id:
         row = (await db.execute(
             text("SELECT id, metadata FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
             {"v": str(version_id), "t": str(tenant.id)})).fetchone()
     else:
-        row = await _latest(db, tenant, m360.MODULE, None)
+        row = await _latest(db, tenant, module, None)
     path = (row[1] or {}).get("dataset_path") if row else None
     if not row or not path:
-        raise HTTPException(409, "No analysis version with an extracted dataset for material master")
+        raise HTTPException(409, f"No analysis version with an extracted dataset for {module}")
     d = await _dictionary(db, row[1])
     tables = await run_in_threadpool(m360.load_tables, path, d, names)
     return row[0], tables
