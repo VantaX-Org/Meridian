@@ -77,3 +77,57 @@ async def list_objects(run: uuid.UUID = Query(..., alias="run"),
             "affected_records": affected,
         })
     return {"run_id": str(run), "objects": objects}
+
+
+class ObjectRuleOut(BaseModel):
+    check_id: str
+    severity: str
+    dimension: Optional[str] = None
+    affected_count: int
+    total_count: int
+    pass_rate: Optional[float] = None
+
+
+class ObjectDetailOut(BaseModel):
+    module: str
+    label: str
+    composite_score: Optional[float] = None
+    readiness: Optional[str] = None
+    dimension_scores: dict[str, float]
+    rules: list[ObjectRuleOut]
+
+
+@router.get("/{module}", response_model=ObjectDetailOut, dependencies=[Depends(require_permission("view"))])
+async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
+                     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    await _rls(db, tenant)
+    version = (await db.execute(text(
+        "SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"
+    ), {"v": str(run), "t": str(tenant.id)})).fetchone()
+    if not version:
+        raise HTTPException(404, "Run not found")
+    mod_summary = (version[0] or {}).get(module) or {}
+    raw_scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"),
+                                    {"t": str(tenant.id)})).scalar() or {}
+    thresholds = scoring_config(raw_scoring)["thresholds"]
+    score = mod_summary.get("composite_score")
+
+    rows = (await db.execute(text(
+        "SELECT check_id, severity, dimension, affected_count, total_count, pass_rate "
+        "FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m "
+        "ORDER BY affected_count DESC"
+    ), {"v": str(run), "t": str(tenant.id), "m": module})).fetchall()
+    if not rows and not mod_summary:
+        raise HTTPException(404, "Object not found for this run")
+    return {
+        "module": module,
+        "label": _label(module),
+        "composite_score": score,
+        "readiness": tier(score, thresholds) if score is not None else None,
+        "dimension_scores": mod_summary.get("dimension_scores") or {},
+        "rules": [
+            {"check_id": r[0], "severity": r[1], "dimension": r[2], "affected_count": r[3],
+             "total_count": r[4], "pass_rate": float(r[5]) if r[5] is not None else None}
+            for r in rows
+        ],
+    }
