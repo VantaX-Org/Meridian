@@ -172,7 +172,8 @@ async function mockObjects(page: Page) {
       version_id: VERSION_ID, check_id: "MM551", total: 1,
       records: [{ record_key: OBJECT_RECORD_KEY, grain: "MARC", module: "material_master", field_values: { "MARC.NFMAT": "000000000000000102" } }],
     })));
-  await page.route(new RegExp(`/api/v1/objects/material_master/records/${OBJECT_MATNR}`), (r) =>
+  // The fix sheet parses the composite record_key and asks for the bare MATNR with WERKS as ?plant=.
+  await page.route(new RegExp(`/api/v1/objects/material_master/records/${OBJECT_MATNR}(\\?|$)`), (r) =>
     r.fulfill(json(MATERIAL[String(Number(OBJECT_MATNR))].material)));
 }
 

@@ -18,10 +18,13 @@ function normalizeFilters(filters: Record<string, unknown>): Record<string, unkn
  */
 export const queryKeys = {
   object: (id: string, run: string) => ["object", id, run] as const,
+  objects: (run: string) => ["object", "list", run] as const,
+  record: (object: string, key: string, run: string) => ["object", object, "record", key, run] as const,
   rule: (id: string, run: string) => ["rule", id, run] as const,
   records: (object: string, filters: Record<string, unknown>) =>
     ["records", object, normalizeFilters(filters)] as const,
   run: (id: string) => ["run", id] as const,
+  runCompare: (a: string, b: string) => ["run", a, "vs", b] as const,
   batch: (id: string) => ["batch", id] as const,
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,
   systems: () => ["systems"] as const,

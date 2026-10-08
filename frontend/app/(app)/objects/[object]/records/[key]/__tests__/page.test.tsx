@@ -2,6 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { AxiosError, type AxiosResponse } from "axios";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as materialsApi from "@/lib/api/materials";
 import RecordFixSheetPage from "../page";
@@ -55,7 +56,9 @@ describe("RecordFixSheetPage", () => {
   });
 
   it("shows a not-yet-available state for an unsupported object", async () => {
-    vi.spyOn(objectsApi, "getObjectRecord").mockRejectedValue({ response: { status: 501 } });
+    vi.spyOn(objectsApi, "getObjectRecord").mockRejectedValue(
+      new AxiosError("Not Implemented", "ERR_BAD_RESPONSE", undefined, undefined, { status: 501 } as AxiosResponse),
+    );
     vi.spyOn(materialsApi, "getMaterialFindings").mockResolvedValue({
       matnr: "100001", version_id: "v1", rules_total: 0, by_view: [],
     });

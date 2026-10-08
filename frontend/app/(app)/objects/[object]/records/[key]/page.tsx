@@ -2,10 +2,24 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorState, Mono, RecordPage, Skeleton } from "@/design";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import { EmptyState, ErrorState, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
+import { queryKeys } from "@/lib/query-keys";
+import { parseRecordKey } from "@/lib/record-key";
+
+const sectionHeading = "text-[14px] font-semibold";
+
+function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
+  return (
+    <ErrorState
+      message={`Couldn't load ${what}. ${query.error?.message ?? ""}`.trim()}
+      onRetry={() => query.refetch()}
+    />
+  );
+}
 
 export default function RecordFixSheetPage() {
   const params = useParams<{ object: string; key: string }>();
@@ -13,27 +27,30 @@ export default function RecordFixSheetPage() {
   const object = params.object;
   const key = params.key;
   const run = search.get("run") ?? "";
+  const { primary, fields } = parseRecordKey(key);
+  const plant = fields.WERKS;
+  const isMaterial = object === "material_master";
 
   const recordQuery = useQuery({
-    queryKey: ["object-record", object, key, run],
-    queryFn: () => getObjectRecord(object, key, { version_id: run }),
+    queryKey: queryKeys.record(object, key, run),
+    queryFn: () => getObjectRecord(object, primary, { version_id: run, plant }),
     enabled: !!run,
     retry: false,
   });
   const findingsQuery = useQuery({
-    queryKey: ["object-record-findings", object, key, run],
-    queryFn: () => getMaterialFindings(key, { version_id: run }),
-    enabled: !!run,
+    queryKey: [...queryKeys.record(object, key, run), "findings"],
+    queryFn: () => getMaterialFindings(primary, { version_id: run }),
+    enabled: !!run && isMaterial,
   });
   const supersessionQuery = useQuery({
-    queryKey: ["object-record-supersession", object, key, run],
-    queryFn: () => getMaterialSupersession(key, { version_id: run }),
-    enabled: !!run,
+    queryKey: [...queryKeys.record(object, key, run), "supersession"],
+    queryFn: () => getMaterialSupersession(primary, { version_id: run, plant }),
+    enabled: !!run && isMaterial,
   });
   const duplicatesQuery = useQuery({
-    queryKey: ["object-record-duplicates", object, key, run],
-    queryFn: () => getMaterialDuplicates(key, { version_id: run }),
-    enabled: !!run,
+    queryKey: [...queryKeys.record(object, key, run), "duplicates"],
+    queryFn: () => getMaterialDuplicates(primary, { version_id: run }),
+    enabled: !!run && isMaterial,
   });
 
   if (!run) {
@@ -47,13 +64,16 @@ export default function RecordFixSheetPage() {
       </div>
     );
   }
-  if (
-    (recordQuery.error as { response?: { status?: number } } | null)?.response?.status === 501
-  ) {
+  if (isAxiosError(recordQuery.error) && recordQuery.error.response?.status === 501) {
     return <EmptyState title={`Not yet available. The record fix sheet for ${object} isn't built yet.`} />;
   }
   if (recordQuery.isError) {
-    return <ErrorState message="Couldn't load this record. Try again." />;
+    return (
+      <ErrorState
+        message={`Couldn't load this record. ${recordQuery.error.message}`}
+        onRetry={() => recordQuery.refetch()}
+      />
+    );
   }
   const material = recordQuery.data;
   if (!material) {
@@ -61,16 +81,16 @@ export default function RecordFixSheetPage() {
   }
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
-  const statusLabel = hasMissing ? "Incomplete" : "Complete";
+  const status: RecordStatus = hasMissing ? { label: "failing", tone: "no-go" } : { label: "passing", tone: "go" };
 
   const findings = findingsQuery.data;
   const supersession = supersessionQuery.data;
   const duplicates = duplicatesQuery.data;
 
   return (
-    <RecordPage recordKey={material.matnr} object={object} status={statusLabel}>
+    <RecordPage recordKey={material.matnr} object={object} status={status}>
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Identity</h2>
+        <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Identity</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
           <dd>{material.description ?? "—"}</dd>
@@ -86,7 +106,7 @@ export default function RecordFixSheetPage() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>View completeness</h2>
+        <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>View completeness</h2>
         <ul className="flex flex-col gap-1 text-[13px]">
           {material.views.map((view) => {
             const ok = view.cells.filter((cell) => cell.state === "ok").length;
@@ -99,46 +119,64 @@ export default function RecordFixSheetPage() {
         </ul>
       </section>
 
-      {findings && findings.by_view.some((view) => view.failing.length > 0) && (
+      {isMaterial && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Findings</h2>
-          <ul className="flex flex-col gap-1 text-[13px]">
-            {findings.by_view.flatMap((view) =>
-              view.failing.map((rule) => (
-                <li key={`${view.view}-${rule.check_id}`}>
-                  <Mono>{rule.check_id}</Mono> (<Mono>{rule.severity}</Mono>) — {rule.message}
+          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Findings</h2>
+          {findingsQuery.isError ? (
+            <SectionError what="this record's findings" query={findingsQuery} />
+          ) : findings && findings.by_view.some((view) => view.failing.length > 0) ? (
+            <ul className="flex flex-col gap-1 text-[13px]">
+              {findings.by_view.flatMap((view) =>
+                view.failing.map((rule) => (
+                  <li key={`${view.view}-${rule.check_id}`}>
+                    <Mono>{rule.check_id}</Mono> (<Mono>{rule.severity}</Mono>) — {rule.message}
+                  </li>
+                )),
+              )}
+            </ul>
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No failing rules on this run.</p>
+          )}
+        </section>
+      )}
+
+      {isMaterial && (
+        <section className="flex flex-col gap-2">
+          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Supersession</h2>
+          {supersessionQuery.isError ? (
+            <SectionError what="the supersession chain" query={supersessionQuery} />
+          ) : supersession && supersession.plants.some((plant) => plant.chain.length > 1) ? (
+            <ul className="flex flex-col gap-1 text-[13px]">
+              {supersession.plants.map((plant) => (
+                <li key={plant.werks}>
+                  Plant {plant.werks}: {plant.chain.length} material{plant.chain.length === 1 ? "" : "s"} in chain
+                  {plant.dead_end ? " (dead end)" : ""}
                 </li>
-              )),
-            )}
-          </ul>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Not superseded at any plant.</p>
+          )}
         </section>
       )}
 
-      {supersession && supersession.plants.some((plant) => plant.chain.length > 1) && (
+      {isMaterial && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Supersession</h2>
-          <ul className="flex flex-col gap-1 text-[13px]">
-            {supersession.plants.map((plant) => (
-              <li key={plant.werks}>
-                Plant {plant.werks}: {plant.chain.length} material{plant.chain.length === 1 ? "" : "s"} in chain
-                {plant.dead_end ? " (dead end)" : ""}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {duplicates && duplicates.items.length > 0 && (
-        <section className="flex flex-col gap-2">
-          <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Possible duplicates</h2>
-          <ul className="flex flex-col gap-1 text-[13px]">
-            {duplicates.items.map((item) => (
-              <li key={item.matnr}>
-                <Mono>{item.matnr}</Mono> {item.maktx ?? ""} — matches on {item.matches_on.join(", ")} (score{" "}
-                {item.score})
-              </li>
-            ))}
-          </ul>
+          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Possible duplicates</h2>
+          {duplicatesQuery.isError ? (
+            <SectionError what="possible duplicates" query={duplicatesQuery} />
+          ) : duplicates && duplicates.items.length > 0 ? (
+            <ul className="flex flex-col gap-1 text-[13px]">
+              {duplicates.items.map((item) => (
+                <li key={item.matnr}>
+                  <Mono>{item.matnr}</Mono> {item.maktx ?? ""} — matches on {item.matches_on.join(", ")} (score{" "}
+                  {item.score})
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No duplicates found.</p>
+          )}
         </section>
       )}
     </RecordPage>
