@@ -66,8 +66,12 @@ async def test_get_exec_returns_report_for_latest_version(tenant_a_version, monk
         r = await client.get("/api/v1/insights/exec", headers=headers)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["title"] == "Executive data quality report"
-    assert body["report"] == {}
+    assert body["version_id"] == version_id
+    assert isinstance(body["narrative"], str) and body["narrative"]
+    assert isinstance(body["readiness_cells"], list)
+    assert isinstance(body["waterfall"], list)
+    assert isinstance(body["impact_rows"], list)
+    assert isinstance(body["owner_rows"], list)
 
 
 @pytest.mark.anyio

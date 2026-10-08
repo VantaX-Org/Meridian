@@ -1,6 +1,5 @@
 """GET endpoints backing the /insights/* pages (spec 8). All computation is
 deterministic — no LLM calls anywhere in this module."""
-import asyncio
 import uuid
 from types import SimpleNamespace
 from typing import Optional
@@ -213,28 +212,19 @@ async def create_merge_proposals(
     return {"created": created}
 
 
-def _gather_exec_sync(tenant_id: str, tenant_name: str, version_id: str) -> Optional[dict]:
-    from api.services.pdf_reports import executive_context, gather_executive_data
-    from workers.db import get_sync_engine, tenant_session
-
-    with tenant_session(get_sync_engine(), tenant_id) as s:
-        d = gather_executive_data(s, tenant_id, version_id)
-        if not d:
-            return None
-        return executive_context(d["report_json"], d["supplementary"], d["version"], d["findings"],
-                                  tenant_name=tenant_name, system=d["system"])
-
-
 @router.get("/exec", dependencies=[Depends(require_permission("view"))])
 async def get_exec(
     version_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Same report_json/supplementary data as the executive PDF (api/routes/reports.py's
-    executive_report_pdf) — reuses gather_executive_data/executive_context rather than
-    inventing a parallel readiness/waterfall/owner JSON shape that doesn't exist in the
-    backend (deviation from the brief, same reasoning as Task 14's PDF wiring)."""
+    """Plan Task 15 Step 2 shape: {version_id, narrative, readiness_cells, waterfall,
+    impact_rows, owner_rows} — the shape frontend/lib/api/insights.ts's ExecResponse
+    already types. Composed by calling the readiness/impact/owners route functions
+    directly (same pattern get_impact already uses for get_config_impact), all scoped
+    to the same resolved version_id, so both the JSON page and the PDF export
+    (api/routes/reports.py's executive_report_pdf, unchanged) describe the same run.
+    narrative is a deterministic string built from these numbers — no LLM call."""
     await _rls(db, tenant)
     if version_id is None:
         version_id = (await db.execute(
@@ -243,7 +233,36 @@ async def get_exec(
         )).scalar()
         if version_id is None:
             raise HTTPException(404, "No analysis run found")
-    ctx = await asyncio.to_thread(_gather_exec_sync, str(tenant.id), tenant.name, str(version_id))
-    if ctx is None:
-        raise HTTPException(404, "Run not found.")
-    return ctx
+
+    try:
+        readiness = await get_readiness(version_id, db, tenant)
+    except HTTPException as exc:
+        # No readiness_waves configured yet (same 409 the /readiness page itself
+        # raises) — the exec summary still has impact/owner data worth showing.
+        if exc.status_code != 409:
+            raise
+        readiness = {"cells": []}
+    impact = await get_impact(version_id, db, tenant)
+    owners = await get_owners(db, tenant)
+
+    cells = readiness["cells"]
+    rows = impact["rows"]
+    owner_rows = owners["owners"]
+    no_go = sum(1 for c in cells if c["verdict"] == "no_go")
+    total_value_at_risk = sum(r["value_at_risk"] for r in rows)
+    waterfall = [{"x": r["feature"], "y": r["value_at_risk"]} for r in rows]
+
+    narrative = (
+        f"{no_go} of {len(cells)} readiness cells are no-go. "
+        f"{len(rows)} features carry {total_value_at_risk:,.2f} in value at risk. "
+        f"{len(owner_rows)} owners have open digests."
+    )
+
+    return {
+        "version_id": str(version_id),
+        "narrative": narrative,
+        "readiness_cells": cells,
+        "waterfall": waterfall,
+        "impact_rows": rows,
+        "owner_rows": owner_rows,
+    }
