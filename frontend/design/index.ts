@@ -35,6 +35,7 @@ export * from "./charts/Waterfall";
 export * from "./charts/Radar";
 export * from "./charts/Heatmap";
 export * from "./charts/Sparkline";
+export * from "./charts/Graph";
 
 export * from "./templates/HomePage";
 export * from "./templates/ExplorerPage";
