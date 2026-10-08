@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Moon, Rows3, Sun } from "lucide-react";
-import { Rail, TopBar, CommandPalette } from "@/design";
+import { Rail, TopBar, CommandPalette, ToastViewport } from "@/design";
 import { AuthGuard, HeaderExportMenu, NotificationBell, UserButton } from "@/components/shell/widgets";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
@@ -58,6 +58,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+      <ToastViewport />
     </AuthGuard>
   );
 }

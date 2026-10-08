@@ -159,19 +159,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
-  {
-    group: "Redesign (Wave 1)",
-    items: [
-      { href: "/home", label: "Home", icon: LayoutDashIcon, anyOf: ["view"], keywords: "dashboard overview" },
-      { href: "/objects", label: "Objects", icon: DatabaseIcon, anyOf: ["view"], keywords: "data master records" },
-      { href: "/runs", label: "Runs", icon: WorkflowIcon, anyOf: ["view"], keywords: "jobs executions" },
-      { href: "/fix", label: "Fix", icon: Eraser, anyOf: ["view"], keywords: "cleaning corrections" },
-      { href: "/inbox", label: "Inbox", icon: ClipboardIcon, anyOf: ["view"], keywords: "tasks notifications queue" },
-      { href: "/insights", label: "Insights", icon: SparklesNavIcon, anyOf: ["view"], keywords: "analysis patterns ai" },
-      { href: "/systems", label: "Systems", icon: ServerIcon, anyOf: ["view"], keywords: "sap connect infrastructure" },
-      { href: "/rules", label: "Rules", icon: Sliders, anyOf: ["view"], keywords: "configuration checks validation" },
-    ],
-  },
 ];
 
 /** Header titles for routes that are not in the nav. */

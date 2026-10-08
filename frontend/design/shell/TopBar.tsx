@@ -2,7 +2,7 @@
 
 import { Breadcrumb } from "./Breadcrumb";
 import { JobTray } from "./JobTray";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?: ReactNode; commandPalette?: ReactNode; userMenu?: ReactNode }) {
   return (
@@ -10,7 +10,9 @@ export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?
       className="flex items-center justify-between px-4 h-12 border-b"
       style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
     >
-      <Breadcrumb />
+      <Suspense fallback={null}>
+        <Breadcrumb />
+      </Suspense>
       <div className="flex items-center gap-3">
         {runSelector}
         {commandPalette}

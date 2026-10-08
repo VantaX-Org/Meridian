@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Rail, TopBar, CommandPalette } from "@/design";
+import { Rail, TopBar, CommandPalette, ToastViewport } from "@/design";
 import { AuthGuard } from "@/components/shell/widgets";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
@@ -24,6 +24,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+      <ToastViewport />
     </AuthGuard>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
+import { Button } from "../primitives/Button";
 
 export interface CommandItem {
   label: string;
@@ -25,22 +26,27 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
   }, []);
 
   return (
-    <Command.Dialog open={open} onOpenChange={setOpen} label="Command palette">
-      <Command.Input placeholder="Jump to..." />
-      <Command.List>
-        <Command.Empty>No results.</Command.Empty>
-        {items.map((item) => (
-          <Command.Item
-            key={item.href}
-            onSelect={() => {
-              router.push(item.href);
-              setOpen(false);
-            }}
-          >
-            {item.label}
-          </Command.Item>
-        ))}
-      </Command.List>
-    </Command.Dialog>
+    <>
+      <Button variant="ghost" onClick={() => setOpen(true)} aria-label="Search">
+        Search <kbd style={{ marginLeft: 6, color: "var(--m-ink-3)" }}>⌘K</kbd>
+      </Button>
+      <Command.Dialog open={open} onOpenChange={setOpen} label="Command palette">
+        <Command.Input placeholder="Jump to..." />
+        <Command.List>
+          <Command.Empty>No results.</Command.Empty>
+          {items.map((item) => (
+            <Command.Item
+              key={item.href}
+              onSelect={() => {
+                router.push(item.href);
+                setOpen(false);
+              }}
+            >
+              {item.label}
+            </Command.Item>
+          ))}
+        </Command.List>
+      </Command.Dialog>
+    </>
   );
 }
