@@ -271,3 +271,35 @@ def test_stale_system_widens_an_empty_default_window(monkeypatch):
     cov = {c["table"]: c for c in coverage}
     assert cov["BKPF"]["rows"] == 1 and cov["BKPF"]["window"] == plan_modules(["fi_gl"], get_dictionary("ecc6"))["BKPF"].wide_where
     assert cov["BSEG"]["rows"] == 2
+
+
+def test_extract_sink_receives_each_data_table_and_keeps_it_out_of_frames(monkeypatch):
+    """With a sink, every live data table is handed over once (TABLE.FIELD columns, its
+    coverage entry) and released, so a large system never holds all tables at once."""
+    from api.services import connectivity_manager as cm
+
+    lfa1 = pd.DataFrame({"MANDT": ["100"] * 2, "LIFNR": ["V1", "V2"], "NAME1": ["A", "B"], "KTOKK": ["KRED"] * 2})
+    lfb1 = pd.DataFrame({"MANDT": ["100"], "LIFNR": ["V1"], "BUKRS": ["1000"], "AKONT": ["160000"]})
+    fake = FakeRFCConnector({"LFA1": lfa1, "LFB1": lfb1})
+
+    class Mgr(cm.ConnectivityManager):
+        def __init__(self):
+            self.tenant_id, self.session = "t", None
+
+        def _load_system(self, sid):
+            return type("R", (), {"system_type": "ecc", "id": sid})()
+
+        def _build_connection_params(self, row):
+            return {"system_type": "ecc"}
+
+        def _get_connector(self, system_type, params):
+            return fake
+
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
+    stored = {}
+    frames, coverage = Mgr().extract("sys", ["accounts_payable"], sink=lambda t, df, e: stored.__setitem__(t, (df, e)))
+    live_data = {c["table"] for c in coverage if c["status"] == "live" and c.get("purpose", "data") == "data"}
+    assert {"LFA1", "LFB1"} <= live_data == set(stored)
+    assert "LFA1.LIFNR" in stored["LFA1"][0].columns and stored["LFA1"][1]["rows"] == 2
+    assert not live_data & set(frames)  # data tables released; config tables still returned
+    assert all(c.get("purpose") == "config" for c in coverage if c["table"] in frames)

@@ -104,7 +104,34 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                                 rows_done=sum(t["rows"] for t in tables), rows_total=sum(t["expected"] or 0 for t in tables),
                                 message=f"Reading {p['table']}" if p.get("table") else "Reading tables")
 
-            frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress)
+            from api.config import settings
+            from api.services.source_design import dictionary_for
+            from api.services.storage import upload_file
+            from workers.dataset import parquet_name
+
+            prefix = f"staging/{tenant_id}/{version_id}/"
+            stored_rows: dict[str, int] = {}
+            activity: list[str] = []
+            profiles: list[tuple[str, dict, list[dict]]] = []
+            dictionary = dictionary_for(session, system_id)
+
+            def store(table: str, df, entry: dict) -> None:
+                """One data table, straight to the bundle: the frame is dropped once uploaded."""
+                buf = io.BytesIO()
+                # arrow-backed strings: the frame as read, not a python-object copy of it
+                df.astype("string[pyarrow]").to_parquet(buf, index=False)
+                # Upload failure fails the extraction — never report success
+                # for data the checks cannot read.
+                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
+                del buf
+                stored_rows[table] = len(df)
+                if (d := latest_activity({table: df})) is not None:
+                    activity.append(d)
+                profiles.append(_profile(session, tenant_id, system_id, version_id, modules, table, df, entry, dictionary))
+                jobs.update_job(tenant_id, job_id, stage="read", rows_done=sum(stored_rows.values()),
+                                message=f"Stored {table}")
+
+            frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress, sink=store)
             progress({"step": "saving", "percent": 99})
             jobs.update_job(tenant_id, job_id, stage="store", message="Storing data")
             # refresh the live configuration the value rules compare against
@@ -114,37 +141,24 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     df = frames[c["table"]]
                     _store_config(session, tenant_id, system_id, "*", c["table"],
                                   df.rename(columns=lambda x: x.split(".", 1)[-1]).to_dict(orient="records"))
-            data_tables = {t: df for t, df in frames.items()
-                           if any(c["table"] == t and c.get("purpose", "data") == "data" for c in coverage)}
-            if not data_tables:
+            # non-ABAP connectors return their data tables in frames: store them the same way
+            for c in coverage:
+                if c["status"] == "live" and c.get("purpose", "data") == "data" and c["table"] in frames \
+                        and c["table"] not in stored_rows:
+                    store(c["table"], frames.pop(c["table"]), c)
+            if not stored_rows:
                 _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
                 progress({"status": "failed", "error": "No data tables were read"}, 3600)
                 jobs.finish_job(tenant_id, job_id, "failed", error="No data table could be read",
                                 result={"coverage": coverage})
                 logger.error(f"Extraction from {system_id} produced no data tables: {coverage}")
                 return {"status": "failed", "coverage": coverage}
-
-            from api.config import settings
-            from api.services.storage import upload_file
-            from workers.dataset import parquet_name
-
-            prefix = f"staging/{tenant_id}/{version_id}/"
-            total_rows = int(sum(len(d) for d in data_tables.values()))
-            stored = 0
-            for table, df in data_tables.items():
-                buf = io.BytesIO()
-                df.astype("string").to_parquet(buf, index=False)
-                # Upload failure fails the extraction — never report success
-                # for data the checks cannot read.
-                upload_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}", buf.getvalue())
-                stored += len(df)
-                jobs.update_job(tenant_id, job_id, stage="store", rows_done=stored, rows_total=total_rows,
-                                message=f"Stored {table}")
             jobs.update_job(tenant_id, job_id, stage="register", message="Registering version")
 
             from checks.frames import _graph
             anchors = _graph()[1]
-            object_rows = {m: len(data_tables[anchors[m]]) for m in modules if anchors.get(m) in data_tables}
+            object_rows = {m: stored_rows[anchors[m]] for m in modules if anchors.get(m) in stored_rows}
+            total_rows = int(sum(stored_rows.values()))
             session.execute(
                 text("""
                     INSERT INTO analysis_versions (id, tenant_id, status, label, metadata)
@@ -155,11 +169,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "modules": modules, "source": "extraction", "system_id": system_id,
                     "scope": scope or {}, "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
-                    "latest_activity": latest_activity(data_tables),
+                    "latest_activity": max(activity) if activity else None,
                     # SAP system-local time vs UTC; None = unknown (checks treat it as 0)
                     "sap_utc_offset_seconds": getattr(manager, "sap_utc_offset_seconds", None),
                     "dataset_path": prefix, "object_rows": object_rows,
-                    "coverage": coverage, "row_count": int(sum(len(d) for d in data_tables.values())),
+                    "coverage": coverage, "row_count": total_rows,
                     # every data table read completely (row count reconciled, no truncation, no paging drift)
                     "extraction_complete": all(c.get("complete", True) for c in coverage if c["status"] == "live")
                                            and not any(c["status"] == "failed" for c in coverage),
@@ -168,10 +182,9 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             session.commit()
 
             failed = {c["table"] for c in coverage if c["status"] == "failed" or c.get("complete") is False}
-            _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success",
-                          int(sum(len(d) for d in data_tables.values())))
-            jobs.update_job(tenant_id, job_id, stage="register", message="Profiling tables for anomalies")
-            _flag_anomalies(session, tenant_id, system_id, version_id, modules, data_tables, coverage)
+            _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success", total_rows)
+            jobs.update_job(tenant_id, job_id, stage="register", message="Recording table profiles")
+            _store_profiles(session, tenant_id, system_id, version_id, profiles)
 
         progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
@@ -182,7 +195,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         jobs.finish_job(tenant_id, job_id, result={"version_id": version_id, "coverage": coverage,
                                                    "analysis": "queued" if analyse else "on_request"},
                         message="Download complete" + (" — analysis queued" if analyse else ""))
-        logger.info(f"Extraction {version_id}: {len(data_tables)} tables, analysis {'enqueued' if analyse else 'on request'}")
+        logger.info(f"Extraction {version_id}: {len(stored_rows)} tables, analysis {'enqueued' if analyse else 'on request'}")
         return {"status": "success", "version_id": version_id, "coverage": coverage}
 
     except SoftTimeLimitExceeded:
@@ -226,27 +239,41 @@ _FINDING_SQL = text("""
 """)
 
 
-def _flag_anomalies(session, tenant_id, system_id, version_id, modules, data_tables, coverage) -> None:
-    """Profile every data table (checks/anomaly.py), store the profile as the next
-    runs' baseline and record deviations from the system's previous extractions as
-    findings of type 'anomaly'. Best effort: a failure here never fails the download."""
-    from api.services.source_design import dictionary_for
+def _profile(session, tenant_id, system_id, version_id, modules, table, df, entry, dictionary) -> tuple[str, dict, list[dict]]:
+    """Profile one data table while its frame is still in memory (checks/anomaly.py)
+    and compute its deviations from the system's previous extractions. Returns the
+    profile and the finding rows; nothing is written here because table_profiles
+    references the version row, which does not exist until every table is stored.
+    Best effort: a failure here never fails the download."""
     from checks import anomaly
 
     try:
-        dictionary = dictionary_for(session, system_id)
-        cov = {c["table"]: c for c in coverage}
+        profile = {**anomaly.profile_table(df, table, dictionary),
+                   "window": entry.get("window"), "truncated": bool(entry.get("truncated"))}
+        history = session.execute(text("""
+            SELECT profile FROM table_profiles
+             WHERE tenant_id = :tid AND system_id = :sid AND table_name = :t AND version_id <> :vid
+             ORDER BY created_at DESC LIMIT :n
+        """), {"tid": tenant_id, "sid": system_id, "t": table, "vid": version_id,
+               "n": anomaly.HISTORY}).scalars().all()[::-1]
+        module = next((m for m in entry.get("modules", ()) if m in modules), modules[0])
+        rows = [{"vid": version_id, "tid": tenant_id, "module": module, "check_id": anomaly.check_id(a),
+                 "severity": a["severity"], "dimension": a["dimension"], "affected": a["affected"],
+                 "total": a["total"], "details": json.dumps({k: a[k] for k in (
+                     "message", "metric", "table", "field", "expected", "observed", "samples")})}
+                for a in anomaly.detect(table, profile, history, df, dictionary)]
+        return table, profile, rows
+    except Exception as e:
+        logger.warning(f"Extraction {version_id}: profiling {table} failed: {e}", exc_info=True)
+        return table, {"rows": int(len(df)), "columns": {}}, []
+
+
+def _store_profiles(session, tenant_id, system_id, version_id, profiles) -> None:
+    """Store each table's profile as the next runs' baseline and its deviations as
+    findings of type 'anomaly'. Best effort: a failure here never fails the download."""
+    try:
         found = 0
-        for table, df in data_tables.items():
-            c = cov.get(table, {})
-            profile = {**anomaly.profile_table(df, table, dictionary),
-                       "window": c.get("window"), "truncated": bool(c.get("truncated"))}
-            history = session.execute(text("""
-                SELECT profile FROM table_profiles
-                 WHERE tenant_id = :tid AND system_id = :sid AND table_name = :t AND version_id <> :vid
-                 ORDER BY created_at DESC LIMIT :n
-            """), {"tid": tenant_id, "sid": system_id, "t": table, "vid": version_id,
-                   "n": anomaly.HISTORY}).scalars().all()[::-1]
+        for table, profile, rows in profiles:
             session.execute(text("""
                 INSERT INTO table_profiles (tenant_id, version_id, system_id, table_name, row_count, profile)
                 VALUES (:tid, :vid, :sid, :t, :rows, CAST(:p AS jsonb))
@@ -254,17 +281,11 @@ def _flag_anomalies(session, tenant_id, system_id, version_id, modules, data_tab
                                                                    profile = EXCLUDED.profile
             """), {"tid": tenant_id, "vid": version_id, "sid": system_id, "t": table,
                    "rows": profile["rows"], "p": json.dumps(profile)})
-            module = next((m for m in c.get("modules", ()) if m in modules), modules[0])
-            rows = [{"vid": version_id, "tid": tenant_id, "module": module, "check_id": anomaly.check_id(a),
-                     "severity": a["severity"], "dimension": a["dimension"], "affected": a["affected"],
-                     "total": a["total"], "details": json.dumps({k: a[k] for k in (
-                         "message", "metric", "table", "field", "expected", "observed", "samples")})}
-                    for a in anomaly.detect(table, profile, history, df, dictionary)]
             if rows:
                 session.execute(_FINDING_SQL, rows)
             found += len(rows)
             session.commit()  # per table: a later failure keeps what is done
-        logger.info(f"Extraction {version_id}: {len(data_tables)} tables profiled, {found} anomalies")
+        logger.info(f"Extraction {version_id}: {len(profiles)} tables profiled, {found} anomalies")
     except Exception as e:
         session.rollback()
         logger.warning(f"Extraction {version_id}: anomaly detection failed: {e}", exc_info=True)

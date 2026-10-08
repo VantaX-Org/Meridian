@@ -1,44 +1,48 @@
-"""Core sync Celery task — extract data from SAP via RFC, run AI quality checks, then run_checks.
+"""Core sync Celery task — download one sync profile's domain, score the batch, then run_checks.
 
-Reads sync_profile, decrypts credentials from system_credentials using tenant-scoped AES-256,
-opens RFC connection, extracts all domain tables, merges into DataFrame.
-Calls ai_sync_quality.py BEFORE run_checks.py.
-If ai_quality_score < 0.6, adds a batch-level WARNING finding to all findings in this run.
+The download itself is run_extraction (module-aware, one parquet per table,
+each table released from memory once stored). This task only wraps it with
+the sync bookkeeping: the sync_runs row, the AI batch-quality score on the
+domain's anchor table (ai_sync_quality.py, BEFORE run_checks), the version's
+sync metadata and the relationship discovery pass afterwards.
+If ai_quality_score < 0.6, a batch-level WARNING finding is added to the version.
 """
 
 import io
 import json
 import logging
-import os
-import re
-import traceback
 import uuid
-from datetime import datetime, timezone
 
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
-from workers.db import get_sync_engine
-from api.services import jobs
 from api.services.run_steps import record_step
+from workers.db import get_sync_engine
+from workers.tasks.run_extraction import EXTRACT_TIME_LIMIT, run_extraction
 
 logger = logging.getLogger("meridian.worker.run_sync")
 
 
-def _get_minio_client():
-    from minio import Minio
-    return Minio(
-        endpoint=os.getenv("MINIO_ENDPOINT", "minio:9000"),
-        access_key=os.getenv("MINIO_ACCESS_KEY", "meridian"),
-        secret_key=os.getenv("MINIO_SECRET_KEY") or os.getenv("MINIO_PASSWORD") or "",
-        secure=False,
-    )
+def _anchor_frame(tenant_id: str, prefix: str, domain: str, coverage: list[dict]) -> pd.DataFrame | None:
+    """The domain's anchor table (checks/frames.py) read back from the bundle, or the
+    first data table read when the domain has no anchor; None when nothing was stored."""
+    from api.config import settings
+    from checks.frames import _graph
+    from workers.dataset import _client, _read, parquet_name
+
+    live = [c["table"] for c in coverage if c["status"] == "live" and c.get("purpose", "data") == "data"]
+    table = _graph()[1].get(domain)
+    if table not in live:
+        table = live[0] if live else None
+    if table is None:
+        return None
+    return pd.read_parquet(io.BytesIO(_read(_client(), settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}")))
 
 
 @celery_app.task(bind=True, name="workers.tasks.run_sync.run_sync",
-                 soft_time_limit=600, time_limit=660)
+                 soft_time_limit=EXTRACT_TIME_LIMIT, time_limit=EXTRACT_TIME_LIMIT + 60)
 def run_sync(self, profile_id: str, tenant_id: str):
     """Execute a full sync cycle for one sync profile."""
     logger.info(f"run_sync started: profile_id={profile_id}, tenant_id={tenant_id}")
@@ -63,9 +67,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
         # Load profile
         result = session.execute(
             text("""
-                SELECT sp.domain, sp.tables, sp.ai_anomaly_baseline,
-                       ss.host, ss.client, ss.sysnr, ss.name as system_name,
-                       ss.id as system_id
+                SELECT sp.domain, sp.ai_anomaly_baseline, ss.name as system_name, ss.id as system_id
                 FROM sync_profiles sp
                 JOIN sap_systems ss ON sp.system_id = ss.id
                 WHERE sp.id = :pid AND sp.tenant_id = :tid AND sp.active = true
@@ -79,121 +81,51 @@ def run_sync(self, profile_id: str, tenant_id: str):
             return {"status": "failed", "error": "profile_not_found"}
 
         domain = profile_row[0]
-        tables = profile_row[1] or []
-        ai_baseline = profile_row[2]
-        host = profile_row[3]
-        client = profile_row[4]
-        sysnr = profile_row[5]
-        system_name = profile_row[6]
-        system_id = str(profile_row[7])
+        ai_baseline = profile_row[1]
+        system_name = profile_row[2]
+        system_id = str(profile_row[3])
 
-        jobs.start_job(tenant_id, sync_run_id, "extraction", f"Sync · {system_name}",
-                       status="running", system_id=system_id)
-
-        # Load encrypted credentials
-        result = session.execute(
-            text("SELECT encrypted_password FROM system_credentials WHERE system_id = :sid"),
-            {"sid": system_id},
-        )
-        cred_row = result.fetchone()
-        if not cred_row:
-            _fail_sync_run(engine, tenant_id, sync_run_id, "No credentials found for system")
-            return {"status": "failed", "error": "no_credentials"}
-
-        encrypted_password = cred_row[0]
-
-    # Step 2: Decrypt credentials
+    # Step 2: Download the domain (connection, credentials, tables, storage: run_extraction).
+    # Direct call: runs here, under this task's time limits, as one job.
+    version_id = str(uuid.uuid4())
+    prefix = f"staging/{tenant_id}/{version_id}/"
     try:
-        from api.services.credential_store import decrypt_password
-        password = decrypt_password(tenant_id, encrypted_password)
+        result = run_extraction(tenant_id, system_id, [domain], analyse=False,
+                                label=f"Sync {system_name}", version_id=version_id)
     except Exception as e:
-        _fail_sync_run(engine, tenant_id, sync_run_id, f"Credential decryption failed: {e}")
-        return {"status": "failed", "error": "decryption_failed"}
+        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {str(e)[:300]}",
+                       version_id=version_id)
+        return {"status": "failed", "error": "extraction_failed"}
+    if result.get("status") != "success":
+        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {result.get('error') or 'no data'}",
+                       version_id=version_id)
+        return {"status": "failed", "error": result.get("error") or "no_data"}
+    coverage = result.get("coverage") or []
+    total_rows = sum(int(c.get("rows") or 0) for c in coverage
+                     if c["status"] == "live" and c.get("purpose", "data") == "data")
 
-    # Step 3: Connect to SAP and extract data
-    from sap import get_connector
-    from sap.base import SAPConnectionParams, SAPConnectorError, SAPConnector
-
-    rfc_user = os.getenv("SAP_RFC_USER", "RFC_USER")
-
-    params = SAPConnectionParams(
-        host=host,
-        client=client,
-        sysnr=sysnr,
-        user=rfc_user,
-        password=password,
-    )
-
-    all_dfs = []
-    total_rows = 0
-    sap_utc_offset = None
-
-    try:
-        with get_connector() as conn:
-            conn.connect(params)
-            from sap.ddic_reader import utc_offset_seconds
-            sap_utc_offset = utc_offset_seconds(conn)
-
-            for table_name in tables:
-                try:
-                    df = conn.read_table(table_name, fields=[], max_rows=0)
-                    if not df.empty:
-                        df["_source_table"] = table_name
-                        all_dfs.append(df)
-                        total_rows += len(df)
-                    logger.info(f"Extracted {len(df)} rows from {table_name}")
-                except SAPConnectorError as e:
-                    safe_msg = SAPConnector._mask_password(str(e), password)
-                    logger.warning(f"Failed to extract {table_name}: {safe_msg}")
-
-            # Step 3b: RFC relationship discovery (while conn is still open)
-            try:
-                from api.services.relationship_discovery import discover_relationships_rfc
-                with Session(engine) as rfc_session:
-                    rfc_session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-                    rfc_discovered = discover_relationships_rfc(conn, tenant_id, domain, rfc_session)
-                    logger.info(f"RFC relationship discovery: {len(rfc_discovered)} relationships found")
-            except Exception as e:
-                logger.warning(f"RFC relationship discovery failed (non-fatal): {e}")
-
-    except SAPConnectorError as e:
-        safe_msg = SAPConnector._mask_password(str(e), password)
-        if "pyrfc_not_installed" in str(e):
-            _fail_sync_run(engine, tenant_id, sync_run_id, "PyRFC is not installed")
-            return {"status": "failed", "error": "pyrfc_not_installed"}
-        _fail_sync_run(engine, tenant_id, sync_run_id, f"SAP connector failed: {safe_msg}")
-        return {"status": "failed", "error": "rfc_error"}
-    finally:
-        password = ""  # clear from memory
-
-    if not all_dfs:
-        _fail_sync_run(engine, tenant_id, sync_run_id, "No data extracted from any table")
-        return {"status": "failed", "error": "no_data"}
-
-    # Step 4: Merge DataFrames
-    merged_df = pd.concat(all_dfs, ignore_index=True)
-    logger.info(f"Total rows extracted: {total_rows} from {len(all_dfs)} tables")
-
-    # Step 5: Run AI sync quality BEFORE checks
+    # Step 3: Run AI sync quality on the anchor table BEFORE checks
     from workers.tasks.ai_sync_quality import compute_sync_quality, build_baseline
 
-    ai_quality_score, anomaly_flags = compute_sync_quality(merged_df, ai_baseline)
+    anchor = _anchor_frame(tenant_id, prefix, domain, coverage)
+    if anchor is None:
+        _fail_sync_run(engine, tenant_id, sync_run_id, "No data extracted from any table", version_id=version_id)
+        return {"status": "failed", "error": "no_data"}
+    # a baseline from the old merged-frame sync shares no columns with the anchor: start over
+    if ai_baseline and not set(ai_baseline.get("columns") or []) & set(anchor.columns):
+        ai_baseline = None
+    ai_quality_score, anomaly_flags = compute_sync_quality(anchor, ai_baseline)
     logger.info(f"AI sync quality score: {ai_quality_score}, flags: {len(anomaly_flags)}")
 
-    # Update baseline if this is the first run
-    if ai_baseline is None:
-        new_baseline = build_baseline(merged_df)
-        with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            session.execute(
-                text("UPDATE sync_profiles SET ai_anomaly_baseline = CAST(:baseline AS jsonb) WHERE id = :pid"),
-                {"baseline": json.dumps(new_baseline), "pid": profile_id},
-            )
-            session.commit()
-
-    # Update sync_runs with AI quality results
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        # Establish the baseline on the first run
+        if ai_baseline is None:
+            session.execute(
+                text("UPDATE sync_profiles SET ai_anomaly_baseline = CAST(:baseline AS jsonb) WHERE id = :pid"),
+                {"baseline": json.dumps(build_baseline(anchor)), "pid": profile_id},
+            )
+        # Update sync_runs with AI quality results
         session.execute(
             text("""
                 UPDATE sync_runs
@@ -201,64 +133,35 @@ def run_sync(self, profile_id: str, tenant_id: str):
                     rows_extracted = :rows
                 WHERE id = :rid
             """),
-            {
-                "score": ai_quality_score,
-                "flags": json.dumps(anomaly_flags),
-                "rows": total_rows,
-                "rid": sync_run_id,
-            },
+            {"score": ai_quality_score, "flags": json.dumps(anomaly_flags), "rows": total_rows, "rid": sync_run_id},
         )
-        session.commit()
-
-    # Step 6: Apply column mapping and store parquet
-    from api.services.column_mapper import apply_column_mapping
-
-    mapped_df = apply_column_mapping(merged_df, domain)
-
-    file_id = str(uuid.uuid4())
-    parquet_buffer = io.BytesIO()
-    mapped_df.to_parquet(parquet_buffer, index=False)
-    parquet_bytes = parquet_buffer.getvalue()
-    parquet_path = f"staging/{tenant_id}/{file_id}.parquet"
-
-    from api.services.storage import upload_file as minio_upload
-    bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
-    minio_upload(bucket, parquet_path, parquet_bytes, "application/octet-stream")
-
-    # Step 7: Create analysis_versions record
-    version_id = str(uuid.uuid4())
-    metadata = {
-        "source": "sync",
-        # links the version to its system: trends, heatmap and alert comparisons scope by it
-        "system_id": system_id,
-        "system_name": system_name,
-        "domain": domain,
-        "tables": tables,
-        "row_count": total_rows,
-        "columns": list(mapped_df.columns),
-        "modules": [domain],
-        "parquet_path": parquet_path,
-        "sync_run_id": sync_run_id,
-        "sap_utc_offset_seconds": sap_utc_offset,
-    }
-
-    with Session(engine) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        # Step 4: mark the version as a sync version; parquet_path is the bundle prefix
+        # (workers/dataset.py reads a prefix as the per-table bundle)
         session.execute(
             text("""
-                INSERT INTO analysis_versions (id, tenant_id, metadata, status)
-                VALUES (:vid, :tid, CAST(:meta AS jsonb), 'pending')
+                UPDATE analysis_versions
+                SET metadata = metadata || CAST(:meta AS jsonb), status = 'pending'
+                WHERE id = :vid AND tenant_id = :tid
             """),
-            {"vid": version_id, "tid": tenant_id, "meta": json.dumps(metadata)},
+            {"vid": version_id, "tid": tenant_id, "meta": json.dumps({
+                "source": "sync", "sync_run_id": sync_run_id, "system_name": system_name,
+                "domain": domain, "parquet_path": prefix,
+            })},
         )
         session.commit()
+    del anchor
 
-    # Step 8: Run checks (reuse existing task logic)
+    # Step 5: Run checks (reuse existing task logic)
+    from api.services import jobs
     from workers.tasks.run_checks import run_checks
-    run_checks.delay(version_id, tenant_id, parquet_path)
+    jobs.start_job(tenant_id, version_id, "analysis", f"Sync {system_name}", status="queued",
+                   progress_key=version_id, system_id=system_id, version_id=version_id)
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="running")
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="complete")
+    run_checks.delay(version_id, tenant_id, prefix)
     logger.info(f"Enqueued run_checks for sync extraction: version={version_id}")
 
-    # Step 9: Complete sync run
+    # Step 6: Complete sync run
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
         session.execute(
@@ -275,13 +178,8 @@ def run_sync(self, profile_id: str, tenant_id: str):
             {"pid": profile_id},
         )
         session.commit()
-    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="running")
-    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="complete")
 
-    jobs.finish_job(tenant_id, sync_run_id, "completed",
-                    result={"version_id": version_id, "rows_extracted": total_rows})
-
-    # Step 10: Relationship discovery + AI impact scoring
+    # Step 7: Relationship discovery + AI impact scoring
     try:
         from api.services.relationship_discovery import (
             discover_relationships_from_data,
@@ -360,13 +258,13 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
 
 def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str,
-                    version_id: str | None = None) -> None:
+                   version_id: str | None = None) -> None:
     """Mark a sync run as failed.
 
-    ``version_id`` is only available once this sync run's ``analysis_versions``
-    row has been created (see Step 7 in ``run_sync``); when given, the decisive
-    failure is also recorded as a step-0 row in ``analysis_run_steps`` so the
-    run detail page can show why a sync-type run died.
+    ``version_id`` is the analysis_versions row this sync run was downloading into
+    (known from Step 2 onward); when given, the decisive failure is also recorded
+    as a step-0 row in ``analysis_run_steps`` so the run detail page can show why
+    a sync-type run died.
     """
     logger.error(f"Sync run {sync_run_id} failed: {error_detail}")
     if version_id:
@@ -384,6 +282,5 @@ def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str,
                 {"err": error_detail, "rid": sync_run_id},
             )
             session.commit()
-        jobs.finish_job(tenant_id, sync_run_id, "failed", error=error_detail)
     except Exception as e:
         logger.error(f"Failed to update sync_runs status: {e}")
