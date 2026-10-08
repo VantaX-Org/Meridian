@@ -1,4 +1,4 @@
-import { waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as lineageApi from "@/lib/api/lineage";
@@ -41,5 +41,15 @@ describe("LineagePage", () => {
     });
     renderWithQuery(<LineagePage />);
     await waitFor(() => expect(lineageApi.getLineage).toHaveBeenCalled());
+  });
+
+  it("shows the API error message for the lineage model and retries on click", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
+    vi.spyOn(lineageApi, "getLineageModel").mockRejectedValue(new Error("lineage model service unavailable"));
+    renderWithQuery(<LineagePage />);
+    await screen.findByText("lineage model service unavailable");
+    const calls = (lineageApi.getLineageModel as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect((lineageApi.getLineageModel as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
   });
 });

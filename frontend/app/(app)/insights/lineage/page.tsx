@@ -13,7 +13,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, DataTable, Drawer, EmptyState, Graph, type GraphEdge, type GraphNode,
+  Button, DataTable, Drawer, EmptyState, ErrorState, Graph, type GraphEdge, type GraphNode,
   Mono, Pill, type PillTone, ReportPage, Select, Skeleton,
 } from "@/design";
 import { useLatestVersion } from "@/components/process/shared";
@@ -159,7 +159,10 @@ export default function LineagePage() {
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (draft.trim()) { setFocus(draft.trim()); setSelId(null); } };
 
   if (modelQ.isLoading) return <div className="p-6"><Skeleton height={240} /></div>;
-  if (modelQ.error || !modelQ.data) return <div className="p-6"><EmptyState title="The lineage model could not be read." /></div>;
+  if (modelQ.error) {
+    return <div className="p-6"><ErrorState message={modelQ.error instanceof Error ? modelQ.error.message : "The lineage model could not be read."} onRetry={() => void modelQ.refetch()} /></div>;
+  }
+  if (!modelQ.data) return <div className="p-6"><EmptyState title="The lineage model could not be read." /></div>;
   const model = modelQ.data;
   const sel: LineageNode | null = selId ? graphQ.data?.nodes.find((n) => n.id === selId) ?? null : null;
   const neighbours = sel ? (graphQ.data?.edges ?? []).filter((e) => e.source === sel.id || e.target === sel.id) : [];
@@ -186,7 +189,9 @@ export default function LineagePage() {
               <Button type="submit">Trace</Button>
             </form>
             {graphQ.isLoading ? <Skeleton height={240} />
-              : graphQ.error ? <EmptyState title={`${focus} is not in the lineage model.`} />
+              : graphQ.error ? (
+                <ErrorState message={graphQ.error instanceof Error ? graphQ.error.message : `${focus} is not in the lineage model.`} onRetry={() => void graphQ.refetch()} />
+              )
               : nodes.length ? (
                 <>
                   <Graph nodes={nodes} edges={edges} height={420} onNodeClick={(id) => setSelId(id)} />
