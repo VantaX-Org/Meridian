@@ -36,6 +36,9 @@ const nextConfig: NextConfig = {
       { source: "/golden-records", destination: "/mdm/golden", permanent: false },
       { source: "/golden-records/:id", destination: "/mdm/golden/:id", permanent: false },
       { source: "/golden-records/:id/merge", destination: "/mdm/golden/merge", permanent: false },
+      { source: "/match-rules", destination: "/mdm/match-rules", permanent: false },
+      { source: "/match-rules/constraints", destination: "/mdm/match-rules", permanent: false },
+      { source: "/match-rules/tuning", destination: "/mdm/match-rules", permanent: false },
     ];
   },
 

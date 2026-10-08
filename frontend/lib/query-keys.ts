@@ -41,6 +41,9 @@ export const queryKeys = {
   masterRecordHistory: (id: string) => ["master-records", id, "history"] as const,
   relationships: (filters: Record<string, unknown>) =>
     ["relationships", normalizeFilters(filters)] as const,
+  matchRules: (domain?: string) => ["match-rules", domain ?? ""] as const,
+  pairConstraints: (filters: Record<string, unknown>) =>
+    ["pair-constraints", normalizeFilters(filters)] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

@@ -23,6 +23,9 @@ const EXPECTED: Record<string, string> = {
   "/golden-records": "/mdm/golden",
   "/golden-records/:id": "/mdm/golden/:id",
   "/golden-records/:id/merge": "/mdm/golden/merge",
+  "/match-rules": "/mdm/match-rules",
+  "/match-rules/constraints": "/mdm/match-rules",
+  "/match-rules/tuning": "/mdm/match-rules",
 };
 
 describe("legacy route redirects", () => {
