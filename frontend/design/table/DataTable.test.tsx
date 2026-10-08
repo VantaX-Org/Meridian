@@ -1,9 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { DataTable } from "./DataTable";
 import { textColumn } from "./columns";
-
-afterEach(cleanup);
 
 interface Row {
   id: string;
@@ -50,5 +48,52 @@ describe("DataTable", () => {
     expect(screen.getByText("Detail for Bravo")).toBeInTheDocument();
     // fetchDetail is only called once, by the open — the table itself never re-fetches.
     expect(fetchDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
+    try {
+      const bigRows: Row[] = Array.from({ length: 2500 }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
+      const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} />);
+      const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
+      const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
+
+      // 36px row estimate * 2500 rows.
+      expect(tbody.style.height).toBe("90000px");
+      expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
+
+      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 86000 });
+      fireEvent.scroll(scrollParent);
+
+      expect(screen.getByText("Row 2400")).toBeInTheDocument();
+    } finally {
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+    }
+  });
+
+  it("selects rows and surfaces them to BulkBar and the bulk action callback", () => {
+    const onAction = vi.fn();
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(r) => r.id}
+        bulkActions={(selected) => (
+          <button type="button" onClick={() => onAction(selected)}>
+            Delete
+          </button>
+        )}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Select row 2"));
+    fireEvent.click(screen.getByLabelText("Select row 1"));
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onAction).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: "2" }),
+      expect.objectContaining({ id: "1" }),
+    ]));
+    expect(onAction.mock.calls[0][0]).toHaveLength(2);
   });
 });
