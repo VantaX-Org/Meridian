@@ -1,14 +1,14 @@
 // frontend/app/(app)/insights/impact/page.tsx
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, DrillLink, ReportPage } from "@/design";
+import { DataTable, DrillLink, ReportPage } from "@/design";
 import { getImpact, type ImpactRow } from "@/lib/api/insights";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const columns: ColumnDef<ImpactRow>[] = [
   {
@@ -32,6 +32,7 @@ const columns: ColumnDef<ImpactRow>[] = [
 export default function ImpactPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
+  const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("impact", run),
@@ -45,11 +46,11 @@ export default function ImpactPage() {
       narrative="value_at_risk = record_count × value_per_record"
       charts={null}
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => row.feature} />}
-      state={isLoading ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={isLoading || dayOne.status === "loading" ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No impact results yet.",
-        detail: "Impact builds up once a run has blocked or degraded features.",
-        action: <Button render={<Link href="/objects">Open objects</Link>} />,
+        detail: dayOne.step?.detail ?? "Impact builds up once a run has blocked or degraded features.",
+        action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
       errorProps={{
         message: apiErrorMessage(error),

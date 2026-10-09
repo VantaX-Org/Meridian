@@ -32,6 +32,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -74,6 +75,8 @@ async function getAllRules(category?: string): Promise<Rule[]> {
 export default function RulesPage() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
+  const dayOne = useDayOne();
+  const hasFinishedRun = dayOne.status !== "loading" && dayOne.step === null;
   const [category, setCategory] = useUrlState("category", "all");
   const [module, setModule] = useUrlState("module", "");
   const [check, setCheck] = useUrlState("check", "");
@@ -262,7 +265,14 @@ export default function RulesPage() {
       {coverageRows.length ? (
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Coverage by object</p>
-          <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
+          {hasFinishedRun ? (
+            <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
+          ) : (
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+              <span>Coverage is measured on a finished run.</span>
+              <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />
+            </div>
+          )}
         </div>
       ) : null}
       {rulesQ.isLoading ? (

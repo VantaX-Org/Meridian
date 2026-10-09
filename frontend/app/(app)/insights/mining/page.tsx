@@ -46,6 +46,7 @@ import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)} %`;
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
@@ -81,6 +82,7 @@ function GraphTally() {
 
 function EntityLinks() {
   const [domain, setDomain] = useState("");
+  const dayOne = useDayOne();
   const q = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
   const rels = useMemo(() => q.data?.relationships ?? [], [q.data]);
 
@@ -131,9 +133,15 @@ function EntityLinks() {
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
-        {q.isLoading ? <Skeleton height={440} />
+        {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={440} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
-          : <EmptyState title="No relationships recorded yet. They appear once an analysis has linked records across domains." />}
+          : (
+            <EmptyState
+              title="No relationships recorded yet."
+              detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across domains."}
+              action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+            />
+          )}
       </div>
       <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships." />
     </div>
@@ -144,6 +152,7 @@ function EntityLinks() {
 
 function Dependencies() {
   const router = useRouter();
+  const dayOne = useDayOne();
   const [systemId, setSystemId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [object, setObject] = useState("");
@@ -186,7 +195,13 @@ function Dependencies() {
   ], [profileHref]);
 
   if (systems.data && !systems.data.length) {
-    return <EmptyState title="No SAP systems yet. Connect a system and analyse a download to mine its dependencies." />;
+    return (
+      <EmptyState
+        title="No SAP systems yet."
+        detail={dayOne.step?.detail ?? "Connect a system and analyse a download to mine its dependencies."}
+        action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+      />
+    );
   }
   return (
     <div className="flex flex-col gap-6">

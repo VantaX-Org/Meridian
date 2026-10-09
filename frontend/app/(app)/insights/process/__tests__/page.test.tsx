@@ -12,6 +12,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/insights/process",
 }));
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 const LATEST = {
   id: "v1", label: "Run 1", status: "complete", run_at: "2026-01-01T00:00:00Z",
   dqs_summary: { material_master: 90 },

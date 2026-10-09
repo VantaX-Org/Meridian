@@ -8,6 +8,7 @@ import { DataTable, Pill, ReportPage, Waterfall, type PillTone } from "@/design"
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -42,13 +43,14 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 export default function ExecPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
+  const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", run),
     queryFn: () => getExec({ version_id: run }),
   });
 
-  const state: "loading" | "empty" | "error" | undefined = isLoading
+  const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
     : isError
       ? "error"
@@ -87,7 +89,11 @@ export default function ExecPage() {
         </div>
       }
       state={state}
-      emptyProps={{ title: "No executive summary data for this run yet." }}
+      emptyProps={{
+        title: "No executive summary data for this run yet.",
+        detail: dayOne.step?.detail,
+        action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+      }}
       errorProps={{
         message: apiErrorMessage(error),
         onRetry: () => refetch(),

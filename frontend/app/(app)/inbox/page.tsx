@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 import { Button, DataTable, Drawer, ExplorerPage, Field, Pill, Select, Stat, toastManager, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -31,9 +30,11 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { getUnreadCount } from "@/lib/api/notifications";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const HOUR = 3_600_000;
@@ -88,6 +89,7 @@ export default function InboxPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { can } = useRole();
+  const dayOne = useDayOne();
   // Backend guards (api/routes/stewardship.py): resolve, assign and bulk approve need `approve`; escalate needs `view`.
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
@@ -129,6 +131,7 @@ export default function InboxPage() {
 
   const isLoading = queues.some((q) => q.isLoading);
   const isError = queues.some((q) => q.isError);
+  const firstError = isExceptions ? excQ.error : queues.find((q) => q.isError)?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
@@ -370,12 +373,12 @@ export default function InboxPage() {
           : all.length === 0
           ? {
               title: "Inbox zero.",
-              detail: "Tasks arrive when findings are assigned or proposals need review.",
-              action: <Button render={<Link href="/objects">Open objects</Link>} />,
+              detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
+              action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
             }
           : { title: "No tasks in this view." }
       }
-      errorProps={{ message: "The inbox could not be read.", onRetry: refresh }}
+      errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-6">

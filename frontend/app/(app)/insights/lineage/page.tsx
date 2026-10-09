@@ -23,6 +23,7 @@ import {
 } from "@/lib/api/lineage";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
 // ponytail: force layout past this many nodes is unreadable. Narrow the trace depth to see the rest.
@@ -107,6 +108,7 @@ export default function LineagePage() {
   const [depth, setDepth] = useState(4);
   const [selId, setSelId] = useState<string | null>(null);
   const { latest } = useLatestVersion();
+  const dayOne = useDayOne();
 
   const modelQ = useQuery({ queryKey: queryKeys.lineageModel(), queryFn: getLineageModel });
   const impactQ = useQuery({
@@ -209,8 +211,16 @@ export default function LineagePage() {
             onRowClick={(r) => trace(r.id)}
           />
         }
-        state={impactQ.isLoading ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
-        emptyProps={{ title: latest ? "No failing rule reaches a KPI, process or feature." : "No lineage yet." }}
+        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
+        emptyProps={
+          latest
+            ? { title: "No failing rule reaches a KPI, process or feature." }
+            : {
+                title: "No lineage yet.",
+                detail: dayOne.step?.detail ?? "Impact needs a completed analysis.",
+                action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+              }
+        }
         errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => impactQ.refetch() }}
       />
 

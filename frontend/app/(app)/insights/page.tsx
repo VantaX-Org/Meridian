@@ -6,6 +6,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Button, EmptyState, Skeleton } from "@/design";
 import { getExec, getImpact, getOwners, getReadiness } from "@/lib/api/insights";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 interface Tile {
   key: string;
@@ -42,6 +43,7 @@ function TileMetric({ query, metric }: { query?: UseQueryResult<unknown>; metric
 }
 
 export default function InsightsIndexPage() {
+  const dayOne = useDayOne();
   const readiness = useQuery({ queryKey: queryKeys.insights("readiness"), queryFn: () => getReadiness() });
   const impact = useQuery({ queryKey: queryKeys.insights("impact"), queryFn: () => getImpact() });
   const owners = useQuery({ queryKey: queryKeys.insights("owners"), queryFn: () => getOwners() });
@@ -52,7 +54,7 @@ export default function InsightsIndexPage() {
   const threshold = readiness.data?.threshold;
   const ownersBelowThreshold = threshold === undefined ? undefined : owners.data?.owners.filter((o) => o.score < threshold).length;
 
-  const allLoaded = [readiness, impact, owners, exec].every((q) => !q.isLoading && !q.isError);
+  const allLoaded = dayOne.status !== "loading" && [readiness, impact, owners, exec].every((q) => !q.isLoading && !q.isError);
   const allEmpty =
     allLoaded &&
     (readiness.data?.cells.length ?? 0) === 0 &&
@@ -72,8 +74,8 @@ export default function InsightsIndexPage() {
     return (
       <EmptyState
         title="No insights yet."
-        detail="Insights build up once a run has finished analysing."
-        action={<Button render={<Link href="/runs">Open runs</Link>} />}
+        detail={dayOne.step?.detail ?? "Insights build up once a run has finished analysing."}
+        action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />}
       />
     );
   }
