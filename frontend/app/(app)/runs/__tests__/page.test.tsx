@@ -87,4 +87,27 @@ describe("RunsPage", () => {
     expect(compareOlder).toHaveAttribute("aria-disabled", "true");
     expect(within(rowOlder).queryByRole("link", { name: "Compare" })).not.toBeInTheDocument();
   });
+
+  it("shows an error state with Try again when runs fail to load, and retries on click", async () => {
+    const getVersions = vi.spyOn(versionsApi, "getVersions").mockRejectedValueOnce(new Error("network down"));
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+
+    getVersions.mockResolvedValueOnce({ versions: [newer, older] });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+  });
+
+  it("filters the table to a system when its sparkline is clicked", async () => {
+    const getVersions = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /ECC Prod/ }));
+
+    await waitFor(() => expect(screen.getByText("Filtered")).toBeInTheDocument());
+    expect(getVersions).toHaveBeenCalledWith({ system_id: "sys-1", limit: 100 });
+  });
 });

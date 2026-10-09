@@ -26,6 +26,7 @@ import {
   type PillTone,
   type SelectOption,
 } from "@/design";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -144,14 +145,15 @@ export default function CompareRunsPage() {
   });
 
   const resolvedV1 = diffQ.data?.v1;
+  const debouncedKeyFilter = useDebouncedValue(keyFilter, 300);
   const keysQ = useQuery({
-    queryKey: [...queryKeys.runCompare(versionId, b), "keys", checkId, "new", keyFilter, keyPage],
+    queryKey: [...queryKeys.runCompare(versionId, b), "keys", checkId, "new", debouncedKeyFilter, keyPage],
     queryFn: () =>
       compareRecordKeys(checkId ?? "", {
         v1: resolvedV1 ?? "",
         v2: versionId,
         change: "new",
-        search: keyFilter || undefined,
+        search: debouncedKeyFilter || undefined,
         limit: KEYS_PAGE_SIZE,
         offset: (keyPage - 1) * KEYS_PAGE_SIZE,
       }),
@@ -170,11 +172,9 @@ export default function CompareRunsPage() {
   const create = useMutation({
     mutationFn: (c: CheckChange) =>
       createBatch(`Regressions ${c.check_id} ${v2Label}`, { version_id: versionId, check_id: c.check_id, module: c.module }),
-    onSuccess: () => {
-      toast.success("Batch created", { action: { label: "Open batches", onClick: () => router.push("/fix?tab=batches") } });
-      qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
-    },
-    onError: (e: unknown) => toast.error(errorText(e)),
+    // No toast here: it would fire once per batch in the bulk-create loop below. Each
+    // caller (single button, bulk loop) decides its own toast via mutate/mutateAsync options.
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() }),
   });
 
   const sentences = useMemo(() => (cmp ? compareNarrative(cmp, diff) : []), [cmp, diff]);
@@ -249,7 +249,19 @@ export default function CompareRunsPage() {
                 action={
                   canFix
                     ? (c) => (
-                        <Button variant="ghost" disabled={create.isPending} onClick={() => create.mutate(c)}>
+                        <Button
+                          variant="ghost"
+                          disabled={create.isPending}
+                          onClick={() =>
+                            create.mutate(c, {
+                              onSuccess: () =>
+                                toast.success("Batch created", {
+                                  action: { label: "Open batches", onClick: () => router.push("/fix?tab=batches") },
+                                }),
+                              onError: (e: unknown) => toast.error(errorText(e)),
+                            })
+                          }
+                        >
                           Create fix batch
                         </Button>
                       )
@@ -309,25 +321,27 @@ export default function CompareRunsPage() {
           <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>
             New record keys for <Mono>{checkId}</Mono>
           </p>
+          <input
+            type="search"
+            aria-label="Filter record keys"
+            placeholder="Filter record keys"
+            value={keyFilter}
+            onChange={(e) => {
+              setKeyFilter(e.target.value);
+              setKeyPage(1);
+            }}
+            className="h-8 rounded border px-2 text-[13px]"
+            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+          />
           {keysQ.isLoading && <Skeleton height={80} />}
           {keysQ.isError && (
             <ErrorState message={`Couldn't load the new record keys for this check. ${errorText(keysQ.error)}`} onRetry={() => keysQ.refetch()} />
           )}
-          {keysQ.data && keysQ.data.record_keys.length === 0 && <EmptyState title="No new record keys for this check." />}
+          {keysQ.data && keysQ.data.record_keys.length === 0 && (
+            <EmptyState title={keyFilter ? "No record keys match your filter." : "No new record keys for this check."} />
+          )}
           {keysQ.data && keysQ.data.record_keys.length > 0 && (
             <>
-              <input
-                type="search"
-                aria-label="Filter record keys"
-                placeholder="Filter record keys"
-                value={keyFilter}
-                onChange={(e) => {
-                  setKeyFilter(e.target.value);
-                  setKeyPage(1);
-                }}
-                className="h-8 rounded border px-2 text-[13px]"
-                style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
-              />
               <ul className="flex flex-col gap-1">
                 {pageKeys.map((key) => (
                   <li key={key}>

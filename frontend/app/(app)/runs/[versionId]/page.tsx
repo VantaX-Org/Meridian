@@ -55,7 +55,7 @@ export default function RunDetailPage() {
   const systemId = version.data?.metadata?.system_id;
   const scope = useQuery({
     queryKey: queryKeys.versionsList({ system_id: systemId }),
-    queryFn: () => getVersions(systemId ? { system_id: systemId, limit: 100 } : undefined),
+    queryFn: () => getVersions({ ...(systemId ? { system_id: systemId } : {}), limit: 100 }),
     enabled: version.isSuccess,
   });
 

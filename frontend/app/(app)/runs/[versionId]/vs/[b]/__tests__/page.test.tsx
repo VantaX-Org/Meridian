@@ -111,16 +111,35 @@ describe("CompareRunsPage", () => {
   });
 
   it("re-queries the comparison with the chosen module and keeps all modules as Select options", async () => {
-    const compareVersions = vi.spyOn(versionsApi, "compareVersions").mockResolvedValue(cmp);
+    const multiModuleCmp: VersionComparison = {
+      ...cmp,
+      delta: {
+        ...cmp.delta,
+        accounts_payable: { dqs_change: 1, v1_score: 80, v2_score: 81, dimensions: {} },
+      },
+    };
+    // The unfiltered call (no module param) returns both modules; a filtered call returns only
+    // the requested one, mirroring what the API actually does.
+    const compareVersions = vi
+      .spyOn(versionsApi, "compareVersions")
+      .mockImplementation((_v1, _v2, module) => Promise.resolve(module ? cmp : multiModuleCmp));
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("combobox", { name: "Module" }));
-    const option = await screen.findByRole("option", { name: "Material Master" });
-    await user.click(option);
+    expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Material Master" }));
+
     await waitFor(() => expect(compareVersions).toHaveBeenCalledWith("v1", "v2", "material_master"));
     expect(screen.getByRole("combobox", { name: "Module" })).toHaveTextContent("Material Master");
+
+    // The Select's options still list every module, even though the filtered response only
+    // carries material_master — proving the options come from the unfiltered query, not `cmp`.
+    await user.click(screen.getByRole("combobox", { name: "Module" }));
+    expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
   });
 
   it("creates fix batches in bulk, reporting partial success", async () => {
@@ -146,5 +165,24 @@ describe("CompareRunsPage", () => {
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches"));
     expect(toast.error).toHaveBeenCalledWith("1 fix batch failed to create");
+    // Exactly one success toast (the summary) and one error toast — no per-mutation "Batch
+    // created" toast firing inside the bulk loop.
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the record-key filter input mounted and shows filter-specific copy when nothing matches", async () => {
+    vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: [] });
+    const user = userEvent.setup();
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByText("MM041")[0]);
+    await waitFor(() => expect(screen.getByText("No new record keys for this check.")).toBeInTheDocument());
+
+    const input = screen.getByLabelText("Filter record keys");
+    await user.type(input, "zzz-no-match");
+
+    await waitFor(() => expect(screen.getByText("No record keys match your filter.")).toBeInTheDocument());
+    expect(screen.getByLabelText("Filter record keys")).toBeInTheDocument();
   });
 });

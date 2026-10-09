@@ -59,9 +59,12 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
           );
         }
         return (
-          <Link href={`/runs/${row.original.id}/vs/${prevId}`} onClick={(e) => e.stopPropagation()}>
-            <Button variant="secondary">Compare</Button>
-          </Link>
+          <Button
+            variant="secondary"
+            render={<Link href={`/runs/${row.original.id}/vs/${prevId}`} onClick={(e) => e.stopPropagation()} />}
+          >
+            Compare
+          </Button>
         );
       },
     },
