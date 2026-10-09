@@ -39,13 +39,13 @@ describe("GlossaryPage", () => {
   it("shows an empty state when no terms match", async () => {
     vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GlossaryPage />);
-    await waitFor(() => expect(screen.getByText(/no glossary terms/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no terms yet/i)).toBeInTheDocument());
   });
 
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(glossaryApi, "getGlossaryTerms").mockRejectedValue(new Error("glossary service unavailable"));
     renderWithQuery(<GlossaryPage />);
-    await screen.findByText("glossary service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (glossaryApi.getGlossaryTerms as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((glossaryApi.getGlossaryTerms as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));

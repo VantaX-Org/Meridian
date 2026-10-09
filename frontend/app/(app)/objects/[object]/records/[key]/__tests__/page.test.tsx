@@ -79,6 +79,6 @@ describe("RecordFixSheetPage", () => {
       matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [],
     });
     renderWithQuery(<RecordFixSheetPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 });

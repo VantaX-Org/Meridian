@@ -14,6 +14,9 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/runs",
   useSearchParams: () => searchParams,
 }));
+// useDayOne() shares the systems/versions query keys with this page's own queries;
+// mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
+vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "ready", step: null }) }));
 
 const zeroDimensions: DimensionScores = {
   completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0,
@@ -93,7 +96,7 @@ describe("RunsPage", () => {
     const getVersions = vi.spyOn(versionsApi, "getVersions").mockRejectedValueOnce(new Error("network down"));
     vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<RunsPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
 
     getVersions.mockResolvedValueOnce({ versions: [newer, older] });
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));

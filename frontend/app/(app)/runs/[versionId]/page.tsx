@@ -1,12 +1,13 @@
 // frontend/app/(app)/runs/[versionId]/page.tsx
 "use client";
 
+import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { errorText } from "@/lib/api/remediation";
 import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
@@ -72,7 +73,16 @@ export default function RunDetailPage() {
   });
 
   if (version.isError) {
-    return <ErrorState message={`Couldn't load this run. ${errorText(version.error)}`} onRetry={() => version.refetch()} />;
+    if (isAxiosError(version.error) && version.error.response?.status === 404) {
+      return (
+        <EmptyState
+          title="Run not found."
+          detail="It may have been archived."
+          action={<Button render={<Link href="/runs">All runs</Link>} />}
+        />
+      );
+    }
+    return <ErrorState message={errorText(version.error)} onRetry={() => version.refetch()} />;
   }
 
   const v = version.data;
@@ -111,7 +121,7 @@ export default function RunDetailPage() {
       tables={<DataTable columns={stepColumns} data={stepRows} getRowId={(s) => String(s.step_number)} />}
       state={state}
       emptyProps={{ title: "No step history for this run yet." }}
-      errorProps={{ message: "Couldn't load the run steps.", onRetry: () => steps.refetch() }}
+      errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
     />
   );
 }

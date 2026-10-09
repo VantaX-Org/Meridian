@@ -193,7 +193,11 @@ export default function SystemPage() {
               />
             ),
           },
-          { value: "runs", label: "Runs", content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} /> },
+          {
+            value: "runs",
+            label: "Runs",
+            content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} canSync={can("trigger_sync")} />,
+          },
           {
             value: "health",
             label: "Health",
@@ -356,11 +360,19 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
-function Runs({ systemId, versions, loading }: { systemId: string; versions: SystemVersion[]; loading: boolean }) {
+function Runs({ systemId, versions, loading, canSync }: { systemId: string; versions: SystemVersion[]; loading: boolean; canSync: boolean }) {
   const router = useRouter();
   const columns = useMemo(() => runColumns(), []);
   if (loading) return <Skeleton height={240} />;
-  if (!versions.length) return <EmptyState title="Nothing has been extracted from this system yet." />;
+  if (!versions.length) {
+    return (
+      <EmptyState
+        title="No runs for this system."
+        detail="Run an extraction to create the first run."
+        action={canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run extraction</Link>} /> : undefined}
+      />
+    );
+  }
   return (
     <DataTable
       columns={columns}

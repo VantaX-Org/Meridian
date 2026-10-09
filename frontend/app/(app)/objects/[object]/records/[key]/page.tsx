@@ -2,12 +2,14 @@
 "use client";
 
 import { Fragment } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { EmptyState, ErrorState, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, EmptyState, ErrorState, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
 
@@ -16,7 +18,7 @@ const sectionHeading = "text-[14px] font-semibold";
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
     <ErrorState
-      message={`Couldn't load ${what}. ${query.error?.message ?? ""}`.trim()}
+      message={apiErrorMessage(query.error)}
       onRetry={() => query.refetch()}
     />
   );
@@ -75,14 +77,20 @@ export default function RecordFixSheetPage() {
   if (recordQuery.isError) {
     return (
       <ErrorState
-        message={`Couldn't load this record. ${recordQuery.error.message}`}
+        message={apiErrorMessage(recordQuery.error)}
         onRetry={() => recordQuery.refetch()}
       />
     );
   }
   const material = recordQuery.data;
   if (!material) {
-    return <EmptyState title="This record was not found for this run." />;
+    return (
+      <EmptyState
+        title="Record not found in this run."
+        detail="The key may belong to another system or run."
+        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+      />
+    );
   }
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));

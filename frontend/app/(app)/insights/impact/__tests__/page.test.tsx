@@ -37,13 +37,13 @@ describe("ImpactPage", () => {
   it("shows an empty state when there are no impacted features", async () => {
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     renderWithQuery(<ImpactPage />);
-    await waitFor(() => expect(screen.getByText(/no blocked or degraded features/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no impact results yet/i)).toBeInTheDocument());
   });
 
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getImpact").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ImpactPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the impact request when the retry button is clicked", async () => {
@@ -56,7 +56,7 @@ describe("ImpactPage", () => {
     const retry = await screen.findByRole("button", { name: /retry/i });
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.getByText(/no blocked or degraded features/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no impact results yet/i)).toBeInTheDocument());
     expect(getImpact).toHaveBeenCalledTimes(2);
   });
 });

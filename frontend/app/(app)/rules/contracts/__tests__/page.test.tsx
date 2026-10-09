@@ -38,7 +38,7 @@ describe("rules contracts page", () => {
   it("shows a retryable error when contracts fail to load", async () => {
     const spy = vi.spyOn(contractsApi, "getContracts").mockRejectedValue(new Error("network down"));
     renderWithQuery(<ContractsPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue({ contracts: [CONTRACT], total: 1 });
     retry.click();

@@ -30,7 +30,7 @@ describe("MatchRulesPage", () => {
     vi.spyOn(matchRulesApi, "getMatchRules").mockRejectedValue(new Error("rules service unavailable"));
     vi.spyOn(mergeExplainApi, "getPairConstraints").mockResolvedValue([]);
     renderWithQuery(<MatchRulesPage />);
-    await screen.findByText("rules service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (matchRulesApi.getMatchRules as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() =>

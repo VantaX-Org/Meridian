@@ -3,7 +3,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -44,6 +45,9 @@ export default function ReadinessPage() {
   const emptyDetail = data && !data.configured
     ? "Set readiness waves under Settings > Alert Thresholds."
     : undefined;
+  const emptyAction = data && !data.configured
+    ? <Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />
+    : undefined;
 
   const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
   const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
@@ -82,7 +86,7 @@ export default function ReadinessPage() {
         </table>
       }
       state={state}
-      emptyProps={{ title: emptyTitle, detail: emptyDetail, ghost: "grid" }}
+      emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
       errorProps={{
         message: apiErrorMessage(error),
         onRetry: () => refetch(),

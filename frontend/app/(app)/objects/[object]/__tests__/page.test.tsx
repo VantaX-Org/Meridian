@@ -49,12 +49,12 @@ describe("ObjectDetailPage", () => {
       rules: [],
     });
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByText(/no rules/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no results for this object in this run/i)).toBeInTheDocument());
   });
 
   it("shows an error state when the request fails", async () => {
     vi.spyOn(objectsApi, "getObject").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ObjectDetailPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 });

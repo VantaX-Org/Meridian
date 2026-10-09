@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
+import { useDayOne } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/systems";
@@ -78,6 +79,7 @@ function scopeName(scope: string, systemName: Map<string, string>): string {
 export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
+  const dayOne = useDayOne();
 
   const all = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions({ limit: 100 }) });
   const filtered = useQuery({
@@ -146,8 +148,15 @@ export default function RunsPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No runs yet. Upload a file or connect a system to start a run." }}
-      errorProps={{ message: `Couldn't load runs. ${errorText(activeQuery.error)}`, onRetry: () => activeQuery.refetch() }}
+      emptyProps={{
+        title: "No runs yet.",
+        detail: dayOne.step?.detail ?? "Connect a system to start your first run.",
+        action: (
+          <Button render={<Link href={dayOne.step?.href ?? "/systems"}>{dayOne.step?.label ?? "Connect a system"}</Link>} />
+        ),
+        ghost: "table",
+      }}
+      errorProps={{ message: errorText(activeQuery.error), onRetry: () => activeQuery.refetch() }}
     />
   );
 }

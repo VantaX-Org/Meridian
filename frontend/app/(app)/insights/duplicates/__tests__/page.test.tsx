@@ -145,7 +145,7 @@ describe("DuplicatesPage", () => {
     vi.spyOn(insightsApi, "getDuplicateCluster").mockRejectedValue(new Error("network error"));
     renderWithQuery(<DuplicatesPage />);
     await pickObjectAndRecord();
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the cluster request when the retry button is clicked", async () => {

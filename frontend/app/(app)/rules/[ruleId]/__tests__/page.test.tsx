@@ -56,7 +56,7 @@ describe("rule detail page", () => {
   it("shows a retryable error when the rule fails to load", async () => {
     const spy = vi.spyOn(rulesApi, "getRule").mockRejectedValue(new Error("network down"));
     renderWithQuery(<RulePage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(RULE);
     retry.click();

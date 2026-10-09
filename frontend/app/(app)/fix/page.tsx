@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Mono, Pager, Pill, Tabs } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, Pager, Pill, Tabs } from "@/design";
+import { useDayOne } from "@/hooks/use-day-one";
 import { getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
+import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -31,8 +34,9 @@ const columns: ColumnDef<CleaningBatchSummary>[] = [
 
 function CleaningQueueTab() {
   const router = useRouter();
+  const dayOne = useDayOne();
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: [...queryKeys.batch("list"), page],
     queryFn: () => getCleaningQueue({ per_page: 100, page }),
   });
@@ -42,8 +46,14 @@ function CleaningQueueTab() {
   return (
     <ExplorerPage
       state={isLoading ? "loading" : isError ? "error" : batches.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No batches yet" }}
-      errorProps={{ message: "Could not load the fix queue.", onRetry: refetch }}
+      emptyProps={{
+        title: "No cleaning proposals.",
+        detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",
+        action: (
+          <Button render={<Link href={dayOne.step?.href ?? "/objects"}>{dayOne.step?.label ?? "Open objects"}</Link>} />
+        ),
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       table={
         <div className="flex flex-col gap-3">
           <DataTable

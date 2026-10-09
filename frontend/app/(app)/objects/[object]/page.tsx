@@ -1,11 +1,14 @@
 // frontend/app/(app)/objects/[object]/page.tsx
 "use client";
 
+import type { ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Bar, DataTable, ReportPage, SeverityDot, isSeverity } from "@/design";
+import Link from "next/link";
+import { Bar, Button, DataTable, ReportPage, SeverityDot, isSeverity } from "@/design";
 import { getObject, type ObjectRule } from "@/lib/api/v1/objects";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const columns: ColumnDef<ObjectRule>[] = [
@@ -39,7 +42,9 @@ export default function ObjectDetailPage() {
   });
 
   let state: "loading" | "empty" | "error" | undefined;
-  let emptyProps = { title: "Select a run to see this object's data quality." };
+  let emptyProps: { title: string; detail?: string; action?: ReactNode } = {
+    title: "Select a run to see this object's data quality.",
+  };
   if (!run) {
     state = "empty";
   } else if (isLoading) {
@@ -48,7 +53,11 @@ export default function ObjectDetailPage() {
     state = "error";
   } else if (data && data.rules.length === 0) {
     state = "empty";
-    emptyProps = { title: "No rules have run against this object yet." };
+    emptyProps = {
+      title: "No results for this object in this run.",
+      detail: "The run did not include this object's module.",
+      action: <Button render={<Link href={`/objects?run=${run}`}>All objects</Link>} />,
+    };
   }
 
   const failing = data?.failing_checks ?? 0;
@@ -78,7 +87,7 @@ export default function ObjectDetailPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: `Couldn't load this object. ${error?.message ?? ""}`.trim(),
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

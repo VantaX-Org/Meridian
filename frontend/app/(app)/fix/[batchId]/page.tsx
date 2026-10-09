@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
   rejectCleaning,
   type CleaningQueueItem,
 } from "@/lib/api/cleaning";
+import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -22,7 +24,7 @@ const HIGH_CONFIDENCE = 0.85;
 export default function BatchPage() {
   const { batchId } = useParams<{ batchId: string }>();
   const qc = useQueryClient();
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.batch(batchId),
     queryFn: () => getCleaningQueue({ per_page: 100 }),
   });
@@ -78,8 +80,11 @@ export default function BatchPage() {
   return (
     <ExplorerPage
       state={isLoading ? "loading" : isError ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No items in this batch" }}
-      errorProps={{ message: "Could not load this batch.", onRetry: refetch }}
+      emptyProps={{
+        title: "Batch not found.",
+        action: <Button render={<Link href="/fix?tab=batches">All batches</Link>} />,
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       summary={
         <div className="flex items-center gap-3">
           <Button

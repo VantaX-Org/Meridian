@@ -25,6 +25,6 @@ describe("import page", () => {
     vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<ImportPage />);
-    await waitFor(() => expect(screen.getByText(/Nothing imported yet/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/No imports yet/)).toBeInTheDocument());
   });
 });

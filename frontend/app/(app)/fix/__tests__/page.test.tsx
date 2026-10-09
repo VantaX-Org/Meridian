@@ -18,6 +18,18 @@ vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
   return { ...actual, getCleaningQueue: vi.fn() };
 });
+vi.mock("@/lib/api/connectivity", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/connectivity")>("@/lib/api/connectivity");
+  return { ...actual, getSystems: vi.fn().mockResolvedValue([]) };
+});
+vi.mock("@/lib/api/config-load", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/config-load")>("@/lib/api/config-load");
+  return { ...actual, getConfigLandscape: vi.fn().mockResolvedValue({ total: 0, loaded: 0, counts: {}, systems: [] }) };
+});
+vi.mock("@/lib/api/versions", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/versions")>("@/lib/api/versions");
+  return { ...actual, getVersions: vi.fn().mockResolvedValue({ versions: [] }) };
+});
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
 vi.mock("@/lib/api/remediation", async () => {
@@ -57,6 +69,6 @@ describe("FixPage", () => {
     vi.mocked(getCleaningQueue).mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<FixPage />);
 
-    expect(await screen.findByText("No batches yet")).toBeInTheDocument();
+    expect(await screen.findByText("No cleaning proposals.")).toBeInTheDocument();
   });
 });

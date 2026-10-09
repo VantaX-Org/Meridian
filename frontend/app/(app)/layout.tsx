@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Pill, Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
+import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
@@ -47,7 +47,7 @@ function RunSelectorSlot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasRunParam, defaultId]);
 
-  if (isLoading) return null;
+  if (isLoading) return <Skeleton width={160} height={24} />;
   if (isError || !data) {
     return (
       <span className="inline-flex items-center gap-2">

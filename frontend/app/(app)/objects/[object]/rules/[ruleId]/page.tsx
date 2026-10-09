@@ -6,8 +6,9 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Mono, Pager, Skeleton } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, Mono, Pager, Skeleton } from "@/design";
 import { getFindingRecords, type FindingRecord } from "@/lib/api/versions";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const PAGE_SIZE = 25;
@@ -64,13 +65,19 @@ export default function RuleDetailPage() {
   if (isError) {
     return (
       <ErrorState
-        message={`Couldn't load this rule's failing records. ${error?.message ?? ""}`.trim()}
+        message={apiErrorMessage(error)}
         onRetry={() => refetch()}
       />
     );
   }
   if (!data || data.records.length === 0) {
-    return <EmptyState title="No failing records for this rule on this run." />;
+    return (
+      <EmptyState
+        title="No failing records for this rule."
+        detail="Every record passed this check in this run."
+        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+      />
+    );
   }
 
   const pageCount = Math.max(1, Math.ceil(data.total / PAGE_SIZE));

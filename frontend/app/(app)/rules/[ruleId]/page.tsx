@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton } from "@/design";
 import { getRule, updateRule } from "@/lib/api/rules";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
+import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -101,7 +104,15 @@ export default function RulePage() {
   });
 
   if (isLoading) return <Skeleton height={320} />;
-  if (isError || !data) return <ErrorState message={(error as Error)?.message || "Could not load this rule."} onRetry={() => refetch()} />;
+  if (isError && isAxiosError(error) && error.response?.status === 404) {
+    return (
+      <EmptyState
+        title="Rule not found."
+        action={<Button render={<Link href="/rules">All rules</Link>} />}
+      />
+    );
+  }
+  if (isError || !data) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
 
   return (
     <div className="flex flex-col gap-6 p-6">

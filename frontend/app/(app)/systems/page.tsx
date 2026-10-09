@@ -11,6 +11,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
+import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
@@ -196,8 +197,12 @@ export default function SystemsPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No systems connected. Connect a SAP system to start extracting data." }}
-      errorProps={{ message: `Couldn't load systems. ${error?.message ?? ""}`.trim(), onRetry: () => refetch() }}
+      emptyProps={{
+        title: "No systems connected.",
+        detail: "Connect a SAP system, or import a file if you have an export.",
+        ghost: "table",
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
     />
   );
 }

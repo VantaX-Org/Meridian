@@ -33,7 +33,7 @@ describe("systems list page", () => {
   it("shows a retryable error when systems fail to load", async () => {
     const spy = vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(new Error("network down"));
     renderWithQuery(<SystemsPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue([SYSTEM]);
     retry.click();

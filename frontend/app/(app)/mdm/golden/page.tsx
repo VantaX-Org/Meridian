@@ -5,8 +5,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field, Pager, Select } from "@/design";
+import Link from "next/link";
+import { Button, DataTable, ExplorerPage, Field, Pager, Select } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordSummary } from "@/types/api";
@@ -57,6 +59,7 @@ export default function GoldenRecordsPage() {
   const records = useMemo(() => query.data?.records ?? [], [query.data]);
   const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
   const state = query.isLoading ? "loading" : query.isError ? "error" : records.length === 0 ? "empty" : undefined;
+  const filtered = domain !== "all" || status !== "all" || !!minConfidence || !!maxConfidence;
 
   return (
     <ExplorerPage
@@ -104,9 +107,13 @@ export default function GoldenRecordsPage() {
         </div>
       }
       state={state}
-      emptyProps={{ title: "No master records match these filters." }}
+      emptyProps={
+        filtered
+          ? { title: "No master records match these filters." }
+          : { title: "No golden records.", action: <Button render={<Link href="/mdm/match-rules">Match rules</Link>} /> }
+      }
       errorProps={{
-        message: query.error instanceof Error ? query.error.message : "Could not load golden records.",
+        message: apiErrorMessage(query.error),
         onRetry: () => query.refetch(),
       }}
     />

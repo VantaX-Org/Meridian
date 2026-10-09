@@ -209,7 +209,7 @@ export default function LineagePage() {
           />
         }
         state={impactQ.isLoading ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
-        emptyProps={{ title: latest ? "No failing rule reaches a KPI, process or feature." : "Impact needs a completed analysis." }}
+        emptyProps={{ title: latest ? "No failing rule reaches a KPI, process or feature." : "No lineage yet." }}
         errorProps={{ message: impactQ.error instanceof Error ? impactQ.error.message : "Impact could not be read.", onRetry: () => impactQ.refetch() }}
       />
 

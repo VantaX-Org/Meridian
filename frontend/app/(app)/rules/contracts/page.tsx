@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button, DataTable, Drawer, ExplorerPage, Field, Mono, Pill, Select, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
+import { apiErrorMessage } from "@/lib/error";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { Contract, ContractStatus } from "@/types/api";
@@ -115,8 +116,15 @@ export default function ContractsPage() {
       }
       table={<DataTable columns={columns} data={visible} getRowId={(c) => c.id} onRowClick={(c) => setSelectedId(c.id)} />}
       state={state}
-      emptyProps={{ title: all.length ? "No contracts match." : "No data contracts yet. A contract states what a consuming system may expect from a producer." }}
-      errorProps={{ message: q.error instanceof Error ? q.error.message : "Contracts could not be read.", onRetry: () => q.refetch() }}
+      emptyProps={
+        all.length
+          ? { title: "No contracts match." }
+          : {
+              title: "No data contracts yet. A contract states what a consuming system may expect from a producer.",
+              action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined,
+            }
+      }
+      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       drawer={
         <>
           <Drawer open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)} title={selected?.name ?? "Contract"}>

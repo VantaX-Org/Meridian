@@ -53,7 +53,7 @@ describe("BatchesTab", () => {
   it("lists batches and shows an empty state when there are none", async () => {
     vi.spyOn(remediationApi, "listBatches").mockResolvedValue({ items: [] });
     renderWithQuery(<BatchesTab />);
-    expect(await screen.findByText(/No fix batches yet/)).toBeInTheDocument();
+    expect(await screen.findByText("No batches.")).toBeInTheDocument();
   });
 
   it("opens a batch's detail drawer on row click", async () => {

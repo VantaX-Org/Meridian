@@ -56,7 +56,7 @@ describe("SearchPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
-    await waitFor(() => expect(screen.getByText(/no matches/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no results for "business"/i)).toBeInTheDocument());
   });
 
   it("shows the API error message and retries on click", async () => {
@@ -67,7 +67,7 @@ describe("SearchPage", () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
-    await screen.findByText("rules service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));

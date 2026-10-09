@@ -1,11 +1,13 @@
 // frontend/app/(app)/insights/impact/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, ReportPage } from "@/design";
+import { Button, DataTable, DrillLink, ReportPage } from "@/design";
 import { getImpact, type ImpactRow } from "@/lib/api/insights";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const columns: ColumnDef<ImpactRow>[] = [
@@ -44,9 +46,13 @@ export default function ImpactPage() {
       charts={null}
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => row.feature} />}
       state={isLoading ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No blocked or degraded features for this run yet." }}
+      emptyProps={{
+        title: "No impact results yet.",
+        detail: "Impact builds up once a run has blocked or degraded features.",
+        action: <Button render={<Link href="/objects">Open objects</Link>} />,
+      }}
       errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load feature impact. Try again.",
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

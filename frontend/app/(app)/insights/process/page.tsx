@@ -225,7 +225,7 @@ function ReadinessView() {
   if (versionsLoading || bp.isLoading) return <Skeleton height={240} />;
   if (versionsError) return <ErrorState message={versionsError.message} onRetry={() => void refetchVersions()} />;
   if (!latest) {
-    return <EmptyState title="Readiness is read from the latest completed analysis. Sync a system and run an analysis."
+    return <EmptyState title="No process readiness yet." detail="Readiness is read from the latest completed analysis. Sync a system and run an analysis."
       action={<Link href="/data" className="underline">Open sync</Link>} />;
   }
 

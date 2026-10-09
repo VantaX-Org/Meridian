@@ -69,7 +69,13 @@ export default function InsightsIndexPage() {
   ];
 
   if (allEmpty) {
-    return <EmptyState title="No insights data for this run yet." />;
+    return (
+      <EmptyState
+        title="No insights yet."
+        detail="Insights build up once a run has finished analysing."
+        action={<Button render={<Link href="/runs">Open runs</Link>} />}
+      />
+    );
   }
 
   return (

@@ -11,6 +11,7 @@ import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
+import { apiErrorMessage } from "@/lib/error";
 import { rankResults, type SearchCandidate } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -108,9 +109,12 @@ export default function SearchPage() {
         />
       }
       state={loading ? "loading" : failedQuery ? "error" : q && results.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No matches. Try an object id, a rule id, a batch id or a run id." }}
+      emptyProps={{
+        title: `No results for "${q}"`,
+        detail: "Search matches object names, check ids and record keys.",
+      }}
       errorProps={{
-        message: failedQuery?.error instanceof Error ? failedQuery.error.message : "Could not load search results.",
+        message: apiErrorMessage(failedQuery?.error),
         onRetry: refetchAll,
       }}
     />

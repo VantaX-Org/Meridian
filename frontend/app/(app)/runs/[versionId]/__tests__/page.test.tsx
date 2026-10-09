@@ -80,7 +80,7 @@ describe("RunDetailPage", () => {
     const getVersion = vi.spyOn(versionsApi, "getVersion").mockRejectedValue(error);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() => expect(screen.getByText("Couldn't load this run. Version not found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Version not found")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Retry"));
     expect(getVersion).toHaveBeenCalledTimes(2);
   });

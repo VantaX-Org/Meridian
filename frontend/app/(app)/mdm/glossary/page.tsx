@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, Field, Select } from "@/design";
 import { getGlossaryTerms } from "@/lib/api/glossary";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { GlossaryTermSummary } from "@/types/api";
 
@@ -51,6 +52,7 @@ export default function GlossaryPage() {
   }, [terms]);
 
   const state = query.isLoading ? "loading" : query.isError ? "error" : terms.length === 0 ? "empty" : undefined;
+  const filtered = domain !== "all" || status !== "all" || !!search;
 
   return (
     <ExplorerPage
@@ -82,9 +84,9 @@ export default function GlossaryPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No glossary terms match these filters." }}
+      emptyProps={{ title: filtered ? "No glossary terms match these filters." : "No terms yet." }}
       errorProps={{
-        message: query.error instanceof Error ? query.error.message : "Could not load the glossary.",
+        message: apiErrorMessage(query.error),
         onRetry: () => query.refetch(),
       }}
     />

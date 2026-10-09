@@ -2,13 +2,18 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as connectivityApi from "@/lib/api/connectivity";
+import * as configLoadApi from "@/lib/api/config-load";
+import * as versionsApi from "@/lib/api/versions";
 import * as objectsApi from "@/lib/api/v1/objects";
 import ObjectsPage from "../page";
 
+let currentSearch = "run=v1";
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams("run=v1"),
+  useSearchParams: () => new URLSearchParams(currentSearch),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("ObjectsPage", () => {
   it("renders one row per object with its readiness", async () => {
@@ -39,6 +44,18 @@ describe("ObjectsPage", () => {
   it("shows an error state when the request fails", async () => {
     vi.spyOn(objectsApi, "getObjects").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
+  });
+
+  it("shows the day-one empty state when the tenant has no run yet", async () => {
+    currentSearch = "";
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: null, objects: [] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ total: 0, loaded: 0, counts: {}, systems: [] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(screen.getByText("No objects analysed yet.")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Connect a system" })).toBeInTheDocument();
+    currentSearch = "run=v1";
   });
 });

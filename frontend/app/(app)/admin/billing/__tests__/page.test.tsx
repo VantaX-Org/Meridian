@@ -30,7 +30,7 @@ describe("admin billing page", () => {
   it("shows a retryable error when billing fails to load", async () => {
     const spy = vi.spyOn(exceptionsApi, "getExceptionBilling").mockRejectedValue(new Error("network down"));
     renderWithQuery(<ExceptionBillingPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(BILLING);
     retry.click();

@@ -71,7 +71,12 @@ export default function MasterRecordPage() {
     );
   }
   if (!record) {
-    return <EmptyState title="This master record no longer exists." />;
+    return (
+      <EmptyState
+        title="Record not found."
+        action={<Button render={<Link href="/mdm/golden">All golden records</Link>} />}
+      />
+    );
   }
 
   const status: RecordStatus = record.status === "golden"

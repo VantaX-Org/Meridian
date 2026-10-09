@@ -28,6 +28,7 @@ import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, ty
 import { getVersions } from "@/lib/api/versions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
+import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
@@ -267,13 +268,18 @@ export default function RulesPage() {
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (
-        <ErrorState message={(rulesQ.error as Error).message || "Rules could not be read"} onRetry={() => rulesQ.refetch()} />
+        <ErrorState message={apiErrorMessage(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
         <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} />
-      ) : (
+      ) : filtered ? (
         <EmptyState
           title="No rules match. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards' own."
-          action={filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : undefined}
+          action={<Button variant="ghost" onClick={clearFilters}>Clear filters</Button>}
+        />
+      ) : (
+        <EmptyState
+          title="No rules loaded."
+          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
         />
       )}
 

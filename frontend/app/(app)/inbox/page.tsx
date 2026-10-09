@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { Button, DataTable, Drawer, ExplorerPage, Field, Pill, Select, Stat, toastManager, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -357,7 +358,23 @@ export default function InboxPage() {
   return (
     <ExplorerPage
       state={state}
-      emptyProps={{ title: isExceptions ? "No exceptions in this view." : all.length ? "No tasks in this view." : "Inbox zero." }}
+      emptyProps={
+        isExceptions
+          ? (excQ.data?.exceptions.length ?? 0) === 0
+            ? {
+                title: "No exceptions.",
+                detail: "Exceptions are raised by exception rules on new findings.",
+                action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
+              }
+            : { title: "No exceptions in this view." }
+          : all.length === 0
+          ? {
+              title: "Inbox zero.",
+              detail: "Tasks arrive when findings are assigned or proposals need review.",
+              action: <Button render={<Link href="/objects">Open objects</Link>} />,
+            }
+          : { title: "No tasks in this view." }
+      }
       errorProps={{ message: "The inbox could not be read.", onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">

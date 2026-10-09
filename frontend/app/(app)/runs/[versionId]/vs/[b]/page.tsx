@@ -2,9 +2,11 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
   Bar,
@@ -189,6 +191,20 @@ export default function CompareRunsPage() {
   // another, so the pager's last page is only known once a short page comes back.
   const pageKeys = keysQ.data?.record_keys ?? [];
   const keyPageCount = keyPage + (pageKeys.length === KEYS_PAGE_SIZE ? 1 : 0);
+
+  const notFound =
+    (isAxiosError(cmpQ.error) && cmpQ.error.response?.status === 404) ||
+    (isAxiosError(diffQ.error) && diffQ.error.response?.status === 404);
+
+  if (notFound) {
+    return (
+      <EmptyState
+        title="No earlier run to compare with."
+        detail="Comparison needs two finished runs of the same system."
+        action={<Button render={<Link href="/runs">All runs</Link>} />}
+      />
+    );
+  }
 
   const loading = cmpQ.isLoading || diffQ.isLoading;
   const errored = cmpQ.isError || diffQ.isError;

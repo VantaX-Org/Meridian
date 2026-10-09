@@ -97,7 +97,7 @@ export function EmptyState({
       }}
     >
       {ghost && <GhostShape kind={ghost} />}
-      <div className="flex flex-col gap-2" style={{ padding: "var(--m-space-6)" }}>
+      <div className="flex flex-col gap-2" style={{ padding: "var(--m-space-8) var(--m-space-6)" }}>
         <p className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>{title}</p>
         {detail && <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{detail}</p>}
         {action && <div className="mt-2">{action}</div>}

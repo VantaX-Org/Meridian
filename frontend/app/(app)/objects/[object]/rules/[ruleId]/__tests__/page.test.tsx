@@ -41,6 +41,6 @@ describe("RuleDetailPage", () => {
   it("shows an error state when the request fails", async () => {
     vi.spyOn(versionsApi, "getFindingRecords").mockRejectedValue(new Error("network error"));
     renderWithQuery(<RuleDetailPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 });

@@ -37,7 +37,7 @@ describe("rules page", () => {
     const spy = vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("network down"));
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     renderWithQuery(<RulesPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
     retry.click();
