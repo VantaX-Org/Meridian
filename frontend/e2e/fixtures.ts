@@ -51,6 +51,8 @@ export const test = base.extend<{ app: Page }>({
     await mockMaterial(page);
     await mockObjects(page);
     await mockInsightsReadiness(page);
+    await mockFix(page);
+    await mockExtraction(page);
     await provide(page);
   },
 });
@@ -184,6 +186,55 @@ async function mockInsightsReadiness(page: Page) {
     version_id: VERSION_ID,
     threshold: 90,
     cells: [{ module: OBJECT_SUMMARY.module, wave: "wave_1", verdict: "no_go", blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+  })));
+}
+
+/**
+ * Fix queue endpoints are not in the recording: one batch ("B1", matching the
+ * fix page's and this batch's existing Vitest fixture id) with one item.
+ */
+const CLEANING_ITEM = {
+  id: "cq1", object_type: "business_partner", status: "recommended", confidence: 0.92,
+  record_key: "LIFNR=V9|BUKRS=2000", priority: 1, detected_at: "2026-10-01T09:00:00Z", applied_at: null,
+  rollback_deadline: null, rule_id: "DUP001", batch_id: "B1", version_id: null, merge_preview: null,
+  record_data_before: null, record_data_after: null, golden_record_id: null, golden_field_value: null,
+  golden_record_exists: false,
+};
+
+async function mockFix(page: Page) {
+  await page.route(/\/api\/v1\/cleaning\/queue(\?.*)?$/, (r) =>
+    r.fulfill(json({ items: [CLEANING_ITEM], total: 1, page: 1, per_page: 500 })));
+  await page.route(/\/api\/v1\/cleaning\/approve\//, (r) =>
+    r.fulfill(json({ id: CLEANING_ITEM.id, status: "approved" })));
+}
+
+/**
+ * System "s1" and its one failed run "r1" are not in the recording — ids
+ * match this page's and the extraction page's existing Vitest fixtures.
+ */
+const SYSTEM_S1 = {
+  id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
+  base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true,
+  health_status: "healthy", health_message: null, last_health_check: null, config_last_synced_at: null,
+  config_sync_status: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+  last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, sap_release: null,
+};
+const RUN_R1 = {
+  id: "r1", run_at: "2026-10-02T10:00:00Z", label: null, status: "failed", objects: ["material_master"],
+  scope: {}, records: {}, analysed_at: null, rule_set: null, baseline: false, analysable: false, dqs: {},
+  field_status: [], extraction_complete: false, coverage: { read: 0, issues: [] }, outliers: {},
+};
+
+async function mockExtraction(page: Page) {
+  await page.route(/\/api\/v1\/systems(\?.*)?$/, (r) => r.fulfill(json([SYSTEM_S1])));
+  await page.route("**/api/v1/connectivity/systems/s1/modules", (r) => r.fulfill(json([])));
+  await page.route("**/api/v1/systems/s1/versions", (r) => r.fulfill(json({ versions: [RUN_R1], download: null })));
+  await page.route("**/api/v1/runs/r1/steps", (r) => r.fulfill(json({
+    version_id: "r1",
+    steps: [
+      { step_number: 1, step_name: "extract_BUT000", status: "ok", started_at: "2026-10-02T10:00:00Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 1200, error_detail: null },
+      { step_number: 2, step_name: "extract_MARA", status: "failed", started_at: "2026-10-02T10:00:01Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 400, error_detail: "RFC_COMMUNICATION_FAILURE: connection reset" },
+    ],
   })));
 }
 
