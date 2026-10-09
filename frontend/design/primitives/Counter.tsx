@@ -19,7 +19,9 @@ export function Counter({
   decimals?: 0 | 1;
   size?: number;
 }) {
-  const [display, setDisplay] = useState(value ?? 0);
+  // Start at 0 (not `value`) so the first paint never flashes the final
+  // number before the count-up kicks in.
+  const [display, setDisplay] = useState(0);
   const lastVersion = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -35,13 +37,19 @@ export function Counter({
       setDisplay(value);
       return;
     }
-    lastVersion.current = versionId;
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / mMotion.draw);
       setDisplay(value * easeOutCubic(t));
-      if (t < 1) raf = requestAnimationFrame(tick);
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        // Mark this version "seen" only once the animation actually finishes,
+        // not at effect start — otherwise StrictMode's mount/cleanup/remount
+        // double-invoke marks it seen before the first run ever animates.
+        lastVersion.current = versionId;
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -51,7 +59,7 @@ export function Counter({
     return (
       <span
         aria-label="No data"
-        style={{ fontSize: 72, fontWeight: 600, color: "var(--m-ink-3)", fontVariantNumeric: "tabular-nums" }}
+        style={{ fontSize: size, fontWeight: 600, color: "var(--m-ink-3)", fontVariantNumeric: "tabular-nums" }}
       >
         —
       </span>
