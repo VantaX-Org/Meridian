@@ -138,7 +138,7 @@ Light values first. Dark values under `:root[data-theme="dark"]` and under `pref
 | Sheet | `--m-sheet` | `#FFFFFF` | `#171D21` |
 | Sheet raised | `--m-sheet-raised` | `#F7F9FA` | `#1E262B` |
 | Hairline | `--m-line` | `#D5DBE0` | `#2C363D` |
-| Ink | `--m-ink` / `--m-ink-2` / `--m-ink-3` | `#101418` / `#3C4852` / `#6B7781` | `#E8EDF0` / `#AEB9C2` / `#7E8A94` |
+| Ink | `--m-ink` / `--m-ink-2` / `--m-ink-3` | `#101418` / `#3C4852` / `#5C6872` | `#E8EDF0` / `#AEB9C2` / `#84909A` |
 | Accent | `--m-accent` | `#2D3A8C` | `#8C9BEA` |
 | Accent soft | `--m-accent-soft` | `#E4E8FA` | `#242C52` |
 | Critical | `--m-critical` | `#B3261E` | `#F28B82` |
