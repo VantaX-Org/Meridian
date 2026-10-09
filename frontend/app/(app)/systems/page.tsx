@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, ExplorerPage, Pill, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "./_health";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
+import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
+import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
@@ -18,6 +20,29 @@ const HEALTH_TONE: Record<HealthStatus, PillTone> = {
   auth_failed: "no-go",
   unknown: "neutral",
 };
+
+const CONFIG_TONE: Record<SystemConfigState, PillTone> = {
+  loaded: "go",
+  with_gaps: "at-risk",
+  loading: "neutral",
+  not_loaded: "neutral",
+  failed: "no-go",
+  not_available: "neutral",
+};
+const CONFIG_LABEL: Record<SystemConfigState, string> = {
+  loaded: "Loaded",
+  with_gaps: "Loaded with gaps",
+  loading: "Loading",
+  not_loaded: "Not loaded",
+  failed: "Failed",
+  not_available: "Not available",
+};
+/** Second line under the Configuration badge: when it was loaded, or progress while loading. */
+function configSub(status: SystemConfigState, loadedAt: string | null, areasLoaded: number, areasTotal: number): string {
+  if (status === "loading") return areasTotal ? `${areasLoaded} of ${areasTotal} areas` : "Reading…";
+  if (loadedAt) return formatDate(loadedAt, "date");
+  return "—";
+}
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -30,6 +55,8 @@ export default function SystemsPage() {
   const dqsById = new Map(
     systems.map((s, i) => [s.id, versionsQ[i]?.data ? latestDqs(versionsQ[i]!.data!.versions).dqs : null]),
   );
+  const configQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
+  const configById = new Map(configQ.data?.systems.map((c) => [c.system_id, c]) ?? []);
 
   const test = useMutation({
     mutationFn: (systemId: string) => testConnection(systemId),
@@ -57,6 +84,22 @@ export default function SystemsPage() {
       },
     },
     {
+      id: "config",
+      header: "Configuration",
+      cell: ({ row }) => {
+        const c = configById.get(row.original.id);
+        if (!c) return "—";
+        return (
+          <div className="flex flex-col">
+            <Pill tone={CONFIG_TONE[c.status]}>{CONFIG_LABEL[c.status]}</Pill>
+            <span className="text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+              {configSub(c.status, c.loaded_at, c.areas_loaded, c.areas_total)}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "",
       cell: ({ row }) => (
@@ -81,6 +124,13 @@ export default function SystemsPage() {
 
   return (
     <ExplorerPage
+      summary={
+        configQ.data ? (
+          <div className="flex gap-6">
+            <Stat label="Configuration loaded" value={`${configQ.data.loaded} of ${configQ.data.total}`} />
+          </div>
+        ) : undefined
+      }
       table={
         <DataTable
           columns={columns}

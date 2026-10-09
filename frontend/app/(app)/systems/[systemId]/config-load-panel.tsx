@@ -10,12 +10,53 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, ErrorState, Mono, Pill } from "@/design";
-import { getConfigLoad, startConfigLoad, type ConfigLoad } from "@/lib/api/config-load";
+import { Button, EmptyState, ErrorState, Mono, Pill, type PillTone } from "@/design";
+import { getConfigLoad, startConfigLoad, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
+
+const AREA_TONE: Record<AreaStatus, PillTone> = {
+  waiting: "neutral",
+  running: "neutral",
+  loaded: "go",
+  failed: "no-go",
+  not_available: "neutral",
+};
+const AREA_LABEL: Record<AreaStatus, string> = {
+  waiting: "Waiting",
+  running: "Reading",
+  loaded: "Loaded",
+  failed: "Failed",
+  not_available: "Not available",
+};
+
+/** Area-by-area breakdown of a configuration load, grouped by business area. */
+function AreaRows({ areas }: { areas: LoadArea[] }) {
+  if (!areas.length) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>By area</p>
+      {areas.map((a) => (
+        <div key={a.area} className="flex flex-col gap-1 rounded border px-3 py-2" style={{ borderColor: "var(--m-line)" }}>
+          <div className="flex items-center justify-between">
+            <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{a.label}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{a.tables_done} of {a.tables_total}</span>
+              <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
+            </div>
+          </div>
+          {a.objects.filter((o) => o.state === "failed").map((o) => (
+            <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              Could not read <Mono>{o.object}</Mono>.{o.detail ? ` ${o.detail}` : ""}
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** SAP BTP has no business configuration to read. */
 export const hasNoConfig = (t: SystemType) => t === "btp";
@@ -106,15 +147,24 @@ function Result({ load, retry, retrying, canLoad }: { load: ConfigLoad; retry: (
           <dt style={{ color: "var(--m-ink-2)" }}>Processes derived</dt>
           <dd>{load.flows_derived ? <Link href="/process?tab=readiness" className="underline">View in Process</Link> : "None"}</dd>
         </div>
+        {load.areas.length ? (
+          <div><dt style={{ color: "var(--m-ink-2)" }}>Areas loaded</dt><dd>{load.areas_loaded} of {load.areas_total}</dd></div>
+        ) : null}
       </dl>
-      {failed.slice(0, MAX_FAILED_ROWS).map((o) => (
-        <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-          Could not read <Mono>{o.object}</Mono>.{o.detail ? ` ${o.detail}` : ""}
-        </p>
-      ))}
-      {failed.length > MAX_FAILED_ROWS ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>and {failed.length - MAX_FAILED_ROWS} more.</p>
-      ) : null}
+      {load.areas.length ? (
+        <AreaRows areas={load.areas} />
+      ) : (
+        <>
+          {failed.slice(0, MAX_FAILED_ROWS).map((o) => (
+            <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              Could not read <Mono>{o.object}</Mono>.{o.detail ? ` ${o.detail}` : ""}
+            </p>
+          ))}
+          {failed.length > MAX_FAILED_ROWS ? (
+            <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>and {failed.length - MAX_FAILED_ROWS} more.</p>
+          ) : null}
+        </>
+      )}
       {na ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Not available from this system: {na} {na === 1 ? "object" : "objects"}. Nothing to fix.

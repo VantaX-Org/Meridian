@@ -24,7 +24,7 @@ import {
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
-import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally } from "@/lib/api/config-load";
+import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -60,8 +60,61 @@ const records = (n: number) => `${n.toLocaleString()} ${n === 1 ? "record" : "re
 const AWARE_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", warning: "at-risk", low: "go" };
 const AWARE_LABEL: Record<string, string> = { critical: "Critical", high: "High", medium: "Medium", warning: "Warning", low: "Low" };
 
-function RulesBlock({ title, t, findingHref }: {
+function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
+  return (
+    <>
+      {items.map((c, i) => (
+        <span key={i}>
+          {i > 0 ? "; " : ""}
+          {c.tcode ? <Mono>{c.tcode}</Mono> : c.path}
+        </span>
+      ))}
+    </>
+  );
+}
+
+const NOT_APPLICABLE_PREVIEW = 3;
+
+function NotApplicableList({ t, findingHref }: {
+  t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (!t.not_applicable_rules.length) {
+    return t.not_applicable ? (
+      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
+      </p>
+    ) : null;
+  }
+  const shown = expanded ? t.not_applicable_rules : t.not_applicable_rules.slice(0, NOT_APPLICABLE_PREVIEW);
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Does not apply ({t.not_applicable.toLocaleString()}):</p>
+      <ul className="flex flex-col gap-1">
+        {shown.map((na) => (
+          <li key={na.check_id} className="flex items-center gap-3">
+            <Pill tone={AWARE_TONE[na.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[na.severity ?? ""] ?? na.severity ?? "Unrated"}</Pill>
+            <Link className="flex-1 underline" href={findingHref(na.module, na.check_id) ?? "/analyse"}>
+              <Mono>{na.check_id}</Mono>
+            </Link>
+            <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              {na.reason ?? "Not used by the loaded configuration"}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {t.not_applicable_rules.length > NOT_APPLICABLE_PREVIEW ? (
+        <button type="button" className="text-[13px] underline self-start" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? "Show fewer" : `Show all ${t.not_applicable_rules.length}`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function RulesBlock({ title, t, findingHref, configuredIn }: {
   title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+  configuredIn?: ConfiguredIn[];
 }) {
   const failing = t.applicable - t.passes;
   return (
@@ -70,6 +123,11 @@ function RulesBlock({ title, t, findingHref }: {
       <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}%, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
       </p>
+      {configuredIn?.length ? (
+        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+          Where this is configured: <ConfiguredInText items={configuredIn} />
+        </p>
+      ) : null}
       {t.top_failing.length ? (
         <ul className="flex flex-col gap-1" aria-label={`Top failing rules, ${title}`}>
           {t.top_failing.slice(0, 5).map((f) => (
@@ -83,11 +141,7 @@ function RulesBlock({ title, t, findingHref }: {
           ))}
         </ul>
       ) : null}
-      {t.not_applicable ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-          Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
-        </p>
-      ) : null}
+      <NotApplicableList t={t} findingHref={findingHref} />
     </div>
   );
 }
@@ -286,7 +340,9 @@ function ReadinessView() {
             </p>
           ) : null}
           <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
-          {awareL1.l2.map((l2) => <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} />)}
+          {awareL1.l2.map((l2) => (
+            <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} configuredIn={l2.configured_in} />
+          ))}
         </div>
       ) : null}
 

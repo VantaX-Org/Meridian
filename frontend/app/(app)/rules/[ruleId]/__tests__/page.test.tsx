@@ -5,7 +5,10 @@ import * as rulesApi from "@/lib/api/rules";
 import type { Rule } from "@/lib/api/rules";
 import RulePage from "../page";
 
-vi.mock("next/navigation", () => ({ useParams: () => ({ ruleId: "r1" }) }));
+vi.mock("next/navigation", () => ({
+  useParams: () => ({ ruleId: "r1" }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 const RULE: Rule = {
   id: "r1", name: "AP001: Vendor number is mandatory", description: null, module: "business_partner",

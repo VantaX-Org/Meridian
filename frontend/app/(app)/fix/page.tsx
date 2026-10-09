@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Mono, Pill } from "@/design";
+import { DataTable, ExplorerPage, Mono, Pill, Tabs } from "@/design";
 import { getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useUrlState } from "@/hooks/use-url-state";
+import { BatchesTab } from "./batches-tab";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
   { accessorKey: "batch_id", header: "Batch", cell: ({ row }) => <Mono>{row.original.batch_id}</Mono> },
@@ -27,7 +29,7 @@ const columns: ColumnDef<CleaningBatchSummary>[] = [
   },
 ];
 
-export default function FixPage() {
+function CleaningQueueTab() {
   const router = useRouter();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.batch("list"),
@@ -48,6 +50,24 @@ export default function FixPage() {
           onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
         />
       }
+    />
+  );
+}
+
+export default function FixPage() {
+  // ponytail: Tabs is uncontrolled (no `value` prop), so the URL only seeds the
+  // initial tab and records later switches; browser back/forward won't flip it.
+  // Good enough for deep-linking in from Monitoring; upgrade if that's ever needed.
+  const [tab, setTab] = useUrlState("tab", "cleaning");
+
+  return (
+    <Tabs
+      defaultValue={tab}
+      onValueChange={setTab}
+      items={[
+        { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
+        { value: "batches", label: "Batches", content: <BatchesTab /> },
+      ]}
     />
   );
 }

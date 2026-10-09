@@ -6,10 +6,23 @@ import FixPage from "../page";
 import { getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+// Stable instance across re-renders: useUrlState's sync effect depends on this
+// object's identity (see app/(app)/rules/__tests__/page.test.tsx for the same pattern).
+const searchParams = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: vi.fn() }),
+  usePathname: () => "/fix",
+  useSearchParams: () => searchParams,
+}));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
   return { ...actual, getCleaningQueue: vi.fn() };
+});
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
+vi.mock("@/lib/api/remediation", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/api/remediation")>("@/lib/api/remediation");
+  return { ...actual, listBatches: vi.fn().mockResolvedValue({ items: [] }), getMonitor: vi.fn().mockResolvedValue({ items: [] }) };
 });
 
 const item = (over: Partial<CleaningQueueItem>): CleaningQueueItem => ({
