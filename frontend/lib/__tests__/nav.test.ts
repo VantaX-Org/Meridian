@@ -20,4 +20,11 @@ describe("getPageTitle", () => {
   it("resolves a shared href (/systems) to the first-listed nav item's title", () => {
     expect(getPageTitle("/systems")).toBe("Systems");
   });
+
+  it("labels the runs page Runs and keeps compare searchable", () => {
+    const runs = flattenNav(NAV_GROUPS.flatMap((g) => g.items)).find((n) => n.href === "/runs");
+    expect(runs?.label).toBe("Runs");
+    expect(runs?.keywords).toContain("compare");
+    expect(getPageTitle("/runs")).toBe("Runs");
+  });
 });

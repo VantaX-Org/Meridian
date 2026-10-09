@@ -112,7 +112,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/objects", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
       { href: "/inbox", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
-      { href: "/runs", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
+      { href: "/runs", label: "Runs", icon: GitCompareIcon, licenceKey: "versions", keywords: "compare history snapshots baseline" },
     ],
   },
   {
