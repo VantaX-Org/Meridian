@@ -1,14 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
-import { flattenNav } from "@/lib/nav";
+import { useRole } from "@/hooks/use-role";
+import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -18,7 +19,8 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
-  const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: item.href })));
+  const { role } = useRole();
+  const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: resolveNavHref(item.href, role) })));
   return <CommandPalette items={items} />;
 }
 
@@ -51,7 +53,6 @@ function RunSelectorSlot() {
   if (isError || !data) {
     return (
       <span className="inline-flex items-center gap-2">
-        <RunSelector runs={[]} />
         <Pill tone="no-go">Runs unavailable</Pill>
         <Button variant="ghost" onClick={() => refetch()}>Retry</Button>
       </span>
@@ -72,7 +73,7 @@ function RunSelectorSlot() {
 
   const runs: RunOption[] = versions.map((v) => ({
     id: v.id,
-    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"}, ${formatDate(v.run_at, "date")}`,
+    label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
   }));
   return <RunSelector runs={runs} />;
 }
@@ -83,7 +84,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex h-screen">
         <Rail />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <TopBar runSelector={<RunSelectorSlot />} commandPalette={<CommandPaletteSlot />} />
+          <TopBar
+            runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
+            commandPalette={<CommandPaletteSlot />}
+          />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             {children}
           </main>
