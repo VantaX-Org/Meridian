@@ -241,7 +241,7 @@ function TuningTab() {
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
         <ErrorState
-          message={rulesQuery.error instanceof Error ? rulesQuery.error.message : "Match rules could not be loaded."}
+          message={apiErrorMessage(rulesQuery.error)}
           onRetry={() => void rulesQuery.refetch()}
         />
       ) : (
@@ -357,7 +357,7 @@ function ConstraintsTab() {
         <Skeleton height={200} />
       ) : list.error ? (
         <ErrorState
-          message={list.error instanceof Error ? list.error.message : "Pair constraints could not be loaded."}
+          message={apiErrorMessage(list.error)}
           onRetry={() => void list.refetch()}
         />
       ) : rows.length ? (

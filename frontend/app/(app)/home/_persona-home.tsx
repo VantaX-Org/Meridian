@@ -20,6 +20,7 @@ import {
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -76,7 +77,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         persona={role}
         state="error"
         error={{
-          message: objectsQ.error instanceof Error ? objectsQ.error.message : "Could not reach the server.",
+          message: apiErrorMessage(objectsQ.error),
           onRetry: () => { void objectsQ.refetch(); void versionsQ.refetch(); },
         }}
       />

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Mono, Pill, type PillTone } from "@/design";
 import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
+import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemType } from "@/types/api";
@@ -230,7 +231,7 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
   } else if (isLoading) {
     body = <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Reading the configuration state.</p>;
   } else if (error) {
-    body = <ErrorState message={`Configuration state could not be read. ${error.message}`} onRetry={() => void refetch()} />;
+    body = <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
   } else if (status === "loading") {
     body = (
       <div className="flex flex-col gap-3">

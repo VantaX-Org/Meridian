@@ -10,6 +10,7 @@ import {
   signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
 import { downloadAuthenticated } from "@/lib/api/download";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import { AttributeDrawer } from "./_components/attributes";
@@ -70,7 +71,7 @@ export default function ProcessDesigner() {
           <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
         </div>
         {failed ? (
-          <ErrorState message={failed instanceof Error ? failed.message : "The process model could not be read."}
+          <ErrorState message={apiErrorMessage(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
         ) : <Skeleton height={240} />}
       </div>

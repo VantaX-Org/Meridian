@@ -27,7 +27,7 @@ export default function GlossaryTermPage() {
   });
 
   const onMutationError = (error: unknown) => {
-    toastManager.add({ title: error instanceof Error ? error.message : "Something went wrong." });
+    toastManager.add({ title: apiErrorMessage(error) });
   };
   const save = useMutation({
     mutationFn: (body: Parameters<typeof updateGlossaryTerm>[1]) => updateGlossaryTerm(id, body),

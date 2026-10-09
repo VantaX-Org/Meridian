@@ -21,6 +21,7 @@ import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
@@ -160,7 +161,7 @@ export default function LineagePage() {
 
   if (modelQ.isLoading) return <div className="p-6"><Skeleton height={240} /></div>;
   if (modelQ.error) {
-    return <div className="p-6"><ErrorState message={modelQ.error instanceof Error ? modelQ.error.message : "The lineage model could not be read."} onRetry={() => void modelQ.refetch()} /></div>;
+    return <div className="p-6"><ErrorState message={apiErrorMessage(modelQ.error)} onRetry={() => void modelQ.refetch()} /></div>;
   }
   if (!modelQ.data) return <div className="p-6"><EmptyState title="The lineage model could not be read." /></div>;
   const model = modelQ.data;
@@ -190,7 +191,7 @@ export default function LineagePage() {
             </form>
             {graphQ.isLoading ? <Skeleton height={240} />
               : graphQ.error ? (
-                <ErrorState message={graphQ.error instanceof Error ? graphQ.error.message : `${focus} is not in the lineage model.`} onRetry={() => void graphQ.refetch()} />
+                <ErrorState message={apiErrorMessage(graphQ.error)} onRetry={() => void graphQ.refetch()} />
               )
               : nodes.length ? (
                 <>
@@ -210,7 +211,7 @@ export default function LineagePage() {
         }
         state={impactQ.isLoading ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
         emptyProps={{ title: latest ? "No failing rule reaches a KPI, process or feature." : "No lineage yet." }}
-        errorProps={{ message: impactQ.error instanceof Error ? impactQ.error.message : "Impact could not be read.", onRetry: () => impactQ.refetch() }}
+        errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => impactQ.refetch() }}
       />
 
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}>

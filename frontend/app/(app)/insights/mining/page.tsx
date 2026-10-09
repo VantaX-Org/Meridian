@@ -43,6 +43,7 @@ import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSystems } from "@/lib/api/systems";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
 
@@ -118,7 +119,7 @@ function EntityLinks() {
   if (q.error) {
     return (
       <ErrorState
-        message={q.error instanceof Error ? q.error.message : "Relationships could not be loaded."}
+        message={apiErrorMessage(q.error)}
         onRetry={() => void q.refetch()}
       />
     );
@@ -200,7 +201,7 @@ function Dependencies() {
       </div>
       {profile.error ? (
         <ErrorState
-          message={profile.error instanceof Error ? profile.error.message : "The profile for this version could not be loaded."}
+          message={apiErrorMessage(profile.error)}
           onRetry={() => void profile.refetch()}
         />
       ) : null}
@@ -243,7 +244,7 @@ function Patterns() {
     const err = patterns.error ?? summary.error;
     return (
       <ErrorState
-        message={err instanceof Error ? err.message : "Patterns could not be loaded."}
+        message={apiErrorMessage(err)}
         onRetry={() => { void summary.refetch(); void patterns.refetch(); }}
       />
     );

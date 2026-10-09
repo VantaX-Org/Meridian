@@ -27,6 +27,7 @@ import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/conne
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type {
   BusinessProcessL1, BusinessProcessL3, BusinessProcessL4, BusinessProcessL5Field, ConfigImpactResult,
@@ -414,7 +415,7 @@ function MapView() {
   })), [graphQ.data]);
 
   if (isLoading) return <Skeleton height={240} />;
-  if (error) return <ErrorState message={error.message} onRetry={() => void refetch()} />;
+  if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
   if (!latest) {
     return <EmptyState title="The map is mined from a completed analysis. Sync a system and run an analysis to see its process."
       action={<Link href="/data" className="underline">Open sync</Link>} />;
