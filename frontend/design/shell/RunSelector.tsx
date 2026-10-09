@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Select } from "../primitives/Select";
 
 export interface RunOption {
   id: string;
@@ -20,19 +21,14 @@ export function RunSelector({ runs }: { runs: RunOption[] }) {
   };
 
   return (
-    <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+    <label className="flex items-center gap-2 text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
       Run
-      <select
-        aria-label="Run"
+      <Select
         value={current}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded border px-2 py-1"
-        style={{ borderColor: "var(--m-line)" }}
-      >
-        {runs.map((r) => (
-          <option key={r.id} value={r.id}>{r.label}</option>
-        ))}
-      </select>
+        onValueChange={onChange}
+        options={runs.map((r) => ({ value: r.id, label: r.label }))}
+        className="flex w-[220px] h-8 items-center justify-between gap-2 rounded border px-3 text-[13px]"
+      />
     </label>
   );
 }

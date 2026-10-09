@@ -52,7 +52,6 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">Users and audit</strong>
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
       </header>
       <Tabs
