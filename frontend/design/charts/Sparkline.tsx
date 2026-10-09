@@ -1,3 +1,5 @@
+"use client";
+
 // frontend/design/charts/Sparkline.tsx
 import { LineChart, Line as RLine, ResponsiveContainer } from "recharts";
 import { chartTheme, type ChartPoint } from "./theme";

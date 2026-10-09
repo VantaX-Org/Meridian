@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Drawer as BaseDrawer } from "@base-ui/react/drawer";
 import { X } from "lucide-react";

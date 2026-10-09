@@ -1,3 +1,5 @@
+"use client";
+
 // frontend/design/charts/Bar.tsx
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { chartTheme, type ChartPoint } from "./theme";

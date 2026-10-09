@@ -10,13 +10,7 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
-const TOKEN_FILES = new Set([
-  "app/styles/aurora.css",
-  "app/globals.css",
-  "lib/aurora/tokens.ts",
-  "components/aurora/data/chart-theme.ts",
-  "design/tokens.css",
-]);
+const TOKEN_FILES = new Set(["design/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },

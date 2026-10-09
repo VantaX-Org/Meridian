@@ -131,7 +131,7 @@ export function Graph(props: {
       })}
       {points.map((p) => (
         <g key={p.id} onClick={() => onNodeClick?.(p.id)} style={{ cursor: onNodeClick ? "pointer" : "default" }}>
-          <circle cx={p.x} cy={p.y} r={4 + Math.sqrt(sizeById.get(p.id) ?? 1)} fill="var(--aurora-accent-500)" />
+          <circle cx={p.x} cy={p.y} r={4 + Math.sqrt(sizeById.get(p.id) ?? 1)} fill="var(--m-accent)" />
           <text x={p.x} y={p.y - 8} fontSize={10} textAnchor="middle">
             {p.id}
           </text>

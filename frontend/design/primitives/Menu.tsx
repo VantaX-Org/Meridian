@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 

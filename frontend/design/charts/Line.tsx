@@ -1,3 +1,5 @@
+"use client";
+
 // frontend/design/charts/Line.tsx
 import type { DotItemDotProps } from "recharts";
 import { LineChart, Line as RLine, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";

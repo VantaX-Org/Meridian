@@ -1,3 +1,5 @@
+"use client";
+
 // frontend/design/charts/Radar.tsx
 import type { DotItemDotProps } from "recharts";
 import {

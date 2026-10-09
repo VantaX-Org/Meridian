@@ -85,18 +85,17 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/rules", label: "Rules engine", icon: Sliders, anyOf: ["manage_rules"], licenceKey: "rules_engine", keywords: "checks triggers schedule" },
   { href: "/admin/triage", label: "Triage", icon: Timer, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
-  { href: "/settings/field-mapping", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/settings/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
-  { href: "/settings/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  { href: "/admin/mappings", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
+  { href: "/admin/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
+  { href: "/admin/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Overview",
     items: [
-      { href: "/", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
+      { href: "/home/lead", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
     ],
   },
   {
@@ -104,15 +103,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
       { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/sync", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
-      { href: "/data?tab=migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
+      { href: "/systems", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
+      { href: "/insights/readiness", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
     ],
   },
   {
     group: "Quality",
     items: [
       { href: "/objects", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
-      { href: "/issues", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
+      { href: "/inbox", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
       { href: "/runs", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
     ],
   },
@@ -133,10 +132,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"],
     items: [
       { href: "/inbox", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
-      { href: "/cleaning", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
+      { href: "/fix", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
       { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
-      { href: "/dedup", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
-      { href: "/ai/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
+      { href: "/insights/duplicates", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
+      { href: "/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
     ],
   },
   {
@@ -167,14 +166,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Reports",
     items: [
-      { href: "/reports", label: "Reports", icon: FileTextIcon, licenceKey: "reports", keywords: "pdf export" },
+      { href: "/insights", label: "Reports", icon: FileTextIcon, licenceKey: "reports", keywords: "pdf export" },
     ],
   },
   {
     group: "Admin",
     items: [
       { href: "/admin/users", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
-      { href: "/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
+      { href: "/admin/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
 ];

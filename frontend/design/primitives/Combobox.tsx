@@ -1,3 +1,5 @@
+"use client";
+
 import { Combobox as BaseCombobox } from "@base-ui/react/combobox";
 
 export interface ComboboxOption {

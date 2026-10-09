@@ -2,13 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Design tokens (light-first, dark alternative). See frontend/DESIGN.md
-   and lib/aurora/tokens.ts. Application code reads `--aurora-*` vars. */
-@import "./styles/aurora.css";
+/* Styles the process designer's BPMN canvas (app/(app)/insights/process/designer/_components)
+   still depends on via raw `aurora-*` classNames; those components were never migrated to
+   `@/design`. See frontend/DESIGN.md and the Task 31b report for the follow-up needed. */
 @import "./styles/aurora-components.css";
-
-/* Shared page parts (components/ui-core). */
-@import "./styles/ui-core.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -59,48 +56,48 @@
 
 /* ─── Token bridge ───
  * shadcn semantic tokens, mapped once onto the theme tokens. Theme-agnostic: the values follow data-theme
- * through the --aurora-* variables. */
+ * through the --m-* variables. */
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
-  --background: var(--aurora-canvas-base);
-  --foreground: var(--aurora-fg-primary);
-  --card: var(--aurora-canvas-raised);
-  --card-foreground: var(--aurora-fg-primary);
-  --popover: var(--aurora-canvas-elevated);
-  --popover-foreground: var(--aurora-fg-primary);
+  --background: var(--m-canvas);
+  --foreground: var(--m-ink);
+  --card: var(--m-sheet);
+  --card-foreground: var(--m-ink);
+  --popover: var(--m-sheet-raised);
+  --popover-foreground: var(--m-ink);
 
-  --primary: var(--aurora-action-bg);
-  --primary-foreground: var(--aurora-action-fg);
-  --secondary: var(--aurora-canvas-overlay);
-  --secondary-foreground: var(--aurora-fg-secondary);
-  --muted: var(--aurora-canvas-overlay);
-  --muted-foreground: var(--aurora-fg-muted);
-  --accent: var(--aurora-accent-selected-bg);
-  --accent-foreground: var(--aurora-accent-500);
+  --primary: var(--m-accent);
+  --primary-foreground: var(--m-sheet);
+  --secondary: var(--m-sheet-raised);
+  --secondary-foreground: var(--m-ink-2);
+  --muted: var(--m-sheet-raised);
+  --muted-foreground: var(--m-ink-3);
+  --accent: var(--m-accent-soft);
+  --accent-foreground: var(--m-accent);
 
-  --destructive: var(--aurora-status-danger-500);
+  --destructive: var(--m-critical);
 
-  --border: var(--aurora-canvas-line);
-  --input: var(--aurora-canvas-line-strong);
-  --ring: var(--aurora-accent-500);
+  --border: var(--m-line);
+  --input: var(--m-line);
+  --ring: var(--m-accent);
 
-  --chart-1: var(--aurora-viz-1);
-  --chart-2: var(--aurora-viz-2);
-  --chart-3: var(--aurora-viz-3);
-  --chart-4: var(--aurora-viz-4);
-  --chart-5: var(--aurora-viz-5);
+  --chart-1: var(--m-viz-1);
+  --chart-2: var(--m-viz-2);
+  --chart-3: var(--m-viz-3);
+  --chart-4: var(--m-viz-4);
+  --chart-5: var(--m-viz-5);
 
-  --radius: 6px;
+  --radius: var(--m-radius-sheet);
 
-  --sidebar: var(--aurora-canvas-base);
-  --sidebar-foreground: var(--aurora-fg-secondary);
-  --sidebar-primary: var(--aurora-action-bg);
-  --sidebar-primary-foreground: var(--aurora-action-fg);
-  --sidebar-accent: var(--aurora-accent-selected-bg);
-  --sidebar-accent-foreground: var(--aurora-accent-500);
-  --sidebar-border: var(--aurora-canvas-line);
-  --sidebar-ring: var(--aurora-accent-500);
+  --sidebar: var(--m-canvas);
+  --sidebar-foreground: var(--m-ink-2);
+  --sidebar-primary: var(--m-accent);
+  --sidebar-primary-foreground: var(--m-sheet);
+  --sidebar-accent: var(--m-accent-soft);
+  --sidebar-accent-foreground: var(--m-accent);
+  --sidebar-border: var(--m-line);
+  --sidebar-ring: var(--m-accent);
 
 }
 
@@ -124,7 +121,7 @@
   h3, .text-heading { font-family: var(--font-sans); font-weight: 600; font-size: 1.25rem; line-height: 1.3; }
   .text-tabular { font-variant-numeric: tabular-nums; }
   .font-mono { font-variant-numeric: tabular-nums slashed-zero; }
-  input, textarea, [contenteditable] { caret-color: var(--aurora-accent-500); }
+  input, textarea, [contenteditable] { caret-color: var(--m-accent); }
 }
 
 .font-display {
@@ -134,15 +131,15 @@
 /* ─── Scrollbars, selection, focus: all on tokens ─── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--aurora-canvas-line-strong) transparent;
+  scrollbar-color: var(--m-line) transparent;
 }
 
 ::selection {
-  background: var(--aurora-accent-selected-border);
-  color: var(--aurora-fg-primary);
+  background: var(--m-accent-soft);
+  color: var(--m-ink);
 }
 
 :focus-visible {
-  outline: var(--aurora-focus-ring-width) solid var(--aurora-focus-ring-colour);
-  outline-offset: var(--aurora-focus-ring-offset);
+  outline: 2px solid var(--m-accent);
+  outline-offset: 2px;
 }

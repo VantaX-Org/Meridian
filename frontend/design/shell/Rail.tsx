@@ -17,7 +17,6 @@ const COUNT_KEY: Record<string, "fix" | "inbox"> = {
   "/fix": "fix",
   "/cleaning": "fix",
   "/inbox": "inbox",
-  "/workbench": "inbox",
 };
 
 export function Rail() {
