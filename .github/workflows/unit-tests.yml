@@ -10,6 +10,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# A new push to a PR cancels that PR's running check. On main, runs never
+# cancel: one runs, and only the newest waiting commit queues behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
