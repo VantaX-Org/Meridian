@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Briefcase } from "lucide-react";
 import { useJobs, useJobStream } from "../../hooks/use-jobs";
+import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import { IconButton } from "../primitives/IconButton";
 import { Badge } from "../primitives/Badge";
 import { Drawer } from "../primitives/Drawer";
@@ -11,6 +12,7 @@ export function JobTray() {
   useJobStream();
   const { jobs, active } = useJobs();
   const [open, setOpen] = useState(false);
+  useEffect(() => onJobTrayOpen(() => setOpen(true)), []);
 
   return (
     <>
