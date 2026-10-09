@@ -95,6 +95,22 @@ def test_position_has_depth_fields():
         assert t.fields[f].source == source, f
 
 
+def test_position_criticality_extraction_matches_dictionary_source():
+    # Live probe on the customer instance: $select of an unknown property returns
+    # HTTP 400, and positionCriticality did not — it is populated ("1"/"0") while
+    # the plain "criticality" property is null on every sampled row. The manual/
+    # sync extraction path (SF_EXTRACTIONS) and the dictionary-driven DQ-rule path
+    # (source: strings) must select the same real property, or one of them 400s.
+    t = D.table("POSITION")
+    assert t.fields["CRITICALITY"].source == "Position.positionCriticality"
+
+    by_source = _targets_by_source()
+    position_target = by_source["Position"]
+    assert "positionCriticality" in position_target.fields
+    assert "criticality" not in position_target.fields
+    assert position_target.rename_map.get("positionCriticality") == "CRITICALITY"
+
+
 def test_useraccount_table_exists():
     t = D.table("USERACCOUNT")
     assert t is not None
