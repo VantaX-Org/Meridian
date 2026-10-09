@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
+from api.services.run_steps import record_step
 from workers.db import get_sync_engine
 from workers.tasks.run_extraction import EXTRACT_TIME_LIMIT, run_extraction
 
@@ -92,10 +93,12 @@ def run_sync(self, profile_id: str, tenant_id: str):
         result = run_extraction(tenant_id, system_id, [domain], analyse=False,
                                 label=f"Sync {system_name}", version_id=version_id)
     except Exception as e:
-        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {str(e)[:300]}")
+        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {str(e)[:300]}",
+                       version_id=version_id)
         return {"status": "failed", "error": "extraction_failed"}
     if result.get("status") != "success":
-        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {result.get('error') or 'no data'}")
+        _fail_sync_run(engine, tenant_id, sync_run_id, f"Extraction failed: {result.get('error') or 'no data'}",
+                       version_id=version_id)
         return {"status": "failed", "error": result.get("error") or "no_data"}
     coverage = result.get("coverage") or []
     total_rows = sum(int(c.get("rows") or 0) for c in coverage
@@ -106,7 +109,7 @@ def run_sync(self, profile_id: str, tenant_id: str):
 
     anchor = _anchor_frame(tenant_id, prefix, domain, coverage)
     if anchor is None:
-        _fail_sync_run(engine, tenant_id, sync_run_id, "No data extracted from any table")
+        _fail_sync_run(engine, tenant_id, sync_run_id, "No data extracted from any table", version_id=version_id)
         return {"status": "failed", "error": "no_data"}
     # a baseline from the old merged-frame sync shares no columns with the anchor: start over
     if ai_baseline and not set(ai_baseline.get("columns") or []) & set(anchor.columns):
@@ -153,6 +156,8 @@ def run_sync(self, profile_id: str, tenant_id: str):
     from workers.tasks.run_checks import run_checks
     jobs.start_job(tenant_id, version_id, "analysis", f"Sync {system_name}", status="queued",
                    progress_key=version_id, system_id=system_id, version_id=version_id)
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="running")
+    record_step(engine, tenant_id, version_id, 0, "Sync completed", status="complete")
     run_checks.delay(version_id, tenant_id, prefix)
     logger.info(f"Enqueued run_checks for sync extraction: version={version_id}")
 
@@ -252,9 +257,19 @@ def run_sync(self, profile_id: str, tenant_id: str):
     }
 
 
-def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str) -> None:
-    """Mark a sync run as failed."""
+def _fail_sync_run(engine, tenant_id: str, sync_run_id: str, error_detail: str,
+                   version_id: str | None = None) -> None:
+    """Mark a sync run as failed.
+
+    ``version_id`` is the analysis_versions row this sync run was downloading into
+    (known from Step 2 onward); when given, the decisive failure is also recorded
+    as a step-0 row in ``analysis_run_steps`` so the run detail page can show why
+    a sync-type run died.
+    """
     logger.error(f"Sync run {sync_run_id} failed: {error_detail}")
+    if version_id:
+        record_step(engine, tenant_id, version_id, 0, "Sync failed", status="running")
+        record_step(engine, tenant_id, version_id, 0, "Sync failed", status="failed", error_detail=error_detail)
     try:
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})

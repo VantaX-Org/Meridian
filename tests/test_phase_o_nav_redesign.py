@@ -11,14 +11,14 @@ import pytest
 # drift. Groups follow the user's job, in journey order.
 
 NAV = Path("frontend/lib/nav.ts")
-LAYOUT = Path("frontend/app/(dashboard)/layout.tsx")
+LAYOUT = Path("frontend/app/(app)/layout.tsx")
 
 NAV_GROUP_ORDER = (
     "Overview",
     "Systems and data",
     "Quality",
     "Fix",
-    "Master data",
+    "MDM",
     "Process and impact",
     "Reports",
     "Admin",
@@ -56,9 +56,9 @@ def test_sidebar_and_palette_share_nav():
 
 
 def test_overview_items():
-    """Overview holds Command Centre at /; Trends (/analytics) merged into Home; no 'Dashboard' label."""
+    """Overview holds Command Centre at /home/lead; no 'Dashboard' label."""
     block = _group_block(_nav(), "Overview")
-    assert 'href: "/", label: "Command Centre"' in block
+    assert 'href: "/home/lead", label: "Command Centre"' in block
     assert '"/analytics"' not in block
     assert 'label: "Dashboard"' not in LAYOUT.read_text(encoding="utf-8") and 'label: "Dashboard"' not in _nav()
 
@@ -66,57 +66,64 @@ def test_overview_items():
 def test_sidebar_systems_and_data_items():
     """Systems and data (second group) has Systems, Import file, Download history, Migration."""
     block = _group_block(_nav(), "Systems and data")
-    for href in ("/systems", "/upload", "/sync", "/migration"):
+    for href in ("/systems", "/import", "/insights/readiness"):
         assert f'"{href}"' in block, f"{href} missing from Systems and data"
 
 
 def test_sidebar_quality_items():
-    """Quality has Findings, Failing records (/issues) and Compare versions (/versions)."""
+    """Quality has Findings (/objects), Failing records (/inbox) and Compare versions (/runs)."""
     block = _group_block(_nav(), "Quality")
-    assert '"/findings"' in block
-    assert 'href: "/issues", label: "Failing records"' in block
-    assert 'href: "/versions", label: "Compare versions"' in block
+    assert 'href: "/objects", label: "Findings"' in block
+    assert 'href: "/inbox", label: "Failing records"' in block
+    assert 'href: "/runs", label: "Compare versions"' in block
 
 
 def test_sidebar_fix_items():
     """Fix has the steward inbox plus Cleaning, Exceptions, Duplicates, AI rule review."""
     block = _group_block(_nav(), "Fix")
-    assert 'href: "/workbench", label: "Steward inbox"' in block
+    assert 'href: "/inbox", label: "Steward inbox"' in block
     assert '"/stewardship"' not in block
-    for href in ("/cleaning", "/exceptions", "/dedup", "/ai/rules"):
+    assert '"/workbench"' not in block
+    for href in ("/fix", "/inbox?kind=exception", "/insights/duplicates", "/rules"):
         assert f'"{href}"' in block, f"{href} missing from Fix"
     assert 'label: "Workbench"' not in _nav(), "duplicate 'Workbench' labels must be gone"
 
 
-def test_sidebar_master_data_items():
-    """Master data has Golden records, Glossary, Contracts, Relationships."""
-    block = _group_block(_nav(), "Master data")
-    for href in ("/golden-records", "/glossary", "/contracts", "/relationships"):
+def test_sidebar_mdm_items():
+    """MDM (renamed from 'Master data') has Golden records, Glossary and Match rules."""
+    block = _group_block(_nav(), "MDM")
+    for href in ("/mdm/golden", "/mdm/glossary", "/mdm/match-rules"):
         assert f'"{href}"' in block
 
 
 def test_sidebar_process_and_impact_items():
-    """Process and impact has the process map, readiness and pattern mining."""
+    """Process and impact has the process map, lineage and pattern mining."""
     block = _group_block(_nav(), "Process and impact")
-    for href in ("/process", "/business-process", "/mining"):
+    for href in ("/insights/process", "/insights/lineage", "/insights/mining"):
         assert f'"{href}"' in block
 
 
 def test_sidebar_reports_and_admin_items():
     """Reports has Reports; Admin has Users & audit and Settings with its sub-pages."""
     content = _nav()
-    assert '"/reports"' in _group_block(content, "Reports")
+    assert 'href: "/insights", label: "Reports"' in _group_block(content, "Reports")
     admin = _group_block(content, "Admin")
-    assert '"/admin"' in admin and '"/settings"' in admin
-    for href in ("/settings/rules", "/settings/field-mapping", "/settings/ai", "/settings/licence"):
+    assert '"/admin/users"' in admin and '"/admin/settings"' in admin
+    for href in ("/admin/triage", "/admin/mappings", "/admin/ai", "/admin/licence"):
         assert f'"{href}"' in content
 
 
 def test_pages_removed_from_nav_stay_routable():
-    """Off-nav pages keep their routes; live ones get a header title, the rest redirect."""
+    """Off-nav pages keep their routes; live ones get a header title, the rest redirect.
+
+    A retired page may redirect from next.config.ts instead of from a page file.
+    """
     content = _nav()
+    next_config = Path("frontend/next.config.ts").read_text(encoding="utf-8")
     for href in ("/command-centre", "/connectivity", "/run-sync"):
         assert f'href: "{href}"' not in content, f"{href} should no longer be a nav item"
+        if f'source: "{href}"' in next_config:
+            continue
         page = Path(f"frontend/app/(dashboard){href}/page.tsx")
         assert page.exists()
         if "redirect(" not in page.read_text():
@@ -135,44 +142,24 @@ def test_nav_permission_gating():
 
 
 def test_settings_cards_are_gated():
-    """Settings shows a deployment block and health checks, no link list duplicating the rail; health stays gated."""
-    content = Path("frontend/components/admin/settings.tsx").read_text(encoding="utf-8")
-    assert "KeyValue" in content and "DoctorCard" in content
+    """Settings shows a deployment block and health checks; health stays gated on manage_system."""
+    content = Path("frontend/app/(app)/admin/settings/page.tsx").read_text(encoding="utf-8")
+    assert "Deployment" in content and "Health checks" in content
     assert 'can("manage_system")' in content
-    assert "SETTINGS_ITEMS" not in content
 
 
 # ── O.2 AI Rules page ──────────────────────────────────────────────────────
-
-
-def test_ai_rules_page_exists():
-    """The /ai/rules page file exists."""
-    path = Path("frontend/app/(dashboard)/ai/rules/page.tsx")
-    assert path.exists()
-
-
-def test_ai_rules_page_imports():
-    """AI Rules page uses correct API functions."""
-    path = Path("frontend/components/workbench/ai-rules.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "getProposedRules" in content
-    assert "approveProposedRule" in content
-    assert "rejectProposedRule" in content
-
-
-def test_ai_rules_page_empty_state():
-    """AI Rules page shows correct empty state message."""
-    path = Path("frontend/components/workbench/ai-rules.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "No AI-proposed rules awaiting review" in content
-    assert "steward corrections" in content
-
-
-def test_ai_rules_page_approve_confirmation():
-    """AI Rules page has approve confirmation dialog."""
-    path = Path("frontend/components/workbench/ai-rules.tsx")
-    content = path.read_text(encoding="utf-8")
-    assert "will be added to the match engine" in content
+#
+# Deleted (not ported): the AI-proposed-rule review surface (/ai/rules,
+# getProposedRules/approveProposedRule/rejectProposedRule) was intentionally
+# left out of the Wave 3 shell. Nav's "AI rule review" item now opens the
+# general rules catalogue (frontend/app/(app)/rules/page.tsx) instead; the
+# proposed-rule API functions remain in frontend/lib/api/match-rules.ts but
+# no page calls them. See .superpowers/sdd/.../task-11-report.md and
+# task-21-report.md (frontend/app/(app)/mdm/match-rules/page.tsx:20-28).
+# test_ai_rules_page_exists, test_ai_rules_page_imports,
+# test_ai_rules_page_empty_state, test_ai_rules_page_approve_confirmation
+# removed.
 
 
 # ── O.4 Team settings — ai_reviewer role ────────────────────────────────────
@@ -182,7 +169,7 @@ def test_ai_rules_page_approve_confirmation():
 # index page that delegates user management to /admin).
 def test_settings_has_ai_reviewer_role():
     """Admin page includes ai_reviewer in the invitable roles."""
-    path = Path("frontend/components/admin/users.tsx")
+    path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "ai_reviewer" in content
     assert "AI Reviewer" in content
@@ -190,21 +177,21 @@ def test_settings_has_ai_reviewer_role():
 
 def test_settings_ai_reviewer_distinct_badge():
     """ai_reviewer has its own label; roles are plain text, hue is for defects only."""
-    path = Path("frontend/components/admin/users.tsx")
+    path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert 'ai_reviewer: { label: "AI Reviewer"' in content
 
 
 def test_settings_ai_reviewer_tooltip():
     """ai_reviewer has descriptive tooltip."""
-    path = Path("frontend/components/admin/users.tsx")
+    path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "approve proposed rules" in content
 
 
 def test_settings_permissions_table_comes_from_the_api():
     """Role capabilities table is the server's matrix (GET /auth/roles), never a local copy."""
-    path = Path("frontend/components/admin/users.tsx")
+    path = Path("frontend/app/(app)/admin/users/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "getRoleMatrix" in content and "ai_feedback" not in content
 
@@ -214,7 +201,7 @@ def test_settings_permissions_table_comes_from_the_api():
 
 def test_upload_page_connected_systems_banner():
     """Upload page shows banner when SAP systems are connected."""
-    path = Path("frontend/components/data/import.tsx")
+    path = Path("frontend/app/(app)/import/page.tsx")
     content = path.read_text(encoding="utf-8")
     assert "connected" in content and "Download from the source" in content
     assert "one-off assessments" in content

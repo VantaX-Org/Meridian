@@ -127,9 +127,10 @@ meridian/
 ├── llm/provider.py                  ← swappable LLM with request_timeout=120
 │
 ├── frontend/                        ← Next.js 15 dashboard
-│   ├── app/(dashboard)/             ← 30 page routes inc. connectivity, config-impact, business-process
-│   ├── lib/api/                     ← 19 typed API client modules inc. connectivity.ts
-│   └── components/                  ← shadcn/ui + system-card, module-grid, config-viewer, etc.
+│   ├── app/(app)/                   ← page routes: home, systems, objects, runs, rules, insights, mdm, inbox, fix, import, admin, design
+│   ├── design/                      ← the one component library (@/design): primitives, charts, table, shell, templates, tokens.css
+│   ├── lib/api/                     ← typed API client modules inc. connectivity.ts
+│   └── components/                  ← domain components (e.g. mdm/) built on @/design
 │
 ├── cloudflare/                      ← Meridian HQ + licence worker
 ├── scripts/                         ← deploy, update, backup, package, export
@@ -246,36 +247,30 @@ RLS policy on every data table — always set `app.tenant_id` before queries.
 
 ---
 
-## Frontend design system — Aurora (ui-core, light-first)
+## Frontend design system
 
 Source of truth: `frontend/DESIGN.md`. When this summary and DESIGN.md
 disagree, follow DESIGN.md.
 
-- **Direction**: a well-set ledger. Paper-grey canvas `#F3F4F2`, white
-  sheets, ink type. Light is the default. Dark is a full alternative under
+- **One component library**: `frontend/design/` (`@/design`) — primitives,
+  charts, table, shell and page templates. There is no second library and
+  no legacy shell; `components/aurora`, `components/ui-core`,
+  `components/shell` and `lib/aurora` were retired.
+- **Direction**: an instrument panel. Cool slate canvas, white sheets,
+  near-black ink. Light is the default; dark is a full alternative under
   `[data-theme="dark"]`.
-- **Accent**: one petrol accent `#0E5A6B` (`--aurora-accent-500`), for
-  selection, focus and links only. Hue means defect state. No gradients,
-  glass or backdrop blur.
-- **Type**: Atkinson Hyperlegible Next for UI, Atkinson Hyperlegible Mono
-  for SAP identifiers only. Both are loaded with `next/font`. Numbers use
-  tabular figures. Use sentence case.
-- **Components**: build pages from `components/ui-core` (CSS in
-  `app/styles/ui-core.css`) on top of Aurora primitives. Import tokens from
-  `@/lib/aurora`. Pages read CSS through the `--aurora-*` variables. Token
-  names are unchanged, so legacy pages pick up the new values.
-- **Guardrail**: `npm run lint:tokens` rejects raw hex, gradients and blur
-  outside the token files. Never add lines to its allowlist.
-
-### Frontend design system — Legacy (pre-Aurora)
-
-The previous **Fiori Horizon (hybrid glass)** system lives alongside Aurora
-through the WS1–WS7 transition and is retired at the WS8 cutover. Tokens
-(`.vx-card`, `.vx-glass`, `--mn-*`, `--glass-*`) remain in
-`frontend/app/globals.css` so legacy `/app/(dashboard)/*` surfaces keep
-rendering; **new Aurora code does not consume them**. The Fiori primary
-`#0070F2` is kept as `--primary` for the legacy shell only; Aurora uses
-`--aurora-accent-500` (`#0057D2`).
+- **Accent**: one indigo accent, `--m-accent`, for selection, focus and
+  links only. Hue means defect state. No gradients, glass or backdrop blur.
+- **Type**: Public Sans for UI, JetBrains Mono for SAP identifiers only
+  (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
+  loaded with `next/font`. Numbers use tabular figures. Sentence case.
+- **Tokens**: `frontend/design/tokens.css` defines every `--m-*` token.
+  `npm run lint:tokens` rejects raw hex, gradients, blur, ad hoc shadows,
+  motion and duration literals outside that one file.
+  `frontend/scripts/lint-tokens.allow.txt` is empty. Never add a line to it.
+- **Routes**: live pages are under `frontend/app/(app)/` (home, systems,
+  objects, runs, rules, insights, mdm, inbox, fix, import, admin, design).
+  Every legacy URL redirects into this tree via `next.config.ts`.
 
 ---
 

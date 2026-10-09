@@ -41,6 +41,8 @@ export interface Job {
   system_id?: string;
   version_id?: string;
   modules?: string[];
+  /** Entity-prefix list this job changed, e.g. ["object", "rule", "run"]. Absent means unknown — do not invalidate. */
+  touches?: string[];
 }
 
 export interface JobListResponse {

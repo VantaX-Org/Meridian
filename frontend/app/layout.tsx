@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
+import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Public_Sans, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
-import { Toaster } from "@/components/shell/toaster";
+import { Toaster } from "@/design";
 import { Providers } from "@/lib/providers";
 import "./globals.css";
 
@@ -19,6 +19,18 @@ const mono = Atkinson_Hyperlegible_Mono({
   display: "swap",
 });
 
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--m-font-sans-loaded",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--m-font-mono-loaded",
+});
+
 export const metadata: Metadata = {
   title: "Meridian",
   description: "SAP master-data quality, scored and routed to the people who fix it",
@@ -33,7 +45,7 @@ export default function RootLayout({
     <AuthProvider>
       <html lang="en">
         <body
-          className={`${sans.variable} ${mono.variable} font-sans antialiased`}
+          className={`${sans.variable} ${mono.variable} ${publicSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
         >
           <Providers>
             {children}

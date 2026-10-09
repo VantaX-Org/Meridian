@@ -6,8 +6,8 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AuthFrame, PasswordField } from "@/components/auth/auth-frame";
-import { Banner, Button } from "@/components/ui-core";
+import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button } from "@/design";
 
 /** Server-side minimum (api.routes.auth._MIN_PASSWORD_LENGTH = 12). */
 const MIN_PASSWORD_LENGTH = 12;
@@ -44,16 +44,16 @@ export function SetPasswordForm({ title, lead, submitLabel, missingToken, failur
 
   return (
     <AuthFrame title={title} lead={lead}>
-      <form className="ui-form" onSubmit={onSubmit} noValidate>
-        {error ? <Banner tone="danger">{error}</Banner> : null}
+      <form className={authFormClass} onSubmit={onSubmit} noValidate>
+        {error ? <AuthNotice tone="danger">{error}</AuthNotice> : null}
         <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password"
           helper={`At least ${MIN_PASSWORD_LENGTH} characters.`} />
         <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
-        <div className="ui-form__actions">
+        <div className={authActionsClass}>
           <Button type="submit" disabled={submitting}>{submitting ? "Saving" : submitLabel}</Button>
         </div>
       </form>
-      <Link className="ui-link" href="/sign-in">Back to sign in</Link>
+      <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>
     </AuthFrame>
   );
 }

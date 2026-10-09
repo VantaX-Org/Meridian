@@ -8,14 +8,7 @@
 
 import { expect, ROUTES, test } from "./fixtures";
 
-const BUDGET_MS: Record<string, number> = {
-  "command-centre": 2500,
-  "executive-report": 2500,
-  runs: 2500,
-  workbench: 2500,
-  process: 3000,
-  admin: 2500,
-};
+const BUDGET_MS: Record<string, number> = {};
 
 for (const r of ROUTES) {
   const budget = BUDGET_MS[r.name] ?? 2500;

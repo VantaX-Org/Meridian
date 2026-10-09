@@ -11,7 +11,7 @@ export const isCompleteVersion = (v: Version) =>
 export function useLatestVersion() {
   const q = useQuery({ queryKey: ["versions.list", { limit: 20 }], queryFn: () => getVersions({ limit: 20 }) });
   const latest = useMemo(() => q.data?.versions.find(isCompleteVersion), [q.data]);
-  return { latest, isLoading: q.isLoading, error: q.error as Error | null };
+  return { latest, isLoading: q.isLoading, error: q.error as Error | null, refetch: q.refetch };
 }
 
 /**

@@ -155,6 +155,34 @@ export async function mergeDedupCandidate(params: {
   return data;
 }
 
+// ── Batches ──────────────────────────────────────────────────────────────────
+
+export interface CleaningBatchSummary {
+  batch_id: string;
+  object_type: string;
+  items: number;
+  avg_confidence: number;
+  status: string; // the status shared by every item in the batch, or "mixed"
+}
+
+/** Groups cleaning-queue items by batch_id — the queue endpoint returns individual items only. */
+export function groupIntoBatches(items: CleaningQueueItem[]): CleaningBatchSummary[] {
+  const byBatch = new Map<string, CleaningQueueItem[]>();
+  for (const item of items) {
+    if (!item.batch_id) continue;
+    const rows = byBatch.get(item.batch_id);
+    if (rows) rows.push(item);
+    else byBatch.set(item.batch_id, [item]);
+  }
+  return [...byBatch.entries()].map(([batch_id, rows]) => ({
+    batch_id,
+    object_type: rows[0].object_type,
+    items: rows.length,
+    avg_confidence: rows.reduce((s, r) => s + r.confidence, 0) / rows.length,
+    status: rows.every((r) => r.status === rows[0].status) ? rows[0].status : "mixed",
+  }));
+}
+
 // ── Export ───────────────────────────────────────────────────────────────────
 
 export type ExportFormat = "csv" | "lsmw" | "bapi" | "idoc" | "sf_csv" | "xlsx";

@@ -23,6 +23,9 @@ from api.routes.migration import router as migration_router
 from api.routes.exceptions import router as exceptions_router
 from api.routes.source_design import router as source_design_router
 from api.routes.materials import router as materials_router
+from api.routes.runs import router as runs_router
+from api.routes.objects import router as objects_router
+from api.routes.object_records import router as object_records_router
 from api.routes.record_issues import router as record_issues_router
 from api.routes.triage import router as triage_router
 from api.routes.remediation import router as remediation_router
@@ -54,6 +57,7 @@ from api.routes.z_object_intelligence import router as z_object_intelligence_rou
 from api.routes.connectivity import router as connectivity_router
 from api.routes.spro_config import router as spro_config_router
 from api.routes.config_impact import router as config_impact_router
+from api.routes.insights import router as insights_router
 from api.routes.lineage import router as lineage_router
 from api.routes.business_process import router as business_process_router
 from api.routes.events import router as events_router
@@ -66,6 +70,7 @@ from api.routes.process_export import router as process_export_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
 from api.routes.prom_metrics import router as prom_metrics_router
+from api.routes.shell import router as shell_router
 from api.routes.system_update import router as system_update_router
 
 from api.utils.structured_logging import configure_logging
@@ -283,6 +288,9 @@ app.include_router(exceptions_router)
 app.include_router(source_design_router)
 app.include_router(record_issues_router)
 app.include_router(materials_router)
+app.include_router(runs_router)
+app.include_router(objects_router)
+app.include_router(object_records_router)
 app.include_router(triage_router)
 app.include_router(remediation_router)
 app.include_router(rule_authoring_router)
@@ -313,6 +321,7 @@ app.include_router(z_object_intelligence_router)
 app.include_router(connectivity_router)
 app.include_router(spro_config_router)
 app.include_router(config_impact_router)
+app.include_router(insights_router)
 app.include_router(lineage_router)
 app.include_router(business_process_router)
 app.include_router(events_router)
@@ -325,6 +334,7 @@ app.include_router(process_export_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
 app.include_router(prom_metrics_router)
+app.include_router(shell_router)
 app.include_router(system_update_router)
 
 from api.routes.auth import router as auth_router

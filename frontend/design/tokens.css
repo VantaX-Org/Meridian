@@ -1,0 +1,96 @@
+/* frontend/design/tokens.css
+ * Colour, type, space, radius and motion tokens for the Meridian redesign
+ * (spec section 4). Light values are the default; dark values apply under
+ * [data-theme="dark"] or, absent an explicit theme, prefers-color-scheme.
+ * This file is the only file `npm run lint:tokens` allows to hold raw hex.
+ */
+:root {
+  /* Colour */
+  --m-canvas: #EDF0F2;
+  --m-sheet: #FFFFFF;
+  --m-sheet-raised: #F7F9FA;
+  --m-line: #D5DBE0;
+  --m-ink: #101418;
+  --m-ink-2: #3C4852;
+  --m-ink-3: #6B7781;
+  --m-accent: #2D3A8C;
+  --m-accent-soft: #E4E8FA;
+  --m-critical: #B3261E;
+  --m-high: #C65A00;
+  --m-medium: #8A6A00;
+  --m-pass: #1E7A46;
+  --m-viz-1: #2D3A8C;
+  --m-viz-2: #1E7A46;
+  --m-viz-3: #8A6A00;
+  --m-viz-4: #0E7490;
+  --m-viz-5: #6D28D9;
+  --m-viz-6: #B3261E;
+  --m-viz-7: #BE185D;
+  --m-viz-8: #4D7C0F;
+  --m-scrim: rgb(0 0 0 / 0.2);
+
+  /* Type */
+  --m-font-sans: var(--m-font-sans-loaded, "Public Sans", system-ui, sans-serif);
+  --m-font-mono: var(--m-font-mono-loaded, "JetBrains Mono", ui-monospace, monospace);
+  --m-text-root: 13px;
+
+  /* Space (4px grid) */
+  --m-space-1: 4px;
+  --m-space-2: 8px;
+  --m-space-3: 12px;
+  --m-space-4: 16px;
+  --m-space-6: 24px;
+  --m-space-8: 32px;
+  --m-space-12: 48px;
+  --m-space-16: 64px;
+  --m-space-24: 96px;
+
+  /* Shape */
+  --m-radius-control: 4px;
+  --m-radius-sheet: 6px;
+
+  /* Motion */
+  --m-motion-duration: 120ms;
+  --m-motion-ease: ease-out;
+}
+
+[data-theme="dark"] {
+  --m-canvas: #0F1417;
+  --m-sheet: #171D21;
+  --m-sheet-raised: #1E262B;
+  --m-line: #2C363D;
+  --m-ink: #E8EDF0;
+  --m-ink-2: #AEB9C2;
+  --m-ink-3: #7E8A94;
+  --m-accent: #8C9BEA;
+  --m-accent-soft: #242C52;
+  --m-critical: #F28B82;
+  --m-high: #F0A35C;
+  --m-medium: #D9B64A;
+  --m-pass: #6CCB8E;
+  --m-scrim: rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --m-canvas: #0F1417;
+    --m-sheet: #171D21;
+    --m-sheet-raised: #1E262B;
+    --m-line: #2C363D;
+    --m-ink: #E8EDF0;
+    --m-ink-2: #AEB9C2;
+    --m-ink-3: #7E8A94;
+    --m-accent: #8C9BEA;
+    --m-accent-soft: #242C52;
+    --m-critical: #F28B82;
+    --m-high: #F0A35C;
+    --m-medium: #D9B64A;
+    --m-pass: #6CCB8E;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --m-motion-duration: 0ms;
+  }
+}

@@ -15,7 +15,8 @@ export interface Material360 {
   language: string | null;
   mara: Row;
   makt: Row[]; marm: Row[]; mean: Row[]; marc: Row[]; mvke: Row[]; mbew: Row[]; mard: Row[]; mlgn: Row[];
-  labels: { MTART: string | null; MATKL: string | null; MEINS: string | null };
+  /** material_master: MTART/MATKL/MEINS. business_partner: PARTNER/BU_TYPE/NAME1/NAME_ORG1. */
+  labels: Row;
   expected_views: string[] | null;
   expected_known: boolean;
   levels: MaterialLevel[];

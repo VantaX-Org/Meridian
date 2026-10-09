@@ -49,6 +49,19 @@ STAGES: dict[str, list[tuple[str, str]]] = {
                    ("after", "Checks after fixes"), ("score", "Scoring")],
 }
 
+# Entity-prefix list each job kind changes (spec section 9.1). The job tray
+# invalidates only these React Query key prefixes when the job completes.
+# "config_sync"/"config_load"/"simulation" have no Wave 1a consumer yet, so
+# they touch nothing rather than guessing.
+TOUCHES: dict[str, list[str]] = {
+    "analysis": ["object", "rule", "records", "run", "shell-counts"],
+    "upload": ["object", "rule", "records", "run", "shell-counts"],
+    "extraction": ["systems", "run"],
+    "simulation": ["records", "batch", "shell-counts"],
+    "config_sync": ["systems", "run"],
+    "config_load": ["systems", "run"],
+}
+
 # analysis progress (task_progress step numbers) → analysis job stage
 _STEP_STAGE = {1: "load", 2: "load", 3: "checks", 4: "insights", 5: "report", 6: "report"}
 
@@ -82,6 +95,7 @@ def _stages(kind: str, current: Optional[str], failed: bool = False) -> list[dic
 
 def _save(client, tenant_id: str, job: dict) -> None:
     job["updated_at"] = _now()
+    job.setdefault("touches", TOUCHES.get(job.get("kind", ""), []))
     raw = json.dumps(job)
     pipe = client.pipeline()
     pipe.setex(_key(tenant_id, job["id"]), JOB_TTL_SECONDS, raw)

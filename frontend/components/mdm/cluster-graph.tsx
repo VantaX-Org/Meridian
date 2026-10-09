@@ -11,10 +11,10 @@ interface Props {
 
 const edgeColour = (e: ClusterEdge): string =>
   e.constraint === "do_not_match" || e.steward_decision === "reject"
-    ? "var(--aurora-status-danger-500)"
+    ? "var(--m-critical)"
     : e.linked
-      ? "var(--aurora-accent-500)"
-      : "var(--aurora-fg-muted)";
+      ? "var(--m-accent)"
+      : "var(--m-ink-3)";
 
 /**
  * Cluster members on a circle, survivor first. Solid edges link the cluster,
@@ -69,7 +69,7 @@ export function ClusterGraph({ graph, selectedEdgeId, onSelectEdge, size = 320 }
             {e.total != null && (
               <text
                 x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 4} textAnchor="middle"
-                fontSize={10} fill="var(--aurora-fg-secondary)" fontFamily="var(--aurora-font-mono)"
+                fontSize={10} fill="var(--m-ink-2)" fontFamily="var(--m-font-mono)"
               >
                 {e.total.toFixed(2)}
               </text>
@@ -84,14 +84,14 @@ export function ClusterGraph({ graph, selectedEdgeId, onSelectEdge, size = 320 }
           <g key={n.key}>
             <circle
               cx={p.x} cy={p.y} r={n.is_survivor ? 14 : 11}
-              fill="var(--aurora-elev-1-bg)"
-              stroke={weakVia.has(n.key) ? "var(--aurora-status-warning-500)"
-                : n.is_survivor ? "var(--aurora-accent-400)" : "var(--aurora-canvas-line)"}
+              fill="var(--m-sheet-raised)"
+              stroke={weakVia.has(n.key) ? "var(--m-high)"
+                : n.is_survivor ? "var(--m-accent)" : "var(--m-line)"}
               strokeWidth={n.is_survivor || weakVia.has(n.key) ? 2.5 : 1.5}
             />
             <text
               x={p.x} y={p.y + (n.is_survivor ? 28 : 25)} textAnchor="middle" fontSize={11}
-              fill="var(--aurora-fg-primary)" fontFamily="var(--aurora-font-mono)"
+              fill="var(--m-ink)" fontFamily="var(--m-font-mono)"
             >
               {n.key}
             </text>

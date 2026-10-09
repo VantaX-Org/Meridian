@@ -10,12 +10,7 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
-const TOKEN_FILES = new Set([
-  "app/styles/aurora.css",
-  "app/globals.css",
-  "lib/aurora/tokens.ts",
-  "components/aurora/data/chart-theme.ts",
-]);
+const TOKEN_FILES = new Set(["design/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
 const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },
@@ -24,7 +19,9 @@ const RULES = [
   // Rule 13: shadows come from --aurora-elev-* only.
   { name: "box-shadow literal", re: /box-shadow\s*:[^;]*(?:#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:black|white)\b|var\(--aurora-elev-[\w-]+\s*,)/i },
   // Rule 15: no all-caps eyebrows.
-  { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|\buppercase\b(?=[^\n]*(?:className|class=|@apply))/ },
+  // Catches the CSS declaration, the Tailwind utility inside a className/class string (before or after
+  // the attribute name), and `@apply uppercase`.
+  { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|(?:className|class)=[^\n]*\buppercase\b|\buppercase\b(?=[^\n]*(?:className|class=|@apply))|@apply[^\n;]*\buppercase\b/ },
   // Rule 11: motion lives in the Aurora style files only.
   { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css", "app/styles/aurora-components.css"]) },
   { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },

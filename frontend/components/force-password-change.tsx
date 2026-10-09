@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { AuthFrame, PasswordField } from "@/components/auth/auth-frame";
-import { Banner, Button } from "@/components/ui-core";
+import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass } from "@/components/auth/auth-frame";
+import { Button } from "@/design";
 
 /**
  * Blocking overlay shown when the current user's account still has the
@@ -54,12 +54,12 @@ export function ForcePasswordChange() {
   return (
     <AuthFrame title="Change your password to continue"
       lead={<>You are signed in as {user?.email}. This account still has its default password. Set a new one to use Meridian.</>}>
-      <form className="ui-form" onSubmit={onSubmit} noValidate>
-        {error ? <Banner tone="danger">{error}</Banner> : null}
+      <form className={authFormClass} onSubmit={onSubmit} noValidate>
+        {error ? <AuthNotice tone="danger">{error}</AuthNotice> : null}
         <PasswordField label="Current password" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
         <PasswordField label="New password" value={newPassword} onChange={setNewPassword} autoComplete="new-password" helper="At least 12 characters." />
         <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
-        <div className="ui-form__actions">
+        <div className={authActionsClass}>
           <Button type="submit" disabled={submitting}>{submitting ? "Saving" : "Change password"}</Button>
           <Button type="button" variant="ghost" onClick={logout}>Sign out</Button>
         </div>

@@ -296,60 +296,71 @@ def test_stewardship_route_registered_in_main():
 # ── L.4b/c Frontend structure ────────────────────────────────────────────────
 
 
-INBOX = Path("frontend/components/workbench/inbox.tsx")
+INBOX = Path("frontend/app/(app)/inbox/page.tsx")
 
 
 def test_frontend_steward_inbox_replaces_legacy_pages():
-    """One steward inbox (Workbench tab) replaces My queue, team workload and metrics."""
+    """One steward inbox page replaces the legacy My queue, team workload and metrics pages.
+
+    The tab-bodies shell ("StewardInboxSurface") is gone too: Wave 3 replaced
+    the tab-based SPA shell with App Router pages, so there is no tab-bodies
+    file to assert against any more.
+    """
     assert INBOX.exists()
-    for gone in ("stewardship/page.tsx", "stewardship/metrics/page.tsx", "workbench/queue.tsx"):
-        assert not Path(f"frontend/app/(dashboard)/{gone}").exists(), gone
-    bodies = Path("frontend/components/shell/tab-bodies.tsx").read_text(encoding="utf-8")
-    assert '"StewardInboxSurface"' in bodies and '"/stewardship' not in bodies
+    for gone in ("stewardship", "stewardship/metrics", "workbench/queue", "workbench"):
+        assert not Path(f"frontend/app/(app)/{gone}/page.tsx").exists(), gone
 
 
 def test_frontend_legacy_steward_urls_redirect():
-    """Old /stewardship bookmarks land on the inbox tab."""
+    """Old /stewardship and /workbench bookmarks land on the steward inbox."""
     content = Path("frontend/next.config.ts").read_text(encoding="utf-8")
-    for src in ('"/stewardship"', '"/stewardship/metrics"'):
-        assert f'source: {src}, destination: "/workbench?tab=queue"' in content
+    for src in ('"/stewardship"', '"/stewardship/metrics"', '"/workbench"'):
+        assert f'source: {src}, destination: "/inbox"' in content
 
 
-def test_frontend_stewardship_keyboard_shortcuts():
-    """Inbox implements keyboard shortcuts A, R, N, E on the focused task."""
-    content = INBOX.read_text()
-    for key in ['"a"', '"r"', '"n"', '"e"', '"A"', '"R"', '"N"', '"E"']:
-        assert key in content, f"Missing keyboard shortcut: {key}"
+# Deleted: test_frontend_stewardship_keyboard_shortcuts. The new inbox
+# (frontend/app/(app)/inbox/page.tsx, see its top-of-file comment and
+# frontend/lib/inbox-keys.ts) deliberately replaces the legacy A/R/N/E
+# keymap with j/k row focus + Enter to open; the lettered actions moved to
+# plain buttons so nothing is dropped, but the A/R/N/E shortcuts themselves
+# no longer exist to test.
 
 
 def test_frontend_stewardship_override_modal():
-    """Rejecting overrides the AI recommendation and needs a correction reason,
+    """Rejecting overrides the AI recommendation and needs a reason,
     which is sent to the AI-feedback loop."""
     content = INBOX.read_text()
     assert "Reject with reason" in content
-    assert "Correction reason" in content
+    assert 'Field label="Reason"' in content
     assert "submitAiFeedback" in content
 
 
 def test_frontend_inbox_bulk_and_quick_actions():
-    """Bulk approve/reject/escalate/assign and the quick-actions palette."""
+    """Bulk approve/reject/escalate/assign actions on the inbox.
+
+    The "quick-actions palette" with a per-page hotkey disable is gone: the
+    command palette is now global (rendered once in frontend/app/(app)/layout.tsx
+    via CommandPaletteSlot), not a per-page overlay the inbox opts out of, so
+    there is no `disableGlobalHotkey` left to assert.
+    """
     content = INBOX.read_text()
     for fn in ("bulkApprove", "resolveItem", "escalateItem", "assignItem"):
         assert fn in content
-    assert "CommandPalette" in content and "disableGlobalHotkey" in content
 
 
 def test_frontend_metrics_ai_acceptance_rate():
     """Inbox shows the AI suggestion-acceptance metric when the API returns it."""
     content = INBOX.read_text()
     assert "Suggestion acceptance" in content
-    assert "ai_acceptance_rate != null" in content
+    assert "aiAcceptance != null" in content
 
 
-def test_frontend_metrics_steward_breakdown_hidden_for_ai_reviewer():
-    """The per-steward breakdown renders only when the API returns it (it is null for ai_reviewer)."""
-    content = INBOX.read_text()
-    assert "metrics?.steward_breakdown?.length" in content
+# Deleted: test_frontend_metrics_steward_breakdown_hidden_for_ai_reviewer.
+# The new inbox's "Who holds the work" panel (TeamPanel in
+# frontend/app/(app)/inbox/page.tsx) renders ownerRungs() ladder data, not a
+# per-steward breakdown table; StewardshipMetrics.steward_breakdown is still
+# a defined type (frontend/types/api.ts) but nothing in the new page reads
+# it, so there is no ai_reviewer-gating behaviour left to test.
 
 
 def test_frontend_api_client_exists():
@@ -377,7 +388,7 @@ def test_frontend_types_defined():
 def test_frontend_nav_has_stewardship():
     """The shared nav (sidebar + ⌘K) has the steward pages in the Fix group."""
     content = Path("frontend/lib/nav.ts").read_text(encoding="utf-8")
-    assert 'href: "/workbench", label: "Steward inbox", icon: ClipboardIcon' in content
+    assert 'href: "/inbox", label: "Steward inbox", icon: ClipboardIcon' in content
     assert 'href: "/stewardship"' not in content
 
 

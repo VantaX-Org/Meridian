@@ -699,6 +699,21 @@ def load_cleaning(s: Session, tid: str, vid: Optional[str]) -> Optional[dict]:
     return {"data": data, "version": version}
 
 
+def gather_executive_data(s: Session, tid: str, vid: str) -> Optional[dict]:
+    """Same report_json + supplementary data api/services/report_pdf.py's
+    _render_pdf() already loads for the executive report — reused here rather
+    than re-querying. Shared by build(kind="executive") (-> PDF) and
+    api/routes/insights.py's GET /exec (-> same data as on-screen JSON)."""
+    from api.services.report_pdf import _load_report_json, _load_supplementary
+
+    d = load_analysis(s, tid, vid)
+    if not d:
+        return None
+    return {"report_json": _load_report_json(s, vid, tid) or {},
+            "supplementary": _load_supplementary(s, vid, tid),
+            "version": d["version"], "findings": d["findings"], "system": d["system"]}
+
+
 def load_comparison(s: Session, tid: str, vid1: str, vid2: str) -> Optional[dict]:
     from api.services.record_issues import DIFF_SQL
 
@@ -736,4 +751,8 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
         return d and render("comparison_report.html", comparison_context(
             d["v1"], d["v2"], d["findings1"], d["findings2"], record_diff=d["record_diff"],
             system=d["system"], **kw))
+    if kind == "executive":
+        d = gather_executive_data(s, tid, vid)
+        return d and render("executive_report.html", executive_context(
+            d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"], **kw))
     raise ValueError(kind)

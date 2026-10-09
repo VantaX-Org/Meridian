@@ -17,6 +17,7 @@ import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
+  BarChart3,
   Brain,
   Copy,
   Eraser,
@@ -45,7 +46,6 @@ import {
   SparklesNavIcon,
   UploadIcon,
   AlertIcon,
-  WorkflowIcon,
 } from "@/components/meridian/nav-icons";
 
 export type NavIcon =
@@ -85,78 +85,95 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/settings/rules", label: "Rules engine", icon: Sliders, anyOf: ["manage_rules"], licenceKey: "rules_engine", keywords: "checks triggers schedule" },
   { href: "/admin/triage", label: "Triage", icon: Timer, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
-  { href: "/settings/field-mapping", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/settings/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
-  { href: "/settings/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  { href: "/admin/mappings", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
+  { href: "/admin/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
+  { href: "/admin/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Overview",
     items: [
-      { href: "/", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
+      { href: "/home/lead", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
     ],
   },
   {
     group: "Systems and data",
     items: [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
-      { href: "/upload", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/sync", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
-      { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
+      { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/systems", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
+      { href: "/insights/readiness", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
     ],
   },
   {
     group: "Quality",
     items: [
-      { href: "/findings", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
-      { href: "/issues", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
-      { href: "/versions", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
+      { href: "/objects", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
+      { href: "/inbox", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
+      { href: "/runs", label: "Compare versions", icon: GitCompareIcon, licenceKey: "versions", keywords: "history snapshots baseline" },
+    ],
+  },
+  {
+    group: "Insights",
+    anyOf: ["view"],
+    items: [
+      { href: "/insights", label: "Insights", icon: BarChart3, anyOf: ["view"], keywords: "readiness impact owners duplicates executive summary" },
+      { href: "/insights/readiness", label: "Readiness", icon: BarChart3, anyOf: ["view"], keywords: "waves go no-go blockers" },
+      { href: "/insights/impact", label: "Value at risk", icon: BarChart3, anyOf: ["view"], keywords: "impact features cost" },
+      { href: "/insights/owners", label: "Owner scorecards", icon: BarChart3, anyOf: ["view"], keywords: "digest score steward" },
+      { href: "/insights/duplicates", label: "Duplicate clusters", icon: BarChart3, anyOf: ["view"], keywords: "dedup merge graph cluster" },
+      { href: "/insights/exec", label: "Executive summary", icon: BarChart3, anyOf: ["view"], keywords: "exec report narrative pdf" },
     ],
   },
   {
     group: "Fix",
     anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"],
     items: [
-      { href: "/workbench", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
-      { href: "/cleaning", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
-      { href: "/exceptions", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
-      { href: "/dedup", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
-      { href: "/ai/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
+      { href: "/inbox", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
+      { href: "/fix", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
+      { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
+      { href: "/insights/duplicates", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
+      { href: "/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
     ],
   },
   {
-    group: "Master data",
+    group: "MDM",
     items: [
-      { href: "/golden-records", label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
-      { href: "/glossary", label: "Glossary", icon: BookIcon, keywords: "terms business" },
-      { href: "/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
-      { href: "/relationships", label: "Relationships", icon: Network, keywords: "lineage graph" },
+      { href: "/mdm/golden", label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
+      { href: "/mdm/glossary", label: "Glossary", icon: BookIcon, keywords: "terms business" },
+      { href: "/mdm/match-rules", label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
     ],
   },
   {
     group: "Process and impact",
     items: [
-      { href: "/process", label: "Process map", icon: WorkflowIcon, keywords: "process mining flow" },
-      { href: "/business-process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc" },
-      { href: "/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
-      { href: "/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
-      { href: "/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering" },
+      { href: "/insights/process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc process map" },
+      { href: "/insights/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
+      { href: "/insights/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
+      { href: "/insights/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering relationships graph" },
+    ],
+  },
+  {
+    group: "Rules",
+    items: [
+      { href: "/rules", label: "Rules", icon: Sliders, keywords: "rules checks catalogue yaml" },
+      { href: "/rules/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
+      { href: "/rules/scoring", label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
     ],
   },
   {
     group: "Reports",
     items: [
-      { href: "/reports", label: "Reports", icon: FileTextIcon, licenceKey: "reports", keywords: "pdf export" },
+      { href: "/insights", label: "Reports", icon: FileTextIcon, licenceKey: "reports", keywords: "pdf export" },
     ],
   },
   {
     group: "Admin",
     items: [
-      { href: "/admin", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
-      { href: "/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
+      { href: "/admin/users", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
 ];
@@ -165,17 +182,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 const OFF_NAV_TITLES: Record<string, string> = {
   "/command-centre": "Live operations",
   "/executive-report": "Executive report",
-  "/match-rules": "Match rules",
-  "/match-rules/tuning": "Match tuning",
-  "/match-rules/constraints": "Pair constraints",
-  "/exceptions/rules": "Exception rules",
-  "/settings/exception-billing": "Exception billing",
-  "/settings/scoring": "Scoring and alerts",
+  "/data": "Connect and load",
+  "/admin/billing": "Exception billing",
   "/workbench/record": "Record report",
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
-  "/notifications": "Notifications",
-  "/remediation": "Fix batches",
 };
 
 /** Items and their sub-pages (Settings tabs) as one flat list. */
@@ -183,9 +194,16 @@ export function flattenNav(items: readonly NavItem[]): NavItem[] {
   return items.flatMap((i) => [i, ...flattenNav(i.children ?? [])]);
 }
 
-/** Route → title, from the nav labels so the header never drifts from them. */
+/**
+ * Route → title, from the nav labels so the header never drifts from them.
+ * First-match-wins: some hrefs (e.g. "/systems") are shared by more than one
+ * nav item, and the first one listed is the page's primary title.
+ */
 export const PAGE_TITLES: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(flattenNav(NAV_GROUPS.flatMap((g) => g.items)).map((i) => [i.href, i.label])),
+  ...flattenNav(NAV_GROUPS.flatMap((g) => g.items)).reduce<Record<string, string>>((acc, i) => {
+    if (!(i.href in acc)) acc[i.href] = i.label;
+    return acc;
+  }, {}),
   ...OFF_NAV_TITLES,
 };
 

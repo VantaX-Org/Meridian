@@ -1,162 +1,22 @@
 [
   {
-    "name": "command-centre",
-    "path": "/",
-    "heading": "Overview"
-  },
-  {
-    "name": "executive-report",
-    "path": "/?tab=report",
-    "heading": "Executive report"
-  },
-  {
-    "name": "systems",
-    "path": "/data?tab=systems",
-    "heading": "Systems"
-  },
-  {
-    "name": "runs",
-    "path": "/data?tab=runs",
-    "heading": "Jobs"
-  },
-  {
-    "name": "import",
-    "path": "/data?tab=import",
-    "heading": "Import"
-  },
-  {
-    "name": "analyses",
-    "path": "/analyse?tab=analyses",
-    "heading": "Analysis runs"
-  },
-  {
-    "name": "workbench",
-    "path": "/workbench",
-    "heading": "Steward inbox"
-  },
-  {
-    "name": "process",
-    "path": "/process?tab=readiness",
-    "heading": "Readiness"
-  },
-  {
-    "name": "admin",
-    "path": "/admin?tab=scoring",
-    "heading": "Scoring and alerts"
-  },
-  {
-    "name": "users",
-    "path": "/admin?tab=users",
-    "heading": "Users and audit"
-  },
-  {
-    "name": "findings",
-    "path": "/analyse?tab=findings",
-    "heading": "Findings"
-  },
-  {
-    "name": "cleaning",
-    "path": "/workbench?tab=cleaning",
+    "name": "fix",
+    "path": "/fix",
     "heading": "Cleaning"
   },
   {
-    "name": "exceptions",
-    "path": "/workbench?tab=exceptions",
-    "heading": "Exceptions"
+    "name": "fix-batch",
+    "path": "/fix/B1",
+    "heading": "Cleaning"
   },
   {
-    "name": "dedup",
-    "path": "/workbench?tab=dedup",
-    "heading": "Duplicates"
+    "name": "inbox",
+    "path": "/inbox",
+    "heading": "Failing records"
   },
   {
-    "name": "golden",
-    "path": "/workbench?tab=golden",
-    "heading": "Golden records"
-  },
-  {
-    "name": "glossary",
-    "path": "/workbench?tab=glossary",
-    "heading": "Glossary"
-  },
-  {
-    "name": "reports",
-    "path": "/analyse?tab=reports",
-    "heading": "Reports"
-  },
-  {
-    "name": "notifications",
-    "path": "/?tab=notifications",
-    "heading": "Notifications"
-  },
-  {
-    "name": "settings",
-    "path": "/admin?tab=settings",
-    "heading": "Settings"
-  },
-  {
-    "name": "rules",
-    "path": "/admin?tab=rules",
-    "heading": "Rules"
-  },
-  {
-    "name": "ai",
-    "path": "/admin?tab=ai",
-    "heading": "AI"
-  },
-  {
-    "name": "licence",
-    "path": "/admin?tab=licence",
-    "heading": "Licence"
-  },
-  {
-    "name": "contracts",
-    "path": "/admin?tab=contracts",
-    "heading": "Contracts"
-  },
-  {
-    "name": "finding-detail",
-    "path": "/analyse/finding/6d7b0459-08ca-4b11-90aa-c0524ae19064",
-    "heading": "Reconciliation account is not a vendor reconciliation account in this company code"
-  },
-  {
-    "name": "record",
-    "path": "/workbench/record/c6718ce8-8d5b-4432-933a-4df2b07ee9f0",
-    "heading": "Accounts Payable V3 in company code 1000"
-  },
-  {
-    "name": "coverage",
-    "path": "/analyse/coverage",
-    "heading": "Rule coverage"
-  },
-  {
-    "name": "coverage-object",
-    "path": "/analyse/coverage?object=material_master",
-    "heading": "Rule coverage: Material master"
-  },
-  {
-    "name": "rule-detail",
-    "path": "/analyse/rule/XREC001",
-    "heading": "Reconciliation account is not a vendor reconciliation account in this company code"
-  },
-  {
-    "name": "rule-detail-never-run",
-    "path": "/analyse/rule/MM551",
-    "heading": "Follow-up materials form a loop within a plant"
-  },
-  {
-    "name": "material",
-    "path": "/analyse/material/101",
-    "heading": "Hydraulic pump seal kit 50mm"
-  },
-  {
-    "name": "material-no-supersession",
-    "path": "/analyse/material/105",
-    "heading": "Wiper blade standard"
-  },
-  {
-    "name": "process-designer",
-    "path": "/process/designer?model=reference&node=PTP-PO-ME21N",
-    "heading": "Process designer"
+    "name": "systems-extraction",
+    "path": "/systems/s1/extractions/r1",
+    "heading": "Systems"
   }
 ]
