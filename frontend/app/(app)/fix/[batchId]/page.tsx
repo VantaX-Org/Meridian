@@ -26,9 +26,11 @@ export default function BatchPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.batch(batchId),
-    queryFn: () => getCleaningQueue({ per_page: 100 }),
+    // Filtered server-side: a client-side filter over one 100-item page missed
+    // batches further back in the queue (review finding I11).
+    queryFn: () => getCleaningQueue({ batch_id: batchId, per_page: 100 }),
   });
-  const items = useMemo(() => (data?.items ?? []).filter((i) => i.batch_id === batchId), [data, batchId]);
+  const items = useMemo(() => data?.items ?? [], [data]);
   const confident = useMemo(() => items.filter((i) => i.confidence >= HIGH_CONFIDENCE), [items]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: queryKeys.batch(batchId) });

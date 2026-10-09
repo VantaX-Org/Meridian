@@ -38,15 +38,14 @@ describe("BatchPage", () => {
     await waitFor(() => expect(approveCleaning).toHaveBeenCalledWith("i1"));
   });
 
-  it("filters out items from other batches", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({
-      items: [item({}), item({ id: "i2", record_key: "200002", batch_id: "B2" })],
-      total: 2, page: 1, per_page: 100,
-    });
+  it("asks the server for this batch only, not a client-side filter over one page", async () => {
+    // Regression for I11: a client-side filter over a fixed 100-item page missed
+    // batches further back in the queue. The filter must be server-side now.
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
 
     renderWithQuery(<BatchPage />);
 
     await screen.findByText("100001");
-    expect(screen.queryByText("200002")).not.toBeInTheDocument();
+    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ batch_id: "B1" }));
   });
 });

@@ -69,6 +69,7 @@ export interface CleaningMetrics {
 export async function getCleaningQueue(params: {
   object_type?: string;
   status?: string;
+  batch_id?: string;
   page?: number;
   per_page?: number;
 }): Promise<{ items: CleaningQueueItem[]; total: number; page: number; per_page: number }> {
