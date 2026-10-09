@@ -237,3 +237,16 @@ export function errorText(e: unknown): string {
   const detail = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
   return typeof detail === "string" ? detail : (e as Error)?.message || "Something went wrong.";
 }
+
+export interface BatchCreated {
+  id: string;
+  name: string;
+  status: BatchStatus;
+  item_count: number;
+}
+
+/** Drafts a batch from the open issues matching `filter`. The API answers 400 when nothing matches or the cap is exceeded. */
+export async function createBatch(name: string, filter: BatchFilter): Promise<BatchCreated> {
+  const { data } = await apiClient.post<BatchCreated>("/api/v1/remediation/batches", { name, filter });
+  return data;
+}

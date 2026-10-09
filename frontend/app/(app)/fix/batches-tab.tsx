@@ -18,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Pager, Pill, Select, Skeleton, Stat,
+  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Pager, Pill, Select, Skeleton, Stat, Tooltip,
   type PillTone, type SelectOption,
 } from "@/design";
 import { useAuth } from "@/context/auth-context";
@@ -28,7 +28,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 import {
   acceptHighConfidence, approveBatch, errorText, exportBatch, getBatch, getBatchEvents, getMonitor, listBatches,
   patchItem, CONFIDENCE_LABEL, EVENT_LABEL, FORMAT_LABEL, RECON_LABEL, SOURCE_LABEL, STATUS_LABEL,
-  type BatchItem, type BatchStatus, type BatchSummary, type ExportFormat, type MonitorItem,
+  type Batch, type BatchItem, type BatchStatus, type BatchSummary, type ExportFormat, type MonitorItem,
 } from "@/lib/api/remediation";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -48,6 +48,31 @@ function scopeLabel(m: MonitorItem): string {
   return m.system_name ?? (m.scope === "upload" ? "Imported files" : m.scope);
 }
 
+/** Where an exported batch's effect can be seen: the latest run of its scope against the run it was cut from. */
+export function compareHref(batch: Batch, monitor: MonitorItem[]): string | null {
+  if (batch.status !== "exported") return null;
+  const item = monitor.find((m) => m.scope === (batch.filter.scope ?? "upload"));
+  if (!item) return null;
+  const v1 = batch.filter.version_id ?? item.baseline.id;
+  const v2 = item.latest.id;
+  if (v1 === v2) return null;
+  const q = batch.filter.module ? `?module=${encodeURIComponent(batch.filter.module)}` : "";
+  return `/runs/${v2}/vs/${v1}${q}`;
+}
+
+function BeforeAfter({ batch, monitor }: { batch: Batch; monitor: MonitorItem[] }) {
+  if (batch.status !== "exported") return null;
+  const href = compareHref(batch, monitor);
+  if (!href) {
+    return (
+      <Tooltip label="No run since export" render={<Button variant="secondary" aria-disabled="true" onClick={() => undefined} />}>
+        Before vs after
+      </Tooltip>
+    );
+  }
+  return <Link href={href} onClick={(e) => e.stopPropagation()}>Before vs after</Link>;
+}
+
 /** The Fix batches tab: batch list with monitoring above it, and a batch's detail in a drawer. */
 export function BatchesTab() {
   const { user } = useAuth();
@@ -64,6 +89,7 @@ export function BatchesTab() {
   const [sort, setSort] = useUrlState("sort", "created_at:desc");
 
   const q = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches });
+  const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
   const batches = useMemo(() => q.data?.items ?? [], [q.data]);
   const counts = batches.reduce(
     (a, b) => ({ ...a, [b.status]: a[b.status] + 1 }),
@@ -116,6 +142,12 @@ export function BatchesTab() {
         ) : "0",
     },
     { id: "created_at", accessorFn: (b) => b.created_at, header: "Created", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
+    {
+      id: "compare",
+      header: "",
+      enableSorting: false,
+      cell: ({ row }) => <BeforeAfter batch={row.original} monitor={monitor.data?.items ?? []} />,
+    },
   ];
 
   const clearFilters = () => { setStatus(""); setSearch(""); };
@@ -206,6 +238,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const qc = useQueryClient();
   const detail = useQuery({ queryKey: queryKeys.remediationBatch(batchId), queryFn: () => getBatch(batchId) });
   const events = useQuery({ queryKey: queryKeys.remediationEvents(batchId), queryFn: () => getBatchEvents(batchId) });
+  const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
   const [itemPage, setItemPage] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState("");
@@ -317,6 +350,8 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         <div><dt style={{ color: "var(--m-ink-2)" }}>Approved</dt><dd>{batch.approved_at ? formatDate(batch.approved_at, "datetime") : "—"}</dd></div>
         <div><dt style={{ color: "var(--m-ink-2)" }}>Exported</dt><dd>{batch.exported_at ? formatDate(batch.exported_at, "datetime") : "—"}</dd></div>
       </dl>
+
+      <BeforeAfter batch={batch} monitor={monitor.data?.items ?? []} />
 
       {isCreator && batch.status === "draft" ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>

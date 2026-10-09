@@ -1,14 +1,19 @@
 // frontend/app/(app)/runs/[versionId]/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
+import { toast } from "sonner";
+import { Button, DataTable, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
+import { useRole } from "@/hooks/use-role";
+import { errorText } from "@/lib/api/remediation";
 import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
-import { getVersion } from "@/lib/api/versions";
+import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { baselineRunId, previousRunId } from "@/lib/runs";
 
 const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go",
@@ -20,7 +25,7 @@ const STATUS_TONE: Record<string, PillTone> = {
 
 const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk";
 
-const columns: ColumnDef<RunStep>[] = [
+const stepColumns: ColumnDef<RunStep>[] = [
   { accessorKey: "step_number", header: "#" },
   { accessorKey: "step_name", header: "Step" },
   {
@@ -42,44 +47,71 @@ const columns: ColumnDef<RunStep>[] = [
 
 export default function RunDetailPage() {
   const { versionId } = useParams<{ versionId: string }>();
+  const qc = useQueryClient();
+  const { can } = useRole();
 
   const version = useQuery({ queryKey: queryKeys.run(versionId), queryFn: () => getVersion(versionId) });
-  const steps = useQuery({
-    queryKey: [...queryKeys.run(versionId), "steps"],
-    queryFn: () => getRunSteps(versionId),
+  const steps = useQuery({ queryKey: [...queryKeys.run(versionId), "steps"], queryFn: () => getRunSteps(versionId) });
+  const systemId = version.data?.metadata?.system_id;
+  const scope = useQuery({
+    queryKey: queryKeys.versionsList({ system_id: systemId }),
+    queryFn: () => getVersions({ ...(systemId ? { system_id: systemId } : {}), limit: 100 }),
+    enabled: version.isSuccess,
   });
 
-  if (version.isError || steps.isError) {
-    const failed = version.isError ? version : steps;
-    return (
-      <ErrorState
-        message={`Couldn't load this run. ${failed.error?.message ?? ""}`.trim()}
-        onRetry={() => {
-          if (version.isError) version.refetch();
-          if (steps.isError) steps.refetch();
-        }}
-      />
-    );
+  const isBaseline = version.data?.metadata?.baseline === true;
+  const pin = useMutation({
+    mutationFn: () => pinBaseline(versionId, !isBaseline),
+    onSuccess: () => {
+      toast.success(isBaseline ? "Baseline unpinned" : "Pinned as baseline");
+      qc.invalidateQueries({ queryKey: queryKeys.run(versionId) });
+      qc.invalidateQueries({ queryKey: queryKeys.run("list") });
+      qc.invalidateQueries({ queryKey: ["versions-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (version.isError) {
+    return <ErrorState message={`Couldn't load this run. ${errorText(version.error)}`} onRetry={() => version.refetch()} />;
   }
 
-  const isLoading = version.isLoading || steps.isLoading;
+  const v = version.data;
+  const runs = scope.data?.versions ?? [];
+  const prevId = v ? previousRunId(v, runs) : null;
+  const baseId = v ? baselineRunId(v, runs) : null;
   const stepRows = steps.data?.steps ?? [];
-  const narrative = version.data ? (
-    <>
-      {version.data.label ?? versionId} — started {formatDate(version.data.run_at, "datetime")}.{" "}
-      <Pill tone={statusTone(version.data.status)}>{labelOf(version.data.status)}</Pill>
-    </>
+  const state = steps.isLoading ? "loading" : steps.isError ? "error" : stepRows.length === 0 ? "empty" : undefined;
+
+  const narrative = v ? (
+    <div className="flex flex-col gap-2">
+      <p className="flex items-center gap-2">
+        <span>{v.label ?? versionId}</span>
+        <span>— started {formatDate(v.run_at, "datetime")}.</span>
+        <Pill tone={statusTone(v.status)}>{labelOf(v.status)}</Pill>
+        {isBaseline ? <Pill tone="go">Baseline</Pill> : null}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {prevId ? <Link href={`/runs/${versionId}/vs/${prevId}`}><Button variant="secondary">Compare with previous</Button></Link> : null}
+        {baseId ? <Link href={`/runs/${versionId}/vs/baseline`}><Button variant="secondary">Compare with baseline</Button></Link> : null}
+        {can("analyse") ? (
+          <Button variant="ghost" disabled={pin.isPending} onClick={() => pin.mutate()}>
+            {isBaseline ? "Unpin baseline" : "Pin as baseline"}
+          </Button>
+        ) : null}
+      </div>
+    </div>
   ) : (
-    "Loading this run..."
+    <p>Loading run…</p>
   );
 
   return (
     <ReportPage
       narrative={narrative}
       charts={null}
-      tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
-      state={isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}
+      tables={<DataTable columns={stepColumns} data={stepRows} getRowId={(s) => String(s.step_number)} />}
+      state={state}
       emptyProps={{ title: "No step history for this run yet." }}
+      errorProps={{ message: "Couldn't load the run steps.", onRetry: () => steps.refetch() }}
     />
   );
 }
