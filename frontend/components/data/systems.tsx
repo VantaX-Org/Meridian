@@ -21,8 +21,9 @@ import { getSystemModules, getSystems } from "@/lib/api/connectivity";
 import { getSystemVersions, type SystemVersion } from "@/lib/api/system-objects";
 import { registerSystem, testDraftConnection, triggerSync } from "@/lib/api/systems";
 import { relativeTime } from "@/lib/format";
-import { startConfigLoad } from "@/lib/api/config-load";
-import { ConfigLoadChoice } from "@/components/data/config-load";
+import { getConfigLandscape, startConfigLoad, type SystemConfigStatus } from "@/lib/api/config-load";
+import { ConfigLoadChoice, ConfigStateBadge } from "@/components/data/config-load";
+import { useUrlState } from "@/hooks/use-url-state";
 import type { HealthStatus, SAPSystemExtended, SystemModule, SystemType } from "@/types/api";
 
 const meta = (m: AuroraColumnMeta) => m;
@@ -58,7 +59,20 @@ export function latestDqs(versions: SystemVersion[]): { dqs: number | null; vers
 type Row = {
   system: SAPSystemExtended; modules: SystemModule[] | undefined; versions: SystemVersion[] | undefined;
   loadedObjects: number; rows: number; lastExtraction: string | null; dqs: number | null; loading: boolean;
+  config: SystemConfigStatus | undefined;
 };
+
+/** Second line under the configuration badge. */
+function configSub(c: SystemConfigStatus): string {
+  switch (c.status) {
+    case "loaded": return `${c.loaded_at ? `${relativeTime(c.loaded_at)}, ` : ""}${c.areas_loaded} of ${c.areas_total} areas`;
+    case "with_gaps": return `${c.areas_loaded} of ${c.areas_total} areas`;
+    case "loading": return c.current_area ?? "Starting";
+    case "not_loaded": return "Rules apply by default";
+    case "failed": return c.error?.split(/(?<=\.)\s/)[0] ?? "Load again from the system page";
+    case "not_available": return "No configuration to read";
+  }
+}
 
 const NONE_YET = <span title="No extraction yet">—</span>;
 const PENDING = <span className="ui-skeleton__row" style={{ display: "block", width: 48 }} aria-hidden="true" />;
@@ -107,6 +121,9 @@ export function SystemsSurface() {
   const systems = useMemo(() => systemsQ.data ?? [], [systemsQ.data]);
   const modulesQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-modules", s.id], queryFn: () => getSystemModules(s.id) })) });
   const versionsQ = useQueries({ queries: systems.map((s) => ({ queryKey: ["system-versions", s.id], queryFn: () => getSystemVersions(s.id) })) });
+  const configQ = useQuery({ queryKey: ["config-landscape"], queryFn: getConfigLandscape, meta: { ignoreError: true }, retry: false,
+    refetchInterval: (q) => (q.state.data?.counts.loading ? 2000 : false) });
+  const [configFilter, setConfigFilter] = useUrlState("config", "");
   const refresh = () => { qc.invalidateQueries({ queryKey: ["systems"] }); };
 
   const syncAll = useMutation({
@@ -127,14 +144,23 @@ export function SystemsSurface() {
       loadedObjects: (modules ?? []).filter((m) => m.enabled && m.row_count > 0).length,
       rows: (modules ?? []).reduce((a, m) => a + (m.row_count || 0), 0),
       lastExtraction: last, dqs: versions ? latestDqs(versions).dqs : null, loading: !!modulesQ[i]?.isLoading,
+      config: configQ.data?.systems.find((c) => c.system_id === system.id),
     };
   });
+  const shown = configFilter ? rows.filter((r) => r.config?.status === configFilter) : rows;
+  const cfgTotal = configQ.data?.total ?? 0;
+  const cfgLoaded = configQ.data?.loaded ?? 0;
+  const cfgCounts = configQ.data?.counts ?? {};
+  const cfgNotLoaded = cfgTotal - cfgLoaded;
+  const cfgVerdict = !configQ.data ? "Configuration status could not be read."
+    : cfgNotLoaded === 0 ? "All systems loaded."
+    : cfgCounts.with_gaps && cfgNotLoaded === cfgCounts.with_gaps ? `${cfgCounts.with_gaps} ${cfgCounts.with_gaps === 1 ? "system" : "systems"} loaded with gaps.`
+    : `${cfgNotLoaded} ${cfgNotLoaded === 1 ? "system applies" : "systems apply"} all rules by default.`;
 
   const modulesLoading = modulesQ.some((q) => q.isLoading);
   const objectsLoaded = rows.reduce((a, r) => a + r.loadedObjects, 0);
   const objectsOffered = rows.reduce((a, r) => a + (r.modules?.length ?? 0), 0);
-  const rowsLoaded = rows.reduce((a, r) => a + r.rows, 0);
-  const lastAny = rows.map((r) => r.lastExtraction).filter((x): x is string => !!x).sort().pop() ?? null;
+    const lastAny = rows.map((r) => r.lastExtraction).filter((x): x is string => !!x).sort().pop() ?? null;
   const notHealthy = systems.filter((s) => s.health_status !== "healthy").length;
 
   const columns = useMemo<ColumnDef<Row, unknown>[]>(() => [
@@ -147,6 +173,16 @@ export function SystemsSurface() {
       <Link href={`/systems/${row.original.system.id}?tab=health`} className="ui-link" title={row.original.system.health_message ?? undefined}>
         <HealthBadge s={row.original.system.health_status} />
       </Link>) },
+    { id: "config", header: "Configuration", meta: meta({ width: 190 }), cell: ({ row }) => {
+      const c = row.original.config;
+      if (!c) return configQ.isLoading ? PENDING : NONE_YET;
+      return (
+        <Link href={`/systems/${row.original.system.id}?tab=health`} className="ui-link">
+          <span className="ui-cell-stack"><span className="ui-cell-stack__main"><ConfigStateBadge state={c.status} /></span>
+            <span className="ui-cell-stack__sub">{configSub(c)}</span></span>
+        </Link>
+      );
+    } },
     { id: "objects", header: "Objects", meta: meta({ numeric: true, width: 90 }),
       cell: ({ row }) => row.original.modules ? `${row.original.loadedObjects} of ${row.original.modules.length}` : row.original.loading ? PENDING : NONE_YET },
     { id: "rows", header: "Rows", meta: meta({ numeric: true, width: 110 }),
@@ -157,7 +193,7 @@ export function SystemsSurface() {
       cell: ({ row }) => row.original.system.last_analysis_at ? relativeTime(row.original.system.last_analysis_at) : <span title="Never analysed">—</span> },
     { id: "dqs", header: "DQS", meta: meta({ numeric: true, width: 80 }),
       cell: ({ row }) => row.original.dqs === null ? NONE_YET : <span title="From the latest file import">{row.original.dqs.toFixed(1)}</span> },
-  ], []);
+  ], [configQ.isLoading]);
 
   const addButton = (
     <>
@@ -181,13 +217,20 @@ export function SystemsSurface() {
               verdict: notHealthy ? `${notHealthy} of ${systems.length} not healthy.` : "All connected systems are healthy.", tone: notHealthy ? "warning" : undefined },
             { label: "Objects loaded", value: objectsLoaded, href: "/systems", loading: modulesLoading,
               verdict: `${objectsLoaded} of ${objectsOffered} objects have rows.` },
-            { label: "Rows loaded", value: rowsLoaded, href: "/sync", loading: modulesLoading,
-              verdict: "Rows held across every loaded object." },
+            { label: "Configuration loaded", value: configQ.data ? cfgLoaded : null, unit: configQ.data ? `of ${cfgTotal}` : undefined,
+              loading: configQ.isLoading, href: "/data?tab=systems&config=not_loaded", verdict: cfgVerdict,
+              tone: (cfgCounts.not_loaded ?? 0) + (cfgCounts.failed ?? 0) > 0 ? "warning" : undefined },
             { label: "Last extraction", value: null, text: lastAny ? relativeTime(lastAny) : undefined, href: "/sync", loading: modulesLoading,
               verdict: lastAny ? "Most recent extraction on any system." : "Never extracted. Download from the source." },
           ]} />
+          {configFilter ? (
+            <Text variant="text-small" tone="secondary">
+              Showing systems with configuration {configFilter.replace("_", " ")}.{" "}
+              <Button size="sm" variant="ghost" onClick={() => setConfigFilter("")}>Show all systems</Button>
+            </Text>
+          ) : null}
           <div className="ui-table-stacked">
-            <DataTable columns={columns} data={rows} getRowId={(r) => r.system.id}
+            <DataTable columns={columns} data={shown} getRowId={(r) => r.system.id}
               onRowActivate={(r) => router.push(`/systems/${r.system.id}`)} ariaLabel="Connected systems" maxHeight="60vh" />
           </div>
         </>

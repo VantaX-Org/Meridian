@@ -13,15 +13,16 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EmptyState, FilterBar, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally } from "@/components/ui-core";
+import { EmptyState, FilterBar, KeyValue, Mono, PageHeader, SectionCard, StatusBadge, TableSkeleton, Tally } from "@/components/ui-core";
+import { ConfiguredInText } from "@/components/data/config-load";
 import { FeaturesTable } from "@/components/process/features";
 import { useFindingHref } from "@/components/process/shared";
 import {
-  ProcessReport, Select, Text, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
+  Button, ProcessReport, Select, Text, type ProcessReportBlockingFinding, type ProcessReportHierarchyNode,
   type ProcessReportReadiness, type ProcessReportRecommendation,
 } from "@/components/aurora";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
-import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally } from "@/lib/api/config-load";
+import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, formatDate } from "@/lib/format";
 import type { BusinessProcessL1, BusinessProcessL4, BusinessProcessL5Field, Version } from "@/types/api";
@@ -40,12 +41,25 @@ const semantic = (pct: number, blocking: number): ProcessReportReadiness => (blo
 const sev = (f: BusinessProcessL5Field): "critical" | "high" | "medium" => (f.mandatory ? "critical" : (f.pass_rate ?? 100) < 50 ? "high" : "medium");
 
 const fmt1 = (n: number) => n.toFixed(1);
-const badge = (sv: string) => (sv === "critical" || sv === "high" || sv === "medium" || sv === "low" ? sv : sv === "warning" ? "medium" : "low");
+const badge = (sv: string | null) => (sv === "critical" || sv === "high" || sv === "medium" || sv === "low" ? sv : sv === "warning" ? "medium" : "low");
 const records = (n: number) => `${n.toLocaleString()} ${n === 1 ? "record" : "records"}`;
 
-function RulesBlock({ title, t, findingHref, nested }: {
+function RulesBlock({ title, t, findingHref, nested, configuredIn }: {
   title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined; nested?: boolean;
+  configuredIn?: ConfiguredIn[];
 }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const naKey = `na-${title}`;
+  const expanded = params.get("na")?.split(",").includes(title) ?? false;
+  const toggle = () => {
+    const cur = (params.get("na") ?? "").split(",").filter(Boolean);
+    const next = new URLSearchParams(params.toString());
+    const list = expanded ? cur.filter((x) => x !== title) : [...cur, title];
+    if (list.length) next.set("na", list.join(",")); else next.delete("na");
+    router.replace(`?${next.toString()}`, { scroll: false });
+  };
+  const na = t.not_applicable_rules;
   const failing = t.applicable - t.passes;
   return (
     <div className="ui-stack">
@@ -53,6 +67,7 @@ function RulesBlock({ title, t, findingHref, nested }: {
       <Text variant="text-small" tone="secondary">
         {t.score === null ? "No rules apply" : `${fmt1(t.score)}, ${t.passes.toLocaleString()} of ${t.applicable.toLocaleString()} apply`}, {failing.toLocaleString()} failing
       </Text>
+      {configuredIn?.length ? <KeyValue rows={[{ k: "Where this is configured", v: <ConfiguredInText items={configuredIn} /> }]} /> : null}
       {t.top_failing.length ? (
         <ul className="ui-ranked" aria-label={`Top failing rules, ${title}`}>
           {t.top_failing.slice(0, 5).map((f) => (
@@ -67,9 +82,24 @@ function RulesBlock({ title, t, findingHref, nested }: {
         </ul>
       ) : null}
       {t.not_applicable ? (
-        <Text variant="text-small" tone="secondary">
-          Does not apply ({t.not_applicable.toLocaleString()}): {t.not_applicable_reasons.map((x) => `${x.reason} (${x.count})`).join("; ")}.
-        </Text>
+        <>
+          <Text as="h5" variant="text-small" tone="secondary">Does not apply ({t.not_applicable.toLocaleString()})</Text>
+          <ul className="ui-ranked" id={naKey} aria-label={`Rules that do not apply, ${title}`}>
+            {(expanded ? na : na.slice(0, 3)).map((r) => (
+              <li key={r.check_id}>
+                <Link href={findingHref(r.module, r.check_id) ?? "/analyse"}>
+                  <StatusBadge status={badge(r.severity)} />
+                  <span className="ui-ranked__title"><Mono>{r.check_id}</Mono> {r.reason ?? "Not used by the loaded configuration"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {na.length > 3 ? (
+            <Button variant="ghost" size="sm" aria-expanded={expanded} aria-controls={naKey} onClick={toggle}>
+              {expanded ? "Show fewer" : `Show all ${na.length}`}
+            </Button>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
@@ -258,7 +288,7 @@ export function ProcessReadiness() {
               </Text>
             ) : null}
             <RulesBlock title={awareL1.name} t={awareL1} findingHref={findingHref} />
-            {awareL1.l2.map((l2) => <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} nested />)}
+            {awareL1.l2.map((l2) => <RulesBlock key={l2.l2} title={l2.name} t={l2} findingHref={findingHref} nested configuredIn={l2.configured_in} />)}
           </div>
         </SectionCard></div>
       ) : null}

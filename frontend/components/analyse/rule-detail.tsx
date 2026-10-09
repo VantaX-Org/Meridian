@@ -18,6 +18,8 @@ import {
 } from "@/components/ui-core";
 import { PageCrumb } from "@/components/shell/page-crumb";
 import { copyToClipboard } from "@/lib/actions";
+import { ApplicabilityBadge, ConfiguredInText } from "@/components/data/config-load";
+import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getFindings } from "@/lib/api/findings";
 import { getIssues, type RecordIssue } from "@/lib/api/issues";
 import { getDdicFields, getRuleByCode, getRuleVersions, type RuleDetail } from "@/lib/api/rules";
@@ -29,7 +31,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n: number, w: string) => `${n.toLocaleString()} ${w}${n === 1 ? "" : "s"}`;
 const splitField = (s: string) => (s.includes(".") ? { table: s.slice(0, s.indexOf(".")), field: s.slice(s.indexOf(".") + 1) } : { table: null, field: s });
 const FIX_KEY: Record<string, string> = { __blank__: "Blank", __other__: "Any other value" };
-const NAV = [["why", "Why"], ["sap", "SAP"], ["rule", "Rule"], ["lineage", "Lineage"], ["fix", "Fix"], ["history", "History"], ["records", "Records"], ["changes", "Changes"]] as const;
+const NAV = [["why", "Why"], ["sap", "SAP"], ["applies", "Where it applies"], ["rule", "Rule"], ["lineage", "Lineage"], ["fix", "Fix"], ["history", "History"], ["records", "Records"], ["changes", "Changes"]] as const;
 
 export function RuleDetailPage({ checkId }: { checkId: string }) {
   const mod = useSearchParams().get("module") ?? undefined;
@@ -137,6 +139,7 @@ function Body({ r }: { r: RuleDetail }) {
             </section>
           </div></section>
 
+          <section id="applies"><WhereItApplies r={r} /></section>
           <section id="rule"><TheRule r={r} /></section>
           <section id="lineage"><Lineage r={r} /></section>
           <section id="fix"><HowToFix r={r} /></section>
@@ -152,6 +155,29 @@ function Body({ r }: { r: RuleDetail }) {
         </nav>
       </div>
     </>
+  );
+}
+
+function WhereItApplies({ r }: { r: RuleDetail }) {
+  const router = useRouter();
+  const q = useQuery({ queryKey: ["rule.applicability", r.module, r.id], retry: false, meta: { ignoreError: true },
+    queryFn: () => getRuleApplicability(r.id, r.module) });
+  const columns = useMemo<ColumnDef<SystemApplicability, unknown>[]>(() => [
+    { id: "system", header: "System", meta: meta({ width: 180 }), accessorFn: (s) => s.name ?? s.system_id },
+    { id: "applies", header: "Applies", meta: meta({ width: 170 }), cell: ({ row }) => <ApplicabilityBadge a={row.original.applicability} /> },
+    { id: "reason", header: "Reason", accessorFn: (s) => s.reason ?? "" },
+    { id: "configured", header: "Configured in", cell: ({ row }) => row.original.configured_in.length ? <ConfiguredInText items={row.original.configured_in} /> : "—" },
+  ], []);
+  const systems = q.data?.systems ?? [];
+  return (
+    <SectionCard title="Where it applies" flush={systems.length > 0}>
+      {q.isLoading ? <TableSkeleton rows={3} label="Loading where this rule applies" />
+        : q.isError ? <EmptyState>Where this rule applies could not be read. Reload the page, and check that the backend is running.</EmptyState>
+        : systems.length === 0 ? <EmptyState>No system is connected. Add a system on the Data page, then load its configuration to see where this rule applies.</EmptyState> : (
+          <DataTable columns={columns} data={systems} getRowId={(s) => s.system_id} ariaLabel="Where this rule applies"
+            onRowActivate={(s) => router.push(`/systems/${s.system_id}?tab=health`)} />
+        )}
+    </SectionCard>
   );
 }
 
