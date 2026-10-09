@@ -194,9 +194,16 @@ export function flattenNav(items: readonly NavItem[]): NavItem[] {
   return items.flatMap((i) => [i, ...flattenNav(i.children ?? [])]);
 }
 
-/** Route → title, from the nav labels so the header never drifts from them. */
+/**
+ * Route → title, from the nav labels so the header never drifts from them.
+ * First-match-wins: some hrefs (e.g. "/systems") are shared by more than one
+ * nav item, and the first one listed is the page's primary title.
+ */
 export const PAGE_TITLES: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(flattenNav(NAV_GROUPS.flatMap((g) => g.items)).map((i) => [i.href, i.label])),
+  ...flattenNav(NAV_GROUPS.flatMap((g) => g.items)).reduce<Record<string, string>>((acc, i) => {
+    if (!(i.href in acc)) acc[i.href] = i.label;
+    return acc;
+  }, {}),
   ...OFF_NAV_TITLES,
 };
 
