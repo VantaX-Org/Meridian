@@ -84,7 +84,10 @@ export default function GlossaryPage() {
         />
       }
       state={state}
-      emptyProps={{ title: filtered ? "No glossary terms match these filters." : "No terms yet." }}
+      emptyProps={{
+        title: filtered ? "No glossary terms match these filters." : "No terms yet.",
+        detail: filtered ? undefined : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
+      }}
       errorProps={{
         message: apiErrorMessage(query.error),
         onRetry: () => query.refetch(),

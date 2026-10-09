@@ -151,7 +151,8 @@ function RulesTab() {
         />
       ) : (
         <EmptyState
-          title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet. Add one per field the engine should compare."}
+          title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet."}
+          detail={domain ? undefined : "Add one per field the engine should compare."}
           action={write ? (
             <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
           ) : undefined}

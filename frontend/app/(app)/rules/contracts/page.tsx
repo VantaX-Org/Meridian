@@ -120,7 +120,8 @@ export default function ContractsPage() {
         all.length
           ? { title: "No contracts match." }
           : {
-              title: "No data contracts yet. A contract states what a consuming system may expect from a producer.",
+              title: "No data contracts yet.",
+              detail: "A contract states what a consuming system may expect from a producer.",
               action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined,
             }
       }

@@ -72,7 +72,7 @@ export default function ExceptionBillingPage() {
         ) : null
       }
       state={state}
-      emptyProps={{ title: "No billable exceptions this period." }}
+      emptyProps={{ title: "No billable exceptions this period.", detail: "Try an earlier month, or check back after the next billing run." }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
     />
   );
