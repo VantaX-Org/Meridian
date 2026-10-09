@@ -173,6 +173,17 @@ _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB8
 
 
 
+def _inequality_cols(expr: str) -> set[str]:
+    """Columns appearing in a magnitude comparison (<, <=, >, >=) anywhere in ``expr``,
+    e.g. both sides of ``ANNUAL_SALARY < (PAY_RANGE_MIN * 0.5)``. Equality-only columns
+    (==, !=) are excluded: those are satisfied by the "@=" same-value pairing instead."""
+    cols: set[str] = set()
+    for seg in re.split(r"\band\b|\bor\b", expr):
+        if re.search(r"(?<![<>=])[<>](?!=)|<=|>=", seg):
+            cols |= set(re.findall(r"`([^`]+)`", seg))
+    return cols
+
+
 def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
@@ -183,6 +194,32 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
         paired.setdefault(a, []).append(f"@={b}")
         paired.setdefault(b, []).append(f"@={a}")
     numbers = re.findall(r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", expr)
+    # a literal boundary alone (e.g. "-1" in `X` < -1) never satisfies a strict </>: offer values
+    # just past each boundary, and the midpoint between adjacent boundaries (e.g. 0 and 1 -> 0.5)
+    # for an open interval like `0 < X < 1`. Digits inside a quoted string (e.g. an embedded regex
+    # like '[1-9][0-9]{2}') aren't magnitude-comparison boundaries at all: strip quotes first, or
+    # they flood the per-column candidate cap and evict the probe values other rules rely on
+    # (asset_accounting AA204/AA214).
+    _n = sorted(set(float(x) for x in re.findall(
+        r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", re.sub(r"'[^']*'|\"[^\"]*\"", "", expr))))
+
+    def _fmt(v: float) -> str:
+        return str(int(v)) if v == int(v) else str(round(v, 3))
+
+    # midpoints first: an open-interval check (`0 < X < 1`) needs one to ever fail at all,
+    # while a single-boundary check (`X < -1`) only needs the +/-1 offsets that follow.
+    number_variants = [_fmt((a + b) / 2) for a, b in zip(_n, _n[1:])]
+    # a column that is some table's own key, or a cross-table join key, must keep its
+    # identity-default ("K{i}" from _rows(), propagated across the join) rather than collapse
+    # onto one of a handful of probe values shared by every generated record (sd_sales_orders
+    # SDSO232 etc: VBAP.MATNR is the join key to MARC/MARA; giving it e.g. "X" for every row
+    # made every row join the same material, so none of them stayed out of scope).
+    _tables = set(tables_of(cols))
+    _edges, _ = _graph()
+    _key_or_joined = {f"{t}.{k}" for t in _tables for k in dictionary.keys(t)} | \
+        {f"{e.child}.{jc}" for e in _edges if e.parent in _tables and e.child in _tables for jc, _ in e.on} | \
+        {f"{e.parent}.{jp}" for e in _edges if e.parent in _tables and e.child in _tables for _, jp in e.on}
+    number_variants += [_fmt(v + 1) for v in _n] + [_fmt(v - 1) for v in _n]
     out = {}
     for c in cols:
         if c in (rule.get("group_by") or []):
@@ -191,8 +228,14 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             out[c] = ["000000"]  # freshness time-of-day: one value, so the date probes stay inside MAX_ROWS
             continue
         vals: list[str] = []
-        if c == rule.get("field") and expr and f"`{c}`" not in expr and not (rule.get("applies_when") or {}).get(c):
-            continue  # a cross-field rule's anchor: keep the record id
+        if (c == rule.get("field") and expr and f"`{c}`" not in expr
+                and not (rule.get("applies_when") or {}).get(c)
+                and c in _key_or_joined):
+            continue  # a cross-field rule's anchor that is itself a key/join column: keep the
+            # record id, or giving it a probe value collapses distinct rows onto the same join
+            # (sd_sales_orders SDSO232 etc). A non-key, non-join anchor (e.g. COMP143's SALARY,
+            # flagged but absent from fail_when) still needs a value, since _rows() only
+            # defaults key/join columns to "K{i}".
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]]
         if c == rule.get("split_field"):
@@ -226,9 +269,11 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if f"`{c}`" in expr:
-            vals += literals[:4] + numbers[:4]
+            vals += literals[:4] + numbers[:4] + number_variants[:4]
             if re.search(rf"`{re.escape(c)}`[^`]*\.str\.islower\(\)", expr):
                 vals.append("a")  # case-check rule: a lowercase-first candidate to trip it
+            if ".round(" in expr:
+                vals.append("1.004")  # a value whose cents aren't a whole number, for precision/rounding checks
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
@@ -331,6 +376,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         s, e = rule["start"], rule["end"]
         rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
                 {**g, s: "20200601", e: "20200630"}]
+        # a group_by column may also be a cross-table join key (e.g. USERID): keep "G1" intact
+        # across all three rows, or _rows() suffixes it per-row and silently splits the group
+        rule = {**rule, "_live_value": "G1"}
         return _verify(rule, dictionary, rows, (3, 1), live)
     if rule.get("check_class") == "aggregate_check":
         return _prove_aggregate(rule, dictionary, cand, live)
@@ -366,6 +414,13 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         # retry with the checked field varying fastest: with several scope conditions the first MAX_ROWS
         # combinations may otherwise never reach a second value of it
         verdict = _prove_generic(rule, dictionary, cand, sorted(cols, key=lambda c: c == rule["field"]), live)
+    if verdict[0] != "proven":
+        # a two-column magnitude comparison (e.g. SALARY < RANGE_MIN * 0.5) needs both sides to
+        # vary together: move every column on either side of a <, <=, >, >= to the fastest-varying
+        # tail (nested), or one side sits frozen at its first candidate for the whole MAX_ROWS budget
+        priority = _inequality_cols(rule.get("fail_when") or rule.get("condition") or "") & set(cols)
+        if priority - {rule.get("field")}:
+            verdict = _prove_generic(rule, dictionary, cand, sorted(cols, key=lambda c: c in priority), live)
     return verdict
 
 

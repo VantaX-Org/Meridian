@@ -533,6 +533,10 @@ rules:
     fix_map:
       __other__: Use a pay group code of at most 2 characters or add a mapping in the integration.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay group does not fit the 2-character payroll area. Correct in Compensation Information.'
+    auto_fix:
+      steps:
+      - op: strip
+      confidence: high
   - id: COMP030
     field: COMPINFO.PAY_GRADE
     check_class: regex_check
@@ -1130,12 +1134,12 @@ rules:
   - id: COMP066
     field: COMPINFO.ANNUALIZATION_FACTOR
     check_class: cross_field_check
-    fail_when: ((`COMPINFO.COMP_FREQUENCY` == 'ANN') & (`COMPINFO.ANNUALIZATION_FACTOR` != 1)) | ((`COMPINFO.COMP_FREQUENCY` == 'BWK') & (`COMPINFO.ANNUALIZATION_FACTOR` != 26))
+    fail_when: ((`COMPINFO.COMP_FREQUENCY` == 'ANN') & (`COMPINFO.ANNUALIZATION_FACTOR` != 1)) | ((`COMPINFO.COMP_FREQUENCY` == 'BWK') & (`COMPINFO.ANNUALIZATION_FACTOR` != 26)) | ((`COMPINFO.COMP_FREQUENCY` == 'QRT') & (`COMPINFO.ANNUALIZATION_FACTOR` != 4)) | ((`COMPINFO.COMP_FREQUENCY` == 'SMO') & (`COMPINFO.ANNUALIZATION_FACTOR` != 24)) | ((`COMPINFO.COMP_FREQUENCY` == 'WKL') & ~`COMPINFO.ANNUALIZATION_FACTOR`.isin([52, 53]))
     require_populated: true
     severity: high
     dimension: consistency
     message: Annualisation factor does not match the pay frequency
-    why_it_matters: Annual pays once and bi-weekly 26 times a year. Any other factor misstates the annual salary. Monthly is not checked because a 13th-cheque factor of 13 is legitimate.
+    why_it_matters: Annual pays once, bi-weekly 26 times, quarterly 4 times, semi-monthly 24 times and weekly 52 or 53 times a year. Any other factor misstates the annual salary. Monthly is not checked here because a 13th-cheque factor of 13 is legitimate (see the monthly-specific rule).
     rule_authority: best_practice
     sap_impact: Annual salary, compa-ratio and merit budgets are wrong by the factor difference.
     fix_map:
@@ -1149,6 +1153,9 @@ rules:
         values:
           ANN: '1'
           BWK: '26'
+          QRT: '4'
+          SMO: '24'
+          WKL: '52'
           __other__: null
       confidence: high
   - id: COMP067
@@ -1569,7 +1576,7 @@ rules:
     field: COMPINFO.PAY_SCALE_LEVEL
     check_class: null_check
     applies_when:
-      COMPINFO.PAY_GRADE:
+      COMPINFO.PAY_SCALE_TYPE:
         blank: false
     severity: low
     dimension: completeness
@@ -1649,7 +1656,7 @@ rules:
     field: COMPINFO.PAY_COMPONENT_DEFAULT
     check_class: null_check
     applies_when:
-      COMPINFO.PAY_COMPONENT_CAN_OVERRIDE: ['false']
+      COMPINFO.PAY_COMPONENT_CAN_OVERRIDE: ['false', 'False', 'FALSE']
     severity: low
     dimension: completeness
     message: Pay component cannot be overridden but has no default value
@@ -1664,7 +1671,7 @@ rules:
     field: COMPINFO.PAY_COMPONENT_FREQUENCY
     check_class: null_check
     applies_when:
-      COMPINFO.PAY_COMPONENT_RECURRING: ['true']
+      COMPINFO.PAY_COMPONENT_RECURRING: ['true', 'True', 'TRUE']
     severity: low
     dimension: completeness
     message: Recurring pay component has no frequency
@@ -1745,37 +1752,37 @@ rules:
   - id: COMP107
     field: COMPINFO.RANGE_PENETRATION
     check_class: cross_field_check
-    fail_when: '`COMPINFO.RANGE_PENETRATION` > 100'
+    fail_when: '`COMPINFO.RANGE_PENETRATION` > 1'
     severity: medium
     dimension: accuracy
-    message: Range penetration is above 100%
-    why_it_matters: Range penetration over 100% means the salary is above the range maximum, which should instead be visible as an above-range exception, not a penetration value past the ceiling.
+    message: Range penetration is above 1.0 (100%)
+    why_it_matters: Range penetration over 1.0 means the salary is above the range maximum, which should instead be visible as an above-range exception, not a penetration value past the ceiling. The dictionary defines range penetration as a 0-1 fraction (0 at minimum, 1 at maximum).
     rule_authority: best_practice
     sap_impact: Compensation planning tools will show an impossible 'over 100% into the range' figure.
     fix_map:
       __other__: Recompute range penetration, or confirm the salary is deliberately above range maximum.
-    record_fix_template: 'Employee {COMPINFO.USERID}: range penetration {actual_value}% exceeds 100%. Recompute or confirm.'
+    record_fix_template: 'Employee {COMPINFO.USERID}: range penetration {actual_value} exceeds 1.0. Recompute or confirm.'
   - id: COMP108
     field: COMPINFO.RANGE_PENETRATION
     check_class: cross_field_check
-    fail_when: '`COMPINFO.RANGE_PENETRATION` < -100'
+    fail_when: '`COMPINFO.RANGE_PENETRATION` < -1'
     severity: low
     dimension: accuracy
     message: Range penetration is implausibly negative
-    why_it_matters: Range penetration below -100% is outside any realistic positioning relative to the pay range and signals a computation or data entry error.
+    why_it_matters: Range penetration below -1.0 is outside any realistic positioning relative to the pay range and signals a computation or data entry error. The dictionary defines range penetration as a 0-1 fraction.
     rule_authority: best_practice
     sap_impact: Compensation planning dashboards will show a meaningless negative outlier.
     fix_map:
       __other__: Recompute range penetration from the salary and pay range bounds.
-    record_fix_template: 'Employee {COMPINFO.USERID}: range penetration {actual_value}% is implausibly negative. Recompute it.'
+    record_fix_template: 'Employee {COMPINFO.USERID}: range penetration {actual_value} is implausibly negative. Recompute it.'
   - id: COMP109
     field: COMPINFO.RANGE_PENETRATION
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_RANGE_MAX` != `COMPINFO.PAY_RANGE_MIN`) and (((`COMPINFO.ANNUAL_SALARY` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) * 100 - `COMPINFO.RANGE_PENETRATION`).abs() > 2)
+    fail_when: (`COMPINFO.PAY_RANGE_MAX` != `COMPINFO.PAY_RANGE_MIN`) and (((`COMPINFO.ANNUAL_SALARY` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) - `COMPINFO.RANGE_PENETRATION`).abs() > 0.02)
     severity: medium
     dimension: accuracy
     message: Range penetration does not match the recomputed value from salary and range bounds
-    why_it_matters: Range penetration is defined as (salary - min) / (max - min). When the stored value drifts from the recomputed one, the figure used in planning is wrong.
+    why_it_matters: Range penetration is defined as (salary - min) / (max - min), a 0-1 fraction. When the stored value drifts from the recomputed one, the figure used in planning is wrong.
     rule_authority: best_practice
     sap_impact: Merit matrices and planning worksheets use a range-penetration figure that does not match the underlying salary and range.
     fix_map:
@@ -1807,6 +1814,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active pay grade, or reactivate the grade if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} is inactive but carries a positive salary. Correct the grade or the status.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP112
     field: COMPINFO.PAY_RANGE_STATUS
     check_class: cross_field_check
@@ -1820,6 +1831,10 @@ rules:
     fix_map:
       __other__: Assign the current pay range for the grade, or reactivate the range if it is still correct.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay range is inactive but still used to evaluate the salary. Correct the range assignment.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP113
     field: COMPINFO.PAY_COMPONENT_STATUS
     check_class: cross_field_check
@@ -1833,6 +1848,10 @@ rules:
     fix_map:
       __other__: Clear the value on the inactive component, or reactivate the component if it should still pay.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} is inactive but has a positive value. Correct the status or the value.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP114
     field: COMPINFO.PAY_COMPONENT_DEFAULT
     check_class: cross_field_check
@@ -1888,7 +1907,7 @@ rules:
   - id: COMP118
     field: COMPINFO.PAY_SCALE_TYPE
     check_class: regex_check
-    pattern: ^[A-Z0-9]{1,4}$
+    pattern: ^[\x20-\x7E]{1,32}$
     severity: low
     dimension: validity
     message: Pay scale type does not look like a valid tariff code
@@ -1901,7 +1920,7 @@ rules:
   - id: COMP119
     field: COMPINFO.PAY_SCALE_AREA
     check_class: regex_check
-    pattern: ^[A-Z0-9]{1,4}$
+    pattern: ^[\x20-\x7E]{1,32}$
     severity: low
     dimension: validity
     message: Pay scale area does not look like a valid tariff code
@@ -1914,7 +1933,7 @@ rules:
   - id: COMP120
     field: COMPINFO.PAYROLL_SYSTEM_ID
     check_class: regex_check
-    pattern: ^[A-Z0-9_]{1,10}$
+    pattern: ^[\x20-\x7E]{1,128}$
     severity: low
     dimension: validity
     message: Payroll system ID does not look like a valid system key
@@ -1937,19 +1956,6 @@ rules:
     fix_map:
       __other__: Remove invalid characters from the user ID.
     record_fix_template: Compensation record user ID '{actual_value}' contains invalid characters. Correct it.
-  - id: COMP122
-    field: COMPINFO.PAY_TYPE
-    check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_TYPE` == 'HOURLY') and `COMPINFO.COMP_FREQUENCY`.notna() and (`COMPINFO.COMP_FREQUENCY` != 'HOURLY')
-    severity: low
-    dimension: consistency
-    message: Pay type is hourly but the compensation frequency is not hourly
-    why_it_matters: An hourly pay type should be paired with an hourly compensation frequency so the value is interpreted as a rate, not an annual or monthly amount.
-    rule_authority: best_practice
-    sap_impact: The hourly rate may be misinterpreted as a periodic salary amount.
-    fix_map:
-      __other__: Align the compensation frequency with the hourly pay type.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay type is HOURLY but compensation frequency is not hourly. Align them.'
   - id: COMP123
     field: COMPINFO.PAYCOMP_END_DATE
     check_class: cross_field_check
@@ -2083,58 +2089,6 @@ rules:
     fix_map:
       __other__: Align the compensation pay group with the employment pay group, or correct whichever is wrong.
     record_fix_template: 'Employee {COMPINFO.USERID}: compensation pay group differs from the employment pay group. Align them.'
-  - id: COMP130
-    field: COMPINFO.PAY_GRADE
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_GRADE`.notna() and `EMPEMPLOYMENT.PAY_GRADE`.notna() and (`COMPINFO.PAY_GRADE` != `EMPEMPLOYMENT.PAY_GRADE`)'
-    severity: medium
-    dimension: consistency
-    message: Compensation pay grade differs from the employment pay grade
-    why_it_matters: Both COMPINFO and EMPEMPLOYMENT carry a pay grade for the same employee; a mismatch means one of the two records was not updated on the last grade change.
-    rule_authority: best_practice
-    sap_impact: Range and compa-ratio calculations may use a different grade than the one shown on the job record.
-    fix_map:
-      __other__: Align the compensation pay grade with the employment pay grade, or correct whichever is wrong.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation pay grade differs from the employment pay grade. Align them.'
-  - id: COMP131
-    field: COMPINFO.PAY_SCALE_TYPE
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_SCALE_TYPE`.notna() and `EMPEMPLOYMENT.PAY_SCALE_TYPE`.notna() and (`COMPINFO.PAY_SCALE_TYPE` != `EMPEMPLOYMENT.PAY_SCALE_TYPE`)'
-    severity: low
-    dimension: consistency
-    message: Compensation pay scale type differs from the employment pay scale type
-    why_it_matters: The tariff pay scale type should be the same on the compensation record and the employment record for the same employee.
-    rule_authority: best_practice
-    sap_impact: Infotype 0008 may replicate with a different pay scale type than infotype 0001.
-    fix_map:
-      __other__: Align the compensation pay scale type with the employment pay scale type.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation pay scale type differs from the employment pay scale type. Align them.'
-  - id: COMP132
-    field: COMPINFO.PAY_SCALE_AREA
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_SCALE_AREA`.notna() and `EMPEMPLOYMENT.PAY_SCALE_AREA`.notna() and (`COMPINFO.PAY_SCALE_AREA` != `EMPEMPLOYMENT.PAY_SCALE_AREA`)'
-    severity: low
-    dimension: consistency
-    message: Compensation pay scale area differs from the employment pay scale area
-    why_it_matters: The tariff pay scale area should be the same on the compensation record and the employment record for the same employee.
-    rule_authority: best_practice
-    sap_impact: Infotype 0008 may replicate with a different pay scale area than infotype 0001.
-    fix_map:
-      __other__: Align the compensation pay scale area with the employment pay scale area.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation pay scale area differs from the employment pay scale area. Align them.'
-  - id: COMP133
-    field: COMPINFO.PAY_SCALE_LEVEL
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_SCALE_LEVEL`.notna() and `EMPEMPLOYMENT.PAY_SCALE_LEVEL`.notna() and (`COMPINFO.PAY_SCALE_LEVEL` != `EMPEMPLOYMENT.PAY_SCALE_LEVEL`)'
-    severity: low
-    dimension: consistency
-    message: Compensation pay scale level differs from the employment pay scale level
-    why_it_matters: The tariff pay scale level should be the same on the compensation record and the employment record for the same employee.
-    rule_authority: best_practice
-    sap_impact: Infotype 0008 may replicate with a different pay scale level than infotype 0001.
-    fix_map:
-      __other__: Align the compensation pay scale level with the employment pay scale level.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation pay scale level differs from the employment pay scale level. Align them.'
   - id: COMP134
     field: COMPINFO.EVENT_REASON
     check_class: cross_field_check
@@ -2151,7 +2105,7 @@ rules:
   - id: COMP135
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: (`EMPEMPLOYMENT.FTE` > 0) and (`EMPEMPLOYMENT.FTE` < 1) and `COMPINFO.PAY_RANGE_MAX`.notna() and ((`COMPINFO.ANNUAL_SALARY` / `EMPEMPLOYMENT.FTE`) > (`COMPINFO.PAY_RANGE_MAX` * 1.05))
+    fail_when: (`EMPEMPLOYMENT.FTE` > 0) and (`EMPEMPLOYMENT.FTE` < 1) and `COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and ((`COMPINFO.ANNUAL_SALARY` / `EMPEMPLOYMENT.FTE`) > (`COMPINFO.PAY_RANGE_MAX` * 1.05))
     severity: medium
     dimension: accuracy
     message: FTE-adjusted annualised salary exceeds the pay range maximum by more than 5%
@@ -2164,7 +2118,7 @@ rules:
   - id: COMP136
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HOURLY') and `EMPEMPLOYMENT.STANDARD_HOURS`.isna() and `COMPINFO.SALARY`.notna()
+    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and `EMPEMPLOYMENT.STANDARD_HOURS`.isna() and `COMPINFO.SALARY`.notna()
     severity: medium
     dimension: completeness
     message: Hourly pay rate has no standard hours to annualise against
@@ -2175,22 +2129,22 @@ rules:
       __other__: Maintain the employee's standard hours.
     record_fix_template: 'Employee {COMPINFO.USERID}: hourly pay rate has no standard hours to annualise against. Maintain standard hours.'
   - id: COMP137
-    field: COMPINFO.PAY_COMPONENT_STATUS
+    field: COMPINFO.PAYCOMP_END_DATE
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_COMPONENT_STATUS` == 'A') and (`EMPEMPLOYMENT.STATUS` == 'T')
+    fail_when: '`COMPINFO.PAYCOMP_END_DATE`.isna() and (`EMPEMPLOYMENT.STATUS` == ''T'')'
     severity: high
     dimension: consistency
-    message: Pay component is active but the employment has been terminated
-    why_it_matters: An active, positively valued pay component on a terminated employment means the component was not delimited when the employee left.
+    message: Compensation record has no end date but the employment has been terminated
+    why_it_matters: A compensation record with no end date on a terminated employment means the record was not delimited when the employee left.
     rule_authority: sap_hard_constraint
-    sap_impact: The terminated employee continues to accrue an active pay component after leaving.
+    sap_impact: The terminated employee's compensation record remains open after leaving.
     fix_map:
-      __other__: Set the pay component to inactive and delimit it on the termination date.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} is still active after termination. Delimit it.'
+      __other__: Set the compensation record's end date to the termination date.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compensation record {COMPINFO.PAY_TYPE} has no end date after termination. Delimit it.'
   - id: COMP138
     field: COMPINFO.EFFECTIVE_DATE
     check_class: cross_field_check
-    fail_when: '`USERACCOUNT.HIRE_DATE`.notna() and (`COMPINFO.EFFECTIVE_DATE` < `USERACCOUNT.HIRE_DATE`)'
+    fail_when: '`EMPEMPLOYMENT.ORIGINAL_START_DATE`.notna() and (`COMPINFO.EFFECTIVE_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`)'
     severity: medium
     dimension: validity
     message: Compensation record is effective before the employee's original hire date
@@ -2226,6 +2180,10 @@ rules:
     fix_map:
       __other__: Correct the position's vacant flag, or end the compensation record if the position is genuinely vacant.
     record_fix_template: 'Employee {COMPINFO.USERID}: holds a positive salary on a position marked vacant. Correct the vacancy flag or the compensation record.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP141
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2239,6 +2197,10 @@ rules:
     fix_map:
       __other__: Confirm the position status, or move the employee to a current position.
     record_fix_template: 'Employee {COMPINFO.USERID}: holds a positive salary on a position that is not effective-active. Confirm the position status.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP142
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
@@ -2255,7 +2217,7 @@ rules:
   - id: COMP143
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HOURLY') and (`POSITION.STANDARD_HOURS` > 0) and (`EMPEMPLOYMENT.STANDARD_HOURS` > 0) and ((`POSITION.STANDARD_HOURS` - `EMPEMPLOYMENT.STANDARD_HOURS`).abs() > 5)
+    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and (`POSITION.STANDARD_HOURS` > 0) and (`EMPEMPLOYMENT.STANDARD_HOURS` > 0) and ((`POSITION.STANDARD_HOURS` - `EMPEMPLOYMENT.STANDARD_HOURS`).abs() > 5)
     severity: low
     dimension: consistency
     message: Hourly pay rate is based on standard hours that differ materially from the position's standard hours
@@ -2265,19 +2227,6 @@ rules:
     fix_map:
       __other__: Reconcile the employee's standard hours with the position's standard hours.
     record_fix_template: 'Employee {COMPINFO.USERID}: standard hours differ materially from the position''s standard hours for an hourly rate. Reconcile them.'
-  - id: COMP144
-    field: COMPINFO.EVENT_REASON
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.EVENT_REASON`.notna() and `FOEVENTREASON.EMPL_STATUS`.notna() and (`FOEVENTREASON.EMPL_STATUS` != `EMPEMPLOYMENT.STATUS`)'
-    severity: low
-    dimension: consistency
-    message: Compensation event reason's configured resulting employment status does not match the employee's actual status
-    why_it_matters: Each event reason is configured with the employment status it should result in. If the actual employment status does not match, the event reason was probably misapplied.
-    rule_authority: best_practice
-    sap_impact: Reporting on event-reason-driven status transitions is unreliable for this record.
-    fix_map:
-      __other__: Re-check the event reason used for this compensation change against the employee's actual status.
-    record_fix_template: 'Employee {COMPINFO.USERID}: event reason {COMPINFO.EVENT_REASON} does not match the employee''s actual employment status. Re-check it.'
   - id: COMP145
     field: COMPINFO.CURRENCY
     check_class: cross_field_check
@@ -2304,19 +2253,6 @@ rules:
     fix_map:
       __other__: Close the compensation record as of the contract end date, or extend the contract if the employee continued.
     record_fix_template: 'Employee {COMPINFO.USERID}: contract ended {EMPEMPLOYMENT.CONTRACT_END_DATE} but compensation is still open with a positive salary. Close it or extend the contract.'
-  - id: COMP147
-    field: COMPINFO.PAY_TYPE
-    check_class: cross_field_check
-    fail_when: (`EMPEMPLOYMENT.IS_CONTINGENT_WORKER`.str.lower() == 'true') and (`COMPINFO.PAY_TYPE` == 'SALARY')
-    severity: low
-    dimension: consistency
-    message: Contingent worker is paid on a salaried pay type
-    why_it_matters: Contingent workers are typically paid on an hourly or contract basis, not a fixed salary pay type; a salaried pay type on a contingent worker usually means the worker classification or the pay type is wrong.
-    rule_authority: best_practice
-    sap_impact: The contingent worker's pay is modelled as a permanent salary, which may misstate workforce cost classification.
-    fix_map:
-      __other__: Confirm the worker classification and pay type agree.
-    record_fix_template: 'Employee {COMPINFO.USERID}: contingent worker is paid on a salaried pay type. Confirm the classification.'
   - id: COMP148
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2333,7 +2269,7 @@ rules:
   - id: COMP149
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.SALARY` > 0) and `PERINFO.DATE_OF_BIRTH`.notna() and (((`COMPINFO.EFFECTIVE_DATE` - `PERINFO.DATE_OF_BIRTH`).dt.days) < (16 * 365))
+    fail_when: (`COMPINFO.SALARY` > 0) and `PERINFO.DATE_OF_BIRTH`.notna() and (((`COMPINFO.EFFECTIVE_DATE` - `PERINFO.DATE_OF_BIRTH`).dt.days) < (16 * 365.25))
     severity: low
     dimension: accuracy
     message: Employee is paid under the minimum legal working age implied by date of birth
@@ -2346,7 +2282,7 @@ rules:
   - id: COMP150
     field: PAYCOMPNONREC.UNIT_OF_MEASURE
     check_class: regex_check
-    pattern: ^[A-Z]{1,3}$
+    pattern: ^[\x20-\x7E]{1,32}$
     severity: low
     dimension: validity
     message: Non-recurring payment unit of measure does not look like a valid code
@@ -2364,28 +2300,29 @@ rules:
     - PAYCOMPNONREC.PAY_COMPONENT
     - PAYCOMPNONREC.PAY_DATE
     - PAYCOMPNONREC.VALUE
+    - PAYCOMPNONREC.SEQUENCE_NUMBER
     severity: medium
     dimension: uniqueness
-    message: Same non-recurring amount posted more than once for the same component and date regardless of sequence number
-    why_it_matters: A distinct sequence number is meant to separate genuinely different payments on the same date; an identical amount repeated for the same employee, component and date under different sequence numbers is more likely a duplicate load than two distinct payments.
+    message: Same non-recurring amount posted more than once for the same component, date and sequence number
+    why_it_matters: An identical amount repeated for the same employee, component, date and sequence number is a straightforward duplicate load, not two distinct payments; the sequence number already distinguishes genuine split payments.
     rule_authority: best_practice
-    sap_impact: Payroll risks paying the same non-recurring amount twice because a different sequence number alone hides the duplicate.
+    sap_impact: Payroll risks paying the same non-recurring amount twice because the row was loaded more than once.
     fix_map:
-      __other__: Confirm whether the repeated amount reflects two genuine payments; if not, delete the duplicate row.
+      __other__: Confirm whether the repeated row is a duplicate load; if so, delete it.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: non-recurring payment is duplicated for the same component, date and sequence. Delete the duplicate.'
   - id: COMP152
     field: PAYCOMPNONREC.CURRENCY
     check_class: dependency_check
     determinant: PAYCOMPNONREC.USERID
-    severity: medium
+    severity: low
     dimension: consistency
-    message: Employee's non-recurring payments are made in more than one currency without a documented reason
-    why_it_matters: All non-recurring payments for one employee should normally be in the same currency; a mix usually signals a loading error rather than a deliberate multi-currency arrangement.
+    message: Employee's non-recurring payments are made in more than one currency (informational; expected for cross-border assignees)
+    why_it_matters: Non-recurring payments for one employee are usually in a single currency; a mix can be a loading error, or a legitimate cross-border or multi-country assignment. Review before treating as an error.
     rule_authority: best_practice
-    sap_impact: Totalling the employee's non-recurring payments mixes currencies without conversion.
+    sap_impact: Totalling the employee's non-recurring payments mixes currencies without conversion unless the mix is intentional.
     fix_map:
-      __other__: Confirm the currency on each payment, and correct whichever one is wrong.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: non-recurring payments use more than one currency. Confirm and correct.'
+      __other__: Confirm whether the currency mix reflects a genuine cross-border arrangement; correct it only if not.
+    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: non-recurring payments use more than one currency. Confirm whether this is a genuine cross-border arrangement.'
   - id: COMP153
     field: PAYCOMPNONREC.ALT_COST_CENTER
     check_class: exists_check
@@ -2404,7 +2341,7 @@ rules:
   - id: COMP154
     field: PAYCOMPNONREC.ALT_COST_CENTER
     check_class: regex_check
-    pattern: ^[A-Z0-9_-]{1,10}$
+    pattern: ^[\x20-\x7E]{1,128}$
     severity: low
     dimension: validity
     message: Alternative cost center does not look like a valid cost center code
@@ -2418,6 +2355,16 @@ rules:
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
     fail_when: '`PAYCOMPNONREC.VALUE` > 1000000'
+    applies_when:
+      PAYCOMPNONREC.CURRENCY:
+      - USD
+      - EUR
+      - GBP
+      - AUD
+      - CAD
+      - CHF
+      - SGD
+      - NZD
     severity: low
     dimension: accuracy
     message: Non-recurring payment value is implausibly large
@@ -2431,6 +2378,16 @@ rules:
     field: PAYCOMPNONREC.NUMBER_OF_UNITS
     check_class: cross_field_check
     fail_when: '`PAYCOMPNONREC.NUMBER_OF_UNITS` > 10000'
+    applies_when:
+      PAYCOMPNONREC.CURRENCY:
+      - USD
+      - EUR
+      - GBP
+      - AUD
+      - CAD
+      - CHF
+      - SGD
+      - NZD
     severity: low
     dimension: accuracy
     message: Number of units on a non-recurring payment is implausibly large
@@ -2456,7 +2413,7 @@ rules:
   - id: COMP158
     field: PAYCOMPNONREC.PAY_DATE
     check_class: cross_field_check
-    fail_when: '`USERACCOUNT.HIRE_DATE`.notna() and (`PAYCOMPNONREC.PAY_DATE` < `USERACCOUNT.HIRE_DATE`)'
+    fail_when: '`EMPEMPLOYMENT.ORIGINAL_START_DATE`.notna() and (`PAYCOMPNONREC.PAY_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`)'
     severity: medium
     dimension: validity
     message: Non-recurring payment is dated before the employee's original hire date
@@ -2492,6 +2449,10 @@ rules:
     fix_map:
       __other__: Correct the position's vacant flag, or confirm the employee genuinely occupies the position.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: receives a non-recurring payment on a position marked vacant. Correct the vacancy flag or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP161
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2505,6 +2466,10 @@ rules:
     fix_map:
       __other__: Confirm the position status before paying against it.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: receives a non-recurring payment on a position that is not effective-active. Confirm the position status.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP162
     field: PAYCOMPNONREC.PAY_DATE
     check_class: cross_field_check
@@ -2544,45 +2509,6 @@ rules:
     fix_map:
       __other__: Confirm the payment is a documented late settlement, or correct the date.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: non-recurring payment is dated more than six months after the last date worked. Confirm or correct.'
-  - id: COMP165
-    field: COMPINFO.PAY_RANGE_MID
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay range midpoint is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be evaluated against the same pay range midpoint; a different midpoint for the same grade usually means the grade's range was loaded inconsistently.
-    rule_authority: sap_hard_constraint
-    sap_impact: Compa-ratio for employees on the same grade is computed against different range midpoints and is not comparable.
-    fix_map:
-      __other__: Correct the pay range midpoint so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay range midpoint inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP166
-    field: COMPINFO.PAY_RANGE_MIN
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay range minimum is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be evaluated against the same pay range minimum; a different minimum for the same grade usually means the grade's range was loaded inconsistently.
-    rule_authority: sap_hard_constraint
-    sap_impact: Range penetration for employees on the same grade is computed against different range minimums and is not comparable.
-    fix_map:
-      __other__: Correct the pay range minimum so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay range minimum inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP167
-    field: COMPINFO.PAY_RANGE_MAX
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay range maximum is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be evaluated against the same pay range maximum; a different maximum for the same grade usually means the grade's range was loaded inconsistently.
-    rule_authority: sap_hard_constraint
-    sap_impact: Range penetration for employees on the same grade is computed against different range maximums and is not comparable.
-    fix_map:
-      __other__: Correct the pay range maximum so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay range maximum inconsistent with other employees on the same grade. Correct it.'
   - id: COMP168
     field: COMPINFO.EFFECTIVE_DATE
     check_class: interval_check
@@ -2635,19 +2561,17 @@ rules:
   - id: COMP171
     field: EMPEMPLOYMENT.LAST_MODIFIED
     check_class: freshness_check
-    applies_when:
-      COMPINFO.SALARY:
-        gt: 0
+    grain: EMPEMPLOYMENT
     max_age_hours: 17520
     severity: low
     dimension: timeliness
-    message: Employment record behind an active compensation assignment has not been refreshed in over two years
-    why_it_matters: An employee with an active, paid compensation record should have an employment record that is still being kept current by HR data loads; a very stale last-modified date suggests the extract or the source record has stopped updating.
+    message: Employment record has not been refreshed in over two years
+    why_it_matters: An employee's employment record should still be kept current by HR data loads; a very stale last-modified date suggests the extract or the source record has stopped updating.
     rule_authority: best_practice
-    sap_impact: Downstream reporting may be working from a stale employment snapshot while still showing live pay.
+    sap_impact: Downstream reporting may be working from a stale employment snapshot.
     fix_map:
       __other__: Confirm the employment record is still being updated from the source system.
-    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment record has not been refreshed in over two years despite an active compensation record. Confirm the source feed.'
+    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: employment record has not been refreshed in over two years. Confirm the source feed.'
   - id: COMP172
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2661,6 +2585,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active department, or reactivate the department if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: department is inactive but the employee has a positive salary. Correct the department or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP173
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2674,6 +2602,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active location, or reactivate the location if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: location is inactive but the employee has a positive salary. Correct the location or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP174
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2687,6 +2619,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active job code, or reactivate the job code if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: job code is inactive but the employee has a positive salary. Correct the job code or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP175
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2700,6 +2636,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active division, or reactivate the division if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: division is inactive but the employee has a positive salary. Correct the division or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP176
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2713,6 +2653,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active business unit, or reactivate the business unit if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: business unit is inactive but the employee has a positive salary. Correct the business unit or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP177
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2726,6 +2670,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active cost center, or reactivate the cost center if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: cost center is inactive but the employee has a positive salary. Correct the cost center or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP178
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -2739,6 +2687,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active event reason, or reactivate the event reason if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: event reason is inactive but the employee has a positive salary. Correct the event reason or the salary.'
+    applies_when:
+      COMPINFO.PAYCOMP_END_DATE:
+        blank: true
+
   - id: COMP179
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2752,6 +2704,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active department, or reactivate the department if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: department is inactive but the employee receives a non-recurring payment. Correct the department or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP180
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2765,6 +2721,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active location, or reactivate the location if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: location is inactive but the employee receives a non-recurring payment. Correct the location or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP181
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2778,6 +2738,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active job code, or reactivate the job code if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: job code is inactive but the employee receives a non-recurring payment. Correct the job code or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP182
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2791,6 +2755,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active division, or reactivate the division if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: division is inactive but the employee receives a non-recurring payment. Correct the division or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP183
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2804,6 +2772,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active business unit, or reactivate the business unit if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: business unit is inactive but the employee receives a non-recurring payment. Correct the business unit or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP184
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2817,6 +2789,10 @@ rules:
     fix_map:
       __other__: Move the employee to an active cost center, or reactivate the cost center if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: cost center is inactive but the employee receives a non-recurring payment. Correct the cost center or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP185
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -2833,7 +2809,7 @@ rules:
   - id: COMP186
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`USERACCOUNT.STATUS` != 'ACTIVE') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
+    fail_when: (`USERACCOUNT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
     severity: high
     dimension: consistency
     message: User account is inactive but the compensation record is still open with a positive salary
@@ -2846,7 +2822,7 @@ rules:
   - id: COMP187
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
-    fail_when: (`USERACCOUNT.STATUS` != 'ACTIVE') and (`PAYCOMPNONREC.VALUE` > 0)
+    fail_when: (`USERACCOUNT.STATUS` == 'I') and (`PAYCOMPNONREC.VALUE` > 0)
     severity: high
     dimension: consistency
     message: User account is inactive but the employee still receives an active non-recurring payment
@@ -2856,10 +2832,14 @@ rules:
     fix_map:
       __other__: Confirm the payment is a legitimate final settlement, or reactivate the user account if the employee is still active.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: user account is inactive but receives a non-recurring payment. Confirm or reactivate the account.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP188
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOCOMPANY.STATUS` != 'ACTIVE') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
+    fail_when: (`FOCOMPANY.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
     severity: high
     dimension: consistency
     message: Employing company is inactive but the compensation record is still open with a positive salary
@@ -2872,7 +2852,7 @@ rules:
   - id: COMP189
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
-    fail_when: (`FOCOMPANY.STATUS` != 'ACTIVE') and (`PAYCOMPNONREC.VALUE` > 0)
+    fail_when: (`FOCOMPANY.STATUS` == 'I') and (`PAYCOMPNONREC.VALUE` > 0)
     severity: high
     dimension: consistency
     message: Employing company is inactive but the employee still receives an active non-recurring payment
@@ -2882,19 +2862,10 @@ rules:
     fix_map:
       __other__: Confirm the payment is a legitimate final settlement, or reactivate the company if it is still trading.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: employing company is inactive but receives a non-recurring payment. Confirm or reactivate the company.'
-  - id: COMP190
-    field: COMPINFO.COMP_FREQUENCY
-    check_class: cross_field_check
-    fail_when: (`FOJOBCODE.IS_FULLTIME`.str.lower() == 'false') and (`COMPINFO.PAY_TYPE` == 'SALARY') and (`COMPINFO.COMP_FREQUENCY` == 'ANN')
-    severity: low
-    dimension: consistency
-    message: Full-time position's job code is part-time but the compensation is on an annual salary frequency
-    why_it_matters: A job code configured as part-time should not normally carry an annual-salary, full-time-style compensation frequency.
-    rule_authority: best_practice
-    sap_impact: The compensation frequency implies full-time pay for a role classified as part-time, which may misstate workforce cost.
-    fix_map:
-      __other__: Confirm the job code classification and the compensation frequency agree.
-    record_fix_template: 'Employee {COMPINFO.USERID}: job code is part-time but compensation frequency is annual. Confirm the classification.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP191
     field: COMPINFO.PAY_RANGE_MIN
     check_class: cross_field_check
@@ -2973,45 +2944,6 @@ rules:
     fix_map:
       __other__: Re-run the annual salary calculation for this employee.
     record_fix_template: 'Employee {COMPINFO.USERID}: calculated annual salary is zero despite a recorded pay amount. Re-run the calculation.'
-  - id: COMP197
-    field: COMPINFO.ANNUALIZATION_FACTOR
-    check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'WK') and ~`COMPINFO.ANNUALIZATION_FACTOR`.isin([52, 53])
-    severity: medium
-    dimension: accuracy
-    message: Annualisation factor does not match a weekly compensation frequency
-    why_it_matters: A weekly pay frequency annualises on 52 (or 53 in a leap-week year); any other factor was not derived from the frequency.
-    rule_authority: best_practice
-    sap_impact: Annual salary computed from a wrong factor misstates true annual pay for weekly-paid employees.
-    fix_map:
-      __other__: Set the annualisation factor to 52 (or 53) for weekly compensation frequency.
-    record_fix_template: 'Employee {COMPINFO.USERID}: weekly pay frequency has an annualisation factor that is not 52 or 53. Correct it.'
-  - id: COMP198
-    field: COMPINFO.ANNUALIZATION_FACTOR
-    check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'QTR') and (`COMPINFO.ANNUALIZATION_FACTOR` != 4)
-    severity: medium
-    dimension: accuracy
-    message: Annualisation factor does not match a quarterly compensation frequency
-    why_it_matters: A quarterly pay frequency annualises on 4; any other factor was not derived from the frequency.
-    rule_authority: best_practice
-    sap_impact: Annual salary computed from a wrong factor misstates true annual pay for quarterly-paid employees.
-    fix_map:
-      __other__: Set the annualisation factor to 4 for quarterly compensation frequency.
-    record_fix_template: 'Employee {COMPINFO.USERID}: quarterly pay frequency has an annualisation factor that is not 4. Correct it.'
-  - id: COMP199
-    field: COMPINFO.ANNUALIZATION_FACTOR
-    check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'SM') and (`COMPINFO.ANNUALIZATION_FACTOR` != 24)
-    severity: medium
-    dimension: accuracy
-    message: Annualisation factor does not match a semi-monthly compensation frequency
-    why_it_matters: A semi-monthly pay frequency annualises on 24; any other factor was not derived from the frequency.
-    rule_authority: best_practice
-    sap_impact: Annual salary computed from a wrong factor misstates true annual pay for semi-monthly-paid employees.
-    fix_map:
-      __other__: Set the annualisation factor to 24 for semi-monthly compensation frequency.
-    record_fix_template: 'Employee {COMPINFO.USERID}: semi-monthly pay frequency has an annualisation factor that is not 24. Correct it.'
   - id: COMP200
     field: PAYCOMPNONREC.NUMBER_OF_UNITS
     check_class: cross_field_check
@@ -3028,7 +2960,7 @@ rules:
   - id: COMP201
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
-    fail_when: (`PAYCOMPNONREC.VALUE` * 100).round(6) != (`PAYCOMPNONREC.VALUE` * 100).round(0)
+    fail_when: ((`PAYCOMPNONREC.VALUE` * 100) - (`PAYCOMPNONREC.VALUE` * 100).round(0)).abs() > 1e-6
     severity: low
     dimension: consistency
     message: One-time payment amount has more than two decimal places
@@ -3038,45 +2970,6 @@ rules:
     fix_map:
       __other__: Confirm and round the amount.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment amount has more than two decimal places. Confirm and round the amount.'
-  - id: COMP202
-    field: COMPINFO.PAY_GROUP
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay group is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be assigned to the same pay group; a different pay group for the same grade usually means the grade-to-group mapping was loaded inconsistently.
-    rule_authority: best_practice
-    sap_impact: Compensation planning templates that are selected by pay group behave inconsistently for employees who are really on the same grade.
-    fix_map:
-      __other__: Correct the pay group so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay group inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP203
-    field: COMPINFO.PAY_RANGE_CURRENCY
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay range currency is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be evaluated against a pay range expressed in the same currency; a different currency for the same grade usually means the range was loaded from two different sources.
-    rule_authority: sap_hard_constraint
-    sap_impact: Range penetration computed against ranges in different currencies for the same grade is not comparable.
-    fix_map:
-      __other__: Correct the pay range currency so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay range currency inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP204
-    field: COMPINFO.PAY_RANGE_FREQUENCY
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: medium
-    dimension: consistency
-    message: Pay range frequency is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be evaluated against a pay range expressed in the same frequency; a different frequency for the same grade usually means the range was loaded inconsistently.
-    rule_authority: best_practice
-    sap_impact: Range penetration computed against ranges expressed in different frequencies for the same grade is not comparable.
-    fix_map:
-      __other__: Correct the pay range frequency so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay range frequency inconsistent with other employees on the same grade. Correct it.'
   - id: COMP205
     field: PAYCOMPNONREC.UNIT_OF_MEASURE
     check_class: dependency_check
@@ -3096,13 +2989,13 @@ rules:
     determinant: PAYCOMPNONREC.PAY_COMPONENT
     severity: low
     dimension: consistency
-    message: Currency is not consistent for all one-time payments of the same pay component
-    why_it_matters: The same one-time pay component should normally be paid in the same currency across employees in the same payroll group; a different currency for the same component is unusual and worth confirming.
+    message: Currency is not consistent for all one-time payments of the same pay component (informational; expected across multi-country tenants)
+    why_it_matters: The same one-time pay component is usually paid in one currency across employees, but a multi-country or multi-entity tenant can legitimately pay the same component in different local currencies. Review before treating as an error.
     rule_authority: best_practice
-    sap_impact: Component-level payout totals mix amounts in different currencies when a component is paid in more than one currency.
+    sap_impact: Component-level payout totals mix amounts in different currencies unless the mix reflects genuine multi-country pay.
     fix_map:
-      __other__: Confirm the currency for this component and correct any outlier.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: pay component {PAYCOMPNONREC.PAY_COMPONENT} has a currency inconsistent with other payments of the same component. Confirm it.'
+      __other__: Confirm whether the currency mix reflects genuine multi-country pay; correct it only if not.
+    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: pay component {PAYCOMPNONREC.PAY_COMPONENT} has a currency inconsistent with other payments of the same component. Confirm whether this reflects genuine multi-country pay.'
   - id: COMP207
     field: PAYCOMPNONREC.ALT_COST_CENTER
     check_class: cross_field_check
@@ -3155,19 +3048,6 @@ rules:
     fix_map:
       __other__: Record the reason for the override.
     record_fix_template: 'Employee {COMPINFO.USERID}: compensation amount differs from the pay component default but no event reason is recorded. Record the reason for the override.'
-  - id: COMP211
-    field: COMPINFO.EFFECTIVE_DATE
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.EVENT_REASON`.notna() and ((`COMPINFO.EFFECTIVE_DATE` - @today).dt.days > 30)'
-    severity: low
-    dimension: timeliness
-    message: Compensation record is effective-dated more than 30 days after it was presumably approved via its event reason
-    why_it_matters: An event-reason-driven compensation change (for example a promotion or merit increase) should normally take effect close to when it was approved; an effective date far in the future from today for a change already carrying a reason suggests a late or speculative load.
-    rule_authority: best_practice
-    sap_impact: Forward-dated compensation changes that sit unresolved understate current payroll cost until they silently take effect.
-    fix_map:
-      __other__: Compensation record is effective-dated more than 30 days after it was presumably approved via its event reason
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation change with reason {COMPINFO.EVENT_REASON} is effective more than 30 days in the future. Confirm the intended effective date.'
   - id: COMP212
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -3184,7 +3064,7 @@ rules:
   - id: COMP213
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HOURLY') and (`EMPEMPLOYMENT.STANDARD_HOURS` == 0) and (`COMPINFO.SALARY` > 0)
+    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and (`EMPEMPLOYMENT.STANDARD_HOURS` == 0) and (`COMPINFO.SALARY` > 0)
     severity: medium
     dimension: accuracy
     message: Hourly compensation frequency recorded with standard hours of zero
@@ -3220,19 +3100,6 @@ rules:
     fix_map:
       __other__: Correct it to a plain integer.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: sequence number is not numeric. Correct it to a plain integer.'
-  - id: COMP216
-    field: COMPINFO.EVENT_REASON
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.EVENT_REASON`.notna() and `FOEVENTREASON.EVENT`.notna() and (`FOEVENTREASON.EVENT` != ''COMPENSATION'')'
-    severity: low
-    dimension: consistency
-    message: Compensation event reason is not flagged as a compensation-relevant event in its own master configuration
-    why_it_matters: The event reason catalogue classifies each reason by event category; a compensation record citing a reason that is not itself tagged as a compensation event usually points at the wrong reason code being selected.
-    rule_authority: best_practice
-    sap_impact: Compensation change reporting grouped by event category miscounts this record because its reason is not actually tagged as compensation.
-    fix_map:
-      __other__: Compensation event reason is not flagged as a compensation-relevant event in its own master configuration
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation event reason {COMPINFO.EVENT_REASON} is not tagged as a compensation event in its own configuration. Confirm the reason code.'
   - id: COMP217
     field: PAYCOMPNONREC.CURRENCY
     check_class: uniqueness_check
@@ -3242,6 +3109,7 @@ rules:
     - PAYCOMPNONREC.PAY_DATE
     - PAYCOMPNONREC.VALUE
     - PAYCOMPNONREC.CURRENCY
+    - PAYCOMPNONREC.SEQUENCE_NUMBER
     severity: medium
     dimension: uniqueness
     message: Identical one-time payment (same employee, component, date, amount and currency) recorded more than once
@@ -3257,13 +3125,13 @@ rules:
     fail_when: (`COMPINFO.COMPA_RATIO` == 1.0) and (`COMPINFO.SALARY` > 0) and (`COMPINFO.ANNUAL_SALARY` != `COMPINFO.PAY_RANGE_MID`)
     severity: low
     dimension: accuracy
-    message: Compa-ratio of exactly 1.000 on every digit for a non-trivial salary looks like a placeholder value
-    why_it_matters: A compa-ratio computed from real salary and range-midpoint data essentially never lands on exactly 1.0; a recorded value of precisely 1.0 is more consistent with a placeholder or default than a genuine calculation.
+    message: Compa-ratio is exactly 1.000 while annual salary does not equal the pay range midpoint
+    why_it_matters: Compa-ratio is defined as annual salary divided by range midpoint; if the two values differ, the stored compa-ratio cannot genuinely be 1.000. The recorded value is inconsistent with its own inputs, whatever produced it.
     rule_authority: best_practice
-    sap_impact: Compensation benchmarking treats a placeholder compa-ratio as if it were a real, calculated position in the range.
+    sap_impact: Compensation benchmarking uses a stored compa-ratio that does not match the salary and range-midpoint it should be derived from.
     fix_map:
-      __other__: Compa-ratio of exactly 1.000 on every digit for a non-trivial salary looks like a placeholder value
-    record_fix_template: 'Employee {COMPINFO.USERID}: compa-ratio is exactly 1.000, which is more likely a placeholder than a calculated value. Verify the calculation ran.'
+      __other__: Recalculate the compa-ratio from annual salary and pay range midpoint.
+    record_fix_template: 'Employee {COMPINFO.USERID}: compa-ratio is exactly 1.000 but annual salary does not equal the pay range midpoint. Recalculate it.'
   - id: COMP219
     field: PAYCOMPNONREC.PAY_DATE
     check_class: cross_field_check
@@ -3290,19 +3158,6 @@ rules:
     fix_map:
       __other__: Complete the pay scale structure.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay scale level is recorded without a pay scale type or area. Complete the pay scale structure.'
-  - id: COMP221
-    field: COMPINFO.PAY_GROUP
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_GROUP`.notna() and `POSITION.PAY_GRADE`.notna() and (`COMPINFO.PAY_GRADE` != `POSITION.PAY_GRADE`) and (`COMPINFO.SALARY` > 0)'
-    severity: low
-    dimension: consistency
-    message: Pay group differs from the position's own pay group reference while salary is paid
-    why_it_matters: Pay group is often driven by the position rather than freely chosen per employee; when the employee's recorded pay group disagrees with the position's, compensation planning segments by the wrong group for this employee.
-    rule_authority: best_practice
-    sap_impact: Compensation planning worksheets grouped by pay group place this employee in the wrong planning pool.
-    fix_map:
-      __other__: Confirm which pay group is correct.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay group differs from the position''s pay group while salary is paid. Confirm which pay group is correct.'
   - id: COMP222
     field: PAYCOMPNONREC.ALT_COST_CENTER
     check_class: cross_field_check
@@ -3342,19 +3197,6 @@ rules:
     fix_map:
       __other__: Correct the recorded quantity.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment has a negative number of units. Correct the recorded quantity.'
-  - id: COMP225
-    field: PAYCOMPNONREC.SEQUENCE_NUMBER
-    check_class: cross_field_check
-    fail_when: '`PAYCOMPNONREC.SEQUENCE_NUMBER` < 0'
-    severity: low
-    dimension: accuracy
-    message: Sequence number on a one-time payment is negative
-    why_it_matters: The sequence number is a plain ordering counter for same-day payments of the same component and cannot be negative.
-    rule_authority: best_practice
-    sap_impact: A negative sequence number cannot be used to order multiple same-day payments of the same component.
-    fix_map:
-      __other__: Correct it to a non-negative integer.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: sequence number is negative. Correct it to a non-negative integer.'
   - id: COMP226
     field: COMPINFO.EFFECTIVE_DATE_COMP
     check_class: cross_field_check
@@ -3371,7 +3213,7 @@ rules:
   - id: COMP227
     field: COMPINFO.PAY_COMPONENT_RECURRING
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_COMPONENT_RECURRING` == True) and (`COMPINFO.PAY_COMPONENT_IS_EARNING` == True) and (`COMPINFO.PAY_COMPONENT_CAN_OVERRIDE` == True) and `COMPINFO.PAY_COMPONENT_DEFAULT`.isna()
+    fail_when: (`COMPINFO.PAY_COMPONENT_RECURRING`.str.lower() == 'true') and (`COMPINFO.PAY_COMPONENT_IS_EARNING`.str.lower() == 'true') and (`COMPINFO.PAY_COMPONENT_CAN_OVERRIDE`.str.lower() == 'true') and `COMPINFO.PAY_COMPONENT_DEFAULT`.isna()
     severity: low
     dimension: consistency
     message: Pay component is flagged recurring but is also flagged as an earning that can be overridden with no default value set
@@ -3420,7 +3262,7 @@ rules:
   - id: COMP230
     field: COMPINFO.PAY_GRADE
     check_class: regex_check
-    pattern: ^[A-Z0-9_-]{1,10}$
+    pattern: ^[\x20-\x7E]{1,128}$
     severity: low
     dimension: validity
     message: Pay grade code contains characters outside the standard grade-code pattern
@@ -3433,7 +3275,7 @@ rules:
   - id: COMP231
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and (`COMPINFO.PAY_RANGE_MIN` > 0) and (`COMPINFO.ANNUAL_SALARY` < (`COMPINFO.PAY_RANGE_MIN` * 0.5))'
+    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and (`COMPINFO.PAY_RANGE_MIN` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` < (`COMPINFO.PAY_RANGE_MIN` * 0.5))'
     severity: medium
     dimension: accuracy
     message: Annual salary is far below the pay range minimum for the employee's grade
@@ -3446,7 +3288,7 @@ rules:
   - id: COMP232
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > 0) and (`COMPINFO.ANNUAL_SALARY` > (`COMPINFO.PAY_RANGE_MAX` * 2))'
+    fail_when: '`COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` > (`COMPINFO.PAY_RANGE_MAX` * 2))'
     severity: medium
     dimension: accuracy
     message: Annual salary is far above the pay range maximum for the employee's grade
@@ -3472,7 +3314,7 @@ rules:
   - id: COMP234
     field: COMPINFO.PAY_COMPONENT_IS_EARNING
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_COMPONENT_IS_EARNING` == True) and (`COMPINFO.PAY_COMPONENT_CAN_OVERRIDE` == False) and `COMPINFO.PAY_COMPONENT_DEFAULT`.isna()
+    fail_when: (`COMPINFO.PAY_COMPONENT_IS_EARNING`.str.lower() == 'true') and (`COMPINFO.PAY_COMPONENT_CAN_OVERRIDE`.str.lower() == 'false') and `COMPINFO.PAY_COMPONENT_DEFAULT`.isna()
     severity: low
     dimension: consistency
     message: Pay component is flagged as an earning and also flagged as not eligible to be overridden while its default value is blank
@@ -3482,45 +3324,6 @@ rules:
     fix_map:
       __other__: Pay component is flagged as an earning and also flagged as not eligible to be overridden while its default value is blank
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} is a non-overridable earning with a blank default value. Load a default value or allow overrides.'
-  - id: COMP235
-    field: COMPINFO.PAY_SCALE_TYPE
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: low
-    dimension: consistency
-    message: Pay scale type is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be mapped to the same SAP pay scale type; a different type for the same grade usually means the grade-to-scale mapping was loaded inconsistently.
-    rule_authority: best_practice
-    sap_impact: SAP payroll replication maps this grade to more than one pay scale type, which is not a valid structure.
-    fix_map:
-      __other__: Correct the pay scale type so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay scale type inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP236
-    field: COMPINFO.PAY_SCALE_AREA
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: low
-    dimension: consistency
-    message: Pay scale area is not consistent for all employees on the same pay grade
-    why_it_matters: All employees on the same pay grade should be mapped to the same SAP pay scale area; a different area for the same grade usually means the grade-to-scale mapping was loaded inconsistently.
-    rule_authority: best_practice
-    sap_impact: SAP payroll replication maps this grade to more than one pay scale area, which is not a valid structure.
-    fix_map:
-      __other__: Correct the pay scale area so it is the same for every employee on this grade.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a pay scale area inconsistent with other employees on the same grade. Correct it.'
-  - id: COMP237
-    field: COMPINFO.COMP_FREQUENCY
-    check_class: dependency_check
-    determinant: COMPINFO.PAY_GRADE
-    severity: low
-    dimension: consistency
-    message: Compensation frequency is not consistent for all employees on the same pay grade
-    why_it_matters: A pay grade's own structure normally implies one compensation frequency; a different frequency recorded for employees on the same grade usually means the frequency was loaded inconsistently rather than genuinely varying by employee.
-    rule_authority: best_practice
-    sap_impact: Compensation planning worksheets that group by grade mix annual and non-annual figures for the same grade.
-    fix_map:
-      __other__: Confirm whether the frequency genuinely varies for this grade or correct the inconsistent rows.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} has a compensation frequency inconsistent with other employees on the same grade. Confirm it.'
   - id: COMP238
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -3554,46 +3357,6 @@ rules:
     fix_map:
       __other__: Correct it.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component type is not AMOUNT, PERCENTAGE or NUMBER. Correct it.'
-  - id: COMP240
-    field: PAYCOMPNONREC.UNIT_OF_MEASURE
-    check_class: domain_value_check
-    allowed_values:
-    - HR
-    - DAY
-    - WK
-    - MO
-    - EA
-    valid_values_with_labels:
-      HR: Hour
-      DAY: Day
-      WK: Week
-      MO: Month
-      EA: Each
-    severity: low
-    dimension: validity
-    message: Unit of measure on a one-time payment is not one of the supported units
-    why_it_matters: A unit of measure outside the supported set cannot be reconciled to a known unit rate and usually indicates a typo or an unmapped code.
-    rule_authority: best_practice
-    sap_impact: Unit-rate reconciliation cannot interpret a unit of measure outside the supported set.
-    fix_map:
-      __other__: Correct it.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: unit of measure is not one of the supported codes. Correct it.'
-  - id: COMP241
-    field: COMPINFO.SALARY
-    check_class: uniqueness_check
-    fields:
-    - COMPINFO.USERID
-    - COMPINFO.PAY_GROUP
-    - COMPINFO.EFFECTIVE_DATE
-    severity: low
-    dimension: uniqueness
-    message: Employee has more than one COMPINFO row with the same effective date and pay group
-    why_it_matters: A given employee should have at most one compensation record per pay group per effective date; more than one is a duplicate load rather than two distinguishable facts.
-    rule_authority: best_practice
-    sap_impact: Compensation reporting double-counts this employee's pay group assignment on this effective date.
-    fix_map:
-      __other__: Delete the duplicate.
-    record_fix_template: 'Employee {COMPINFO.USERID}: more than one compensation record exists for the same pay group on the same effective date. Delete the duplicate.'
   - id: COMP242
     field: COMPINFO.SALARY
     check_class: cross_field_check
@@ -3651,7 +3414,7 @@ rules:
   - id: COMP246
     field: COMPINFO.PAY_TYPE
     check_class: regex_check
-    pattern: ^[A-Z0-9_-]{1,18}$
+    pattern: ^[\x20-\x7E]{1,32}$
     severity: low
     dimension: validity
     message: Pay component code contains characters outside the standard component-code pattern
@@ -3669,7 +3432,7 @@ rules:
   - id: COMP247
     field: PAYCOMPNONREC.PAY_COMPONENT
     check_class: regex_check
-    pattern: ^[A-Z0-9_-]{1,18}$
+    pattern: ^[\x20-\x7E]{1,32}$
     severity: low
     dimension: validity
     message: One-time payment pay component code contains characters outside the standard component-code pattern
@@ -3697,3 +3460,66 @@ rules:
     fix_map:
       __other__: Correct the pay component type so it is the same for every row using this component code.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} has a component type inconsistent with other rows using the same component code. Correct it.'
+  - id: COMP249
+    field: COMPINFO.EFFECTIVE_DATE
+    check_class: interval_check
+    start: COMPINFO.EFFECTIVE_DATE
+    end: COMPINFO.END_DATE
+    group_by:
+    - COMPINFO.USERID
+    - COMPINFO.PAY_TYPE
+    mode: continuous
+    severity: low
+    dimension: consistency
+    message: Compensation records for the same pay type have a gap between periods
+    why_it_matters: A gap between one compensation record's end date and the next record's effective date for the same pay type means the employee has no compensation record covering that stretch, which is usually a missed delimitation or a missing row rather than a deliberate break in pay.
+    rule_authority: best_practice
+    sap_impact: Payroll replication has no salary record to use for the gap period.
+    fix_map:
+      __other__: Confirm whether the gap is intentional; if not, add or correct the missing compensation record.
+    record_fix_template: 'Employee {COMPINFO.USERID}: has a gap between compensation records for pay type {COMPINFO.PAY_TYPE}. Confirm or fill the gap.'
+  - id: COMP250
+    field: COMPINFO.END_DATE
+    check_class: interval_check
+    start: COMPINFO.EFFECTIVE_DATE
+    end: COMPINFO.END_DATE
+    group_by:
+    - COMPINFO.USERID
+    - COMPINFO.PAY_TYPE
+    open_ended: true
+    applies_when:
+      EMPEMPLOYMENT.STATUS:
+      - A
+      - U
+      - P
+      - S
+    severity: medium
+    dimension: consistency
+    message: Active employee's most recent compensation record for this pay type is end-dated
+    why_it_matters: An active employee's current compensation record should run open-ended (no end date); an end-dated most-recent record for an active employee means the next record was never loaded.
+    rule_authority: best_practice
+    sap_impact: Payroll replication has no open compensation record to use for the employee's current pay.
+    fix_map:
+      __other__: Load the missing current compensation record, or correct the end date if the employee has no active pay for this type.
+    record_fix_template: 'Employee {COMPINFO.USERID}: is active but the most recent compensation record for pay type {COMPINFO.PAY_TYPE} is end-dated. Load the current record.'
+  - id: COMP251
+    field: EMPEMPLOYMENT.USERID
+    check_class: exists_check
+    target_table: COMPINFO
+    target_fields:
+    - USERID
+    applies_when:
+      EMPEMPLOYMENT.STATUS:
+      - A
+      - U
+      - P
+      - S
+    severity: high
+    dimension: completeness
+    message: Active employee has no compensation record at all
+    why_it_matters: Every active employee should have at least one compensation record. An active employee with none was never given a salary record, or the record failed to load.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payroll replication has no base pay to replicate for this active employee.
+    fix_map:
+      __other__: Load a compensation record for this active employee, or correct their employment status if they should not be active.
+    record_fix_template: 'Employee {actual_value}: is active but has no compensation record. Load one.'

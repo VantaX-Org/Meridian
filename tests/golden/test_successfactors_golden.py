@@ -290,11 +290,7 @@ def test_compensation_golden():
         "COMP021": {"USERID=100118|EFFECTIVE_DATE=2025-04-01"},
         # new depth rules (COMP095+) also legitimately fire on this fixture:
         "COMP117": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # pay range max below min
-        "COMP165": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # midpoint inconsistent for pay grade
-        "COMP166": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # minimum inconsistent for pay grade
-        "COMP167": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # maximum inconsistent for pay grade
         "COMP228": {"USERID=100110|EFFECTIVE_DATE=2025-04-01"},  # currency "ZA" is not 3-letter ISO
-        "COMP237": {"USERID=100111|EFFECTIVE_DATE=2025-04-01", "USERID=100118|EFFECTIVE_DATE=2025-04-01"},  # frequency inconsistent for pay grade
     }, found
 
 

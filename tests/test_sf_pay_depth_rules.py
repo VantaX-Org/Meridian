@@ -36,9 +36,14 @@ def test_ids_unique_and_contiguous(module):
     assert len(ids) == len(set(ids))
     for prefix, start, count in PACKS[module]:
         nums = sorted(int(i[len(prefix):]) for i in ids if re.fullmatch(prefix + r"\d+", i))
-        # scoped to this task's own id block; later tasks may contiguously extend the
-        # same prefix above `start + count` (e.g. compensation's COMP095+ depth pack)
-        new = [n for n in nums if start <= n < start + count]
+        if module == "compensation":
+            # compensation's own COMP095+ depth pack contiguously extends this prefix
+            # above start + count; scope the check to this task's own id block only.
+            new = [n for n in nums if start <= n < start + count]
+        else:
+            # no other pack has a legitimate extension above its own block; any id
+            # found above start + count here is unexpected and must fail loudly.
+            new = [n for n in nums if n >= start]
         assert new == list(range(start, start + count)), prefix
         assert start - 1 in nums, prefix
 

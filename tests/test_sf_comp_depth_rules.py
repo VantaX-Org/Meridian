@@ -1,4 +1,4 @@
-"""SuccessFactors Compensation depth rules (COMP095+): fixtures, ID contiguity, auto_fix contract."""
+"""SuccessFactors Compensation depth rules (COMP095-251): fixtures, ID contiguity, auto_fix contract."""
 import re
 
 import pandas as pd
@@ -12,7 +12,7 @@ from sap.ddic import get_dictionary
 S4 = get_dictionary("s4hana")
 RULES = yaml.safe_load(open("checks/rules/successfactors/compensation.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
-NEW = [r for r in RULES if re.fullmatch(r"COMP\d+", r["id"]) and 95 <= int(r["id"][4:]) <= 248]
+NEW = [r for r in RULES if re.fullmatch(r"COMP\d+", r["id"]) and 95 <= int(r["id"][4:]) <= 251]
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 ALLOWED_OPS = {"strip", "collapse_spaces", "upper", "lower", "title", "pad_left", "strip_leading_zeros",
@@ -71,14 +71,15 @@ CASES = [
     ("COMP127", {"COMPINFO": ci(PAY_RANGE_STATUS=["X", "I"])}, 1),
     ("COMP128", {"COMPINFO": ci(PAY_COMPONENT_STATUS=["X", "A"])}, 1),
     ("COMP239", {"COMPINFO": ci(PAY_COMPONENT_TYPE=["BOGUS", "AMOUNT"])}, 1),
-    ("COMP240", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["XX", "HR"])}, 1),
     # regex_check
-    ("COMP118", {"COMPINFO": ci(PAY_SCALE_TYPE=["way too long", "A1"])}, 1),
-    ("COMP150", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["xx", "HR"])}, 1),
+    # ^[\x20-\x7E]{1,N}$ bounds length and requires printable ASCII (see I2/fix-round-1):
+    # the "bad" fixture value must be non-printable-ASCII (or over-length) to still fail.
+    ("COMP118", {"COMPINFO": ci(PAY_SCALE_TYPE=["§§§", "A1"])}, 1),
+    ("COMP150", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["§§§", "HR"])}, 1),
     ("COMP157", {"PAYCOMPNONREC": nr(USERID=["bad user!", "u1"])}, 1),
     ("COMP228", {"COMPINFO": ci(CURRENCY=["usd", "USD"])}, 1),
-    ("COMP230", {"COMPINFO": ci(PAY_GRADE=["bad grade!", "G1"])}, 1),
-    ("COMP246", {"COMPINFO": ci(PAY_TYPE=["bad type!", "SALARY"])}, 1),
+    ("COMP230", {"COMPINFO": ci(PAY_GRADE=["§§§", "G1"])}, 1),
+    ("COMP246", {"COMPINFO": ci(PAY_TYPE=["§§§", "SALARY"])}, 1),
     # exists_check (target table has only the valid code, so dropping row0 leaves a clean match)
     ("COMP153", {"PAYCOMPNONREC": nr(ALT_COST_CENTER=["CC9", "CC1"]),
                  "FOCOSTCENTER": frame("FOCOSTCENTER", EXTERNAL_CODE=["CC1"])}, 1),
@@ -87,7 +88,7 @@ CASES = [
     ("COMP245", {"COMPINFO": ci(EVENT_REASON=["XXX", "HIRNEW"]),
                  "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["HIRNEW"])}, 1),
     # single-table cross_field_check
-    ("COMP107", {"COMPINFO": ci(RANGE_PENETRATION=[150.0, 50.0])}, 1),
+    ("COMP107", {"COMPINFO": ci(RANGE_PENETRATION=[1.5, 0.5])}, 1),
     ("COMP117", {"COMPINFO": ci(PAY_RANGE_MAX=[50.0, 200.0], PAY_RANGE_MIN=[100.0, 100.0])}, 1),
     ("COMP201", {"PAYCOMPNONREC": nr(VALUE=[100.123456, 100.0])}, 1),
     ("COMP218", {"COMPINFO": ci(COMPA_RATIO=[1.0, 1.0], SALARY=[1000.0, 1000.0],
@@ -95,11 +96,7 @@ CASES = [
     ("COMP238", {"PAYCOMPNONREC": nr(VALUE=[100.0, 100.0], CURRENCY=[None, "USD"])}, 1),
     # cross-table cross_field_check (joined through EMPEMPLOYMENT and foundation objects)
     ("COMP129", {"COMPINFO": ci(PAY_GROUP=["PG1", "PG2"]), "EMPEMPLOYMENT": emp(PAY_GROUP=["PG9", "PG2"])}, 1),
-    ("COMP137", {"COMPINFO": ci(PAY_COMPONENT_STATUS=["A", "A"]), "EMPEMPLOYMENT": emp(STATUS=["T", "A"])}, 1),
-    ("COMP144", {"COMPINFO": ci(EVENT_REASON=["TERRES", "HIRNEW"]),
-                 "EMPEMPLOYMENT": emp(EVENT_REASON=["TERRES", "HIRNEW"], STATUS=["A", "A"]),
-                 "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["TERRES", "HIRNEW"],
-                                        EMPL_STATUS=["T", "A"])}, 1),
+    ("COMP137", {"COMPINFO": ci(PAYCOMP_END_DATE=[None, "2024-01-01"]), "EMPEMPLOYMENT": emp(STATUS=["T", "T"])}, 1),
     ("COMP159", {"PAYCOMPNONREC": nr(ALT_COST_CENTER=["CC1", "CC2"]), "EMPEMPLOYMENT": emp(POSITION=["P1", "P2"]),
                  "POSITION": frame("POSITION", CODE=["P1", "P2"], COST_CENTER=["CC1", "CC9"])}, 1),
     ("COMP162", {"PAYCOMPNONREC": nr(PAY_DATE=["2025-01-01", "2020-01-01"]),
@@ -110,26 +107,17 @@ CASES = [
                  "FOCOSTCENTER": frame("FOCOSTCENTER", EXTERNAL_CODE=["CC1", "CC2"], STATUS=["I", "A"])}, 1),
     ("COMP186", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
                  "EMPEMPLOYMENT": emp(STATUS=["A", "A"]),
-                 "USERACCOUNT": frame("USERACCOUNT", USER_ID=["u1", "u2"], STATUS=["INACTIVE", "ACTIVE"])}, 1),
+                 "USERACCOUNT": frame("USERACCOUNT", USER_ID=["u1", "u2"], STATUS=["I", "A"])}, 1),
     ("COMP188", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
                  "EMPEMPLOYMENT": emp(COMPANY=["1000", "2000"]),
                  "FOCOMPANY": frame("FOCOMPANY", EXTERNAL_CODE=["1000", "2000"],
-                                    STATUS=["INACTIVE", "ACTIVE"])}, 1),
+                                    STATUS=["I", "A"])}, 1),
     # dependency_check (minority row placed first so the default clean-row drop keeps only agreement)
     ("COMP152", {"PAYCOMPNONREC": nr(USERID=["u1", "u1", "u1"], CURRENCY=["EUR", "USD", "USD"])}, 1),
-    ("COMP165", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_RANGE_MID=[9999.0, 5000.0, 5000.0])}, 1),
-    ("COMP166", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_RANGE_MIN=[8888.0, 4000.0, 4000.0])}, 1),
-    ("COMP167", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_RANGE_MAX=[7777.0, 6000.0, 6000.0])}, 1),
-    ("COMP202", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_GROUP=["PG9", "PG1", "PG1"])}, 1),
-    ("COMP203", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_RANGE_CURRENCY=["EUR", "USD", "USD"])}, 1),
-    ("COMP204", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_RANGE_FREQUENCY=["WK", "MO", "MO"])}, 1),
     ("COMP205", {"PAYCOMPNONREC": nr(PAY_COMPONENT=["BON", "BON", "BON"],
                                      UNIT_OF_MEASURE=["HR", "EA", "EA"])}, 1),
     ("COMP206", {"PAYCOMPNONREC": nr(PAY_COMPONENT=["BON", "BON", "BON"],
                                      CURRENCY=["EUR", "USD", "USD"])}, 1),
-    ("COMP235", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_SCALE_TYPE=["B9", "A1", "A1"])}, 1),
-    ("COMP236", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], PAY_SCALE_AREA=["99", "01", "01"])}, 1),
-    ("COMP237", {"COMPINFO": ci(PAY_GRADE=["G1", "G1", "G1"], COMP_FREQUENCY=["WK", "MO", "MO"])}, 1),
     ("COMP248", {"COMPINFO": ci(PAY_TYPE=["SALARY", "SALARY", "SALARY"],
                                 PAY_COMPONENT_TYPE=["PERCENTAGE", "AMOUNT", "AMOUNT"])}, 1),
 ]
@@ -148,18 +136,16 @@ def test_fixture_clean_rows_pass(rid, tables, _):
 
 def test_duplicate_compensation_rows():
     nonrec = nr(USERID=["u1", "u1", "u2"], PAY_COMPONENT=["BON", "BON", "BON"],
-                PAY_DATE=["2024-01-01"] * 3, VALUE=[100.0, 100.0, 100.0])
+                PAY_DATE=["2024-01-01"] * 3, VALUE=[100.0, 100.0, 100.0],
+                SEQUENCE_NUMBER=[1, 1, 1])
     assert fire("COMP151", {"PAYCOMPNONREC": nonrec}) >= 1
     assert fire("COMP151", {"PAYCOMPNONREC": nonrec.iloc[1:]}) == 0
 
     nonrec2 = nr(USERID=["u1", "u1", "u2"], PAY_COMPONENT=["BON", "BON", "BON"],
-                 PAY_DATE=["2024-01-01"] * 3, VALUE=[100.0, 100.0, 100.0], CURRENCY=["USD"] * 3)
+                 PAY_DATE=["2024-01-01"] * 3, VALUE=[100.0, 100.0, 100.0], CURRENCY=["USD"] * 3,
+                 SEQUENCE_NUMBER=[1, 1, 1])
     assert fire("COMP217", {"PAYCOMPNONREC": nonrec2}) >= 1
     assert fire("COMP217", {"PAYCOMPNONREC": nonrec2.iloc[1:]}) == 0
-
-    comp = ci(USERID=["u1", "u1", "u2"], PAY_GROUP=["PG1", "PG1", "PG2"], EFFECTIVE_DATE=["2024-01-01"] * 3)
-    assert fire("COMP241", {"COMPINFO": comp}) >= 1
-    assert fire("COMP241", {"COMPINFO": comp.iloc[1:]}) == 0
 
 
 def test_interval_overlap_detected():
@@ -180,18 +166,44 @@ def test_interval_overlap_detected():
     assert fire("COMP169", {"COMPINFO": clean2}) == 0
 
 
+def test_gap_and_open_ended_and_no_record_detected():
+    gap = ci(USERID=["u1", "u1"], PAY_TYPE=["SALARY", "SALARY"],
+             EFFECTIVE_DATE=["2024-01-01", "2024-08-01"], END_DATE=["2024-01-31", "2024-12-31"])
+    assert fire("COMP249", {"COMPINFO": gap}) >= 1
+    no_gap = ci(USERID=["u1", "u1"], PAY_TYPE=["SALARY", "SALARY"],
+                EFFECTIVE_DATE=["2024-01-01", "2024-02-01"], END_DATE=["2024-01-31", "2024-12-31"])
+    assert fire("COMP249", {"COMPINFO": no_gap}) == 0
+
+    ended = ci(USERID=["u1"], PAY_TYPE=["SALARY"], EFFECTIVE_DATE=["2024-01-01"], END_DATE=["2024-12-31"])
+    assert fire("COMP250", {"COMPINFO": ended, "EMPEMPLOYMENT": emp(USERID=["u1"], STATUS=["A"])}) >= 1
+    open_ended = ci(USERID=["u1"], PAY_TYPE=["SALARY"], EFFECTIVE_DATE=["2024-01-01"], END_DATE=["99991231"])
+    assert fire("COMP250", {"COMPINFO": open_ended, "EMPEMPLOYMENT": emp(USERID=["u1"], STATUS=["A"])}) == 0
+
+    assert fire("COMP251", {"EMPEMPLOYMENT": emp(USERID=["u9", "u1"], STATUS=["A", "A"]),
+                             "COMPINFO": frame("COMPINFO", USERID=["u1"])}) >= 1
+    assert fire("COMP251", {"EMPEMPLOYMENT": emp(USERID=["u1"], STATUS=["A"]),
+                             "COMPINFO": frame("COMPINFO", USERID=["u1"])}) == 0
+
+
 def test_fixture_coverage():
-    assert len({c[0] for c in CASES} | {"COMP151", "COMP217", "COMP241", "COMP168", "COMP169"}) >= 50
+    # Floor, not full coverage: NEW (COMP095-251) has ~157 rules; this only asserts a fixture
+    # sample doesn't shrink silently. Not every new rule has its own fixture here (see M11).
+    assert len({c[0] for c in CASES} | {"COMP151", "COMP217", "COMP168", "COMP169",
+                                         "COMP249", "COMP250", "COMP251"}) >= 40
 
 
 # ---- integrity -----------------------------------------------------------------------------------------------------
 
 def test_new_ids_unique_and_contiguous():
+    # Not strictly contiguous any more: a fix round deleted several rules found broken by
+    # review (duplicates, unfixable domains, mislabeled conditions) rather than renumbering
+    # everything after them. This still guards uniqueness and the declared id-range bounds.
     ids = [r["id"] for r in RULES]
     assert len(ids) == len(set(ids))
     nums = [int(r["id"][4:]) for r in NEW]
-    assert nums == list(range(95, 95 + len(nums)))
-    assert len(NEW) >= 150
+    assert nums == sorted(set(nums))
+    assert nums[0] == 95
+    assert len(NEW) >= 125
 
 
 def test_new_rules_fully_enriched():
@@ -202,8 +214,12 @@ def test_new_rules_fully_enriched():
             assert S4.field(*f.split(".")), (r["id"], f)
 
 
-def test_every_fixture_tested_rule_is_covered_except_untestable():
-    tested = {c[0] for c in CASES} | {"COMP151", "COMP217", "COMP241", "COMP168", "COMP169"}
+def test_every_referential_check_rule_is_covered_except_untestable():
+    # Scoped to referential_check only: that check_class needs a live reference injection to
+    # fire at all, so UNTESTABLE is the complete, exact exception list, not a sample. Other check
+    # classes (cross_field_check, regex_check, etc.) are fixture-testable in principle but not all
+    # have a fixture here; CASES is a representative sample, not full coverage (see M11 in the
+    # review this task is addressing).
     missing_referential = {r["id"] for r in NEW if r["check_class"] == "referential_check"} - UNTESTABLE
     assert not missing_referential, missing_referential
     assert UNTESTABLE & {r["id"] for r in NEW if r["check_class"] == "referential_check"} == UNTESTABLE
