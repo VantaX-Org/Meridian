@@ -65,3 +65,28 @@ An unknown op, parameter or key is a validation error
 - `medium`: right in almost all cases but a person should glance at it
   (copying a reference value, legacy `fix_value`).
 - `low`: a starting point for the steward.
+
+## Monitoring after a cleanup
+
+Pin the run taken after a cleanup as the system's baseline
+(`POST /api/v1/versions/{id}/baseline`). Every newer run of that system is then
+compared with the baseline, rule by rule (`api/services/monitor.py`, called from
+`run_checks` after the record-issue lifecycle):
+
+- Records that fail now but passed in the baseline are regressions. The run's
+  `metadata.monitor` stores the count, the regressed rules, the records resolved
+  since the baseline and the drafted batch.
+- Regressed records that are still open and not already in a draft, approved or
+  unreconciled exported batch go into a new draft batch named
+  "Regressions since baseline — <date>", created by "Meridian monitor". Its
+  proposals come from the same auto_fix engine.
+- Stewards get an in-app notice that links to the batch. Immediate alert
+  channels get a `baseline_regression` alert, and the daily and weekly digests
+  include the regressed record count.
+- Four eyes still apply to a system-drafted batch: the person who accepted its
+  proposals cannot approve it.
+
+To assess and fix every day, give the system a sync profile with a daily cron
+schedule: each scheduled extraction re-runs the checks and the monitor.
+`GET /api/v1/remediation/monitor` returns, per system with a baseline, the
+baseline and newest run side by side with the newest monitor result.

@@ -601,3 +601,99 @@ def test_tenant_catalogues_seeded_and_kept_in_step(app_engine):
         assert seed_tenant(c, tid) == {"rules": 0, "field_mappings": 0}
         c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
         assert c.execute(text("SELECT enabled FROM rules WHERE name LIKE 'AP016:%'")).scalar() is False
+
+
+def test_baseline_monitor_drafts_regressions(app_engine, monkeypatch):
+    """A run compared with the pinned post-cleanup baseline: new failures become a
+    system-drafted batch once; whoever accepted its proposals cannot also approve it."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.orm import Session
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import remediation as rem_routes
+    from api.services import monitor
+
+    owner, app = app_engine
+    tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:a, 'T-mon')"), {"a": tid})
+
+    def _check(vid):
+        with Session(app) as s:
+            s.execute(text("SET app.tenant_id = :t"), {"t": tid})
+            out = monitor.check(s, tid, vid, sid)
+            if out:
+                monitor.notify(s, tid, vid, out)
+            s.commit()
+        return out
+
+    v1, _ = _run(app, tid, sid, [_result("CHK-A", ["1"])], ["1", "2", "3"])
+    assert _check(v1) is None  # nothing pinned yet
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("UPDATE analysis_versions SET metadata = metadata || '{\"baseline\": true}' WHERE id = :v"),
+                  {"v": v1})
+
+    v2, _ = _run(app, tid, sid, [_result("CHK-A", ["1", "3"])], ["1", "2", "3"])
+    m2 = _check(v2)
+    assert (m2["baseline_id"], m2["new_records"], m2["regressed_check_count"]) == (v1, 1, 1)
+    assert m2["batch_items"] == 1 and m2["batch_id"]
+
+    # same failures next day: already in the open draft, so no second batch
+    v3, _ = _run(app, tid, sid, [_result("CHK-A", ["1", "3"])], ["1", "2", "3"])
+    m3 = _check(v3)
+    assert m3["new_records"] == 1 and m3["batch_id"] is None
+
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        batch = c.execute(text("SELECT id, created_by, created_by_label FROM remediation_batches")).one()
+        assert batch.created_by is None and batch.created_by_label == monitor.MONITOR_LABEL
+        assert c.execute(text("SELECT record_key FROM remediation_items")).scalars().all() == ["LIFNR=3"]
+        assert c.execute(text("SELECT metadata->'monitor'->>'new_records' FROM analysis_versions WHERE id = :v"),
+                         {"v": v3}).scalar() == "1"
+        assert c.execute(text("SELECT link FROM notifications WHERE type = 'monitor' ORDER BY created_at LIMIT 1")
+                         ).scalar() == f"/workbench?tab=batches&batch={batch.id}"
+        st = monitor.status(c)
+        assert [(x["scope"], x["baseline"]["id"], x["latest"]["id"]) for x in st] == [(sid, v1, v3)]
+
+    accepter, approver = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO users (id, tenant_id, email, name, role) VALUES "
+                       "(:a, :t, 'a@x', 'A', 'steward'), (:b, :t, 'b@x', 'B', 'steward')"), {"a": accepter, "b": approver, "t": tid})
+        c.execute(text("INSERT INTO remediation_events (tenant_id, batch_id, user_id, user_label, action) "
+                       "VALUES (:t, :b, :u, 'a@x', 'accepted')"), {"t": tid, "b": batch.id, "u": accepter})
+
+    aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(rem_routes.router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "T-mon", [])
+    who = {"id": accepter}
+    monkeypatch.setattr(rem_routes, "current_user_id", lambda request=None: who["id"])
+
+    async def scenario():
+        try:
+            async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+                h = {"X-User-Role": "steward"}
+                mon = (await c.get("/api/v1/remediation/monitor", headers=h)).json()["items"]
+                assert mon[0]["monitor"]["new_records"] == 1
+                url = f"/api/v1/remediation/batches/{batch.id}/approve"
+                assert (await c.post(url, headers=h)).status_code == 403
+                who["id"] = approver
+                assert (await c.post(url, headers=h)).json()["status"] == "approved"
+        finally:
+            await aeng.dispose()
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    asyncio.run(scenario())

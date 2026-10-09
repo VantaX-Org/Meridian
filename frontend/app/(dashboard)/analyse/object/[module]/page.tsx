@@ -126,7 +126,7 @@ export default function Object360Page() {
       <div className="ui-o360__head">
         <div className="ui-stack" style={{ gap: "var(--aurora-space-3)" }}>
           <Tally level={3} label={`${name} findings by severity`} figures={[sevFig("critical", "danger"), sevFig("high", "high"), sevFig("medium"), sevFig("low")]} />
-          {s.capped && s.cap_reason ? <p className="ui-o360__cap">Score capped: {s.cap_reason}</p> : null}
+          {s.capped && s.cap_reason ? <p className="ui-o360__cap"><strong>Score capped:</strong> {s.cap_reason}</p> : null}
         </div>
         <ScoreRing score={s.composite_score} size={120} capReason={s.capped ? s.cap_reason : null} />
       </div>
