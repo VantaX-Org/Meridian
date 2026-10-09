@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
-import { useDayOne } from "@/hooks/use-day-one";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/systems";
@@ -151,9 +151,7 @@ export default function RunsPage() {
       emptyProps={{
         title: "No runs yet.",
         detail: dayOne.step?.detail ?? "Connect a system to start your first run.",
-        action: (
-          <Button render={<Link href={dayOne.step?.href ?? "/systems"}>{dayOne.step?.label ?? "Connect a system"}</Link>} />
-        ),
+        action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Connect a system" />,
         ghost: "table",
       }}
       errorProps={{ message: errorText(activeQuery.error), onRetry: () => activeQuery.refetch() }}

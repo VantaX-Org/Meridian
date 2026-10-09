@@ -88,7 +88,7 @@ export function JourneyStepper({
             <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>
               {runningJob.label} — {runningJob.status} ({runningJob.percent}%)
             </p>
-          ) : (
+          ) : !step.actionable || !step.href ? null : (
             <Button render={<Link href={step.href}>{step.label}</Link>} className="self-start" />
           )}
         </div>

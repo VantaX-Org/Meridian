@@ -1,7 +1,9 @@
 // frontend/app/(app)/runs/__tests__/page.test.tsx
+import Link from "next/link";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import { Button } from "@/design";
 import * as systemsApi from "@/lib/api/systems";
 import * as versionsApi from "@/lib/api/versions";
 import type { DimensionScores, SAPSystem, Version } from "@/types/api";
@@ -16,7 +18,15 @@ vi.mock("next/navigation", () => ({
 }));
 // useDayOne() shares the systems/versions query keys with this page's own queries;
 // mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
-vi.mock("@/hooks/use-day-one", () => ({ useDayOne: () => ({ status: "ready", step: null }) }));
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: ({ step, fallbackHref, fallbackLabel }: { step: { href: string | null; label: string; actionable: boolean } | null; fallbackHref: string; fallbackLabel: string }) =>
+    step && (!step.actionable || !step.href) ? (
+      <span>{step.label}</span>
+    ) : (
+      <Button render={<Link href={step?.href ?? fallbackHref}>{step?.label ?? fallbackLabel}</Link>} />
+    ),
+}));
 
 const zeroDimensions: DimensionScores = {
   completeness: 0, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0,

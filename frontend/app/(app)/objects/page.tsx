@@ -2,12 +2,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Pill, ScoreRing, SeverityDot, type PillTone } from "@/design";
-import { useDayOne } from "@/hooks/use-day-one";
+import { DataTable, ExplorerPage, Pill, ScoreRing, SeverityDot, type PillTone } from "@/design";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -88,9 +87,7 @@ export default function ObjectsPage() {
       : {
           title: "No objects analysed yet.",
           detail: dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
-          action: (
-            <Button render={<Link href={dayOne.step?.href ?? "/runs"}>{dayOne.step?.label ?? "Open runs"}</Link>} />
-          ),
+          action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
           ghost: "table",
         };
   }

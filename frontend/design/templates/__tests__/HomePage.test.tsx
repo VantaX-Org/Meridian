@@ -18,7 +18,7 @@ describe("HomePage no-data state", () => {
           configLoaded: false,
           extracted: false,
           complete: false,
-          step: { key: "connect", href: "/systems", label: "Connect a system", detail: "Add an SAP system." },
+          step: { key: "connect", href: "/systems", label: "Connect a system", detail: "Add an SAP system.", actionable: true },
         }}
       />,
     );

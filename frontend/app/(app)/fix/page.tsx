@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono, Pager, Pill, Tabs } from "@/design";
-import { useDayOne } from "@/hooks/use-day-one";
+import { DataTable, ExplorerPage, Mono, Pager, Pill, Tabs } from "@/design";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
@@ -49,9 +48,7 @@ function CleaningQueueTab() {
       emptyProps={{
         title: "No cleaning proposals.",
         detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",
-        action: (
-          <Button render={<Link href={dayOne.step?.href ?? "/objects"}>{dayOne.step?.label ?? "Open objects"}</Link>} />
-        ),
+        action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       table={

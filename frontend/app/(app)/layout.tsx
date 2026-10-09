@@ -60,6 +60,9 @@ function RunSelectorSlot() {
 
   if (versions.length === 0) {
     if (dayOne.status !== "ready" || !dayOne.step) return null;
+    if (!dayOne.step.actionable || !dayOne.step.href) {
+      return <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{dayOne.step.label}</span>;
+    }
     return (
       <Link href={dayOne.step.href} className="text-[13px] leading-[18px]" style={{ color: "var(--m-accent)" }}>
         {dayOne.step.label}

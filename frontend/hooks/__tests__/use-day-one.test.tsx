@@ -104,6 +104,20 @@ describe("useDayOne", () => {
     getVersions.mockResolvedValue({ versions: [] });
     const { step } = await run();
     expect(step?.label).toBe("Ask an administrator to connect a system.");
+    // A gated step has no destination — callers must render it as text, never a link.
+    expect(step?.actionable).toBe(false);
+    expect(step?.href).toBeNull();
+  });
+
+  it("a run in progress stays actionable even for a viewer without manage_system", async () => {
+    permissions = [];
+    getSystems.mockResolvedValue([system()]);
+    getConfigLandscape.mockResolvedValue(landscape());
+    getVersions.mockResolvedValue({ versions: [version("running", "v3")] });
+    const { step } = await run();
+    expect(step?.key).toBe("running");
+    expect(step?.actionable).toBe(true);
+    expect(step?.href).toBe("/runs/v3");
   });
 
   it("surfaces an API error as status error", async () => {
