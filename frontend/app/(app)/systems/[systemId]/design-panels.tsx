@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Drawer, Pager, Pill, Select, type PillTone } from "@/design";
 import {
@@ -129,7 +130,8 @@ function TableDrawer({ id, table, onClose }: { id: string; table: string | null;
 }
 
 export function ConfigTab({ id, tables }: { id: string; tables: { table: string; scope: string; rows: number; source: string; synced_at: string | null }[] }) {
-  const [open, setOpen] = useState(tables[0]?.table ?? "");
+  const wanted = useSearchParams().get("table");
+  const [open, setOpen] = useState(tables.find((t) => t.table === wanted)?.table ?? tables[0]?.table ?? "");
   const { data } = useQuery({ queryKey: queryKeys.designConfig(id, open), queryFn: () => getDesignConfig(id, open), enabled: Boolean(open) });
   const cols = data?.rows[0] ? Object.keys(data.rows[0]) : [];
   if (!tables.length) return <p className={muted} style={mutedStyle}>No configuration read yet.</p>;

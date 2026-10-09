@@ -13,7 +13,7 @@ import { queryKeys } from "@/lib/query-keys";
 const APPLIES_TONE: Record<string, "go" | "no-go" | "neutral"> = {
   applies: "go",
   applies_by_default: "go",
-  does_not_apply: "no-go",
+  does_not_apply: "neutral",
   not_available: "neutral",
 };
 const APPLIES_LABEL: Record<string, string> = {
@@ -31,8 +31,9 @@ const conditionList = (conditions: Record<string, unknown>[] | Record<string, un
 function WhereItApplies({ checkId, module }: { checkId: string; module: string }) {
   const router = useRouter();
   const q = useQuery({
-    queryKey: ["rule.applicability", module, checkId],
+    queryKey: queryKeys.ruleApplicability(module, checkId),
     retry: false,
+    meta: { ignoreError: true },
     queryFn: () => getRuleApplicability(checkId, module),
   });
   const systems = q.data?.systems ?? [];
@@ -52,9 +53,19 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
       id: "configured",
       header: "Configured in",
       cell: ({ row }) =>
-        row.original.configured_in.length
-          ? row.original.configured_in.map((c) => c.tcode ?? c.path).join(", ")
-          : "—",
+        row.original.configured_in.length ? (
+          <div className="flex flex-col gap-0.5">
+            {row.original.configured_in.map((c, i) => (
+              <div key={i} className="text-[12px]">
+                {c.kind === "img" ? "IMG: " : ""}
+                {c.path}
+                {c.tcode ? <> (<Mono>{c.tcode}</Mono>)</> : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          "—"
+        ),
     },
   ];
 

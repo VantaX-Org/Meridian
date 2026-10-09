@@ -13,12 +13,12 @@
  */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Mono, Pager, Pill, Select, Skeleton, Stat,
+  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Pager, Pill, Select, Skeleton, Stat,
   type PillTone, type SelectOption,
 } from "@/design";
 import { useAuth } from "@/context/auth-context";
@@ -59,9 +59,11 @@ export function BatchesTab() {
   // Monitoring section below links straight to a specific batch's drawer, including
   // across navigation from elsewhere, which local state cannot survive.
   const [batchId, setBatchId] = useUrlState("batch", "");
+  const [status, setStatus] = useUrlState("status", "");
+  const [search, setSearch] = useUrlState("q", "");
 
   const q = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches });
-  const batches = q.data?.items ?? [];
+  const batches = useMemo(() => q.data?.items ?? [], [q.data]);
   const counts = batches.reduce(
     (a, b) => ({ ...a, [b.status]: a[b.status] + 1 }),
     { draft: 0, approved: 0, exported: 0 } as Record<BatchStatus, number>,
@@ -69,41 +71,98 @@ export function BatchesTab() {
   const stillFailing = batches.reduce((n, b) => n + (b.status === "exported" ? b.still_failing : 0), 0);
   const selected = batchId ? batches.find((b) => b.id === batchId) ?? null : null;
 
+  const needle = search.trim().toLowerCase();
+  const visible = useMemo(
+    () => batches.filter((b) => !status || b.status === status).filter((b) => !needle || b.name.toLowerCase().includes(needle)),
+    [batches, status, needle],
+  );
+
   const columns: ColumnDef<BatchSummary>[] = [
     { accessorKey: "name", header: "Batch" },
     {
       id: "status",
+      accessorFn: (b) => STATUS_LABEL[b.status],
       header: "Status",
       cell: ({ row }) => <Pill tone={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Pill>,
     },
     { accessorKey: "items", header: "Items" },
     {
       id: "with_proposal",
+      accessorFn: (b) => b.with_proposal,
       header: "With proposal",
       cell: ({ row }) => `${row.original.with_proposal.toLocaleString()} (${pct(row.original.with_proposal, row.original.items)}%)`,
     },
     { accessorKey: "auto_approvable", header: "Auto-approvable" },
     {
       id: "fixed",
+      accessorFn: (b) => (b.status === "exported" ? b.fixed : -1),
       header: "Fixed",
       cell: ({ row }) => (row.original.status === "exported" ? row.original.fixed.toLocaleString() : "—"),
     },
     {
       id: "still_failing",
+      accessorFn: (b) => (b.status === "exported" ? b.still_failing : -1),
       header: "Still failing",
-      cell: ({ row }) => (row.original.status === "exported" ? row.original.still_failing.toLocaleString() : "—"),
+      cell: ({ row }) =>
+        row.original.status !== "exported" ? "—" : row.original.still_failing > 0 ? (
+          <span style={{ color: "var(--m-critical)" }}>{row.original.still_failing.toLocaleString()}</span>
+        ) : "0",
     },
-    { id: "created_at", header: "Created", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
+    { id: "created_at", accessorFn: (b) => b.created_at, header: "Created", cell: ({ row }) => formatDate(row.original.created_at, "datetime") },
   ];
+
+  const clearFilters = () => { setStatus(""); setSearch(""); };
+  const filtered = !!(status || search);
 
   return (
     <div className="flex flex-col gap-6">
       <MonitoringSection onOpenBatch={setBatchId} />
 
-      <div className="flex gap-6">
-        <Stat label="Draft batches" value={counts.draft} />
-        <Stat label="Waiting for export" value={counts.approved} />
-        <Stat label="Still failing after export" value={stillFailing} />
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-6">
+          <button type="button" className="text-left" onClick={() => setStatus("draft")}>
+            <Stat label="Draft batches" value={counts.draft}
+              delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />
+          </button>
+          <button type="button" className="text-left" onClick={() => setStatus("approved")}>
+            <Stat label="Waiting for export" value={counts.approved}
+              delta={counts.approved
+                ? <span style={{ color: "var(--m-medium)" }}>Approved but not exported yet.</span>
+                : "Nothing waiting for export."} />
+          </button>
+          <button type="button" className="text-left" onClick={() => setStatus("exported")}>
+            <Stat label="Still failing after export" value={stillFailing}
+              delta={stillFailing
+                ? <span style={{ color: "var(--m-medium)" }}>Exported records that were checked again and still fail.</span>
+                : "No exported record is still failing."} />
+          </button>
+        </div>
+        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+          {q.data
+            ? `${batches.length.toLocaleString()} fix batch${batches.length === 1 ? "" : "es"}. ${counts.draft} draft, ${counts.approved} waiting for export.`
+            : null}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Search">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search batches"
+            className="rounded border px-3 py-1.5 text-[13px]"
+            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+          />
+        </Field>
+        <div className="flex items-end gap-2">
+          {(["", ...Object.keys(STATUS_LABEL)] as (BatchStatus | "")[]).map((s) => (
+            <Button key={s || "all"} variant={status === s ? "primary" : "secondary"} onClick={() => setStatus(s)}>
+              {s ? STATUS_LABEL[s] : "All"} {s ? `(${counts[s]})` : `(${batches.length})`}
+            </Button>
+          ))}
+        </div>
+        {filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
       </div>
 
       {q.isLoading ? (
@@ -112,8 +171,10 @@ export function BatchesTab() {
         <ErrorState message={errorText(q.error)} onRetry={() => q.refetch()} />
       ) : batches.length === 0 ? (
         <EmptyState title="No fix batches yet. A rule, a steward, or the monitor drafts one when records need a correction." />
+      ) : visible.length === 0 ? (
+        <EmptyState title="Nothing in this view." action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
       ) : (
-        <DataTable columns={columns} data={batches} getRowId={(b) => b.id} onRowClick={(b) => setBatchId(b.id)} />
+        <DataTable columns={columns} data={visible} getRowId={(b) => b.id} onRowClick={(b) => setBatchId(b.id)} />
       )}
 
       <Drawer open={!!selected} onOpenChange={(open) => { if (!open) setBatchId(""); }} title={selected?.name ?? "Batch"}>
@@ -187,6 +248,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
           return (
             <input
               autoFocus
+              aria-label="Proposed value"
               value={draftValue}
               onChange={(e) => setDraftValue(e.target.value)}
               onKeyDown={(e) => {
@@ -201,15 +263,16 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
           );
         }
         return (
-          <button
+          <Button
             type="button"
-            className="underline disabled:no-underline disabled:cursor-not-allowed"
+            variant="ghost"
+            className="underline disabled:no-underline"
             disabled={i.accepted || !canApprove}
             title={i.accepted ? "An accepted proposal cannot be edited." : undefined}
             onClick={(e) => { e.stopPropagation(); setEditing(i.id); setDraftValue(i.proposed_value ?? ""); }}
           >
             {i.proposed_value ?? "—"}
-          </button>
+          </Button>
         );
       },
     },
@@ -368,17 +431,23 @@ function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: 
       {!changed ? (
         <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>No regressions since the baseline.</span>
       ) : changed.batch_id ? (
-        <button type="button" className="text-[13px] underline self-start" onClick={() => onOpenBatch(changed.batch_id!)}>
-          {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed, {changed.batch_items.toLocaleString()} in a new fix batch
-        </button>
+        (() => {
+          const batchIdToOpen = changed.batch_id;
+          return (
+            <Button type="button" variant="ghost" className="underline self-start justify-start" onClick={() => onOpenBatch(batchIdToOpen)}>
+              {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed, {changed.batch_items.toLocaleString()} in a new fix batch
+            </Button>
+          );
+        })()
       ) : (
         <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed. Already in an open fix batch.
         </span>
       )}
       {stale ? (
-        <p className="text-[13px]" style={{ color: "var(--m-medium)" }}>
-          Stale check: this system has not been checked in over 36 hours. The comparison above may not reflect recent SAP changes.
+        <p className="text-[13px] flex items-center gap-2">
+          <Pill tone="at-risk">Stale check</Pill>
+          <span style={{ color: "var(--m-ink-2)" }}>This system has not been checked in over 36 hours. The comparison above may not reflect recent SAP changes.</span>
         </p>
       ) : null}
     </div>

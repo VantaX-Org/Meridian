@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
     return [
       { source: "/stewardship", destination: "/inbox", permanent: false },
       { source: "/stewardship/metrics", destination: "/inbox", permanent: false },
+      // Notification/digest deep links from monitor.py and send_notifications.py still
+      // point at the legacy /workbench?tab=batches[&batch=ID] shape. Catch that before
+      // the generic /workbench rule below sends everything else to /inbox. Next.js
+      // passes through query params not named in `destination` (e.g. `batch`).
+      {
+        source: "/workbench",
+        has: [{ type: "query", key: "tab", value: "batches" }],
+        destination: "/fix?tab=batches",
+        permanent: false,
+      },
       { source: "/workbench", destination: "/inbox", permanent: false },
       { source: "/workbench/triage", destination: "/inbox", permanent: false },
       { source: "/workbench/progress", destination: "/inbox", permanent: false },
@@ -72,7 +82,7 @@ const nextConfig: NextConfig = {
       { source: "/config-impact", destination: "/insights/impact", permanent: false },
       { source: "/reports", destination: "/insights", permanent: false },
       { source: "/cleaning", destination: "/fix", permanent: false },
-      { source: "/remediation", destination: "/fix", permanent: false },
+      { source: "/remediation", destination: "/fix?tab=batches", permanent: false },
       { source: "/settings/field-mapping", destination: "/admin/mappings", permanent: false },
       { source: "/settings/ai", destination: "/admin/ai", permanent: false },
       { source: "/settings/licence", destination: "/admin/licence", permanent: false },

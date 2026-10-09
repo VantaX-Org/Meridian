@@ -59,7 +59,7 @@ const EXPECTED: Record<string, string> = {
   "/config-impact": "/insights/impact",
   "/reports": "/insights",
   "/cleaning": "/fix",
-  "/remediation": "/fix",
+  "/remediation": "/fix?tab=batches",
   "/settings/field-mapping": "/admin/mappings",
   "/settings/ai": "/admin/ai",
   "/settings/licence": "/admin/licence",
@@ -70,8 +70,24 @@ const EXPECTED: Record<string, string> = {
 describe("legacy route redirects", () => {
   it("redirects every legacy route to its replacement, and nothing else", async () => {
     const redirects = await nextConfig.redirects!();
-    const actual = Object.fromEntries(redirects.map((r) => [r.source, r.destination]));
+    // The /workbench?tab=batches deep link (notification/digest links, #5) is a
+    // `has`-gated rule sharing the `/workbench` source with the generic catch-all
+    // below it, so it's excluded from the plain source->destination map and
+    // checked on its own.
+    const plain = redirects.filter((r) => !r.has);
+    const actual = Object.fromEntries(plain.map((r) => [r.source, r.destination]));
     expect(actual).toEqual(EXPECTED);
     for (const r of redirects) expect(r.permanent).toBe(false);
+  });
+
+  it("sends legacy /workbench?tab=batches deep links to /fix?tab=batches, ahead of the generic /workbench rule", async () => {
+    const redirects = await nextConfig.redirects!();
+    const workbenchRules = redirects.filter((r) => r.source === "/workbench");
+    expect(workbenchRules).toHaveLength(2);
+    const [tabRule, catchAllRule] = workbenchRules;
+    expect(tabRule.has).toEqual([{ type: "query", key: "tab", value: "batches" }]);
+    expect(tabRule.destination).toBe("/fix?tab=batches");
+    expect(catchAllRule.has).toBeUndefined();
+    expect(catchAllRule.destination).toBe("/inbox");
   });
 });

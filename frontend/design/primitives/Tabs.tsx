@@ -10,10 +10,15 @@ export interface TabItem {
 }
 
 export function Tabs({
-  items, defaultValue, onValueChange,
-}: { items: TabItem[]; defaultValue?: string; onValueChange?: (value: string) => void }) {
+  items, value, defaultValue, onValueChange,
+}: { items: TabItem[]; value?: string; defaultValue?: string; onValueChange?: (value: string) => void }) {
+  // `value` makes this controlled (so a client-side URL change can switch tabs after
+  // mount); omit it and it falls back to the original uncontrolled `defaultValue` behaviour.
   return (
-    <BaseTabs.Root defaultValue={defaultValue ?? items[0]?.value} onValueChange={(v) => onValueChange?.(v as string)}>
+    <BaseTabs.Root
+      {...(value !== undefined ? { value } : { defaultValue: defaultValue ?? items[0]?.value })}
+      onValueChange={(v) => onValueChange?.(v as string)}
+    >
       <BaseTabs.List className="flex gap-4 border-b" style={{ borderColor: "var(--m-line)" }}>
         {items.map((item) => (
           <BaseTabs.Tab

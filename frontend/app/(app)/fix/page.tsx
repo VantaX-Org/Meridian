@@ -55,14 +55,11 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  // ponytail: Tabs is uncontrolled (no `value` prop), so the URL only seeds the
-  // initial tab and records later switches; browser back/forward won't flip it.
-  // Good enough for deep-linking in from Monitoring; upgrade if that's ever needed.
   const [tab, setTab] = useUrlState("tab", "cleaning");
 
   return (
     <Tabs
-      defaultValue={tab}
+      value={tab}
       onValueChange={setTab}
       items={[
         { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },

@@ -66,7 +66,9 @@ function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
       {items.map((c, i) => (
         <span key={i}>
           {i > 0 ? "; " : ""}
-          {c.tcode ? <Mono>{c.tcode}</Mono> : c.path}
+          {c.kind === "img" ? "IMG: " : ""}
+          {c.path}
+          {c.tcode ? <> (<Mono>{c.tcode}</Mono>)</> : null}
         </span>
       ))}
     </>
@@ -75,10 +77,27 @@ function ConfiguredInText({ items }: { items: ConfiguredIn[] }) {
 
 const NOT_APPLICABLE_PREVIEW = 3;
 
-function NotApplicableList({ t, findingHref }: {
-  t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
+/** Shared across every `NotApplicableList` on the page, so the deep link and the back button restore which blocks were expanded. */
+function useExpandedBlocks() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const expandedTitles = useMemo(() => new Set((search.get("na") ?? "").split(",").filter(Boolean)), [search]);
+  const toggle = (title: string) => {
+    const next = new Set(expandedTitles);
+    if (next.has(title)) next.delete(title); else next.add(title);
+    const params = new URLSearchParams(search.toString());
+    if (next.size) params.set("na", Array.from(next).join(",")); else params.delete("na");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+  return { expandedTitles, toggle };
+}
+
+function NotApplicableList({ title, t, findingHref }: {
+  title: string; t: ConfigAwareTally; findingHref: (module: string, checkId: string) => string | undefined;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const { expandedTitles, toggle } = useExpandedBlocks();
+  const expanded = expandedTitles.has(title);
   if (!t.not_applicable_rules.length) {
     return t.not_applicable ? (
       <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
@@ -104,7 +123,7 @@ function NotApplicableList({ t, findingHref }: {
         ))}
       </ul>
       {t.not_applicable_rules.length > NOT_APPLICABLE_PREVIEW ? (
-        <button type="button" className="text-[13px] underline self-start" onClick={() => setExpanded((v) => !v)}>
+        <button type="button" className="text-[13px] underline self-start" onClick={() => toggle(title)}>
           {expanded ? "Show fewer" : `Show all ${t.not_applicable_rules.length}`}
         </button>
       ) : null}
@@ -141,7 +160,7 @@ function RulesBlock({ title, t, findingHref, configuredIn }: {
           ))}
         </ul>
       ) : null}
-      <NotApplicableList t={t} findingHref={findingHref} />
+      <NotApplicableList title={title} t={t} findingHref={findingHref} />
     </div>
   );
 }

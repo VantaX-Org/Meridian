@@ -26,6 +26,8 @@ import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/connectivity";
+import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
@@ -83,6 +85,19 @@ export default function RulesPage() {
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const awareQ = useQuery({
+    queryKey: queryKeys.configAwareScore(undefined, cfgSystem),
+    queryFn: () => getConfigAwareScore({ system_id: cfgSystem || undefined }),
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const awareByModule = useMemo(
+    () => new Map<string, ConfigAwareModule>((awareQ.data?.modules ?? []).map((m) => [m.module, m])),
+    [awareQ.data],
+  );
 
   const summary = useQuery({ queryKey: queryKeys.rulesSummary(), queryFn: getRulesSummary });
   const rulesQ = useQuery({ queryKey: queryKeys.rules({ category }), queryFn: () => getAllRules(category === "all" ? undefined : category) });
@@ -158,6 +173,34 @@ export default function RulesPage() {
     } as ColumnDef<Rule>] : []),
   ], [canManage, toggleRule, anyPassRate]);
 
+  const coverageRows = useMemo(
+    () => facets.modules.map((m) => ({ module: m, total: rules.filter((r) => r.module === m).length, aware: awareByModule.get(m) })),
+    [facets.modules, rules, awareByModule],
+  );
+  const coverageColumns = useMemo<ColumnDef<(typeof coverageRows)[number]>[]>(() => [
+    { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "total", header: "Total", cell: ({ row }) => row.original.total.toLocaleString() },
+    { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? (row.original.aware.applicable - row.original.aware.by_default).toLocaleString() : "—" },
+    { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? row.original.aware.by_default.toLocaleString() : "—" },
+    {
+      id: "na", header: "Does not apply",
+      cell: ({ row }) => {
+        const a = row.original.aware;
+        if (!a) return "—";
+        if (a.not_applicable === 0) return "–";
+        const reason = a.not_applicable_reasons[0]?.reason;
+        return reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString();
+      },
+    },
+    {
+      id: "pass", header: "Passing applicable",
+      cell: ({ row }) => {
+        const a = row.original.aware;
+        return !a || a.applicable === 0 ? "—" : `${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`;
+      },
+    },
+  ], []);
+
   const facetSelect = (label: string, value: string, onChange: (v: string) => void, values: string[], format: (v: string) => string, allLabel: string) =>
     values.length > 1 ? (
       <Field label={label}>
@@ -192,6 +235,9 @@ export default function RulesPage() {
       {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
       {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
       {facetSelect("View", view, setView, facets.views, (v) => MM_VIEWS.find((x) => x.id === v)?.label ?? v, "All views")}
+      {(systemsQ.data?.length ?? 0) > 1
+        ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
+        : null}
       {filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
       {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
     </div>
@@ -212,6 +258,12 @@ export default function RulesPage() {
     <div className="flex flex-col gap-4 p-6">
       {filterBar}
       {summaryRow}
+      {coverageRows.length ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Coverage by object</p>
+          <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
+        </div>
+      ) : null}
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (

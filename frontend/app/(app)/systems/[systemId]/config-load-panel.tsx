@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Mono, Pill, type PillTone } from "@/design";
-import { getConfigLoad, startConfigLoad, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
+import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -32,8 +32,16 @@ const AREA_LABEL: Record<AreaStatus, string> = {
   not_available: "Not available",
 };
 
+/** The cause or outcome of one object's read, in plain words. */
+function areaObjectText(o: AreaObject): string {
+  if (o.cause === "auth") return `No authorisation to read ${o.object}.${o.detail ? ` ${o.detail}` : ""}`;
+  if (o.cause === "timeout") return `Reading ${o.object} timed out.`;
+  if (o.state === "loaded") return `${o.rows.toLocaleString()} found.`;
+  return o.detail || "Not read.";
+}
+
 /** Area-by-area breakdown of a configuration load, grouped by business area. */
-function AreaRows({ areas }: { areas: LoadArea[] }) {
+function AreaRows({ systemId, areas }: { systemId: string; areas: LoadArea[] }) {
   if (!areas.length) return null;
   return (
     <div className="flex flex-col gap-2">
@@ -41,17 +49,36 @@ function AreaRows({ areas }: { areas: LoadArea[] }) {
       {areas.map((a) => (
         <div key={a.area} className="flex flex-col gap-1 rounded border px-3 py-2" style={{ borderColor: "var(--m-line)" }}>
           <div className="flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{a.label}</span>
+            {a.status === "loaded" ? (
+              <Link href={`/systems/${systemId}?tab=health&part=config&table=${encodeURIComponent(a.area)}`} className="text-[13px] underline" style={{ color: "var(--m-ink)" }}>
+                {a.label}
+              </Link>
+            ) : (
+              <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{a.label}</span>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{a.tables_done} of {a.tables_total}</span>
               <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
             </div>
           </div>
-          {a.objects.filter((o) => o.state === "failed").map((o) => (
-            <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-              Could not read <Mono>{o.object}</Mono>.{o.detail ? ` ${o.detail}` : ""}
-            </p>
-          ))}
+          {a.status === "running" ? (
+            <div className="h-1 rounded overflow-hidden" style={{ background: "var(--m-line)" }}>
+              <div
+                className="h-full"
+                style={{
+                  background: "var(--m-accent)",
+                  width: `${a.tables_total ? Math.round((a.tables_done / a.tables_total) * 100) : 0}%`,
+                }}
+              />
+            </div>
+          ) : null}
+          {a.objects
+            .filter((o) => o.state === "failed" || o.cause)
+            .map((o) => (
+              <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+                <Mono>{o.object}</Mono>: {areaObjectText(o)}
+              </p>
+            ))}
         </div>
       ))}
     </div>
@@ -121,18 +148,16 @@ export function ConfigLoadButton({ running, loaded, onClick }: { running: boolea
 
 const MAX_FAILED_ROWS = 8;
 
-function Result({ load, retry, retrying, canLoad }: { load: ConfigLoad; retry: () => void; retrying: boolean; canLoad: boolean }) {
+function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string; load: ConfigLoad; retry: () => void; retrying: boolean; canLoad: boolean }) {
   const s = load.summary;
   const failed = load.objects.filter((o) => o.state === "failed");
   const na = s.not_available ?? 0;
-  const read = (s.loaded ?? 0) + (s.empty ?? 0);
-  const total = load.objects.length;
   return (
     <div className="flex flex-col gap-2">
       {failed.length ? (
         <div className="flex items-center justify-between rounded border px-3 py-2" style={{ borderColor: "var(--m-medium)" }}>
           <p className="text-[13px]" style={{ color: "var(--m-ink)" }}>
-            Configuration loaded with gaps. {read} of {total} objects were read. Rules that depend on the others apply by default.
+            Configuration loaded with gaps. {load.areas_loaded} of {load.areas_total} areas loaded. Rules that depend on the others apply by default.
           </p>
           {canLoad ? <Button variant="secondary" disabled={retrying} onClick={retry}>Try again</Button> : null}
         </div>
@@ -152,7 +177,7 @@ function Result({ load, retry, retrying, canLoad }: { load: ConfigLoad; retry: (
         ) : null}
       </dl>
       {load.areas.length ? (
-        <AreaRows areas={load.areas} />
+        <AreaRows systemId={systemId} areas={load.areas} />
       ) : (
         <>
           {failed.slice(0, MAX_FAILED_ROWS).map((o) => (
@@ -193,11 +218,14 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
     body = <ErrorState message={`Configuration state could not be read. ${error.message}`} onRetry={() => void refetch()} />;
   } else if (status === "loading") {
     body = (
-      <div role="status" aria-live="polite" className="flex items-center gap-2">
-        <Pill tone="neutral">{job?.stage ?? "Reading"}</Pill>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-          {job?.message || "Reading configuration"}. You can leave this page; loading continues in the background.
-        </p>
+      <div className="flex flex-col gap-3">
+        <div role="status" aria-live="polite" className="flex items-center gap-2">
+          <Pill tone="neutral">{job?.stage ?? "Reading"}</Pill>
+          <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            {job?.message || "Reading configuration"}. You can leave this page; loading continues in the background.
+          </p>
+        </div>
+        <AreaRows systemId={systemId} areas={load?.areas ?? []} />
       </div>
     );
   } else if (status === "failed") {
@@ -218,7 +246,7 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
       />
     );
   } else {
-    body = <Result load={load} retry={() => start.mutate()} retrying={start.isPending} canLoad={canLoad} />;
+    body = <Result systemId={systemId} load={load} retry={() => start.mutate()} retrying={start.isPending} canLoad={canLoad} />;
   }
 
   return (

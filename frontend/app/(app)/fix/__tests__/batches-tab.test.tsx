@@ -74,10 +74,15 @@ describe("BatchesTab", () => {
 
   it("accepts high-confidence proposals and refreshes the list", async () => {
     const accept = vi.spyOn(remediationApi, "acceptHighConfidence").mockResolvedValue({ id: "b1", accepted: 3, accepted_by: "u1" });
+    const getBatch = vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail());
     renderWithQuery(<BatchesTab />);
     await userEvent.click(await screen.findByText("AP001 batch"));
+    await waitFor(() => expect(getBatch).toHaveBeenCalledWith("b1"));
+    const callsBeforeAccept = getBatch.mock.calls.length;
     await userEvent.click(await screen.findByRole("button", { name: /Accept 1 high-confidence proposal/ }));
     await waitFor(() => expect(accept).toHaveBeenCalledWith("b1"));
+    // The accept mutation must invalidate/refetch the batch detail, not just fire the API call.
+    await waitFor(() => expect(getBatch.mock.calls.length).toBeGreaterThan(callsBeforeAccept));
   });
 
   it("shows a regression link in Monitoring that opens the batch drawer", async () => {
@@ -98,10 +103,20 @@ describe("BatchesTab", () => {
     await waitFor(() => expect(remediationApi.getBatch).toHaveBeenCalledWith("b1"));
   });
 
-  it("disables approve and export without the matching permission", async () => {
+  it("disables approve without the matching permission", async () => {
     can = false;
+    // created_by is "someone-else" (not the current user "creator-1"), so this is
+    // disabled by the missing permission, not by four-eyes.
     renderWithQuery(<BatchesTab />);
     await userEvent.click(await screen.findByText("AP001 batch"));
     expect(await screen.findByRole("button", { name: "Approve batch" })).toBeDisabled();
+  });
+
+  it("disables export without the matching permission", async () => {
+    can = false;
+    vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail({ status: "approved" }));
+    renderWithQuery(<BatchesTab />);
+    await userEvent.click(await screen.findByText("AP001 batch"));
+    expect(await screen.findByRole("button", { name: "Export batch" })).toBeDisabled();
   });
 });

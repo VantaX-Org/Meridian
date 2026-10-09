@@ -3,10 +3,15 @@ import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as systemObjectsApi from "@/lib/api/system-objects";
+import * as configLoadApi from "@/lib/api/config-load";
 import type { SAPSystemExtended } from "@/types/api";
 import SystemsPage from "../page";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/systems",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
@@ -20,6 +25,7 @@ describe("systems list page", () => {
   it("renders systems once loaded", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
   });
