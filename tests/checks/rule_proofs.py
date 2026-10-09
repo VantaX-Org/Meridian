@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 
 import pandas as pd
 
-from checks.frames import TableFrames, _graph, tables_of
+from checks.frames import TableFrames, _graph, internal_format, tables_of
 from checks.runner import rule_columns, run_rule
 
 TODAY = date.today().strftime("%Y%m%d")
@@ -255,8 +255,10 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                     r[f"{e.child}.{f}"] = fv
         same = {k: x[2:] for k, x in v.items() if isinstance(x, str) and x.startswith("@=")}
         v = {k: x for k, x in v.items() if k not in same}
+        live_vals = rule.get("_live_value")
+        live_vals = live_vals if isinstance(live_vals, (set, frozenset, list, tuple)) else {live_vals}
         for k, x in v.items():  # a join field keeps its partner in step, so records still link
-            if x and k in joined and x != rule.get("_live_value"):  # the live code must stay as the reference has it
+            if x and k in joined and x not in live_vals:  # the live code must stay as the reference has it
                 x = f"{x}{i}"
             r[k] = x
             for e in edges:
@@ -267,7 +269,18 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                         elif k == f"{e.parent}.{p}":
                             r[f"{e.child}.{c}"] = x
         for k, other in same.items():  # "the same value as the other side", after every other value is set
-            r[k] = r.get(other, "")
+            x = r[k] = r.get(other, "")
+            # k may itself be a join key (e.g. REC077's ONBOARDINGCANDIDATEINFO.USERID, linked
+            # to EMPEMPLOYMENT.USERID): keep its join partner in step too, or the two tables'
+            # frames silently fail to join and the record drops out of the evaluated population
+            # instead of landing in pass/fail.
+            for e in edges:
+                if e.parent in tables and e.child in tables:
+                    for c, p in e.on:
+                        if k == f"{e.child}.{c}":
+                            r[f"{e.parent}.{p}"] = x
+                        elif k == f"{e.parent}.{p}":
+                            r[f"{e.child}.{c}"] = x
         recs.append(r)
     return pd.DataFrame(recs)
 
@@ -277,7 +290,10 @@ def _failing_rows(result, df: pd.DataFrame, dictionary) -> set[int]:
     keys = [k for k in (result.details or {}).get("record_key_fields") or [] if k in df.columns]
     if not keys:
         return {int(m) for k in failing for m in re.findall(r"K(\d+)", k)[:1]}
-    rk = df[keys].astype("string").fillna("").apply(lambda s: s.str.strip())
+    # engine builds record_key_fields from the internal (ALPHA/MATN1 zero-padded)
+    # form (checks/frames.py:internal_format); mirror that so a purely-numeric
+    # key literal (e.g. an AUFNR-style field) matches the padded failing key.
+    rk = internal_format(df[keys], dictionary)[keys].astype("string").fillna("").apply(lambda s: s.str.strip())
     strings = rk.apply(lambda r: "|".join(f"{c.split('.')[-1]}={r[c]}" for c in keys), axis=1)
     return {i for i, v in strings.items() if v in failing}
 
@@ -305,6 +321,9 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         if other:
             a[other], b[other] = "D1", "D2"
         rows = [{**{c: dup[c] if c in aw else f"U{c[-3:]}" for c in cols}, **({other: "D3"} if other else {})}, a, b]
+        # the duplicated field may itself be a join key reachable from the rule's table (e.g. a
+        # Foundation-Object EXTERNAL_CODE); keep its shared value intact so the two rows still collide
+        rule = {**rule, "_live_value": set(dup.values()) | set(rule.get("_live_value") or ())}
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "interval_check":
         # one group: two adjoining periods, then a third starting inside the first
@@ -353,6 +372,22 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
 def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
+    # a column that is some table's whole primary key must still identify one record per
+    # candidate row here; two unrelated combos sharing a literal (e.g. both probing USER_ID="X")
+    # would otherwise collide into a single synthetic record and corrupt the pass/fail screening
+    # below (tests/checks/test_rule_proofs.py EC392). The "@=" paired-value marker is resolved
+    # against the *other* column's final value inside _rows(), so suffixing here still lets two
+    # fields land equal when a candidate is deliberately probing for that.
+    # the rule's own tested field(s) are excluded: suffixing them would change the literal
+    # a probe is specifically chosen for (e.g. a str.len() check on a whole-key column would
+    # never see its short literal again once an index is appended) (CNU036).
+    own_fields = {rule["field"]} if rule.get("field") else set(rule.get("fields") or ())
+    whole_keys = {f"{t}.{k}" for t in tables_of(cols) for k in dictionary.keys(t)
+                  if tuple(dictionary.keys(t)) == (k,)} - own_fields
+    for i, v in enumerate(values):
+        for c in whole_keys & v.keys():
+            if v[c] and not str(v[c]).startswith("@="):
+                v[c] = f"{v[c]}{i}"
     df = _rows(rule, dictionary, values)
     frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
     _, result = run_rule(rule, frames, live)
@@ -367,6 +402,15 @@ def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     # populated records first (a blank the rule's scope requires does not count)
     blanks = lambda i: sum(1 for c, x in values[i].items() if x == "" and c not in must_blank)  # noqa: E731
     passing = sorted((i for i in range(len(values)) if i not in failing), key=blanks)
+    # whole-key suffixing (above) makes every row's key literal unique, so rows that are
+    # otherwise identical (same non-key fields, e.g. all out of the rule's applies_when scope)
+    # no longer collapse into one candidate; a large block of such look-alikes can crowd the
+    # front of `passing` and push the one genuinely-distinct good record past the [:600] cap
+    # below (PS070). Dedup on the non-key fields first so the cap sees distinct candidates.
+    seen: set = set()
+    passing = [i for i in passing
+               if (sig := tuple(sorted((c, v) for c, v in values[i].items() if c not in whole_keys)))
+               not in seen and not seen.add(sig)]
     bad = sorted(failing, key=blanks)
     for tries, p in enumerate(passing[:600]):
         for f in bad[: 1 if tries >= 50 else 4]:  # the first failing record may sit outside the population

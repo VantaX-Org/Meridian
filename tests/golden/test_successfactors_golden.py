@@ -208,6 +208,7 @@ def test_employee_central_golden():
         "EC004": {"PERSON_ID=100109"},
         "EC018": {"PERSON_ID=100110|EMAIL_TYPE=B"},
         "EC033": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
+        "EC356": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
         "EC020": {"PERSON_ID=100112|PHONE_TYPE=M"},
         "EC048": {"USERID=100115"},
         "EC058": {"USERID=100116"},
