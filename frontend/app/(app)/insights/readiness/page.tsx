@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
@@ -36,6 +37,13 @@ export default function ReadinessPage() {
   } else if (data && data.cells.length === 0) {
     state = "empty";
   }
+
+  const emptyTitle = data && !data.configured
+    ? "Readiness waves not set."
+    : "No readiness data for this run yet.";
+  const emptyDetail = data && !data.configured
+    ? "Set readiness waves under Settings > Alert Thresholds."
+    : undefined;
 
   const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
   const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
@@ -74,9 +82,9 @@ export default function ReadinessPage() {
         </table>
       }
       state={state}
-      emptyProps={{ title: "No readiness data for this run yet." }}
+      emptyProps={{ title: emptyTitle, detail: emptyDetail, ghost: "grid" }}
       errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load readiness. Try again.",
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

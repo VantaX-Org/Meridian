@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
@@ -59,7 +60,7 @@ export default function ExecPage() {
   // link whose href the test can assert against. Rendering a plain anchor
   // here (in the charts slot) is a documented deviation from the brief's
   // exportAction={{label, href}} prop, which does not exist on ReportPage.
-  const exportHref = data ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
+  const exportHref = data?.version_id ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
 
   return (
     <ReportPage
@@ -88,7 +89,7 @@ export default function ExecPage() {
       state={state}
       emptyProps={{ title: "No executive summary data for this run yet." }}
       errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load the executive summary. Try again.",
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

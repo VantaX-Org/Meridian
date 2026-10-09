@@ -36,7 +36,7 @@ class ObjectSummaryOut(BaseModel):
 
 
 class ObjectsListOut(BaseModel):
-    run_id: str
+    run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
 
 
@@ -46,17 +46,16 @@ class ObjectsListOut(BaseModel):
 _FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
 
 
-async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> str:
-    """Resolve the literal `run=latest` to the tenant's newest finished run,
-    otherwise validate the value as a run id."""
+async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[str]:
+    """Resolve the literal `run=latest` to the tenant's newest finished run (None
+    when the tenant has none — an empty tenant is not an error), otherwise
+    validate the value as a run id."""
     if run == "latest":
         row = (await db.execute(text(
             "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = ANY(:done) "
             "ORDER BY run_at DESC LIMIT 1"
         ), {"t": str(tenant.id), "done": list(_FINISHED)})).fetchone()
-        if not row:
-            raise HTTPException(404, "No completed run yet")
-        return row[0]
+        return row[0] if row else None
     try:
         uuid.UUID(run)
     except ValueError:
@@ -81,6 +80,8 @@ async def list_objects(run: str = Query(..., alias="run"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     run_id = await _resolve_run(db, tenant, run)
+    if run_id is None:
+        return {"run_id": None, "objects": []}
     summary, thresholds = await _version_summary(db, tenant, run_id)
 
     rows = (await db.execute(text(

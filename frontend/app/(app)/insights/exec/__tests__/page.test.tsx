@@ -35,7 +35,7 @@ describe("ExecPage", () => {
   it("shows an error state when the exec request fails", async () => {
     vi.spyOn(insightsApi, "getExec").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ExecPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the exec request when the retry button is clicked", async () => {

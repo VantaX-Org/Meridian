@@ -36,7 +36,13 @@ async def get_readiness(
     waves = thresholds.get("readiness_waves") or {}
     dqs_threshold = thresholds.get("readiness_dqs_threshold", 70)
     if not waves:
-        raise HTTPException(409, "No readiness_waves configured — set them under Settings > Alert Thresholds")
+        return {
+            "version_id": None,
+            "threshold": dqs_threshold,
+            "waves": [],
+            "cells": [],
+            "configured": False,
+        }
 
     # module_results: migration_runs.gap_summary, JSONB keyed by module (ModuleResult-shaped,
     # see workers/tasks/run_migration.py's _finish()). Explicit version_id picks the run whose
@@ -74,6 +80,7 @@ async def get_readiness(
         "version_id": str(resolved_version_id) if resolved_version_id else None,
         "threshold": dqs_threshold,
         "cells": [c.__dict__ for c in cells],
+        "configured": True,
     }
 
 
@@ -242,16 +249,21 @@ async def get_exec(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            raise HTTPException(404, "No analysis run found")
+            # No analysis run at all for this tenant — not an error, just a day-one
+            # tenant. 200 with empty fields so the page renders its empty state.
+            return {
+                "version_id": None,
+                "narrative": "",
+                "readiness_cells": [],
+                "waterfall": [],
+                "impact_rows": [],
+                "owner_rows": [],
+            }
 
-    try:
-        readiness = await get_readiness(version_id, db, tenant)
-    except HTTPException as exc:
-        # No readiness_waves configured yet (same 409 the /readiness page itself
-        # raises) — the exec summary still has impact/owner data worth showing.
-        if exc.status_code != 409:
-            raise
-        readiness = {"cells": []}
+    # get_readiness no longer raises 409 for unconfigured waves (it returns
+    # {"cells": [], "configured": False} instead), so no HTTPException catch
+    # is needed here any more.
+    readiness = await get_readiness(version_id, db, tenant)
     impact = await get_impact(version_id, db, tenant)
     owners = await get_owners(db, tenant)
 

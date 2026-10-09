@@ -1,7 +1,7 @@
 // frontend/design/templates/ReportPage.tsx
 import type { ReactNode } from "react";
 import { Button } from "../primitives/Button";
-import { EmptyState } from "../primitives/EmptyState";
+import { EmptyState, type EmptyStateGhost } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 
@@ -20,7 +20,7 @@ export function ReportPage({
   onExport?: () => void;
   /** Swaps the charts/tables region for a skeleton, empty or error state. */
   state?: "loading" | "empty" | "error";
-  emptyProps?: { title: string; action?: ReactNode };
+  emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost };
   errorProps?: { message: string; onRetry?: () => void };
 }) {
   let body: ReactNode = (
@@ -37,7 +37,14 @@ export function ReportPage({
       </div>
     );
   } else if (state === "empty") {
-    body = <EmptyState title={emptyProps?.title ?? "Nothing to show"} action={emptyProps?.action} />;
+    body = (
+      <EmptyState
+        title={emptyProps?.title ?? "Nothing to show"}
+        detail={emptyProps?.detail}
+        action={emptyProps?.action}
+        ghost={emptyProps?.ghost ?? "chart"}
+      />
+    );
   } else if (state === "error") {
     body = <ErrorState message={errorProps?.message ?? "Something went wrong"} onRetry={errorProps?.onRetry} />;
   }
