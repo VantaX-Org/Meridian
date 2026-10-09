@@ -11,7 +11,7 @@ from checks.runner import run_checks
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
-PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
+PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41), ("BEN", 86, 148)],
          "payroll_integration": [("PAY", 31, 23), ("HPY", 31, 27)]}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
@@ -36,7 +36,7 @@ def test_ids_unique_and_contiguous(module):
     assert len(ids) == len(set(ids))
     for prefix, start, count in PACKS[module]:
         nums = sorted(int(i[len(prefix):]) for i in ids if re.fullmatch(prefix + r"\d+", i))
-        new = [n for n in nums if n >= start]
+        new = [n for n in nums if start <= n < start + count]
         assert new == list(range(start, start + count)), prefix
         assert start - 1 in nums, prefix
 
