@@ -118,8 +118,8 @@ export default function InboxPage() {
   const unreadQ = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 30_000 });
 
   const excQ = useQuery({
-    queryKey: queryKeys.inbox({ kind: "exception", per_page: 200 }),
-    queryFn: () => getExceptions({ per_page: 200 }),
+    queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
+    queryFn: () => getExceptions({ per_page: 100 }),
     refetchInterval: 60_000,
     enabled: isExceptions,
   });

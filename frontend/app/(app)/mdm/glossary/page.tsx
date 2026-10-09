@@ -39,7 +39,7 @@ export default function GlossaryPage() {
         domain: domain === "all" ? undefined : domain,
         status: status === "all" ? undefined : status,
         search: search || undefined,
-        per_page: 200,
+        per_page: 100,
       }),
   });
 

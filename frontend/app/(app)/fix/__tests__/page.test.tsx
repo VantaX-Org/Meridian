@@ -43,7 +43,7 @@ describe("FixPage", () => {
   it("shows one row per batch and navigates to the batch on click", async () => {
     vi.mocked(getCleaningQueue).mockResolvedValue({
       items: [item({}), item({ id: "2", confidence: 0.7 })],
-      total: 2, page: 1, per_page: 500,
+      total: 2, page: 1, per_page: 100,
     });
     renderWithQuery(<FixPage />);
 
@@ -54,7 +54,7 @@ describe("FixPage", () => {
   });
 
   it("shows an empty state when there are no batches", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<FixPage />);
 
     expect(await screen.findByText("No batches yet")).toBeInTheDocument();

@@ -27,7 +27,7 @@ beforeEach(() => {
 
 describe("BatchPage", () => {
   it("shows every item in the batch and approves one", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 500 });
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
     vi.mocked(approveCleaning).mockResolvedValue({ id: "i1", status: "approved" });
 
     renderWithQuery(<BatchPage />);
@@ -41,7 +41,7 @@ describe("BatchPage", () => {
   it("filters out items from other batches", async () => {
     vi.mocked(getCleaningQueue).mockResolvedValue({
       items: [item({}), item({ id: "i2", record_key: "200002", batch_id: "B2" })],
-      total: 2, page: 1, per_page: 500,
+      total: 2, page: 1, per_page: 100,
     });
 
     renderWithQuery(<BatchPage />);

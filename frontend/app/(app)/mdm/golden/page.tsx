@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field, Select } from "@/design";
+import { DataTable, ExplorerPage, Field, Pager, Select } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -40,6 +40,7 @@ export default function GoldenRecordsPage() {
   const [status, setStatus] = useState("all");
   const [minConfidence, setMinConfidence] = useState("");
   const [maxConfidence, setMaxConfidence] = useState("");
+  const [page, setPage] = useState(1);
 
   const filters = {
     domain: domain === "all" ? undefined : domain,
@@ -49,11 +50,12 @@ export default function GoldenRecordsPage() {
   };
 
   const query = useQuery({
-    queryKey: queryKeys.masterRecords(filters),
-    queryFn: () => getMasterRecords({ ...filters, per_page: 200 }),
+    queryKey: queryKeys.masterRecords({ ...filters, page }),
+    queryFn: () => getMasterRecords({ ...filters, per_page: 100, page }),
   });
 
   const records = useMemo(() => query.data?.records ?? [], [query.data]);
+  const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
   const state = query.isLoading ? "loading" : query.isError ? "error" : records.length === 0 ? "empty" : undefined;
 
   return (
@@ -61,16 +63,16 @@ export default function GoldenRecordsPage() {
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Domain">
-            <Select value={domain} onValueChange={setDomain} options={DOMAIN_OPTIONS} />
+            <Select value={domain} onValueChange={(v) => { setDomain(v); setPage(1); }} options={DOMAIN_OPTIONS} />
           </Field>
           <Field label="Status">
-            <Select value={status} onValueChange={setStatus} options={STATUS_OPTIONS} />
+            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
           </Field>
           <Field label="Min confidence %">
             <input
               aria-label="Min confidence %"
               value={minConfidence}
-              onChange={(e) => setMinConfidence(e.target.value)}
+              onChange={(e) => { setMinConfidence(e.target.value); setPage(1); }}
               placeholder="0-100"
               inputMode="numeric"
               className="rounded border px-3 py-1.5 text-[13px]"
@@ -81,7 +83,7 @@ export default function GoldenRecordsPage() {
             <input
               aria-label="Max confidence %"
               value={maxConfidence}
-              onChange={(e) => setMaxConfidence(e.target.value)}
+              onChange={(e) => { setMaxConfidence(e.target.value); setPage(1); }}
               placeholder="0-100"
               inputMode="numeric"
               className="rounded border px-3 py-1.5 text-[13px]"
@@ -91,12 +93,15 @@ export default function GoldenRecordsPage() {
         </div>
       }
       table={
-        <DataTable
-          columns={columns}
-          data={records}
-          getRowId={(r) => r.id}
-          onRowClick={(r) => router.push(`/mdm/golden/${r.id}`)}
-        />
+        <div className="flex flex-col gap-3">
+          <DataTable
+            columns={columns}
+            data={records}
+            getRowId={(r) => r.id}
+            onRowClick={(r) => router.push(`/mdm/golden/${r.id}`)}
+          />
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} onPageChange={setPage} />}
+        </div>
       }
       state={state}
       emptyProps={{ title: "No master records match these filters." }}

@@ -30,14 +30,14 @@ describe("GlossaryPage", () => {
       ],
       total: 1,
       page: 1,
-      per_page: 200,
+      per_page: 100,
     });
     renderWithQuery(<GlossaryPage />);
     await waitFor(() => expect(screen.getByText("Material group")).toBeInTheDocument());
   });
 
   it("shows an empty state when no terms match", async () => {
-    vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 200 });
+    vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GlossaryPage />);
     await waitFor(() => expect(screen.getByText(/no glossary terms/i)).toBeInTheDocument());
   });

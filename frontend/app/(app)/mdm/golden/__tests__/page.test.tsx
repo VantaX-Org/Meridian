@@ -28,14 +28,14 @@ describe("GoldenRecordsPage", () => {
       ],
       total: 1,
       page: 1,
-      per_page: 200,
+      per_page: 100,
     });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
   });
 
   it("shows an empty state when no records match", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(screen.getByText(/no master records/i)).toBeInTheDocument());
   });
@@ -50,7 +50,7 @@ describe("GoldenRecordsPage", () => {
   });
 
   it("includes max_confidence in the request when set", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(masterRecordsApi.getMasterRecords).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText("Max confidence %"), { target: { value: "80" } });

@@ -34,7 +34,7 @@ export default function SearchPage() {
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const batches = useQuery({
     queryKey: queryKeys.batch("list"),
-    queryFn: () => getCleaningQueue({ per_page: 500 }),
+    queryFn: () => getCleaningQueue({ per_page: 100 }),
   });
   const objects = useQuery({
     queryKey: queryKeys.objects(run),

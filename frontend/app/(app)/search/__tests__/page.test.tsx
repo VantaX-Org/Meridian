@@ -40,7 +40,7 @@ describe("SearchPage", () => {
       offset: 0,
     });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
@@ -51,7 +51,7 @@ describe("SearchPage", () => {
   it("shows an empty state when nothing matches", async () => {
     vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 100, offset: 0 });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
@@ -62,7 +62,7 @@ describe("SearchPage", () => {
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("rules service unavailable"));
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 

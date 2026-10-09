@@ -24,7 +24,7 @@ export default function BatchPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.batch(batchId),
-    queryFn: () => getCleaningQueue({ per_page: 500 }),
+    queryFn: () => getCleaningQueue({ per_page: 100 }),
   });
   const items = useMemo(() => (data?.items ?? []).filter((i) => i.batch_id === batchId), [data, batchId]);
   const confident = useMemo(() => items.filter((i) => i.confidence >= HIGH_CONFIDENCE), [items]);
