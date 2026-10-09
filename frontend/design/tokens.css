@@ -50,8 +50,12 @@
   --m-radius-sheet: 6px;
 
   /* Motion */
-  --m-motion-duration: 120ms;
-  --m-motion-ease: ease-out;
+  --m-motion-duration: 120ms;        /* existing: hover, menus, drawers */
+  --m-motion-duration-slow: 320ms;   /* rail width, flyout, stepper */
+  --m-motion-duration-draw: 640ms;   /* chart draw-in, counter count-up */
+  --m-motion-duration-shimmer: 1400ms;
+  --m-motion-ease: ease-out;         /* existing */
+  --m-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"] {
@@ -92,5 +96,20 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --m-motion-duration: 0ms;
+    --m-motion-duration-slow: 0ms;
+    --m-motion-duration-draw: 0ms;
+    --m-motion-duration-shimmer: 0ms;
   }
 }
+
+/* Motion */
+@keyframes m-shimmer { from { background-position: -200% 0 } to { background-position: 200% 0 } }
+@keyframes m-draw    { from { stroke-dashoffset: var(--m-draw-length, 1000) } to { stroke-dashoffset: 0 } }
+@keyframes m-rise    { from { transform: translateY(4px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes m-sweep   { from { transform: translateX(-100%) } to { transform: translateX(350%) } }
+
+.m-motion-width  { transition: width var(--m-motion-duration-slow) var(--m-motion-ease-in-out); }
+.m-motion-fade   { transition: opacity var(--m-motion-duration) var(--m-motion-ease), transform var(--m-motion-duration) var(--m-motion-ease); }
+.m-motion-rise   { animation: m-rise var(--m-motion-duration-slow) var(--m-motion-ease) both; }
+.m-motion-draw   { animation: m-draw var(--m-motion-duration-draw) var(--m-motion-ease) both; }
+.m-skeleton-sweep { animation: m-sweep var(--m-motion-duration-shimmer) linear infinite; }
