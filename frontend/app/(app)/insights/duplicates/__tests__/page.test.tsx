@@ -39,7 +39,7 @@ async function pickObjectAndRecord() {
   const option = await screen.findByRole("option", { name: "Material master" });
   await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"));
   fireEvent.click(option);
-  await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("material_master"));
+  await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
   fireEvent.change(screen.getByLabelText("Record ID"), { target: { value: "000101" } });
 }
 

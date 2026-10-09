@@ -63,7 +63,7 @@ describe("rules page", () => {
     const objectOption = await screen.findByRole("option", { name: "Material Master" });
     await waitFor(() => expect(objectOption.closest("[role=listbox]")).toHaveAttribute("data-open"));
     await user.click(objectOption);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("material_master"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material Master"));
     await waitFor(() => expect(screen.queryByText("Vendor number is mandatory")).not.toBeInTheDocument());
     expect(screen.getByText("Base unit of measure is mandatory")).toBeInTheDocument();
 
@@ -71,7 +71,7 @@ describe("rules page", () => {
     const viewOption = await screen.findByRole("option", { name: "Batch management" });
     await waitFor(() => expect(viewOption.closest("[role=listbox]")).toHaveAttribute("data-open"));
     await user.click(viewOption);
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "View" })).toHaveTextContent("batch"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "View" })).toHaveTextContent("Batch management"));
     await waitFor(() => expect(screen.queryByText("Base unit of measure is mandatory")).not.toBeInTheDocument());
     expect(screen.getByText("Batch class is mandatory")).toBeInTheDocument();
   });

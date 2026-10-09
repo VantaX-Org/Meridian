@@ -15,11 +15,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Pill, Select, Skeleton, Stat, Tabs,
+  Bar, Button, DataTable, Drawer, EmptyState, ErrorState, Field, Line, Mono, Pill, Select, Skeleton, Stat, Tabs,
   type PillTone,
 } from "@/design";
-import { Bar } from "@/design/charts/Bar";
-import { Line } from "@/design/charts/Line";
 import { HEALTH_LABEL, latestDqs } from "../_health";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
@@ -194,7 +192,7 @@ export default function SystemPage() {
               />
             ),
           },
-          { value: "runs", label: "Runs", content: <Runs versions={versions} loading={versionsQ.isLoading} /> },
+          { value: "runs", label: "Runs", content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} /> },
           {
             value: "health",
             label: "Health",
@@ -357,12 +355,19 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
-function Runs({ versions, loading }: { versions: SystemVersion[]; loading: boolean }) {
+function Runs({ systemId, versions, loading }: { systemId: string; versions: SystemVersion[]; loading: boolean }) {
   const router = useRouter();
   const columns = useMemo(() => runColumns(), []);
   if (loading) return <Skeleton height={240} />;
   if (!versions.length) return <EmptyState title="Nothing has been extracted from this system yet." />;
-  return <DataTable columns={columns} data={versions} getRowId={(v) => v.id} onRowClick={(v) => router.push(`/runs/${v.id}`)} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={versions}
+      getRowId={(v) => v.id}
+      onRowClick={(v) => router.push(`/systems/${systemId}/extractions/${v.id}`)}
+    />
+  );
 }
 
 /* ── Health ────────────────────────────────────────────────────────────── */

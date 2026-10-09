@@ -1,6 +1,7 @@
 // frontend/app/(app)/objects/[object]/records/[key]/page.tsx
 "use client";
 
+import { Fragment } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
@@ -94,12 +95,23 @@ export default function RecordFixSheetPage() {
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
           <dd>{material.description ?? "—"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Material type</dt>
-          <dd>{material.labels.MTART ?? "—"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Material group</dt>
-          <dd>{material.labels.MATKL ?? "—"}</dd>
-          <dt style={{ color: "var(--m-ink-3)" }}>Base unit</dt>
-          <dd>{material.labels.MEINS ?? "—"}</dd>
+          {isMaterial ? (
+            <>
+              <dt style={{ color: "var(--m-ink-3)" }}>Material type</dt>
+              <dd>{material.labels.MTART ?? "—"}</dd>
+              <dt style={{ color: "var(--m-ink-3)" }}>Material group</dt>
+              <dd>{material.labels.MATKL ?? "—"}</dd>
+              <dt style={{ color: "var(--m-ink-3)" }}>Base unit</dt>
+              <dd>{material.labels.MEINS ?? "—"}</dd>
+            </>
+          ) : (
+            Object.entries(material.labels).map(([field, fieldValue]) => (
+              <Fragment key={field}>
+                <dt style={{ color: "var(--m-ink-3)" }}>{field}</dt>
+                <dd>{fieldValue ?? "—"}</dd>
+              </Fragment>
+            ))
+          )}
           <dt style={{ color: "var(--m-ink-3)" }}>Levels</dt>
           <dd>{material.levels_total}</dd>
         </dl>

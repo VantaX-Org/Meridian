@@ -362,7 +362,7 @@ export default function InboxPage() {
       summary={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-6">
-            <Stat label="Unread notifications" value={unreadQ.isLoading ? "…" : unreadQ.data ?? 0} />
+            <Stat label="Unread notifications" value={unreadQ.isLoading ? "…" : unreadQ.isError ? "—" : unreadQ.data ?? 0} />
             {isExceptions ? (
               <>
                 <Stat label="Open" value={excMetricsQ.isLoading ? "…" : excMetricsQ.data?.open_count ?? 0} />

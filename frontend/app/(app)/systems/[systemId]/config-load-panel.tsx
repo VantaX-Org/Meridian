@@ -48,7 +48,15 @@ export function useConfigLoad(systemId: string) {
     onError: (e) => toast.error((e as Error).message || "Configuration not loaded"),
   });
   const running = jobActive || start.isPending || load.data?.status === "running";
-  return { load: load.data ?? null, isLoading: load.isLoading, error: load.error as Error | null, job: job.data ?? null, running, start };
+  return {
+    load: load.data ?? null,
+    isLoading: load.isLoading,
+    error: load.error as Error | null,
+    job: job.data ?? null,
+    running,
+    start,
+    refetch: load.refetch,
+  };
 }
 
 export function configStatus(load: ConfigLoad | null, running: boolean, type: SystemType): ConfigStatus {
@@ -118,7 +126,7 @@ function Result({ load, retry, retrying, canLoad }: { load: ConfigLoad; retry: (
 
 /** Configuration panel shown on the system page's Health tab. */
 export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: string; systemType: SystemType; canLoad: boolean }) {
-  const { load, running, job, start, isLoading, error } = useConfigLoad(systemId);
+  const { load, running, job, start, isLoading, error, refetch } = useConfigLoad(systemId);
   const status = configStatus(load, running, systemType);
   const action = canLoad && !hasNoConfig(systemType) ? <ConfigLoadButton running={running} loaded={!!load} onClick={() => start.mutate()} /> : null;
 
@@ -132,7 +140,7 @@ export function ConfigLoadPanel({ systemId, systemType, canLoad }: { systemId: s
   } else if (isLoading) {
     body = <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Reading the configuration state.</p>;
   } else if (error) {
-    body = <ErrorState message={`Configuration state could not be read. ${error.message}`} />;
+    body = <ErrorState message={`Configuration state could not be read. ${error.message}`} onRetry={() => void refetch()} />;
   } else if (status === "loading") {
     body = (
       <div role="status" aria-live="polite" className="flex items-center gap-2">

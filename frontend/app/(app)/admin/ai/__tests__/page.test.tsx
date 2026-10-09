@@ -21,7 +21,7 @@ describe("admin AI page", () => {
     vi.spyOn(llmApi, "getLLMProviders").mockResolvedValue(PROVIDERS);
     vi.spyOn(llmApi, "getLLMConfig").mockResolvedValue(CONFIG);
     renderWithQuery(<AdminAIPage />);
-    await waitFor(() => expect(screen.getByText("Anthropic")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Anthropic").length).toBeGreaterThan(0));
   });
 
   it("shows a retryable error when settings fail to load", async () => {
@@ -32,6 +32,6 @@ describe("admin AI page", () => {
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(CONFIG);
     retry.click();
-    await waitFor(() => expect(screen.getByText("Anthropic")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Anthropic").length).toBeGreaterThan(0));
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getShellCounts } from "../../lib/api/shell";
 import { queryKeys } from "../../lib/query-keys";
@@ -21,6 +21,7 @@ const COUNT_KEY: Record<string, "fix" | "inbox"> = {
 
 export function Rail() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const groups = useVisibleNav();
   const [expanded, setExpanded] = useState(true);
   useEffect(() => {
@@ -38,8 +39,10 @@ export function Rail() {
   const renderItem = (item: NavItem) => {
     const countKey = COUNT_KEY[item.href];
     const count = countKey ? counts?.[countKey] ?? 0 : 0;
-    const itemPath = item.href.split("?")[0];
-    const active = pathname === itemPath || pathname.startsWith(itemPath + "/");
+    const [itemPath, itemQuery] = item.href.split("?");
+    const itemKind = new URLSearchParams(itemQuery ?? "").get("kind");
+    const pathActive = pathname === itemPath || pathname.startsWith(itemPath + "/");
+    const active = pathActive && searchParams.get("kind") === itemKind;
     return (
       <li key={item.href}>
         <Link

@@ -8,7 +8,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, Pill, Skeleton, type PillTone } from "@/design";
+import { EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { getSystems } from "@/lib/api/connectivity";
@@ -47,7 +47,11 @@ export function LiveSection() {
     <div className="flex flex-col gap-4">
       <Section title="Systems">
         {systemsQ.isLoading ? <Skeleton height={80} />
-          : systems.length ? systems.map((s) => {
+          : systemsQ.isError ? (
+            <div className="p-3">
+              <ErrorState message="Live system state could not be read." onRetry={() => void systemsQ.refetch()} />
+            </div>
+          ) : systems.length ? systems.map((s) => {
             const h = HEALTH[s.health_status ?? "unknown"] ?? HEALTH.unknown;
             return (
               <div key={s.id} className={row} style={rowStyle}>
