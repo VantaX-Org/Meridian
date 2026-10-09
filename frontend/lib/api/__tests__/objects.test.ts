@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../client", () => ({
@@ -18,6 +19,20 @@ describe("objects.ts", () => {
     mockedGet.mockResolvedValue({ data: { run_id: "v1", objects: [] } });
     await getObjects("v1");
     expect(mockedGet).toHaveBeenCalledWith("/api/v1/objects", { params: { run: "v1" } });
+  });
+
+  it("getObjects treats a 404 (no completed run yet) as an empty list", async () => {
+    mockedGet.mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, {
+      status: 404, statusText: "Not Found", data: { detail: "No completed run yet" }, headers: {}, config: {} as never,
+    }));
+    await expect(getObjects("latest")).resolves.toEqual({ run_id: "", objects: [] });
+  });
+
+  it("getObjects still throws on a server error", async () => {
+    mockedGet.mockRejectedValue(new AxiosError("boom", "ERR_BAD_RESPONSE", undefined, undefined, {
+      status: 500, statusText: "Server Error", data: {}, headers: {}, config: {} as never,
+    }));
+    await expect(getObjects("latest")).rejects.toThrow("boom");
   });
 
   it("getObject calls /api/v1/objects/{module} with the run id", async () => {

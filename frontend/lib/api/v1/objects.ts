@@ -1,5 +1,6 @@
 import apiClient from "../client";
 import type { Material360 } from "../materials";
+import { optional } from "../optional";
 
 export interface ObjectSummary {
   module: string;
@@ -27,8 +28,11 @@ export interface ObjectDetail extends ObjectSummary {
 const get = async <T>(path: string, params?: Record<string, string | undefined>) =>
   (await apiClient.get<T>(path, { params })).data;
 
-export const getObjects = (run: string) =>
-  get<{ run_id: string; objects: ObjectSummary[] }>("/api/v1/objects", { run });
+/** A tenant with no completed run answers 404 for run=latest; that is an
+ *  empty list, not an error, so every caller shows its empty state. */
+export const getObjects = async (run: string) =>
+  (await optional(() => get<{ run_id: string; objects: ObjectSummary[] }>("/api/v1/objects", { run })))
+  ?? { run_id: "", objects: [] };
 
 export const getObject = (module: string, run: string) =>
   get<ObjectDetail>(`/api/v1/objects/${encodeURIComponent(module)}`, { run });

@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Design tokens (--m-*). Every @/design component and the @theme mapping below read these. */
+@import "../design/tokens.css";
+
 /* Styles the process designer's BPMN canvas (app/(app)/insights/process/designer/_components)
    still depends on via raw `aurora-*` classNames; those components were never migrated to
    `@/design`. See frontend/DESIGN.md and the Task 31b report for the follow-up needed. */
