@@ -13,7 +13,8 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 # Expected rule counts per module
 EXPECTED_COUNTS = {
     "employee_central": 465,
-    "compensation": 222,  # COMP137 deleted into the DELETED set (round 2 fix: C6)
+    "compensation": 222,  # COMP137 deleted (round 2, C6); kept as a YAML tombstone and tracked
+                           # in tests/test_sf_comp_depth_rules.py's DELETED set as of round 3
     "recruiting_onboarding": 80,
     "learning_management": 80,
     "performance_goals": 80,

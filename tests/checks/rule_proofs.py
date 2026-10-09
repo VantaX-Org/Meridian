@@ -306,13 +306,13 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals += [_FORMAT_SAMPLES.get(str(rule["format"]).lower(), "")]
             if rule.get("_live_value"):
                 vals.insert(0, rule["_live_value"])
+            overflow = None
             if rule.get("pattern"):
                 s = sample_regex(rule["pattern"])
                 vals += [s] if s is not None else []
                 bad = sample_regex_violation(rule["pattern"])
                 vals += [bad] if bad is not None else []
                 overflow = sample_regex_overflow(rule["pattern"])
-                vals += [overflow] if overflow is not None else []
             f = dictionary.resolve(c)
             vals += sorted(f.allowed_values())[:3] if f is not None and f.allowed_values() else []
         aw = (rule.get("applies_when") or {}).get(c)
@@ -329,6 +329,11 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
+        if c == rule.get("field") and overflow is not None:
+            # Appended after allowed_values/reference_values/applies_when probes (not before,
+            # as it was in round 2) so the 10-item cap below evicts this candidate first
+            # instead of evicting a higher-priority probe value.
+            vals += [overflow]
         if f"`{c}`" in expr:
             vals += literals[:4] + numbers[:4] + number_variants[:4]
             if re.search(rf"`{re.escape(c)}`[^`]*\.str\.islower\(\)", expr):

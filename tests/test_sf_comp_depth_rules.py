@@ -23,6 +23,10 @@ NO_AUTOFIX_FIELDS = re.compile(r"\.(SALARY|AMOUNT|VALUE|PAY_GROUP|PAY_SCALE_\w+|
 # Cannot be fixture-tested without a `_live_reference`/`reference_values` injection (same precedent
 # as the pre-existing referential_check rules elsewhere in this rule family).
 UNTESTABLE = {"COMP102", "COMP103"}
+# Round 2 deleted COMP137 outright (C6: dead or population-wide false positive in every
+# tenant, no record-level signal exists — see sf-comp-rereview-1.md). Kept as a commented-out
+# tombstone in the YAML. IDs are append-only: nothing may reuse a deleted id.
+DELETED = {"COMP137"}
 
 
 def frame(table, **cols):
@@ -263,6 +267,14 @@ def test_n1_pay_range_frequency_guard():
     assert fire("COMP232", {"COMPINFO": annual_range_inside}) == 0
 
 
+def test_c3_hourly_literal_also_checked():
+    # COMP136/143/213 must fire on both the dictionary code HRL and the unabbreviated
+    # literal HOURLY (COMP006's auto_fix shows tenants send it too); only HRL was
+    # checked before this round.
+    hourly = ci(COMP_FREQUENCY=["HOURLY"], SALARY=[20.0]), emp(STANDARD_HOURS=[None])
+    assert fire("COMP136", {"COMPINFO": hourly[0], "EMPEMPLOYMENT": hourly[1]}) == 1
+
+
 def test_n2_discontinued_component_on_active_employee_does_not_fire():
     # COMP250 groups by USERID only: a discontinued allowance must not make an otherwise
     # continuous salary record look like a gap.
@@ -282,6 +294,16 @@ def test_n4_open_end_date_recognised_blank_or_9999():
     assert fire("COMP146", {"COMPINFO": actually_closed[0], "EMPEMPLOYMENT": actually_closed[1]}) == 0
 
 
+def test_n4_comp250_blank_string_end_date_is_open_not_a_false_positive():
+    # Round 2 regression (N4): COMP250's interval_check path dropped a "" end date as
+    # invalid rather than open, so a genuinely-closed earlier row became the group's
+    # (wrongly) "last" row and was flagged. Only the open_ended_only path is affected;
+    # fixed in checks/types/interval_check.py.
+    blank_current = ci(USERID=["u1", "u1"], EFFECTIVE_DATE=["2023-01-01", "2024-01-01"],
+                        END_DATE=["2023-12-31", ""])
+    assert fire("COMP250", {"COMPINFO": blank_current, "EMPEMPLOYMENT": emp(USERID=["u1"], STATUS=["A"])}) == 0
+
+
 # ---- integrity -----------------------------------------------------------------------------------------------------
 
 def test_new_ids_unique_and_contiguous():
@@ -294,6 +316,17 @@ def test_new_ids_unique_and_contiguous():
     assert nums == sorted(set(nums))
     assert nums[0] == 95
     assert len(NEW) >= 125
+
+
+def test_deleted_ids_not_reused():
+    # No live rule may carry a deleted id, and no deleted id leaks into any other rule's own
+    # fields (e.g. a stray reference in a fail_when or fix_map would be a reuse-adjacent bug).
+    ids = {r["id"] for r in RULES}
+    assert not (ids & DELETED)
+    for r in RULES:
+        for v in r.values():
+            if isinstance(v, str):
+                assert not (DELETED & set(re.findall(r"COMP\d+", v))), (r["id"], v)
 
 
 def test_new_rules_fully_enriched():
@@ -363,7 +396,8 @@ def _apply(steps, v):
 @pytest.mark.parametrize("rid,dirty,fixed", [
     ("COMP126", " a ", "A"), ("COMP127", " i ", "I"), ("COMP128", " a ", "A"),
     ("COMP228", " usd ", "USD"), ("COMP229", " usd ", "USD"),
-    ("COMP246", " salary ", "SALARY"), ("COMP247", " bon ", "BON"),
+    # COMP246/247 lost their auto_fix this round (m5): strip+upper can't repair an
+    # over-length value, so no safe auto_fix exists for a length/newline violation.
 ])
 def test_auto_fix_proposal_passes_the_rule(rid, dirty, fixed):
     r = BY_ID[rid]

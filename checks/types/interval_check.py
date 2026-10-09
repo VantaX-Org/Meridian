@@ -29,7 +29,14 @@ class IntervalCheck(BaseCheck):
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         r = self.rule
-        start, end = _date(df[r["start"]]), _date(df[r["end"]])
+        end_col = df[r["end"]]
+        if r.get("mode") == "open_ended_only":
+            # Only this opt-in path: "" and whitespace-only also mean open. The default path
+            # (used by every other rule on this check type) is untouched — _date's own
+            # 99991231-only sentinel keeps its exact prior behaviour there.
+            blank = end_col.astype("string").str.strip().fillna("").eq("")
+            end_col = end_col.mask(blank, "99991231")
+        start, end = _date(df[r["start"]]), _date(end_col)
         valid = start.notna() & end.notna() & (start <= end)
         keys = df[r["group_by"]].astype("string").apply(lambda s: s.str.strip()).fillna("")
         group = keys.apply(lambda row: "|".join(row), axis=1) if len(df) else pd.Series(dtype="string")

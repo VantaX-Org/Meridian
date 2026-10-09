@@ -1898,39 +1898,39 @@ rules:
     pattern: ^.{1,32}$
     severity: low
     dimension: validity
-    message: Pay scale type does not look like a valid tariff code
-    why_it_matters: Pay scale type codes are short alphanumeric keys configured in the pay scale structure; free-text entries will not resolve in payroll.
+    message: Pay scale type exceeds 32 characters or contains a newline
+    why_it_matters: Pay scale type codes are short alphanumeric keys configured in the pay scale structure; an over-length or multi-line value will not resolve in payroll.
     rule_authority: best_practice
     sap_impact: The tariff pay scale structure cannot be resolved for payroll replication.
     fix_map:
-      __other__: Correct the pay scale type to a configured alphanumeric code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay scale type ''{actual_value}'' does not look like a valid code. Correct it.'
+      __other__: Shorten the pay scale type to 32 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay scale type ''{actual_value}'' exceeds 32 characters or contains a newline. Shorten it.'
   - id: COMP119
     field: COMPINFO.PAY_SCALE_AREA
     check_class: regex_check
     pattern: ^.{1,32}$
     severity: low
     dimension: validity
-    message: Pay scale area does not look like a valid tariff code
-    why_it_matters: Pay scale area codes are short alphanumeric keys configured in the pay scale structure; free-text entries will not resolve in payroll.
+    message: Pay scale area exceeds 32 characters or contains a newline
+    why_it_matters: Pay scale area codes are short alphanumeric keys configured in the pay scale structure; an over-length or multi-line value will not resolve in payroll.
     rule_authority: best_practice
     sap_impact: The tariff pay scale structure cannot be resolved for payroll replication.
     fix_map:
-      __other__: Correct the pay scale area to a configured alphanumeric code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay scale area ''{actual_value}'' does not look like a valid code. Correct it.'
+      __other__: Shorten the pay scale area to 32 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay scale area ''{actual_value}'' exceeds 32 characters or contains a newline. Shorten it.'
   - id: COMP120
     field: COMPINFO.PAYROLL_SYSTEM_ID
     check_class: regex_check
     pattern: ^.{1,128}$
     severity: low
     dimension: validity
-    message: Payroll system ID does not look like a valid system key
-    why_it_matters: The payroll system ID identifies which payroll system this compensation record replicates to; it is configured as a short alphanumeric key.
+    message: Payroll system ID exceeds 128 characters or contains a newline
+    why_it_matters: The payroll system ID identifies which payroll system this compensation record replicates to; an over-length or multi-line value will not resolve.
     rule_authority: best_practice
     sap_impact: Replication cannot route the record to the correct target payroll system.
     fix_map:
-      __other__: Correct the payroll system ID to a configured alphanumeric code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: payroll system ID ''{actual_value}'' does not look like a valid key. Correct it.'
+      __other__: Shorten the payroll system ID to 128 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {COMPINFO.USERID}: payroll system ID ''{actual_value}'' exceeds 128 characters or contains a newline. Shorten it.'
   - id: COMP121
     field: COMPINFO.USERID
     check_class: regex_check
@@ -2106,7 +2106,10 @@ rules:
   - id: COMP136
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and `EMPEMPLOYMENT.STANDARD_HOURS`.isna() and `COMPINFO.SALARY`.notna()
+    # HRL: sap/data_dictionary.py standard_values for COMP_FREQUENCY ("Hourly").
+    # HOURLY: COMP006's auto_fix (compensation.yaml, HOURLY -> HOURLY) shows tenants also
+    # send the unabbreviated literal, so both must be checked or an HOURLY tenant is never caught.
+    fail_when: (`COMPINFO.COMP_FREQUENCY`.isin(['HRL', 'HOURLY'])) and `EMPEMPLOYMENT.STANDARD_HOURS`.isna() and `COMPINFO.SALARY`.notna()
     severity: medium
     dimension: completeness
     message: Hourly pay rate has no standard hours to annualise against
@@ -2116,6 +2119,26 @@ rules:
     fix_map:
       __other__: Maintain the employee's standard hours.
     record_fix_template: 'Employee {COMPINFO.USERID}: hourly pay rate has no standard hours to annualise against. Maintain standard hours.'
+  # COMP137 deleted (round 2, C6). It tested PAYCOMP_END_DATE.isna() and
+  # EMPEMPLOYMENT.STATUS == 'T'. Root cause: SF does not delimit recurring pay
+  # components on termination, so this is dead or population-wide false-positive
+  # depending on whether the tenant's open end date is blank or 9999-12-31 — no
+  # record-level signal exists for this condition in the current schema. See
+  # sf-comp-rereview-1.md C6/N4. Tracked in tests/test_sf_comp_depth_rules.py's
+  # DELETED set; id is not reused (append-only).
+  # - id: COMP137
+  #   field: COMPINFO.PAYCOMP_END_DATE
+  #   check_class: cross_field_check
+  #   fail_when: '`COMPINFO.PAYCOMP_END_DATE`.isna() and (`EMPEMPLOYMENT.STATUS` == ''T'')'
+  #   severity: high
+  #   dimension: consistency
+  #   message: Compensation record has no end date but the employment has been terminated
+  #   why_it_matters: A compensation record with no end date on a terminated employment means the record was not delimited when the employee left.
+  #   rule_authority: sap_hard_constraint
+  #   sap_impact: The terminated employee's compensation record remains open after leaving.
+  #   fix_map:
+  #     __other__: Set the compensation record's end date to the termination date.
+  #   record_fix_template: 'Employee {COMPINFO.USERID}: compensation record {COMPINFO.PAY_TYPE} has no end date after termination. Delimit it.'
   - id: COMP138
     field: COMPINFO.EFFECTIVE_DATE
     check_class: cross_field_check
@@ -2186,7 +2209,8 @@ rules:
   - id: COMP143
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and (`POSITION.STANDARD_HOURS` > 0) and (`EMPEMPLOYMENT.STANDARD_HOURS` > 0) and ((`POSITION.STANDARD_HOURS` - `EMPEMPLOYMENT.STANDARD_HOURS`).abs() > 5)
+    # HRL/HOURLY: see COMP136's comment (sap/data_dictionary.py standard_values vs COMP006 auto_fix).
+    fail_when: (`COMPINFO.COMP_FREQUENCY`.isin(['HRL', 'HOURLY'])) and (`POSITION.STANDARD_HOURS` > 0) and (`EMPEMPLOYMENT.STANDARD_HOURS` > 0) and ((`POSITION.STANDARD_HOURS` - `EMPEMPLOYMENT.STANDARD_HOURS`).abs() > 5)
     severity: low
     dimension: consistency
     message: Hourly pay rate is based on standard hours that differ materially from the position's standard hours
@@ -2254,13 +2278,13 @@ rules:
     pattern: ^.{1,32}$
     severity: low
     dimension: validity
-    message: Non-recurring payment unit of measure does not look like a valid code
-    why_it_matters: The unit of measure for a unit-based non-recurring payment is a short configured code; free text will not match the configured unit list.
+    message: Non-recurring payment unit of measure exceeds 32 characters or contains a newline
+    why_it_matters: The unit of measure for a unit-based non-recurring payment is a short configured code; an over-length or multi-line value will not match the configured unit list.
     rule_authority: best_practice
     sap_impact: The number of units cannot be interpreted against a known unit of measure.
     fix_map:
-      __other__: Correct the unit of measure to a configured code.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: unit of measure ''{actual_value}'' does not look like a valid code. Correct it.'
+      __other__: Shorten the unit of measure to 32 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: unit of measure ''{actual_value}'' exceeds 32 characters or contains a newline. Shorten it.'
   - id: COMP151
     field: PAYCOMPNONREC.VALUE
     check_class: uniqueness_check
@@ -2313,13 +2337,13 @@ rules:
     pattern: ^.{1,128}$
     severity: low
     dimension: validity
-    message: Alternative cost center does not look like a valid cost center code
-    why_it_matters: Cost center codes are short alphanumeric keys; free text or malformed codes will not post correctly in finance.
+    message: Alternative cost center exceeds 128 characters or contains a newline
+    why_it_matters: Cost center codes are short alphanumeric keys; an over-length or multi-line value will not post correctly in finance.
     rule_authority: best_practice
     sap_impact: The cost center override cannot be matched to a configured cost center for FI posting.
     fix_map:
-      __other__: Correct the alternative cost center to a valid alphanumeric code.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: alternative cost center ''{actual_value}'' does not look like a valid code. Correct it.'
+      __other__: Shorten the alternative cost center to 128 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: alternative cost center ''{actual_value}'' exceeds 128 characters or contains a newline. Shorten it.'
   - id: COMP155
     field: PAYCOMPNONREC.VALUE
     check_class: cross_field_check
@@ -3016,7 +3040,8 @@ rules:
   - id: COMP213
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMP_FREQUENCY` == 'HRL') and (`EMPEMPLOYMENT.STANDARD_HOURS` == 0) and (`COMPINFO.SALARY` > 0)
+    # HRL/HOURLY: see COMP136's comment (sap/data_dictionary.py standard_values vs COMP006 auto_fix).
+    fail_when: (`COMPINFO.COMP_FREQUENCY`.isin(['HRL', 'HOURLY'])) and (`EMPEMPLOYMENT.STANDARD_HOURS` == 0) and (`COMPINFO.SALARY` > 0)
     severity: medium
     dimension: accuracy
     message: Hourly compensation frequency recorded with standard hours of zero
@@ -3135,7 +3160,7 @@ rules:
     sap_impact: Range penetration calculated against a midpoint that is not actually central in its own min-max span is misleading.
     fix_map:
       __other__: Confirm the three bounds come from the same range revision.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay range midpoint is not within the middle third of the min-max span. Confirm the three bounds come from the same range revision.'
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay range midpoint is not within the middle half of the min-max span. Confirm the three bounds come from the same range revision.'
   - id: COMP224
     field: PAYCOMPNONREC.NUMBER_OF_UNITS
     check_class: cross_field_check
@@ -3217,13 +3242,13 @@ rules:
     pattern: ^.{1,128}$
     severity: low
     dimension: validity
-    message: Pay grade code contains characters outside the standard grade-code pattern
-    why_it_matters: Pay grade codes are short alphanumeric identifiers; a value with unexpected characters usually comes from a corrupted load rather than a real grade.
+    message: Pay grade code exceeds 128 characters or contains a newline
+    why_it_matters: Pay grade codes are short alphanumeric identifiers; an over-length or multi-line value usually comes from a corrupted load rather than a real grade.
     rule_authority: best_practice
     sap_impact: Compensation planning and range-penetration reporting cannot reliably group employees by a malformed grade code.
     fix_map:
-      __other__: Correct the grade code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade code contains unexpected characters. Correct the grade code.'
+      __other__: Shorten the grade code to 128 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay grade code exceeds 128 characters or contains a newline. Shorten it.'
   - id: COMP231
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
@@ -3369,36 +3394,26 @@ rules:
     pattern: ^.{1,32}$
     severity: low
     dimension: validity
-    message: Pay component code contains characters outside the standard component-code pattern
-    why_it_matters: Pay component codes are short alphanumeric identifiers; a value with unexpected characters usually comes from a corrupted load rather than a real component.
+    message: Pay component code exceeds 32 characters or contains a newline
+    why_it_matters: Pay component codes are short alphanumeric identifiers; an over-length or multi-line value usually comes from a corrupted load rather than a real component.
     rule_authority: best_practice
     sap_impact: SAP payroll replication cannot resolve a malformed pay component code to an infotype wage type.
     fix_map:
-      __other__: Correct the component code.
-    record_fix_template: 'Employee {COMPINFO.USERID}: pay component code contains unexpected characters. Correct the component code.'
-    auto_fix:
-      confidence: medium
-      steps:
-        - op: strip
-        - op: upper
+      __other__: Shorten the component code to 32 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {COMPINFO.USERID}: pay component code exceeds 32 characters or contains a newline. Shorten it.'
   - id: COMP247
     field: PAYCOMPNONREC.PAY_COMPONENT
     check_class: regex_check
     pattern: ^.{1,32}$
     severity: low
     dimension: validity
-    message: One-time payment pay component code contains characters outside the standard component-code pattern
-    why_it_matters: Pay component codes are short alphanumeric identifiers; a value with unexpected characters usually comes from a corrupted load rather than a real component.
+    message: One-time payment pay component code exceeds 32 characters or contains a newline
+    why_it_matters: Pay component codes are short alphanumeric identifiers; an over-length or multi-line value usually comes from a corrupted load rather than a real component.
     rule_authority: best_practice
     sap_impact: SAP payroll replication cannot resolve a malformed pay component code to an infotype wage type.
     fix_map:
-      __other__: Correct the component code.
-    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment pay component code contains unexpected characters. Correct the component code.'
-    auto_fix:
-      confidence: medium
-      steps:
-        - op: strip
-        - op: upper
+      __other__: Shorten the component code to 32 characters or fewer and remove any newline.
+    record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: one-time payment pay component code exceeds 32 characters or contains a newline. Shorten it.'
   - id: COMP248
     field: COMPINFO.PAY_COMPONENT_TYPE
     check_class: dependency_check
@@ -3424,7 +3439,7 @@ rules:
     severity: low
     dimension: consistency
     message: Compensation records for the same pay type have a gap between periods
-    why_it_matters: A gap between one compensation record's end date and the next record's effective date for the same pay type means the employee has no compensation record covering that stretch, which is usually a missed delimitation or a missing row rather than a deliberate break in pay.
+    why_it_matters: This rule expects a continuous history of compensation records per pay type. A gap between one record's end date and the next record's effective date usually means a missed delimitation or a missing row, but a temporary or one-off component may legitimately show as a gap — review before correcting.
     rule_authority: best_practice
     sap_impact: Payroll replication has no salary record to use for the gap period.
     fix_map:
@@ -3452,8 +3467,8 @@ rules:
     rule_authority: best_practice
     sap_impact: Payroll replication has no open compensation record to use for the employee's current pay.
     fix_map:
-      __other__: Load the missing current compensation record, or correct the end date if the employee has no active pay for this type.
-    record_fix_template: 'Employee {COMPINFO.USERID}: is active but the most recent compensation record for pay type {COMPINFO.PAY_TYPE} is end-dated. Load the current record.'
+      __other__: Load the missing current compensation record, or correct the end date if the employee has no active pay.
+    record_fix_template: 'Employee {COMPINFO.USERID}: is active but the most recent compensation record is end-dated. Load the current record.'
   - id: COMP251
     field: EMPEMPLOYMENT.USERID
     check_class: exists_check
