@@ -507,6 +507,12 @@ tables:
       CPE_HOURS:       {source: learningHistory.cpeHours, type: DECIMAL, verify: true, description: Continuing professional education hours}
       GRADE:           {source: learningHistory.grade, type: STRING, length: 90, verify: true, description: Grade awarded}
 
+  # I1 (review): Position extracts with from_date=None (no fromDate sent, see
+  # sap/successfactors.py), so SF returns only the as-of-today row per position code and
+  # keys: [CODE] never collides even though effectiveStartDate/effectiveEndDate are selected.
+  # This is safe only because of that current-record-only extraction: the moment Position is
+  # extracted with an effective-dated from_date, multiple rows per CODE become live and
+  # EC299 (uniqueness on POSITION.CODE) will mass-fire on every position ever changed.
   POSITION:
     description: Positions (Position Management), current record
     source: Position
@@ -531,6 +537,13 @@ tables:
       PAY_GRADE:        {source: Position.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade of the position}
       EXTERNAL_NAME:    {source: Position.externalName_defaultValue, type: STRING, length: 256, verify: true, description: External (job-board facing) position name}
 
+  # I4 (review): every FO* target below (FOCompany, FODepartment, FODivision, FOLocation,
+  # FOJobCode, FOCostCenter, FOBusinessUnit, FOEventReason, ...) also extracts with
+  # from_date=None, so each selects exactly one current row per externalCode and none of
+  # them carries an effective-start date. Rules written against these tables implicitly
+  # assume "current" and that assumption holds today. No effective-dated FO* rule is
+  # possible until a from_date is set on these targets; see the coverage-gap list for the
+  # rules that gap blocks.
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
     source: FOCompany

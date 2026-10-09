@@ -18,6 +18,13 @@ RULES = yaml.safe_load(open("checks/rules/successfactors/employee_central.yaml")
 BY_ID = {r["id"]: r for r in RULES}
 NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and int(r["id"][2:]) >= 239]
 
+# Fix round 3: EC380/EC381 (exact strict subsets of EC258 -- every finding they could
+# ever raise is already an EC258 finding) and EC443 (a freshness_check on
+# EMPEMPLOYMENT.LAST_MODIFIED that mass-false-positives on any stable, long-tenured
+# employee and reused an already-retired id, breaking the append-only contract) were
+# tombstoned in employee_central.yaml. Ids are never reused; assert no live rule does.
+DELETED = {"EC380", "EC381", "EC443"}
+
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message",
              "why_it_matters", "rule_authority", "sap_impact", "fix_map", "record_fix_template"]
 
@@ -36,14 +43,19 @@ def fire(rid, tables):
 
 
 def test_new_ids_unique_and_contiguous():
-    # EC239-443 ids are unique and fall in range; gaps are expected where a review
+    # EC239-449 ids are unique and fall in range; gaps are expected where a review
     # found a rule genuinely broken/duplicate and it was deleted (append-only only
-    # protects ids below EC239 — see EC312/353/354/355/388/397).
+    # protects ids below EC239 — see EC312/353/354/355/380/381/388/397/443).
     nums = [int(r["id"][2:]) for r in NEW]
     assert len(nums) == len(set(nums))
     assert min(nums) == 239
     assert max(nums) == 449
-    assert len(NEW) == 203
+    assert len(NEW) == 200
+
+
+def test_deleted_ids_never_reused():
+    assert DELETED.isdisjoint(BY_ID)
+    assert DELETED.isdisjoint({r["id"] for r in RULES})
 
 
 def test_target_tables_exist_in_dictionary():
@@ -101,14 +113,7 @@ CASES = [
         START_DATE=[(date.today() + timedelta(days=400)).strftime("%Y%m%d"),
                     (date.today() + timedelta(days=5)).strftime("%Y%m%d")])}, 1, ["EMPJOBHIST"]),
     ("EC378", {"EMPJOBHIST": frame("EMPJOBHIST", SEQ_NUMBER=[-1, 1])}, 1, ["EMPJOBHIST"]),
-    ("EC380", {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T", "T"], EVENT_REASON=["ER_BAD", "ER_OK"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["A", "T"]),
-     }, 1, ["EMPJOBHIST"]),
-    ("EC381", {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["A", "A"]),
-     }, 1, ["EMPJOBHIST"]),
+    # EC380/EC381 removed (fix round 3): exact strict subsets of EC258, see DELETED above.
     # EC382 removed: its "more than one hire event" semantics required a tenant-specific
     # EVENT=='hire' literal match with no safe FOEVENTREASON.EMPL_STATUS equivalent (any
     # status-'A'-setting event reason also fires on promotions/transfers, not just hires),
@@ -140,8 +145,9 @@ CASES = [
         "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_OK"], STATUS=["A"]),
      }, 1, ["EMPJOBHIST"]),
     ("EC441", {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"], END_DATE=[None, None]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"], STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
         "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["T", "A"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], END_DATE=[None, None]),
      }, 1, ["EMPJOBHIST"]),
     ("EC442", {
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p_missing", "p_ok"]),
@@ -306,8 +312,8 @@ CASES = [
      }, 1, ["PERADDRESS"]),
     ("EC426", {"PERADDRESS": frame("PERADDRESS", ADDRESS_TYPE=[None, "home"])}, 1, ["PERADDRESS"]),
     ("EC427", {"PERADDRESS": frame("PERADDRESS", COUNTRY=["USA", "USA"], STATE=[None, "NY"])}, 1, ["PERADDRESS"]),
-    ("EC443", {"EMPEMPLOYMENT": frame("EMPEMPLOYMENT", STATUS=["A", "A"],
-                                      LAST_MODIFIED=["20200101", "20260901"])}, 1, ["EMPEMPLOYMENT"]),
+    # EC443 removed (fix round 3): 2-year freshness on LAST_MODIFIED false-positived on
+    # every stable, long-tenured employee, see DELETED above.
     ("EC444", {"EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], FTE=[0.0, 1.0]),
                "COMPINFO": frame("COMPINFO", USERID=["u1", "u2"], SALARY=[500.0, 500.0])}, 1, ["COMPINFO"]),
     ("EC445", {"PAYMENTINFO": frame("PAYMENTINFO", USERID=["u1", "u2"], AMOUNT=[100.0, 100.0],
@@ -414,28 +420,21 @@ def test_empjob_hist_only_latest_row_evaluated_against_current_employment():
 
 
 def test_terminated_status_rules_do_not_depend_on_english_event_literal():
-    """C3: EC380/381/441 used to string-match EMPJOBHIST.EVENT against the English
-    literals 'hire'/'termination', but EVENT is a tenant-configured picklist (any
-    non-English tenant code is valid there) -- the old logic would silently miss a
-    tenant that names its events e.g. 'ALTA'/'BAJA'. The fix pivots to
-    FOEVENTREASON.EMPL_STATUS (A/U/P/S/T), which is tenant-independent. Prove each
-    rule still fires correctly when EVENT holds a non-English value the old
-    literal match would never have recognized."""
-    tables = {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T"], EVENT=["BAJA"], EVENT_REASON=["ER1"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER1"], EMPL_STATUS=["A"]),
-    }
-    assert fire("EC380", tables) == 1
+    """C3: EC441 used to string-match EMPJOBHIST.EVENT against the English literal
+    'termination', but EVENT is a tenant-configured picklist (any non-English tenant
+    code is valid there) -- the old logic would silently miss a tenant that names its
+    events e.g. 'BAJA'. The fix pivots to FOEVENTREASON.EMPL_STATUS (A/U/P/S/T), which
+    is tenant-independent, and reads the last day worked from EMPEMPLOYMENT.END_DATE
+    (fix round 3, NEW-8) instead of EMPJOBHIST.END_DATE (a terminating EmpJob row is
+    itself normally open-ended). Prove the rule still fires on a non-English EVENT
+    value the old literal match would never have recognized.
 
+    (EC380/EC381, also covered by this test before fix round 3, were deleted as exact
+    strict subsets of EC258 -- see DELETED.)"""
     tables = {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T"], EVENT=["ALTA"], EVENT_REASON=["ER2"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER2"], EMPL_STATUS=["A"]),
-    }
-    assert fire("EC381", tables) == 1
-
-    tables = {
-        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A"], EVENT=["BAJA"], EVENT_REASON=["ER3"], END_DATE=[None]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["A"], EVENT=["BAJA"], EVENT_REASON=["ER3"]),
         "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER3"], EMPL_STATUS=["T"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], END_DATE=[None]),
     }
     assert fire("EC441", tables) == 1
 
@@ -449,6 +448,29 @@ def test_job_history_continuous_gap_detected():
     assert fire("EC379", clean_tables) == 0
 
 
+def test_ec444_dedupes_one_finding_per_employee_despite_compinfo_fanout():
+    """NEW-6: COMPINFO carries one row per pay component per employee (many-cardinality
+    join from EMPEMPLOYMENT), so without dedupe_on a single bad employee would raise one
+    finding per pay component instead of one. u1 has FTE<=0 and two positive pay
+    components (should still be exactly 1 finding); u2 has FTE>0 so neither of its two
+    pay components should fire."""
+    tables = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], FTE=[0.0, 1.0]),
+        "COMPINFO": frame("COMPINFO", USERID=["u1", "u1", "u2", "u2"],
+                           SALARY=[500.0, 300.0, 500.0, 300.0]),
+    }
+    assert fire("EC444", tables) == 1
+
+
+def test_ec445_zero_percent_or_amount_is_not_a_conflict():
+    """NEW-7: SuccessFactors can return percent=0 alongside a real amount (or vice
+    versa) when that split-payment method simply isn't in use; only a positive value
+    on both sides is a genuine conflict."""
+    tables = {"PAYMENTINFO": frame("PAYMENTINFO", USERID=["u1", "u2"],
+                                    AMOUNT=[100.0, 100.0], PERCENT=[0.0, 50.0])}
+    assert fire("EC445", tables) == 1
+
+
 def test_position_validity_overlap_detected():
     tables = {"POSITION": frame("POSITION",
         CODE=["P1", "P1"], EFFECTIVE_START_DATE=["20200101", "20200201"],
@@ -458,3 +480,58 @@ def test_position_validity_overlap_detected():
         CODE=["P1", "P1"], EFFECTIVE_START_DATE=["20200101", "20200602"],
         EFFECTIVE_END_DATE=["20200601", "20201231"])}
     assert fire("EC306", clean_tables) == 0
+
+
+# EC359-376: EMPEMPLOYMENT.<field> vs latest-EMPJOBHIST.<field> drift, gated to the
+# open-ended (current) EMPJOBHIST row. Critical fix (round 3): SuccessFactors OData V2
+# delivers an open end date as the literal string '9999-12-31' (see sap/successfactors.py
+# odata_date), not the '99991231' form used by every other fixture in this file. The
+# `open_ended` applies_when operator must recognize that live form or these 18 rules
+# never fire on a real tenant. One (rule_id, field) pair per rule, run twice: the live
+# '9999-12-31' ISO form, and the on-prem '99991231' form already covered by EC359's own
+# test above.
+EC359_376 = [
+    ("EC359", "COMPANY"), ("EC360", "BUSINESS_UNIT"), ("EC361", "DIVISION"),
+    ("EC362", "DEPARTMENT"), ("EC363", "LOCATION"), ("EC364", "COST_CENTER"),
+    ("EC365", "JOB_CODE"), ("EC366", "POSITION"), ("EC367", "MANAGER_ID"),
+    ("EC368", "EMPLOYEE_CLASS"), ("EC369", "EMPLOYMENT_TYPE"), ("EC370", "PAY_GROUP"),
+    ("EC371", "FTE"), ("EC372", "STANDARD_HOURS"), ("EC373", "TIMEZONE"),
+    ("EC374", "WORK_SCHEDULE"), ("EC375", "HOLIDAY_CALENDAR"), ("EC376", "TIME_TYPE_PROFILE"),
+]
+
+
+# FTE/STANDARD_HOURS are DECIMAL fields: a non-numeric value coerces to NaN (so
+# .notna() is False and the rule never fires), unlike every other EC359-376 field,
+# which is a STRING/picklist code.
+NUMERIC_FIELDS = {"FTE", "STANDARD_HOURS"}
+
+
+@pytest.mark.parametrize("open_end_form", ["9999-12-31", "9999-12-31T00:00:00", "99991231"])
+@pytest.mark.parametrize("rid,field", EC359_376, ids=[c[0] for c in EC359_376])
+def test_ec359_376_fire_on_live_sf_open_end_date_form(rid, field, open_end_form):
+    bad_val, good_val = (1.0, 2.0) if field in NUMERIC_FIELDS else ("X", "Y")
+    bad = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], **{field: [bad_val]}),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], END_DATE=[open_end_form], **{field: [good_val]}),
+    }
+    assert fire(rid, bad) == 1
+
+    clean = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], **{field: [bad_val]}),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], END_DATE=[open_end_form], **{field: [bad_val]}),
+    }
+    assert fire(rid, clean) == 0
+
+
+def test_ec359_376_excludes_superseded_rows_regardless_of_open_end_form():
+    """A closed (non-open-ended) EMPJOBHIST row must stay excluded for every open-end
+    form the engine recognizes, not just the on-prem '99991231' spelling. u1's closed,
+    mismatched row must not fire; u2's open-ended, matching row keeps the population
+    non-empty so a 0 result actually proves exclusion rather than an empty population."""
+    for closed_form in ["20200601", "2020-06-01"]:
+        tables = {
+            "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["A", "A"], COMPANY=["X", "X"]),
+            "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"],
+                                 END_DATE=[closed_form, "99991231"], COMPANY=["Y", "X"]),
+        }
+        assert fire("EC359", tables) == 0, closed_form

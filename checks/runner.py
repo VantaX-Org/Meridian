@@ -67,7 +67,9 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
         if isinstance(allowed, dict):
             # Operators: contains_any (multi-value code strings such as
             # LFB1.ZWELS "CT"), not_in, populated, gt (numeric), startswith,
-            # older_than_days / within_days (dates relative to the run's as-of date).
+            # older_than_days / within_days (dates relative to the run's as-of date),
+            # open_ended (date never ends: blank or SAP's 31.12.9999 in any form
+            # the connector delivers it — YYYYMMDD, ISO date, or ISO timestamp).
             if "contains_any" in allowed:
                 chars = {str(v) for v in allowed["contains_any"]}
                 mask &= values.map(lambda v: isinstance(v, str) and any(c in v for c in chars)).astype(bool)
@@ -90,6 +92,10 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
                     mask &= age.gt(int(allowed["older_than_days"])).fillna(False)
                 if "within_days" in allowed:
                     mask &= age.le(int(allowed["within_days"])).fillna(False)
+            if allowed.get("open_ended"):
+                from checks.types.domain_value_check import _parse_dates
+                parsed = _parse_dates(values)
+                mask &= parsed.isna() | (parsed >= pd.Timestamp("9999-01-01"))
         else:
             mask &= values.isin({str(v).strip() for v in allowed}).fillna(False)
     return df[mask]

@@ -5927,7 +5927,7 @@ rules:
 - field: USERACCOUNT.HIRE_DATE
   grain: USERACCOUNT
   check_class: cross_field_check
-  fail_when: (`USERACCOUNT.HIRE_DATE` - @today).dt.days > 400
+  fail_when: '`USERACCOUNT.HIRE_DATE`.notna() & ((`USERACCOUNT.HIRE_DATE` - @today).dt.days > 400)'
   severity: low
   dimension: validity
   message: User account hire date is implausibly far in the future
@@ -6899,7 +6899,7 @@ rules:
     - P
     - S
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
   severity: low
   dimension: consistency
   message: Current employment legal entity does not match the latest job history record
@@ -6920,7 +6920,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6941,7 +6941,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6962,7 +6962,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6982,7 +6982,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7003,7 +7003,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7023,7 +7023,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7047,7 +7047,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7068,7 +7068,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7089,7 +7089,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7111,7 +7111,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7132,7 +7132,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7152,7 +7152,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7173,7 +7173,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7194,7 +7194,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7215,7 +7215,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7236,7 +7236,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7258,7 +7258,7 @@ rules:
   grain: EMPJOBHIST
   applies_when:
     EMPJOBHIST.END_DATE:
-    - '99991231'
+      open_ended: true
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7274,7 +7274,7 @@ rules:
   id: EC376
 - field: EMPJOBHIST.START_DATE
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.START_DATE` - @today).dt.days > 365
+  fail_when: '`EMPJOBHIST.START_DATE`.notna() & ((`EMPJOBHIST.START_DATE` - @today).dt.days > 365)'
   severity: medium
   dimension: validity
   message: Job history record is dated more than a year in the future
@@ -7320,43 +7320,11 @@ rules:
     __other__: Close the gap or overlap between consecutive job history records.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: job history has a gap or overlap around {EMPJOBHIST.START_DATE}.'
   id: EC379
-- field: EMPJOBHIST.STATUS
-  check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.STATUS` == 'T') & (`FOEVENTREASON.EMPL_STATUS`.notna()) & (`FOEVENTREASON.EMPL_STATUS` != 'T')
-  severity: medium
-  dimension: consistency
-  message: Terminated status record is not paired with a termination-setting event reason
-  why_it_matters: A job history row that sets employee status to terminated should be recorded under an event reason
-    that itself sets a terminated status (FOEventReason.emplStatus, joined via EmpJob.eventReason), for a consistent
-    audit trail. Re-expressed from the tenant-specific EVENT picklist label to the tenant-independent EMPL_STATUS
-    field, following the same pattern as EC170.
-  rule_authority: best_practice
-  sap_impact: Attrition reporting built from the event reason under-counts terminations that are only visible via
-    the status field.
-  fix_map:
-    __other__: Record the termination under an event reason that sets a terminated status, or correct the status.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} sets status to terminated
-    but event reason {EMPJOBHIST.EVENT_REASON} sets status {FOEVENTREASON.EMPL_STATUS}.'
-  id: EC380
-- field: EMPJOBHIST.STATUS
-  check_class: cross_field_check
-  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'A') & (`EMPJOBHIST.STATUS`.notna()) & (~`EMPJOBHIST.STATUS`.isin(['A']))
-  severity: medium
-  dimension: consistency
-  message: Event reason that sets an active status does not result in an active employee status
-  why_it_matters: When the record's own event reason sets an active employee status (FOEventReason.emplStatus),
-    the job history row's status should also be active; any other status is inconsistent. Re-expressed from the
-    tenant-specific EVENT picklist label "hire" to the tenant-independent EMPL_STATUS field, following the same
-    pattern as EC170; this broadens scope from "hire events only" to "any event reason that sets active status",
-    which is the closest safe equivalent without a tenant-specific hire-code mapping.
-  rule_authority: best_practice
-  sap_impact: Records with an inconsistent status are missed by active-headcount reports or wrongly included in
-    leaver reports.
-  fix_map:
-    __other__: Correct the status to active on the record, or correct the event reason.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} has event reason {EMPJOBHIST.EVENT_REASON}
-    (sets status {FOEVENTREASON.EMPL_STATUS}) but status is {EMPJOBHIST.STATUS}.'
-  id: EC381
+# EC380 DELETED (fix round 3, NEW-3): was `STATUS=='T' & EMPL_STATUS notna & !='T'`, an exact strict
+# subset of EC258 (`EMPL_STATUS.notna() & STATUS != EMPL_STATUS`). Every EC380 finding was already an
+# EC258 finding, double-counting the same defect. EC258 alone covers this. ID retired, never reused.
+# EC381 DELETED (fix round 3, NEW-3): was `EMPL_STATUS=='A' & STATUS notna & STATUS!='A'`, also a strict
+# subset of EC258 for the same reason. ID retired, never reused.
 - field: EMPJOBHIST.EMPLOYMENT_TYPE
   check_class: null_check
   grain: EMPJOBHIST
@@ -7999,7 +7967,7 @@ rules:
   id: EC424
 - field: EMPJOBRELATIONSHIPS.START_DATE
   check_class: cross_field_check
-  fail_when: (`EMPJOBRELATIONSHIPS.START_DATE` - @today).dt.days > 365
+  fail_when: '`EMPJOBRELATIONSHIPS.START_DATE`.notna() & ((`EMPJOBRELATIONSHIPS.START_DATE` - @today).dt.days > 365)'
   severity: low
   dimension: validity
   message: Job relationship record is dated more than a year in the future
@@ -8273,22 +8241,24 @@ rules:
   id: EC440
 - field: EMPJOBHIST.EVENT_REASON
   check_class: cross_field_check
-  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'T') & (`EMPJOBHIST.END_DATE`.isna())
+  grain: EMPJOBHIST
+  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'T') & (`EMPEMPLOYMENT.END_DATE`.isna())
   applies_when:
     EMPJOBHIST.STATUS: *id006
   severity: low
   dimension: consistency
-  message: Event reason that sets a terminated status has no end date
+  message: Event reason that sets a terminated status has no last day worked
   why_it_matters: An event reason that sets a terminated status (FOEventReason.emplStatus) should close out the
-    job history record with an end date marking the employee's last day. Re-expressed from the tenant-specific
-    EVENT picklist label "termination" to the tenant-independent EMPL_STATUS field, following the same pattern
-    as EC170.
+    employment with a last day worked (EmpEmployment.endDate). A terminating EmpJob row is normally itself
+    open-ended (endDate 9999-12-31), so the last day worked is read from EmpEmployment, not EmpJobHistory, to
+    avoid a check that almost never fires. Re-expressed from the tenant-specific EVENT picklist label
+    "termination" to the tenant-independent EMPL_STATUS field, following the same pattern as EC170.
   rule_authority: best_practice
   sap_impact: Tenure and last-day-worked calculations cannot determine when the employee actually left.
   fix_map:
-    __other__: Set the end date on the record, or correct the event reason.
+    __other__: Set the employment end date, or correct the event reason.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} has event reason {EMPJOBHIST.EVENT_REASON}
-    (sets status {FOEVENTREASON.EMPL_STATUS}) but no end date.'
+    (sets status {FOEVENTREASON.EMPL_STATUS}) but employment has no end date.'
   id: EC441
 - field: EMPEMPLOYMENT.PERSON_ID
   check_class: exists_check
@@ -8307,39 +8277,26 @@ rules:
     __other__: Correct the person reference on the employment record, or add the missing person record.
   record_fix_template: Employment record references unknown person {EMPEMPLOYMENT.PERSON_ID}.
   id: EC442
-- id: EC443
-  field: EMPEMPLOYMENT.LAST_MODIFIED
-  check_class: freshness_check
-  max_age_hours: 17520
-  applies_when:
-    EMPEMPLOYMENT.STATUS:
-    - A
-    - U
-    - P
-    - S
-  severity: low
-  dimension: timeliness
-  message: Active employee's job information has not changed in over two years
-  why_it_matters: EmpJob.lastModifiedDateTime should move whenever anything on the job record changes (a comp
-    event, a department move, an annual review). A record frozen for years can mean the SuccessFactors-to-Meridian
-    feed stopped moving for that employee, not that nothing ever changed.
-  rule_authority: best_practice
-  sap_impact: Findings and reports for this employee are built from a stale snapshot without anyone noticing.
-  fix_map:
-    __other__: Verify the employee's job record against SuccessFactors directly; re-run the extraction if the
-      feed has stalled.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job information last changed {EMPEMPLOYMENT.LAST_MODIFIED},
-    over two years ago.'
+# EC443 DELETED (fix round 3, NEW-2): was a freshness_check on EMPEMPLOYMENT.LAST_MODIFIED with a
+# 2-year limit for active employees. False-positive heavy: a stable, long-tenured employee with no job
+# changes in two years is normal, and a source-side lastModified value cannot detect a stalled feed
+# because the extraction itself reads it fresh. This ID previously named a different, already-deleted
+# rule (the empId/personId domain-mismatch rule — see the EC442 note); it was reused here in round 2,
+# breaking the append-only ID contract. ID retired again, never to be reused.
 - id: EC444
   field: EMPEMPLOYMENT.FTE
   check_class: cross_field_check
+  dedupe_on:
+  - EMPEMPLOYMENT.USERID
   fail_when: '`EMPEMPLOYMENT.FTE`.notna() & (`EMPEMPLOYMENT.FTE` <= 0) & `COMPINFO.SALARY`.notna() & (`COMPINFO.SALARY`
     > 0)'
   severity: medium
   dimension: consistency
   message: Employee is paid a recurring pay component but has no full-time-equivalent
   why_it_matters: FTE drives pro-ration for part-time pay; an FTE of zero or less with a positive recurring pay
-    component amount is an inconsistent combination.
+    component amount is an inconsistent combination. COMPINFO carries one row per pay component per employee
+    (many-cardinality), so the check is deduped to one finding per EMPEMPLOYMENT.USERID instead of fanning out
+    across every pay-component row.
   rule_authority: best_practice
   sap_impact: Payroll pro-ration and headcount-cost reporting cannot reconcile the pay component to a working
     fraction.
@@ -8350,12 +8307,15 @@ rules:
 - id: EC445
   field: PAYMENTINFO.AMOUNT
   check_class: cross_field_check
-  fail_when: '`PAYMENTINFO.AMOUNT`.notna() & `PAYMENTINFO.PERCENT`.notna()'
+  fail_when: '`PAYMENTINFO.AMOUNT`.notna() & (`PAYMENTINFO.AMOUNT` > 0) & `PAYMENTINFO.PERCENT`.notna() & (`PAYMENTINFO.PERCENT`
+    > 0)'
   severity: medium
   dimension: consistency
   message: Payment account has both a fixed amount and a percentage
   why_it_matters: A split-payment account is funded either by a fixed amount or by a percentage of net pay, never
-    both; SAP's payroll split-payment logic reads one or the other.
+    both; SAP's payroll split-payment logic reads one or the other. A zero on either side means that method is
+    not actually in use (SuccessFactors can return percent=0 alongside a real amount, and vice versa), so only a
+    positive value on both sides is a genuine conflict.
   rule_authority: best_practice
   sap_impact: Payroll disbursement for the account is ambiguous; the bank file generator can either double-count
     or silently drop one of the two values.
@@ -8440,12 +8400,15 @@ rules:
     - U
     - P
     - S
+    EMPEMPLOYMENT.IS_PRIMARY:
+      populated: true
   severity: medium
   dimension: completeness
   message: Active employee has no employment flagged as primary
   why_it_matters: With concurrent employment enabled, every person needs exactly one employment flagged primary;
     a person whose active employments are all non-primary (or all missing the flag) has no employment that
-    person-level integrations will pick up.
+    person-level integrations will pick up. Tenants that never turned on concurrent employment leave IS_PRIMARY
+    null on every row, so the rule is gated to only run where IS_PRIMARY is actually populated somewhere.
   rule_authority: best_practice
   sap_impact: Identity provisioning, the org chart and person-level reporting have nothing to anchor on for this
     person.

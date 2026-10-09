@@ -197,6 +197,22 @@ class Evaluation:
         self.invalid_values_field = invalid_values_field
 
 
+def _dedupe_evaluation(df: pd.DataFrame, ev: "Evaluation", cols: list[str]) -> "Evaluation":
+    """Collapse one finding per ``cols`` key (e.g. per employee) when a rule's grain
+    fans out across a child table (COMPINFO's many pay-component rows per EMPEMPLOYMENT):
+    keep the first row for each key, failing if any row for that key failed."""
+    key = df[cols].astype("string").fillna("").agg("|".join, axis=1)
+    fail_by_key = (ev.population & ev.failing).groupby(key).any()
+    pop_by_key = ev.population.groupby(key).any()
+    first = ~key.duplicated()
+    new_pop = pd.Series(False, index=df.index)
+    new_fail = pd.Series(False, index=df.index)
+    first_idx = key[first]
+    new_pop.loc[first] = first_idx.map(pop_by_key).fillna(False).to_numpy()
+    new_fail.loc[first] = first_idx.map(fail_by_key).fillna(False).to_numpy()
+    return Evaluation(new_pop, new_fail, ev.details, ev.invalid_values_field)
+
+
 class BaseCheck(ABC):
     check_class: str = ""
     default_dimension: str = "validity"
@@ -225,6 +241,9 @@ class BaseCheck(ABC):
             return self._error(df, str(e))
         if ev is None:
             return None
+        dedupe_on = self.rule.get("dedupe_on")
+        if dedupe_on and all(c in df.columns for c in dedupe_on):
+            ev = _dedupe_evaluation(df, ev, dedupe_on)
         return self._result(df, ev, key_cols, grain)
 
     # ── result construction (single implementation for every check type) ──
