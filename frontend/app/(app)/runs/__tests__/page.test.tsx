@@ -1,5 +1,5 @@
 // frontend/app/(app)/runs/__tests__/page.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as systemsApi from "@/lib/api/systems";
@@ -59,7 +59,8 @@ describe("RunsPage", () => {
     fireEvent.click(screen.getByLabelText("Select row v1"));
     expect(screen.getByText("Select exactly two runs to compare")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Select row v2"));
-    fireEvent.click(screen.getByRole("button", { name: "Compare" }));
+    const bulkBar = screen.getByText("2 selected").parentElement as HTMLElement;
+    fireEvent.click(within(bulkBar).getByRole("button", { name: "Compare" }));
     expect(push).toHaveBeenCalledWith("/runs/v2/vs/v1");
   });
 
@@ -68,5 +69,22 @@ describe("RunsPage", () => {
     vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText(/no runs/i)).toBeInTheDocument());
+  });
+
+  it("links the per-row Compare button to the predecessor run, and disables it when there is none", async () => {
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+
+    const rowNewer = screen.getByText("Oct 8 upload").closest("tr") as HTMLElement;
+    const rowOlder = screen.getByText("Oct 1 upload").closest("tr") as HTMLElement;
+
+    const compareNewer = within(rowNewer).getByRole("link", { name: "Compare" });
+    expect(compareNewer).toHaveAttribute("href", "/runs/v2/vs/v1");
+
+    const compareOlder = within(rowOlder).getByRole("button", { name: "Compare" });
+    expect(compareOlder).toHaveAttribute("aria-disabled", "true");
+    expect(within(rowOlder).queryByRole("link", { name: "Compare" })).not.toBeInTheDocument();
   });
 });

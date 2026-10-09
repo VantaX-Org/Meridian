@@ -8,6 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { errorText } from "@/lib/api/remediation";
 import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
@@ -54,7 +55,7 @@ export default function RunDetailPage() {
   const systemId = version.data?.metadata?.system_id;
   const scope = useQuery({
     queryKey: queryKeys.versionsList({ system_id: systemId }),
-    queryFn: () => getVersions(systemId ? { system_id: systemId } : undefined),
+    queryFn: () => getVersions(systemId ? { system_id: systemId, limit: 100 } : undefined),
     enabled: version.isSuccess,
   });
 
@@ -71,7 +72,7 @@ export default function RunDetailPage() {
   });
 
   if (version.isError) {
-    return <ErrorState message="Couldn't load this run." onRetry={() => version.refetch()} />;
+    return <ErrorState message={`Couldn't load this run. ${errorText(version.error)}`} onRetry={() => version.refetch()} />;
   }
 
   const v = version.data;

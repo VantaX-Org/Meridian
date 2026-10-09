@@ -65,8 +65,8 @@ function BeforeAfter({ batch, monitor }: { batch: Batch; monitor: MonitorItem[] 
   const href = compareHref(batch, monitor);
   if (!href) {
     return (
-      <Tooltip label="No run since export">
-        <Button variant="secondary" disabled>Before vs after</Button>
+      <Tooltip label="No run since export" render={<Button variant="secondary" aria-disabled="true" onClick={() => undefined} />}>
+        Before vs after
       </Tooltip>
     );
   }

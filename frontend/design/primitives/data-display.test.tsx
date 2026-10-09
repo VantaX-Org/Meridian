@@ -5,6 +5,7 @@ import { SeverityDot } from "./SeverityDot";
 import { Delta } from "./Delta";
 import { ScoreRing } from "./ScoreRing";
 import { ErrorState } from "./ErrorState";
+import { roundedDelta } from "@/lib/format";
 
 describe("data-display primitives", () => {
   it("Badge hides at zero and caps at 99+", () => {
@@ -21,7 +22,12 @@ describe("data-display primitives", () => {
 
   it("Delta renders a signed value", () => {
     render(<Delta value={-3} />);
-    expect(screen.getByText("-3")).toBeInTheDocument();
+    expect(screen.getByText("-3.0")).toBeInTheDocument();
+  });
+
+  it("Delta of two displayed (one-decimal) scores is the difference of the rounded values, not raw precision", () => {
+    render(<Delta value={roundedDelta(74.44, 74.55)} />);
+    expect(screen.getByText("+0.2")).toBeInTheDocument();
   });
 
   it("ScoreRing labels itself with the score", () => {

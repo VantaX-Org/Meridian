@@ -1,3 +1,13 @@
+/** One-decimal rounding, the display precision for every DQS/score number. */
+export function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+/** The delta shown next to two displayed scores: difference of the already-rounded values, not raw precision. */
+export function roundedDelta(before: number, after: number): number {
+  return round1(after) - round1(before);
+}
+
 /** "business_partner" -> "Business Partner" */
 export function formatModuleName(name: string): string {
   return name

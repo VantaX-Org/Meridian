@@ -17,12 +17,14 @@ import {
   Pager,
   Pill,
   ReportPage,
+  Select,
   Skeleton,
   Sparkline,
   Stat,
   Waterfall,
   type ChartPoint,
   type PillTone,
+  type SelectOption,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -30,14 +32,13 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { createBatch, errorText } from "@/lib/api/remediation";
 import { getComparisonReportUrl } from "@/lib/api/reports";
 import { compareRecordKeys, compareRecords, compareVersions, type RecordDiffCheck } from "@/lib/api/versions";
-import { formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf, round1, roundedDelta } from "@/lib/format";
 import { compareNarrative } from "@/lib/narrative";
 import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version } from "@/types/api";
 
-const KEYS_PAGE_SIZE = 25;
+const KEYS_PAGE_SIZE = 100;
 const nf = new Intl.NumberFormat("en-ZA");
-const round1 = (n: number) => Math.round(n * 10) / 10;
 const runLabel = (v: Version) => v.label ?? formatDate(v.run_at, "date");
 
 function severityTone(severity: string): PillTone {
@@ -126,8 +127,16 @@ export default function CompareRunsPage() {
   const moduleParam = module || undefined;
 
   const cmpQ = useQuery({
-    queryKey: [...queryKeys.runCompare(versionId, b), "modules", module],
+    queryKey: [...queryKeys.runCompare(versionId, b), "modules", moduleParam],
     queryFn: () => compareVersions(v1Param, versionId, moduleParam),
+  });
+  // Finding #6: the module Select's options must always come from the unfiltered
+  // comparison, not from `cmp.delta` once a module filter has narrowed it. This query
+  // shares its cache with cmpQ above whenever no module is chosen (same key), so picking
+  // a module costs one extra request, not two.
+  const allModulesQ = useQuery({
+    queryKey: [...queryKeys.runCompare(versionId, b), "modules", undefined],
+    queryFn: () => compareVersions(v1Param, versionId, undefined),
   });
   const diffQ = useQuery({
     queryKey: [...queryKeys.runCompare(versionId, b), "records", module],
@@ -136,14 +145,27 @@ export default function CompareRunsPage() {
 
   const resolvedV1 = diffQ.data?.v1;
   const keysQ = useQuery({
-    queryKey: [...queryKeys.runCompare(versionId, b), "keys", checkId, "new"],
-    queryFn: () => compareRecordKeys(checkId ?? "", { v1: resolvedV1 ?? "", v2: versionId, change: "new" }),
+    queryKey: [...queryKeys.runCompare(versionId, b), "keys", checkId, "new", keyFilter, keyPage],
+    queryFn: () =>
+      compareRecordKeys(checkId ?? "", {
+        v1: resolvedV1 ?? "",
+        v2: versionId,
+        change: "new",
+        search: keyFilter || undefined,
+        limit: KEYS_PAGE_SIZE,
+        offset: (keyPage - 1) * KEYS_PAGE_SIZE,
+      }),
     enabled: checkId !== null && resolvedV1 !== undefined,
   });
 
   const cmp = cmpQ.data;
   const diff = diffQ.data ?? null;
   const v2Label = cmp ? runLabel(cmp.v2) : versionId;
+
+  const moduleOptions: SelectOption[] = Object.keys(allModulesQ.data?.delta ?? cmp?.delta ?? {}).map((m) => ({
+    value: m,
+    label: formatModuleName(m),
+  }));
 
   const create = useMutation({
     mutationFn: (c: CheckChange) =>
@@ -163,13 +185,10 @@ export default function CompareRunsPage() {
     setKeyPage(1);
   };
 
-  const filteredKeys = useMemo(() => {
-    const keys = keysQ.data?.record_keys ?? [];
-    const needle = keyFilter.trim().toLowerCase();
-    return needle ? keys.filter((k) => k.toLowerCase().includes(needle)) : keys;
-  }, [keysQ.data, keyFilter]);
-  const keyPageCount = Math.max(1, Math.ceil(filteredKeys.length / KEYS_PAGE_SIZE));
-  const pageKeys = filteredKeys.slice((keyPage - 1) * KEYS_PAGE_SIZE, keyPage * KEYS_PAGE_SIZE);
+  // The server paginates (limit/offset) and searches; a full page back means there may be
+  // another, so the pager's last page is only known once a short page comes back.
+  const pageKeys = keysQ.data?.record_keys ?? [];
+  const keyPageCount = keyPage + (pageKeys.length === KEYS_PAGE_SIZE ? 1 : 0);
 
   const loading = cmpQ.isLoading || diffQ.isLoading;
   const errored = cmpQ.isError || diffQ.isError;
@@ -189,19 +208,7 @@ export default function CompareRunsPage() {
         </Button>
         <label className="flex items-center gap-1 text-[13px]">
           <span>Module</span>
-          <select
-            value={module}
-            onChange={(e) => setModule(e.target.value)}
-            className="rounded border px-2 py-1"
-            style={{ borderColor: "var(--m-line)" }}
-          >
-            <option value="">All modules</option>
-            {Object.keys(cmp?.delta ?? {}).map((m) => (
-              <option key={m} value={m}>
-                {formatModuleName(m)}
-              </option>
-            ))}
-          </select>
+          <Select value={module} onValueChange={setModule} options={moduleOptions} placeholder="All modules" />
         </label>
       </div>
       {sentences.map((s) => (
@@ -230,7 +237,7 @@ export default function CompareRunsPage() {
             <div className="flex gap-6">
               <Stat label="Before" value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
               <Stat label="After" value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
-              <Stat label="Change" value={<Delta value={round1(d.dqs_change)} />} />
+              <Stat label="Change" value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
             </div>
             <Bar data={barData} />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -254,7 +261,16 @@ export default function CompareRunsPage() {
                       variant="ghost"
                       disabled={create.isPending}
                       onClick={async () => {
-                        for (const c of failing) await create.mutateAsync(c).catch(() => undefined);
+                        let ok = 0;
+                        let failed = 0;
+                        for (const c of failing) {
+                          await create.mutateAsync(c).then(
+                            () => { ok += 1; },
+                            () => { failed += 1; },
+                          );
+                        }
+                        toast.success(`Created ${ok} of ${failing.length} fix batches`);
+                        if (failed > 0) toast.error(`${failed} fix batch${failed === 1 ? "" : "es"} failed to create`);
                       }}
                     >
                       Create fix batches
@@ -295,7 +311,7 @@ export default function CompareRunsPage() {
           </p>
           {keysQ.isLoading && <Skeleton height={80} />}
           {keysQ.isError && (
-            <ErrorState message={`Couldn't load the new record keys for this check. ${keysQ.error.message}`} onRetry={() => keysQ.refetch()} />
+            <ErrorState message={`Couldn't load the new record keys for this check. ${errorText(keysQ.error)}`} onRetry={() => keysQ.refetch()} />
           )}
           {keysQ.data && keysQ.data.record_keys.length === 0 && <EmptyState title="No new record keys for this check." />}
           {keysQ.data && keysQ.data.record_keys.length > 0 && (
@@ -335,7 +351,7 @@ export default function CompareRunsPage() {
       state={state}
       emptyProps={{ title: "No differences. These two runs have identical results." }}
       errorProps={{
-        message: `Couldn't compare these runs. ${cmpQ.error?.message ?? diffQ.error?.message ?? ""}`.trim(),
+        message: `Couldn't compare these runs. ${errorText(cmpQ.error ?? diffQ.error)}`,
         onRetry: () => {
           cmpQ.refetch();
           diffQ.refetch();

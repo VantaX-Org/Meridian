@@ -1,5 +1,6 @@
 // frontend/app/(app)/runs/[versionId]/vs/[b]/__tests__/page.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as downloadApi from "@/lib/api/download";
@@ -98,5 +99,52 @@ describe("CompareRunsPage", () => {
     vi.spyOn(versionsApi, "compareRecords").mockResolvedValue({ ...diff, totals: { new: 0, resolved: 0, persisting: 0 }, checks: [] });
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText(/no differences/i)).toBeInTheDocument());
+  });
+
+  it("shows an error state with Try again when the comparison fails to load", async () => {
+    const error = { response: { data: { detail: "Run not found" } } };
+    const compareVersions = vi.spyOn(versionsApi, "compareVersions").mockRejectedValue(error);
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("Couldn't compare these runs. Run not found")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Retry"));
+    expect(compareVersions).toHaveBeenCalledTimes(2);
+  });
+
+  it("re-queries the comparison with the chosen module and keeps all modules as Select options", async () => {
+    const compareVersions = vi.spyOn(versionsApi, "compareVersions").mockResolvedValue(cmp);
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "Module" }));
+    const option = await screen.findByRole("option", { name: "Material Master" });
+    await user.click(option);
+    await waitFor(() => expect(compareVersions).toHaveBeenCalledWith("v1", "v2", "material_master"));
+    expect(screen.getByRole("combobox", { name: "Module" })).toHaveTextContent("Material Master");
+  });
+
+  it("creates fix batches in bulk, reporting partial success", async () => {
+    const twoChecks: VersionComparison = {
+      ...cmp,
+      checks: {
+        newly_failing: [
+          { check_id: "MM041", module: "material_master", severity: "critical", v1_affected: 0, v2_affected: 1240 },
+          { check_id: "MM050", module: "material_master", severity: "critical", v1_affected: 0, v2_affected: 10 },
+        ],
+        fixed: [],
+      },
+    };
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue(twoChecks);
+    const create = vi
+      .spyOn(remediationApi, "createBatch")
+      .mockResolvedValueOnce({ id: "b1", name: "r1", status: "draft", item_count: 1240 })
+      .mockRejectedValueOnce(new Error("failed"));
+    const { toast } = await import("sonner");
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Create fix batches" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Create fix batches" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches"));
+    expect(toast.error).toHaveBeenCalledWith("1 fix batch failed to create");
   });
 });

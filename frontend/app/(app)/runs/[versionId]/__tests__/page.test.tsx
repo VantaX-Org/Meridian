@@ -74,4 +74,14 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByText("Baseline")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Unpin baseline" })).toBeInTheDocument();
   });
+
+  it("shows an error state with Try again when the run fails to load", async () => {
+    const error = { response: { data: { detail: "Version not found" } } };
+    const getVersion = vi.spyOn(versionsApi, "getVersion").mockRejectedValue(error);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getByText("Couldn't load this run. Version not found")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Retry"));
+    expect(getVersion).toHaveBeenCalledTimes(2);
+  });
 });

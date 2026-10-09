@@ -172,4 +172,18 @@ describe("Before vs after link", () => {
     renderWithQuery(<BatchesTab />);
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Before vs after" })[0]).toHaveAttribute("href", "/runs/v9/vs/v2"));
   });
+
+  it("renders a single disabled button, not a link, when nothing ran since export", async () => {
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({
+      items: [batch({ id: "b1", status: "exported", filter: { version_id: "v9", scope: "sys-1" } })],
+    });
+    vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({
+      items: [{ scope: "sys-1", system_name: "ECC Prod", baseline: { id: "v0", run_at: "t", dqs: 70 }, latest: { id: "v9", run_at: "t", dqs: 75 }, monitor: null }],
+    });
+    renderWithQuery(<BatchesTab />);
+    const buttons = await screen.findAllByRole("button", { name: "Before vs after" });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "Before vs after" })).toBeNull();
+  });
 });
