@@ -4810,15 +4810,27 @@ rules:
   - id: PAY217
     field: PAYRESULT.PAY_DATE
     check_class: cross_field_check
-    fail_when: '`PAYRESULT.PAY_DATE` < `EMPEMPLOYMENT.START_DATE`'
-    require_populated: true
+    # ponytail: EMPEMPLOYMENT.ORIGINAL_START_DATE is the first-hire date and survives a
+    # rehire, while START_DATE moves to the rehire date on the same employment record.
+    # Comparing against START_DATE alone would flag every payroll result from the
+    # employee's earlier stint. Fall back to START_DATE when ORIGINAL_START_DATE is
+    # null (not every tenant populates it) via .fillna() rather than require_populated,
+    # since require_populated would blanket-exclude the common non-rehire case where
+    # ORIGINAL_START_DATE is legitimately null.
+    fail_when: >-
+      `PAYRESULT.PAY_DATE`.notna() & `EMPEMPLOYMENT.START_DATE`.notna() &
+      (`PAYRESULT.PAY_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`.fillna(`EMPEMPLOYMENT.START_DATE`))
     severity: high
     dimension: consistency
     message: Payroll result is dated before the employee's employment start
     why_it_matters: >-
       A payroll result for a pay date before the employee's EMPEMPLOYMENT.START_DATE
       falls in a period when the employee was not yet employed, so it cannot be a
-      genuine payroll run for this employment record.
+      genuine payroll run for this employment record. Compares against
+      ORIGINAL_START_DATE (falling back to START_DATE when null) rather than
+      START_DATE alone, because a rehire reuses the EmpEmployment record and moves
+      START_DATE to the rehire date — comparing against START_DATE alone would flag
+      every payroll result from the employee's earlier stint.
     rule_authority: best_practice
     sap_impact: >-
       GL posting books a payroll cost against a period with no active employment,
@@ -4856,26 +4868,10 @@ rules:
       Payroll result {PAYRESULT.USERID}: PAY_DATE is more than 90 days after employment
       ended {EMPEMPLOYMENT.END_DATE}. Confirm after-termination payment validity.
 
-  - id: PAY219
-    field: PAYRESULT.COMPANY
-    check_class: exists_check
-    target_table: FOCOMPANY
-    target_fields: [EXTERNAL_CODE]
-    severity: high
-    dimension: consistency
-    message: Payroll result company code does not exist as a legal entity
-    why_it_matters: >-
-      PAYRESULT.COMPANY is the legal entity the payroll result was run under. A company
-      code with no matching FOCOMPANY (FOCompany foundation object) record is either a
-      configuration gap or a data error, and GL posting cannot resolve the company.
-    rule_authority: best_practice
-    sap_impact: >-
-      GL posting cannot resolve the legal entity for this payroll result, blocking the
-      posting or routing it to the wrong company.
-    fix_map:
-      __other__: >-
-        Company code {actual_value} has no matching FOCompany record. Confirm the
-        company code or create the missing FOCompany foundation object record.
-    record_fix_template: >-
-      Payroll result {PAYRESULT.USERID}: company code does not exist as an FOCompany
-      record. Confirm the company code.
+  # PAY219 deleted (Round 3): exists_check compared PAYRESULT.COMPANY against
+  # FOCOMPANY.EXTERNAL_CODE, but the two are different code-spaces, not a referential
+  # pair. PAYRESULT.COMPANY is sourced from payroll_export.company_code, a 4-character
+  # ECC company code. FOCOMPANY.EXTERNAL_CODE is the SF legal-entity external code (up
+  # to 128 characters, e.g. ACE_USA). On real tenants every payroll result would raise a
+  # false high finding — the same code-space mismatch that got PAY157/158 deleted in an
+  # earlier round. Deleted rather than kept, per the fix-round-3 ruling.

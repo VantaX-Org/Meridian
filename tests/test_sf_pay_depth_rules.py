@@ -25,7 +25,11 @@ PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
 # unverifiable English label with no real picklist code on record anywhere in this repo.
 # PAY213: exact duplicate of EC202/EC378 in employee_central.yaml. PAY214: exact duplicate
 # of PAY125 (same field, same regex, same country scope).
-DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213", "PAY214"}}
+# PAY219: exists_check compared PAYRESULT.COMPANY (4-char ECC company code) against
+# FOCOMPANY.EXTERNAL_CODE (SF legal-entity external code, up to 128 chars) — a
+# code-space mismatch, not a referential pair, same class of bug as PAY157/158.
+DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213", "PAY214",
+                                    "PAY219"}}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
@@ -365,17 +369,20 @@ CASES = {
                                        "EMPJOBHIST": [{"USERID": "u1"}]}),
     "PAY215": ("payroll_integration", {"PAYRESULT": [c(PR, DELTA_FLAG="X", PAY_DATE=_day(-10)),
                                                       c(PR, USERID="u2", DELTA_FLAG="X", PAY_DATE=_day(10))]}),
+    # u3 is a rehire: ORIGINAL_START_DATE (first hire) is before the pay date, but
+    # START_DATE (moved to the rehire date by SF on rehire) is after it. The rule must
+    # compare against ORIGINAL_START_DATE and PASS u3, not flag it via START_DATE.
     "PAY217": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", PAY_DATE="20190101"),
-                                                      c(PR, USERID="u2", PAY_DATE="20250925")],
+                                                      c(PR, USERID="u2", PAY_DATE="20250925"),
+                                                      c(PR, USERID="u3", PAY_DATE="20190101")],
                                        "EMPEMPLOYMENT": [c(EE, USERID="u1", START_DATE="20200101"),
-                                                         c(EE, USERID="u2", START_DATE="20200101")]}),
+                                                         c(EE, USERID="u2", START_DATE="20200101"),
+                                                         c(EE, USERID="u3", START_DATE="20260101",
+                                                           ORIGINAL_START_DATE="20100101")]}, (3, 1)),
     "PAY218": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", PAY_DATE=_day(0)),
                                                       c(PR, USERID="u2", PAY_DATE=_day(0))],
                                        "EMPEMPLOYMENT": [c(EE, USERID="u1", END_DATE=_day(200)),
                                                          c(EE, USERID="u2", END_DATE=_day(30))]}),
-    "PAY219": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", COMPANY="ACME"),
-                                                      c(PR, USERID="u2", COMPANY="FAKE")],
-                                       "FOCOMPANY": [FC]}),
 }
 
 

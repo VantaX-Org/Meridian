@@ -47,12 +47,18 @@ class UniquenessCheck(BaseCheck):
 
         norm = df[cols].apply(_norm)
         across = self.rule.get("unique_across")
+        evidence = {"fields_checked": cols}
         if across:
             populated &= ~is_blank(df[across])
             key = norm.astype("string").agg("\x1f".join, axis=1)
-            owner = df[across].astype("string").str.strip()
+            # ponytail: case-normalise the owner the same way as the uniqueness
+            # fields themselves, so 'u1' and 'U1' are the same owner rather than
+            # two distinct ones (which would wrongly flag an employee's own
+            # effective-dated rows as a cross-owner duplicate).
+            owner = df[across].astype("string").str.strip().str.upper()
             nun = owner[populated].groupby(key[populated]).transform("nunique")
             dup = (nun > 1).reindex(df.index, fill_value=False)
+            evidence["unique_across"] = across
         else:
             dup = norm[populated].duplicated(keep=False).reindex(df.index, fill_value=False)
-        return Evaluation(populated, dup, {"fields_checked": cols})
+        return Evaluation(populated, dup, evidence)
