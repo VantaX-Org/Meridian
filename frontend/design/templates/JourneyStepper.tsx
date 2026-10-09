@@ -81,7 +81,7 @@ export function JourneyStepper({
       </ol>
 
       {step && (
-        <div className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--m-line)" }}>
+        <div data-testid="day-one-step" className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--m-line)" }}>
           <p className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>{step.label}</p>
           <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{step.detail}</p>
           {step.key === "running" && runningJob ? (
