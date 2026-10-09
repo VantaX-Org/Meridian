@@ -30,7 +30,7 @@ export async function getVersion(id: string): Promise<Version> {
 }
 
 export async function compareVersions(
-  v1: string,
+  v1: string | undefined,
   v2: string,
   module?: string
 ): Promise<VersionComparison> {
@@ -62,11 +62,18 @@ export interface RecordDiffCheck {
   comparable: boolean;
 }
 
+export interface RecordDiff {
+  v1: string;
+  v2: string;
+  totals: { new: number; resolved: number; persisting: number };
+  checks: RecordDiffCheck[];
+}
+
 export async function compareRecords(
   v2: string,
   v1?: string,
   module?: string
-): Promise<{ v1: string; v2: string; totals: { new: number; resolved: number; persisting: number }; checks: RecordDiffCheck[] }> {
+): Promise<RecordDiff> {
   const { data } = await apiClient.get("/api/v1/versions/compare/records", { params: { v1, v2, module } });
   return data;
 }
