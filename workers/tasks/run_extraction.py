@@ -11,7 +11,6 @@ import io
 from datetime import datetime, timezone
 import json
 import logging
-import os
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -21,11 +20,9 @@ from sqlalchemy.orm import Session
 from api.services import jobs
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine, tenant_session
+from workers.tasks.limits import EXTRACT_TIME_LIMIT  # noqa: F401 — re-exported for existing importers
 
 logger = logging.getLogger("meridian.workers.extraction")
-
-# A full live read of a large object takes hours over RFC_READ_TABLE.
-EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
 
 
 def progress_key(system_id) -> str:
