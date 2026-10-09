@@ -156,6 +156,65 @@ def sample_regex_violation(pattern: str) -> str | None:
     return s if hit and not re.match(pattern, s) else None
 
 
+def sample_regex_overflow(pattern: str) -> str | None:
+    """One string one char longer than a bounded ``{m,n}``/``{n}`` repeat allows, e.g. for a
+    length-only pattern like ``^.{1,32}$`` that has no negative lookahead for
+    sample_regex_violation to embed. None if the pattern has no finite-max repeat."""
+    try:
+        tree = sre_parse.parse(pattern)
+    except Exception:
+        return None
+    bumped = []
+
+    def gen(items) -> str:
+        out = []
+        for op, av in items:
+            if op is sre_constants.LITERAL:
+                out.append(chr(av))
+            elif op is sre_constants.NOT_LITERAL:
+                out.append("A" if av != ord("A") else "B")
+            elif op is sre_constants.ANY:
+                out.append("A")
+            elif op is sre_constants.IN:
+                out.append(_in(av))
+            elif op in (sre_constants.MAX_REPEAT, sre_constants.MIN_REPEAT):
+                lo, hi, sub = av
+                n = max(lo, 1 if hi and hi >= 1 else 0)
+                if not bumped and hi is not None and hi < 2**32:
+                    bumped.append(True)
+                    n = hi + 1  # one more than the pattern allows
+                out.append(gen(sub) * n)
+            elif op is sre_constants.SUBPATTERN:
+                out.append(gen(av[-1]))
+            elif op is sre_constants.BRANCH:
+                out.append(gen(av[1][0]))
+            elif op in (sre_constants.AT, sre_constants.ASSERT, sre_constants.ASSERT_NOT):
+                continue
+            elif op is sre_constants.GROUPREF:
+                out.append("")
+            else:
+                raise ValueError(op)
+        return "".join(out)
+
+    def _in(items) -> str:
+        for op, av in items:
+            if op is sre_constants.NEGATE:
+                return "A"
+            if op is sre_constants.LITERAL:
+                return chr(av)
+            if op is sre_constants.RANGE:
+                return chr(av[0])
+            if op is sre_constants.CATEGORY:
+                return {"CATEGORY_DIGIT": "1", "CATEGORY_WORD": "A", "CATEGORY_SPACE": " "}.get(str(av).split(".")[-1], "A")
+        return "A"
+
+    try:
+        s = gen(tree)
+    except Exception:
+        return None
+    return s if bumped and not re.match(pattern, s) else None
+
+
 def _kind(dictionary, col: str) -> str:
     f = dictionary.resolve(col)
     t = (f.type or "").upper() if f else ""
@@ -252,6 +311,8 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals += [s] if s is not None else []
                 bad = sample_regex_violation(rule["pattern"])
                 vals += [bad] if bad is not None else []
+                overflow = sample_regex_overflow(rule["pattern"])
+                vals += [overflow] if overflow is not None else []
             f = dictionary.resolve(c)
             vals += sorted(f.allowed_values())[:3] if f is not None and f.allowed_values() else []
         aw = (rule.get("applies_when") or {}).get(c)
@@ -371,9 +432,17 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         rule = {**rule, "_live_value": set(dup.values()) | set(rule.get("_live_value") or ())}
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "interval_check":
-        # one group: two adjoining periods, then a third starting inside the first
         g = {**{c: cand[c][0] for c in cand if c in (rule.get("applies_when") or {})}, **{c: "G1" for c in rule["group_by"]}}  # inside the scope
         s, e = rule["start"], rule["end"]
+        if rule.get("mode") == "open_ended_only":
+            # overlap/gap checks are skipped in this mode; only the group's last (latest-start)
+            # row is checked for reaching the open-ended sentinel. Two rows, same group, both
+            # non-overlapping (so overlap logic — if it ran — wouldn't matter): the later one
+            # is end-dated, not open, which is the only thing this mode flags.
+            rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "20211231"}]
+            rule = {**rule, "_live_value": "G1"}
+            return _verify(rule, dictionary, rows, (2, 1), live)
+        # one group: two adjoining periods, then a third starting inside the first
         rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
                 {**g, s: "20200601", e: "20200630"}]
         # a group_by column may also be a cross-table join key (e.g. USERID): keep "G1" intact

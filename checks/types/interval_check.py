@@ -36,9 +36,15 @@ class IntervalCheck(BaseCheck):
         work = pd.DataFrame({"g": group, "s": start, "e": end})[valid].sort_values(["g", "s", "e"])
         prev_end = work.groupby("g")["e"].transform(lambda e: e.cummax().shift())
         overlap = work["s"] <= prev_end
-        bad = overlap.copy()
-        if r.get("mode") == "continuous":
-            bad |= (work["s"] - prev_end) > pd.Timedelta(days=1)
+        if r.get("mode") == "open_ended_only":
+            # group_by is coarser than the interval's natural key (e.g. USERID alone, with
+            # several concurrent pay components sharing a date range) — overlap is then
+            # expected, not a defect; only the group's last row running open-ended is checked.
+            bad = pd.Series(False, index=work.index)
+        else:
+            bad = overlap.copy()
+            if r.get("mode") == "continuous":
+                bad |= (work["s"] - prev_end) > pd.Timedelta(days=1)
         if r.get("open_ended"):
             last = ~work["g"].duplicated(keep="last")
             bad |= last & (work.groupby("g")["e"].transform("max") < OPEN)

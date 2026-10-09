@@ -1134,12 +1134,12 @@ rules:
   - id: COMP066
     field: COMPINFO.ANNUALIZATION_FACTOR
     check_class: cross_field_check
-    fail_when: ((`COMPINFO.COMP_FREQUENCY` == 'ANN') & (`COMPINFO.ANNUALIZATION_FACTOR` != 1)) | ((`COMPINFO.COMP_FREQUENCY` == 'BWK') & (`COMPINFO.ANNUALIZATION_FACTOR` != 26)) | ((`COMPINFO.COMP_FREQUENCY` == 'QRT') & (`COMPINFO.ANNUALIZATION_FACTOR` != 4)) | ((`COMPINFO.COMP_FREQUENCY` == 'SMO') & (`COMPINFO.ANNUALIZATION_FACTOR` != 24)) | ((`COMPINFO.COMP_FREQUENCY` == 'WKL') & ~`COMPINFO.ANNUALIZATION_FACTOR`.isin([52, 53]))
+    fail_when: ((`COMPINFO.COMP_FREQUENCY` == 'ANN') & (`COMPINFO.ANNUALIZATION_FACTOR` != 1)) | ((`COMPINFO.COMP_FREQUENCY` == 'BWK') & (`COMPINFO.ANNUALIZATION_FACTOR` != 26))
     require_populated: true
     severity: high
     dimension: consistency
     message: Annualisation factor does not match the pay frequency
-    why_it_matters: Annual pays once, bi-weekly 26 times, quarterly 4 times, semi-monthly 24 times and weekly 52 or 53 times a year. Any other factor misstates the annual salary. Monthly is not checked here because a 13th-cheque factor of 13 is legitimate (see the monthly-specific rule).
+    why_it_matters: Annual pays once and bi-weekly 26 times a year. Any other factor misstates the annual salary. Monthly is not checked because a 13th-cheque factor of 13 is legitimate.
     rule_authority: best_practice
     sap_impact: Annual salary, compa-ratio and merit budgets are wrong by the factor difference.
     fix_map:
@@ -1153,9 +1153,6 @@ rules:
         values:
           ANN: '1'
           BWK: '26'
-          QRT: '4'
-          SMO: '24'
-          WKL: '52'
           __other__: null
       confidence: high
   - id: COMP067
@@ -1804,7 +1801,7 @@ rules:
   - id: COMP111
     field: COMPINFO.PAY_GRADE_STATUS
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_GRADE_STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`COMPINFO.PAY_GRADE_STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: Pay grade is inactive but is still used on a paid compensation record
@@ -1814,14 +1811,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active pay grade, or reactivate the grade if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay grade {COMPINFO.PAY_GRADE} is inactive but carries a positive salary. Correct the grade or the status.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP112
     field: COMPINFO.PAY_RANGE_STATUS
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_RANGE_STATUS` == 'I') and `COMPINFO.PAY_RANGE_MIN`.notna() and `COMPINFO.SALARY`.notna()
+    fail_when: (`COMPINFO.PAY_RANGE_STATUS` == 'I') and `COMPINFO.PAY_RANGE_MIN`.notna() and `COMPINFO.SALARY`.notna() and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: Pay range is inactive but is still used to evaluate a current salary
@@ -1831,14 +1825,11 @@ rules:
     fix_map:
       __other__: Assign the current pay range for the grade, or reactivate the range if it is still correct.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay range is inactive but still used to evaluate the salary. Correct the range assignment.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP113
     field: COMPINFO.PAY_COMPONENT_STATUS
     check_class: cross_field_check
-    fail_when: (`COMPINFO.PAY_COMPONENT_STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`COMPINFO.PAY_COMPONENT_STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: Pay component is inactive but still carries a positive value
@@ -1848,9 +1839,6 @@ rules:
     fix_map:
       __other__: Clear the value on the inactive component, or reactivate the component if it should still pay.
     record_fix_template: 'Employee {COMPINFO.USERID}: pay component {COMPINFO.PAY_TYPE} is inactive but has a positive value. Correct the status or the value.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP114
     field: COMPINFO.PAY_COMPONENT_DEFAULT
@@ -1907,7 +1895,7 @@ rules:
   - id: COMP118
     field: COMPINFO.PAY_SCALE_TYPE
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,32}$
+    pattern: ^.{1,32}$
     severity: low
     dimension: validity
     message: Pay scale type does not look like a valid tariff code
@@ -1920,7 +1908,7 @@ rules:
   - id: COMP119
     field: COMPINFO.PAY_SCALE_AREA
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,32}$
+    pattern: ^.{1,32}$
     severity: low
     dimension: validity
     message: Pay scale area does not look like a valid tariff code
@@ -1933,7 +1921,7 @@ rules:
   - id: COMP120
     field: COMPINFO.PAYROLL_SYSTEM_ID
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,128}$
+    pattern: ^.{1,128}$
     severity: low
     dimension: validity
     message: Payroll system ID does not look like a valid system key
@@ -2105,7 +2093,7 @@ rules:
   - id: COMP135
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: (`EMPEMPLOYMENT.FTE` > 0) and (`EMPEMPLOYMENT.FTE` < 1) and `COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and ((`COMPINFO.ANNUAL_SALARY` / `EMPEMPLOYMENT.FTE`) > (`COMPINFO.PAY_RANGE_MAX` * 1.05))
+    fail_when: (`EMPEMPLOYMENT.FTE` > 0) and (`EMPEMPLOYMENT.FTE` < 1) and `COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_FREQUENCY` == 'ANN') and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and ((`COMPINFO.ANNUAL_SALARY` / `EMPEMPLOYMENT.FTE`) > (`COMPINFO.PAY_RANGE_MAX` * 1.05))
     severity: medium
     dimension: accuracy
     message: FTE-adjusted annualised salary exceeds the pay range maximum by more than 5%
@@ -2128,19 +2116,6 @@ rules:
     fix_map:
       __other__: Maintain the employee's standard hours.
     record_fix_template: 'Employee {COMPINFO.USERID}: hourly pay rate has no standard hours to annualise against. Maintain standard hours.'
-  - id: COMP137
-    field: COMPINFO.PAYCOMP_END_DATE
-    check_class: cross_field_check
-    fail_when: '`COMPINFO.PAYCOMP_END_DATE`.isna() and (`EMPEMPLOYMENT.STATUS` == ''T'')'
-    severity: high
-    dimension: consistency
-    message: Compensation record has no end date but the employment has been terminated
-    why_it_matters: A compensation record with no end date on a terminated employment means the record was not delimited when the employee left.
-    rule_authority: sap_hard_constraint
-    sap_impact: The terminated employee's compensation record remains open after leaving.
-    fix_map:
-      __other__: Set the compensation record's end date to the termination date.
-    record_fix_template: 'Employee {COMPINFO.USERID}: compensation record {COMPINFO.PAY_TYPE} has no end date after termination. Delimit it.'
   - id: COMP138
     field: COMPINFO.EFFECTIVE_DATE
     check_class: cross_field_check
@@ -2170,7 +2145,7 @@ rules:
   - id: COMP140
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`POSITION.VACANT`.str.lower() == 'true') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`POSITION.VACANT`.str.lower() == 'true') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: Position is vacant but still carries an active, paid compensation record
@@ -2180,14 +2155,11 @@ rules:
     fix_map:
       __other__: Correct the position's vacant flag, or end the compensation record if the position is genuinely vacant.
     record_fix_template: 'Employee {COMPINFO.USERID}: holds a positive salary on a position marked vacant. Correct the vacancy flag or the compensation record.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP141
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`POSITION.EFFECTIVE_STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`POSITION.EFFECTIVE_STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Position is not in effective status but still carries an active, paid compensation record
@@ -2197,9 +2169,6 @@ rules:
     fix_map:
       __other__: Confirm the position status, or move the employee to a current position.
     record_fix_template: 'Employee {COMPINFO.USERID}: holds a positive salary on a position that is not effective-active. Confirm the position status.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP142
     field: COMPINFO.ANNUAL_SALARY
@@ -2243,7 +2212,7 @@ rules:
   - id: COMP146
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: '`EMPEMPLOYMENT.CONTRACT_END_DATE`.notna() and (`EMPEMPLOYMENT.CONTRACT_END_DATE` < @today) and `COMPINFO.PAYCOMP_END_DATE`.isna() and (`COMPINFO.SALARY` > 0)'
+    fail_when: '`EMPEMPLOYMENT.CONTRACT_END_DATE`.notna() and (`EMPEMPLOYMENT.CONTRACT_END_DATE` < @today) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= ''9999-01-01'')) and (`COMPINFO.SALARY` > 0)'
     severity: medium
     dimension: consistency
     message: Contract has ended but the compensation record is still open with a positive salary
@@ -2256,7 +2225,7 @@ rules:
   - id: COMP148
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna() and (`EMPEMPLOYMENT.PAYROLL_END_DATE` < @today) and `COMPINFO.PAYCOMP_END_DATE`.isna() and (`COMPINFO.SALARY` > 0)'
+    fail_when: '`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna() and (`EMPEMPLOYMENT.PAYROLL_END_DATE` < @today) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= ''9999-01-01'')) and (`COMPINFO.SALARY` > 0)'
     severity: medium
     dimension: consistency
     message: Payroll end date has passed but the compensation record is still open with a positive salary
@@ -2282,7 +2251,7 @@ rules:
   - id: COMP150
     field: PAYCOMPNONREC.UNIT_OF_MEASURE
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,32}$
+    pattern: ^.{1,32}$
     severity: low
     dimension: validity
     message: Non-recurring payment unit of measure does not look like a valid code
@@ -2341,7 +2310,7 @@ rules:
   - id: COMP154
     field: PAYCOMPNONREC.ALT_COST_CENTER
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,128}$
+    pattern: ^.{1,128}$
     severity: low
     dimension: validity
     message: Alternative cost center does not look like a valid cost center code
@@ -2575,7 +2544,7 @@ rules:
   - id: COMP172
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FODEPARTMENT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FODEPARTMENT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's department is inactive but the employee still has an active, paid compensation record
@@ -2585,14 +2554,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active department, or reactivate the department if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: department is inactive but the employee has a positive salary. Correct the department or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP173
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOLOCATION.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FOLOCATION.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's location is inactive but the employee still has an active, paid compensation record
@@ -2602,14 +2568,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active location, or reactivate the location if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: location is inactive but the employee has a positive salary. Correct the location or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP174
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOJOBCODE.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FOJOBCODE.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's job code is inactive but the employee still has an active, paid compensation record
@@ -2619,14 +2582,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active job code, or reactivate the job code if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: job code is inactive but the employee has a positive salary. Correct the job code or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP175
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FODIVISION.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FODIVISION.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's division is inactive but the employee still has an active, paid compensation record
@@ -2636,14 +2596,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active division, or reactivate the division if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: division is inactive but the employee has a positive salary. Correct the division or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP176
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOBUSINESSUNIT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FOBUSINESSUNIT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's business unit is inactive but the employee still has an active, paid compensation record
@@ -2653,14 +2610,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active business unit, or reactivate the business unit if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: business unit is inactive but the employee has a positive salary. Correct the business unit or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP177
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOCOSTCENTER.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FOCOSTCENTER.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's cost center is inactive but the employee still has an active, paid compensation record
@@ -2670,14 +2624,11 @@ rules:
     fix_map:
       __other__: Move the employee to an active cost center, or reactivate the cost center if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: cost center is inactive but the employee has a positive salary. Correct the cost center or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP178
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOEVENTREASON.STATUS` == 'I') and (`COMPINFO.SALARY` > 0)
+    fail_when: (`FOEVENTREASON.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: medium
     dimension: consistency
     message: Employee's event reason is inactive but the employee still has an active, paid compensation record
@@ -2687,9 +2638,6 @@ rules:
     fix_map:
       __other__: Move the employee to an active event reason, or reactivate the event reason if it is still in use.
     record_fix_template: 'Employee {COMPINFO.USERID}: event reason is inactive but the employee has a positive salary. Correct the event reason or the salary.'
-    applies_when:
-      COMPINFO.PAYCOMP_END_DATE:
-        blank: true
 
   - id: COMP179
     field: PAYCOMPNONREC.VALUE
@@ -2806,10 +2754,14 @@ rules:
     fix_map:
       __other__: Move the employee to an active event reason, or reactivate the event reason if it is still in use.
     record_fix_template: 'Employee {PAYCOMPNONREC.USERID}: event reason is inactive but the employee receives a non-recurring payment. Correct the event reason or the payment.'
+    applies_when:
+      PAYCOMPNONREC.PAY_DATE:
+        within_days: 365
+
   - id: COMP186
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`USERACCOUNT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
+    fail_when: (`USERACCOUNT.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: User account is inactive but the compensation record is still open with a positive salary
@@ -2839,7 +2791,7 @@ rules:
   - id: COMP188
     field: COMPINFO.SALARY
     check_class: cross_field_check
-    fail_when: (`FOCOMPANY.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and `COMPINFO.PAYCOMP_END_DATE`.isna()
+    fail_when: (`FOCOMPANY.STATUS` == 'I') and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAYCOMP_END_DATE`.isna() | (`COMPINFO.PAYCOMP_END_DATE` >= '9999-01-01'))
     severity: high
     dimension: consistency
     message: Employing company is inactive but the compensation record is still open with a positive salary
@@ -3122,7 +3074,7 @@ rules:
   - id: COMP218
     field: COMPINFO.COMPA_RATIO
     check_class: cross_field_check
-    fail_when: (`COMPINFO.COMPA_RATIO` == 1.0) and (`COMPINFO.SALARY` > 0) and (`COMPINFO.ANNUAL_SALARY` != `COMPINFO.PAY_RANGE_MID`)
+    fail_when: (`COMPINFO.COMPA_RATIO` == 1.0) and (`COMPINFO.SALARY` > 0) and (`COMPINFO.PAY_RANGE_MID` != 0) and ((`COMPINFO.ANNUAL_SALARY` / `COMPINFO.PAY_RANGE_MID` - 1).abs() > 0.0005)
     severity: low
     dimension: accuracy
     message: Compa-ratio is exactly 1.000 while annual salary does not equal the pay range midpoint
@@ -3174,11 +3126,11 @@ rules:
   - id: COMP223
     field: COMPINFO.PAY_RANGE_MIN
     check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and `COMPINFO.PAY_RANGE_MID`.notna() and `COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > `COMPINFO.PAY_RANGE_MIN`) and (((`COMPINFO.PAY_RANGE_MID` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) < 0.33) or ((`COMPINFO.PAY_RANGE_MID` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) > 0.67))'
+    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and `COMPINFO.PAY_RANGE_MID`.notna() and `COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > `COMPINFO.PAY_RANGE_MIN`) and (((`COMPINFO.PAY_RANGE_MID` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) < 0.25) or ((`COMPINFO.PAY_RANGE_MID` - `COMPINFO.PAY_RANGE_MIN`) / (`COMPINFO.PAY_RANGE_MAX` - `COMPINFO.PAY_RANGE_MIN`) > 0.75))'
     severity: low
     dimension: consistency
     message: Pay range minimum, midpoint and maximum are all populated but not evenly ordered around the midpoint by more than a token amount
-    why_it_matters: A well-formed pay range normally has its midpoint closer to the middle of the min-max span; a midpoint that sits far outside the middle third of the range suggests the three bounds were not loaded from the same range revision.
+    why_it_matters: A well-formed pay range normally has its midpoint closer to the middle of the min-max span; a midpoint that sits outside the middle half of the range suggests the three bounds were not loaded from the same range revision.
     rule_authority: best_practice
     sap_impact: Range penetration calculated against a midpoint that is not actually central in its own min-max span is misleading.
     fix_map:
@@ -3262,7 +3214,7 @@ rules:
   - id: COMP230
     field: COMPINFO.PAY_GRADE
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,128}$
+    pattern: ^.{1,128}$
     severity: low
     dimension: validity
     message: Pay grade code contains characters outside the standard grade-code pattern
@@ -3275,7 +3227,7 @@ rules:
   - id: COMP231
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and (`COMPINFO.PAY_RANGE_MIN` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` < (`COMPINFO.PAY_RANGE_MIN` * 0.5))'
+    fail_when: '`COMPINFO.PAY_RANGE_MIN`.notna() and (`COMPINFO.PAY_RANGE_MIN` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == ''ANN'') and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` < (`COMPINFO.PAY_RANGE_MIN` * 0.5))'
     severity: medium
     dimension: accuracy
     message: Annual salary is far below the pay range minimum for the employee's grade
@@ -3288,7 +3240,7 @@ rules:
   - id: COMP232
     field: COMPINFO.ANNUAL_SALARY
     check_class: cross_field_check
-    fail_when: '`COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == `COMPINFO.COMP_FREQUENCY`) and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` > (`COMPINFO.PAY_RANGE_MAX` * 2))'
+    fail_when: '`COMPINFO.PAY_RANGE_MAX`.notna() and (`COMPINFO.PAY_RANGE_MAX` > 0) and (`COMPINFO.PAY_RANGE_FREQUENCY` == ''ANN'') and (`COMPINFO.PAY_RANGE_CURRENCY` == `COMPINFO.CURRENCY`) and (`COMPINFO.ANNUAL_SALARY` > (`COMPINFO.PAY_RANGE_MAX` * 2))'
     severity: medium
     dimension: accuracy
     message: Annual salary is far above the pay range maximum for the employee's grade
@@ -3414,7 +3366,7 @@ rules:
   - id: COMP246
     field: COMPINFO.PAY_TYPE
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,32}$
+    pattern: ^.{1,32}$
     severity: low
     dimension: validity
     message: Pay component code contains characters outside the standard component-code pattern
@@ -3432,7 +3384,7 @@ rules:
   - id: COMP247
     field: PAYCOMPNONREC.PAY_COMPONENT
     check_class: regex_check
-    pattern: ^[\x20-\x7E]{1,32}$
+    pattern: ^.{1,32}$
     severity: low
     dimension: validity
     message: One-time payment pay component code contains characters outside the standard component-code pattern
@@ -3485,8 +3437,8 @@ rules:
     end: COMPINFO.END_DATE
     group_by:
     - COMPINFO.USERID
-    - COMPINFO.PAY_TYPE
     open_ended: true
+    mode: open_ended_only
     applies_when:
       EMPEMPLOYMENT.STATUS:
       - A
@@ -3495,7 +3447,7 @@ rules:
       - S
     severity: medium
     dimension: consistency
-    message: Active employee's most recent compensation record for this pay type is end-dated
+    message: Active employee's most recent compensation record is end-dated
     why_it_matters: An active employee's current compensation record should run open-ended (no end date); an end-dated most-recent record for an active employee means the next record was never loaded.
     rule_authority: best_practice
     sap_impact: Payroll replication has no open compensation record to use for the employee's current pay.

@@ -72,14 +72,14 @@ CASES = [
     ("COMP128", {"COMPINFO": ci(PAY_COMPONENT_STATUS=["X", "A"])}, 1),
     ("COMP239", {"COMPINFO": ci(PAY_COMPONENT_TYPE=["BOGUS", "AMOUNT"])}, 1),
     # regex_check
-    # ^[\x20-\x7E]{1,N}$ bounds length and requires printable ASCII (see I2/fix-round-1):
-    # the "bad" fixture value must be non-printable-ASCII (or over-length) to still fail.
-    ("COMP118", {"COMPINFO": ci(PAY_SCALE_TYPE=["§§§", "A1"])}, 1),
-    ("COMP150", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["§§§", "HR"])}, 1),
+    # ^.{1,N}$ (m6 fix round 2) is length-only so non-ASCII names pass; the "bad" fixture
+    # value must be over-length (not merely non-ASCII) to still fail.
+    ("COMP118", {"COMPINFO": ci(PAY_SCALE_TYPE=["X" * 40, "A1"])}, 1),
+    ("COMP150", {"PAYCOMPNONREC": nr(UNIT_OF_MEASURE=["X" * 40, "HR"])}, 1),
     ("COMP157", {"PAYCOMPNONREC": nr(USERID=["bad user!", "u1"])}, 1),
     ("COMP228", {"COMPINFO": ci(CURRENCY=["usd", "USD"])}, 1),
-    ("COMP230", {"COMPINFO": ci(PAY_GRADE=["§§§", "G1"])}, 1),
-    ("COMP246", {"COMPINFO": ci(PAY_TYPE=["§§§", "SALARY"])}, 1),
+    ("COMP230", {"COMPINFO": ci(PAY_GRADE=["X" * 150, "G1"])}, 1),
+    ("COMP246", {"COMPINFO": ci(PAY_TYPE=["X" * 40, "SALARY"])}, 1),
     # exists_check (target table has only the valid code, so dropping row0 leaves a clean match)
     ("COMP153", {"PAYCOMPNONREC": nr(ALT_COST_CENTER=["CC9", "CC1"]),
                  "FOCOSTCENTER": frame("FOCOSTCENTER", EXTERNAL_CODE=["CC1"])}, 1),
@@ -96,14 +96,28 @@ CASES = [
     ("COMP238", {"PAYCOMPNONREC": nr(VALUE=[100.0, 100.0], CURRENCY=[None, "USD"])}, 1),
     # cross-table cross_field_check (joined through EMPEMPLOYMENT and foundation objects)
     ("COMP129", {"COMPINFO": ci(PAY_GROUP=["PG1", "PG2"]), "EMPEMPLOYMENT": emp(PAY_GROUP=["PG9", "PG2"])}, 1),
-    ("COMP137", {"COMPINFO": ci(PAYCOMP_END_DATE=[None, "2024-01-01"]), "EMPEMPLOYMENT": emp(STATUS=["T", "T"])}, 1),
+    ("COMP140", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(POSITION=["P1", "P2"]),
+                 "POSITION": frame("POSITION", CODE=["P1", "P2"], VACANT=["true", "false"])}, 1),
+    ("COMP141", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(POSITION=["P1", "P2"]),
+                 "POSITION": frame("POSITION", CODE=["P1", "P2"], EFFECTIVE_STATUS=["I", "A"])}, 1),
+    ("COMP143", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], COMP_FREQUENCY=["HRL", "HRL"]),
+                 "EMPEMPLOYMENT": emp(POSITION=["P1", "P2"], STANDARD_HOURS=[40.0, 40.0]),
+                 "POSITION": frame("POSITION", CODE=["P1", "P2"], STANDARD_HOURS=[20.0, 40.0])}, 1),
+    ("COMP146", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(CONTRACT_END_DATE=["2020-01-01", "2099-01-01"])}, 1),
+    ("COMP148", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(PAYROLL_END_DATE=["2020-01-01", "2099-01-01"])}, 1),
     ("COMP159", {"PAYCOMPNONREC": nr(ALT_COST_CENTER=["CC1", "CC2"]), "EMPEMPLOYMENT": emp(POSITION=["P1", "P2"]),
                  "POSITION": frame("POSITION", CODE=["P1", "P2"], COST_CENTER=["CC1", "CC9"])}, 1),
     ("COMP162", {"PAYCOMPNONREC": nr(PAY_DATE=["2025-01-01", "2020-01-01"]),
                  "EMPEMPLOYMENT": emp(CONTRACT_END_DATE=["2024-01-01", "2024-01-01"])}, 1),
-    ("COMP172", {"COMPINFO": ci(SALARY=[1000.0, 1000.0]), "EMPEMPLOYMENT": emp(DEPARTMENT=["D1", "D2"]),
+    ("COMP172", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(DEPARTMENT=["D1", "D2"]),
                  "FODEPARTMENT": frame("FODEPARTMENT", EXTERNAL_CODE=["D1", "D2"], STATUS=["I", "A"])}, 1),
-    ("COMP177", {"COMPINFO": ci(SALARY=[1000.0, 1000.0]), "EMPEMPLOYMENT": emp(COST_CENTER=["CC1", "CC2"]),
+    ("COMP177", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
+                 "EMPEMPLOYMENT": emp(COST_CENTER=["CC1", "CC2"]),
                  "FOCOSTCENTER": frame("FOCOSTCENTER", EXTERNAL_CODE=["CC1", "CC2"], STATUS=["I", "A"])}, 1),
     ("COMP186", {"COMPINFO": ci(SALARY=[1000.0, 1000.0], PAYCOMP_END_DATE=[None, None]),
                  "EMPEMPLOYMENT": emp(STATUS=["A", "A"]),
@@ -120,6 +134,39 @@ CASES = [
                                      CURRENCY=["EUR", "USD", "USD"])}, 1),
     ("COMP248", {"COMPINFO": ci(PAY_TYPE=["SALARY", "SALARY", "SALARY"],
                                 PAY_COMPONENT_TYPE=["PERCENTAGE", "AMOUNT", "AMOUNT"])}, 1),
+    # ruling #12 (fix round 2): dedicated fixtures for rules changed or restored this round.
+    ("COMP066", {"COMPINFO": ci(COMP_FREQUENCY=["ANN", "ANN"], ANNUALIZATION_FACTOR=[2.0, 1.0])}, 1),
+    ("COMP109", {"COMPINFO": ci(ANNUAL_SALARY=[150000.0, 125000.0], PAY_RANGE_MIN=[100000.0, 100000.0],
+                                PAY_RANGE_MAX=[200000.0, 200000.0], RANGE_PENETRATION=[0.1, 0.25])}, 1),
+    ("COMP135", {"COMPINFO": ci(ANNUAL_SALARY=[60000.0, 20000.0], PAY_RANGE_MAX=[50000.0, 50000.0],
+                                PAY_RANGE_FREQUENCY=["ANN", "ANN"], PAY_RANGE_CURRENCY=["EUR", "EUR"],
+                                CURRENCY=["EUR", "EUR"]),
+                 "EMPEMPLOYMENT": emp(FTE=[0.5, 0.5])}, 1),
+    ("COMP136", {"COMPINFO": ci(COMP_FREQUENCY=["HRL", "HRL"], SALARY=[20.0, 20.0]),
+                 "EMPEMPLOYMENT": emp(STANDARD_HOURS=[None, 40.0])}, 1),
+    ("COMP155", {"PAYCOMPNONREC": nr(VALUE=[2000000.0, 500.0], CURRENCY=["USD", "USD"])}, 1),
+    ("COMP156", {"PAYCOMPNONREC": nr(NUMBER_OF_UNITS=[20000.0, 100.0], CURRENCY=["USD", "USD"])}, 1),
+    ("COMP158", {"PAYCOMPNONREC": nr(PAY_DATE=["2020-01-01", "2021-01-01"]),
+                 "EMPEMPLOYMENT": emp(ORIGINAL_START_DATE=["2021-01-01", "2021-01-01"])}, 1),
+    ("COMP185", {"PAYCOMPNONREC": nr(VALUE=[100.0, 100.0],
+                                     PAY_DATE=[pd.Timestamp.now().strftime("%Y-%m-%d")] * 2),
+                 "EMPEMPLOYMENT": emp(EVENT_REASON=["R1", "R2"]),
+                 "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["R1", "R2"], STATUS=["I", "A"])}, 1),
+    ("COMP213", {"COMPINFO": ci(COMP_FREQUENCY=["HRL", "HRL"], SALARY=[10.0, 10.0]),
+                 "EMPEMPLOYMENT": emp(STANDARD_HOURS=[0.0, 40.0])}, 1),
+    ("COMP227", {"COMPINFO": ci(PAY_COMPONENT_RECURRING=["true", "true"], PAY_COMPONENT_IS_EARNING=["true", "true"],
+                                PAY_COMPONENT_CAN_OVERRIDE=["true", "true"],
+                                PAY_COMPONENT_DEFAULT=[None, 100.0])}, 1),
+    ("COMP231", {"COMPINFO": ci(ANNUAL_SALARY=[60000.0, 60000.0], PAY_RANGE_MIN=[150000.0, 60000.0],
+                                PAY_RANGE_FREQUENCY=["ANN", "ANN"], PAY_RANGE_CURRENCY=["EUR", "EUR"],
+                                CURRENCY=["EUR", "EUR"])}, 1),
+    ("COMP232", {"COMPINFO": ci(ANNUAL_SALARY=[500000.0, 60000.0], PAY_RANGE_MAX=[200000.0, 60000.0],
+                                PAY_RANGE_FREQUENCY=["ANN", "ANN"], PAY_RANGE_CURRENCY=["EUR", "EUR"],
+                                CURRENCY=["EUR", "EUR"])}, 1),
+    ("COMP234", {"COMPINFO": ci(PAY_COMPONENT_IS_EARNING=["true", "true"],
+                                PAY_COMPONENT_CAN_OVERRIDE=["false", "false"],
+                                PAY_COMPONENT_DEFAULT=[None, 100.0])}, 1),
+    ("COMP171", {"EMPEMPLOYMENT": emp(LAST_MODIFIED=["20200101", pd.Timestamp.now().strftime("%Y%m%d")])}, 1),
 ]
 
 
@@ -186,10 +233,53 @@ def test_gap_and_open_ended_and_no_record_detected():
 
 
 def test_fixture_coverage():
-    # Floor, not full coverage: NEW (COMP095-251) has ~157 rules; this only asserts a fixture
-    # sample doesn't shrink silently. Not every new rule has its own fixture here (see M11).
+    # Floor, not full coverage: NEW (COMP095-251) has ~155 rules; this only asserts a fixture
+    # sample doesn't shrink silently. Not every new rule has its own fixture here (M11: floor
+    # restored to 50 in fix round 2 after a batch of new/changed-rule fixtures were added).
     assert len({c[0] for c in CASES} | {"COMP151", "COMP217", "COMP168", "COMP169",
-                                         "COMP249", "COMP250", "COMP251"}) >= 40
+                                         "COMP249", "COMP250", "COMP251"}) >= 50
+
+
+# ---- fix round 2: N1/N2/N4 dedicated fixtures -----------------------------------------------------------------------
+
+def test_n1_pay_range_frequency_guard():
+    # COMP135/231/232 compare ANNUAL_SALARY against the pay range, so the guard must require
+    # the *range* to be annual, independent of the employee's own comp frequency.
+    monthly_range = ci(ANNUAL_SALARY=[60000.0], SALARY=[5000.0], COMP_FREQUENCY=["MON"],
+                        PAY_RANGE_FREQUENCY=["MON"], PAY_RANGE_MIN=[4000.0], PAY_RANGE_MID=[5000.0],
+                        PAY_RANGE_MAX=[6000.0], CURRENCY=["EUR"], PAY_RANGE_CURRENCY=["EUR"])
+    assert fire("COMP232", {"COMPINFO": monthly_range}) == 0
+    assert fire("COMP135", {"COMPINFO": monthly_range, "EMPEMPLOYMENT": emp(FTE=[0.8])}) == 0
+
+    annual_range_far_below = ci(ANNUAL_SALARY=[60000.0], SALARY=[60000.0], COMP_FREQUENCY=["MON"],
+                                 PAY_RANGE_FREQUENCY=["ANN"], PAY_RANGE_MIN=[150000.0], PAY_RANGE_MID=[200000.0],
+                                 PAY_RANGE_MAX=[250000.0], CURRENCY=["EUR"], PAY_RANGE_CURRENCY=["EUR"])
+    assert fire("COMP231", {"COMPINFO": annual_range_far_below}) >= 1
+
+    annual_range_inside = ci(ANNUAL_SALARY=[200000.0], SALARY=[200000.0], COMP_FREQUENCY=["MON"],
+                              PAY_RANGE_FREQUENCY=["ANN"], PAY_RANGE_MIN=[150000.0], PAY_RANGE_MID=[200000.0],
+                              PAY_RANGE_MAX=[250000.0], CURRENCY=["EUR"], PAY_RANGE_CURRENCY=["EUR"])
+    assert fire("COMP231", {"COMPINFO": annual_range_inside}) == 0
+    assert fire("COMP232", {"COMPINFO": annual_range_inside}) == 0
+
+
+def test_n2_discontinued_component_on_active_employee_does_not_fire():
+    # COMP250 groups by USERID only: a discontinued allowance must not make an otherwise
+    # continuous salary record look like a gap.
+    discontinued = ci(USERID=["u1"] * 3, PAY_TYPE=["SALARY", "ALLOW", "SALARY"],
+                       EFFECTIVE_DATE=["2023-01-01", "2023-01-01", "2024-01-01"],
+                       END_DATE=["2023-12-31", "2023-12-31", "99991231"])
+    assert fire("COMP250", {"COMPINFO": discontinued, "EMPEMPLOYMENT": emp(USERID=["u1"], STATUS=["A"])}) == 0
+
+
+def test_n4_open_end_date_recognised_blank_or_9999():
+    # One convention for the whole pack: blank and 9999-12-31 both mean "still open".
+    blank_open = ci(SALARY=[1000.0], PAYCOMP_END_DATE=[None]), emp(CONTRACT_END_DATE=["2020-01-01"])
+    assert fire("COMP146", {"COMPINFO": blank_open[0], "EMPEMPLOYMENT": blank_open[1]}) >= 1
+    sentinel_open = ci(SALARY=[1000.0], PAYCOMP_END_DATE=["99991231"]), emp(CONTRACT_END_DATE=["2020-01-01"])
+    assert fire("COMP146", {"COMPINFO": sentinel_open[0], "EMPEMPLOYMENT": sentinel_open[1]}) >= 1
+    actually_closed = ci(SALARY=[1000.0], PAYCOMP_END_DATE=["2020-06-01"]), emp(CONTRACT_END_DATE=["2020-01-01"])
+    assert fire("COMP146", {"COMPINFO": actually_closed[0], "EMPEMPLOYMENT": actually_closed[1]}) == 0
 
 
 # ---- integrity -----------------------------------------------------------------------------------------------------
