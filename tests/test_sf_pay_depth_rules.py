@@ -12,11 +12,20 @@ from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
 PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
-         "payroll_integration": [("PAY", 31, 185), ("HPY", 31, 27)]}
+         "payroll_integration": [("PAY", 31, 189), ("HPY", 31, 27)]}
 # Ids minted on this branch that were later found to be undeliverable and removed (append-only
 # numbering is preserved — the id is retired, not reused): PAY157/158 compared a SF foundation
 # object code to a raw ECC payroll-export key with no mapping table between the two domains.
-DELETED = {"payroll_integration": {"PAY157", "PAY158"}}
+# PAY206: freshness_check cannot express "current record per employee only" (see
+# checks/types/freshness_check.py — per-row only, no group-by), so it flagged every
+# historical PAYMENTINFO record, not just stale current bank details.
+# PAY209: exact duplicate of PAY127 (same BIC format regex). PAY210: hard-coded ~30-code
+# "ISO 4217" subset omitted dozens of real active currencies and no full ISO 4217 source
+# exists in this repo. PAY211: compared a picklist/foundation-object code field to an
+# unverifiable English label with no real picklist code on record anywhere in this repo.
+# PAY213: exact duplicate of EC202/EC378 in employee_central.yaml. PAY214: exact duplicate
+# of PAY125 (same field, same regex, same country scope).
+DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213", "PAY214"}}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
@@ -291,8 +300,11 @@ CASES = {
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYMENTINFO": [c(PI, ACCOUNT_NUMBER="1", IBAN=None),
                                                        c(PI, USERID="u2", ACCOUNT_NUMBER="1", IBAN=None)]}),
-    "PAY152": ("payroll_integration", {"USERACCOUNT": [c(UA, HIRE_DATE="20190101"), c(UA, USER_ID="u2", HIRE_DATE="20200101")],
-                                       "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")]}),
+    # Dirty: HIRE_DATE after the employment segment's START_DATE (impossible for a genuine
+    # hire). Clean: HIRE_DATE before the segment's START_DATE — a legitimate rehire opening
+    # a later segment without changing the original HIRE_DATE, which must not be flagged.
+    "PAY152": ("payroll_integration", {"USERACCOUNT": [c(UA, HIRE_DATE="20200601"), c(UA, USER_ID="u2", HIRE_DATE="20190101")],
+                                       "EMPEMPLOYMENT": [c(EE, START_DATE="20200101"), c(EE, USERID="u2", PERSON_ID="p2", START_DATE="20200101")]}),
     "PAY153": ("payroll_integration", {"USERACCOUNT": [c(UA, EMAIL=None), c(UA, USER_ID="u2", EMAIL="b@x.com")],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYMENTINFO": [PI, c(PI, USERID="u2")]}),
@@ -324,6 +336,46 @@ CASES = {
                                                    c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="USA", NATIONAL_ID="111111111")]}),
     "PAY203": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ZAF", NATIONAL_ID="111111111111"),
                                                    c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="ZAF", NATIONAL_ID="1111111111111")]}),
+    # Hand-written alpha-3 fixtures (Round 2): applies_when used to gate on the alpha-2
+    # literal "NO", which never matches a dictionary-typed BANK_COUNTRY/NATIONAL_ID_COUNTRY
+    # value (always alpha-3) and so never applied to any row. A regression back to the
+    # alpha-2 literal makes both of these fixtures fail (the dirty row no longer fires).
+    "PAY082": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="NOR", IBAN="DE89370400440532013000"),
+                                                        c(PI, BANK_COUNTRY="NOR", IBAN="NO9386011117947")]}),
+    "PAY191": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="NOR", NATIONAL_ID="ABC"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="NOR", NATIONAL_ID="01129955131")]}),
+    "PAY204": ("payroll_integration", {"PAYRESULT": [c(PR, NET_PAY="-50"), c(PR, NET_PAY="800")]}),
+    "PAY205": ("payroll_integration", {"PAYRESULT": [c(PR, GROSS_PAY="1000", NET_PAY="800", TAX_AMOUNT="150", DEDUCTIONS="100"),
+                                                      c(PR, GROSS_PAY="1000", NET_PAY="800", TAX_AMOUNT="150", DEDUCTIONS="50")]}),
+    # Dirty: two non-split (PERCENT/AMOUNT blank) records for the same employee/pay
+    # type/effective date. Clean: a legitimate split payment (both rows carry a
+    # PERCENT share) for the same employee/pay type/effective date — the applies_when
+    # filter removes these from the population entirely, so they must not be counted
+    # or flagged. A regression dropping applies_when makes total/affected (4, 4).
+    "PAY207": ("payroll_integration", {"PAYMENTINFO": [c(PI, PERCENT=None, AMOUNT=None),
+                                                        c(PI, PERCENT=None, AMOUNT=None),
+                                                        c(PI, PERCENT="50", AMOUNT=None),
+                                                        c(PI, PERCENT="50", AMOUNT=None)]}, (2, 2)),
+    "PAY216": ("payroll_integration", {"PAYMENTINFO": [c(PI, BIC="DEUTFRFF500", BANK_COUNTRY="DEU"),
+                                                        c(PI, BIC="DEUTDEFF500", BANK_COUNTRY="DEU")]}),
+    # Round 2 additions: PAY212/PAY215 had no hand-written fixtures (generic proof harness
+    # only); PAY217/PAY218/PAY219 are new rules. Each pair is designed so a wrong
+    # implementation fails the test (ruling #11).
+    "PAY212": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1"), c(PR, USERID="u9")],
+                                       "EMPJOBHIST": [{"USERID": "u1"}]}),
+    "PAY215": ("payroll_integration", {"PAYRESULT": [c(PR, DELTA_FLAG="X", PAY_DATE=_day(-10)),
+                                                      c(PR, USERID="u2", DELTA_FLAG="X", PAY_DATE=_day(10))]}),
+    "PAY217": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", PAY_DATE="20190101"),
+                                                      c(PR, USERID="u2", PAY_DATE="20250925")],
+                                       "EMPEMPLOYMENT": [c(EE, USERID="u1", START_DATE="20200101"),
+                                                         c(EE, USERID="u2", START_DATE="20200101")]}),
+    "PAY218": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", PAY_DATE=_day(0)),
+                                                      c(PR, USERID="u2", PAY_DATE=_day(0))],
+                                       "EMPEMPLOYMENT": [c(EE, USERID="u1", END_DATE=_day(200)),
+                                                         c(EE, USERID="u2", END_DATE=_day(30))]}),
+    "PAY219": ("payroll_integration", {"PAYRESULT": [c(PR, USERID="u1", COMPANY="ACME"),
+                                                      c(PR, USERID="u2", COMPANY="FAKE")],
+                                       "FOCOMPANY": [FC]}),
 }
 
 

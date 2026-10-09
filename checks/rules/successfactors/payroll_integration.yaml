@@ -2570,7 +2570,7 @@ rules:
     pattern: ^NO\d{2}[A-Z0-9]{11}$
     applies_when:
       PAYMENTINFO.BANK_COUNTRY:
-      - 'NO'
+      - NOR
     severity: high
     dimension: validity
     message: IBAN is not a valid NO IBAN (expected 15 characters, country prefix NO)
@@ -2765,7 +2765,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid AR account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected AR format.'
   - id: PAY091
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2783,7 +2783,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid AU account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected AU format.'
   - id: PAY092
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2801,7 +2801,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid BR account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected BR format.'
   - id: PAY093
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2819,7 +2819,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid CA account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CA format.'
   - id: PAY094
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2837,7 +2837,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid CL account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CL format.'
   - id: PAY095
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2855,7 +2855,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid CN account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CN format.'
   - id: PAY096
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2873,7 +2873,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid CO account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CO format.'
   - id: PAY097
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2891,7 +2891,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid GH account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected GH format.'
   - id: PAY098
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2909,7 +2909,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid HK account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected HK format.'
   - id: PAY099
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2927,7 +2927,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid ID account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected ID format.'
   - id: PAY100
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2945,7 +2945,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid IN account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected IN format.'
   - id: PAY101
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2963,7 +2963,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid JP account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected JP format.'
   - id: PAY102
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2981,7 +2981,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid KE account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected KE format.'
   - id: PAY103
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -2999,7 +2999,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid KR account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected KR format.'
   - id: PAY104
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3017,7 +3017,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid MX account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected MX format.'
   - id: PAY105
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3035,7 +3035,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid MY account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected MY format.'
   - id: PAY106
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3053,7 +3053,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid NG account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected NG format.'
   - id: PAY107
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3071,7 +3071,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid NZ account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected NZ format.'
   - id: PAY108
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3089,7 +3089,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid PE account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected PE format.'
   - id: PAY109
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3107,7 +3107,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid PH account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected PH format.'
   - id: PAY110
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3125,7 +3125,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid SG account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected SG format.'
   - id: PAY111
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3143,7 +3143,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid TH account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected TH format.'
   - id: PAY112
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3161,7 +3161,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid US account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected US format.'
   - id: PAY113
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3179,7 +3179,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid VN account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected VN format.'
   - id: PAY114
     field: PAYMENTINFO.ACCOUNT_NUMBER
     check_class: regex_check
@@ -3197,7 +3197,7 @@ rules:
     sap_impact: Bank transfer file is rejected by the bank.
     fix_map:
       __other__: Obtain the correct account number from the employee's bank details and correct it.
-    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number ''{PAYMENTINFO.ACCOUNT_NUMBER}'' is not a valid ZA account number.'
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected ZA format.'
   - id: PAY115
     field: PAYMENTINFO.ROUTING_NUMBER
     check_class: regex_check
@@ -3566,7 +3566,7 @@ rules:
     sap_impact: Pay for one employee may be deposited into another employee's account.
     fix_map:
       __other__: Confirm with both employees and HR whether the shared account is legitimate; correct the record that is wrong.
-    record_fix_template: Payment account {PAYMENTINFO.ACCOUNT_NUMBER} is shared by more than one employee.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment account is shared by more than one employee.'
   - id: PAY137
     field: PAYMENTINFO.IBAN
     check_class: uniqueness_check
@@ -3793,17 +3793,17 @@ rules:
     field: USERACCOUNT.HIRE_DATE
     check_class: cross_field_check
     grain: EMPEMPLOYMENT
-    fail_when: '`USERACCOUNT.HIRE_DATE` != `EMPEMPLOYMENT.START_DATE`'
+    fail_when: '`USERACCOUNT.HIRE_DATE` > `EMPEMPLOYMENT.START_DATE`'
     require_populated: true
     severity: low
     dimension: consistency
-    message: User account hire date differs from the employment start date
-    why_it_matters: The SuccessFactors user account hire date and the employment record's start date should agree; a mismatch usually means one of them was not updated after a rehire or correction.
+    message: User account hire date is later than the employment start date
+    why_it_matters: HIRE_DATE records the employee's original hire, while each EMPEMPLOYMENT record has its own START_DATE — a rehire legitimately opens a new, later EMPEMPLOYMENT segment without changing the original HIRE_DATE, so HIRE_DATE before (or equal to) START_DATE is expected and not an error. HIRE_DATE after a segment's START_DATE is impossible for a genuine original hire and means one of the two dates was mis-entered.
     rule_authority: best_practice
     sap_impact: Service-date-dependent calculations (seniority pay, leave accrual) may use the wrong start date.
     fix_map:
       __other__: Confirm the correct hire/start date with HR and align the two records.
-    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: user account hire date {USERACCOUNT.HIRE_DATE} differs from employment start date {EMPEMPLOYMENT.START_DATE}.'
+    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: user account hire date {USERACCOUNT.HIRE_DATE} is later than employment start date {EMPEMPLOYMENT.START_DATE}.'
   - id: PAY153
     field: USERACCOUNT.EMAIL
     check_class: null_check
@@ -3820,6 +3820,7 @@ rules:
   - id: PAY154
     field: USERACCOUNT.STATUS
     check_class: cross_field_check
+    grain: EMPEMPLOYMENT
     fail_when: (`USERACCOUNT.STATUS` == 'A') & (`EMPEMPLOYMENT.END_DATE`.notna()) & (`EMPEMPLOYMENT.END_DATE` < @today)
     severity: medium
     dimension: consistency
@@ -4376,7 +4377,7 @@ rules:
     pattern: ^\d{11}$
     applies_when:
       PERINFO.NATIONAL_ID_COUNTRY:
-      - 'NO'
+      - NOR
     severity: medium
     dimension: validity
     message: National ID is not a valid NO identifier (11-digit Fødselsnummer)
@@ -4584,7 +4585,7 @@ rules:
     check_class: cross_field_check
     fail_when: "`PAYRESULT.NET_PAY` < 0"
     require_populated: true
-    severity: critical
+    severity: high
     dimension: accuracy
     message: Net pay is negative — payroll result cannot be paid out as-is
     why_it_matters: >-
@@ -4609,14 +4610,19 @@ rules:
     check_class: cross_field_check
     fail_when: "abs(`PAYRESULT.GROSS_PAY` - (`PAYRESULT.NET_PAY` + `PAYRESULT.TAX_AMOUNT` + `PAYRESULT.DEDUCTIONS`)) > 0.01"
     require_populated: true
-    severity: critical
+    severity: medium
     dimension: accuracy
     message: Gross pay does not reconcile with net pay plus tax plus deductions
     why_it_matters: >-
-      GROSS_PAY must equal NET_PAY + TAX_AMOUNT + DEDUCTIONS. A mismatch means the
-      payroll result is internally inconsistent, which corrupts GL posting splits and
+      This check applies to the custom Employee Central Payroll results export
+      (payroll_export.*, not a standard SF OData entity) and assumes GROSS_PAY equals
+      NET_PAY + TAX_AMOUNT + DEDUCTIONS. That identity is this export's own convention,
+      not something SAP/SuccessFactors enforces structurally, so it has not been
+      verified against every customer's export layout (e.g. deductions reported net of
+      employer contributions). A mismatch means the payroll result is internally
+      inconsistent under this assumed identity, which corrupts GL posting splits and
       payslip totals and usually points to a missed component in the payroll export.
-    rule_authority: best_practice
+    rule_authority: customer_configured
     sap_impact: >-
       GL posting split between net pay, tax and deductions does not balance. Payslip
       totals are inconsistent and reconciliation fails.
@@ -4629,30 +4635,13 @@ rules:
       Payroll result {PAYRESULT.USERID}: GROSS_PAY does not reconcile with NET_PAY + TAX_AMOUNT +
       DEDUCTIONS. Re-run export via Payroll Control Center.
 
-  - id: PAY206
-    field: PAYMENTINFO.EFFECTIVE_DATE
-    check_class: freshness_check
-    max_age_hours: 26280
-    severity: medium
-    dimension: timeliness
-    message: Payment information has not been updated in over 3 years
-    why_it_matters: >-
-      Bank account details rarely stay static for multi-year periods without any
-      employee action. A payment record whose EFFECTIVE_DATE has not moved in 3+ years
-      may indicate the employee's banking details are stale or were never re-verified
-      after a bank/account change elsewhere.
-    rule_authority: best_practice
-    sap_impact: >-
-      Payments may be sent to a bank account the employee no longer controls, risking
-      misdirected funds and compliance exposure.
-    fix_map:
-      __other__: >-
-        Payment information for this account has not been updated since
-        {PAYMENTINFO.EFFECTIVE_DATE}. Ask the employee to re-verify bank details via
-        Employee Central Payment Information.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: EFFECTIVE_DATE {PAYMENTINFO.EFFECTIVE_DATE}
-      is over 3 years old. Ask employee to re-verify bank details.
+  # PAY206 deleted (Round 2): freshness_check is per-row only — it has no "latest
+  # record per group" mode — so a rule on PAYMENTINFO.EFFECTIVE_DATE flagged every
+  # historical (superseded) PAYMENTINFO record older than 3 years, not just stale
+  # current bank details, which is a different and much larger population than
+  # intended. The check type cannot express "current record per employee only", so
+  # per the fix-round-2 ruling this rule is deleted rather than shipped with that
+  # false-finding behaviour.
 
   - id: PAY207
     field: PAYMENTINFO.EFFECTIVE_DATE
@@ -4661,14 +4650,23 @@ rules:
     - PAYMENTINFO.USERID
     - PAYMENTINFO.PAY_TYPE
     - PAYMENTINFO.EFFECTIVE_DATE
+    applies_when:
+      PAYMENTINFO.PERCENT:
+        blank: true
+      PAYMENTINFO.AMOUNT:
+        blank: true
     severity: high
     dimension: consistency
-    message: More than one payment information record for the same employee, pay type and effective date
+    message: More than one full (non-split) payment information record for the same employee, pay type and effective date
     why_it_matters: >-
       PAYMENTINFO has no end date — each record is effective from its EFFECTIVE_DATE
-      until superseded. Two records for the same employee and pay type effective on the
-      same date create an ambiguous split that the payroll engine cannot resolve to a
-      single authoritative record for disbursement.
+      until superseded. A legitimate split payment has multiple PAYMENTINFO records
+      for the same employee/pay type/effective date, each carrying its own PERCENT or
+      AMOUNT share of net pay — that is by design (PaymentInformationDetailV3 supports
+      splitting pay across accounts) and must not be flagged. This check is scoped to
+      records with no PERCENT and no AMOUNT (i.e. not part of a split): two of those
+      for the same employee, pay type and effective date create a genuinely ambiguous
+      split that the payroll engine cannot resolve to a single authoritative record.
     rule_authority: best_practice
     sap_impact: >-
       Bank payment file may use the wrong account for this pay type, or the payment
@@ -4705,105 +4703,22 @@ rules:
       Payment record {PAYMENTINFO.USERID}: PERCENT {actual_value} is outside 0-100.
       Correct via Employee Central Payment Information.
 
-  - id: PAY209
-    field: PAYMENTINFO.BIC
-    check_class: regex_check
-    pattern: "^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$"
-    severity: medium
-    dimension: validity
-    message: BIC/SWIFT code is not a valid 8 or 11-character format
-    why_it_matters: >-
-      BIC identifies the receiving bank for international payments. A malformed BIC
-      causes the bank payment file to be rejected by the clearing network.
-    rule_authority: best_practice
-    sap_impact: >-
-      International bank payment file is rejected by the clearing network — employee
-      payment delayed.
-    fix_map:
-      __other__: >-
-        BIC '{invalid_value}' is not a valid 8 or 11-character SWIFT/BIC code. Correct
-        via Employee Central Payment Information.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: BIC '{actual_value}' is invalid format.
-      Correct via Employee Central Payment Information.
-
-  - id: PAY210
-    field: PAYMENTINFO.CURRENCY
-    check_class: domain_value_check
-    allowed_values: ["ZAR", "USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY", "CNY", "INR", "SGD", "AED", "SAR", "NGN", "KES", "BRL", "MXN", "NZD", "SEK", "NOK", "DKK", "PLN", "HKD", "VND", "PHP", "THB", "IDR", "MYR", "KRW", "EGP"]
-    severity: medium
-    dimension: validity
-    message: Payment currency is not a recognised ISO 4217 code
-    why_it_matters: >-
-      PAYMENTINFO.CURRENCY must be a real, actively-used ISO 4217 currency code, not
-      merely 3 uppercase letters. A syntactically valid but non-existent code (e.g. ZZZ)
-      passes format checks but is rejected by the bank's clearing system.
-    rule_authority: best_practice
-    sap_impact: >-
-      Bank payment file rejected — currency code is not recognised by the payment
-      clearing network.
-    valid_values_with_labels:
-      ZAR: South African Rand
-      USD: US Dollar
-      EUR: Euro
-      GBP: British Pound
-      AUD: Australian Dollar
-      CAD: Canadian Dollar
-      CHF: Swiss Franc
-      JPY: Japanese Yen
-      CNY: Chinese Yuan
-      INR: Indian Rupee
-      SGD: Singapore Dollar
-      AED: UAE Dirham
-      SAR: Saudi Riyal
-      NGN: Nigerian Naira
-      KES: Kenyan Shilling
-      BRL: Brazilian Real
-      MXN: Mexican Peso
-      NZD: New Zealand Dollar
-      SEK: Swedish Krona
-      NOK: Norwegian Krone
-      DKK: Danish Krone
-      PLN: Polish Zloty
-      HKD: Hong Kong Dollar
-      VND: Vietnamese Dong
-      PHP: Philippine Peso
-      THB: Thai Baht
-      IDR: Indonesian Rupiah
-      MYR: Malaysian Ringgit
-      KRW: South Korean Won
-      EGP: Egyptian Pound
-    fix_map:
-      __other__: >-
-        Currency '{invalid_value}' is not a recognised currency code for this payroll
-        footprint. Correct via Employee Central Payment Information, or contact Meridian
-        support if a legitimate new currency is needed.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: CURRENCY '{actual_value}' is not recognised.
-      Correct via Employee Central Payment Information.
-
-  - id: PAY211
-    field: PAYMENTINFO.PAYMENT_METHOD
-    check_class: cross_field_check
-    fail_when: "(`PAYMENTINFO.PAYMENT_METHOD`.str.strip().str.lower() == 'bank transfer') & `PAYMENTINFO.ACCOUNT_NUMBER`.isna() & `PAYMENTINFO.IBAN`.isna() & `PAYMENTINFO.BANK`.isna()"
-    severity: critical
-    dimension: completeness
-    message: Payment method is bank transfer but no account number, IBAN or bank is populated
-    why_it_matters: >-
-      A payment record marked as bank transfer must carry at least one account
-      identifier (account number or IBAN) and a receiving bank. Without any of these
-      the bank payment file has no destination for the funds.
-    rule_authority: best_practice
-    sap_impact: >-
-      Bank payment file has no destination account for this employee — payment cannot
-      be disbursed.
-    fix_map:
-      __blank__: >-
-        Payment method is bank transfer but ACCOUNT_NUMBER, IBAN and BANK are all blank.
-        Capture the employee's bank details via Employee Central Payment Information.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: bank transfer with no ACCOUNT_NUMBER, IBAN or
-      BANK. Capture bank details via Employee Central Payment Information.
+  # PAY209 deleted (Round 2): exact duplicate of PAY127 (same field, same BIC format
+  # regex) — every malformed BIC was reported twice. See PAY216 for the restored
+  # BIC-country cross-check.
+  # PAY210 deleted (Round 2): hard-coded 30-code "ISO 4217" allowlist omitted dozens
+  # of real active currencies (CZK, HUF, RON, TRY, ILS, QAR, KWD, BHD, OMR, PKR, BDT,
+  # TWD, CLP, COP, PEN, ARS, GHS, ZMW, BWP, NAD, MUR, ...), producing false findings on
+  # every valid currency outside the subset. No ISO 4217 code list exists elsewhere in
+  # this repo and pycountry is not an installed dependency, so per the fix-round-2
+  # ruling this rule is deleted rather than kept as a subset that falsely claims to be
+  # the full ISO 4217 standard.
+  # PAY211 deleted (Round 2): compared PAYMENTINFO.PAYMENT_METHOD against the English
+  # label 'bank transfer', but PAYMENT_METHOD is a picklist/foundation-object external
+  # code (PaymentInformationDetailV3.paymentMethod) on real data, not free text, so the
+  # comparison never fires. No rule or dictionary in this repo records the real picklist
+  # code, so the value could not be verified — deleted per the fix-round-2 ruling rather
+  # than shipped with an unverifiable literal.
 
   - id: PAY212
     field: PAYRESULT.USERID
@@ -4830,57 +4745,12 @@ rules:
       Payroll result {PAYRESULT.USERID}: no matching EMPJOBHIST record. Confirm employee
       exists in Employee Central and re-sync.
 
-  - id: PAY213
-    field: EMPJOBHIST.START_DATE
-    check_class: interval_check
-    group_by: [EMPJOBHIST.USERID]
-    start: EMPJOBHIST.START_DATE
-    end: EMPJOBHIST.END_DATE
-    open_ended: true
-    severity: high
-    dimension: consistency
-    message: Overlapping job history records for the same employee
-    why_it_matters: >-
-      EMPJOBHIST records for one employee must not overlap in time — each date must map
-      to exactly one job assignment. Overlapping records make it ambiguous which
-      cost centre, position and pay group applies on a given payroll run date.
-    rule_authority: best_practice
-    sap_impact: >-
-      Payroll cannot determine the authoritative cost centre/position for the overlap
-      period — GL allocation and pay grade lookups become ambiguous.
-    fix_map:
-      __other__: >-
-        Overlapping job history period for this employee. End-date the superseded
-        EMPJOBHIST record via Employee Central Job Information.
-    record_fix_template: >-
-      Employee {EMPJOBHIST.USERID}: overlapping job history periods. End-date the
-      superseded record via Employee Central Job Information.
-
-  - id: PAY214
-    field: PAYMENTINFO.ROUTING_NUMBER
-    check_class: regex_check
-    pattern: "^\\d{9}$"
-    applies_when:
-      PAYMENTINFO.BANK_COUNTRY:
-      - USA
-    severity: high
-    dimension: validity
-    message: Routing number is not a valid 9-digit US ABA routing number
-    why_it_matters: >-
-      US bank transfers require a 9-digit ABA routing number. A routing number of any
-      other shape causes the bank payment file to be rejected for a US-domiciled
-      account.
-    rule_authority: best_practice
-    sap_impact: >-
-      US bank payment file rejected — invalid ABA routing number. Employee payment
-      delayed.
-    fix_map:
-      __other__: >-
-        Routing number '{invalid_value}' is not a valid 9-digit US ABA routing number.
-        Correct via Employee Central Payment Information.
-    record_fix_template: >-
-      Payment record {PAYMENTINFO.USERID}: ROUTING_NUMBER '{actual_value}' is not a
-      valid 9-digit US routing number. Correct via Employee Central Payment Information.
+  # PAY213 deleted (Round 2): exact duplicate of EC202/EC378 in employee_central.yaml
+  # (overlapping EMPJOBHIST periods per employee) — the same overlap was reported three
+  # times under three different ids.
+  # PAY214 deleted (Round 2): exact duplicate of PAY125 (same field, same 9-digit ABA
+  # routing-number regex, same BANK_COUNTRY=USA scope) — every malformed US routing
+  # number was reported twice.
 
   - id: PAY215
     field: PAYRESULT.DELTA_FLAG
@@ -4895,7 +4765,7 @@ rules:
       result with a future PAY_DATE is contradictory — a correction cannot retroactively
       apply to a payment that has not happened yet, and usually indicates a data entry
       or export timing error.
-    rule_authority: best_practice
+    rule_authority: customer_configured
     sap_impact: >-
       GL posting misclassifies a future-dated payment as a retroactive correction,
       causing reconciliation discrepancies between payroll and GL.
@@ -4907,3 +4777,105 @@ rules:
     record_fix_template: >-
       Payroll result {PAYRESULT.USERID}: DELTA_FLAG is X with future PAY_DATE. Confirm
       correction validity via Payroll Control Center.
+
+  - id: PAY216
+    field: PAYMENTINFO.BIC
+    check_class: cross_field_check
+    fail_when: "`PAYMENTINFO.BIC`.str.slice(4, 6).map(@iso_alpha3) != `PAYMENTINFO.BANK_COUNTRY`"
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: BIC/SWIFT code's country does not match the bank country
+    why_it_matters: >-
+      Characters 5-6 of a BIC/SWIFT code are always the ISO 3166-1 alpha-2 country code
+      of the receiving bank's location. PAY127 only validates the BIC's format (an
+      11/8-character regex) and cannot catch a well-formed BIC issued for the wrong
+      country — e.g. a correctly shaped BIC with a German branch code on an account
+      recorded as BANK_COUNTRY=FRA. This rule restores that cross-check, dropped when
+      PAY209 (now deleted) silently duplicated PAY127's format check instead of keeping
+      the original country comparison.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file routes funds through a correspondent bank in the wrong country,
+      causing payment rejection or delay and incorrect cross-border payment fees.
+    fix_map:
+      __other__: >-
+        BIC '{PAYMENTINFO.BIC}' country code does not match bank country
+        '{PAYMENTINFO.BANK_COUNTRY}'. Correct the BIC via Employee Central Payment
+        Information.
+    record_fix_template: >-
+      Payment record {PAYMENTINFO.USERID}: BIC country does not match
+      PAYMENTINFO.BANK_COUNTRY. Correct via Employee Central Payment Information.
+
+  - id: PAY217
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: '`PAYRESULT.PAY_DATE` < `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Payroll result is dated before the employee's employment start
+    why_it_matters: >-
+      A payroll result for a pay date before the employee's EMPEMPLOYMENT.START_DATE
+      falls in a period when the employee was not yet employed, so it cannot be a
+      genuine payroll run for this employment record.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting books a payroll cost against a period with no active employment,
+      and the payroll result cannot be reconciled to EMPJOBHIST for cost allocation.
+    fix_map:
+      __other__: >-
+        PAY_DATE {actual_value} is before the employment start {EMPEMPLOYMENT.START_DATE}.
+        Confirm the correct employment record or correct the pay date.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE is before employment start
+      {EMPEMPLOYMENT.START_DATE}. Confirm the correct employment record.
+
+  - id: PAY218
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.PAY_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 90
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Payroll result is dated more than 90 days after employment ended
+    why_it_matters: >-
+      Final pay runs are normally processed within the termination period. A payroll
+      result dated months after EMPEMPLOYMENT.END_DATE is usually a misdated entry or a
+      payment that should go through a separate after-leaving payroll process.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll needs a reactivated payroll status to process a result this far after
+      termination, and GL allocation for the period is likely wrong.
+    fix_map:
+      __other__: >-
+        PAY_DATE {actual_value} is more than 90 days after employment ended
+        ({EMPEMPLOYMENT.END_DATE}). Confirm the payroll result is genuinely an
+        after-termination payment.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE is more than 90 days after employment
+      ended {EMPEMPLOYMENT.END_DATE}. Confirm after-termination payment validity.
+
+  - id: PAY219
+    field: PAYRESULT.COMPANY
+    check_class: exists_check
+    target_table: FOCOMPANY
+    target_fields: [EXTERNAL_CODE]
+    severity: high
+    dimension: consistency
+    message: Payroll result company code does not exist as a legal entity
+    why_it_matters: >-
+      PAYRESULT.COMPANY is the legal entity the payroll result was run under. A company
+      code with no matching FOCOMPANY (FOCompany foundation object) record is either a
+      configuration gap or a data error, and GL posting cannot resolve the company.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting cannot resolve the legal entity for this payroll result, blocking the
+      posting or routing it to the wrong company.
+    fix_map:
+      __other__: >-
+        Company code {actual_value} has no matching FOCompany record. Confirm the
+        company code or create the missing FOCompany foundation object record.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: company code does not exist as an FOCompany
+      record. Confirm the company code.

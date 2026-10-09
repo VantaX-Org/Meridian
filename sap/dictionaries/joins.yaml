@@ -258,7 +258,6 @@ edges:
   - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: EMPJOBHIST, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPWORKPERMIT, join: {USERID: USERID}, cardinality: many}
-  - {parent: EMPEMPLOYMENT, child: PAYMENTINFO, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPGLOBALASSIGNMENT, join: {USERID: USERID}, cardinality: one}
   - {parent: PERINFO, child: PEREMERGENCY, join: {PERSON_ID: PERSON_ID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}

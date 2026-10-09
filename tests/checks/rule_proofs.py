@@ -170,23 +170,30 @@ _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551
                       "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
-# a cross_field_check comparing an IBAN-prefix mapped through ``@iso_alpha3`` (an alpha-2 ->
-# alpha-3 country map, checks/types/cross_field_check.py) to a plain Country-FO field: neither
-# generic char probes nor the paired-column "@=" hint can produce a row where the mapped side
-# resolves to a real value (the map only has real alpha-2 keys) or one where it equals the other
-# side (different code spaces) — so without this, such a rule is unprovable (never_fails).
-_ISO_ALPHA3_MAP_BEFORE = re.compile(r"`([^`]+)`[^`]*\.map\(@iso_alpha3\)\s*(?:==|!=)\s*`([^`]+)`")
-_ISO_ALPHA3_MAP_AFTER = re.compile(r"`([^`]+)`\s*(?:==|!=)\s*`([^`]+)`[^`]*\.map\(@iso_alpha3\)")
+# a cross_field_check comparing a slice of a column (IBAN prefix at [0:2], or a BIC/SWIFT
+# country code at [4:6], etc.) mapped through ``@iso_alpha3`` (an alpha-2 -> alpha-3 country
+# map, checks/types/cross_field_check.py) to a plain Country-FO field: neither generic char
+# probes nor the paired-column "@=" hint can produce a row where the mapped side resolves to
+# a real value (the map only has real alpha-2 keys) or one where it equals the other side
+# (different code spaces) — so without this, such a rule is unprovable (never_fails). The
+# slice bounds are captured so the candidate places "GB" at the actual sliced position
+# (e.g. characters 4-6 of a BIC), not just the start of the string.
+_ISO_ALPHA3_MAP_BEFORE = re.compile(
+    r"`([^`]+)`(?:\.str\.slice\((\d+),\s*(\d+)\))?[^`]*\.map\(@iso_alpha3\)\s*(?:==|!=)\s*`([^`]+)`")
+_ISO_ALPHA3_MAP_AFTER = re.compile(
+    r"`([^`]+)`\s*(?:==|!=)\s*`([^`]+)`(?:\.str\.slice\((\d+),\s*(\d+)\))?[^`]*\.map\(@iso_alpha3\)")
 
 
-def _iso_alpha3_pair(expr: str) -> tuple[str, str] | None:
-    """(mapped_column, other_column), or None — see the comment above."""
+def _iso_alpha3_pair(expr: str) -> tuple[str, str, int, int] | None:
+    """(mapped_column, other_column, slice_start, slice_end), or None — see the comment above."""
     m = _ISO_ALPHA3_MAP_BEFORE.search(expr)
     if m:
-        return m.group(1), m.group(2)
+        start, end = m.group(2), m.group(3)
+        return m.group(1), m.group(4), int(start or 0), int(end) if end else int(start or 0) + 2
     m = _ISO_ALPHA3_MAP_AFTER.search(expr)
     if m:
-        return m.group(2), m.group(1)
+        start, end = m.group(3), m.group(4)
+        return m.group(2), m.group(1), int(start or 0), int(end) if end else int(start or 0) + 2
     return None
 
 
@@ -244,7 +251,9 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if iso_pair and c == iso_pair[0]:
-            vals.insert(0, "GB")  # a real iso_alpha3 key: slice(0, 2) of it maps to "GBR"
+            start, end = iso_pair[2], iso_pair[3]
+            # pad so the sliced region [start:end] is exactly "GB", a real iso_alpha3 key
+            vals.insert(0, "A" * start + "GB" + "A" * max(0, (end - start) - 2))
         elif iso_pair and c == iso_pair[1]:
             vals.insert(0, "GBR")  # the matching alpha-3 value: makes an equal (passing) pair
         if f"`{c}`" in expr:

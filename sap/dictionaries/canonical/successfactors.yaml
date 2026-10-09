@@ -210,26 +210,6 @@ tables:
       CURRENCY:     {source: payroll_export.currency, type: STRING, length: 5, verify: true}
       DELTA_FLAG:   {source: payroll_export.delta_flag, type: STRING, length: 1, verify: true}
 
-  PAYMENTINFO:
-    description: Payment information detail (PaymentInformationDetailV3 under PaymentInformationV3)
-    source: PaymentInformationV3, PaymentInformationDetailV3
-    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
-    fields:
-      USERID:         {source: PaymentInformationV3.worker, type: STRING, length: 100}
-      EFFECTIVE_DATE: {source: PaymentInformationV3.effectiveStartDate, type: DATE}
-      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, description: Sequence of the payment detail}
-      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment / regular / bonus / expenses}
-      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true, description: Bank transfer / cheque / cash}
-      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true}
-      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true, description: Bank (Bank foundation object)}
-      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
-      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
-      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC of the bank}
-      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Bank routing / branch code}
-      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
-      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true, description: Fixed amount paid to this account}
-      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true, description: Share of net pay paid to this account}
-
   TIMESHEET:
     description: Time recording (EmployeeTimeSheetEntry, EmployeeTime, TimeAccount)
     source: EmployeeTimeSheet, EmployeeTimeSheetEntry, EmployeeTime, TimeAccount
