@@ -8239,26 +8239,32 @@ rules:
     __blank__: Set the multiple-incumbents flag on the position.
   record_fix_template: Position {POSITION.CODE} is active but has no multiple-incumbents flag.
   id: EC440
-- field: EMPJOBHIST.EVENT_REASON
+- field: EMPJOBHIST.STATUS
   check_class: cross_field_check
   grain: EMPJOBHIST
-  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'T') & (`EMPEMPLOYMENT.END_DATE`.isna())
+  fail_when: "`EMPEMPLOYMENT.END_DATE`.isna() & ~`EMPEMPLOYMENT.STATUS`.isin(['T', 'R'])"
   applies_when:
-    EMPJOBHIST.STATUS: *id006
-  severity: low
+    EMPJOBHIST.STATUS:
+    - T
+    EMPJOBHIST.END_DATE:
+      open_ended: true
+  severity: medium
   dimension: consistency
-  message: Event reason that sets a terminated status has no last day worked
-  why_it_matters: An event reason that sets a terminated status (FOEventReason.emplStatus) should close out the
-    employment with a last day worked (EmpEmployment.endDate). A terminating EmpJob row is normally itself
-    open-ended (endDate 9999-12-31), so the last day worked is read from EmpEmployment, not EmpJobHistory, to
-    avoid a check that almost never fires. Re-expressed from the tenant-specific EVENT picklist label
-    "termination" to the tenant-independent EMPL_STATUS field, following the same pattern as EC170.
+  message: Employee's latest job record is a termination, but the employment is still open
+  why_it_matters: The latest (open-ended) job history record has status T, so the employee is terminated or has a
+    termination scheduled, yet EmpEmployment has neither an end date nor a terminated/retired status. The
+    termination was never carried through to the employment record, typically a future-dated termination
+    whose endDate was not set, or a termination row loaded without its EmpEmployment update. This is
+    distinct from EC258 (row status disagrees with the event reason; here status T may agree with it) and
+    from EC060 (employment already shows T/R without an end date; here the employment status is not T/R).
   rule_authority: best_practice
-  sap_impact: Tenure and last-day-worked calculations cannot determine when the employee actually left.
+  sap_impact: Final pay, leave pay-out and benefit termination are never triggered, and headcount reports keep
+    counting the employee after the termination takes effect.
   fix_map:
-    __other__: Set the employment end date, or correct the event reason.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} has event reason {EMPJOBHIST.EVENT_REASON}
-    (sets status {FOEVENTREASON.EMPL_STATUS}) but employment has no end date.'
+    __other__: Complete the termination so the employment carries its end date, or remove the termination record
+      if it was entered in error.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: job record from {EMPJOBHIST.START_DATE} has status {EMPJOBHIST.STATUS}
+    but employment has no end date (employment status {EMPEMPLOYMENT.STATUS}).'
   id: EC441
 - field: EMPEMPLOYMENT.PERSON_ID
   check_class: exists_check
@@ -8388,6 +8394,8 @@ rules:
 - id: EC449
   field: PERINFO.PERSON_ID
   check_class: exists_check
+  dedupe_on:
+  - PERINFO.PERSON_ID
   target_table: EMPEMPLOYMENT
   target_fields:
   - PERSON_ID
@@ -8409,6 +8417,7 @@ rules:
     a person whose active employments are all non-primary (or all missing the flag) has no employment that
     person-level integrations will pick up. Tenants that never turned on concurrent employment leave IS_PRIMARY
     null on every row, so the rule is gated to only run where IS_PRIMARY is actually populated somewhere.
+    The join fans out to one row per employment, so findings are deduped to one per person.
   rule_authority: best_practice
   sap_impact: Identity provisioning, the org chart and person-level reporting have nothing to anchor on for this
     person.

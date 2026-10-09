@@ -199,18 +199,17 @@ class Evaluation:
 
 def _dedupe_evaluation(df: pd.DataFrame, ev: "Evaluation", cols: list[str]) -> "Evaluation":
     """Collapse one finding per ``cols`` key (e.g. per employee) when a rule's grain
-    fans out across a child table (COMPINFO's many pay-component rows per EMPEMPLOYMENT):
-    keep the first row for each key, failing if any row for that key failed."""
-    key = df[cols].astype("string").fillna("").agg("|".join, axis=1)
-    fail_by_key = (ev.population & ev.failing).groupby(key).any()
-    pop_by_key = ev.population.groupby(key).any()
-    first = ~key.duplicated()
-    new_pop = pd.Series(False, index=df.index)
-    new_fail = pd.Series(False, index=df.index)
-    first_idx = key[first]
-    new_pop.loc[first] = first_idx.map(pop_by_key).fillna(False).to_numpy()
-    new_fail.loc[first] = first_idx.map(fail_by_key).fillna(False).to_numpy()
-    return Evaluation(new_pop, new_fail, ev.details, ev.invalid_values_field)
+    fans out across a child table (COMPINFO's many pay-component rows per EMPEMPLOYMENT).
+    New engine feature (rule key ``dedupe_on``, added with the SF employee_central
+    depth pack; EC444 and EC449 use it). Each key keeps one representative row: its
+    first failing row if any row failed, else its first in-scope row. So the failing
+    sample only ever shows rows that actually failed, never a passing sibling."""
+    key = df[cols].astype("string").fillna("").agg("|".join, axis=1).reset_index(drop=True)
+    rank = 2 - ev.failing.astype(int).to_numpy() - ev.population.astype(int).to_numpy()
+    rep = pd.Series(rank).groupby(key, sort=False).idxmin().to_numpy()  # positions
+    chosen_s = pd.Series(False, index=df.index)
+    chosen_s.iloc[rep] = True
+    return Evaluation(ev.population & chosen_s, ev.failing & chosen_s, ev.details, ev.invalid_values_field)
 
 
 class BaseCheck(ABC):

@@ -1,4 +1,4 @@
-"""Depth/enrichment/fixture contract for EC239-EC443: the SuccessFactors
+"""Depth/enrichment/fixture contract for EC239-EC449: the SuccessFactors
 employee_central rules added on top of the EC121-238 batch covered by
 tests/test_sf_ec_depth_rules.py. Same contract, same idioms, scoped to the
 newer id range so the two files never collide on id ranges or CASES ids."""
@@ -144,10 +144,13 @@ CASES = [
         "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
         "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_OK"], STATUS=["A"]),
      }, 1, ["EMPJOBHIST"]),
+    # EC441 (fix round 4): real termination rows carry STATUS 'T'. u1's latest row is T but
+    # the employment is still open (no end date, status A); u2's termination is complete.
     ("EC441", {
-        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"], STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["T", "A"]),
-        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], END_DATE=[None, None]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"], STATUS=["T", "T"],
+                            START_DATE=["20260101", "20250101"], END_DATE=["9999-12-31", "9999-12-31"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["A", "T"],
+                               END_DATE=[None, "20241231"]),
      }, 1, ["EMPJOBHIST"]),
     ("EC442", {
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p_missing", "p_ok"]),
@@ -330,7 +333,7 @@ CASES = [
     ("EC449", {"PERINFO": frame("PERINFO", PERSON_ID=["p1", "p2"]),
                "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p1", "p1", "p2"],
                                       USERID=["u1a", "u1b", "u2"], STATUS=["A", "A", "A"],
-                                      IS_PRIMARY=["false", "false", "true"])}, 2, ["PERINFO"]),
+                                      IS_PRIMARY=["false", "false", "true"])}, 1, ["PERINFO"]),
 ]
 
 
@@ -419,24 +422,32 @@ def test_empjob_hist_only_latest_row_evaluated_against_current_employment():
     assert fire("EC359", bad_tables) == 1
 
 
-def test_terminated_status_rules_do_not_depend_on_english_event_literal():
-    """C3: EC441 used to string-match EMPJOBHIST.EVENT against the English literal
-    'termination', but EVENT is a tenant-configured picklist (any non-English tenant
-    code is valid there) -- the old logic would silently miss a tenant that names its
-    events e.g. 'BAJA'. The fix pivots to FOEVENTREASON.EMPL_STATUS (A/U/P/S/T), which
-    is tenant-independent, and reads the last day worked from EMPEMPLOYMENT.END_DATE
-    (fix round 3, NEW-8) instead of EMPJOBHIST.END_DATE (a terminating EmpJob row is
-    itself normally open-ended). Prove the rule still fires on a non-English EVENT
-    value the old literal match would never have recognized.
-
-    (EC380/EC381, also covered by this test before fix round 3, were deleted as exact
-    strict subsets of EC258 -- see DELETED.)"""
+def test_ec441_fires_on_status_t_rows_and_is_disjoint_from_ec258_and_ec060():
+    """NEW-8 (fix round 4): EC441 is scoped to the real termination row (EMPJOBHIST.STATUS
+    'T', open-ended) and fires only while the employment is still open: no END_DATE and
+    EMPEMPLOYMENT.STATUS not T/R. The event reason agrees with the T status here, so EC258
+    (status vs event-reason mismatch) is silent, and the employment status is A, so EC060
+    (T/R employment without an end date) is silent: EC441 is the only rule that sees it."""
     tables = {
-        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["A"], EVENT=["BAJA"], EVENT_REASON=["ER3"]),
-        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER3"], EMPL_STATUS=["T"]),
-        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], END_DATE=[None]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["T"], EVENT_REASON=["TERM"],
+                            START_DATE=["20260101"], END_DATE=["9999-12-31"]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["TERM"], EMPL_STATUS=["T"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], END_DATE=[None]),
     }
     assert fire("EC441", tables) == 1
+    assert fire("EC258", tables) == 0
+    _, ec060 = run_rule(dict(BY_ID["EC060"]), TableFrames(tables, S4, module="employee_central"), {})
+    assert ec060 is None  # employment STATUS A: outside EC060's T/R population
+    # Old trigger (active row whose event reason sets T) is EC258's defect, not EC441's:
+    # the row is outside EC441's population (None = no rows in scope).
+    active = {**tables, "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["A"], EVENT_REASON=["TERM"],
+                                             START_DATE=["20260101"], END_DATE=["9999-12-31"])}
+    assert run_rule(dict(BY_ID["EC441"]), TableFrames(active, S4, module="employee_central"), {})[1] is None
+    assert fire("EC258", active) == 1
+    # Superseded T row (a later rehire closed it) is out of scope.
+    closed = {**tables, "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["T"], EVENT_REASON=["TERM"],
+                                             START_DATE=["20200101"], END_DATE=["2020-06-01"])}
+    assert run_rule(dict(BY_ID["EC441"]), TableFrames(closed, S4, module="employee_central"), {})[1] is None
 
 
 def test_job_history_continuous_gap_detected():
@@ -450,7 +461,8 @@ def test_job_history_continuous_gap_detected():
 
 def test_ec444_dedupes_one_finding_per_employee_despite_compinfo_fanout():
     """NEW-6: COMPINFO carries one row per pay component per employee (many-cardinality
-    join from EMPEMPLOYMENT), so without dedupe_on a single bad employee would raise one
+    join from EMPEMPLOYMENT), so without dedupe_on (new engine key added with this pack,
+    checks/base.py _dedupe_evaluation) a single bad employee would raise one
     finding per pay component instead of one. u1 has FTE<=0 and two positive pay
     components (should still be exactly 1 finding); u2 has FTE>0 so neither of its two
     pay components should fire."""
@@ -535,3 +547,80 @@ def test_ec359_376_excludes_superseded_rows_regardless_of_open_end_form():
                                  END_DATE=[closed_form, "99991231"], COMPANY=["Y", "X"]),
         }
         assert fire("EC359", tables) == 0, closed_form
+
+
+def test_dedupe_on_keeps_failing_row_per_key():
+    """dedupe_on (new engine key, checks/base.py _dedupe_evaluation) keeps one row per key.
+    When a key's first row passes and a later row fails, the kept row must be the failing
+    one, or the failing sample would show a passing sibling. Tested on the engine function
+    because COMPINFO.SALARY is masked in rule-level samples."""
+    from checks.base import Evaluation, _dedupe_evaluation
+    df = pd.DataFrame({"K": ["u1", "u1", "u2", "u2", "u3"]})
+    pop = pd.Series([True, True, True, True, False])
+    fail = pd.Series([False, True, False, False, False])
+    ev = _dedupe_evaluation(df, Evaluation(pop, fail), ["K"])
+    assert ev.failing.tolist() == [False, True, False, False, False]  # u1: the failing row, not row 0
+    assert ev.population.tolist() == [False, True, True, False, False]  # u2: first in-scope row only
+
+
+def test_dedupe_on_rule_level_counts_one_per_employee():
+    tables = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], FTE=[0.0]),
+        "COMPINFO": frame("COMPINFO", USERID=["u1", "u1"], SALARY=[0.0, 500.0]),
+    }
+    _, res = run_rule(dict(BY_ID["EC444"]), TableFrames(tables, S4, module="employee_central"), {})
+    assert (res.affected_count, res.total_count) == (1, 1)
+    assert len(res.details["sample_failing_records"]) == 1
+
+
+def test_ec449_one_finding_per_person():
+    """NEW-4/#5: a person with two non-primary active employments is one finding, not two."""
+    tables = {"PERINFO": frame("PERINFO", PERSON_ID=["p1"]),
+              "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p1", "p1"], USERID=["u1a", "u1b"],
+                                     STATUS=["A", "A"], IS_PRIMARY=["false", "false"])}
+    assert fire("EC449", tables) == 1
+
+
+# open_ended applies_when operator, unit-tested on checks.runner.apply_context directly.
+# '31.12.9999' is a supported DD.MM.YYYY form (_parse_dates), so it parses and is open.
+OPEN = ["9999-12-31", "9999-12-31T00:00:00", "9999-12-31T00:00:00Z", "99991231", "31.12.9999", None, "", "00000000"]
+CLOSED = ["2020-06-01", "20200601", "2020-06-01T00:00:00"]
+UNPARSEABLE = ["garbage", "9999-99-99", "12/31/99999"]
+
+
+def _open_rows(values, dtype=None):
+    from checks.runner import apply_context
+    df = pd.DataFrame({"T.END": pd.Series(values, dtype=dtype)})
+    return apply_context(df, {"T.END": {"open_ended": True}}).index.tolist()
+
+
+@pytest.mark.parametrize("dtype", [None, "object", "string"])
+def test_open_ended_string_forms(dtype):
+    vals = OPEN + CLOSED + UNPARSEABLE
+    assert _open_rows(vals, dtype) == list(range(len(OPEN)))
+
+
+def test_open_ended_unparseable_is_not_open():
+    assert _open_rows(UNPARSEABLE) == []
+
+
+def test_open_ended_python_date_and_datetime_objects():
+    from datetime import datetime
+    vals = [date(9999, 12, 31), datetime(9999, 12, 31), date(2020, 6, 1), datetime(2020, 6, 1), None]
+    assert _open_rows(vals, "object") == [0, 1, 4]
+
+
+@pytest.mark.parametrize("unit", ["s", "us"])
+def test_open_ended_datetime64(unit):
+    s = pd.Series(pd.to_datetime(["9999-12-31", "2020-06-01", None]).astype(f"datetime64[{unit}]")) \
+        if unit != "s" else pd.Series(["9999-12-31", "2020-06-01", None], dtype="datetime64[s]")
+    from checks.runner import apply_context
+    out = apply_context(pd.DataFrame({"T.END": s}), {"T.END": {"open_ended": True}})
+    assert out.index.tolist() == [0, 2]
+
+
+def test_open_ended_datetime64_ns_closed_dates():
+    from checks.runner import apply_context
+    s = pd.Series(pd.to_datetime(["2020-06-01", None]))  # datetime64[ns] cannot hold 9999
+    out = apply_context(pd.DataFrame({"T.END": s}), {"T.END": {"open_ended": True}})
+    assert out.index.tolist() == [1]

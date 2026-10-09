@@ -176,3 +176,38 @@ def test_domain_rules_carry_labels(module):
     for r in RULES[module]:
         if r["check_class"] == "domain_value_check" and int(re.sub(r"\D", "", r["id"])) > 43:
             assert r.get("allowed_values") and r.get("valid_values_with_labels"), r["id"]
+
+
+# SUCCESSIONCANDIDATE *_FLAG fields are BOOLEAN-typed in the dictionary, so the SF
+# connector lowercases them: a source 'Y' arrives as 'y', an Edm.Boolean as 'true'.
+# Every flag rule must treat 'Y'/'y'/'true'/'True' alike (and 'N'/'n'/'false').
+YES_FORMS, NO_FORMS = ["Y", "y", "true", "True"], ["N", "n", "false", "False"]
+SUC_FLAGS = {"SUC037": "EMERGENCY_SUCCESSOR_FLAG", "SUC038": "BACKUP_SUCCESSOR_FLAG", "SUC039": "MOBILITY_FLAG",
+             "SUC040": "DIVERSITY_CANDIDATE_FLAG", "SUC041": "ELIGIBLE_SUCCESSOR_FLAG"}
+
+
+@pytest.mark.parametrize("rid,flag", sorted(SUC_FLAGS.items()))
+def test_suc_flag_domain_accepts_y_and_lowercased_forms(rid, flag):
+    vals = YES_FORMS + NO_FORMS + ["X"]
+    sc = frame("SUCCESSIONCANDIDATE", NOMINEE_ID=[f"u{i}" for i in range(len(vals))],
+               POSITION_ID=["P1"] * len(vals), **{flag: vals})
+    assert affected(rid, {"SUCCESSIONCANDIDATE": sc}) == 1  # only 'X'
+
+
+@pytest.mark.parametrize("yes", YES_FORMS)
+def test_suc_y_gated_rules_fire_on_every_yes_form(yes):
+    sc = lambda **c: {"SUCCESSIONCANDIDATE": frame("SUCCESSIONCANDIDATE", **S2, **c)}  # noqa: E731
+    assert affected("SUC062", sc(EMERGENCY_SUCCESSOR_FLAG=[yes, "N"], READINESS=["READY_1_2_YEARS"] * 2)) == 1
+    assert affected("SUC063", {"SUCCESSIONCANDIDATE": frame(
+        "SUCCESSIONCANDIDATE", NOMINEE_ID=["u1", "u2"], POSITION_ID=["P1", "P1"],
+        EMERGENCY_SUCCESSOR_FLAG=[yes, yes], APPROVAL_STATUS=["APPROVED"] * 2)}) == 2
+    assert affected("SUC065", sc(APPROVAL_STATUS=["REJECTED"] * 2, EMERGENCY_SUCCESSOR_FLAG=["N", "N"],
+                                 BACKUP_SUCCESSOR_FLAG=[yes, "N"])) == 1
+    assert affected("SUC083", {**sc(EMERGENCY_SUCCESSOR_FLAG=[yes, "N"]),
+                               "EMPEMPLOYMENT": emp(["u1", "u2"], STATUS=["U", "U"])}) == 1
+
+
+@pytest.mark.parametrize("no", NO_FORMS)
+def test_suc072_fires_on_every_no_form(no):
+    assert affected("SUC072", {"SUCCESSIONCANDIDATE": frame(
+        "SUCCESSIONCANDIDATE", **S2, APPROVAL_STATUS=["APPROVED"] * 2, ELIGIBLE_SUCCESSOR_FLAG=[no, "Y"])}) == 1
