@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
 import { Button, Field } from "@/design";
+import { resolveNavHref } from "@/lib/nav";
+import type { Role } from "@/hooks/use-role";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -27,9 +29,11 @@ export default function SignInPage() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
+      const signedInUser = await login(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
-      router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
+      router.push(
+        next && next.startsWith("/") && !next.startsWith("//") ? next : resolveNavHref("/home/lead", signedInUser.role as Role),
+      );
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } } };
       setError(axiosErr.response?.data?.detail || "Login failed");

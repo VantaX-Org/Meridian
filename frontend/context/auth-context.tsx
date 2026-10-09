@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import apiClient from "@/lib/api/client";
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
   name: string;
@@ -17,7 +17,7 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   mustChangePassword: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   /** Rotate the signed-in user's password and clear the
    * `must_change_password` flag. Throws on failure. */
@@ -68,6 +68,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
     setUser(newUser);
     setMustChangePassword(Boolean(must_change_password));
+    return newUser as AuthUser;
   }, []);
 
   const logout = useCallback(() => {

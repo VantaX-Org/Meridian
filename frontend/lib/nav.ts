@@ -52,7 +52,7 @@ export interface NavItem {
   /** Extra words the command palette matches on. */
   keywords?: string;
   shortcut?: string;
-  /** Query-string pairs this item's href carries, for active-state matching. */
+  /** Key into the shell-counts response (`getShellCounts`) for this item's live badge count. */
   badgeKey?: "fix" | "inbox";
   /** Sub-pages collapsed under this item. */
   children?: readonly NavItem[];
@@ -86,6 +86,16 @@ export function homeHrefForRole(role: Role): string {
   if (role === "steward") return "/home/steward";
   if (role === "admin" || role === "manager") return "/home/lead";
   return "/home/basis";
+}
+
+/**
+ * A nav item's href, with `/home/*` resolved to the viewer's own persona
+ * page. Every surface that renders a nav href (Rail, the command palette,
+ * sign-in's post-login redirect) must call this instead of re-deriving the
+ * `/home/` check itself — that duplication is how the three surfaces drifted.
+ */
+export function resolveNavHref(href: string, role: Role): string {
+  return href.startsWith("/home/") ? homeHrefForRole(role) : href;
 }
 
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -123,14 +133,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
   {
     group: "Inbox",
-    anyOf: ["approve", "apply", "assign"],
+    anyOf: ["view"],
     items: [
       {
         href: "/inbox",
         label: "Inbox",
         icon: InboxIcon,
         licenceKey: "stewardship",
-        anyOf: ["approve", "apply", "assign"],
+        anyOf: ["view"],
         badgeKey: "inbox",
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
         children: [

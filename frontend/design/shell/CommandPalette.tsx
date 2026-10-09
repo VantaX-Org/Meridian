@@ -36,10 +36,8 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Search"
-        className="inline-flex h-8 w-8 xl:w-[220px] items-center justify-center xl:justify-between gap-2 rounded border px-2 xl:px-3 text-[13px] leading-[18px] transition-colors"
-        style={{ borderColor: "var(--m-line)", background: "var(--m-sheet-raised)", color: "var(--m-ink-3)", borderRadius: "var(--m-radius-control)" }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--m-sheet)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--m-sheet-raised)"; }}
+        className="m-motion-fade inline-flex h-8 w-8 xl:w-[220px] items-center justify-center xl:justify-between gap-2 rounded border px-2 xl:px-3 text-[13px] leading-[18px] bg-[var(--m-sheet-raised)] hover:bg-[var(--m-sheet)]"
+        style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)", borderRadius: "var(--m-radius-control)" }}
       >
         <span className="flex items-center gap-2">
           <Search size={16} />
