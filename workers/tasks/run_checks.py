@@ -594,6 +594,17 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                     with session.begin_nested():
                         n = reconcile(session, str(tenant_id), str(version_id), scope_of(metadata))
                     logger.info(f"remediation items reconciled for {version_id}: {n}")
+                    try:  # post-cleanup monitor: compare with the system's pinned baseline
+                        from api.services import monitor
+                        with session.begin_nested():
+                            summary = monitor.check(session, str(tenant_id), str(version_id), scope_of(metadata))
+                        if summary:
+                            logger.info(f"monitor for {version_id}: {summary['new_records']} regressed record(s), "
+                                        f"batch {summary['batch_id']}")
+                            with session.begin_nested():
+                                monitor.notify(session, str(tenant_id), str(version_id), summary)
+                    except Exception as e:
+                        logger.error(f"baseline monitor failed for {version_id}: {e}", exc_info=True)
             except Exception as e:
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 

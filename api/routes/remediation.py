@@ -7,12 +7,10 @@ Meridian never posts to SAP; see api/services/remediation.py.
 """
 
 import io
-import json
 import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -64,10 +62,7 @@ async def _items(db: AsyncSession, batch_id) -> list[dict]:
     return [{**(i := _row(r)), "auto_approvable": _auto_approvable(i)} for r in rows.fetchall()]
 
 
-def _auto_approvable(item: dict) -> bool:
-    """A self-verified high-confidence rule proposal a second person may accept in bulk."""
-    return item.get("proposal_source") == "rule" and item.get("confidence") == "high" \
-        and item.get("proposed_value") is not None
+_auto_approvable = remediation.auto_approvable
 
 
 async def _event(db, tenant, batch_id, action, request, item_ids=None, to_value=None):
@@ -112,49 +107,12 @@ async def create_batch(
     if len(rows) > MAX_ITEMS:
         raise HTTPException(status_code=400, detail=f"More than {MAX_ITEMS} records; narrow the filter.")
 
-    # current values come from each issue's latest extraction, read locally
-    from api.services.source_design import dictionary_for
-    from workers.dataset import load_dataset
     issues = [dict(r._mapping) for r in rows]
-    items = []
-    for vid in {i["last_seen_version"] for i in issues}:
-        group = [i for i in issues if i["last_seen_version"] == vid]
-        meta = (await db.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v"),
-                                 {"v": vid})).scalar() or {}
-        frames = None
-        if meta.get("dataset_path"):
-            dictionary = await db.run_sync(lambda s: dictionary_for(s, meta.get("system_id")))
-            fields = {i["field"] for i in group if i["field"]}
-            try:
-                # ponytail: loads the version's dataset per request; move to a worker task if batches get slow
-                frames = (await run_in_threadpool(load_dataset, meta["dataset_path"], dictionary,
-                                                  sorted({i["module"] for i in group}), fields))[0]
-            except Exception:
-                frames = None  # dataset gone: current values stay blank
-        items += remediation.build_items(group, frames)
-
-    batch_id = uuid.uuid4()
-    await db.execute(text("""
-        INSERT INTO remediation_batches (id, tenant_id, name, filter, created_by, created_by_label)
-        VALUES (:id, :tid, :name, CAST(:filter AS jsonb), CAST(:uid AS uuid), :label)
-    """), {"id": batch_id, "tid": str(tenant.id), "name": body.name, "filter": f.model_dump_json(),
-           "uid": current_user_id(request), "label": current_user_label()})
-    for chunk in range(0, len(items), 1000):
-        await db.execute(text("""
-            INSERT INTO remediation_items (tenant_id, batch_id, issue_id, scope, module, check_id, record_key,
-                                           grain, field, current_value, proposed_value, proposal_source, confidence)
-            SELECT :tid, :bid, (x->>'issue_id')::uuid, x->>'scope', x->>'module', x->>'check_id', x->>'record_key',
-                   x->>'grain', x->>'field', x->>'current_value', x->>'proposed_value', x->>'proposal_source',
-                   x->>'confidence'
-              FROM jsonb_array_elements(CAST(:items AS jsonb)) x
-            ON CONFLICT DO NOTHING
-        """), {"tid": str(tenant.id), "bid": batch_id,
-               "items": json.dumps(items[chunk:chunk + 1000], default=str)})
-    await _event(db, tenant, batch_id, "created", request)
+    uid, label = current_user_id(request), current_user_label()
+    out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), body.name, f.model_dump_json(),
+                                                              issues, uid, label))
     await db.commit()
-    return {"id": str(batch_id), "status": "draft", "items": len(items),
-            "with_proposal": sum(1 for i in items if i["proposed_value"] is not None),
-            "auto_approvable": sum(1 for i in items if _auto_approvable(i))}
+    return out
 
 
 @router.get("/batches")
@@ -174,6 +132,18 @@ async def list_batches(
          WHERE b.tenant_id = :tid GROUP BY b.id ORDER BY b.created_at DESC
     """), {"tid": str(tenant.id)})
     return {"items": [_row(r) for r in rows.fetchall()]}
+
+
+@router.get("/monitor")
+async def monitor_status(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("view")),
+):
+    """Per system with a pinned baseline: its newest run compared with that baseline."""
+    from api.services import monitor
+    await _rls(db, tenant)
+    return {"items": await db.run_sync(lambda s: monitor.status(s))}
 
 
 @router.get("/batches/{batch_id}")
@@ -272,6 +242,11 @@ async def approve_batch(
     uid = current_user_id(request)
     if b["created_by"] and uid == b["created_by"]:
         raise HTTPException(status_code=403, detail="The batch creator cannot approve it.")
+    if not b["created_by"] and uid and (await db.execute(text(
+            "SELECT 1 FROM remediation_events WHERE batch_id = :bid AND action = 'accepted' "
+            "AND user_id = CAST(:uid AS uuid) LIMIT 1"), {"bid": batch_id, "uid": uid})).first():
+        # a monitor-drafted batch has no human creator: whoever accepted its proposals is the first pair of eyes
+        raise HTTPException(status_code=403, detail="You accepted this batch's proposals; a second person must approve it.")
     await db.execute(text("UPDATE remediation_batches SET status = 'approved', approved_by = CAST(:uid AS uuid), "
                           "approved_by_label = :label, approved_at = now() WHERE id = :id"),
                      {"uid": uid, "label": current_user_label(), "id": batch_id})

@@ -74,7 +74,7 @@ function RulesBlock({ title, t, findingHref }: {
         <ul className="flex flex-col gap-1" aria-label={`Top failing rules, ${title}`}>
           {t.top_failing.slice(0, 5).map((f) => (
             <li key={f.check_id} className="flex items-center gap-3">
-              <Pill tone={AWARE_TONE[f.severity] ?? "neutral"}>{AWARE_LABEL[f.severity] ?? f.severity}</Pill>
+              <Pill tone={AWARE_TONE[f.severity ?? ""] ?? "neutral"}>{AWARE_LABEL[f.severity ?? ""] ?? f.severity ?? "Unrated"}</Pill>
               <Link className="flex-1 underline" href={findingHref(f.module, f.check_id) ?? "/analyse"}>
                 <Mono>{f.check_id}</Mono>
               </Link>

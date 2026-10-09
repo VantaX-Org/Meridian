@@ -72,6 +72,7 @@ const nextConfig: NextConfig = {
       { source: "/config-impact", destination: "/insights/impact", permanent: false },
       { source: "/reports", destination: "/insights", permanent: false },
       { source: "/cleaning", destination: "/fix", permanent: false },
+      { source: "/remediation", destination: "/fix", permanent: false },
       { source: "/settings/field-mapping", destination: "/admin/mappings", permanent: false },
       { source: "/settings/ai", destination: "/admin/ai", permanent: false },
       { source: "/settings/licence", destination: "/admin/licence", permanent: false },

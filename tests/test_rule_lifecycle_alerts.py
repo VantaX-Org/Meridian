@@ -74,7 +74,8 @@ def test_alert_none_without_trigger_and_carries_no_record_values():
     assert a["triggers"] == ["score_drop", "new_critical", "sla_breach"]
     assert a["new_critical_rules"] == ["AP001", "AP002"] and a["score_drop"] == 10.0
     assert set(a) == {"event", "mode", "triggers", "version_id", "score", "previous_score", "score_drop",
-                      "new_critical_count", "new_critical_rules", "sla_breaches", "links", "sent_at"}
+                      "new_critical_count", "new_critical_rules", "sla_breaches", "regressed_records", "links",
+                      "sent_at"}
     many = sn.build_alert("immediate", "v", None, None, {f"R{i:03}" for i in range(80)}, 0, 0, "https://app")
     assert many["triggers"] == ["new_critical"] and len(many["new_critical_rules"]) == sn.MAX_RULE_IDS
 

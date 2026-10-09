@@ -493,20 +493,23 @@ def sign(secret: str, timestamp: str, body: bytes) -> str:
 
 
 def build_alert(mode: str, version_id: str | None, score: float | None, previous_score: float | None,
-                new_critical: set[str], sla_breaches: int, drop_threshold: float, base_url: str) -> dict | None:
-    """The alert payload, or None when no trigger fires."""
+                new_critical: set[str], sla_breaches: int, drop_threshold: float, base_url: str,
+                regressed_records: int = 0) -> dict | None:
+    """The alert payload, or None when no trigger fires. ``regressed_records``: records failing
+    again since the system's pinned post-cleanup baseline (api/services/monitor.py)."""
     drop = round(previous_score - score, 1) if score is not None and previous_score is not None else None
     triggers = [t for t, hit in (("score_drop", drop is not None and drop > drop_threshold),
-                                 ("new_critical", bool(new_critical)), ("sla_breach", sla_breaches > 0)) if hit]
+                                 ("new_critical", bool(new_critical)), ("sla_breach", sla_breaches > 0),
+                                 ("baseline_regression", regressed_records > 0)) if hit]
     if not triggers:
         return None
     return {
         "event": "meridian.dq_alert", "mode": mode, "triggers": triggers,
         "version_id": version_id, "score": score, "previous_score": previous_score, "score_drop": drop,
         "new_critical_count": len(new_critical), "new_critical_rules": sorted(new_critical)[:MAX_RULE_IDS],
-        "sla_breaches": sla_breaches,
+        "sla_breaches": sla_breaches, "regressed_records": regressed_records,
         "links": {"findings": f"{base_url}/findings", "exceptions": f"{base_url}/exceptions",
-                  "versions": f"{base_url}/versions"},
+                  "versions": f"{base_url}/versions", "batches": f"{base_url}/workbench?tab=batches"},
         "sent_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -520,6 +523,9 @@ def alert_text(alert: dict) -> str:
                      + ", ".join(alert["new_critical_rules"][:10]))
     if alert["sla_breaches"]:
         parts.append(f"{alert['sla_breaches']} exception SLA breach(es)")
+    if alert.get("regressed_records"):
+        parts.append(f"{alert['regressed_records']} record(s) failing again since the post-cleanup baseline "
+                     f"({alert['links']['batches']})")
     return f"Meridian {alert['mode']} alert — " + "; ".join(parts) + f". {alert['links']['findings']}"
 
 
@@ -640,10 +646,18 @@ def send_alert_digest(period: str) -> dict:
                     SELECT count(*) FROM exceptions WHERE status NOT IN ('resolved', 'closed')
                        AND sla_deadline > :since AND sla_deadline <= now()
                 """), {"since": since}).scalar() or 0
+                # newest run per system in the window, compared with its post-cleanup baseline
+                regressed = session.execute(text("""
+                    SELECT COALESCE(SUM((m->>'new_records')::int), 0) FROM (
+                        SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) metadata->'monitor' AS m
+                          FROM analysis_versions WHERE status IN ('complete', 'agents_complete') AND run_at >= :since
+                         ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC) x
+                """), {"since": since}).scalar() or 0
                 alert = build_alert(period, str(cur[0]) if fresh else None,
                                     _overall(cur[2]) if fresh else None,
                                     _overall(base[2]) if fresh and base else None,
-                                    new, int(sla), _drop_threshold(session, tid), base_url)
+                                    new, int(sla), _drop_threshold(session, tid), base_url,
+                                    regressed_records=int(regressed))
                 for ch in channels if alert else []:
                     sent += deliver(ch, alert)
         except Exception as e:

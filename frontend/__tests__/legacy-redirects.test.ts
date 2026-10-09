@@ -59,6 +59,7 @@ const EXPECTED: Record<string, string> = {
   "/config-impact": "/insights/impact",
   "/reports": "/insights",
   "/cleaning": "/fix",
+  "/remediation": "/fix",
   "/settings/field-mapping": "/admin/mappings",
   "/settings/ai": "/admin/ai",
   "/settings/licence": "/admin/licence",
