@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
-import { BatchesTab } from "../batches-tab";
+import { BatchesTab, compareHref } from "../batches-tab";
 import * as remediationApi from "@/lib/api/remediation";
 import type { BatchDetail, BatchSummary, MonitorItem } from "@/lib/api/remediation";
 
@@ -147,5 +147,29 @@ describe("BatchesTab", () => {
     const rows = await screen.findAllByRole("row");
     expect(rows[1]).toHaveTextContent("Alpha batch");
     expect(rows[2]).toHaveTextContent("Zebra batch");
+  });
+});
+
+describe("compareHref", () => {
+  const monitor = [{ scope: "sys-1", system_name: "ECC Prod", baseline: { id: "v0", run_at: "t", dqs: 70 }, latest: { id: "v9", run_at: "t", dqs: 75 }, monitor: null }];
+  it("uses the batch's run as v1 and the latest monitor run as v2, with the module filter", () => {
+    const b = batch({ status: "exported", filter: { version_id: "v2", module: "material_master", scope: "sys-1" } });
+    expect(compareHref(b, monitor)).toBe("/runs/v9/vs/v2?module=material_master");
+  });
+  it("falls back to the baseline and returns null when nothing ran since", () => {
+    const b = batch({ status: "exported", filter: { version_id: null, module: null, scope: "sys-1" } });
+    expect(compareHref(b, monitor)).toBe("/runs/v9/vs/v0");
+    expect(compareHref(batch({ status: "exported", filter: { version_id: "v9", scope: "sys-1" } }), monitor)).toBeNull();
+    expect(compareHref(batch({ status: "exported", filter: { scope: "sys-2" } }), monitor)).toBeNull();
+    expect(compareHref(batch({ status: "draft", filter: { scope: "sys-1" } }), monitor)).toBeNull();
+  });
+});
+
+describe("Before vs after link", () => {
+  it("renders the link for an exported batch with a newer run", async () => {
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({ items: [batch({ id: "b1", status: "exported", filter: { version_id: "v2", scope: "sys-1" } })] });
+    vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [{ scope: "sys-1", system_name: "ECC Prod", baseline: { id: "v0", run_at: "t", dqs: 70 }, latest: { id: "v9", run_at: "t", dqs: 75 }, monitor: null }] });
+    renderWithQuery(<BatchesTab />);
+    await waitFor(() => expect(screen.getAllByRole("link", { name: "Before vs after" })[0]).toHaveAttribute("href", "/runs/v9/vs/v2"));
   });
 });
