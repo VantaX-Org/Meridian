@@ -36,6 +36,7 @@ const system: SAPSystem = {
   id: "sys-1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
   base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true,
   created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", last_sync_at: null, last_sync_status: null,
+  health_status: "healthy", health_message: null,
 };
 
 const newer = version({ id: "v2", label: "Oct 8 upload", dqs_summary: { material_master: dqs(74.8) } });
