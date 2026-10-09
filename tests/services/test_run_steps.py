@@ -12,6 +12,26 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _migrated_schema():
+    """Run migrations before this module's tests insert into `tenants` etc.
+
+    Without this, alphabetical collection can run this file before any
+    tests/test_*_pg.py module has migrated the test database, and every
+    insert fails with `UndefinedTable`. Same approach as
+    tests/test_exception_rules_pg.py's `engines` fixture.
+    """
+    import subprocess
+
+    url = os.environ["MERIDIAN_TEST_DB_URL"]
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    r = subprocess.run(
+        ["alembic", "upgrade", "head"], cwd=root, capture_output=True, text=True,
+        env={**os.environ, "DATABASE_URL_MIGRATE": url, "PYTHONPATH": root},
+    )
+    assert r.returncode == 0, r.stderr
+
+
 @pytest.fixture
 def tenant_and_version():
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
