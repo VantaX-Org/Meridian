@@ -36,3 +36,21 @@ def test_extract_target_passes_from_date_to_successfactors_connector():
     default_target = ExtractionTarget(source="EmpEmployment", fields=["userId"])
     mgr._extract_target(FakeConnector(), "successfactors", default_target, max_rows=0)
     assert calls == [None]
+
+
+def test_extract_target_does_not_pass_from_date_for_odata_v4_systems():
+    """s4hana_cloud and btp are OData V4 and have no fromDate param; from_date is
+    SF-only (OData V2). Prove _extract_target never forwards it for those two
+    system types, even when the target sets one (a connector that does not accept
+    from_date would TypeError if it were passed)."""
+
+    class FakeODataV4Connector:
+        def read_entity_set(self, source, select=None, filter_expr=None, top=0):
+            return __import__("pandas").DataFrame()
+
+    mgr = ConnectivityManager.__new__(ConnectivityManager)
+    target = ExtractionTarget(source="EmpJob", fields=["userId"], from_date="1900-01-01")
+
+    for system_type in ("s4hana_cloud", "btp"):
+        df = mgr._extract_target(FakeODataV4Connector(), system_type, target, max_rows=0)
+        assert df is not None

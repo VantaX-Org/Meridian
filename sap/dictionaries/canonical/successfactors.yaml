@@ -122,6 +122,11 @@ tables:
   PERADDRESS:
     description: Home address (default country format)
     source: PerAddressDEFLT
+    # Record-key migration (added START_DATE alongside PERSON_ID/ADDRESS_TYPE): this is a
+    # legitimate fix, not a revert candidate -- addresses are effective-dated in SF and the
+    # 2-part key collapsed distinct historical rows. Any persisted remediation/finding state
+    # keyed on the old 2-part failing_record_keys shape will not match after this change and
+    # needs a migration or re-run; it is not auto-migrated here.
     keys: [PERSON_ID, ADDRESS_TYPE, START_DATE]
     fields:
       PERSON_ID:     {source: PerAddressDEFLT.personIdExternal, type: STRING, length: 100}

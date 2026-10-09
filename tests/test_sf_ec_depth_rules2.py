@@ -42,8 +42,8 @@ def test_new_ids_unique_and_contiguous():
     nums = [int(r["id"][2:]) for r in NEW]
     assert len(nums) == len(set(nums))
     assert min(nums) == 239
-    assert max(nums) == 443
-    assert len(NEW) == 199
+    assert max(nums) == 449
+    assert len(NEW) == 203
 
 
 def test_target_tables_exist_in_dictionary():
@@ -101,10 +101,18 @@ CASES = [
         START_DATE=[(date.today() + timedelta(days=400)).strftime("%Y%m%d"),
                     (date.today() + timedelta(days=5)).strftime("%Y%m%d")])}, 1, ["EMPJOBHIST"]),
     ("EC378", {"EMPJOBHIST": frame("EMPJOBHIST", SEQ_NUMBER=[-1, 1])}, 1, ["EMPJOBHIST"]),
-    ("EC380", {"EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T", "T"], EVENT=[None, "termination"])}, 1, ["EMPJOBHIST"]),
-    ("EC381", {"EMPJOBHIST": frame("EMPJOBHIST", EVENT=["hire", "hire"], STATUS=["T", "A"])}, 1, ["EMPJOBHIST"]),
-    ("EC382", {"EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u1", "u2"],
-        EVENT=["hire", "hire", "hire"])}, 2, ["EMPJOBHIST"]),
+    ("EC380", {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T", "T"], EVENT_REASON=["ER_BAD", "ER_OK"]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["A", "T"]),
+     }, 1, ["EMPJOBHIST"]),
+    ("EC381", {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["A", "A"]),
+     }, 1, ["EMPJOBHIST"]),
+    # EC382 removed: its "more than one hire event" semantics required a tenant-specific
+    # EVENT=='hire' literal match with no safe FOEVENTREASON.EMPL_STATUS equivalent (any
+    # status-'A'-setting event reason also fires on promotions/transfers, not just hires),
+    # and no check_class here supports groupby/"first row per employee" logic.
     ("EC385", {"EMPJOBHIST": frame("EMPJOBHIST", COUNTRY_OF_COMPANY=["usa", "USA"])}, 1, ["EMPJOBHIST"]),
     ("EC386", {
         "EMPJOBHIST": frame("EMPJOBHIST", EVENT=["bogus_event", "hire"]),
@@ -131,8 +139,10 @@ CASES = [
         "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"]),
         "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_OK"], STATUS=["A"]),
      }, 1, ["EMPJOBHIST"]),
-    ("EC441", {"EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"],
-        EVENT=["termination", "hire"], END_DATE=[None, None])}, 1, ["EMPJOBHIST"]),
+    ("EC441", {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"], EVENT_REASON=["ER_BAD", "ER_OK"], END_DATE=[None, None]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER_BAD", "ER_OK"], EMPL_STATUS=["T", "A"]),
+     }, 1, ["EMPJOBHIST"]),
     ("EC442", {
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p_missing", "p_ok"]),
         "PERINFO": frame("PERINFO", PERSON_ID=["p_ok"]),
@@ -175,15 +185,17 @@ CASES = [
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["T", "A"])}, 1, ["EMPEMPLOYMENT"]),
     ("EC391", {"USERACCOUNT": frame("USERACCOUNT", USER_ID=["u1", "u2"], STATUS=["I", "A"]),
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["A", "A"])}, 1, ["EMPEMPLOYMENT"]),
-    ("EC392", {"USERACCOUNT": frame("USERACCOUNT", EMP_ID=["other", "u2"], USER_ID=["u1", "u2"])}, 1, ["USERACCOUNT"]),
+    # EC392 removed: asserted USERACCOUNT.EMP_ID == USERACCOUNT.USER_ID, a false domain
+    # assumption (empId and userId are distinct SF identifier domains); no tenant-convention
+    # flag mechanism exists in checks/ to demote it instead, so it was deleted per I5.
     ("EC398", {"USERACCOUNT": frame("USERACCOUNT",
         USERNAME=["jdoe", "jdoe@x.com"], EMAIL=["jdoe@x.com", "jdoe@x.com"])}, 1, ["USERACCOUNT"]),
     ("EC399", {"USERACCOUNT": frame("USERACCOUNT", FIRST_NAME=["Smith", "John"], LAST_NAME=["Smith", "Doe"])}, 1, ["USERACCOUNT"]),
     ("EC432", {"USERACCOUNT": frame("USERACCOUNT", STATUS=["X", "A"])}, 1, ["USERACCOUNT"]),
-    ("EC443", {
-        "USERACCOUNT": frame("USERACCOUNT", EMP_ID=["p_missing", "p_ok"]),
-        "PERINFO": frame("PERINFO", PERSON_ID=["p_ok"]),
-     }, 1, ["USERACCOUNT"]),
+    # EC443 removed: same empId/personId domain-mismatch issue as EC392 (USERACCOUNT.EMP_ID
+    # checked against PERINFO.PERSON_ID, two distinct SF identifier domains); deleted per I5
+    # for the same reason, with EC442 (the legitimately-fine personIdExternal-domain sibling)
+    # left untouched.
 
     # POSITION ------------------------------------------------------------
     ("EC298", {"POSITION": frame("POSITION", CODE=[None, "P2"])}, 1, ["POSITION"]),
@@ -294,6 +306,25 @@ CASES = [
      }, 1, ["PERADDRESS"]),
     ("EC426", {"PERADDRESS": frame("PERADDRESS", ADDRESS_TYPE=[None, "home"])}, 1, ["PERADDRESS"]),
     ("EC427", {"PERADDRESS": frame("PERADDRESS", COUNTRY=["USA", "USA"], STATE=[None, "NY"])}, 1, ["PERADDRESS"]),
+    ("EC443", {"EMPEMPLOYMENT": frame("EMPEMPLOYMENT", STATUS=["A", "A"],
+                                      LAST_MODIFIED=["20200101", "20260901"])}, 1, ["EMPEMPLOYMENT"]),
+    ("EC444", {"EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], FTE=[0.0, 1.0]),
+               "COMPINFO": frame("COMPINFO", USERID=["u1", "u2"], SALARY=[500.0, 500.0])}, 1, ["COMPINFO"]),
+    ("EC445", {"PAYMENTINFO": frame("PAYMENTINFO", USERID=["u1", "u2"], AMOUNT=[100.0, 100.0],
+                                    PERCENT=[50.0, None])}, 1, ["PAYMENTINFO"]),
+    ("EC446", {"PERINFO": frame("PERINFO", PERSON_ID=["p1", "p2"]),
+               "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p1", "p2"], USERID=["u1", "u2"],
+                                      STATUS=["A", "A"]),
+               "PERPHONE": frame("PERPHONE", PERSON_ID=["p2"], IS_PRIMARY=["true"])}, 1,
+     ["PERINFO", "EMPEMPLOYMENT"]),
+    ("EC447", {"PEREMERGENCY": frame("PEREMERGENCY", PERSON_ID=["p1", "p1", "p2"],
+                                     NAME=["A", "B", "C"], PRIMARY_FLAG=["Y", "Y", "Y"])}, 2, ["PEREMERGENCY"]),
+    ("EC448", {"PERINFO": frame("PERINFO", PERSON_ID=["p1", "p2", "p3"], NATIONAL_ID=["123", "123", "456"],
+                                NATIONAL_ID_COUNTRY=["ZAF", "ZAF", "ZAF"])}, 2, ["PERINFO"]),
+    ("EC449", {"PERINFO": frame("PERINFO", PERSON_ID=["p1", "p2"]),
+               "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p1", "p1", "p2"],
+                                      USERID=["u1a", "u1b", "u2"], STATUS=["A", "A", "A"],
+                                      IS_PRIMARY=["false", "false", "true"])}, 2, ["PERINFO"]),
 ]
 
 
@@ -341,7 +372,8 @@ def test_empjob_hist_grain_pin_prevents_cross_employee_false_positive():
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["A", "A"],
             POSITION=["P1", "P1"], COMPANY=["C1", "C2"]),
         "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"], POSITION=["P1", "P1"],
-            COMPANY=["C1", "C2"], START_DATE=["20200101", "20200101"]),
+            COMPANY=["C1", "C2"], START_DATE=["20200101", "20200101"],
+            END_DATE=["99991231", "99991231"]),
         "POSITION": frame("POSITION", CODE=["P1"]),
     }
     assert fire("EC359", tables) == 0
@@ -352,6 +384,60 @@ def test_empjob_hist_grain_pin_prevents_cross_employee_false_positive():
     _, res = run_rule(rule_no_grain, frames_obj, {})
     assert res is not None and res.affected_count == 1, \
         "expected fixture to reproduce the old cross-employee false positive when the grain pin is removed"
+
+
+def test_empjob_hist_only_latest_row_evaluated_against_current_employment():
+    """EC359-376 compare EMPEMPLOYMENT (current) to EMPJOBHIST (historical rows).
+    Their text promises comparison against the *latest* record, so a superseded
+    history row (a real past END_DATE) must not fire even if it would mismatch;
+    only the open-ended row (END_DATE == '99991231') is in scope."""
+    tables = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], COMPANY=["C1"]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u1"],
+            COMPANY=["C2", "C1"],
+            START_DATE=["20200101", "20210101"],
+            END_DATE=["20201231", "99991231"]),
+    }
+    # The superseded row (COMPANY=C2, END_DATE in the past) mismatches EMPEMPLOYMENT.COMPANY,
+    # but must be excluded by applies_when; only the open-ended row (COMPANY=C1, matches) counts.
+    assert fire("EC359", tables) == 0
+
+    bad_tables = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], COMPANY=["C1"]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u1"],
+            COMPANY=["C1", "C9"],
+            START_DATE=["20200101", "20210101"],
+            END_DATE=["20201231", "99991231"]),
+    }
+    # Now the open-ended row (COMPANY=C9) mismatches; it must be the one that fires.
+    assert fire("EC359", bad_tables) == 1
+
+
+def test_terminated_status_rules_do_not_depend_on_english_event_literal():
+    """C3: EC380/381/441 used to string-match EMPJOBHIST.EVENT against the English
+    literals 'hire'/'termination', but EVENT is a tenant-configured picklist (any
+    non-English tenant code is valid there) -- the old logic would silently miss a
+    tenant that names its events e.g. 'ALTA'/'BAJA'. The fix pivots to
+    FOEVENTREASON.EMPL_STATUS (A/U/P/S/T), which is tenant-independent. Prove each
+    rule still fires correctly when EVENT holds a non-English value the old
+    literal match would never have recognized."""
+    tables = {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T"], EVENT=["BAJA"], EVENT_REASON=["ER1"]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER1"], EMPL_STATUS=["A"]),
+    }
+    assert fire("EC380", tables) == 1
+
+    tables = {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["T"], EVENT=["ALTA"], EVENT_REASON=["ER2"]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER2"], EMPL_STATUS=["A"]),
+    }
+    assert fire("EC381", tables) == 1
+
+    tables = {
+        "EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A"], EVENT=["BAJA"], EVENT_REASON=["ER3"], END_DATE=[None]),
+        "FOEVENTREASON": frame("FOEVENTREASON", EXTERNAL_CODE=["ER3"], EMPL_STATUS=["T"]),
+    }
+    assert fire("EC441", tables) == 1
 
 
 def test_job_history_continuous_gap_detected():

@@ -407,6 +407,15 @@ def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     # no longer collapse into one candidate; a large block of such look-alikes can crowd the
     # front of `passing` and push the one genuinely-distinct good record past the [:600] cap
     # below (PS070). Dedup on the non-key fields first so the cap sees distinct candidates.
+    # Two known ceilings in this dedup (tracked, not fixed -- no behaviour change needed
+    # while every shipped rule's pass/fail distinction lives in a non-whole-key column):
+    #   1. The dedup signature excludes whole-key columns entirely, so two candidates that
+    #      differ only in a whole-key value collapse to one. If a future rule's pass/fail
+    #      distinction depends on a whole-key column that isn't in its own field/fields, the
+    #      good candidate can be dropped here.
+    #   2. `whole_keys` only recognizes single-column keys (`dictionary.keys(t) == (k,)`);
+    #      composite-key tables are never added to it, so a composite-key table can hit the
+    #      original look-alike-collision class this block exists to prevent.
     seen: set = set()
     passing = [i for i in passing
                if (sig := tuple(sorted((c, v) for c, v in values[i].items() if c not in whole_keys)))

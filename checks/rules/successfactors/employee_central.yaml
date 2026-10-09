@@ -5360,7 +5360,7 @@ rules:
   id: EC259
 - field: EMPJOBHIST.FTE
   check_class: cross_field_check
-  fail_when: '`EMPJOBHIST.FTE` <= 0'
+  fail_when: '`EMPJOBHIST.FTE`.notna() & (`EMPJOBHIST.FTE` <= 0)'
   applies_when:
     EMPJOBHIST.STATUS: *id002
   severity: high
@@ -5376,7 +5376,7 @@ rules:
   id: EC260
 - field: EMPJOBHIST.FTE
   check_class: cross_field_check
-  fail_when: '`EMPJOBHIST.FTE` > 1'
+  fail_when: '`EMPJOBHIST.FTE`.notna() & (`EMPJOBHIST.FTE` > 1)'
   applies_when:
     EMPJOBHIST.STATUS: *id002
   severity: medium
@@ -5393,7 +5393,8 @@ rules:
   id: EC261
 - field: EMPJOBHIST.STANDARD_HOURS
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.STANDARD_HOURS` <= 0) | (`EMPJOBHIST.STANDARD_HOURS` > 168)
+  fail_when: '`EMPJOBHIST.STANDARD_HOURS`.notna() & ((`EMPJOBHIST.STANDARD_HOURS` <= 0) | (`EMPJOBHIST.STANDARD_HOURS`
+    > 168))'
   applies_when:
     EMPJOBHIST.STATUS: *id002
   severity: medium
@@ -5408,7 +5409,7 @@ rules:
   id: EC262
 - field: EMPJOBHIST.IS_FULLTIME
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.IS_FULLTIME`.str.lower() == 'true') & (`EMPJOBHIST.FTE` < 1)
+  fail_when: (`EMPJOBHIST.IS_FULLTIME`.str.lower() == 'true') & `EMPJOBHIST.FTE`.notna() & (`EMPJOBHIST.FTE` < 1)
   severity: medium
   dimension: consistency
   message: Job history record is flagged full-time but FTE is below 1.0
@@ -5428,7 +5429,7 @@ rules:
   id: EC263
 - field: EMPJOBHIST.IS_FULLTIME
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.IS_FULLTIME`.str.lower() == 'false') & (`EMPJOBHIST.FTE` >= 1)
+  fail_when: (`EMPJOBHIST.IS_FULLTIME`.str.lower() == 'false') & `EMPJOBHIST.FTE`.notna() & (`EMPJOBHIST.FTE` >= 1)
   severity: medium
   dimension: consistency
   message: Job history record is flagged part-time but FTE is 1.0 or more
@@ -6897,6 +6898,8 @@ rules:
     - U
     - P
     - S
+    EMPJOBHIST.END_DATE:
+    - '99991231'
   severity: low
   dimension: consistency
   message: Current employment legal entity does not match the latest job history record
@@ -6916,6 +6919,8 @@ rules:
     != `EMPEMPLOYMENT.BUSINESS_UNIT`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6935,6 +6940,8 @@ rules:
   fail_when: '`EMPJOBHIST.DIVISION`.notna() & `EMPEMPLOYMENT.DIVISION`.notna() & (`EMPJOBHIST.DIVISION` != `EMPEMPLOYMENT.DIVISION`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6954,6 +6961,8 @@ rules:
     `EMPEMPLOYMENT.DEPARTMENT`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6972,6 +6981,8 @@ rules:
   fail_when: '`EMPJOBHIST.LOCATION`.notna() & `EMPEMPLOYMENT.LOCATION`.notna() & (`EMPJOBHIST.LOCATION` != `EMPEMPLOYMENT.LOCATION`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -6991,6 +7002,8 @@ rules:
     != `EMPEMPLOYMENT.COST_CENTER`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7009,6 +7022,8 @@ rules:
   fail_when: '`EMPJOBHIST.JOB_CODE`.notna() & `EMPEMPLOYMENT.JOB_CODE`.notna() & (`EMPJOBHIST.JOB_CODE` != `EMPEMPLOYMENT.JOB_CODE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7031,6 +7046,8 @@ rules:
   # joining the two tables directly - pin the grain to avoid that ambiguity.
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7050,6 +7067,8 @@ rules:
     `EMPEMPLOYMENT.MANAGER_ID`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7069,6 +7088,8 @@ rules:
     != `EMPEMPLOYMENT.EMPLOYEE_CLASS`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7089,6 +7110,8 @@ rules:
     != `EMPEMPLOYMENT.EMPLOYMENT_TYPE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7108,6 +7131,8 @@ rules:
   fail_when: '`EMPJOBHIST.PAY_GROUP`.notna() & `EMPEMPLOYMENT.PAY_GROUP`.notna() & (`EMPJOBHIST.PAY_GROUP` != `EMPEMPLOYMENT.PAY_GROUP`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7126,6 +7151,8 @@ rules:
   fail_when: '`EMPJOBHIST.FTE`.notna() & `EMPEMPLOYMENT.FTE`.notna() & (`EMPJOBHIST.FTE` != `EMPEMPLOYMENT.FTE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7145,6 +7172,8 @@ rules:
     != `EMPEMPLOYMENT.STANDARD_HOURS`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7164,6 +7193,8 @@ rules:
   fail_when: '`EMPJOBHIST.TIMEZONE`.notna() & `EMPEMPLOYMENT.TIMEZONE`.notna() & (`EMPJOBHIST.TIMEZONE` != `EMPEMPLOYMENT.TIMEZONE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7183,6 +7214,8 @@ rules:
     != `EMPEMPLOYMENT.WORK_SCHEDULE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7202,6 +7235,8 @@ rules:
     != `EMPEMPLOYMENT.HOLIDAY_CALENDAR`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7222,6 +7257,8 @@ rules:
     != `EMPEMPLOYMENT.TIME_TYPE_PROFILE`)'
   grain: EMPJOBHIST
   applies_when:
+    EMPJOBHIST.END_DATE:
+    - '99991231'
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
   dimension: consistency
@@ -7285,59 +7322,41 @@ rules:
   id: EC379
 - field: EMPJOBHIST.STATUS
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.STATUS` == 'T') & (`EMPJOBHIST.EVENT`.isna() | (`EMPJOBHIST.EVENT`.str.lower() != 'termination'))
+  fail_when: (`EMPJOBHIST.STATUS` == 'T') & (`FOEVENTREASON.EMPL_STATUS`.notna()) & (`FOEVENTREASON.EMPL_STATUS` != 'T')
   severity: medium
   dimension: consistency
-  message: Terminated status record is not paired with a termination event
-  why_it_matters: A job history row that sets employee status to terminated should be recorded under a termination-type
-    event for a consistent audit trail. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live
-    codes are not in this repo's dictionary, so this rule matches against the English label "termination" and
-    should be re-pointed at the tenant's actual event code if it differs.)
+  message: Terminated status record is not paired with a termination-setting event reason
+  why_it_matters: A job history row that sets employee status to terminated should be recorded under an event reason
+    that itself sets a terminated status (FOEventReason.emplStatus, joined via EmpJob.eventReason), for a consistent
+    audit trail. Re-expressed from the tenant-specific EVENT picklist label to the tenant-independent EMPL_STATUS
+    field, following the same pattern as EC170.
   rule_authority: best_practice
-  sap_impact: Attrition reporting built from the event field under-counts terminations that are only visible via
+  sap_impact: Attrition reporting built from the event reason under-counts terminations that are only visible via
     the status field.
   fix_map:
-    __other__: Record the termination under a termination event, or correct the status.
+    __other__: Record the termination under an event reason that sets a terminated status, or correct the status.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} sets status to terminated
-    but event is {EMPJOBHIST.EVENT}.'
+    but event reason {EMPJOBHIST.EVENT_REASON} sets status {FOEVENTREASON.EMPL_STATUS}.'
   id: EC380
 - field: EMPJOBHIST.STATUS
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.EVENT`.str.lower() == 'hire') & (`EMPJOBHIST.STATUS`.notna()) & (~`EMPJOBHIST.STATUS`.isin(['A']))
+  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'A') & (`EMPJOBHIST.STATUS`.notna()) & (~`EMPJOBHIST.STATUS`.isin(['A']))
   severity: medium
   dimension: consistency
-  message: Hire event record does not set an active employee status
-  why_it_matters: A hire event should result in an active employee status; any other status on a hire row is inconsistent.
-    (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live codes are not in this repo's dictionary,
-    so this rule matches against the English label "hire" and should be re-pointed at the tenant's actual event
-    code if it differs.)
+  message: Event reason that sets an active status does not result in an active employee status
+  why_it_matters: When the record's own event reason sets an active employee status (FOEventReason.emplStatus),
+    the job history row's status should also be active; any other status is inconsistent. Re-expressed from the
+    tenant-specific EVENT picklist label "hire" to the tenant-independent EMPL_STATUS field, following the same
+    pattern as EC170; this broadens scope from "hire events only" to "any event reason that sets active status",
+    which is the closest safe equivalent without a tenant-specific hire-code mapping.
   rule_authority: best_practice
-  sap_impact: New hires with an inconsistent status are missed by active-headcount reports or wrongly included in
+  sap_impact: Records with an inconsistent status are missed by active-headcount reports or wrongly included in
     leaver reports.
   fix_map:
-    __other__: Correct the status to active on the hire event record.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: hire event on {EMPJOBHIST.START_DATE} sets status to {EMPJOBHIST.STATUS}.'
+    __other__: Correct the status to active on the record, or correct the event reason.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} has event reason {EMPJOBHIST.EVENT_REASON}
+    (sets status {FOEVENTREASON.EMPL_STATUS}) but status is {EMPJOBHIST.STATUS}.'
   id: EC381
-- field: EMPJOBHIST.USERID
-  check_class: uniqueness_check
-  fields:
-  - EMPJOBHIST.USERID
-  applies_when:
-    EMPJOBHIST.EVENT:
-    - hire
-  severity: low
-  dimension: uniqueness
-  message: Employee has more than one hire event in their job history
-  why_it_matters: An employee should normally have a single original hire event; more than one usually indicates
-    a rehire that should use a rehire event, or a data duplication. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured
-    picklist; its live codes are not in this repo's dictionary, so applies_when matches against the English label
-    "hire" and should be re-pointed at the tenant's actual event code if it differs.)
-  rule_authority: best_practice
-  sap_impact: Tenure and original-hire-date calculations become ambiguous when multiple hire events exist.
-  fix_map:
-    __other__: Confirm whether this is a genuine rehire; if not, correct the duplicate hire event.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: more than one hire event recorded in job history.'
-  id: EC382
 - field: EMPJOBHIST.EMPLOYMENT_TYPE
   check_class: null_check
   grain: EMPJOBHIST
@@ -7469,22 +7488,6 @@ rules:
     __other__: Reactivate the user account to match the active employment.
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account is inactive but employment status is active.'
   id: EC391
-- field: USERACCOUNT.EMP_ID
-  grain: USERACCOUNT
-  check_class: cross_field_check
-  fail_when: '`USERACCOUNT.EMP_ID`.notna() & (`USERACCOUNT.EMP_ID` != `USERACCOUNT.USER_ID`)'
-  severity: low
-  dimension: consistency
-  message: User account's linked employee ID does not match its own user ID
-  why_it_matters: In this SuccessFactors configuration the linked employee ID is expected to equal the account's
-    own user ID; a mismatch suggests the account is linked to the wrong employee.
-  rule_authority: best_practice
-  sap_impact: Self-service transactions may resolve to the wrong employee's job and pay data.
-  fix_map:
-    __other__: Correct the linked employee ID so it matches the account's own user ID, or confirm the link is intentional.
-  record_fix_template: 'User {USERACCOUNT.USER_ID}: linked employee ID {USERACCOUNT.EMP_ID} does not match the account''s
-    own user ID.'
-  id: EC392
 - field: USERACCOUNT.DEPARTMENT
   check_class: cross_field_check
   fail_when: '`USERACCOUNT.DEPARTMENT`.notna() & `EMPEMPLOYMENT.DEPARTMENT`.notna() & (`USERACCOUNT.DEPARTMENT`
@@ -8268,23 +8271,24 @@ rules:
     __blank__: Set the multiple-incumbents flag on the position.
   record_fix_template: Position {POSITION.CODE} is active but has no multiple-incumbents flag.
   id: EC440
-- field: EMPJOBHIST.EVENT
+- field: EMPJOBHIST.EVENT_REASON
   check_class: cross_field_check
-  fail_when: (`EMPJOBHIST.EVENT`.str.lower() == 'termination') & (`EMPJOBHIST.END_DATE`.isna())
+  fail_when: (`FOEVENTREASON.EMPL_STATUS` == 'T') & (`EMPJOBHIST.END_DATE`.isna())
   applies_when:
     EMPJOBHIST.STATUS: *id006
   severity: low
   dimension: consistency
-  message: Termination event record has no end date
-  why_it_matters: A termination event should close out the job history record with an end date marking the employee's
-    last day. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live codes are not in this repo's
-    dictionary, so this rule matches against the English label "termination" and should be re-pointed at the
-    tenant's actual event code if it differs.)
+  message: Event reason that sets a terminated status has no end date
+  why_it_matters: An event reason that sets a terminated status (FOEventReason.emplStatus) should close out the
+    job history record with an end date marking the employee's last day. Re-expressed from the tenant-specific
+    EVENT picklist label "termination" to the tenant-independent EMPL_STATUS field, following the same pattern
+    as EC170.
   rule_authority: best_practice
   sap_impact: Tenure and last-day-worked calculations cannot determine when the employee actually left.
   fix_map:
-    __other__: Set the end date on the termination event record.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: termination event on {EMPJOBHIST.START_DATE} has no end date.'
+    __other__: Set the end date on the record, or correct the event reason.
+  record_fix_template: 'Employee {EMPJOBHIST.USERID}: record on {EMPJOBHIST.START_DATE} has event reason {EMPJOBHIST.EVENT_REASON}
+    (sets status {FOEVENTREASON.EMPL_STATUS}) but no end date.'
   id: EC441
 - field: EMPEMPLOYMENT.PERSON_ID
   check_class: exists_check
@@ -8303,24 +8307,148 @@ rules:
     __other__: Correct the person reference on the employment record, or add the missing person record.
   record_fix_template: Employment record references unknown person {EMPEMPLOYMENT.PERSON_ID}.
   id: EC442
-- field: USERACCOUNT.EMP_ID
+- id: EC443
+  field: EMPEMPLOYMENT.LAST_MODIFIED
+  check_class: freshness_check
+  max_age_hours: 17520
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: low
+  dimension: timeliness
+  message: Active employee's job information has not changed in over two years
+  why_it_matters: EmpJob.lastModifiedDateTime should move whenever anything on the job record changes (a comp
+    event, a department move, an annual review). A record frozen for years can mean the SuccessFactors-to-Meridian
+    feed stopped moving for that employee, not that nothing ever changed.
+  rule_authority: best_practice
+  sap_impact: Findings and reports for this employee are built from a stale snapshot without anyone noticing.
+  fix_map:
+    __other__: Verify the employee's job record against SuccessFactors directly; re-run the extraction if the
+      feed has stalled.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: job information last changed {EMPEMPLOYMENT.LAST_MODIFIED},
+    over two years ago.'
+- id: EC444
+  field: EMPEMPLOYMENT.FTE
+  check_class: cross_field_check
+  fail_when: '`EMPEMPLOYMENT.FTE`.notna() & (`EMPEMPLOYMENT.FTE` <= 0) & `COMPINFO.SALARY`.notna() & (`COMPINFO.SALARY`
+    > 0)'
+  severity: medium
+  dimension: consistency
+  message: Employee is paid a recurring pay component but has no full-time-equivalent
+  why_it_matters: FTE drives pro-ration for part-time pay; an FTE of zero or less with a positive recurring pay
+    component amount is an inconsistent combination.
+  rule_authority: best_practice
+  sap_impact: Payroll pro-ration and headcount-cost reporting cannot reconcile the pay component to a working
+    fraction.
+  fix_map:
+    __other__: Correct the FTE on the job record, or correct the pay component amount.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE is {EMPEMPLOYMENT.FTE} but has a pay component of
+    {COMPINFO.SALARY}.'
+- id: EC445
+  field: PAYMENTINFO.AMOUNT
+  check_class: cross_field_check
+  fail_when: '`PAYMENTINFO.AMOUNT`.notna() & `PAYMENTINFO.PERCENT`.notna()'
+  severity: medium
+  dimension: consistency
+  message: Payment account has both a fixed amount and a percentage
+  why_it_matters: A split-payment account is funded either by a fixed amount or by a percentage of net pay, never
+    both; SAP's payroll split-payment logic reads one or the other.
+  rule_authority: best_practice
+  sap_impact: Payroll disbursement for the account is ambiguous; the bank file generator can either double-count
+    or silently drop one of the two values.
+  fix_map:
+    __other__: Clear the amount or the percent so the account uses exactly one split-payment method.
+  record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment account has both a fixed amount ({PAYMENTINFO.AMOUNT})
+    and a percent ({PAYMENTINFO.PERCENT}).'
+- id: EC446
+  field: PERINFO.PERSON_ID
   check_class: exists_check
-  grain: USERACCOUNT
-  target_table: PERINFO
+  target_table: PERPHONE
   target_fields:
   - PERSON_ID
+  target_when:
+    IS_PRIMARY:
+    - 'true'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
   severity: low
-  dimension: consistency
-  message: User account has no matching person record
-  why_it_matters: A user account's linked employee ID should correspond to a real person record; one with no match
-    is either an orphaned account or a system/service account mistakenly extracted as a person. (Assumption --
-    USERACCOUNT.EMP_ID, documented only as "Linked employee ID", is treated as the personIdExternal domain to
-    compare against PERINFO.PERSON_ID; this is not explicitly confirmed in the dictionary and should be verified
-    against a live tenant.)
+  dimension: completeness
+  message: Active employee has no primary phone number
+  why_it_matters: Every person needs one phone number flagged as primary. The people profile, directory and MFA
+    enrolment read the primary number only.
   rule_authority: best_practice
-  sap_impact: Directory and biographical-data reports cannot resolve a name or personal details for this account.
+  sap_impact: Click-to-call, SMS/MFA enrolment and the corporate directory have no number for this employee.
   fix_map:
-    __other__: Add the missing person record, or confirm this is a non-person service account to exclude.
-  record_fix_template: 'User {USERACCOUNT.USER_ID}: linked employee ID {USERACCOUNT.EMP_ID} has no matching person
-    record.'
-  id: EC443
+    __other__: Flag one of the person's phone numbers as primary, or add a phone number.
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: person {PERINFO.PERSON_ID} has no primary phone number.'
+- id: EC447
+  field: PEREMERGENCY.PERSON_ID
+  check_class: uniqueness_check
+  fields:
+  - PEREMERGENCY.PERSON_ID
+  - PEREMERGENCY.PRIMARY_FLAG
+  applies_when:
+    PEREMERGENCY.PRIMARY_FLAG:
+    - 'Y'
+  severity: medium
+  dimension: uniqueness
+  message: Person has more than one primary emergency contact
+  why_it_matters: SuccessFactors allows one primary emergency contact per person; a responder calling "the primary
+    contact" from the people profile gets an arbitrary one of several.
+  rule_authority: best_practice
+  sap_impact: In an incident the wrong, or an arbitrary, emergency contact is reached first.
+  fix_map:
+    __other__: Keep the primary flag on one emergency contact only.
+  record_fix_template: 'Person {PEREMERGENCY.PERSON_ID}: more than one emergency contact is flagged as primary.'
+- id: EC448
+  field: PERINFO.NATIONAL_ID
+  check_class: uniqueness_check
+  fields:
+  - PERINFO.NATIONAL_ID
+  - PERINFO.NATIONAL_ID_COUNTRY
+  severity: high
+  dimension: uniqueness
+  message: The same national ID in the same country is held by two people
+  why_it_matters: A national ID (passport, tax ID, national insurance number) issued by one country belongs to
+    one person.
+  rule_authority: sap_hard_constraint
+  sap_impact: Statutory filings, background checks and payroll tax reporting combine or reject the two employees
+    sharing the ID.
+  fix_map:
+    __other__: Verify the ID against each employee's documents and correct the wrong one.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID {PERINFO.NATIONAL_ID} ({PERINFO.NATIONAL_ID_COUNTRY})
+    is also held by another person.'
+- id: EC449
+  field: PERINFO.PERSON_ID
+  check_class: exists_check
+  target_table: EMPEMPLOYMENT
+  target_fields:
+  - PERSON_ID
+  target_when:
+    IS_PRIMARY:
+    - 'true'
+  applies_when:
+    EMPEMPLOYMENT.STATUS:
+    - A
+    - U
+    - P
+    - S
+  severity: medium
+  dimension: completeness
+  message: Active employee has no employment flagged as primary
+  why_it_matters: With concurrent employment enabled, every person needs exactly one employment flagged primary;
+    a person whose active employments are all non-primary (or all missing the flag) has no employment that
+    person-level integrations will pick up.
+  rule_authority: best_practice
+  sap_impact: Identity provisioning, the org chart and person-level reporting have nothing to anchor on for this
+    person.
+  fix_map:
+    __other__: Flag one of the person's active employments as primary.
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: no active employment is flagged as primary.'
