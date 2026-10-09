@@ -26,7 +26,11 @@ export default function RecordFixSheetPage() {
   const params = useParams<{ object: string; key: string }>();
   const search = useSearchParams();
   const object = params.object;
-  const key = params.key;
+  // useParams() returns the raw path segment (see design/shell/useDrill.ts, which
+  // decodes it too for the breadcrumb label) — decode it before splitting on
+  // "=" / "|", otherwise a composite key never matches and falls back to the
+  // whole encoded string as `primary`, breaking every fetch keyed on it.
+  const key = params.key ? decodeURIComponent(params.key) : params.key;
   const run = search.get("run") ?? "";
   const { primary, fields } = parseRecordKey(key);
   const plant = fields.WERKS;

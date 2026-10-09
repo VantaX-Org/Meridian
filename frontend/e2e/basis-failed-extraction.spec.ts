@@ -20,11 +20,16 @@ test("basis opens a failed extraction and reads the error line", async ({ app })
   await app.getByRole("tab", { name: "Runs" }).click();
 
   // runColumns()'s Status cell renders <Pill>{labelOf(status)}</Pill> — "Failed" for status "failed".
-  await expect(app.getByText("Failed")).toBeVisible();
+  // Both tab panels stay mounted (Base UI Tabs), and the Overview tab also shows the latest
+  // run's status, so scope to the Runs tabpanel to disambiguate.
+  await expect(app.getByRole("tabpanel", { name: "Runs" }).getByText("Failed")).toBeVisible();
 
   // No in-app link reaches /systems/:id/extractions/:runId (see module doc above) — go there directly.
   await app.goto("/systems/s1/extractions/r1", { waitUntil: "load" });
 
   // app/(app)/systems/[systemId]/extractions/[runId]/page.tsx: the failed step's role="alert" line.
-  await expect(app.getByRole("alert")).toContainText("RFC_COMMUNICATION_FAILURE: connection reset");
+  // Next also renders its own (empty) route-announcer with role="alert", so filter by text.
+  await expect(
+    app.getByRole("alert").filter({ hasText: "RFC_COMMUNICATION_FAILURE" }),
+  ).toContainText("RFC_COMMUNICATION_FAILURE: connection reset");
 });

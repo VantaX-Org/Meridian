@@ -11,7 +11,7 @@ import { queryKeys } from "@/lib/query-keys";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
   { accessorKey: "batch_id", header: "Batch", cell: ({ row }) => <Mono>{row.original.batch_id}</Mono> },
-  { accessorKey: "object_type", header: "Object" },
+  { accessorKey: "object_type", header: "Object", cell: ({ row }) => labelOf(row.original.object_type) },
   { accessorKey: "items", header: "Items" },
   {
     accessorKey: "avg_confidence",
