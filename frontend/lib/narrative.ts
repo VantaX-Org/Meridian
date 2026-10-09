@@ -13,7 +13,12 @@ function overallSentence(cmp: VersionComparison): string | null {
   const mean = (pick: (d: (typeof deltas)[number]) => number) => deltas.reduce((a, d) => a + pick(d), 0) / deltas.length;
   const before = mean((d) => d.v1_score);
   const after = mean((d) => d.v2_score);
-  return `DQS moved from ${score(before)} to ${score(after)} (${signed(after - before)}) across ${plural(deltas.length, "module", "modules")}.`;
+  const beforeRounded = Number(score(before));
+  const afterRounded = Number(score(after));
+  const delta = afterRounded - beforeRounded;
+  // Guard against "-0.0"
+  const deltaFormatted = delta === 0 ? "+0.0" : signed(delta);
+  return `DQS moved from ${score(before)} to ${score(after)} (${deltaFormatted}) across ${plural(deltas.length, "module", "modules")}.`;
 }
 
 function moverSentence(cmp: VersionComparison): string | null {

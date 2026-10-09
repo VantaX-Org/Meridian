@@ -42,7 +42,7 @@ const diff: RecordDiff = {
 describe("compareNarrative", () => {
   it("writes every sentence in order", () => {
     expect(compareNarrative(cmp(), diff)).toEqual([
-      "DQS moved from 71.2 to 74.8 (+3.5) across 2 modules.",
+      "DQS moved from 71.2 to 74.8 (+3.6) across 2 modules.",
       "Material Master improved most (+6.1), driven by validity (+9.0).",
       `2 checks newly fail: MM041 (critical, ${nf.format(1240)} records), MM077 (high, ${nf.format(88)} records).`,
       `2 checks fixed, ${nf.format(3410)} records resolved.`,
