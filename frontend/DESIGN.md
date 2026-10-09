@@ -115,4 +115,4 @@ Meridian is read top-down. Every level answers one question and opens the level 
 
 ## Known exception
 
-The process designer's BPMN canvas (`app/(app)/insights/process/designer/_components/`) was never migrated off raw `aurora-*` classNames; it still depends on `app/styles/aurora-components.css`, which is imported once from `app/globals.css` with an explanatory comment. This is tracked as follow-up work, not part of the retired legacy shell.
+The process designer's BPMN canvas (`app/(app)/insights/process/designer/_components/`) still renders its React Flow nodes and tree rows through `aurora-*` classNames, defined in `app/styles/aurora-components.css` and imported once from `app/globals.css`. That stylesheet is no longer an Aurora/ui-core dependency: it was pruned to only the rule blocks the designer actually uses, and every value is a `var(--m-*)` token from `design/tokens.css`. Renaming the classNames themselves to drop the `aurora-` prefix is tracked as follow-up work; the token dependency is already resolved.

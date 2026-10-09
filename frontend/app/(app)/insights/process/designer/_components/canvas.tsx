@@ -55,7 +55,7 @@ function CanvasInner(p: CanvasProps) {
   const edges = useMemo<Edge[]>(() => l4.diagram.flows.map((f) => ({
     id: f.id, source: f.source, target: f.target, type: "smoothstep", label: f.label ?? f.condition ?? undefined,
     selected: selected === f.id,
-    style: { stroke: selected === f.id ? "var(--aurora-accent-400)" : "var(--aurora-canvas-line)", strokeWidth: 1.25 },
+    style: { stroke: selected === f.id ? "var(--m-accent)" : "var(--m-line)", strokeWidth: 1.25 },
     ariaLabel: `Flow ${f.label ?? ""}`.trim(),
   })), [l4.diagram.flows, selected]);
 
@@ -123,7 +123,7 @@ function CanvasInner(p: CanvasProps) {
           fitView fitViewOptions={{ padding: 0.15, maxZoom: 1.25 }}
           proOptions={{ hideAttribution: true }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="var(--aurora-canvas-line)" />
+          <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="var(--m-line)" />
           <Controls showInteractive={false} position="bottom-right" />
         </ReactFlow>
       </div>

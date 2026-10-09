@@ -5,7 +5,6 @@ import { useEffect } from "react";
 
 /**
  * Dashboard redirect — `/dashboard` → `/`
- * The actual dashboard is served by `(dashboard)/page.tsx` at the root.
  */
 export default function DashboardRedirect() {
   const router = useRouter();
