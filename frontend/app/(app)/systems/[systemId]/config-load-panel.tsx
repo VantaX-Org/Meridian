@@ -32,12 +32,21 @@ const AREA_LABEL: Record<AreaStatus, string> = {
   not_available: "Not available",
 };
 
-/** The cause or outcome of one object's read, in plain words. */
+const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
+/** The cause or outcome of one object's read, in plain words. The object name is shown separately in Mono, so it is not repeated here. */
 function areaObjectText(o: AreaObject): string {
-  if (o.cause === "auth") return `No authorisation to read ${o.object}.${o.detail ? ` ${o.detail}` : ""}`;
-  if (o.cause === "timeout") return `Reading ${o.object} timed out.`;
+  if (o.cause === "auth") return `No authorisation to read this table.${o.detail ? ` ${o.detail}` : ""} The user needs read access to this table.`;
+  if (o.cause === "timeout") return "Reading timed out. Try again outside peak hours or ask Basis to raise the RFC timeout.";
   if (o.state === "loaded") return `${o.rows.toLocaleString()} found.`;
   return o.detail || "Not read.";
+}
+
+/** One line per area: what was found (up to two objects), or that nothing was found. */
+function areaFoundText(a: LoadArea): string {
+  const found = a.objects.filter((o) => o.state === "loaded" && o.rows > 0).slice(0, 2);
+  if (!found.length) return `No ${lower(a.label)} configuration found.`;
+  return found.map((o) => `${o.rows.toLocaleString()} ${lower(o.label ?? o.object)}`).join(", ");
 }
 
 /** Area-by-area breakdown of a configuration load, grouped by business area. */
@@ -46,41 +55,47 @@ function AreaRows({ systemId, areas }: { systemId: string; areas: LoadArea[] }) 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>By area</p>
-      {areas.map((a) => (
-        <div key={a.area} className="flex flex-col gap-1 rounded border px-3 py-2" style={{ borderColor: "var(--m-line)" }}>
-          <div className="flex items-center justify-between">
+      {areas.map((a) => {
+        const linkObject = a.status === "loaded" ? a.objects[0]?.object : undefined;
+        return (
+          <div key={a.area} className="flex flex-col gap-1 rounded border px-3 py-2" style={{ borderColor: "var(--m-line)" }}>
+            <div className="flex items-center justify-between">
+              {linkObject ? (
+                <Link href={`/systems/${systemId}?tab=health&part=config&table=${encodeURIComponent(linkObject)}`} className="text-[13px] underline" style={{ color: "var(--m-ink)" }}>
+                  {a.label}
+                </Link>
+              ) : (
+                <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{a.label}</span>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{a.tables_done} of {a.tables_total}</span>
+                <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
+              </div>
+            </div>
+            {a.status === "running" || a.status === "waiting" ? (
+              <div className="h-1 rounded overflow-hidden" style={{ background: "var(--m-line)" }}>
+                <div
+                  className="h-full"
+                  style={{
+                    background: "var(--m-accent)",
+                    width: `${a.tables_total ? Math.round((a.tables_done / a.tables_total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+            ) : null}
             {a.status === "loaded" ? (
-              <Link href={`/systems/${systemId}?tab=health&part=config&table=${encodeURIComponent(a.area)}`} className="text-[13px] underline" style={{ color: "var(--m-ink)" }}>
-                {a.label}
-              </Link>
-            ) : (
-              <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{a.label}</span>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{a.tables_done} of {a.tables_total}</span>
-              <Pill tone={AREA_TONE[a.status]}>{AREA_LABEL[a.status]}</Pill>
-            </div>
+              <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{areaFoundText(a)}</p>
+            ) : null}
+            {a.objects
+              .filter((o) => o.state === "failed" || o.cause)
+              .map((o) => (
+                <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+                  <Mono>{o.object}</Mono>: {areaObjectText(o)}
+                </p>
+              ))}
           </div>
-          {a.status === "running" ? (
-            <div className="h-1 rounded overflow-hidden" style={{ background: "var(--m-line)" }}>
-              <div
-                className="h-full"
-                style={{
-                  background: "var(--m-accent)",
-                  width: `${a.tables_total ? Math.round((a.tables_done / a.tables_total) * 100) : 0}%`,
-                }}
-              />
-            </div>
-          ) : null}
-          {a.objects
-            .filter((o) => o.state === "failed" || o.cause)
-            .map((o) => (
-              <p key={o.object} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-                <Mono>{o.object}</Mono>: {areaObjectText(o)}
-              </p>
-            ))}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

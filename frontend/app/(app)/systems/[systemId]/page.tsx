@@ -27,6 +27,7 @@ import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } 
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
+import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
 import type { SystemModule, SystemType } from "@/types/api";
 import { ConfigTab, CoverageTab, SnapshotsTab, TablesTab } from "./design-panels";
@@ -387,6 +388,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
   const design = designQ.data;
   const snap = design?.snapshot;
   const running = ["queued", "running"].includes(design?.discovery_status ?? "");
+  const [part, setPart] = useUrlState("part", "tables");
 
   const test = useMutation({
     mutationFn: () => testConnection(id),
@@ -452,7 +454,8 @@ function Health({ id, system, canSync, canManage, onChanged }: {
           <EmptyState title="Not discovered yet. Discover design reads this system's data dictionary and configuration." />
         ) : (
           <Tabs
-            defaultValue="tables"
+            value={part}
+            onValueChange={setPart}
             items={[
               { value: "tables", label: "Data dictionary", content: <TablesTab id={id} /> },
               { value: "config", label: "Configuration", content: design ? <ConfigTab id={id} tables={design.configuration} /> : null },

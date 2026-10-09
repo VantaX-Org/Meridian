@@ -28,6 +28,10 @@ export interface DataTableProps<T> {
   bulkActions?: (selected: T[]) => ReactNode;
   /** Scroll parent height; the virtualised branch needs a bounded container to scroll in. */
   height?: number | string;
+  /** Controlled sort state, for a caller that keeps the sort in the URL (e.g. `?sort=created_at:desc`).
+   * Omit both to keep the table's own uncontrolled sort state. */
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
 }
 
 const VIRTUALIZE_ABOVE = 2000;
@@ -35,9 +39,15 @@ const SELECT_COLUMN_ID = "__select";
 
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions, height = "calc(100vh - 240px)",
+  sorting: sortingProp, onSortingChange: onSortingChangeProp,
 }: DataTableProps<T>) {
   "use no memo";
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [internalSorting, setInternalSorting] = useState<SortingState>([]);
+  const sorting = sortingProp ?? internalSorting;
+  const setSorting = onSortingChangeProp
+    ? (updater: SortingState | ((old: SortingState) => SortingState)) =>
+        onSortingChangeProp(typeof updater === "function" ? updater(sorting) : updater)
+    : setInternalSorting;
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);

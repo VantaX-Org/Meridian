@@ -15,7 +15,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Pager, Pill, Select, Skeleton, Stat,
@@ -61,6 +61,7 @@ export function BatchesTab() {
   const [batchId, setBatchId] = useUrlState("batch", "");
   const [status, setStatus] = useUrlState("status", "");
   const [search, setSearch] = useUrlState("q", "");
+  const [sort, setSort] = useUrlState("sort", "created_at:desc");
 
   const q = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches });
   const batches = useMemo(() => q.data?.items ?? [], [q.data]);
@@ -76,6 +77,12 @@ export function BatchesTab() {
     () => batches.filter((b) => !status || b.status === status).filter((b) => !needle || b.name.toLowerCase().includes(needle)),
     [batches, status, needle],
   );
+  const [sortKey, sortDir] = sort.split(":");
+  const sorting: SortingState = sortKey ? [{ id: sortKey, desc: sortDir === "desc" }] : [];
+  const onSortingChange = (next: SortingState) => {
+    const first = next[0];
+    setSort(first ? `${first.id}:${first.desc ? "desc" : "asc"}` : "");
+  };
 
   const columns: ColumnDef<BatchSummary>[] = [
     { accessorKey: "name", header: "Batch" },
@@ -120,22 +127,22 @@ export function BatchesTab() {
 
       <div className="flex flex-col gap-2">
         <div className="flex gap-6">
-          <button type="button" className="text-left" onClick={() => setStatus("draft")}>
+          <Link href="?tab=batches&status=draft" className="text-left">
             <Stat label="Draft batches" value={counts.draft}
               delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />
-          </button>
-          <button type="button" className="text-left" onClick={() => setStatus("approved")}>
+          </Link>
+          <Link href="?tab=batches&status=approved" className="text-left">
             <Stat label="Waiting for export" value={counts.approved}
               delta={counts.approved
-                ? <span style={{ color: "var(--m-medium)" }}>Approved but not exported yet.</span>
+                ? <Pill tone="at-risk">Approved but not exported yet.</Pill>
                 : "Nothing waiting for export."} />
-          </button>
-          <button type="button" className="text-left" onClick={() => setStatus("exported")}>
+          </Link>
+          <Link href="?tab=batches&status=exported" className="text-left">
             <Stat label="Still failing after export" value={stillFailing}
               delta={stillFailing
-                ? <span style={{ color: "var(--m-medium)" }}>Exported records that were checked again and still fail.</span>
+                ? <Pill tone="at-risk">Exported records that were checked again and still fail.</Pill>
                 : "No exported record is still failing."} />
-          </button>
+          </Link>
         </div>
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           {q.data
@@ -174,7 +181,14 @@ export function BatchesTab() {
       ) : visible.length === 0 ? (
         <EmptyState title="Nothing in this view." action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
       ) : (
-        <DataTable columns={columns} data={visible} getRowId={(b) => b.id} onRowClick={(b) => setBatchId(b.id)} />
+        <DataTable
+          columns={columns}
+          data={visible}
+          getRowId={(b) => b.id}
+          onRowClick={(b) => setBatchId(b.id)}
+          sorting={sorting}
+          onSortingChange={onSortingChange}
+        />
       )}
 
       <Drawer open={!!selected} onOpenChange={(open) => { if (!open) setBatchId(""); }} title={selected?.name ?? "Batch"}>

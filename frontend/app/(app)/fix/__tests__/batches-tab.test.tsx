@@ -119,4 +119,33 @@ describe("BatchesTab", () => {
     await userEvent.click(await screen.findByText("AP001 batch"));
     expect(await screen.findByRole("button", { name: "Export batch" })).toBeDisabled();
   });
+
+  it("defaults the batch list sort to created_at:desc, as #411 did", async () => {
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({
+      items: [
+        batch({ id: "older", name: "Older batch", created_at: "2026-01-01T00:00:00Z" }),
+        batch({ id: "newer", name: "Newer batch", created_at: "2026-02-01T00:00:00Z" }),
+      ],
+    });
+    renderWithQuery(<BatchesTab />);
+    const rows = await screen.findAllByRole("row");
+    // rows[0] is the header row; the newer batch (created later) sorts first by default.
+    expect(rows[1]).toHaveTextContent("Newer batch");
+    expect(rows[2]).toHaveTextContent("Older batch");
+  });
+
+  it("re-sorts the batch list on a column header click, keeping the sort in the URL", async () => {
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({
+      items: [
+        batch({ id: "b-zebra", name: "Zebra batch", created_at: "2026-02-01T00:00:00Z" }),
+        batch({ id: "b-alpha", name: "Alpha batch", created_at: "2026-01-01T00:00:00Z" }),
+      ],
+    });
+    renderWithQuery(<BatchesTab />);
+    await screen.findByText("Zebra batch");
+    await userEvent.click(screen.getByRole("button", { name: "Batch" }));
+    const rows = await screen.findAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Alpha batch");
+    expect(rows[2]).toHaveTextContent("Zebra batch");
+  });
 });

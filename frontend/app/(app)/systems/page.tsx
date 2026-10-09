@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
-import { formatDate } from "@/lib/format";
+import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
@@ -55,7 +55,7 @@ function configSub(c: {
       return "No configuration to read";
     case "loaded":
     case "with_gaps":
-      return c.loaded_at ? `${formatDate(c.loaded_at, "date")} · ${c.areas_loaded} of ${c.areas_total} areas` : "—";
+      return c.loaded_at ? `${relativeTime(c.loaded_at)} · ${c.areas_loaded} of ${c.areas_total} areas` : "—";
     default:
       return "—";
   }
@@ -126,7 +126,7 @@ export default function SystemsPage() {
       id: "config",
       header: "Configuration",
       cell: ({ row }) => {
-        if (configQ.isLoading) return "—";
+        if (configQ.isLoading) return <Skeleton height={16} width={96} />;
         const c = configById.get(row.original.id);
         if (!c) return "No configuration yet";
         return (
