@@ -19,7 +19,7 @@ EXPECTED_COUNTS = {
     "performance_goals": 80,
     "succession_planning": 80,
     "time_attendance": 80,
-    "benefits": 229,
+    "benefits": 151,
     "payroll_integration": 109,
 }
 
@@ -139,12 +139,12 @@ def test_ec_null_check_finds_failures_with_enrichment():
 # ---- Test 5: Total rule count across all SF modules ----
 
 def test_total_sf_rule_count():
-    """Total across all 9 SF modules should be 1295 rules."""
+    """Total across all 9 SF modules should be 1217 rules."""
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 1295, f"Expected 1295 total SF rules, got {total}"
+    assert total == 1217, f"Expected 1217 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----
