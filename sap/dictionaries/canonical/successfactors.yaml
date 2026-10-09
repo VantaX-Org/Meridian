@@ -514,7 +514,7 @@ tables:
       COST_CENTER:      {source: Position.costCenter, type: STRING, length: 128, verify: true, description: Cost centre of the position}
       VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
       EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
-      CRITICALITY:      {source: Position.positionCriticality, type: STRING, length: 128, description: Position criticality (key position indicator)}
+      CRITICALITY:      {source: Position.positionCriticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
       TARGET_FTE:       {source: Position.targetFTE, type: DECIMAL, verify: true, description: Target FTE of the position}
       MULTIPLE_INCUMBENTS: {source: Position.multipleIncumbentsAllowed, type: BOOLEAN, verify: true, description: More than one incumbent allowed}
       STANDARD_HOURS:   {source: Position.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours of the position}

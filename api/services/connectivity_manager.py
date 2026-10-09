@@ -676,7 +676,16 @@ class ConnectivityManager:
                 where=render_where(target.filter) if target.filter else None,
                 max_rows=effective_max,
             )
-        elif system_type in ("successfactors", "s4hana_cloud", "btp"):
+        elif system_type == "successfactors":
+            return connector.read_entity_set(
+                target.source,
+                select=target.fields if target.fields else None,
+                filter_expr=target.filter,
+                top=effective_max,
+                from_date=target.from_date,
+            )
+        elif system_type in ("s4hana_cloud", "btp"):
+            # OData V4 (S/4HANA Cloud, BTP) has no fromDate param; from_date is SF-only.
             return connector.read_entity_set(
                 target.source,
                 select=target.fields if target.fields else None,

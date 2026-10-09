@@ -275,6 +275,7 @@ edges:
   - {parent: EMPEMPLOYMENT, child: USERACCOUNT, join: {USER_ID: USERID}, cardinality: one}
   - {parent: EMPJOBHIST, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one}
   - {parent: EMPJOBHIST, child: POSITION, join: {CODE: POSITION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: EMPJOBRELATIONSHIPS, join: {USERID: USERID}, cardinality: many}
 
   # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)
   - {parent: CONCUR_USER, child: CONCUR_REPORT, join: {OWNER_LOGIN_ID: LOGIN_ID}, cardinality: many}

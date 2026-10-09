@@ -40,6 +40,7 @@ class ExtractionTarget:
     description: str = ""
     is_config: bool = False
     rename_map: dict = field(default_factory=dict)
+    from_date: Optional[str] = None  # OData fromDate for effective-dated entities (cloud SAP only). None = current record only.
 
 
 # ============================================================================
@@ -821,6 +822,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                 "holidayCalendarCode", "timeTypeProfileCode",
             ],
             description="Job history (every effective-dated record)",
+            from_date="1900-01-01",
             rename_map={
                 "userId": "USERID", "startDate": "START_DATE",
                 "seqNumber": "SEQ_NUMBER", "endDate": "END_DATE",

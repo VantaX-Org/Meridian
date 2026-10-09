@@ -5562,6 +5562,7 @@ rules:
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: most recent job history record is not open-ended.'
   id: EC271
 - field: USERACCOUNT.USER_ID
+  grain: USERACCOUNT
   check_class: null_check
   severity: critical
   dimension: completeness
@@ -5574,6 +5575,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no user id.
   id: EC272
 - field: USERACCOUNT.USERNAME
+  grain: USERACCOUNT
   check_class: null_check
   severity: high
   dimension: completeness
@@ -5586,6 +5588,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no username.
   id: EC273
 - field: USERACCOUNT.EMAIL
+  grain: USERACCOUNT
   check_class: null_check
   severity: high
   dimension: completeness
@@ -5598,6 +5601,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no email.
   id: EC274
 - field: USERACCOUNT.FIRST_NAME
+  grain: USERACCOUNT
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -5610,6 +5614,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no first name.
   id: EC275
 - field: USERACCOUNT.LAST_NAME
+  grain: USERACCOUNT
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -5622,6 +5627,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no last name.
   id: EC276
 - field: USERACCOUNT.STATUS
+  grain: USERACCOUNT
   check_class: null_check
   severity: high
   dimension: completeness
@@ -5634,6 +5640,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no status.
   id: EC277
 - field: USERACCOUNT.EMP_ID
+  grain: USERACCOUNT
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -5646,6 +5653,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no emp id.
   id: EC278
 - field: USERACCOUNT.HIRE_DATE
+  grain: USERACCOUNT
   check_class: null_check
   severity: medium
   dimension: completeness
@@ -5756,6 +5764,7 @@ rules:
   record_fix_template: 'User account {USERACCOUNT.USER_ID}: default locale {USERACCOUNT.DEFAULT_LOCALE} is not valid.'
   id: EC285
 - field: USERACCOUNT.TIMEZONE
+  grain: USERACCOUNT
   check_class: null_check
   severity: low
   dimension: completeness
@@ -5768,6 +5777,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no time zone.
   id: EC286
 - field: USERACCOUNT.DEFAULT_LOCALE
+  grain: USERACCOUNT
   check_class: null_check
   severity: low
   dimension: completeness
@@ -5780,6 +5790,7 @@ rules:
   record_fix_template: User account {USERACCOUNT.USER_ID} has no default locale.
   id: EC287
 - field: USERACCOUNT.DEPARTMENT
+  grain: USERACCOUNT
   check_class: exists_check
   target_table: FODEPARTMENT
   target_fields:
@@ -5798,6 +5809,7 @@ rules:
   record_fix_template: 'User account {USERACCOUNT.USER_ID}: department {USERACCOUNT.DEPARTMENT} is not active.'
   id: EC288
 - field: USERACCOUNT.DIVISION
+  grain: USERACCOUNT
   check_class: exists_check
   target_table: FODIVISION
   target_fields:
@@ -6220,25 +6232,6 @@ rules:
     __other__: Move the position to an active cost centre.
   record_fix_template: 'Position {POSITION.CODE}: cost centre {POSITION.COST_CENTER} is not active.'
   id: EC311
-- field: POSITION.EXTERNAL_NAME
-  grain: POSITION
-  check_class: null_check
-  severity: low
-  dimension: completeness
-  applies_when:
-    POSITION.EFFECTIVE_STATUS:
-    - A
-    POSITION.VACANT:
-    - 'true'
-  message: Vacant position has no external (job-board) name
-  why_it_matters: A vacant position being recruited against needs an external name to display on job boards and
-    requisitions.
-  rule_authority: best_practice
-  sap_impact: The requisition raised from this position shows no job title to candidates.
-  fix_map:
-    __blank__: Set the external name on the position.
-  record_fix_template: Position {POSITION.CODE} is vacant but has no external name.
-  id: EC312
 - field: POSITION.CODE
   grain: POSITION
   check_class: exists_check
@@ -6840,43 +6833,6 @@ rules:
     __blank__: Set the person reference on the address record.
   record_fix_template: Address record has no person reference.
   id: EC352
-- field: PERADDRESS.ADDRESS_LINE1
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Address record has no first address line
-  why_it_matters: The first address line is the minimum needed to identify where correspondence should be sent.
-  rule_authority: best_practice
-  sap_impact: Replication to SAP address infotype (0006) produces an unusable address with no street line.
-  fix_map:
-    __blank__: Set the first address line on the address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address record has no first address line.'
-  id: EC353
-- field: PERADDRESS.CITY
-  check_class: null_check
-  severity: medium
-  dimension: completeness
-  message: Address record has no city
-  why_it_matters: City is required to deliver correspondence and for tax/statutory address validation.
-  rule_authority: best_practice
-  sap_impact: Replication to SAP address infotype (0006) produces an incomplete address.
-  fix_map:
-    __blank__: Set the city on the address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address record has no city.'
-  id: EC354
-- field: PERADDRESS.COUNTRY
-  check_class: null_check
-  severity: high
-  dimension: completeness
-  message: Address record has no country
-  why_it_matters: Country drives the format validation of the rest of the address and statutory reporting.
-  rule_authority: sap_hard_constraint
-  sap_impact: Replication to SAP address infotype (0006) cannot determine the address format or validate postal
-    code/state.
-  fix_map:
-    __blank__: Set the country on the address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: address record has no country.'
-  id: EC355
 - field: PERADDRESS.ZIPCODE
   check_class: null_check
   severity: low
@@ -6934,6 +6890,7 @@ rules:
 - field: EMPEMPLOYMENT.COMPANY
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.COMPANY`.notna() & `EMPEMPLOYMENT.COMPANY`.notna() & (`EMPJOBHIST.COMPANY` != `EMPEMPLOYMENT.COMPANY`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: &id003
     - A
@@ -6957,6 +6914,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.BUSINESS_UNIT`.notna() & `EMPEMPLOYMENT.BUSINESS_UNIT`.notna() & (`EMPJOBHIST.BUSINESS_UNIT`
     != `EMPEMPLOYMENT.BUSINESS_UNIT`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -6975,6 +6933,7 @@ rules:
 - field: EMPEMPLOYMENT.DIVISION
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.DIVISION`.notna() & `EMPEMPLOYMENT.DIVISION`.notna() & (`EMPJOBHIST.DIVISION` != `EMPEMPLOYMENT.DIVISION`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -6993,6 +6952,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.DEPARTMENT`.notna() & `EMPEMPLOYMENT.DEPARTMENT`.notna() & (`EMPJOBHIST.DEPARTMENT` !=
     `EMPEMPLOYMENT.DEPARTMENT`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7010,6 +6970,7 @@ rules:
 - field: EMPEMPLOYMENT.LOCATION
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.LOCATION`.notna() & `EMPEMPLOYMENT.LOCATION`.notna() & (`EMPJOBHIST.LOCATION` != `EMPEMPLOYMENT.LOCATION`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7028,6 +6989,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.COST_CENTER`.notna() & `EMPEMPLOYMENT.COST_CENTER`.notna() & (`EMPJOBHIST.COST_CENTER`
     != `EMPEMPLOYMENT.COST_CENTER`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7045,6 +7007,7 @@ rules:
 - field: EMPEMPLOYMENT.JOB_CODE
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.JOB_CODE`.notna() & `EMPEMPLOYMENT.JOB_CODE`.notna() & (`EMPJOBHIST.JOB_CODE` != `EMPEMPLOYMENT.JOB_CODE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7085,6 +7048,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.MANAGER_ID`.notna() & `EMPEMPLOYMENT.MANAGER_ID`.notna() & (`EMPJOBHIST.MANAGER_ID` !=
     `EMPEMPLOYMENT.MANAGER_ID`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7103,6 +7067,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.EMPLOYEE_CLASS`.notna() & `EMPEMPLOYMENT.EMPLOYEE_CLASS`.notna() & (`EMPJOBHIST.EMPLOYEE_CLASS`
     != `EMPEMPLOYMENT.EMPLOYEE_CLASS`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7122,6 +7087,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.EMPLOYMENT_TYPE`.notna() & `EMPEMPLOYMENT.EMPLOYMENT_TYPE`.notna() & (`EMPJOBHIST.EMPLOYMENT_TYPE`
     != `EMPEMPLOYMENT.EMPLOYMENT_TYPE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7140,6 +7106,7 @@ rules:
 - field: EMPEMPLOYMENT.PAY_GROUP
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.PAY_GROUP`.notna() & `EMPEMPLOYMENT.PAY_GROUP`.notna() & (`EMPJOBHIST.PAY_GROUP` != `EMPEMPLOYMENT.PAY_GROUP`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7157,6 +7124,7 @@ rules:
 - field: EMPEMPLOYMENT.FTE
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.FTE`.notna() & `EMPEMPLOYMENT.FTE`.notna() & (`EMPJOBHIST.FTE` != `EMPEMPLOYMENT.FTE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7175,6 +7143,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.STANDARD_HOURS`.notna() & `EMPEMPLOYMENT.STANDARD_HOURS`.notna() & (`EMPJOBHIST.STANDARD_HOURS`
     != `EMPEMPLOYMENT.STANDARD_HOURS`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7193,6 +7162,7 @@ rules:
 - field: EMPEMPLOYMENT.TIMEZONE
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.TIMEZONE`.notna() & `EMPEMPLOYMENT.TIMEZONE`.notna() & (`EMPJOBHIST.TIMEZONE` != `EMPEMPLOYMENT.TIMEZONE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7211,6 +7181,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.WORK_SCHEDULE`.notna() & `EMPEMPLOYMENT.WORK_SCHEDULE`.notna() & (`EMPJOBHIST.WORK_SCHEDULE`
     != `EMPEMPLOYMENT.WORK_SCHEDULE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7229,6 +7200,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.HOLIDAY_CALENDAR`.notna() & `EMPEMPLOYMENT.HOLIDAY_CALENDAR`.notna() & (`EMPJOBHIST.HOLIDAY_CALENDAR`
     != `EMPEMPLOYMENT.HOLIDAY_CALENDAR`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7248,6 +7220,7 @@ rules:
   check_class: cross_field_check
   fail_when: '`EMPJOBHIST.TIME_TYPE_PROFILE`.notna() & `EMPEMPLOYMENT.TIME_TYPE_PROFILE`.notna() & (`EMPJOBHIST.TIME_TYPE_PROFILE`
     != `EMPEMPLOYMENT.TIME_TYPE_PROFILE`)'
+  grain: EMPJOBHIST
   applies_when:
     EMPEMPLOYMENT.STATUS: *id003
   severity: low
@@ -7317,7 +7290,9 @@ rules:
   dimension: consistency
   message: Terminated status record is not paired with a termination event
   why_it_matters: A job history row that sets employee status to terminated should be recorded under a termination-type
-    event for a consistent audit trail.
+    event for a consistent audit trail. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live
+    codes are not in this repo's dictionary, so this rule matches against the English label "termination" and
+    should be re-pointed at the tenant's actual event code if it differs.)
   rule_authority: best_practice
   sap_impact: Attrition reporting built from the event field under-counts terminations that are only visible via
     the status field.
@@ -7333,6 +7308,9 @@ rules:
   dimension: consistency
   message: Hire event record does not set an active employee status
   why_it_matters: A hire event should result in an active employee status; any other status on a hire row is inconsistent.
+    (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live codes are not in this repo's dictionary,
+    so this rule matches against the English label "hire" and should be re-pointed at the tenant's actual event
+    code if it differs.)
   rule_authority: best_practice
   sap_impact: New hires with an inconsistent status are missed by active-headcount reports or wrongly included in
     leaver reports.
@@ -7351,7 +7329,9 @@ rules:
   dimension: uniqueness
   message: Employee has more than one hire event in their job history
   why_it_matters: An employee should normally have a single original hire event; more than one usually indicates
-    a rehire that should use a rehire event, or a data duplication.
+    a rehire that should use a rehire event, or a data duplication. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured
+    picklist; its live codes are not in this repo's dictionary, so applies_when matches against the English label
+    "hire" and should be re-pointed at the tenant's actual event code if it differs.)
   rule_authority: best_practice
   sap_impact: Tenure and original-hire-date calculations become ambiguous when multiple hire events exist.
   fix_map:
@@ -7361,11 +7341,15 @@ rules:
 - field: EMPJOBHIST.EMPLOYMENT_TYPE
   check_class: null_check
   grain: EMPJOBHIST
+  applies_when:
+    EMPJOBHIST.STATUS:
+      not_in: *id002
   message: Job history record has no employment type
   severity: medium
   dimension: completeness
   why_it_matters: The employment type (e.g. full-time, part-time, contingent) is needed to classify the employee's
-    contract.
+    contract. Scoped to statuses outside A/U/P/S (EC245 already covers those) to avoid double-flagging the same
+    record under two rules.
   rule_authority: best_practice
   sap_impact: Replication to SAP infotype 0001 (org assignment) and headcount-by-contract-type reporting cannot
     classify the employee.
@@ -7440,21 +7424,6 @@ rules:
     __other__: Correct the manager to someone other than the employee.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: manager is set to the employee themselves.'
   id: EC387
-- field: EMPJOBHIST.PAY_GROUP
-  check_class: null_check
-  grain: EMPJOBHIST
-  applies_when:
-    EMPJOBHIST.STATUS: *id003
-  message: Active job history record has no pay group
-  severity: medium
-  dimension: completeness
-  why_it_matters: The pay group determines which payroll run processes the employee's pay.
-  rule_authority: best_practice
-  sap_impact: Payroll integration cannot assign the employee to a pay run without a pay group.
-  fix_map:
-    __blank__: Set the pay group on the job history record.
-  record_fix_template: 'Employee {EMPJOBHIST.USERID}: active job history record has no pay group.'
-  id: EC388
 - field: EMPJOBHIST.TIME_TYPE_PROFILE
   check_class: cross_field_check
   fail_when: (`EMPJOBHIST.TIME_TYPE_PROFILE`.notna()) & (`EMPJOBHIST.HOLIDAY_CALENDAR`.isna() | `EMPJOBHIST.WORK_SCHEDULE`.isna())
@@ -7588,23 +7557,6 @@ rules:
   record_fix_template: 'User {USERACCOUNT.USER_ID}: account time zone {USERACCOUNT.TIMEZONE} differs from job time
     zone {EMPJOBHIST.TIMEZONE}.'
   id: EC396
-- field: USERACCOUNT.HIRE_DATE
-  check_class: exists_check
-  target_table: EMPJOBHIST
-  target_fields:
-  - START_DATE
-  severity: low
-  dimension: consistency
-  message: User account hire date has no matching job history start date
-  why_it_matters: The account's hire date should line up with a start date recorded somewhere in the employee's
-    job history.
-  rule_authority: best_practice
-  sap_impact: Tenure calculations based on job history will not agree with the hire date shown on the user account.
-  fix_map:
-    __other__: Reconcile the hire date with the job history, or add the missing job history record.
-  record_fix_template: 'User {USERACCOUNT.USER_ID}: hire date {USERACCOUNT.HIRE_DATE} has no matching job history
-    start date.'
-  id: EC397
 - field: USERACCOUNT.USERNAME
   grain: USERACCOUNT
   check_class: cross_field_check
@@ -8156,6 +8108,7 @@ rules:
     from location standard hours {FOLOCATION.STANDARD_HOURS}.'
   id: EC431
 - field: USERACCOUNT.STATUS
+  grain: USERACCOUNT
   check_class: domain_value_check
   allowed_values:
   - A
@@ -8324,42 +8277,50 @@ rules:
   dimension: consistency
   message: Termination event record has no end date
   why_it_matters: A termination event should close out the job history record with an end date marking the employee's
-    last day.
+    last day. (Assumption -- EMPJOBHIST.EVENT is a tenant-configured picklist; its live codes are not in this repo's
+    dictionary, so this rule matches against the English label "termination" and should be re-pointed at the
+    tenant's actual event code if it differs.)
   rule_authority: best_practice
   sap_impact: Tenure and last-day-worked calculations cannot determine when the employee actually left.
   fix_map:
     __other__: Set the end date on the termination event record.
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: termination event on {EMPJOBHIST.START_DATE} has no end date.'
   id: EC441
-- field: EMPJOBHIST.USERID
+- field: EMPEMPLOYMENT.PERSON_ID
   check_class: exists_check
-  target_table: PERPERSON
+  target_table: PERINFO
   target_fields:
   - PERSON_ID
   severity: medium
   dimension: consistency
-  message: Job history record belongs to an unknown person
-  why_it_matters: The employee on a job history record must correspond to a real person record for the employee
-    to be identifiable.
+  message: Employment record belongs to an unknown person
+  why_it_matters: The person referenced by an employment record must correspond to a real PERINFO record for the
+    employee to be identifiable. (PERINFO.PERSON_ID and EMPEMPLOYMENT.PERSON_ID are both the personIdExternal
+    domain; EMPJOBHIST only carries the userId domain and has no personIdExternal field to check here.)
   rule_authority: best_practice
-  sap_impact: The job history record cannot be attached to any person's biographical data in downstream reporting.
+  sap_impact: The employment record cannot be attached to any person's biographical data in downstream reporting.
   fix_map:
-    __other__: Correct the employee reference on the job history record, or add the missing person record.
-  record_fix_template: Job history record references unknown person {EMPJOBHIST.USERID}.
+    __other__: Correct the person reference on the employment record, or add the missing person record.
+  record_fix_template: Employment record references unknown person {EMPEMPLOYMENT.PERSON_ID}.
   id: EC442
-- field: USERACCOUNT.USER_ID
+- field: USERACCOUNT.EMP_ID
   check_class: exists_check
-  target_table: PERPERSON
+  grain: USERACCOUNT
+  target_table: PERINFO
   target_fields:
   - PERSON_ID
   severity: low
   dimension: consistency
   message: User account has no matching person record
-  why_it_matters: A user account should correspond to a real person record; one with no match is either an orphaned
-    account or a system/service account mistakenly extracted as a person.
+  why_it_matters: A user account's linked employee ID should correspond to a real person record; one with no match
+    is either an orphaned account or a system/service account mistakenly extracted as a person. (Assumption --
+    USERACCOUNT.EMP_ID, documented only as "Linked employee ID", is treated as the personIdExternal domain to
+    compare against PERINFO.PERSON_ID; this is not explicitly confirmed in the dictionary and should be verified
+    against a live tenant.)
   rule_authority: best_practice
   sap_impact: Directory and biographical-data reports cannot resolve a name or personal details for this account.
   fix_map:
     __other__: Add the missing person record, or confirm this is a non-person service account to exclude.
-  record_fix_template: 'User {USERACCOUNT.USER_ID}: no matching person record found.'
+  record_fix_template: 'User {USERACCOUNT.USER_ID}: linked employee ID {USERACCOUNT.EMP_ID} has no matching person
+    record.'
   id: EC443

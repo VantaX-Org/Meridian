@@ -36,9 +36,24 @@ def fire(rid, tables):
 
 
 def test_new_ids_unique_and_contiguous():
+    # EC239-443 ids are unique and fall in range; gaps are expected where a review
+    # found a rule genuinely broken/duplicate and it was deleted (append-only only
+    # protects ids below EC239 — see EC312/353/354/355/388/397).
     nums = [int(r["id"][2:]) for r in NEW]
-    assert nums == list(range(239, 239 + len(nums)))
-    assert len(NEW) == 205
+    assert len(nums) == len(set(nums))
+    assert min(nums) == 239
+    assert max(nums) == 443
+    assert len(NEW) == 199
+
+
+def test_target_tables_exist_in_dictionary():
+    """Catches fabricated target_table references (e.g. the old EC442/EC443, which
+    pointed exists_check at a table named PERPERSON that was never in the canonical
+    dictionary)."""
+    for r in NEW:
+        tt = r.get("target_table")
+        if tt:
+            assert S4.table(tt) is not None, (r["id"], tt)
 
 
 def test_new_rules_fully_enriched():
@@ -119,9 +134,9 @@ CASES = [
     ("EC441", {"EMPJOBHIST": frame("EMPJOBHIST", STATUS=["A", "A"],
         EVENT=["termination", "hire"], END_DATE=[None, None])}, 1, ["EMPJOBHIST"]),
     ("EC442", {
-        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["p_missing", "p_ok"]),
-        "PERPERSON": frame("PERPERSON", PERSON_ID=["p_ok"]),
-     }, 1, ["EMPJOBHIST"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", PERSON_ID=["p_missing", "p_ok"]),
+        "PERINFO": frame("PERINFO", PERSON_ID=["p_ok"]),
+     }, 1, ["EMPEMPLOYMENT"]),
 
     # USERACCOUNT -------------------------------------------------------------
     ("EC272", {"USERACCOUNT": frame("USERACCOUNT", USER_ID=[None, "u2"])}, 1, ["USERACCOUNT"]),
@@ -166,8 +181,8 @@ CASES = [
     ("EC399", {"USERACCOUNT": frame("USERACCOUNT", FIRST_NAME=["Smith", "John"], LAST_NAME=["Smith", "Doe"])}, 1, ["USERACCOUNT"]),
     ("EC432", {"USERACCOUNT": frame("USERACCOUNT", STATUS=["X", "A"])}, 1, ["USERACCOUNT"]),
     ("EC443", {
-        "USERACCOUNT": frame("USERACCOUNT", USER_ID=["p_missing", "p_ok"]),
-        "PERPERSON": frame("PERPERSON", PERSON_ID=["p_ok"]),
+        "USERACCOUNT": frame("USERACCOUNT", EMP_ID=["p_missing", "p_ok"]),
+        "PERINFO": frame("PERINFO", PERSON_ID=["p_ok"]),
      }, 1, ["USERACCOUNT"]),
 
     # POSITION ------------------------------------------------------------
@@ -185,8 +200,6 @@ CASES = [
         "POSITION": frame("POSITION", EFFECTIVE_STATUS=["A", "A"], BUSINESS_UNIT=["BU_BAD", "BU_OK"]),
         "FOBUSINESSUNIT": frame("FOBUSINESSUNIT", EXTERNAL_CODE=["BU_OK"], STATUS=["A"]),
      }, 1, ["POSITION"]),
-    ("EC312", {"POSITION": frame("POSITION", EFFECTIVE_STATUS=["A", "A"],
-        VACANT=["true", "true"], EXTERNAL_NAME=[None, "Name"])}, 1, ["POSITION"]),
     ("EC313", {
         "POSITION": frame("POSITION", CODE=["P_BAD", "P_OK"], EFFECTIVE_STATUS=["A", "A"], VACANT=["false", "false"]),
         "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", POSITION=["P_OK"], STATUS=["A"]),
@@ -269,9 +282,7 @@ CASES = [
 
     # PERADDRESS -------------------------------------------------------------
     ("EC352", {"PERADDRESS": frame("PERADDRESS", PERSON_ID=[None, "p2"])}, 1, ["PERADDRESS"]),
-    ("EC353", {"PERADDRESS": frame("PERADDRESS", ADDRESS_LINE1=[None, "1 Main St"])}, 1, ["PERADDRESS"]),
-    ("EC354", {"PERADDRESS": frame("PERADDRESS", CITY=[None, "Joburg"])}, 1, ["PERADDRESS"]),
-    ("EC355", {"PERADDRESS": frame("PERADDRESS", COUNTRY=[None, "ZAF"])}, 1, ["PERADDRESS"]),
+    # EC353/354/355 removed: exact duplicates of pre-existing EC029/EC031/EC023.
     ("EC356", {"PERADDRESS": frame("PERADDRESS",
         ADDRESS_TYPE=["home", "home"], ZIPCODE=[None, "2000"], COUNTRY=["ZAF", "ZAF"])}, 1, ["PERADDRESS"]),
     ("EC357", {"PERADDRESS": frame("PERADDRESS",
@@ -317,6 +328,30 @@ def test_job_history_open_ended_gap_detected():
     clean_tables = {"EMPJOBHIST": frame("EMPJOBHIST",
         USERID=["u1"], START_DATE=["20200101"], END_DATE=["99991231"])}
     assert fire("EC271", clean_tables) == 0
+
+
+def test_empjob_hist_grain_pin_prevents_cross_employee_false_positive():
+    """EC359 (and the rest of EC359-376) join EMPEMPLOYMENT to EMPJOBHIST. Without an
+    explicit grain, the engine's only non-fan-out path between them goes via the
+    POSITION hub (both edges are cardinality:one), so two unrelated employees who
+    share a position get cross-joined. Each employee here is internally consistent
+    (own EMPEMPLOYMENT.COMPANY == own EMPJOBHIST.COMPANY); the correct answer is 0
+    failures, which only holds once the rule is pinned to grain: EMPJOBHIST."""
+    tables = {
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1", "u2"], STATUS=["A", "A"],
+            POSITION=["P1", "P1"], COMPANY=["C1", "C2"]),
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1", "u2"], POSITION=["P1", "P1"],
+            COMPANY=["C1", "C2"], START_DATE=["20200101", "20200101"]),
+        "POSITION": frame("POSITION", CODE=["P1"]),
+    }
+    assert fire("EC359", tables) == 0
+
+    rule_no_grain = dict(BY_ID["EC359"])
+    rule_no_grain.pop("grain", None)
+    frames_obj = TableFrames(tables, S4, module="employee_central")
+    _, res = run_rule(rule_no_grain, frames_obj, {})
+    assert res is not None and res.affected_count == 1, \
+        "expected fixture to reproduce the old cross-employee false positive when the grain pin is removed"
 
 
 def test_job_history_continuous_gap_detected():
