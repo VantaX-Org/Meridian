@@ -306,6 +306,7 @@ anchors:
   mdg_master_data: USMD120C
   interface_health: EDIDC
   employee_central: EMPEMPLOYMENT
+  payroll_integration: PAYMENTINFO
   s4hc_master_data: BUT000
   concur_expense: CONCUR_REPORT
   concur_users: CONCUR_USER

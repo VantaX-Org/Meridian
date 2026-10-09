@@ -12,7 +12,11 @@ from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
 PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
-         "payroll_integration": [("PAY", 31, 173), ("HPY", 31, 27)]}
+         "payroll_integration": [("PAY", 31, 185), ("HPY", 31, 27)]}
+# Ids minted on this branch that were later found to be undeliverable and removed (append-only
+# numbering is preserved — the id is retired, not reused): PAY157/158 compared a SF foundation
+# object code to a raw ECC payroll-export key with no mapping table between the two domains.
+DELETED = {"payroll_integration": {"PAY157", "PAY158"}}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
@@ -27,17 +31,20 @@ def _load(module):
 
 RULES = {m: _load(m) for m in PACKS}
 BY_ID = {r["id"]: r for rs in RULES.values() for r in rs}
-NEW = [(m, BY_ID[f"{p}{n:03d}"]) for m, specs in PACKS.items() for p, s, c in specs for n in range(s, s + c)]
+NEW = [(m, BY_ID[f"{p}{n:03d}"]) for m, specs in PACKS.items() for p, s, c in specs for n in range(s, s + c)
+       if f"{p}{n:03d}" not in DELETED.get(m, set())]
 
 
 @pytest.mark.parametrize("module", list(PACKS))
 def test_ids_unique_and_contiguous(module):
     ids = [r["id"] for r in RULES[module]]
     assert len(ids) == len(set(ids))
+    deleted = DELETED.get(module, set())
     for prefix, start, count in PACKS[module]:
         nums = sorted(int(i[len(prefix):]) for i in ids if re.fullmatch(prefix + r"\d+", i))
         new = [n for n in nums if n >= start]
-        assert new == list(range(start, start + count)), prefix
+        expected = [n for n in range(start, start + count) if f"{prefix}{n:03d}" not in deleted]
+        assert new == expected, prefix
         assert start - 1 in nums, prefix
 
 
@@ -107,17 +114,17 @@ DP = {"PERSON_ID": "p1", "RELATED_PERSON_ID": "d1", "RELATIONSHIP_TYPE": "child"
 BE = {"USERID": "u1", "PLAN_ID": "MED1", "PLAN_TYPE": "MEDICAL", "ENROL_DATE": "20250101",
       "EFFECTIVE_DATE": "20250201", "STATUS": "A", "COVERAGE_LEVEL": "EMP_ONLY"}
 PI = {"USERID": "u1", "EFFECTIVE_DATE": "20250101", "PAY_TYPE": "MAIN", "PAYMENT_METHOD": "05", "CURRENCY": "EUR",
-      "BANK_COUNTRY": "DE", "BANK": "10070000", "ACCOUNT_NUMBER": "1"}
+      "BANK_COUNTRY": "DEU", "BANK": "10070000", "ACCOUNT_NUMBER": "1"}
 RG = {"PERNR": "00000001", "SEQNR": "1", "ABKRS": "Z1", "FPPER": "202509", "INPER": "202509", "FPBEG": "20250901",
       "PAYDT": "20250925", "MOLGA": "16"}
 EE = {"USERID": "u1", "PERSON_ID": "p1", "START_DATE": "20200101", "END_DATE": "", "COMPANY": "ACME", "POSITION": "POS1"}
 PR = {"USERID": "u1", "PAY_PERIOD": "202509", "PAY_DATE": "20250925", "GROSS_PAY": "1000", "NET_PAY": "800",
       "COMPANY": "ACME", "COST_CENTRE": "CC1", "CURRENCY": "ZAR"}
 FE = {"PERSON_ID": "p1", "DATE_OF_BIRTH": "19900101", "DATE_OF_DEATH": "", "NATIONAL_ID": "8001015009087",
-      "NATIONAL_ID_COUNTRY": "ZA"}
+      "NATIONAL_ID_COUNTRY": "ZAF"}
 UA = {"USER_ID": "u1", "STATUS": "A", "EMAIL": "a@x.com", "HIRE_DATE": "20200101"}
 PO = {"CODE": "POS1", "COMPANY": "ACME", "COST_CENTER": "CC1", "VACANT": "false", "EFFECTIVE_STATUS": "A"}
-FC = {"EXTERNAL_CODE": "ACME", "COUNTRY": "ZA", "CURRENCY": "ZAR", "STATUS": "A"}
+FC = {"EXTERNAL_CODE": "ACME", "COUNTRY": "ZAF", "CURRENCY": "ZAR", "STATUS": "A"}
 
 
 def c(base, **kw):
@@ -205,31 +212,31 @@ CASES = {
                                                   {"PERNR": "2", "LGART": "M200", "BETRG": "0"}]}),
     "HPY056": ("payroll_integration", {"PA0003": [{"PERNR": "1", "KOABR": ""}, {"PERNR": "2", "KOABR": "X"}]}),
     # --- PAY054-203 depth additions ---
-    "PAY054": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AD", IBAN="AD11AAAAAAAAAAAAAAAAAAAA"[:-1]),
-                                                       c(PI, BANK_COUNTRY="AD", IBAN="AD11AAAAAAAAAAAAAAAAAAAA")]}),
-    "PAY061": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="DE", IBAN="DE11AAAAAAAAAAAAAAAAAA"[:-1]),
-                                                       c(PI, BANK_COUNTRY="DE", IBAN="DE11AAAAAAAAAAAAAAAAAA")]}),
-    "PAY067": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="GB", IBAN="GB11AAAAAAAAAAAAAAAAAA"[:-1]),
-                                                       c(PI, BANK_COUNTRY="GB", IBAN="GB11AAAAAAAAAAAAAAAAAA")]}),
-    "PAY081": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="NL", IBAN="NL11AAAAAAAAAAAAAA"[:-1]),
-                                                       c(PI, BANK_COUNTRY="NL", IBAN="NL11AAAAAAAAAAAAAA")]}),
-    "PAY090": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AR", IBAN=None, ACCOUNT_NUMBER="1" * 21),
-                                                       c(PI, BANK_COUNTRY="AR", IBAN=None, ACCOUNT_NUMBER="1" * 22)]}),
-    "PAY100": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="IN", IBAN=None, ACCOUNT_NUMBER="1" * 8),
-                                                       c(PI, BANK_COUNTRY="IN", IBAN=None, ACCOUNT_NUMBER="1" * 9)]}),
-    "PAY112": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="US", IBAN=None, ACCOUNT_NUMBER="1" * 3),
-                                                       c(PI, BANK_COUNTRY="US", IBAN=None, ACCOUNT_NUMBER="1" * 4)]}),
-    "PAY114": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ZA", IBAN=None, ACCOUNT_NUMBER="1" * 8),
-                                                       c(PI, BANK_COUNTRY="ZA", IBAN=None, ACCOUNT_NUMBER="1" * 9)]}),
-    "PAY115": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AU", BANK="11111"), c(PI, BANK_COUNTRY="AU", BANK="111111")]}),
-    "PAY120": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="HK", BANK="11"), c(PI, BANK_COUNTRY="HK", BANK="111")]}),
-    "PAY126": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ZA", BANK="11111"), c(PI, BANK_COUNTRY="ZA", BANK="111111")]}),
-    "PAY127": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="DE", BIC="DEUTGBFF500"),
-                                                       c(PI, BANK_COUNTRY="DE", BIC="DEUTDEFF500")]}),
+    "PAY054": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AND", IBAN="AD11AAAAAAAAAAAAAAAAAAAA"[:-1]),
+                                                       c(PI, BANK_COUNTRY="AND", IBAN="AD11AAAAAAAAAAAAAAAAAAAA")]}),
+    "PAY061": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="DEU", IBAN="DE11AAAAAAAAAAAAAAAAAA"[:-1]),
+                                                       c(PI, BANK_COUNTRY="DEU", IBAN="DE11AAAAAAAAAAAAAAAAAA")]}),
+    "PAY067": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="GBR", IBAN="GB11AAAAAAAAAAAAAAAAAA"[:-1]),
+                                                       c(PI, BANK_COUNTRY="GBR", IBAN="GB11AAAAAAAAAAAAAAAAAA")]}),
+    "PAY081": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="NLD", IBAN="NL11AAAAAAAAAAAAAA"[:-1]),
+                                                       c(PI, BANK_COUNTRY="NLD", IBAN="NL11AAAAAAAAAAAAAA")]}),
+    "PAY090": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ARG", IBAN=None, ACCOUNT_NUMBER="1" * 21),
+                                                       c(PI, BANK_COUNTRY="ARG", IBAN=None, ACCOUNT_NUMBER="1" * 22)]}),
+    "PAY100": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="IND", IBAN=None, ACCOUNT_NUMBER="1" * 8),
+                                                       c(PI, BANK_COUNTRY="IND", IBAN=None, ACCOUNT_NUMBER="1" * 9)]}),
+    "PAY112": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="USA", IBAN=None, ACCOUNT_NUMBER="1" * 3),
+                                                       c(PI, BANK_COUNTRY="USA", IBAN=None, ACCOUNT_NUMBER="1" * 4)]}),
+    "PAY114": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ZAF", IBAN=None, ACCOUNT_NUMBER="1" * 8),
+                                                       c(PI, BANK_COUNTRY="ZAF", IBAN=None, ACCOUNT_NUMBER="1" * 9)]}),
+    "PAY115": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="AUS", ROUTING_NUMBER="11111"), c(PI, BANK_COUNTRY="AUS", ROUTING_NUMBER="111111")]}),
+    "PAY120": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="HKG", ROUTING_NUMBER="11"), c(PI, BANK_COUNTRY="HKG", ROUTING_NUMBER="111")]}),
+    "PAY126": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="ZAF", ROUTING_NUMBER="11111"), c(PI, BANK_COUNTRY="ZAF", ROUTING_NUMBER="111111")]}),
+    "PAY127": ("payroll_integration", {"PAYMENTINFO": [c(PI, BIC="DEUTDEFF500"),
+                                                       c(PI, BIC="DEUTDE")]}),
     "PAY128": ("payroll_integration", {"PAYMENTINFO": [c(PI, ACCOUNT_NUMBER="123", ACCOUNT_OWNER=None),
                                                        c(PI, ACCOUNT_NUMBER="123", ACCOUNT_OWNER="Alice Smith")]}),
-    "PAY129": ("payroll_integration", {"PAYMENTINFO": [c(PI, IBAN="DE89370400440532013000", ACCOUNT_OWNER=None),
-                                                       c(PI, IBAN="DE89370400440532013000", ACCOUNT_OWNER="Alice Smith")]}),
+    "PAY129": ("payroll_integration", {"PAYMENTINFO": [c(PI, IBAN="DE89370400440532013000", ACCOUNT_NUMBER=None, ACCOUNT_OWNER=None),
+                                                       c(PI, IBAN="DE89370400440532013000", ACCOUNT_NUMBER=None, ACCOUNT_OWNER="Alice Smith")]}),
     "PAY130": ("payroll_integration", {"PAYMENTINFO": [c(PI, EXTERNAL_CODE=None), c(PI, EXTERNAL_CODE="PAY1")]}),
     "PAY131": ("payroll_integration", {"PAYMENTINFO": [c(PI, EFFECTIVE_DATE=None), c(PI, EFFECTIVE_DATE="20250101")]}),
     "PAY132": ("payroll_integration", {"PAYMENTINFO": [c(PI, EFFECTIVE_DATE=_day(-400)), c(PI, EFFECTIVE_DATE=_day(0))]}),
@@ -238,24 +245,30 @@ CASES = {
     "PAY135": ("payroll_integration", {"PAYMENTINFO": [c(PI, EFFECTIVE_DATE=_day(-200)), c(PI, EFFECTIVE_DATE="20200201")],
                                        "EMPEMPLOYMENT": [c(EE, END_DATE="20200101")]}),
     "PAY136": ("payroll_integration", {"PAYMENTINFO": [c(PI, USERID="u1", ACCOUNT_NUMBER="999"),
-                                                       c(PI, USERID="u2", ACCOUNT_NUMBER="999")]}, (2, 2)),
+                                                       c(PI, USERID="u2", ACCOUNT_NUMBER="999"),
+                                                       # u1's own effective-dated history on a different account: not a duplicate
+                                                       c(PI, USERID="u1", ACCOUNT_NUMBER="888", EFFECTIVE_DATE=_day(-200)),
+                                                       c(PI, USERID="u1", ACCOUNT_NUMBER="888", EFFECTIVE_DATE=_day(0))]}, (4, 2)),
     "PAY137": ("payroll_integration", {"PAYMENTINFO": [c(PI, USERID="u1", IBAN="DE89370400440532013000"),
-                                                       c(PI, USERID="u2", IBAN="DE89370400440532013000")]}, (2, 2)),
+                                                       c(PI, USERID="u2", IBAN="DE89370400440532013000"),
+                                                       # u1's own effective-dated history on a different IBAN: not a duplicate
+                                                       c(PI, USERID="u1", IBAN="GB29NWBK60161331926819", EFFECTIVE_DATE=_day(-200)),
+                                                       c(PI, USERID="u1", IBAN="GB29NWBK60161331926819", EFFECTIVE_DATE=_day(0))]}, (4, 2)),
     "PAY138": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID=None), c(FE, PERSON_ID="p2", NATIONAL_ID="8001015009087")],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYRESULT": [PR, c(PR, USERID="u2")]}),
     "PAY139": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID="8001015009087", NATIONAL_ID_COUNTRY=None),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID="8001015009087", NATIONAL_ID_COUNTRY="ZA")]}),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID="8001015009087", NATIONAL_ID_COUNTRY="ZAF")]}),
     "PAY140": ("payroll_integration", {"PERINFO": [c(FE, DATE_OF_DEATH="20240101"), c(FE, PERSON_ID="p2", DATE_OF_DEATH=None)],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYRESULT": [c(PR, PAY_DATE="20250925"), c(PR, USERID="u2", PAY_DATE="20250925")]}),
     "PAY141": ("payroll_integration", {"PERINFO": [c(FE, DATE_OF_DEATH="20240101"), c(FE, PERSON_ID="p2", DATE_OF_DEATH=None)],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYMENTINFO": [c(PI, EFFECTIVE_DATE="20250101"), c(PI, USERID="u2", EFFECTIVE_DATE="20250101")]}),
-    "PAY142": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ZA"), c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="DE")],
+    "PAY142": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ZAF"), c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="DEU")],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
-                                       "PAYMENTINFO": [c(PI, BANK_COUNTRY="DE"), c(PI, USERID="u2", BANK_COUNTRY="DE")]}),
-    "PAY143": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="DE"), c(PI, USERID="u2", BANK_COUNTRY="ZA")],
+                                       "PAYMENTINFO": [c(PI, BANK_COUNTRY="DEU"), c(PI, USERID="u2", BANK_COUNTRY="DEU")]}),
+    "PAY143": ("payroll_integration", {"PAYMENTINFO": [c(PI, BANK_COUNTRY="DEU"), c(PI, USERID="u2", BANK_COUNTRY="ZAF")],
                                        "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "FOCOMPANY": [FC]}),
     "PAY144": ("payroll_integration", {"PAYMENTINFO": [c(PI, CURRENCY="EUR"), c(PI, USERID="u2", CURRENCY="ZAR")],
@@ -286,35 +299,31 @@ CASES = {
     "PAY154": ("payroll_integration", {"USERACCOUNT": [c(UA, STATUS="A"), c(UA, USER_ID="u2", STATUS="A")],
                                        "EMPEMPLOYMENT": [c(EE, END_DATE="20200101"), c(EE, USERID="u2", PERSON_ID="p2", END_DATE=None)]}),
     "PAY155": ("payroll_integration", {"POSITION": [c(PO, VACANT="true")], "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
-                                       "PAYRESULT": [c(PR, GROSS_PAY="1000"), c(PR, USERID="u2", GROSS_PAY="0")]}),
+                                       "PAYRESULT": [c(PR, GROSS_PAY="1000", PAY_DATE=_day(-10)), c(PR, USERID="u2", GROSS_PAY="0", PAY_DATE=_day(-10))]}),
     "PAY156": ("payroll_integration", {"POSITION": [c(PO, EFFECTIVE_STATUS="I")], "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
-                                       "PAYRESULT": [c(PR, GROSS_PAY="1000"), c(PR, USERID="u2", GROSS_PAY="0")]}),
-    "PAY157": ("payroll_integration", {"POSITION": [c(PO, COST_CENTER="CC1")], "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
-                                       "PAYRESULT": [c(PR, COST_CENTRE="CC2"), c(PR, USERID="u2", COST_CENTRE="CC1")]}),
-    "PAY158": ("payroll_integration", {"POSITION": [c(PO, COMPANY="ACME")], "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
-                                       "PAYRESULT": [c(PR, COMPANY="OTHER"), c(PR, USERID="u2", COMPANY="ACME")]}),
+                                       "PAYRESULT": [c(PR, GROSS_PAY="1000", PAY_DATE=_day(-10)), c(PR, USERID="u2", GROSS_PAY="0", PAY_DATE=_day(-10))]}),
     "PAY159": ("payroll_integration", {"POSITION": [c(PO, VACANT="true")], "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", PERSON_ID="p2")],
                                        "PAYMENTINFO": [c(PI, ACCOUNT_NUMBER="1", IBAN=None), c(PI, USERID="u2", ACCOUNT_NUMBER=None, IBAN=None)]}),
-    "PAY160": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="AR", NATIONAL_ID="1111111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="AR", NATIONAL_ID="11111111111")]}),
-    "PAY166": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="CA", NATIONAL_ID="11111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="CA", NATIONAL_ID="111111111")]}),
-    "PAY171": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="DE", NATIONAL_ID="1111111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="DE", NATIONAL_ID="11111111111")]}),
-    "PAY176": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="GB", NATIONAL_ID="AA111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="GB", NATIONAL_ID="AA111111A")]}),
-    "PAY182": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="IN", NATIONAL_ID="AAAAA1111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="IN", NATIONAL_ID="AAAAA1111A")]}),
-    "PAY187": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="MX", NATIONAL_ID="AAAAAAAAAAAAAAAAA"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="MX", NATIONAL_ID="AAAAAAAAAAAAAAAAAA")]}),
-    "PAY194": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="PL", NATIONAL_ID="1111111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="PL", NATIONAL_ID="11111111111")]}),
-    "PAY198": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="SG", NATIONAL_ID="A1111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="SG", NATIONAL_ID="A1111111A")]}),
-    "PAY201": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="US", NATIONAL_ID="11111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="US", NATIONAL_ID="111111111")]}),
-    "PAY203": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ZA", NATIONAL_ID="111111111111"),
-                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="ZA", NATIONAL_ID="1111111111111")]}),
+    "PAY160": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ARG", NATIONAL_ID="1111111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="ARG", NATIONAL_ID="11111111111")]}),
+    "PAY166": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="CAN", NATIONAL_ID="11111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="CAN", NATIONAL_ID="111111111")]}),
+    "PAY171": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="DEU", NATIONAL_ID="1111111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="DEU", NATIONAL_ID="11111111111")]}),
+    "PAY176": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="GBR", NATIONAL_ID="AA111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="GBR", NATIONAL_ID="AA111111A")]}),
+    "PAY182": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="IND", NATIONAL_ID="AAAAA1111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="IND", NATIONAL_ID="AAAAA1111A")]}),
+    "PAY187": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="MEX", NATIONAL_ID="AAAAAAAAAAAAAAAAA"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="MEX", NATIONAL_ID="AAAAAAAAAAAAAAAAAA")]}),
+    "PAY194": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="POL", NATIONAL_ID="1111111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="POL", NATIONAL_ID="11111111111")]}),
+    "PAY198": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="SGP", NATIONAL_ID="A1111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="SGP", NATIONAL_ID="A1111111A")]}),
+    "PAY201": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="USA", NATIONAL_ID="11111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="USA", NATIONAL_ID="111111111")]}),
+    "PAY203": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="ZAF", NATIONAL_ID="111111111111"),
+                                                   c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="ZAF", NATIONAL_ID="1111111111111")]}),
 }
 
 

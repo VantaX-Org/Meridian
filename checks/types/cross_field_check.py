@@ -9,6 +9,30 @@ _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16
             "DF34_DEC", "DECIMAL", "INTEGER"}
 _DATES = {"DATS", "DATE", "DATETIME"}
 
+# IBAN's first two characters are always the ISO 3166-1 alpha-2 country code — that is
+# part of the IBAN spec itself, unrelated to the 3-letter codes a Country foundation
+# object field (e.g. PAYMENTINFO.BANK_COUNTRY) carries. A ``fail_when`` comparing an
+# IBAN prefix to such a field needs this map; available in every cross_field_check's
+# eval namespace as ``iso_alpha3`` (``.str.slice(0, 2).map(iso_alpha3)``). Scoped to
+# the countries actually in the IBAN registry — a rule should never see other codes
+# in an IBAN prefix.
+ISO_ALPHA2_TO_3 = {
+    "AD": "AND", "AE": "ARE", "AL": "ALB", "AT": "AUT", "AZ": "AZE", "BA": "BIH",
+    "BE": "BEL", "BG": "BGR", "BH": "BHR", "BR": "BRA", "BY": "BLR", "CH": "CHE",
+    "CR": "CRI", "CY": "CYP", "CZ": "CZE", "DE": "DEU", "DK": "DNK", "DO": "DOM",
+    "EE": "EST", "EG": "EGY", "ES": "ESP", "FI": "FIN", "FO": "FRO", "FR": "FRA",
+    "GB": "GBR", "GE": "GEO", "GI": "GIB", "GL": "GRL", "GR": "GRC", "GT": "GTM",
+    "HR": "HRV", "HU": "HUN", "IE": "IRL", "IL": "ISR", "IQ": "IRQ", "IS": "ISL",
+    "IT": "ITA", "JO": "JOR", "KW": "KWT", "KZ": "KAZ", "LB": "LBN", "LC": "LCA",
+    "LI": "LIE", "LT": "LTU", "LU": "LUX", "LV": "LVA", "LY": "LBY", "MC": "MCO",
+    "MD": "MDA", "ME": "MNE", "MK": "MKD", "MR": "MRT", "MT": "MLT", "MU": "MUS",
+    "NL": "NLD", "NO": "NOR", "PK": "PAK", "PL": "POL", "PS": "PSE", "PT": "PRT",
+    "QA": "QAT", "RO": "ROU", "RS": "SRB", "SA": "SAU", "SC": "SYC", "SD": "SDN",
+    "SE": "SWE", "SI": "SVN", "SK": "SVK", "SM": "SMR", "SO": "SOM", "ST": "STP",
+    "SV": "SLV", "TL": "TLS", "TN": "TUN", "TR": "TUR", "UA": "UKR", "VA": "VAT",
+    "VG": "VGB", "XK": "XKX",
+}
+
 
 def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     """Copy of ``cols`` typed by the SAP dictionary for comparison.
@@ -73,7 +97,8 @@ class CrossFieldCheck(BaseCheck):
         cols = self.columns()
         t = typed(df, cols)
         result = t.eval(self._expr(), engine="python",
-                        local_dict={"today": pd.Series(pd.Timestamp.today().normalize(), index=t.index)})
+                        local_dict={"today": pd.Series(pd.Timestamp.today().normalize(), index=t.index),
+                                    "iso_alpha3": ISO_ALPHA2_TO_3})
         if not isinstance(result, pd.Series):
             result = pd.Series(result, index=df.index)
         result = result.astype("boolean")
