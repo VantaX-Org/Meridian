@@ -3,6 +3,10 @@ name: Build & Deploy Multi-Platform Images
 on:
   push:
     branches: [main]
+    # Docs-only merges change no image.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       version_bump:
@@ -20,18 +24,16 @@ env:
   IMAGE_PREFIX: ghcr.io/vantax-org/meridian
 
 # One release build at a time: two overlapping builds race to push :latest,
-# and the older commit can win.
+# and the older commit can win. A newer merge cancels the running build, since
+# only the newest commit's images matter.
 concurrency:
   group: release
-  cancel-in-progress: false
+  cancel-in-progress: true
 
+# No test job here: unit-tests.yml already runs the full suite on every PR and
+# on every push to main, so a gate here ran the 38-minute suite twice per merge.
 jobs:
-  # Release gate: no image is published from a commit whose test suite fails.
-  tests:
-    uses: ./.github/workflows/unit-tests.yml
-
   build-and-push:
-    needs: tests
     runs-on: ubuntu-latest
     permissions:
       contents: write

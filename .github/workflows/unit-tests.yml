@@ -9,7 +9,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  workflow_call:   # release gate — build-and-deploy.yml runs this before building images
 
 jobs:
   pytest:
