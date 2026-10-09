@@ -36,7 +36,9 @@ def test_ids_unique_and_contiguous(module):
     assert len(ids) == len(set(ids))
     for prefix, start, count in PACKS[module]:
         nums = sorted(int(i[len(prefix):]) for i in ids if re.fullmatch(prefix + r"\d+", i))
-        new = [n for n in nums if n >= start]
+        # scoped to this task's own id block; later tasks may contiguously extend the
+        # same prefix above `start + count` (e.g. compensation's COMP095+ depth pack)
+        new = [n for n in nums if start <= n < start + count]
         assert new == list(range(start, start + count)), prefix
         assert start - 1 in nums, prefix
 
