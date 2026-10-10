@@ -441,6 +441,93 @@ async def signoff_wave(
     return _row(row)
 
 
+class FixBatchBody(BaseModel):
+    module: str
+    gap_type: str
+    field: Optional[str] = None
+
+
+@router.get("/waves/{wave_id}/report.{fmt}")
+async def wave_report(
+    wave_id: uuid.UUID,
+    fmt: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("export")),
+):
+    import asyncio
+
+    import pandas as pd
+
+    from api.services.migration.cockpit import load_cockpit, readiness_report_context, readiness_report_sheets
+    from api.services.pdf_reports import render
+
+    if fmt not in ("xlsx", "pdf"):
+        raise HTTPException(status_code=404, detail="Unknown report format.")
+    await _set_rls(db, tenant.id)
+    w = await _load_wave(db, tenant.id, wave_id)
+    cockpit = await load_cockpit(db, str(tenant.id), w)
+    name = f"migration_readiness_{w.name.replace(' ', '_')}"
+    if fmt == "pdf":
+        pdf = await asyncio.to_thread(render, "migration_readiness_report.html",
+                                      readiness_report_context(cockpit, tenant.name, None))
+        return _stream(pdf, "application/pdf", f"{name}.pdf")
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
+        for sheet, df in readiness_report_sheets(cockpit).items():
+            df.to_excel(xw, sheet_name=sheet, index=False)
+    return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
+
+
+@router.post("/waves/{wave_id}/blockers/fix-batch")
+async def blocker_fix_batch(
+    wave_id: uuid.UUID,
+    body: FixBatchBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("apply")),
+):
+    """Draft a cleaning batch for the open DQ issues on the records one blocker affects.
+    Migration and DQ share the record-key format (checks/base.record_keys), so (module, record_key) joins."""
+    from api.services import remediation
+    from api.services.migration import object_label
+    from api.services.rbac import current_user_label
+
+    await _set_rls(db, tenant.id)
+    w = await _load_wave(db, tenant.id, wave_id)
+    run_id = (await db.execute(text("SELECT id FROM migration_runs WHERE tenant_id = :t AND wave_id = :w "
+                                    "AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1"),
+                               {"t": str(tenant.id), "w": str(wave_id)})).scalar()
+    if run_id is None:
+        raise HTTPException(status_code=404, detail="This wave has not been analysed yet.")
+    rows = (await db.execute(text("""
+        SELECT ri.id AS issue_id, ri.scope, ri.module, ri.check_id, ri.record_key, ri.grain,
+               ri.last_seen_version, f.details->>'field_checked' AS field
+          FROM record_issues ri
+          LEFT JOIN findings f ON f.version_id = ri.last_seen_version AND f.check_id = ri.check_id
+         WHERE ri.tenant_id = :t AND ri.module = :m AND ri.status IN ('open', 'in_progress')
+           AND ri.record_key IN (
+                SELECT DISTINCT record_key FROM migration_gap_findings
+                 WHERE run_id = :r AND module = :m AND gap_type = :g
+                   AND field IS NOT DISTINCT FROM :fld AND record_key IS NOT NULL)
+         ORDER BY ri.record_key
+         LIMIT 50001"""),
+        {"t": str(tenant.id), "m": body.module, "r": str(run_id), "g": body.gap_type, "fld": body.field})).fetchall()
+    if not rows:
+        raise HTTPException(status_code=400, detail="No open data quality issues match these records. "
+                                                    "Fix the mapping in the Mapping tab.")
+    if len(rows) > 50_000:
+        raise HTTPException(status_code=400, detail="More than 50000 records; fix this blocker in parts.")
+    issues = [dict(r._mapping) for r in rows]
+    name = f"{w.name}: {object_label(body.module)} {body.gap_type} {body.field or ''}".rstrip()
+    uid, label = current_user_id(request), current_user_label()
+    out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), name, body.model_dump_json(),
+                                                              issues, uid, label))
+    await db.commit()
+    return out
+
+
 # Critical gaps with no record key hit every record (missing/obsolete target field) → export gate.
 _STRUCTURAL_SQL = ("SELECT COUNT(*) FROM migration_gap_findings WHERE run_id = :rid "
                    "AND severity = 'critical' AND record_key IS NULL")

@@ -64,3 +64,62 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         "trend": [{"run_id": str(t.run_id), "completed_at": t.completed_at, "score": t.score} for t in trend],
         "blockers": [{**dict(b._mapping), "label": object_label(b.module)} for b in blockers],
     }
+
+
+_VERDICT_LABEL = {"go": "Go", "at_risk": "At risk", "no_go": "No-go"}
+_VERDICT_SENTENCE = {
+    "go": "Every object meets the wave's readiness and data-quality thresholds.",
+    "at_risk": "No object is blocked outright, but at least one is below a threshold or needs conditional fixes.",
+    "no_go": "At least one object has blocking gaps or has not been analysed.",
+}
+
+
+def readiness_report_context(cockpit: dict, tenant_name: str, generated_at) -> dict:
+    from datetime import datetime, timezone
+
+    from api.services.pdf_reports import fmt_pct, fmt_sast
+
+    w = cockpit["wave"]
+    return {
+        "title": f"Migration readiness: {w['name']}",
+        "eyebrow": "Migration cockpit",
+        "scope_label": tenant_name,
+        "generated_at": generated_at or datetime.now(timezone.utc),
+        "meta": [
+            ("Stage", w["stage"]),
+            ("Target date", str(w["target_date"]) if w.get("target_date") else "Not set"),
+            ("Target", cockpit["dest_system_type"]),
+            ("Readiness", fmt_pct(cockpit["score"])),
+            ("Minimum readiness", fmt_pct(w["min_readiness"])),
+            ("Signed off", fmt_sast(w["signed_off_at"]) if w.get("signed_off_at") else "Not signed off"),
+        ],
+        "verdict": cockpit["verdict"],
+        "verdict_label": _VERDICT_LABEL[cockpit["verdict"]],
+        "verdict_sentence": _VERDICT_SENTENCE[cockpit["verdict"]],
+        "objects": cockpit["objects"],
+        "blockers": cockpit["blockers"],
+        "trend": cockpit["trend"],
+        "has_run": cockpit["run_id"] is not None,
+    }
+
+
+def readiness_report_sheets(cockpit: dict) -> dict:
+    import pandas as pd
+
+    from api.services.pdf_reports import fmt_sast
+
+    w = cockpit["wave"]
+    return {
+        "Summary": pd.DataFrame([{"Wave": w["name"], "Stage": w["stage"], "Target date": w.get("target_date"),
+                                  "Verdict": _VERDICT_LABEL[cockpit["verdict"]], "Readiness %": cockpit["score"],
+                                  "Records": cockpit["records_total"], "Records blocked": cockpit["records_blocked"]}]),
+        "Objects": pd.DataFrame([{"Object": o["label"], "Module": o["module"], "Verdict": _VERDICT_LABEL[o["verdict"]],
+                                  "Readiness %": o["score"], "Records": o["records"],
+                                  "Records blocked": o["records_blocked"], "Blocking gaps": o["blocker_count"],
+                                  "DQS": o["dqs"]} for o in cockpit["objects"]]),
+        "Blockers": pd.DataFrame([{"Object": b["label"], "Gap type": b["gap_type"], "Field": b["field"],
+                                   "Severity": b["severity"], "Records": b["records"], "Gaps": b["gaps"]}
+                                  for b in cockpit["blockers"]]),
+        "Trend": pd.DataFrame([{"Completed (SAST)": fmt_sast(t["completed_at"]), "Readiness %": t["score"]}
+                               for t in cockpit["trend"]]),
+    }

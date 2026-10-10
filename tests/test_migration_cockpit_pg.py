@@ -63,6 +63,7 @@ def seeded():
     yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine}
     with engine.begin() as c:
         c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
+        c.execute(text("DELETE FROM record_issues WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_waves WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM analysis_versions WHERE tenant_id = :t"), {"t": tid})
@@ -121,3 +122,26 @@ async def test_signoff_needs_go_and_approve_and_is_audited(seeded, monkeypatch):
                            {"t": seeded["tid"]}).one()
     assert row.before_json["signed_off_at"] is None
     assert row.after_json["signed_off_at"] is not None and row.after_json["verdict"] == "go"
+
+
+@pytest.mark.anyio
+async def test_blocker_fix_batch(seeded, monkeypatch):
+    captured = {}
+
+    def fake_draft(session, tenant_id, name, filter_json, issues, uid, label):
+        captured.update(name=name, issues=issues)
+        return {"id": "b1", "items": len(issues)}
+
+    monkeypatch.setattr("api.services.remediation.draft_batch", fake_draft)
+    body = {"module": "accounts_payable", "gap_type": "value_unmapped", "field": "BUT000.BU_GROUP"}
+    url = f"/api/v1/migration/waves/{seeded['wid']}/blockers/fix-batch"
+    async with await _client(monkeypatch, seeded["tid"]) as c:
+        assert (await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})).status_code == 400
+        with seeded["engine"].begin() as conn:
+            conn.execute(text("INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, severity, "
+                              "status, first_seen_version, last_seen_version) VALUES (:t, 'upload', "
+                              "'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v)"), {"t": seeded["tid"], "v": seeded["vid"]})
+        r = await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})
+    assert r.status_code == 200, r.text
+    assert [i["record_key"] for i in captured["issues"]] == ["LIFNR=2"]
+    assert captured["name"] == "Wave 1: BP supplier value_unmapped BUT000.BU_GROUP"
