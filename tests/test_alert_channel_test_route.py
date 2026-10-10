@@ -74,6 +74,17 @@ def test_delivery_failure_is_reported_not_raised(monkeypatch):
     assert _post(_client(CHANNEL)).json() == {"delivered": False}
 
 
+def test_email_channel_with_no_backend_reports_not_delivered(monkeypatch):
+    """I1: deliver() must report real success — an email channel with no SMTP/Resend/Graph
+    backend configured must not be reported as delivered. Exercises the real deliver(), not a
+    mock, so a regression in the shared email helpers is caught here too."""
+    for var in ("MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "EMAIL_FROM",
+                "SMTP_HOST", "RESEND_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    email_channel = {"id": "c2", "kind": "email", "target": "ops@example.com", "secret": None}
+    assert _post(_client(email_channel)).json() == {"delivered": False}
+
+
 def test_unknown_channel_is_404():
     assert _post(_client(None)).status_code == 404
 

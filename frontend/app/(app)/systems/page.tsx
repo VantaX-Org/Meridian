@@ -157,7 +157,7 @@ export default function SystemsPage() {
       header: "Next run",
       cell: ({ row }) => {
         const n = nextRunById.get(row.original.id);
-        return n ? formatDate(n, "datetime") : "Manual only";
+        return n ? formatDate(n, "datetime", "SAST") : "Manual only";
       },
     },
     {

@@ -121,3 +121,86 @@ def test_digest_and_immediate_alert_are_per_system(app_engine, monkeypatch):
         s.execute(text("SET app.tenant_id = :t"), {"t": tid})
         sn._send_immediate_critical(s, tid, qas_cur)
     assert [(a["system_name"], a["new_critical_rules"]) for a in sent] == [("QAS", ["CHK-X"])]
+
+
+@pg
+def test_digest_one_raising_channel_does_not_stop_the_rest(app_engine, monkeypatch):
+    """One channel's deliver() raising (e.g. an expired Graph token) must not drop the other
+    channel's delivery, or the rest of the tenant's digest."""
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, prd = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'D-digest-raise')"), {"t": tid})
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:p, :t, 'PRD')"), {"p": prd, "t": tid})
+        _version(c, tid, prd, 90.0, "2 days")
+        prd_cur = _version(c, tid, prd, 70.0, "1 hour")
+        _critical(c, tid, prd_cur, "CHK-X")
+        c.execute(text("INSERT INTO alert_channels (tenant_id, kind, target, digest, immediate_critical) VALUES "
+                       "(:t, 'slack', 'https://hooks.example/broken', 'daily', false), "
+                       "(:t, 'slack', 'https://hooks.example/good', 'daily', false)"), {"t": tid})
+
+    delivered: list[tuple[str, str]] = []  # (channel target, alert version_id) — this tenant's only
+
+    def flaky_deliver(ch, alert):
+        if ch["target"].endswith("/broken"):
+            raise RuntimeError("expired token")
+        delivered.append((ch["target"], alert["version_id"]))
+        return True
+
+    monkeypatch.setenv("MERIDIAN_APP_URL", "https://app")
+    monkeypatch.setattr(sn, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(sn, "deliver", flaky_deliver)
+
+    sn.send_alert_digest("daily")
+
+    # the shared pg instance may carry other tenants' leftover channels/alerts from other test
+    # modules — key on this run's own version id, not on raw totals, to stay contamination-proof
+    mine = [t for t, v in delivered if v == prd_cur]
+    assert mine == ["https://hooks.example/good"]
+
+
+@pg
+def test_digest_sent_count_excludes_an_undelivered_email_channel(app_engine, monkeypatch):
+    """An email channel with no backend configured must not count toward `sent` — I1: deliver()
+    (exercised here for real, not mocked) reports false instead of always true for email."""
+    from sqlalchemy import text
+
+    owner, app = app_engine
+    tid, prd = str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'D-digest-email')"), {"t": tid})
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO sap_systems (id, tenant_id, name) VALUES (:p, :t, 'PRD')"), {"p": prd, "t": tid})
+        _version(c, tid, prd, 90.0, "2 days")
+        prd_cur = _version(c, tid, prd, 70.0, "1 hour")
+        _critical(c, tid, prd_cur, "CHK-X")
+        c.execute(text("INSERT INTO alert_channels (tenant_id, kind, target, digest, immediate_critical) VALUES "
+                       "(:t, 'email', 'ops@example.com', 'daily', false)"), {"t": tid})
+
+    for var in ("MICROSOFT_TENANT_ID", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "EMAIL_FROM",
+                "SMTP_HOST", "RESEND_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("MERIDIAN_APP_URL", "https://app")
+    monkeypatch.setattr(sn, "get_sync_engine", lambda: app)
+
+    real_deliver = sn.deliver
+    mine: list[bool] = []
+
+    def spy_deliver(ch, alert):
+        ok = real_deliver(ch, alert)
+        if alert["version_id"] == prd_cur:
+            mine.append(ok)
+        return ok
+
+    monkeypatch.setattr(sn, "deliver", spy_deliver)
+
+    sn.send_alert_digest("daily")
+
+    # the shared pg instance may carry other tenants' leftover channels/alerts — key on this run's
+    # own version id so contamination from other test modules can't mask the count going wrong
+    assert mine == [False]

@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import traceback
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -290,8 +291,8 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
     return subject, body
 
 
-def _send_email_smtp(recipient: str, subject: str, body: str):
-    """Send email via local SMTP relay (air-gapped deployments)."""
+def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
+    """Send email via local SMTP relay (air-gapped deployments). True only on a confirmed send."""
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -309,16 +310,18 @@ def _send_email_smtp(recipient: str, subject: str, body: str):
                 smtp.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD", ""))
             smtp.sendmail(msg["From"], recipient, msg.as_string())
         logger.info(f"Email sent via SMTP to {recipient}")
+        return True
     except Exception as e:
         logger.error(f"SMTP send failed: {e}")
+        return False
 
 
-def _send_email_resend(recipient: str, subject: str, body: str):
-    """Send email via Resend API (standard mode)."""
+def _send_email_resend(recipient: str, subject: str, body: str) -> bool:
+    """Send email via Resend API (standard mode). True only on a confirmed send."""
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key:
         logger.info("Skipping email — no RESEND_API_KEY configured")
-        return
+        return False
 
     try:
         resp = requests.post(
@@ -336,35 +339,37 @@ def _send_email_resend(recipient: str, subject: str, body: str):
             timeout=10,
         )
         logger.info(f"Email sent via Resend: status={resp.status_code}")
+        return resp.ok
     except Exception as e:
         logger.error(f"Resend email send failed: {e}")
+        return False
 
 
-def _send_email(config: dict, version_data: dict, trigger: str):
+def _send_email(config: dict, version_data: dict, trigger: str) -> bool:
     """Send notification email via Microsoft Graph, SMTP relay, or Resend API."""
     recipient = config.get("email")
     if not recipient:
         logger.info("Skipping email — no email configured")
-        return
+        return False
 
     subject, body = _build_email_content(config, version_data, trigger)
-    _deliver_email(recipient, subject, body)
+    return _deliver_email(recipient, subject, body)
 
 
-def _deliver_email(recipient: str, subject: str, body: str):
-    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend."""
+def _deliver_email(recipient: str, subject: str, body: str) -> bool:
+    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend. False when no backend is
+    configured or every attempt fails — the single source of truth every caller relies on."""
     # Try Microsoft Graph first
     graph_client = create_graph_client()
     if graph_client:
         if graph_client.send_email(recipient, subject, body, sender_name="Meridian Data Quality"):
-            return
+            return True
         logger.warning("Microsoft Graph email send failed, falling back to SMTP/Resend")
 
     # Fall back to SMTP or Resend
     if os.getenv("SMTP_HOST"):
-        _send_email_smtp(recipient, subject, body)
-    else:
-        _send_email_resend(recipient, subject, body)
+        return _send_email_smtp(recipient, subject, body)
+    return _send_email_resend(recipient, subject, body)
 
 
 def _send_teams_card(config: dict, version_data: dict):
@@ -549,9 +554,8 @@ def deliver(channel: dict, alert: dict) -> bool:
     """Send one alert. Never logs the target (webhook URLs embed tokens) or the secret."""
     kind = channel["kind"]
     if kind == "email":
-        _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
-                       f"<p>{html.escape(alert_text(alert))}</p>")
-        return True
+        return _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
+                              f"<p>{html.escape(alert_text(alert))}</p>")
     body = json.dumps(render(kind, alert), sort_keys=True, default=str).encode()
     headers = {"Content-Type": "application/json", "X-Meridian-Event": alert["event"]}
     if channel.get("secret"):
@@ -563,6 +567,17 @@ def deliver(channel: dict, alert: dict) -> bool:
         return resp.ok
     except requests.RequestException as e:
         logger.error(f"alert channel {channel.get('id')} ({kind}) failed: {type(e).__name__}")
+        return False
+
+
+def _deliver_safe(channel: dict, alert: dict) -> bool:
+    """`deliver`, but a raise (e.g. an expired Graph token) is caught so one bad channel never
+    stops the rest of a tenant's digest or immediate alert. Logs only the exception type and the
+    channel id — never the target URL/address."""
+    try:
+        return deliver(channel, alert)
+    except Exception as e:
+        logger.error(f"alert channel {channel.get('id')} ({channel.get('kind')}) raised: {type(e).__name__}")
         return False
 
 
@@ -608,6 +623,10 @@ def _completed(session: Session, scope: str, before: datetime | None = None, ski
 def _system_name(session: Session, scope: str) -> str:
     if scope == "upload":
         return "File uploads"
+    try:
+        uuid.UUID(scope)
+    except ValueError:
+        return scope  # malformed metadata.system_id — never cast, never raise
     row = session.execute(text("SELECT name FROM sap_systems WHERE id = CAST(:s AS uuid)"), {"s": scope}).fetchone()
     return row[0] if row else scope
 
@@ -632,7 +651,7 @@ def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) 
     if alert:
         alert["system_name"] = _system_name(session, run[1])
     for ch in channels if alert else []:
-        deliver(ch, alert)
+        _deliver_safe(ch, alert)
 
 
 @celery_app.task(name="workers.tasks.send_notifications.send_alert_digest",
@@ -684,7 +703,7 @@ def send_alert_digest(period: str) -> dict:
                 alerts += [tenant_alert] if tenant_alert else []
                 for alert in alerts:
                     for ch in channels:
-                        sent += deliver(ch, alert)
+                        sent += _deliver_safe(ch, alert)
         except Exception as e:
-            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}: {e}")
+            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}")
     return {"period": period, "sent": sent}

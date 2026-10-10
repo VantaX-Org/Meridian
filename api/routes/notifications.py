@@ -219,6 +219,6 @@ async def send_test_alert(channel_id: uuid.UUID, db: AsyncSession = Depends(get_
     alert["system_name"] = "Sample system"
     try:
         delivered = await asyncio.to_thread(sn.deliver, dict(row), alert)
-    except Exception:  # e.g. email backend not configured; deliver() never logs the target or secret
-        delivered = False
+    except Exception:  # deliver() itself reports false on a backend-not-configured or send failure;
+        delivered = False  # this only catches an unexpected raise. Never logs the target or secret.
     return {"delivered": bool(delivered)}
