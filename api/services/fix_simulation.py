@@ -65,7 +65,7 @@ def rule_record_fixes(rule: dict, result: CheckResult, frames: TableFrames) -> l
         p = auto_fix.propose(rule, rec, frames.frames)
         new = _suggested(result, cur) if p is None else p[0]
         if new is not None and new != (cur or "").strip():
-            out.append({"field": field, "record_key": str(key), "new_value": new})
+            out.append({"field": field, "record_key": str(key), "new_value": new, "current_value": cur})
     return out
 
 

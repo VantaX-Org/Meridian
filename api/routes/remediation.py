@@ -7,6 +7,7 @@ Meridian never posts to SAP; see api/services/remediation.py.
 """
 
 import io
+import json
 import uuid
 from typing import Literal, Optional
 
@@ -111,6 +112,66 @@ async def create_batch(
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), body.name, f.model_dump_json(),
                                                               issues, uid, label))
+    await db.commit()
+    return out
+
+
+class FromCleaning(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_ITEMS)
+
+
+class FromSimulation(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    simulation_id: str = Field(min_length=1, max_length=100)
+
+
+@router.post("/batches/from-cleaning")
+async def create_batch_from_cleaning(
+    body: FromCleaning,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("apply")),
+):
+    """Draft batch from approved cleaning items. Still needs a second person's approval before export."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text("""
+        SELECT object_type, rule_id, record_key, record_data_before, record_data_after FROM cleaning_queue
+         WHERE tenant_id = :tid AND id = ANY(:ids) AND status = 'approved'
+    """), {"tid": str(tenant.id), "ids": [str(i) for i in body.ids]})).mappings().all()
+    items = remediation.items_from_cleaning([dict(r) for r in rows])
+    if not items:
+        raise HTTPException(status_code=400, detail="None of these cleaning items is approved with a changed value.")
+    uid, label = current_user_id(request), current_user_label()
+    filt = json.dumps({"source": "cleaning", "ids": sorted(str(i) for i in body.ids)})
+    out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
+    await db.commit()
+    return out
+
+
+@router.post("/batches/from-simulation")
+async def create_batch_from_simulation(
+    body: FromSimulation,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("apply")),
+):
+    """Draft batch from a finished simulation's record fixes (Redis, 24 h)."""
+    from api.services.task_progress import _redis_client
+    from workers.tasks.run_simulation import result_key
+
+    client = _redis_client()
+    raw = client.get(result_key(str(tenant.id), body.simulation_id)) if client is not None else None
+    doc = json.loads(raw) if raw else None
+    if not doc or not doc.get("record_fixes"):
+        raise HTTPException(status_code=404, detail="Simulation not found, expired, or it changed no records.")
+    items = remediation.items_from_simulation(doc["record_fixes"])
+    await _rls(db, tenant)
+    uid, label = current_user_id(request), current_user_label()
+    filt = json.dumps({"source": "simulation", "simulation_id": body.simulation_id})
+    out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.commit()
     return out
 

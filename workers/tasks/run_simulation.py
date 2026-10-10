@@ -166,7 +166,9 @@ def simulate(tenant_id: str, simulation_id: str, version_id: str, request: dict)
             rule = {**{k: v for k, v in rule.items() if k != "auto_fix"}, "fix_value": f["fix_value"]}
         fixes = rule_record_fixes(rule, res, frames)
         if fixes:
-            groups[f"rule:{cid}"] = {"label": f"{cid} · {rule.get('field', '')}", "record_fixes": fixes}
+            groups[f"rule:{cid}"] = {"label": f"{cid} · {rule.get('field', '')}",
+                                     "record_fixes": [{**x, "check_id": cid, "module": rule.get("module", "")}
+                                                       for x in fixes]}
     for field, mapping in value_maps.items():
         groups[f"map:{field}"] = {"label": f"Value map · {field}", "value_maps": {field: mapping}}
     for i in batch:
@@ -194,6 +196,11 @@ def simulate(tenant_id: str, simulation_id: str, version_id: str, request: dict)
         "impact": impact_delta(before, after, _load_impact_rules()),
         **diff,
     }
+    # record-level fixes from targeted rules, for drafting a remediation batch from this
+    # simulation (ponytail: batch-group fixes already live in a batch, so they are excluded)
+    doc["record_fixes"] = [x for g in groups.values()
+                           if "check_id" in (g.get("record_fixes") or [{}])[0]
+                           for x in g["record_fixes"]][:50_000]
     if request.get("rank"):
         b = {(r.module, r.check_id): set(r.failing_record_keys or []) for r in before if not r.error}
         a = {(r.module, r.check_id): set(r.failing_record_keys or []) for r in after if not r.error}
