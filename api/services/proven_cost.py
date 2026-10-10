@@ -73,22 +73,32 @@ def grir_uom_variance(frames: TableFrames) -> MetricResult:
     bal["amount"] = (bal["gr"] - bal["ir"]).abs()
     bal = bal[bal["amount"] > 0.01]
     po = ekpo.assign(EBELN=_s(ekpo, "EBELN"), EBELP=_s(ekpo, "EBELP"), MATNR=_s(ekpo, "MATNR"),
-                     unit=_s(ekpo, "BPRME").where(_s(ekpo, "BPRME") != "", _s(ekpo, "MEINS")))
+                     meins=_s(ekpo, "MEINS"), bprme=_s(ekpo, "BPRME"))
     base = dict(zip(_s(mara, "MATNR"), _s(mara, "MEINS")))
     marm = frames.frames.get("MARM")
     conv: dict[str, tuple[float, float]] = {}
     if marm is not None and not marm.empty:
         conv = dict(zip(_s(marm, "MATNR") + "|" + _s(marm, "MEINH"), zip(_num(marm, "UMREZ"), _num(marm, "UMREN"))))
-    df = bal.merge(po[k + ["MATNR", "unit"]], on=k).merge(
+    df = bal.merge(po[k + ["MATNR", "meins", "bprme"]], on=k).merge(
         ekko.assign(EBELN=_s(ekko, "EBELN"), currency=_s(ekko, "WAERS"))[["EBELN", "currency"]], on="EBELN")
 
     def defect(r: pd.Series) -> str:
-        if r["unit"] == "" or r["unit"] == base.get(r["MATNR"], r["unit"]):
-            return ""
-        c = conv.get(f"{r['MATNR']}|{r['unit']}")
-        if c is None:
-            return f"no MARM {r['unit']}"
-        return "" if c[0] > 0 and c[1] > 0 else f"MARM {r['unit']} UMREZ/UMREN <= 0"
+        def check_unit(unit: str, matnr: str) -> str:
+            base_unit = base.get(matnr, "")
+            if unit == "" or unit == base_unit:
+                return ""
+            c = conv.get(f"{matnr}|{unit}")
+            if c is None:
+                return f"no MARM {unit}"
+            return "" if c[0] > 0 and c[1] > 0 else f"MARM {unit} UMREZ/UMREN <= 0"
+        reasons = []
+        meins_defect = check_unit(r["meins"], r["MATNR"])
+        if meins_defect:
+            reasons.append(meins_defect)
+        bprme_defect = check_unit(r["bprme"], r["MATNR"])
+        if bprme_defect and bprme_defect not in reasons:
+            reasons.append(bprme_defect)
+        return "; ".join(reasons)
 
     # ponytail: row-wise apply over variance lines only (already filtered); vectorise if >1e6 lines.
     df["why"] = df.apply(defect, axis=1) if not df.empty else pd.Series(dtype="string")

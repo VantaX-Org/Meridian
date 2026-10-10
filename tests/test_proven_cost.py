@@ -54,3 +54,19 @@ def test_grir_variance_only_with_marm_defect():
     r = pc.grir_uom_variance(_tf(EKKO=ekko, EKPO=ekpo, MARA=mara, MARM=marm, EKBE=ekbe, RSEG=rseg))
     assert [i["doc_key"] for i in r.items] == ["EBELN=P1|EBELP=10"]
     assert r.amount == 1100.0 and "no MARM BOX" in r.items[0]["detail"]
+
+
+def test_grir_variance_with_bprme_and_meins_units():
+    ekko = pd.DataFrame({"EBELN": ["P1"], "WAERS": ["ZAR"], "LIFNR": ["V"]})
+    # BPRME = EA (base unit), MEINS = BOX (not base unit, no MARM row)
+    ekpo = pd.DataFrame({"EBELN": ["P1"], "EBELP": ["10"], "MATNR": ["M1"],
+                         "WERKS": ["W"], "MEINS": ["BOX"], "BPRME": ["EA"], "NETWR": [0]})
+    mara = pd.DataFrame({"MATNR": ["M1"], "MEINS": ["EA"]})
+    # No MARM row for BOX
+    marm = pd.DataFrame({"MATNR": [], "MEINH": [], "UMREZ": [], "UMREN": []})
+    ekbe = pd.DataFrame({"EBELN": ["P1"], "EBELP": ["10"], "VGABE": ["1"],
+                         "DMBTR": [100.0], "SHKZG": ["S"]})
+    rseg = pd.DataFrame({"EBELN": ["P1"], "EBELP": ["10"], "WRBTR": [1200.0]})
+    r = pc.grir_uom_variance(_tf(EKKO=ekko, EKPO=ekpo, MARA=mara, MARM=marm, EKBE=ekbe, RSEG=rseg))
+    assert [i["doc_key"] for i in r.items] == ["EBELN=P1|EBELP=10"]
+    assert "no MARM BOX" in r.items[0]["detail"]
