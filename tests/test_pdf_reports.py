@@ -31,6 +31,27 @@ def test_empty_inputs_render():
                      pr.comparison_context(v, v, [], [], record_diff=None, **kw)).startswith(b"%PDF")
 
 
+def test_summary_body_empty_states():
+    """T17: an empty run shows the dashed .empty block in each of the three
+    shared Summary sections, not blank space."""
+    v = {"id": "6f1c2a10-0000-4000-8000-0000000000ff", "label": None, "status": "complete",
+         "run_at": fx.GENERATED, "dqs_summary": {}, "metadata": {}}
+    kw = {"tenant_name": fx.TENANT, "generated_at": fx.GENERATED}
+    html = pr._env().get_template("analysis_report.html").render(**pr.analysis_context(v, [], **kw))
+    assert "This run has no data quality score to summarise." in html
+    assert "No dimension was measured in this run." in html
+    assert "No check found failing records in this run." in html
+
+
+def test_summary_body_shows_score_and_findings_when_present():
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM,
+                              generated_at=fx.GENERATED, previous_dqs=50.0)
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "Change since previous run" in html
+    assert "Data quality score (DQS)" in html
+    assert ctx["previous_dqs"]["composite"] == 50.0
+
+
 def test_check_changes():
     ch = pr.check_changes(fx.FINDINGS1, fx.FINDINGS2)
     ids = {k: [r["check_id"] for r in v] for k, v in ch.items()}

@@ -1,5 +1,6 @@
 {% extends "_base.html" %}
 {% block body %}
+{% include "_summary_body.html" %}
 <div class="figures">
     <div class="figure primary"><div class="v">{{ rows | n }}</div><div class="k">Rows extracted, all tables</div></div>
     <div class="figure"><div class="v">{{ live | n }}<small> of {{ coverage | length }}</small></div><div class="k">Tables read</div></div>

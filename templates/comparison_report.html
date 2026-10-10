@@ -20,6 +20,7 @@
 {% else %}<div class="empty">{{ empty }}</div>{% endif %}
 {%- endmacro %}
 {% block body %}
+{% include "_summary_body.html" %}
 <div class="figures">
     <div class="figure"><div class="v">{{ o1.composite | n(1) }}</div><div class="k">DQS, earlier run</div></div>
     <div class="figure primary"><div class="v">{{ o2.composite | n(1) }}</div><div class="k">DQS, later run</div></div>

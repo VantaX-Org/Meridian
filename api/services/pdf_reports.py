@@ -270,6 +270,19 @@ def _rows_checked(findings: list[dict]) -> dict[str, int]:
     return out
 
 
+def _sorted_fails(findings: list[dict]) -> list[dict]:
+    """Failing checks, worst first: severity, then affected count, then id.
+    Shared by analysis/executive (current run) and comparison (later run)."""
+    return sorted((_check_row(f) for f in findings if failing(f)),
+                  key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+
+
+def _quality_chart(dims: dict[str, Optional[float]]) -> Optional[Markup]:
+    if not any(v is not None for v in dims.values()):
+        return None
+    return hbars([(fmt_module(d), dims[d]) for d in DIMENSIONS])
+
+
 def _check_row(f: dict) -> dict:
     r = _rule(f["check_id"])
     total = int(f.get("total_count") or 0)
@@ -297,7 +310,8 @@ def _now(generated_at: Optional[datetime]) -> datetime:
 
 
 def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
-                     system: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
+                     system: Optional[dict] = None, generated_at: Optional[datetime] = None,
+                     previous_dqs: Optional[float] = None) -> dict:
     summary = version.get("dqs_summary") or {}
     meta = version.get("metadata") or {}
     overall = composite_dqs([summary])
@@ -320,8 +334,7 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
                         "records": checked.get(mod), "cap_reason": r.get("cap_reason")})
     modules.sort(key=lambda m: (m["score"] is None, m["score"] if m["score"] is not None else 0))
 
-    fails = sorted((_check_row(f) for f in findings if failing(f)),
-                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+    fails = _sorted_fails(findings)
     sev = {s: sum(1 for f in fails if f.get("severity") == s) for s in SEVERITIES}
     fix_first = sorted(fails, key=lambda f: (-_SEV_WEIGHT.get(f.get("severity"), 1) * f["affected"],
                                              f["check_id"]))[:5]
@@ -342,6 +355,9 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
                          f"and {'are' if len(errs) != 1 else 'is'} excluded from the score.")
 
     now = _now(generated_at)
+    dim_chart = _quality_chart(dims)
+    previous = ({"composite": previous_dqs, "delta": round(overall["composite"] - previous_dqs, 1)}
+                if previous_dqs is not None and overall["composite"] is not None else None)
     return {
         "title": "Analysis run report", "eyebrow": "Data quality assessment", "cover": True,
         "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
@@ -351,10 +367,11 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
                  ("Modules", ", ".join(fmt_module(m) for m in sorted(summary)) or "—")],
         "version": version, "source": meta.get("source") or "upload",
         "overall": overall, "dims": dims, "readiness": readiness,
-        "dim_chart": hbars([(fmt_module(d), dims[d]) for d in DIMENSIONS]),
+        "dim_chart": dim_chart, "quality_chart": dim_chart, "previous_dqs": previous,
         "module_chart": hbars([(fmt_module(m["name"]), m["score"]) for m in modules]),
         "modules": modules, "sev": sev, "checks_run": len(ran), "checks_failing": len(fails),
         "failing_checks": fails[:30], "failing_more": max(0, len(fails) - 30),
+        "top_findings": fails[:15],
         "critical": [f for f in fails if f.get("severity") == "critical"],
         "fix_first": fix_first, "errored": errs, "headline": headline,
     }
@@ -394,6 +411,7 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
                        sync_run: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
     meta = version.get("metadata") or {}
     now = _now(generated_at)
+    summary_dims = dimension_scores(version.get("dqs_summary") or {})
     coverage = sorted(meta.get("coverage") or [],
                       key=lambda c: ({"failed": 0, "live": 1}.get(c.get("status"), 2), str(c.get("table"))))
     live = [c for c in coverage if c.get("status") == "live"]
@@ -417,6 +435,8 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
                  ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—"),
                  ("Generated", fmt_dt(now))],
+        "overall": composite_dqs([version.get("dqs_summary") or {}]),
+        "quality_chart": _quality_chart(summary_dims), "previous_dqs": None, "top_findings": [],
         "modules": [{"name": m, "records": object_rows.get(m)} for m in (meta.get("modules") or [])],
         "coverage": coverage, "live": len(live),
         "failed": sum(1 for c in coverage if c.get("status") == "failed"),
@@ -455,7 +475,10 @@ def cleaning_context(data: dict, *, tenant_name: str, version: Optional[dict] = 
     fixes = data.get("record_fixes") or []
     scope = "This run only" if version else "All runs for this organisation"
     now = _now(generated_at)
+    cleaning_dims = dimension_scores((version or {}).get("dqs_summary") or {})
     return {
+        "overall": composite_dqs([(version or {}).get("dqs_summary") or {}]),
+        "quality_chart": _quality_chart(cleaning_dims), "previous_dqs": None, "top_findings": [],
         "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
         "scope_label": f"{tenant_name} · {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
         "generated_at": now, "generated_sast": fmt_dt(now),
@@ -557,6 +580,8 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
     persisting = changes["persisting"]
     check_moves = changes["new"] + changes["resolved"] + persisting
     change = None if o1["composite"] is None or o2["composite"] is None else round(o2["composite"] - o1["composite"], 1)
+    fails2 = _sorted_fails(findings2)
+    previous_dqs = {"composite": o1["composite"], "delta": change} if change is not None else None
     if change is None:
         headline = "One of the two runs has no score, so the overall score cannot be compared."
     else:
@@ -575,6 +600,8 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
                  ("Later run", f"{v2.get('label') or v2['id']} — {fmt_dt(v2.get('run_at'))}"),
                  ("Run IDs", f"{v1['id']} → {v2['id']}"), ("Generated", fmt_dt(now))],
         "v1": v1, "v2": v2, "o1": o1, "o2": o2, "change": change, "headline": headline,
+        "overall": o2, "previous_dqs": previous_dqs, "top_findings": fails2[:15],
+        "quality_chart": _quality_chart({d["name"]: d["v2"] for d in dims}),
         "dims": dims, "dim_chart": delta_bars([(fmt_module(d["name"]), d["change"]) for d in dims]),
         "modules": sorted(modules, key=lambda m: (m["change"] is None, m["change"] or 0)),
         "module_chart": delta_bars([(fmt_module(m["name"]), m["change"]) for m in
@@ -594,8 +621,9 @@ _CANNED = "Data quality assessment complete. Review the detailed findings below 
 
 def executive_context(report_json: dict, supplementary: dict, version: dict, findings: list[dict], *,
                       tenant_name: str, system: Optional[dict] = None,
-                      generated_at: Optional[datetime] = None) -> dict:
-    ctx = analysis_context(version, findings, tenant_name=tenant_name, system=system, generated_at=generated_at)
+                      generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None) -> dict:
+    ctx = analysis_context(version, findings, tenant_name=tenant_name, system=system,
+                           generated_at=generated_at, previous_dqs=previous_dqs)
     ai = report_json.get("ai_executive_summary")
     if not ai and "ai_executive_summary" not in report_json:  # agent-written report: summary is LLM text
         ai = report_json.get("executive_summary")
@@ -632,6 +660,22 @@ def load_system(s: Session, tid: str, version: dict) -> Optional[dict]:
 def load_findings(s: Session, tid: str, vid: str) -> list[dict]:
     return _all(s, "SELECT module, check_id, severity, dimension, affected_count, total_count, pass_rate, details "
                    "FROM findings WHERE version_id = :v AND tenant_id = :t", v=str(vid), t=tid)
+
+
+def load_previous_dqs(s: Session, tid: str, version: dict) -> Optional[float]:
+    """Composite DQS of the prior run in the same lineage (same system, or the
+    'upload' lineage for uploads without a system_id), for the Summary section's
+    change-since-previous-run figure. None when there is no prior scored run."""
+    lineage = (version.get("metadata") or {}).get("system_id") or "upload"
+    row = _one(s, """
+        SELECT dqs_summary FROM analysis_versions
+         WHERE tenant_id = :t AND COALESCE(metadata->>'system_id', 'upload') = :lineage
+           AND run_at < :run_at AND dqs_summary IS NOT NULL
+         ORDER BY run_at DESC LIMIT 1""",
+        t=tid, lineage=lineage, run_at=version["run_at"])
+    if not row:
+        return None
+    return composite_dqs([row["dqs_summary"]])["composite"]
 
 
 def load_analysis(s: Session, tid: str, vid: str) -> Optional[dict]:
@@ -745,8 +789,9 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
     kw: dict[str, Any] = {"tenant_name": tenant_name}
     if kind == "analysis":
         d = load_analysis(s, tid, vid)
-        return d and render("analysis_report.html", analysis_context(d["version"], d["findings"],
-                                                                     system=d["system"], **kw))
+        return d and render("analysis_report.html", analysis_context(
+            d["version"], d["findings"], system=d["system"],
+            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
     if kind == "extraction":
         d = load_extraction(s, tid, vid)
         if not d:
@@ -764,5 +809,6 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
     if kind == "executive":
         d = gather_executive_data(s, tid, vid)
         return d and render("executive_report.html", executive_context(
-            d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"], **kw))
+            d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
+            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
     raise ValueError(kind)

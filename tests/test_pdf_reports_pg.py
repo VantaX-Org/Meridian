@@ -143,3 +143,27 @@ def test_reports_are_tenant_scoped(app_engine, monkeypatch):
         await aeng.dispose()
 
     asyncio.run(scenario())
+
+
+def test_summary_section_shows_previous_run_delta(app_engine):
+    """T17: analysis/executive reports for v2 pick up v1 (same system lineage,
+    earlier run_at) as the previous run and show a DQS delta; the upload run
+    has no earlier run in its own ('upload') lineage, so it shows no delta."""
+    from api.routes.findings import composite_dqs
+    from api.services.pdf_reports import load_previous_dqs, load_version
+    from workers.db import tenant_session
+
+    owner, app_eng = app_engine
+    a, b, v = _seed(owner, app_eng)
+
+    with tenant_session(app_eng, a) as s:
+        v1 = load_version(s, a, v["v1"])
+        v2 = load_version(s, a, v["v2"])
+        upload = load_version(s, a, v["upload"])
+        assert load_previous_dqs(s, a, v1) is None  # nothing earlier in this lineage
+        assert load_previous_dqs(s, a, v2) == pytest.approx(composite_dqs([v1["dqs_summary"]])["composite"])
+        assert load_previous_dqs(s, a, upload) is None  # upload lineage has only itself so far
+
+        from api.services.pdf_reports import build
+        pdf = build(s, a, "analysis", v["v2"])
+        assert pdf.startswith(b"%PDF")
