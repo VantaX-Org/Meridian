@@ -912,6 +912,10 @@ class WaveUpdate(BaseModel):
     stage: Optional[Stage] = None
     min_readiness: Optional[float] = None
     min_dqs: Optional[float] = None
+
+
+# Columns update_wave may write. Keep in step with WaveUpdate.
+_WAVE_EDITABLE = frozenset(WaveUpdate.model_fields)
 ```
 
 Extract the insert-and-enqueue tail of `start_migration` into a helper above it, and make `start_migration` end with `return await _enqueue_run(db, tenant.id, current_user_id(request), body.mode, body.source_system_id, dest_id, body.modules, body.source_version_id, body.target_release)`:
@@ -1031,7 +1035,10 @@ async def update_wave(
     await _check_systems(db, tenant.id, changes.get("source_system_id", current.source_system_id),
                          changes.get("target_system_id", current.target_system_id))
     params = {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in changes.items()}
-    sets = "".join(f"{k} = :{k}, " for k in params)  # keys come from WaveUpdate's fields only
+    unknown = params.keys() - _WAVE_EDITABLE
+    if unknown:  # never interpolate a column name that is not on the allow-list
+        raise HTTPException(status_code=400, detail=f"Not editable: {', '.join(sorted(unknown))}")
+    sets = "".join(f"{k} = :{k}, " for k in params)
     # any edit invalidates a sign-off: what was signed is no longer what is planned
     row = (await db.execute(text(f"""
         UPDATE migration_waves SET {sets}signed_off_by = NULL, signed_off_at = NULL, updated_at = now()
@@ -1493,7 +1500,7 @@ async def test_blocker_fix_batch(seeded, monkeypatch):
 
     def fake_draft(session, tenant_id, name, filter_json, issues, uid, label):
         captured.update(name=name, issues=issues)
-        return {"batch_id": "b1", "items": len(issues)}
+        return {"id": "b1", "items": len(issues)}
 
     monkeypatch.setattr("api.services.remediation.draft_batch", fake_draft)
     body = {"module": "accounts_payable", "gap_type": "value_unmapped", "field": "BUT000.BU_GROUP"}
@@ -1501,16 +1508,16 @@ async def test_blocker_fix_batch(seeded, monkeypatch):
     async with await _client(monkeypatch, seeded["tid"]) as c:
         assert (await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})).status_code == 400
         with seeded["engine"].begin() as conn:
-            conn.execute(text("INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, status, "
-                              "last_seen_version) VALUES (:t, 'upload', 'accounts_payable', 'AP-001', 'LIFNR=2', "
-                              "'open', :v)"), {"t": seeded["tid"], "v": seeded["vid"]})
+            conn.execute(text("INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, severity, "
+                              "status, first_seen_version, last_seen_version) VALUES (:t, 'upload', "
+                              "'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v)"), {"t": seeded["tid"], "v": seeded["vid"]})
         r = await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})
     assert r.status_code == 200, r.text
     assert [i["record_key"] for i in captured["issues"]] == ["LIFNR=2"]
     assert captured["name"] == "Wave 1: BP supplier value_unmapped BUT000.BU_GROUP"
 ```
 
-Read the `record_issues` columns in `db/schema.py` before running. Add any other NOT NULL column (for example `grain` or `first_seen_version`) to the insert. Also add `DELETE FROM record_issues WHERE tenant_id = :t` to the fixture teardown before the tenant delete.
+The insert lists every NOT NULL column of `record_issues` without a server default (`db/schema.py:873-900`). Also add `DELETE FROM record_issues WHERE tenant_id = :t` to the fixture teardown before the tenant delete.
 
 - [ ] **Step 2: Run the tests and confirm they fail**
 
@@ -2444,7 +2451,7 @@ describe("WaveCockpitPage", () => {
   it("drafts a fix batch from a blocker", async () => {
     search = new URLSearchParams("tab=blockers");
     vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
-    const fix = vi.spyOn(migrationApi, "createBlockerFixBatch").mockResolvedValue({ batch_id: "b1" });
+    const fix = vi.spyOn(migrationApi, "createBlockerFixBatch").mockResolvedValue({ id: "b1" });
     renderWithQuery(<WaveCockpitPage />);
     expect(await screen.findByText("BUT000.BU_GROUP")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create fix batch" }));
@@ -2496,7 +2503,7 @@ export async function signoffWave(id: string): Promise<MigrationWave> {
 export async function createBlockerFixBatch(
   id: string,
   body: { module: string; gap_type: string; field: string | null },
-): Promise<{ batch_id: string }> {
+): Promise<{ id: string }> {
   const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/blockers/fix-batch`, body);
   return data;
 }
@@ -2522,7 +2529,7 @@ export async function getS4Readiness(versionId: string): Promise<{ status: strin
 }
 ```
 
-Check what `draft_batch` returns (`api/services/remediation.py:97-150`). If the id key is not `batch_id`, use the real key in the return type and the toast link.
+`draft_batch` returns the new batch under `id` (`api/services/remediation.py:97-148`), so the client reads `id`.
 
 In `frontend/lib/query-keys.ts`:
 
@@ -2638,7 +2645,7 @@ export default function WaveCockpitPage() {
             ) : <EmptyState title="Add modules to this wave to see its objects." /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} /> },
           { value: "mapping", label: "Mapping", content: (
-              <MappingTab modules={w.modules} destType={c.dest_system_type} runId={c.run_id} />) },
+              <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
           { value: "downloads", label: "Downloads", content: downloads },
         ]}
@@ -2738,7 +2745,7 @@ import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { TransferFieldMapping, TransferValueMapping } from "@/types/api";
 
-export function MappingTab({ modules, destType }: { modules: string[]; destType: string; runId: string | null }) {
+export function MappingTab({ modules, destType }: { modules: string[]; destType: string }) {
   const [module, setModule] = useState(modules[0] ?? "");
   const [targetField, setTargetField] = useState<string | null>(null);
   if (!modules.length) return <EmptyState title="Add modules to this wave to edit their mapping." />;
@@ -2820,7 +2827,7 @@ function ValueMap({ module, targetField }: { module: string; targetField: string
 }
 ```
 
-`MappingTab` accepts `runId` but does not use it yet. Drop the prop from both the signature and the call site if lint flags the unused destructure. It is listed only so that value candidates (`getValueCandidates(runId, field)`) can be added later.
+`MappingTab` takes no `runId` yet. Add it back when value candidates (`getValueCandidates(runId, field)`) land.
 
 Create `frontend/app/(app)/migration/[waveId]/s4-tab.tsx`:
 
