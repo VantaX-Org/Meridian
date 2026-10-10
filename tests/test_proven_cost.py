@@ -113,3 +113,19 @@ def test_blocked_sales_partial_vbuk_falls_back_to_vbak():
     # S1 is credit-blocked with no KNVV for its sales area, so counted. S2 not blocked.
     assert {i["doc_key"] for i in r.items} == {"VBELN=S1"}
     assert r.amount == 100.0
+
+
+def test_blocked_sales_cmgst_fallback_with_nondefault_index():
+    vbak = pd.DataFrame({"VBELN": ["S1", "S2"], "KUNNR": ["C1", "C1"], "VKORG": ["O", "O"],
+                         "VTWEG": ["D", "D"], "SPART": ["X", "X"], "NETWR": [100.0, 50.0],
+                         "WAERK": ["ZAR", "ZAR"], "LIFSK": ["", ""], "FAKSK": ["", ""],
+                         "CMGST": ["B", ""]}, index=[10, 20])
+    vbuk = pd.DataFrame({"VBELN": ["S2"], "CMGST": [""]})
+    knvv = pd.DataFrame({"KUNNR": [], "VKORG": [], "VTWEG": [], "SPART": [],
+                         "AUFSD": [], "LIFSD": []})
+    kna1 = pd.DataFrame({"KUNNR": ["C1"], "AUFSD": [""], "LIFSD": [""]})
+    r = pc.blocked_sales(_tf(VBAK=vbak, VBUK=vbuk, KNVV=knvv, KNA1=kna1))
+    # S1 (at index 10) has CMGST="B" in VBAK; S2 (at index 20) has no VBUK row
+    # S1 fallback must work despite non-default index
+    assert {i["doc_key"] for i in r.items} == {"VBELN=S1"}
+    assert r.amount == 100.0

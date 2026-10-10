@@ -119,12 +119,12 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     area = ["KUNNR", "VKORG", "VTWEG", "SPART"]
     so = vbak.assign(**{c: _s(vbak, c) for c in ["VBELN", *area, "LIFSK", "FAKSK", "CMGST"]},
                      amount=_num(vbak, "NETWR"), currency=_s(vbak, "WAERK"))
-    vbak_cmgst = so["CMGST"].copy()
+    vbak_cmgst_values = so["CMGST"].to_numpy()
     vbuk = frames.frames.get("VBUK")
     if vbuk is not None and not vbuk.empty:
         so = so.drop(columns="CMGST").merge(vbuk.assign(VBELN=_s(vbuk, "VBELN"), CMGST=_s(vbuk, "CMGST"))[["VBELN", "CMGST"]],
                                             on="VBELN", how="left")
-        so["CMGST"] = so["CMGST"].fillna(vbak_cmgst)
+        so["CMGST"] = so["CMGST"].fillna(pd.Series(vbak_cmgst_values, index=so.index))
     credit, deliv, bill = so["CMGST"].isin(["B", "C"]), so["LIFSK"] != "", so["FAKSK"] != ""
     so = so[credit | deliv | bill].assign(_c=credit[so.index], _d=deliv[so.index], _b=bill[so.index])
     knvv = frames.frames.get("KNVV")
@@ -146,7 +146,7 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     cen = so["KUNNR"].isin(central)
     so = so.assign(_no_area=no_area, _area_block=area_block, _cen=cen)
     so = so[so["_no_area"] | so["_area_block"] | so["_cen"]]
-    def _make_detail(row):
+    def _make_detail(row: pd.Series) -> str:
         parts = []
         if row["_c"]:
             parts.append("credit block")
