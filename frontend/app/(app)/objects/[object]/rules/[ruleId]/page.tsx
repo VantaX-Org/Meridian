@@ -9,6 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, ErrorState, Mono, Pager, Skeleton } from "@/design";
 import { getFindingRecords, type FindingRecord } from "@/lib/api/versions";
 import { queryKeys } from "@/lib/query-keys";
+import { RootCauseSection } from "./root-cause";
 
 const PAGE_SIZE = 25;
 
@@ -82,6 +83,7 @@ export default function RuleDetailPage() {
       </p>
       <DataTable columns={columns} data={data.records} getRowId={(row) => row.record_key} />
       <Pager page={page} pageCount={pageCount} onPageChange={setPage} />
+      <RootCauseSection run={run} ruleId={ruleId} />
     </div>
   );
 }

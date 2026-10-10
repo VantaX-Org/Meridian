@@ -110,3 +110,32 @@ export async function getFindingRecords(
     `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records`, { params });
   return data;
 }
+
+/** One origin of a finding's failing values: who set them, through which transaction. */
+export interface RootCauseOrigin {
+  origin: "interface" | "dialog" | "migration" | "unknown";
+  username: string;
+  tcode: string;
+  records: number;
+  /** Percent of the analysed failing records. */
+  share: number;
+}
+
+/** Root cause by origin of one check's failing records, from SAP change documents. */
+export interface FindingRootCause {
+  version_id: string;
+  check_id: string;
+  status: "computed" | "not_applicable" | "unavailable" | "not_computed";
+  field: string | null;
+  analysed: number;
+  total: number;
+  origins: RootCauseOrigin[];
+  summary: string;
+  detail: string;
+}
+
+export async function getFindingRootCause(versionId: string, checkId: string): Promise<FindingRootCause> {
+  const { data } = await apiClient.get(
+    `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/root-cause`);
+  return data;
+}
