@@ -17,6 +17,7 @@ import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { overallDqs, previousRunId, runSeries } from "@/lib/runs";
 import type { Version } from "@/types/api";
+import { isListFailure } from "@/lib/error";
 
 const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go",
@@ -98,7 +99,7 @@ export default function RunsPage() {
   const rows = system ? filtered.data?.versions ?? [] : allVersions;
   const activeQuery = system ? filtered : all;
 
-  const state = activeQuery.isLoading ? "loading" : activeQuery.isError ? "error" : rows.length === 0 ? "empty" : undefined;
+  const state = activeQuery.isLoading ? "loading" : isListFailure(activeQuery) ? "error" : rows.length === 0 ? "empty" : undefined;
 
   const summary = series.length > 0 && (
     <div className="flex flex-wrap items-center gap-3">

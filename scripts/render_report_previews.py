@@ -29,6 +29,12 @@ def contexts() -> dict[str, tuple[str, dict]]:
             fx.V1, fx.V2, fx.FINDINGS1, fx.FINDINGS2, record_diff=fx.RECORD_DIFF, system=fx.SYSTEM, **kw)),
         "executive": ("executive_report.html", pr.executive_context(
             fx.REPORT_JSON, fx.SUPPLEMENTARY, fx.V2, fx.FINDINGS2, system=fx.SYSTEM, **kw)),
+        "object": ("object_report.html", pr.object_context(
+            "material_master", fx.V2["dqs_summary"]["material_master"],
+            [f for f in fx.FINDINGS2 if f["module"] == "material_master"], fx.SAMPLES,
+            system=fx.SYSTEM, **kw)),
+        "record": ("record_report.html", pr.record_context(
+            "100-100", fx.BY_VIEW, version=fx.V2, system=fx.SYSTEM, **kw)),
     }
 
 

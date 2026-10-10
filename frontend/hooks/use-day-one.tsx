@@ -6,6 +6,7 @@ import { Button } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigLandscape } from "@/lib/api/config-load";
 import { getVersions } from "@/lib/api/versions";
+import { isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "./use-role";
 
@@ -35,7 +36,7 @@ export function useDayOne(): { status: "loading" | "error" | "ready"; step: DayO
   if (systemsQ.isLoading || landscapeQ.isLoading || versionsQ.isLoading) {
     return { status: "loading", step: null };
   }
-  if (systemsQ.isError || landscapeQ.isError || versionsQ.isError) {
+  if (isListFailure(systemsQ) || isListFailure(landscapeQ) || isListFailure(versionsQ)) {
     return { status: "error", step: null };
   }
 

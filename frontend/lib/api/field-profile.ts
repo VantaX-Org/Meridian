@@ -86,6 +86,15 @@ export async function getVersionProfile(
   ).data;
 }
 
+/** GET /api/v1/versions/{versionId}/profile — same profile, keyed by version alone (no system_id needed, e.g. upload-sourced runs). */
+export async function getProfileByVersion(versionId: string, object?: string): Promise<VersionProfile> {
+  return (
+    await apiClient.get(`/api/v1/versions/${versionId}/profile`, {
+      params: { object },
+    })
+  ).data;
+}
+
 /** GET /api/v1/systems/{systemId}/versions/{versionId}/profile/export — one sheet per table plus Dependencies. */
 export function exportVersionProfile(
   systemId: string,

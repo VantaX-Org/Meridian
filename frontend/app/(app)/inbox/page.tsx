@@ -31,7 +31,7 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { getUnreadCount } from "@/lib/api/notifications";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
@@ -131,8 +131,11 @@ export default function InboxPage() {
   const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
   const isLoading = queues.some((q) => q.isLoading);
-  const isError = queues.some((q) => q.isError);
-  const firstError = isExceptions ? excQ.error : queues.find((q) => q.isError)?.error;
+  // A 404 means no queue yet: that is the empty state, not an error.
+  const failedQueue = queues.find((q) => q.isError && !isNotFound(q.error));
+  const isError = !!failedQueue;
+  const excFailed = excQ.isError && !isNotFound(excQ.error);
+  const firstError = isExceptions ? excQ.error : failedQueue?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
@@ -349,7 +352,7 @@ export default function InboxPage() {
   // otherwise the generic "Inbox zero." copy flashes before the day-one step
   // (which decides the real empty-state detail/action) is known.
   const state: "loading" | "empty" | "error" | undefined = isExceptions
-    ? excQ.isLoading ? "loading" : excQ.isError ? "error" : excItems.length === 0 ? "empty" : undefined
+    ? excQ.isLoading ? "loading" : excFailed ? "error" : excItems.length === 0 ? "empty" : undefined
     : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (

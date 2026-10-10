@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Pill, ReportPage, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pill, ReportPage, type PillTone } from "@/design";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
@@ -60,7 +60,7 @@ export default function ExtractionPage() {
 
   const narrative = (
     <>
-      Extraction run <code>{runId}</code>.
+      Extraction run <Mono>{runId}</Mono>
       {failedStep ? (
         <div
           role="alert"

@@ -58,7 +58,8 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
     }
   };
 
-  const triggerClassName = size === "sm" ? "text-[12px] px-2 py-1" : undefined;
+  // self-start: in a column flex parent the button would otherwise stretch to full width.
+  const triggerClassName = size === "sm" ? "self-start text-[12px] px-2 py-1" : "self-start";
   const label = busy ? "Preparing" : "Export";
 
   if (options.length === 1) {

@@ -51,8 +51,8 @@ beforeEach(() => {
   push.mockClear();
   vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version("sys-1"));
   vi.spyOn(objectsApi, "getObject").mockResolvedValue(OBJECT);
-  vi.spyOn(rulesApi, "getRuleHistory").mockResolvedValue({ rule_id: "mm_missing_desc", runs: [] });
-  vi.spyOn(fieldProfileApi, "getVersionProfile").mockResolvedValue({ version_id: "v1", object: "material_master", objects: ["material_master"], tables: [], dependencies: [] });
+  vi.spyOn(rulesApi, "getRuleHistoryBatch").mockResolvedValue({ version_id: "v1", module: "material_master", history: {} });
+  vi.spyOn(fieldProfileApi, "getProfileByVersion").mockResolvedValue({ version_id: "v1", object: "material_master", objects: ["material_master"], tables: [], dependencies: [] });
   vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({ version_id: "v1", check_id: "mm_missing_desc", total: 0, records: [] });
 });
 
@@ -72,6 +72,31 @@ describe("ObjectDetailPage", () => {
     expect(push).toHaveBeenCalledWith("/objects/material_master?run=v1&tab=records&check_id=mm_missing_desc");
   });
 
+  it("fetches rule history on the rules tab with a single batch call, not one per rule", async () => {
+    const batch = vi.spyOn(rulesApi, "getRuleHistoryBatch").mockResolvedValue({
+      version_id: "v1",
+      module: "material_master",
+      history: {
+        mm_missing_desc: [
+          { version_id: "v1", run_at: "2026-10-08T00:00:00Z", severity: "high", affected_count: 42, total_count: 100, pass_rate: 0.58, suppressed: false, hit_rate: 42 },
+          { version_id: "v0", run_at: "2026-10-01T00:00:00Z", severity: "high", affected_count: 50, total_count: 100, pass_rate: 0.5, suppressed: false, hit_rate: 50 },
+        ],
+      },
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Rules" }));
+    await waitFor(() => expect(screen.getByText(/pts vs previous run/)).toBeInTheDocument());
+    expect(batch).toHaveBeenCalledTimes(1);
+    expect(batch).toHaveBeenCalledWith({ version_id: "v1", module: "material_master", limit_runs: 8 });
+  });
+
+  it("shows an error state when the rule history batch request fails", async () => {
+    vi.spyOn(rulesApi, "getRuleHistoryBatch").mockRejectedValue(new Error("network error"));
+    renderWithQuery(<ObjectDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Rules" }));
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
+  });
+
   it("shows an empty rules state when the run has no rules for this object", async () => {
     vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, rules: [] });
     renderWithQuery(<ObjectDetailPage />);
@@ -79,11 +104,38 @@ describe("ObjectDetailPage", () => {
     await waitFor(() => expect(screen.getByText(/no results for this object in this run/i)).toBeInTheDocument());
   });
 
-  it("shows the G3 empty state on the fields tab for an upload-sourced run", async () => {
+  it("renders profile rows on the fields tab for an upload-sourced run (no system_id)", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version(undefined));
+    const getProfile = vi.spyOn(fieldProfileApi, "getProfileByVersion").mockResolvedValue({
+      version_id: "v1",
+      object: "material_master",
+      objects: ["material_master"],
+      dependencies: [],
+      tables: [
+        {
+          table: "MARA",
+          rows: 100,
+          table_rows: 100,
+          sampled: false,
+          fields: [
+            {
+              field: "MTART",
+              stats: {
+                rows: 100, table_rows: 100, sampled: false, blank: 0, blank_pct: 0, distinct: 4,
+                min_length: 4, max_length: 4, ddic_type: "CHAR", ddic_length: 4, description: null,
+                numeric: null, dates: null,
+                shapes: [], shape_count: 0, masked: false, mask_reason: null,
+                top_values: null,
+              },
+            },
+          ],
+        },
+      ],
+    });
     renderWithQuery(<ObjectDetailPage />);
     fireEvent.click(await screen.findByRole("tab", { name: "Fields" }));
-    await waitFor(() => expect(screen.getByText(/no field profile for this run/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("MARA.MTART")).toBeInTheDocument());
+    expect(getProfile).toHaveBeenCalledWith("v1", "material_master");
   });
 
   it("prompts to pick a rule on the records tab when no check_id is set", async () => {
@@ -159,9 +211,9 @@ describe("ObjectDetailPage", () => {
     expect(screen.getByText("FERT")).toBeInTheDocument();
   });
 
-  it("shows top shape, top values and masked reason on the fields tab", async () => {
+  it("shows top shape, top values, masked reason, the blank count and the field in TABLE.FIELD mono on the fields tab", async () => {
     searchParams = new URLSearchParams("run=v1&tab=fields");
-    vi.spyOn(fieldProfileApi, "getVersionProfile").mockResolvedValue({
+    vi.spyOn(fieldProfileApi, "getProfileByVersion").mockResolvedValue({
       version_id: "v1",
       object: "material_master",
       objects: ["material_master"],
@@ -176,7 +228,7 @@ describe("ObjectDetailPage", () => {
             {
               field: "MTART",
               stats: {
-                rows: 100, table_rows: 100, sampled: false, blank: 0, blank_pct: 0, distinct: 4,
+                rows: 100, table_rows: 100, sampled: false, blank: 5, blank_pct: 0.05, distinct: 4,
                 min_length: 4, max_length: 4, ddic_type: "CHAR", ddic_length: 4, description: null,
                 numeric: null, dates: null,
                 shapes: [{ shape: "AAAA", count: 90, share: 0.9 }],
@@ -203,5 +255,8 @@ describe("ObjectDetailPage", () => {
     expect(screen.getByText("AAAA (90%)")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
     expect(screen.getByText("FERT (90)")).toBeInTheDocument();
     expect(screen.getByText("masked: privacy")).toBeInTheDocument();
+    expect(screen.getByText("5 (5%)")).toBeInTheDocument();
+    expect(screen.getByText("MARA.MTART")).toBeInTheDocument();
+    expect(screen.getByText("MARA.MTART")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
   });
 });

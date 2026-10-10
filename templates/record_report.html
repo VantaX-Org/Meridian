@@ -1,0 +1,34 @@
+{% extends "_base.html" %}
+{% block body %}
+<div class="figures">
+    <div class="figure primary"><div class="v">{{ failing_total | n }}<small> of {{ rules_total | n }}</small></div><div class="k">Rules failing for this record</div></div>
+</div>
+{% if not failing_total %}
+<p class="lead">All rules pass for this record.</p>
+{% else %}
+<p class="lead">{{ failing_total | n }} of {{ rules_total | n }} rules fail for material <span class="mono">{{ matnr }}</span>.</p>
+{% endif %}
+
+{% for v in by_view %}
+<h2>{{ v.label }}</h2>
+{% if v.failing %}
+<table class="data">
+<thead><tr><th>Check</th><th>Field</th><th>Actual value</th><th>Fix</th></tr></thead>
+<tbody>
+{% for f in v.failing %}
+<tr><td><span class="st {{ f.severity }}">{{ f.severity | capitalize }}</span> {{ f.message or f.check_id }}<span class="sub mono">{{ f.check_id }}</span></td>
+    <td class="mono">{{ f.field or "—" }}</td>
+    <td>{{ (f.actual_value | redact) if f.actual_value is not none else "—" }}</td>
+    <td>{{ (f.record_fix | redact) if f.record_fix else "—" }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No rule in this view fails for this record.</div>
+{% endif %}
+{% if v.not_evaluated %}<p class="note">{{ v.not_evaluated | length }} rule(s) in this view could not be evaluated: the table they need is not in this extract.</p>{% endif %}
+{% endfor %}
+{% if not by_view %}
+<div class="empty">This module has no view-level rules configured.</div>
+{% endif %}
+{% endblock %}

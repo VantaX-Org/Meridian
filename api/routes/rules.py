@@ -216,6 +216,52 @@ async def rules_summary(
     return {"summary": rows}
 
 
+@router.get("/rules/history", dependencies=[Depends(require_permission("view"))])
+async def rules_history_batch(
+    version_id: str = Query(...),
+    module: str = Query(...),
+    limit_runs: int = Query(8, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Hit-rate history for every check in one module, newest-run-first: the last
+    ``limit_runs`` runs of the same system lineage as ``version_id``. One windowed
+    query for the whole module, not one query per check_id."""
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text("""
+        WITH lineage AS (
+            SELECT COALESCE(metadata->>'system_id', 'upload') AS key, run_at
+              FROM analysis_versions WHERE id = CAST(:vid AS uuid) AND tenant_id = :tid
+        ), runs AS (
+            SELECT av.id AS version_id, av.run_at
+              FROM analysis_versions av, lineage l
+             WHERE av.tenant_id = :tid AND COALESCE(av.metadata->>'system_id', 'upload') = l.key
+               AND av.run_at <= l.run_at
+             ORDER BY av.run_at DESC LIMIT :n
+        )
+        SELECT f.check_id, runs.version_id, runs.run_at, f.severity, f.affected_count, f.total_count,
+               f.pass_rate, COALESCE((f.details->>'suppressed')::boolean, false) AS suppressed
+          FROM runs JOIN findings f ON f.version_id = runs.version_id
+         WHERE f.module = :mod AND f.details->>'error' IS NULL
+         ORDER BY f.check_id, runs.run_at DESC
+    """), {"vid": version_id, "tid": str(tenant.id), "mod": module, "n": limit_runs})).mappings().all()
+    if not rows:
+        known = (await db.execute(text(
+            "SELECT 1 FROM analysis_versions WHERE id = CAST(:vid AS uuid) AND tenant_id = :tid"),
+            {"vid": version_id, "tid": str(tenant.id)})).scalar()
+        if not known:
+            raise HTTPException(404, "Unknown version")
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["check_id"], []).append({
+            "version_id": r["version_id"], "run_at": r["run_at"], "severity": r["severity"],
+            "affected_count": r["affected_count"], "total_count": r["total_count"],
+            "pass_rate": r["pass_rate"], "suppressed": r["suppressed"],
+            "hit_rate": round(r["affected_count"] / r["total_count"] * 100, 2) if r["total_count"] else 0.0,
+        })
+    return {"version_id": version_id, "module": module, "history": out}
+
+
 # ── GET /api/v1/rules/{rule_id} ───────────────────────────────────────────────
 
 

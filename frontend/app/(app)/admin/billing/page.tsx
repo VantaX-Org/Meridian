@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, Field, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ExceptionBilling } from "@/types/api";
 
@@ -43,7 +43,7 @@ export default function ExceptionBillingPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   if (q.isLoading) state = "loading";
-  else if (q.isError) state = "error";
+  else if (isListFailure(q)) state = "error";
   else if (!b) state = "empty";
 
   return (

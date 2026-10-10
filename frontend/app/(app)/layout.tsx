@@ -6,11 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";
+import { isNotFound } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne } from "@/hooks/use-day-one";
@@ -28,7 +30,7 @@ function RunSelectorSlot() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, error, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.run("list"),
     queryFn: () => getVersions(),
   });
@@ -50,17 +52,21 @@ function RunSelectorSlot() {
   }, [hasRunParam, defaultId]);
 
   if (isLoading) return <Skeleton width={160} height={24} />;
-  if (isError || !data) {
+  // A 404 from the runs list means no runs yet; only a real failure gets the error pill.
+  if (isError && !isNotFound(error)) {
     return (
       <span className="inline-flex items-center gap-2">
-        <Pill tone="no-go">Runs unavailable</Pill>
-        <Button variant="ghost" onClick={() => refetch()}>Retry</Button>
+        {/* Below md the pill is dropped so the page title keeps the row; Retry stays and carries the meaning. */}
+        <span className="hidden md:inline-flex"><Pill tone="no-go">Runs unavailable</Pill></span>
+        <Button variant="ghost" aria-label="Runs unavailable, retry" onClick={() => refetch()}>Retry</Button>
       </span>
     );
   }
 
   if (versions.length === 0) {
-    if (dayOne.status !== "ready" || !dayOne.step) return null;
+    if (dayOne.status !== "ready" || !dayOne.step) {
+      return <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>No runs yet</span>;
+    }
     if (!dayOne.step.actionable || !dayOne.step.href) {
       return <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{dayOne.step.label}</span>;
     }
@@ -89,6 +95,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
+            userMenu={<ThemeToggle />}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             {children}

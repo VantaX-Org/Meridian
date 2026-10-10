@@ -15,7 +15,7 @@ import {
   type ProvenCostResponse,
   type ProvenCostRow,
 } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
@@ -91,7 +91,7 @@ const provenCostColumns: ColumnDef<ProvenCostRow>[] = [
  * failing or still loading never hides the other section's data. */
 function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, Error> }) {
   if (query.isLoading) return <Skeleton height={120} />;
-  if (query.isError) {
+  if (isListFailure(query)) {
     return (
       <ErrorState
         message={apiErrorMessage(query.error)}
@@ -135,7 +135,7 @@ function ImpactPanel({
   dayOne: ReturnType<typeof useDayOne>;
 }) {
   if (query.isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
-  if (query.isError) {
+  if (isListFailure(query)) {
     return (
       <ErrorState
         message={apiErrorMessage(query.error)}

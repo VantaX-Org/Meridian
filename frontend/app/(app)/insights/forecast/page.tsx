@@ -33,7 +33,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, EmptyState, Line, Pill, ReportPage, Select, type PillTone } from "@/design";
 import { getPredictiveAnalytics, type DqsForecast, type EarlyWarning } from "@/lib/api/analytics";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -81,7 +81,7 @@ export default function ForecastPage() {
     [selected],
   );
 
-  const state = isLoading ? "loading" : error ? "error" : forecasts.length === 0 ? "empty" : undefined;
+  const state = isLoading ? "loading" : isListFailure({ isError: !!error, error }) ? "error" : forecasts.length === 0 ? "empty" : undefined;
 
   return (
     <div className="flex flex-col gap-6 p-6">

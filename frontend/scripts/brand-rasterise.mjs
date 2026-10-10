@@ -17,7 +17,6 @@ const BRAND = join(ROOT, "public", "brand");
 const brand = JSON.parse(readFileSync(join(BRAND, "brand.json"), "utf8"));
 
 const markLightSvg = readFileSync(join(BRAND, "mark-light.svg"), "utf8");
-const wordmarkLightSvg = readFileSync(join(BRAND, "wordmark-light.svg"), "utf8");
 
 // The stroke path is shared by every colourway/size variant below.
 const PATH_D = markLightSvg.match(/<path d="([^"]+)"/)[1];
@@ -58,7 +57,6 @@ async function main() {
 
   // OpenGraph link preview: canvas + wordmark at 3x + tagline.
   const wordmarkW = 164 * 3;
-  const wordmarkH = 32 * 3;
   const ogSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="${brand.canvas}"/>
   <g transform="translate(${(1200 - wordmarkW) / 2} 210) scale(3)">

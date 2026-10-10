@@ -23,7 +23,7 @@ import {
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -70,7 +70,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
 
   const loading = dayOne.status === "loading" || objectsQ.isLoading;
-  const erroring = dayOne.status === "error" || objectsQ.isError;
+  const erroring = dayOne.status === "error" || isListFailure(objectsQ);
 
   if (loading) {
     return <HomePage persona={role} state="loading" />;
@@ -217,8 +217,11 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           style={{ borderColor: "var(--m-line)" }}
         >
           {o.readiness && <SeverityDot severity={o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : "low"} />}
-          <span style={{ color: "var(--m-ink)" }}>
-            {o.label} · {o.composite_score?.toFixed(1) ?? "—"} · {o.failing_checks} failing · {o.affected_records.toLocaleString()} affected
+          <span className="flex gap-3" style={{ color: "var(--m-ink)" }}>
+            <span>{o.label}</span>
+            <span>{o.composite_score?.toFixed(1) ?? "—"}</span>
+            <span>{o.failing_checks} failing</span>
+            <span>{o.affected_records.toLocaleString()} affected</span>
           </span>
           <Sparkline data={objectTrend(versions, o.module)} width={60} height={16} />
         </Link>

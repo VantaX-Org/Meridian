@@ -14,7 +14,7 @@
 <ol class="actions">
 {% for f in fix_first %}
     <li><b>{{ f.message or f.check_id }}</b> — {{ f.affected | n }} of {{ f.total | n }} records fail ({{ f.fail_pct | pct }}) in {{ f.module | module }}{% if f.field %}, field <span class="mono">{{ f.field }}</span>{% endif %}.
-        <span class="st {{ f.severity | st }}">{{ f.severity | capitalize }}</span> <span class="mono muted">{{ f.check_id }}</span>
+        <span class="st {{ f.severity }}">{{ f.severity | capitalize }}</span> <span class="mono muted">{{ f.check_id }}</span>
         {% if f.why %}<span class="sub muted">{{ f.why }}</span>{% endif %}</li>
 {% endfor %}
 </ol>
@@ -49,7 +49,7 @@
 <h2>Failing checks by severity</h2>
 <table class="data keep" style="width:60%">
 <thead><tr><th>Severity</th><th class="r">Checks failing</th></tr></thead>
-<tbody>{% for s, c in sev.items() %}<tr><td><span class="st {{ s | st }}">{{ s | capitalize }}</span></td><td class="r">{{ c | n }}</td></tr>{% endfor %}</tbody>
+<tbody>{% for s, c in sev.items() %}<tr><td><span class="st {{ s }}">{{ s | capitalize }}</span></td><td class="r">{{ c | n }}</td></tr>{% endfor %}</tbody>
 <tfoot><tr><td>Total</td><td class="r">{{ checks_failing | n }}</td></tr></tfoot>
 </table>
 

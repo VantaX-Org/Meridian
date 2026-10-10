@@ -111,7 +111,7 @@ export function DataTable<T>({
         <span className="sr-only">Filter rows</span>
         <input
           aria-label="Filter rows"
-          placeholder="Filter..."
+          placeholder="Type to filter rows"
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="mb-2 rounded border px-3 py-1.5 text-[13px]"

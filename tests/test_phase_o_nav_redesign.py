@@ -8,19 +8,21 @@ import pytest
 #
 # The nav is defined once in frontend/lib/nav.ts and read by both the sidebar
 # (app/(dashboard)/layout.tsx) and the ⌘K command palette, so the two can't
-# drift. Groups follow the user's job, in journey order.
+# drift. Ten sections, in journey order; each href appears once.
 
 NAV = Path("frontend/lib/nav.ts")
 LAYOUT = Path("frontend/app/(app)/layout.tsx")
 
 NAV_GROUP_ORDER = (
-    "Overview",
-    "Systems and data",
-    "Quality",
+    "Home",
+    "Systems",
+    "Objects",
+    "Runs",
     "Fix",
+    "Inbox",
+    "Insights",
     "MDM",
-    "Process and impact",
-    "Reports",
+    "Rules",
     "Admin",
 )
 
@@ -56,38 +58,41 @@ def test_sidebar_and_palette_share_nav():
 
 
 def test_overview_items():
-    """Overview holds Command Centre at /home/lead; no 'Dashboard' label."""
-    block = _group_block(_nav(), "Overview")
-    assert 'href: "/home/lead", label: "Command Centre"' in block
+    """Home holds the role home at /home/lead; no 'Dashboard' label."""
+    block = _group_block(_nav(), "Home")
+    assert 'href: "/home/lead", label: "Home"' in block
     assert '"/analytics"' not in block
     assert 'label: "Dashboard"' not in LAYOUT.read_text(encoding="utf-8") and 'label: "Dashboard"' not in _nav()
 
 
+
 def test_sidebar_systems_and_data_items():
-    """Systems and data (second group) has Systems, Import file, Download history, Migration
-    (at /migration, its own wave cockpit page — not /insights/readiness)."""
-    block = _group_block(_nav(), "Systems and data")
+    """Systems has Systems, Import file and Migration (its own wave cockpit page)."""
+    block = _group_block(_nav(), "Systems")
     for href in ("/systems", "/import", "/migration"):
-        assert f'"{href}"' in block, f"{href} missing from Systems and data"
+        assert f'"{href}"' in block, f"{href} missing from Systems"
+
 
 
 def test_sidebar_quality_items():
-    """Quality has Findings (/objects), Failing records (/inbox) and Runs (/runs)."""
-    block = _group_block(_nav(), "Quality")
-    assert 'href: "/objects", label: "Findings"' in block
-    assert 'href: "/inbox", label: "Failing records"' in block
-    assert 'href: "/runs", label: "Runs"' in block
+    """Objects and Runs are their own sections."""
+    content = _nav()
+    assert 'href: "/objects", label: "Objects"' in _group_block(content, "Objects")
+    assert 'href: "/runs", label: "Runs"' in _group_block(content, "Runs")
+
 
 
 def test_sidebar_fix_items():
-    """Fix has the steward inbox plus Cleaning, Exceptions, Duplicates, AI rule review."""
-    block = _group_block(_nav(), "Fix")
-    assert 'href: "/inbox", label: "Steward inbox"' in block
-    assert '"/stewardship"' not in block
-    assert '"/workbench"' not in block
-    for href in ("/fix", "/inbox?kind=exception", "/insights/duplicates", "/rules"):
-        assert f'"{href}"' in block, f"{href} missing from Fix"
-    assert 'label: "Workbench"' not in _nav(), "duplicate 'Workbench' labels must be gone"
+    """Fix holds cleaning; the steward inbox, with Exceptions beneath it, is its own section."""
+    content = _nav()
+    assert 'href: "/fix", label: "Fix"' in _group_block(content, "Fix")
+    inbox = _group_block(content, "Inbox")
+    assert 'href: "/inbox",\n        label: "Inbox"' in inbox
+    assert '"/inbox?kind=exception"' in inbox
+    assert '"/stewardship"' not in content
+    assert '"/workbench"' not in content
+    assert 'label: "Workbench"' not in content, "duplicate 'Workbench' labels must be gone"
+
 
 
 def test_sidebar_mdm_items():
@@ -98,20 +103,23 @@ def test_sidebar_mdm_items():
 
 
 def test_sidebar_process_and_impact_items():
-    """Process and impact has the process map, lineage and pattern mining."""
-    block = _group_block(_nav(), "Process and impact")
-    for href in ("/insights/process", "/insights/lineage", "/insights/mining"):
+    """Insights holds the process map, lineage, pattern mining and duplicate clusters."""
+    block = _group_block(_nav(), "Insights")
+    for href in ("/insights/process", "/insights/lineage", "/insights/mining", "/insights/duplicates"):
         assert f'"{href}"' in block
 
 
+
 def test_sidebar_reports_and_admin_items():
-    """Reports has Reports; Admin has Users & audit and Settings with its sub-pages."""
+    """Insights is the report hub; Admin has Users and audit and Settings with its sub-pages."""
     content = _nav()
-    assert 'href: "/insights", label: "Reports"' in _group_block(content, "Reports")
+    assert 'href: "/insights",\n        label: "Insights"' in _group_block(content, "Insights")
+    assert '"/rules"' in _group_block(content, "Rules")
     admin = _group_block(content, "Admin")
     assert '"/admin/users"' in admin and '"/admin/settings"' in admin
     for href in ("/admin/triage", "/admin/mappings", "/admin/ai", "/admin/licence"):
         assert f'"{href}"' in content
+
 
 
 def test_pages_removed_from_nav_stay_routable():
@@ -134,12 +142,12 @@ def test_pages_removed_from_nav_stay_routable():
 def test_nav_permission_gating():
     """Items gate on 'any of' backend permission names; the filter applies them."""
     content = _nav()
-    assert 'anyOf: ["review_ai_rules"]' in content
     assert 'anyOf: ["manage_users"]' in content
-    assert 'anyOf: ["trigger_sync"]' in content
-    assert 'anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"]' in content
+    assert 'anyOf: ["approve", "apply"]' in content
+    assert 'anyOf: ["approve", "assign"]' in content
     assert "anyOf.some((p) => can(p))" in content
     assert "isMenuItemEnabled(item.licenceKey)" in content
+
 
 
 def test_settings_cards_are_gated():

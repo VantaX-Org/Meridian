@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button, DataTable, ExplorerPage, Field, Pager, Select } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MasterRecordSummary } from "@/types/api";
@@ -58,7 +58,7 @@ export default function GoldenRecordsPage() {
 
   const records = useMemo(() => query.data?.records ?? [], [query.data]);
   const pageCount = Math.max(1, Math.ceil((query.data?.total ?? 0) / 100));
-  const state = query.isLoading ? "loading" : query.isError ? "error" : records.length === 0 ? "empty" : undefined;
+  const state = query.isLoading ? "loading" : isListFailure(query) ? "error" : records.length === 0 ? "empty" : undefined;
   const filtered = domain !== "all" || status !== "all" || !!minConfidence || !!maxConfidence;
 
   return (

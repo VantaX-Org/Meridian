@@ -11,7 +11,7 @@
 <tbody>
 {% for c in rows[:20] %}
 <tr><td>{{ c.message or c.check_id }}<span class="sub mono">{{ c.check_id }}</span></td><td>{{ c.module | module }}</td>
-    <td><span class="st {{ c.severity | st }}">{{ c.severity | capitalize }}</span></td>
+    <td><span class="st {{ c.severity }}">{{ c.severity | capitalize }}</span></td>
     <td class="r">{{ c.v1 | n }}</td><td class="r">{{ c.v2 | n }}</td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>
 {% endfor %}
 </tbody>
@@ -20,6 +20,7 @@
 {% else %}<div class="empty">{{ empty }}</div>{% endif %}
 {%- endmacro %}
 {% block body %}
+{% include "_summary_body.html" %}
 <div class="figures">
     <div class="figure"><div class="v">{{ o1.composite | n(1) }}</div><div class="k">DQS, earlier run</div></div>
     <div class="figure primary"><div class="v">{{ o2.composite | n(1) }}</div><div class="k">DQS, later run</div></div>

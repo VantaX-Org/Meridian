@@ -26,17 +26,19 @@ export function Counter({
 
   useEffect(() => {
     if (value === null) return;
+    // Snap without animating. setState runs in a frame callback, not
+    // synchronously in the effect body, so it never cascades a render.
+    const snap = () => {
+      const raf = requestAnimationFrame(() => setDisplay(value));
+      return () => cancelAnimationFrame(raf);
+    };
     if (reducedMotion()) {
-      setDisplay(value);
       lastVersion.current = versionId;
-      return;
+      return snap();
     }
     // Only animate the first time this versionId is seen — a refetch of the
     // same run must not re-trigger the count-up.
-    if (versionId !== undefined && lastVersion.current === versionId) {
-      setDisplay(value);
-      return;
-    }
+    if (versionId !== undefined && lastVersion.current === versionId) return snap();
     const start = performance.now();
     let raf = 0;
     const tick = (now: number) => {

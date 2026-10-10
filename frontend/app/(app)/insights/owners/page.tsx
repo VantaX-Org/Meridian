@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Delta, ExplorerPage, Pill, Stat, type PillTone } from "@/design";
 import { getOwners, type OwnerCardResponse } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 /** No direct severity->PillTone mapping exists yet; critical/high read as blocking (no-go), medium as at-risk, low/other as neutral. */
@@ -61,7 +61,7 @@ export default function OwnersPage() {
           ))}
         </div>
       }
-      state={isLoading ? "loading" : isError ? "error" : owners.length === 0 ? "empty" : undefined}
+      state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : owners.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No owners scored yet.",
         action: <Button render={<Link href="/inbox">Open inbox</Link>} />,

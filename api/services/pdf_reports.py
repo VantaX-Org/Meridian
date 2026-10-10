@@ -19,6 +19,7 @@ import json
 import re
 from datetime import datetime, timezone
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 from typing import Any, Iterable, Optional
 from zoneinfo import ZoneInfo
 
@@ -76,9 +77,12 @@ def fmt_signed(v: Any, dp: int = 1) -> str:
     return f"+{v:,.{dp}f}" if v > 0 else f"−{abs(v):,.{dp}f}"
 
 
+_SAST = ZoneInfo("Africa/Johannesburg")
+
+
 def fmt_dt(v: Any) -> str:
     d = _to_dt(v)
-    return "—" if d is None else d.astimezone(timezone.utc).strftime("%-d %b %Y, %H:%M UTC")
+    return "—" if d is None else d.astimezone(_SAST).strftime("%-d %b %Y, %H:%M SAST")
 
 
 _SAST = ZoneInfo("Africa/Johannesburg")
@@ -153,8 +157,9 @@ def render(template: str, ctx: dict) -> bytes:
 
 # ── inline SVG charts (no JS) ────────────────────────────────────────────────
 
-_ACCENT, _TRACK, _INK, _MUTED = "#2B7BFF", "#E9EDF3", "#111827", "#6B7280"
-_UP, _DOWN = "#1E9E66", "#E03E40"
+_ACCENT, _TRACK, _INK, _MUTED = "#2D3A8C", "#D5DBE0", "#101418", "#5C6872"
+_UP, _DOWN = "#1E7A46", "#B3261E"
+_HIGH, _MED = "#C65A00", "#8A6A00"
 
 
 def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, unit: str = "",
@@ -164,7 +169,7 @@ def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, u
     w, lw, vw, rh = 640, 150, 80, 20
     bw = w - lw - vw
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {rh * len(rows) + 4}" '
-           f'font-family="Inter" font-size="11">']
+           f'font-family="Public Sans" font-size="11">']
     for i, (label, value) in enumerate(rows):
         y = i * rh + 4
         out.append(f'<text x="0" y="{y + 11}" fill="{_INK}">{escape(label)}</text>')
@@ -188,7 +193,7 @@ def delta_bars(rows: Iterable[tuple[str, Optional[float]]], unit: str = " pts") 
     mid = lw + bw / 2
     scale = max([abs(v) for _, v in rows if v is not None] + [1.0])
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {rh * len(rows) + 4}" '
-           f'font-family="Inter" font-size="11">',
+           f'font-family="Public Sans" font-size="11">',
            f'<line x1="{mid}" y1="0" x2="{mid}" y2="{rh * len(rows) + 4}" stroke="{_MUTED}" stroke-width="0.75"/>']
     for i, (label, v) in enumerate(rows):
         y = i * rh + 4
@@ -234,6 +239,14 @@ def _rule(check_id: str) -> dict:
         return {}
 
 
+@lru_cache(maxsize=1)
+def _modules() -> frozenset[str]:
+    """Every module the rule catalogue knows about, for the object report's 404 on an unknown module."""
+    from api.services.tenant_seed import rule_catalogue
+
+    return frozenset(r["module"] for r in rule_catalogue())
+
+
 def failing(f: dict) -> bool:
     return not (f.get("details") or {}).get("error") and (f.get("affected_count") or 0) > 0
 
@@ -275,6 +288,19 @@ def _rows_checked(findings: list[dict]) -> dict[str, int]:
     return out
 
 
+def _sorted_fails(findings: list[dict]) -> list[dict]:
+    """Failing checks, worst first: severity, then affected count, then id.
+    Shared by analysis/executive (current run) and comparison (later run)."""
+    return sorted((_check_row(f) for f in findings if failing(f)),
+                  key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+
+
+def _quality_chart(dims: dict[str, Optional[float]]) -> Optional[Markup]:
+    if not any(v is not None for v in dims.values()):
+        return None
+    return hbars([(fmt_module(d), dims[d]) for d in DIMENSIONS])
+
+
 def _check_row(f: dict) -> dict:
     r = _rule(f["check_id"])
     total = int(f.get("total_count") or 0)
@@ -302,7 +328,8 @@ def _now(generated_at: Optional[datetime]) -> datetime:
 
 
 def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
-                     system: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
+                     system: Optional[dict] = None, generated_at: Optional[datetime] = None,
+                     previous_dqs: Optional[float] = None) -> dict:
     summary = version.get("dqs_summary") or {}
     meta = version.get("metadata") or {}
     overall = composite_dqs([summary])
@@ -325,8 +352,7 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
                         "records": checked.get(mod), "cap_reason": r.get("cap_reason")})
     modules.sort(key=lambda m: (m["score"] is None, m["score"] if m["score"] is not None else 0))
 
-    fails = sorted((_check_row(f) for f in findings if failing(f)),
-                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+    fails = _sorted_fails(findings)
     sev = {s: sum(1 for f in fails if f.get("severity") == s) for s in SEVERITIES}
     fix_first = sorted(fails, key=lambda f: (-_SEV_WEIGHT.get(f.get("severity"), 1) * f["affected"],
                                              f["check_id"]))[:5]
@@ -346,19 +372,24 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
             headline += (f" {len(errs)} check{'s' if len(errs) != 1 else ''} could not be evaluated "
                          f"and {'are' if len(errs) != 1 else 'is'} excluded from the score.")
 
+    now = _now(generated_at)
+    dim_chart = _quality_chart(dims)
+    previous = ({"composite": previous_dqs, "delta": round(overall["composite"] - previous_dqs, 1)}
+                if previous_dqs is not None and overall["composite"] is not None else None)
     return {
-        "title": "Analysis run report", "eyebrow": "Data quality assessment",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": _now(generated_at),
+        "title": "Analysis run report", "eyebrow": "Data quality assessment", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
-                 ("Run at", fmt_dt(version.get("run_at"))),
+                 ("Run at", fmt_dt(version.get("run_at"))), ("Generated", fmt_dt(now)),
                  ("Modules", ", ".join(fmt_module(m) for m in sorted(summary)) or "—")],
         "version": version, "source": meta.get("source") or "upload",
         "overall": overall, "dims": dims, "readiness": readiness,
-        "dim_chart": hbars([(fmt_module(d), dims[d]) for d in DIMENSIONS]),
+        "dim_chart": dim_chart, "quality_chart": dim_chart, "previous_dqs": previous,
         "module_chart": hbars([(fmt_module(m["name"]), m["score"]) for m in modules]),
         "modules": modules, "sev": sev, "checks_run": len(ran), "checks_failing": len(fails),
         "failing_checks": fails[:30], "failing_more": max(0, len(fails) - 30),
+        "top_findings": fails[:15],
         "critical": [f for f in fails if f.get("severity") == "critical"],
         "fix_first": fix_first, "errored": errs, "headline": headline,
     }
@@ -398,6 +429,7 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
                        sync_run: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
     meta = version.get("metadata") or {}
     now = _now(generated_at)
+    summary_dims = dimension_scores(version.get("dqs_summary") or {})
     coverage = sorted(meta.get("coverage") or [],
                       key=lambda c: ({"failed": 0, "live": 1}.get(c.get("status"), 2), str(c.get("table"))))
     live = [c for c in coverage if c.get("status") == "live"]
@@ -415,11 +447,14 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
     object_rows = meta.get("object_rows") or {}
 
     return {
-        "title": "Extraction run report", "eyebrow": "Data extraction",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": now,
+        "title": "Extraction run report", "eyebrow": "Data extraction", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
-                 ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—")],
+                 ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—"),
+                 ("Generated", fmt_dt(now))],
+        "overall": composite_dqs([version.get("dqs_summary") or {}]),
+        "quality_chart": _quality_chart(summary_dims), "previous_dqs": None, "top_findings": [],
         "modules": [{"name": m, "records": object_rows.get(m)} for m in (meta.get("modules") or [])],
         "coverage": coverage, "live": len(live),
         "failed": sum(1 for c in coverage if c.get("status") == "failed"),
@@ -457,13 +492,18 @@ def cleaning_context(data: dict, *, tenant_name: str, version: Optional[dict] = 
     recon["unreconciled"] = recon["records"] - recon["fixed"] - recon["still_failing"]
     fixes = data.get("record_fixes") or []
     scope = "This run only" if version else "All runs for this organisation"
+    now = _now(generated_at)
+    cleaning_dims = dimension_scores((version or {}).get("dqs_summary") or {})
     return {
-        "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation",
+        "overall": composite_dqs([(version or {}).get("dqs_summary") or {}]),
+        "quality_chart": _quality_chart(cleaning_dims), "previous_dqs": None, "top_findings": [],
+        "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
         "scope_label": f"{tenant_name} · {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
-        "generated_at": _now(generated_at),
+        "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("Scope", scope)]
                 + ([("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"]))]
-                   if version else []),
+                   if version else [])
+                + [("Generated", fmt_dt(now))],
         "statuses": list(by_status), "by_status": by_status, "matrix": matrix,
         "queue_total": sum(by_status.values()), "applied": by_status.get("applied", 0),
         "audit": data.get("audit") or [], "rules_applied": data.get("rules_applied") or [],
@@ -558,6 +598,8 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
     persisting = changes["persisting"]
     check_moves = changes["new"] + changes["resolved"] + persisting
     change = None if o1["composite"] is None or o2["composite"] is None else round(o2["composite"] - o1["composite"], 1)
+    fails2 = _sorted_fails(findings2)
+    previous_dqs = {"composite": o1["composite"], "delta": change} if change is not None else None
     if change is None:
         headline = "One of the two runs has no score, so the overall score cannot be compared."
     else:
@@ -567,14 +609,17 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
                        if change else f" ({o2['composite']:.1f}).")
                     + f" {len(changes['resolved'])} check{'s' if len(changes['resolved']) != 1 else ''} stopped failing"
                     + f" and {len(changes['new'])} started failing; {len(persisting)} still fail.")
+    now = _now(generated_at)
     return {
-        "title": "Run comparison report", "eyebrow": "Version comparison",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": _now(generated_at),
+        "title": "Run comparison report", "eyebrow": "Version comparison", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Earlier run", f"{v1.get('label') or v1['id']} — {fmt_dt(v1.get('run_at'))}"),
                  ("Later run", f"{v2.get('label') or v2['id']} — {fmt_dt(v2.get('run_at'))}"),
-                 ("Run IDs", f"{v1['id']} → {v2['id']}")],
+                 ("Run IDs", f"{v1['id']} → {v2['id']}"), ("Generated", fmt_dt(now))],
         "v1": v1, "v2": v2, "o1": o1, "o2": o2, "change": change, "headline": headline,
+        "overall": o2, "previous_dqs": previous_dqs, "top_findings": fails2[:15],
+        "quality_chart": _quality_chart({d["name"]: d["v2"] for d in dims}),
         "dims": dims, "dim_chart": delta_bars([(fmt_module(d["name"]), d["change"]) for d in dims]),
         "modules": sorted(modules, key=lambda m: (m["change"] is None, m["change"] or 0)),
         "module_chart": delta_bars([(fmt_module(m["name"]), m["change"]) for m in
@@ -594,14 +639,90 @@ _CANNED = "Data quality assessment complete. Review the detailed findings below 
 
 def executive_context(report_json: dict, supplementary: dict, version: dict, findings: list[dict], *,
                       tenant_name: str, system: Optional[dict] = None,
-                      generated_at: Optional[datetime] = None) -> dict:
-    ctx = analysis_context(version, findings, tenant_name=tenant_name, system=system, generated_at=generated_at)
+                      generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None) -> dict:
+    ctx = analysis_context(version, findings, tenant_name=tenant_name, system=system,
+                           generated_at=generated_at, previous_dqs=previous_dqs)
     ai = report_json.get("ai_executive_summary")
     if not ai and "ai_executive_summary" not in report_json:  # agent-written report: summary is LLM text
         ai = report_json.get("executive_summary")
     ai = None if not ai or str(ai).strip() == _CANNED else str(ai).strip()
     return {**ctx, "title": "Executive data quality report", "eyebrow": "Executive summary",
             "ai_summary": ai, "report": report_json, **supplementary}
+
+
+# ── object report (one module, one run) ───────────────────────────────────────
+
+
+def object_context(module: str, module_dqs: dict, findings: list[dict], samples: list[dict], *,
+                   tenant_name: str, system: Optional[dict] = None,
+                   generated_at: Optional[datetime] = None) -> dict:
+    """T18: every rule, finding and failing-record sample for one module in one run.
+    ``module_dqs`` is ``version['dqs_summary'][module]`` (or ``{}`` if the module scored
+    nothing); passing it through ``composite_dqs``/``dimension_scores`` as a single-module
+    slice gets the module's own composite/tier/capped flag and dimension scores for free."""
+    summary = {module: module_dqs or {}}
+    overall = composite_dqs([summary])
+    dims = dimension_scores(summary)
+    ran = [f for f in findings if not errored(f)]
+    errs = [_check_row(f) for f in findings if errored(f)]
+    rules = sorted((_check_row(f) for f in ran),
+                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+    fails = [r for r in rules if r["affected"] > 0]
+    score = (module_dqs or {}).get("composite_score")
+    readiness = compute_readiness_status(score, int((module_dqs or {}).get("critical_count") or 0)) \
+        if score is not None else None
+
+    if score is None:
+        verdict = f"{fmt_module(module)} produced no data quality score in this run."
+    else:
+        verdict = (f"{fmt_module(module)} scored {score:.1f} out of 100 in this run. {len(fails)} of {len(ran)} "
+                   f"checks found failing records.")
+        if (module_dqs or {}).get("critical_count"):
+            verdict += " Critical failures cap the score and block migration until they are fixed."
+        if errs:
+            verdict += (f" {len(errs)} check{'s' if len(errs) != 1 else ''} could not be evaluated "
+                        f"and {'are' if len(errs) != 1 else 'is'} excluded from the score.")
+
+    cols: list[str] = []
+    for r in samples:
+        for k in (r.get("field_values") or {}):
+            if k not in cols:
+                cols.append(k)
+
+    now = _now(generated_at)
+    return {
+        "title": f"{fmt_module(module)} object report", "eyebrow": "Object data quality", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)), ("Module", fmt_module(module)),
+                 ("Generated", fmt_dt(now))],
+        "module": module, "overall": overall, "dims": dims, "readiness": readiness,
+        "dim_chart": _quality_chart(dims), "headline": verdict,
+        "rules": rules, "top_findings": fails[:10],
+        "samples": samples, "sample_cols": cols, "errored": errs,
+    }
+
+
+# ── record fix sheet (Material 360, one record, one run) ─────────────────────
+
+
+def record_context(matnr: str, by_view: list[dict], *, tenant_name: str, version: dict,
+                   system: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
+    """T19: Material 360 fix sheet for one MATNR — the same by-view sections and
+    failing rules as ``GET /materials/{matnr}/findings`` (api/routes/materials.py),
+    rendered as a PDF rather than JSON. Masked fields reach the template only through
+    the shared ``redact`` filter; the data itself is already masked by migration 054."""
+    failing_views = [v for v in by_view if v.get("failing")]
+    now = _now(generated_at)
+    return {
+        "title": "Material 360 fix sheet", "eyebrow": "Record remediation", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
+                 ("Material", matnr), ("Run", version.get("label") or str(version["id"])),
+                 ("Generated", fmt_dt(now))],
+        "matnr": matnr, "by_view": by_view, "failing_views": failing_views,
+        "rules_total": sum(v.get("rules") or 0 for v in by_view),
+        "failing_total": sum(len(v.get("failing") or []) for v in by_view),
+    }
 
 
 # ── loaders (sync; tenant RLS already set on the session) ────────────────────
@@ -632,6 +753,22 @@ def load_system(s: Session, tid: str, version: dict) -> Optional[dict]:
 def load_findings(s: Session, tid: str, vid: str) -> list[dict]:
     return _all(s, "SELECT module, check_id, severity, dimension, affected_count, total_count, pass_rate, details "
                    "FROM findings WHERE version_id = :v AND tenant_id = :t", v=str(vid), t=tid)
+
+
+def load_previous_dqs(s: Session, tid: str, version: dict) -> Optional[float]:
+    """Composite DQS of the prior run in the same lineage (same system, or the
+    'upload' lineage for uploads without a system_id), for the Summary section's
+    change-since-previous-run figure. None when there is no prior scored run."""
+    lineage = (version.get("metadata") or {}).get("system_id") or "upload"
+    row = _one(s, """
+        SELECT dqs_summary FROM analysis_versions
+         WHERE tenant_id = :t AND COALESCE(metadata->>'system_id', 'upload') = :lineage
+           AND run_at < :run_at AND dqs_summary IS NOT NULL
+         ORDER BY run_at DESC LIMIT 1""",
+        t=tid, lineage=lineage, run_at=version["run_at"])
+    if not row:
+        return None
+    return composite_dqs([row["dqs_summary"]])["composite"]
 
 
 def load_analysis(s: Session, tid: str, vid: str) -> Optional[dict]:
@@ -738,15 +875,76 @@ def load_comparison(s: Session, tid: str, vid1: str, vid2: str) -> Optional[dict
             "record_diff": diff, "system": load_system(s, tid, v2)}
 
 
-def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None) -> Optional[bytes]:
+def load_object(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
+    """T18: findings + failing-record samples for one module in one run. Returns ``None``
+    for an unknown run or a module the rule catalogue does not know (-> 404)."""
+    if module not in _modules():
+        return None
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    findings = _all(s, "SELECT module, check_id, severity, dimension, affected_count, total_count, pass_rate, "
+                       "details FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m",
+                    v=str(vid), t=tid, m=module)
+    top3 = [r["check_id"] for r in
+            sorted((_check_row(f) for f in findings if failing(f)),
+                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))[:3]]
+    # Per-rule cap (not a single global LIMIT) so a rule with many failures can't crowd the
+    # other top-3 rules out of the sample: each of the top 3 check_ids gets its own 9 rows.
+    samples = _all(s, "SELECT check_id, record_key, field_values FROM ("
+                      "SELECT check_id, record_key, field_values, "
+                      "ROW_NUMBER() OVER (PARTITION BY check_id ORDER BY record_key) AS rn "
+                      "FROM finding_records WHERE tenant_id = :t AND version_id = :v "
+                      "AND module = :m AND check_id = ANY(:ids)) ranked "
+                      "WHERE rn <= 9 ORDER BY check_id, record_key",
+                   t=tid, v=str(vid), m=module, ids=top3) if top3 else []
+    return {"version": v, "findings": findings, "module_dqs": (v.get("dqs_summary") or {}).get(module) or {},
+            "samples": samples, "system": load_system(s, tid, v)}
+
+
+def load_record(s: Session, tid: str, vid: str, matnr: str) -> Optional[dict]:
+    """T19: the same data materials.py's ``GET /{matnr}/findings`` builds (by-view sections,
+    failing rules with actual values and record fixes), loaded synchronously for the PDF
+    report rather than through that async route."""
+    from api.services import material_360 as m360
+    from api.services.source_design import dictionary_for
+
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    m = m360.norm_matnr(matnr)
+    cat = m360.rule_catalogue()
+    names = {r["table"] for r in cat.values() if r["table"]} | {"MARA"}
+    path = (v.get("metadata") or {}).get("dataset_path")
+    if not path:
+        return None
+    d = dictionary_for(s, (v.get("metadata") or {}).get("system_id"))
+    tables = m360.load_tables(path, d, names)
+    if m360._for(tables, "MARA", m).empty:
+        return None
+    like = {"exact": f"MATNR={m}", "pre": f"MATNR={m}|%"}
+    fr = _all(s, "SELECT check_id, record_key, field_values FROM finding_records WHERE tenant_id = :t "
+                 "AND version_id = :v AND module = :mod AND (record_key = :exact OR record_key LIKE :pre)",
+             t=tid, v=str(vid), mod=m360.MODULE, **like)
+    iss = _all(s, "SELECT id, check_id, record_key, status FROM record_issues WHERE tenant_id = :t "
+                  "AND module = :mod AND (record_key = :exact OR record_key LIKE :pre)",
+              t=tid, mod=m360.MODULE, **like)
+    issues = {(r["check_id"], r["record_key"]): {"id": r["id"], "status": r["status"]} for r in iss}
+    out = m360.build_findings(fr, issues, m360.present_tables(tables, m), set(tables))
+    return {"version": v, "matnr": m, "by_view": out["by_view"], "system": load_system(s, tid, v)}
+
+
+def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None,
+         module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
     """Load one report's data for a tenant and render it. ``None`` when the run is not found
     (or, for an extraction report, the run was not extracted from SAP)."""
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
     kw: dict[str, Any] = {"tenant_name": tenant_name}
     if kind == "analysis":
         d = load_analysis(s, tid, vid)
-        return d and render("analysis_report.html", analysis_context(d["version"], d["findings"],
-                                                                     system=d["system"], **kw))
+        return d and render("analysis_report.html", analysis_context(
+            d["version"], d["findings"], system=d["system"],
+            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
     if kind == "extraction":
         d = load_extraction(s, tid, vid)
         if not d:
@@ -764,5 +962,14 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
     if kind == "executive":
         d = gather_executive_data(s, tid, vid)
         return d and render("executive_report.html", executive_context(
-            d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"], **kw))
+            d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
+            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
+    if kind == "object":
+        d = load_object(s, tid, vid, module)
+        return d and render("object_report.html", object_context(
+            module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], **kw))
+    if kind == "record":
+        d = load_record(s, tid, vid, matnr)
+        return d and render("record_report.html", record_context(
+            d["matnr"], d["by_view"], version=d["version"], system=d["system"], **kw))
     raise ValueError(kind)

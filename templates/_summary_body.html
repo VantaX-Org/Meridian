@@ -1,0 +1,37 @@
+{# Shared by every report kind: composite DQS + delta since the previous run,
+   quality by dimension, and the top failing checks. Included right after the
+   cover, before each kind's own sections. Any of overall/quality_chart/
+   previous_dqs/top_findings may be absent or None: each renders an .empty
+   dashed block rather than blank space. #}
+<h2>Summary</h2>
+<div class="figures">
+    <div class="figure primary"><div class="v">{% if overall and overall.composite is not none %}{{ overall.composite | n(1) }}<small> / 100</small>{% else %}<span class="muted">—</span>{% endif %}</div><div class="k">Data quality score (DQS)</div></div>
+    <div class="figure"><div class="v">{% if previous_dqs %}{{ previous_dqs.delta | signed(1) }}<small> pts</small>{% else %}<span class="muted">—</span>{% endif %}</div><div class="k">Change since previous run</div></div>
+</div>
+{% if not overall or overall.composite is none %}
+<div class="empty">This run has no data quality score to summarise.</div>
+{% elif overall.capped %}
+<p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>
+{% endif %}
+
+<h2>Quality by dimension</h2>
+{% if quality_chart %}
+<div class="chart">{{ quality_chart }}</div>
+{% else %}
+<div class="empty">No dimension was measured in this run.</div>
+{% endif %}
+
+<h2>Top findings</h2>
+{% if top_findings %}
+<table class="data">
+<thead><tr><th>Check</th><th>Object</th><th class="r">Affected</th><th class="r">Of records</th><th class="r">Pass rate</th></tr></thead>
+<tbody>
+{% for f in top_findings %}
+<tr><td><span class="st {{ f.severity }}">{{ f.severity | capitalize }}</span> <span class="mono">{{ f.check_id }}</span></td>
+    <td>{{ f.module | module }}</td><td class="r">{{ f.affected | n }}</td><td class="r">{{ f.total | n }}</td><td class="r">{{ f.pass_rate | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No check found failing records in this run.</div>
+{% endif %}

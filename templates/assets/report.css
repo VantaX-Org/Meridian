@@ -1,26 +1,30 @@
 /* Meridian print stylesheet — shared by every PDF report (WeasyPrint).
-   One accent (#2B7BFF). Status colours appear only on status marks.
+   Brand accent #2D3A8C. Status colours appear only on status marks.
    No gradients. Fonts are vendored so output does not depend on the host;
-   HTML(string=..., base_url=TEMPLATE_DIR) resolves the relative paths. */
+   HTML(string=..., base_url=TEMPLATE_DIR) resolves the relative paths.
 
-@font-face { font-family: "Inter"; font-weight: 400; src: url("fonts/Inter-400.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 500; src: url("fonts/Inter-500.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 600; src: url("fonts/Inter-600.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 700; src: url("fonts/Inter-700.woff2") format("woff2"); }
+   Body type is Public Sans, the brand face (frontend/DESIGN.md); mono is
+   JetBrains Mono for SAP identifiers only. */
+
+@font-face { font-family: "Public Sans"; font-weight: 400; src: url("fonts/PublicSans-400.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 500; src: url("fonts/PublicSans-500.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 600; src: url("fonts/PublicSans-600.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 700; src: url("fonts/PublicSans-700.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("fonts/JetBrainsMono-500.woff2") format("woff2"); }
 
 :root {
-    --ink: #111827;
-    --ink-2: #4B5563;
-    --ink-3: #6B7280;
-    --line: #E5E7EB;
-    --line-2: #D1D5DB;
-    --wash: #F6F7F9;
-    --accent: #2B7BFF;
-    --ok: #1E9E66;      /* success #27C281, darkened for print contrast */
-    --warn: #B7791F;    /* warning #F2B134, darkened for print contrast */
-    --bad: #E03E40;     /* danger  #FF4D4F, darkened for print contrast */
+    --ink: #101418;
+    --ink-2: #3C4852;
+    --ink-3: #5C6872;
+    --line: #D5DBE0;
+    --line-2: #D5DBE0;
+    --wash: #F7F9FA;
+    --accent: #2D3A8C;
+    --ok: #1E7A46;
+    --warn: #8A6A00;
+    --high: #C65A00;
+    --bad: #B3261E;
 }
 
 /* ── Page geometry ─────────────────────────────────────────────────────── */
@@ -30,27 +34,27 @@
     size: A4;
     margin: 22mm 16mm 20mm 16mm;
     @top-left {
-        font: 500 7.5pt "Inter"; color: #6B7280;
+        font: 500 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: bottom; padding-bottom: 4mm;
     }
     @top-right {
-        font: 500 7.5pt "Inter"; color: #6B7280;
+        font: 500 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: bottom; padding-bottom: 4mm;
     }
     @bottom-left {
-        font: 400 7.5pt "Inter"; color: #6B7280;
+        font: 400 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: top; padding-top: 4mm;
     }
     @bottom-right {
         content: "Page " counter(page) " of " counter(pages);
-        font: 400 7.5pt "Inter"; color: #6B7280;
+        font: 400 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: top; padding-top: 4mm;
     }
 }
 
 /* ── Base type ─────────────────────────────────────────────────────────── */
 
-html { font-family: "Inter", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
+html { font-family: "Public Sans", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
 body { margin: 0; }
 .num, td.r, th.r { font-variant-numeric: tabular-nums lining-nums; }
 .mono { font-family: "JetBrains Mono", monospace; font-size: 8pt; }
@@ -65,7 +69,7 @@ h3 { font-size: 9.5pt; font-weight: 600; margin: 5mm 0 2mm; break-after: avoid; 
 p { margin: 0 0 2.5mm; }
 .lead { font-size: 10.5pt; line-height: 1.5; color: var(--ink); max-width: 165mm; }
 .eyebrow {
-    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: none;
     color: var(--accent); margin-bottom: 2mm;
 }
 .note { font-size: 8pt; color: var(--ink-3); margin-top: 1.5mm; }
@@ -118,6 +122,33 @@ table.data .sub { display: block; color: var(--ink-3); font-size: 7.5pt; margin-
 .st.na { color: var(--ink-3); font-weight: 500; }
 .up { color: var(--ok); }
 .down { color: var(--bad); }
+
+/* Severity marks: colour plus shape (never colour alone).
+   Critical = filled square, high = filled triangle, medium = filled circle,
+   low = hollow circle. These four classes share the severity string itself
+   as the class name, so they stand apart from the status dots above. */
+.st.critical { color: var(--bad); }
+.st.critical::before { background: var(--bad); border-radius: 0; }
+.st.high { color: var(--high); }
+.st.high::before {
+    background: transparent; width: 0; height: 0; border-radius: 0;
+    border-left: 1mm solid transparent; border-right: 1mm solid transparent;
+    border-bottom: 1.8mm solid var(--high);
+}
+.st.medium { color: var(--warn); }
+.st.medium::before { background: var(--warn); border-radius: 50%; }
+.st.low { color: var(--ink-3); font-weight: 500; }
+.st.low::before { background: transparent; border: 0.3mm solid var(--ink-3); border-radius: 50%; }
+
+/* ── Cover page ────────────────────────────────────────────────────────── */
+
+.cover { page: cover; break-after: page; padding: 32mm 20mm 20mm; }
+.cover-mark { width: 28mm; height: 28mm; display: block; margin-bottom: 8mm; }
+.cover-word { font-size: 20pt; font-weight: 600; margin-bottom: 10mm; }
+.cover-title { font-size: 28pt; font-weight: 600; margin-bottom: 8mm; }
+.cover-meta { margin-top: 0; font-size: 9pt; }
+.cover-meta td { padding: 1mm 6mm 1mm 0; }
+.cover-verdict { font-size: 13pt; line-height: 1.5; margin-top: 10mm; max-width: 150mm; }
 
 /* ── Ordered actions ───────────────────────────────────────────────────── */
 

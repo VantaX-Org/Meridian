@@ -25,3 +25,13 @@ export function apiErrorDetail(error: unknown): string | null {
 export function apiErrorMessage(error: unknown): string {
   return apiErrorDetail(error) ?? "Could not reach the server.";
 }
+
+/** A 404 from a list endpoint means "no data here", not a failure; pages should show their empty state. */
+export function isNotFound(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
+/** Query failure for list/collection data: a 404 there means "nothing yet", not an error. */
+export function isListFailure(q: { isError: boolean; error: unknown }): boolean {
+  return q.isError && !isNotFound(q.error);
+}

@@ -117,9 +117,20 @@ export interface ScoreHistoryEntry {
   under_current: { composite: number | null; tier: "pass" | "warn" | "fail" | null; modules: Record<string, number> };
 }
 
+/** One run's composite score for a single module, part of the per-module series below. */
+export interface ModuleScoreHistoryEntry {
+  version_id: string;
+  composite: number;
+}
+
 /** GET /api/v1/scores/history — composite DQS across runs, as scored at the time and under today's weights. */
-export async function getScoreHistory(params?: { system_id?: string; limit?: number }): Promise<{ history: ScoreHistoryEntry[] }> {
-  const { data } = await apiClient.get<{ history: ScoreHistoryEntry[] }>("/api/v1/scores/history", { params });
+export async function getScoreHistory(
+  params?: { system_id?: string; limit?: number },
+): Promise<{ history: ScoreHistoryEntry[]; modules: Record<string, ModuleScoreHistoryEntry[]> }> {
+  const { data } = await apiClient.get<{ history: ScoreHistoryEntry[]; modules: Record<string, ModuleScoreHistoryEntry[]> }>(
+    "/api/v1/scores/history",
+    { params },
+  );
   return data;
 }
 

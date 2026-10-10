@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button, DataTable, Drawer, ExplorerPage, Field, Mono, Pill, Select, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { relativeTime, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { Contract, ContractStatus } from "@/types/api";
@@ -68,7 +68,7 @@ export default function ContractsPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   if (q.isLoading) state = "loading";
-  else if (q.isError) state = "error";
+  else if (isListFailure(q)) state = "error";
   else if (visible.length === 0) state = "empty";
 
   return (
