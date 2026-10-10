@@ -50,6 +50,40 @@ def test_default_window_has_a_wider_fallback():
     assert plan_modules(["fi_gl"], D, dated)["BKPF"].wide_where is None  # the user's range is never widened
 
 
+def test_exclude_deleted_filters_plant_level_children_not_header():
+    scope = normalise_scope({"exclude_deleted": True})
+    plans = plan_modules(["material_master"], D, scope)
+    assert plans["MARD"].where == "LVORM = ''" and plans["MARD"].partial
+    assert plans["MARC"].where == "LVORM = ''"
+    assert plans["MARA"].where is None and not plans["MARA"].partial  # header: read in full
+
+
+def test_exclude_deleted_off_by_default_adds_nothing():
+    plans = plan_modules(["material_master"], D, normalise_scope({}))
+    assert plans["MARD"].where is None
+    assert plans["MARC"].where is None
+
+
+def test_exclude_deleted_uses_loevm_for_customer_children_not_header():
+    scope = normalise_scope({"exclude_deleted": True})
+    plans = plan_modules(["sd_customer_master"], D, scope)
+    assert plans["KNB1"].where == "LOEVM = ''"
+    assert plans["KNA1"].where is None  # header: read in full
+
+
+def test_exclude_deleted_combines_with_org_scope_in_the_where_clause():
+    scope = normalise_scope({"exclude_deleted": True, "company_codes": ["1000"]})
+    plans = plan_modules(["accounts_payable"], D, scope)
+    assert plans["LFB1"].where == "BUKRS IN ('1000') AND LOEVM = ''"
+
+
+def test_exclude_deleted_filter_reaches_the_rfc_where_options():
+    from sap.rfc import where_options
+
+    plans = plan_modules(["material_master"], D, normalise_scope({"exclude_deleted": True}))
+    assert where_options(plans["MARD"].where) == [{"TEXT": "LVORM = ''"}]
+
+
 def test_process_discovery_tables_planned_with_12_month_windows():
     plans = plan_modules(["sd_sales_orders", "mm_purchasing"], D)
     for t, col in {"VBRK": "FKDAT", "LIKP": "ERDAT", "MKPF": "BUDAT", "EBAN": "BADAT"}.items():

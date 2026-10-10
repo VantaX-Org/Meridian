@@ -28,6 +28,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [scopeText, setScopeText] = useState<Partial<Record<ScopeKey, string>>>({});
   const [dates, setDates] = useState<{ date_from?: string; date_to?: string }>({});
+  const [excludeDeleted, setExcludeDeleted] = useState(false);
   const [label, setLabel] = useState("");
   const [confirm, setConfirm] = useState<boolean | null>(null); // null = not asking; value = analyse flag
 
@@ -40,7 +41,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
 
   const download = useMutation({
     mutationFn: (analyse: boolean) => {
-      const scope: DownloadScope = { ...dates };
+      const scope: DownloadScope = { ...dates, ...(excludeDeleted ? { exclude_deleted: true } : {}) };
       for (const k of filters) {
         const v = list(scopeText[k] ?? "");
         if (v.length) scope[k] = v;
@@ -102,6 +103,13 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
               </div>
               <p className={note} style={noteStyle}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
+              </p>
+              <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink)" }}>
+                <input type="checkbox" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
+                Skip records flagged for deletion
+              </label>
+              <p className={note} style={noteStyle}>
+                Faster reads. Leave off for a full quality score, because inactive data is itself a finding.
               </p>
               {confirm === null ? (
                 <div className="flex gap-2">
