@@ -108,10 +108,20 @@ def test_material_ledger_without_lbkum_column():
 def test_konv_orphan_afle_nast():
     vbak = pd.DataFrame({"VBELN": ["S1"], "KNUMV": ["K1"]})
     konv = pd.DataFrame({"KNUMV": ["K1", "K9"], "KPOSN": ["10", "10"], "STUNR": ["1", "1"],
-                         "ZAEHK": ["1", "1"], "KWERT": [9_999_999_999.0, 5.0]})
+                         "ZAEHK": ["1", "1"], "KWERT": [99_000_000_000.0, 5.0]})
     nast = pd.DataFrame({"KAPPL": ["V1", "V1"], "OBJKY": ["S1", "S1"], "KSCHL": ["BA00", "BA00"],
                          "PARNR": ["1", "2"], "VSTAT": ["0", "1"]})
     gaps = load_sim.check_simplification(_tf(VBAK=vbak, KONV=konv, NAST=nast), "sd_sales_orders")
     got = {(g.record_key.split("|")[0], g.detail.split(" ", 1)[0]) for g in gaps}
     assert got == {("KNUMV=K9", "S4L-SD-KONV-ORPHAN"), ("KNUMV=K1", "S4L-FI-AFLE"),
                    ("KAPPL=V1", "S4L-OUT-NAST-OPEN")}
+
+
+def test_konv_without_knumv_no_crash():
+    """Test that KONV without KNUMV column plus VBAK with KNUMV returns no orphan gaps and no crash."""
+    vbak = pd.DataFrame({"VBELN": ["S1"], "KNUMV": ["K1"]})
+    konv = pd.DataFrame({"KPOSN": ["10"], "STUNR": ["1"], "ZAEHK": ["1"], "KWERT": [5.0]})
+    gaps = load_sim.check_simplification(_tf(VBAK=vbak, KONV=konv), "sd_sales_orders")
+    # Should not crash; KONV without KNUMV means no orphan check, no KWERT check (below threshold),
+    # no NAST means no open records. Result should be empty.
+    assert gaps == []
