@@ -134,6 +134,29 @@ describe("BatchesTab", () => {
     expect(rows[2]).toHaveTextContent("Older batch");
   });
 
+  it("shows the before/after diff and exports an MDG payload with a CR type", async () => {
+    vi.spyOn(remediationApi, "listBatches").mockResolvedValue({ items: [batch({ status: "approved" })] });
+    vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail({ status: "approved" }));
+    vi.spyOn(remediationApi, "getBatchEvents").mockResolvedValue({ items: [] });
+    vi.spyOn(remediationApi, "getMonitor").mockResolvedValue({ items: [] });
+    vi.spyOn(remediationApi, "getBatchDiff").mockResolvedValue({ records: [
+      { record_key: "MATNR=42", table: "MARA", changes: [{ field: "MATKL", before: "misc", after: "MG-0001", rule: "LR-000001" }] },
+    ] });
+    vi.spyOn(remediationApi, "getBatchPackages").mockResolvedValue({ items: [] });
+    const exp = vi.spyOn(remediationApi, "exportBatch").mockResolvedValue();
+    renderWithQuery(<BatchesTab />);
+    await userEvent.click(await screen.findByText("AP001 batch"));
+    expect(await screen.findByText("misc")).toBeInTheDocument();
+    expect(screen.getByText("MG-0001")).toBeInTheDocument();
+    // choose MDG, enter a CR type, export
+    await userEvent.click(screen.getByRole("button", { name: "Export batch" }));
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.click(screen.getByRole("option", { name: /MDG change request/i }));
+    await userEvent.type(screen.getByLabelText(/change request type/i), "ZMAT_CHG");
+    await userEvent.click(screen.getByRole("button", { name: /^export$/i }));
+    await waitFor(() => expect(exp).toHaveBeenCalledWith("b1", "mdg_cr_json", "ZMAT_CHG"));
+  });
+
   it("re-sorts the batch list on a column header click, keeping the sort in the URL", async () => {
     vi.spyOn(remediationApi, "listBatches").mockResolvedValue({
       items: [

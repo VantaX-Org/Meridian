@@ -4,10 +4,11 @@ import apiClient from "./client";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type BatchStatus = "draft" | "approved" | "exported";
-export type ProposalSource = "rule" | "steward" | "manual";
+export type ProposalSource = "rule" | "steward" | "manual" | "cleaning" | "simulation";
 export type Confidence = "high" | "medium" | "low";
 export type ReconStatus = "fixed" | "still_failing";
-export type ExportFormat = "cockpit_xlsx" | "cockpit_csv" | "mass_change_csv";
+export type ExportFormat =
+  | "cockpit_xlsx" | "cockpit_csv" | "mass_change_csv" | "ltmc_xlsx" | "mass_maintenance_zip" | "mdg_cr_json";
 export type EventAction = "created" | "proposed" | "accepted" | "approved" | "exported" | "reconciled";
 
 export interface BatchFilter {
@@ -116,16 +117,45 @@ export interface MonitorItem {
   monitor: MonitorSummary | null;
 }
 
+export interface DiffChange {
+  field: string;
+  before: string | null;
+  after: string;
+  rule: string;
+}
+
+export interface DiffRecord {
+  record_key: string;
+  table: string;
+  changes: DiffChange[];
+}
+
+export interface ExportPackage {
+  format: ExportFormat;
+  filename: string;
+  sha256: string;
+  size_bytes: number;
+  item_count: number;
+  created_by_label: string | null;
+  approved_by_label: string | null;
+  created_at: string;
+}
+
 // ── Labels (never show a raw id, DESIGN.md rule 18) ─────────────────────────
 
 export const STATUS_LABEL: Record<BatchStatus, string> = { draft: "Draft", approved: "Approved", exported: "Exported" };
-export const SOURCE_LABEL: Record<ProposalSource, string> = { rule: "Rule", steward: "Steward", manual: "Manual" };
+export const SOURCE_LABEL: Record<ProposalSource, string> = {
+  rule: "Rule", steward: "Steward", manual: "Manual", cleaning: "Cleaning", simulation: "Simulation",
+};
 export const CONFIDENCE_LABEL: Record<Confidence, string> = { high: "High", medium: "Medium", low: "Low" };
 export const RECON_LABEL: Record<ReconStatus, string> = { fixed: "Fixed", still_failing: "Still failing" };
 export const FORMAT_LABEL: Record<ExportFormat, string> = {
   cockpit_xlsx: "Migration Cockpit workbook (xlsx)",
   cockpit_csv: "Migration Cockpit CSV",
   mass_change_csv: "Mass change CSV",
+  ltmc_xlsx: "Migration Cockpit object templates (xlsx)",
+  mass_maintenance_zip: "MM17 / XD99 / XK99 mass maintenance (zip)",
+  mdg_cr_json: "MDG change request file (json)",
 };
 export const EVENT_LABEL: Record<EventAction, string> = {
   created: "Drafted", proposed: "Proposal changed", accepted: "Accepted", approved: "Approved", exported: "Exported", reconciled: "Reconciled",
@@ -152,6 +182,16 @@ export const getBatchEvents = async (id: string, itemId?: string): Promise<{ ite
 
 export const getMonitor = async (): Promise<{ items: MonitorItem[] }> => {
   const { data } = await apiClient.get<{ items: MonitorItem[] }>("/api/v1/remediation/monitor");
+  return data;
+};
+
+export const getBatchDiff = async (id: string): Promise<{ records: DiffRecord[] }> => {
+  const { data } = await apiClient.get<{ records: DiffRecord[] }>(`/api/v1/remediation/batches/${id}/diff`);
+  return data;
+};
+
+export const getBatchPackages = async (id: string): Promise<{ items: ExportPackage[] }> => {
+  const { data } = await apiClient.get<{ items: ExportPackage[] }>(`/api/v1/remediation/batches/${id}/packages`);
   return data;
 };
 
@@ -186,7 +226,11 @@ export const approveBatch = async (id: string): Promise<{ id: string; status: "a
 // ── Export (POST that streams a file; the GET-only blob helpers in cleaning.ts don't fit) ──
 
 function defaultExtensionFor(format: ExportFormat): string {
-  return format === "cockpit_xlsx" ? "xlsx" : "csv";
+  return (
+    { cockpit_xlsx: "xlsx", ltmc_xlsx: "xlsx", mass_maintenance_zip: "zip", mdg_cr_json: "json" } as Partial<
+      Record<ExportFormat, string>
+    >
+  )[format] ?? "csv";
 }
 
 async function readBlobErrorDetail(blob: Blob): Promise<string | null> {
@@ -201,11 +245,12 @@ async function readBlobErrorDetail(blob: Blob): Promise<string | null> {
 }
 
 /** POST that streams a file. Surfaces the JSON `detail` from a non-2xx Blob error as a sentence. */
-export async function exportBatch(id: string, format: ExportFormat): Promise<void> {
+export async function exportBatch(id: string, format: ExportFormat, crType?: string): Promise<void> {
   let response: AxiosResponse<Blob>;
   try {
+    const crParam = crType ? `&cr_type=${encodeURIComponent(crType)}` : "";
     response = await apiClient.post<Blob>(
-      `/api/v1/remediation/batches/${id}/export?format=${format}`,
+      `/api/v1/remediation/batches/${id}/export?format=${format}${crParam}`,
       undefined,
       { responseType: "blob" },
     );
