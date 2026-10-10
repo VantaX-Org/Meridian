@@ -931,6 +931,38 @@ def test_steward_approve_confirms_a_config_match(app_engine):
 
 
 @pg
+def test_steward_resolve_on_a_missing_mapping_is_409(app_engine):
+    import asyncio
+    from types import SimpleNamespace
+
+    from fastapi import HTTPException
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.routes.stewardship import _apply_source_action
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+
+    async def main(action: str) -> int:
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        try:
+            async with async_sessionmaker(aeng, expire_on_commit=False)() as db:
+                await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+                item = SimpleNamespace(item_type="config_value_match", source_id=str(uuid.uuid4()), tenant_id=tid)
+                try:
+                    await _apply_source_action(db, item, action, None, None)
+                except HTTPException as e:
+                    return e.status_code
+                return 200
+        finally:
+            await aeng.dispose()
+
+    assert asyncio.run(main("approve")) == 409
+    assert asyncio.run(main("reject")) == 409
+
+
+@pg
 def test_realignment_report_sheets_and_formats(app_engine, monkeypatch):
     from sqlalchemy import text
 
