@@ -188,6 +188,9 @@ async def _enqueue_run(db: AsyncSession, tenant_id: uuid.UUID, user_id: Optional
                        src: Optional[str], dest: Optional[str], modules: list[str],
                        source_version_id: Optional[str], target_release: str,
                        wave_id: Optional[str] = None) -> dict:
+    if src and not dest and mode == "source_to_destination":
+        dest = (await db.execute(text("SELECT target_system_id::text FROM sap_systems WHERE id = CAST(:s AS uuid)"),
+                                 {"s": src})).scalar()  # default to the source's assigned target
     run_id = str(uuid.uuid4())
     await db.execute(
         text("""
@@ -695,6 +698,7 @@ async def export_migration(
 
     def _build():
         from api.services.source_design import dictionary_for
+        from sap.ddic import get_dictionary
         from workers.dataset import load_dataset
         from workers.tasks.run_migration import load_mappings, load_value_maps, module_source_tables
         with Session(get_sync_engine()) as s:
@@ -704,8 +708,10 @@ async def export_migration(
                                            conversions=conversions_for(s, run.source_system_id))
             mtables = {m: module_source_tables(m, frames) for m in run.modules}
             maps = {m: load_mappings(s, m, target_type) for m in run.modules}
-            vms = {m: load_value_maps(s, m) for m in run.modules}
-        return build_load_tables(frames, mtables, maps, vms, blocked)
+            vms = {m: load_value_maps(s, m, run.source_system_id, run.dest_system_id) for m in run.modules}
+            target_dict = (dictionary_for(s, run.dest_system_id) if run.dest_system_id
+                           else get_dictionary(target_type or "s4hana"))
+        return build_load_tables(frames, mtables, maps, vms, blocked, target_dict=target_dict)
 
     tables = await run_in_threadpool(_build)
     if not tables:
@@ -898,7 +904,7 @@ async def get_value_map(
     _role: str = Depends(require_permission("analyse")),
 ):
     await _set_rls(db, tenant.id)
-    where, params = "module = :m", {"m": module}
+    where, params = "module = :m AND status = 'confirmed'", {"m": module}
     if target_field:
         where += " AND target_field = :tf"
         params["tf"] = target_field
@@ -923,9 +929,10 @@ async def upsert_value_map(
                 INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value,
                                                      note, updated_by, updated_at)
                 VALUES (gen_random_uuid(), :tid, :m, :tf, :sv, :tv, :note, :uid, now())
-                ON CONFLICT (tenant_id, module, target_field, source_value)
+                ON CONFLICT ON CONSTRAINT uq_transfer_value_mappings_scope
                 DO UPDATE SET target_value = EXCLUDED.target_value, note = EXCLUDED.note,
-                              updated_by = EXCLUDED.updated_by, updated_at = now()
+                              updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'confirmed'
+
             """),
             {"tid": str(tenant.id), "m": body.module, "tf": body.target_field.upper(), "sv": e.source_value,
              "tv": e.target_value, "note": e.note, "uid": current_user_id(request)},

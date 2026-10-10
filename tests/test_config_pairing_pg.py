@@ -626,3 +626,71 @@ def test_flipping_a_target_to_source_unpoints_its_sources(app_engine, monkeypatc
 
     rows = _client_run(app, tid, router, calls, monkeypatch)
     assert next(s for s in rows if s["id"] == src)["target_system_id"] is None
+
+
+@pg
+def test_load_value_maps_merges_module_config_and_pair_scope(app_engine):
+    from sqlalchemy import text
+
+    from workers.tasks.run_migration import load_value_maps
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    other = _system(app, tid, "QAS")
+    ins = ("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value, "
+           "source_system_id, target_system_id, status) VALUES (gen_random_uuid(), :t, :m, :f, :sv, :tv, "
+           "CAST(:s AS uuid), CAST(:g AS uuid), :st)")
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        for m, f, sv, tv, s_, g, st in [
+            ("accounts_payable", "BUT000.BU_GROUP", "KRED", "BP01", None, None, "confirmed"),
+            ("config", "T077K.KTOKK", "LIEF", "GLOBAL", None, None, "confirmed"),
+            ("config", "T077K.KTOKK", "LIEF", "KRED", src, tgt, "confirmed"),
+            ("config", "T077K.KTOKK", "ZZZZ", "KRED", src, tgt, "proposed"),
+            ("config", "T077K.KTOKK", "OTHR", "KRED", other, tgt, "confirmed"),
+        ]:
+            c.execute(text(ins), {"t": tid, "m": m, "f": f, "sv": sv, "tv": tv, "s": s_, "g": g, "st": st})
+    with _session(app, tid) as s:
+        scoped = load_value_maps(s, "accounts_payable", src, tgt)
+        global_only = load_value_maps(s, "accounts_payable")
+    assert scoped == {"BUT000.BU_GROUP": {"KRED": "BP01"}, "T077K.KTOKK": {"LIEF": "KRED"}}
+    assert global_only["T077K.KTOKK"] == {"LIEF": "GLOBAL"}
+
+
+@pg
+def test_explicit_module_map_wins_over_config_map(app_engine):
+    from sqlalchemy import text
+
+    from workers.tasks.run_migration import load_value_maps
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        for m, tv in [("config", "FROM_CONFIG"), ("accounts_payable", "EXPLICIT")]:
+            c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                           "target_value, status) VALUES (gen_random_uuid(), :t, :m, 'T077K.KTOKK', 'LIEF', :tv, "
+                           "'confirmed')"), {"t": tid, "m": m, "tv": tv})
+    with _session(app, tid) as s:
+        assert load_value_maps(s, "accounts_payable")["T077K.KTOKK"] == {"LIEF": "EXPLICIT"}
+        assert load_value_maps(s, "material_master")["T077K.KTOKK"] == {"LIEF": "FROM_CONFIG"}
+
+
+@pg
+def test_load_target_config_reports_its_basis(app_engine):
+    from workers.tasks.run_migration import load_target_config
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    live = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    base = _system(app, tid, "S4C", "s4hana_cloud", "target")
+    _load(app, tid, live, [("T077K", "KTOKK=KRED", {"KTOKK": "KRED", "TXT30": ""})])
+    _load(app, tid, base, [("T077K", "KTOKK=SUPL", {"KTOKK": "SUPL"})], origin="best_practice")
+    with _session(app, tid) as s:
+        cfg, basis = load_target_config(s, live)
+        assert (cfg["T077K.KTOKK"], basis) == ({"KRED"}, "live") and "T077K.TXT30" not in cfg
+        assert load_target_config(s, base)[1] == "baseline"
+        cfg, basis = load_target_config(s, None)
+        assert basis == "baseline" and "SUPL" in cfg["T077K.KTOKK"]
