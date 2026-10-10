@@ -47,12 +47,14 @@ export default function ReadinessPage() {
         <table className="w-full text-[13px]">
           <thead>
             <tr>
-              <th className="text-left p-2">Object</th>
+              <th scope="col" className="text-left p-2">Object</th>
               {waves.map((w) => (
                 <Fragment key={w}>
-                  <th className="text-left p-2">{w}</th>
-                  <th className="text-right p-2">Readiness</th>
-                  <th className="text-right p-2">Records blocked</th>
+                  <th scope="col" className="text-left p-2">{w}</th>
+                  {/* Sub-headers repeat their wave name so each cell's accessible name
+                      is unambiguous to screen readers when there are 2+ waves. */}
+                  <th scope="col" className="text-right p-2">{`${w} readiness`}</th>
+                  <th scope="col" className="text-right p-2">{`${w} records blocked`}</th>
                 </Fragment>
               ))}
             </tr>

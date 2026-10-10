@@ -27,6 +27,23 @@ describe("ReadinessPage", () => {
     expect(screen.getByText("100.0%")).toBeInTheDocument();
   });
 
+  it("gives each wave's sub-headers an accessible name that includes the wave", async () => {
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({
+      version_id: "v1",
+      threshold: 70,
+      cells: [
+        { module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 },
+        { module: "material_master", wave: "Wave 2", verdict: "at_risk", blocker_count: 1, dqs: 80, score: 90, records_blocked: 3 },
+      ],
+    });
+    renderWithQuery(<ReadinessPage />);
+    await screen.findByText("go");
+    for (const wave of ["Wave 1", "Wave 2"]) {
+      expect(screen.getByRole("columnheader", { name: `${wave} readiness` })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: `${wave} records blocked` })).toBeInTheDocument();
+    }
+  });
+
   it("shows a loading skeleton while the request is in flight", () => {
     vi.spyOn(insightsApi, "getReadiness").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<ReadinessPage />);

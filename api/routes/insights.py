@@ -49,7 +49,7 @@ async def get_readiness(
     vid = str(version_id) if version_id else None
     fallback = (await db.execute(text(run_sql), {"t": str(tenant.id), "wid": None, "vid": vid})).fetchone()
 
-    async def dqs_for(version) -> dict:
+    async def dqs_for(version: uuid.UUID | None) -> dict[str, float | None]:
         if not version:
             return {}
         row = (await db.execute(
