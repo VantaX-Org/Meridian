@@ -17,10 +17,9 @@ import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from workers.celery_app import celery_app
+from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
 from api.services.run_steps import record_step
 from workers.db import get_sync_engine
-from workers.tasks.run_extraction import EXTRACT_TIME_LIMIT, run_extraction
 
 logger = logging.getLogger("meridian.worker.run_sync")
 
@@ -89,6 +88,9 @@ def run_sync(self, profile_id: str, tenant_id: str):
     # Direct call: runs here, under this task's time limits, as one job.
     version_id = str(uuid.uuid4())
     prefix = f"staging/{tenant_id}/{version_id}/"
+    # Imported here: run_extraction imports celery_app, which imports this module.
+    from workers.tasks.run_extraction import run_extraction
+
     try:
         result = run_extraction(tenant_id, system_id, [domain], analyse=False,
                                 label=f"Sync {system_name}", version_id=version_id)
