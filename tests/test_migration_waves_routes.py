@@ -40,6 +40,7 @@ def tenants():
                   {"t": t1})
     yield t1, t2, prd, s4d
     with engine.begin() as c:
+        c.execute(text("DELETE FROM audit_log WHERE tenant_id IN (:a, :b)"), {"a": t1, "b": t2})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id IN (:a, :b)"), {"a": t1, "b": t2})
         c.execute(text("DELETE FROM migration_waves WHERE tenant_id IN (:a, :b)"), {"a": t1, "b": t2})
         c.execute(text("DELETE FROM users WHERE id = '00000000-0000-0000-0000-000000000002'"))
