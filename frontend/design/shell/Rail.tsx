@@ -116,7 +116,7 @@ export function Rail() {
   }, [activeItemHref]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from sessionStorage (or a viewport default) after mount
+     
     const stored = window.sessionStorage.getItem(RAIL_KEY);
     if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
     else setExpanded(window.innerWidth >= 1280);
@@ -193,7 +193,7 @@ export function Rail() {
   const order = useMemo(() => visibleOrder(flatTopLevel(groups), openParents), [groups, openParents]);
   const [focusedHref, setFocusedHref] = useState<string | null>(null);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- keeps the roving-tabindex cursor valid as the active route changes
+     
     if (activeItemHref && order.includes(activeItemHref)) setFocusedHref(activeItemHref);
   }, [activeItemHref, order]);
 

@@ -7,15 +7,27 @@ connect() — not on import of this module.
 
 from __future__ import annotations
 
+import heapq
 import logging
+import os
+import queue
 import re
-from typing import Callable, Optional
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from itertools import count
+from typing import Callable, Optional, Protocol
 
 import pandas as pd
 
 from .base import BAPICall, SAPConnectionParams, SAPConnector, SAPConnectorError
 
 logger = logging.getLogger("meridian.sap.rfc")
+
+
+class _Conn(Protocol):
+    """What RFCConnector needs from a pyrfc Connection (or the test fake)."""
+
+    def call(self, function: str, **params) -> dict: ...
+    def close(self) -> None: ...
 
 
 PAYROLL_FUNCTION = "Z_MERIDIAN_PAYROLL_TOTALS"
@@ -26,13 +38,24 @@ PAYROLL_FIELDS = ["PERNR", "SEQNR", "FPPER", "INPER", "PAYDT", "LGART", "BETRG",
 class RFCConnector(SAPConnector):
     """SAP connector backed by pyrfc / SAP NW RFC SDK."""
 
-    def __init__(self) -> None:
-        self._conn = None
+    def __init__(self, parallel: int = 0) -> None:
+        """``parallel``: RFC connections a keyed read uses at once; 0 = MERIDIAN_RFC_PARALLEL or 4."""
+        self._conn: Optional[_Conn] = None
         self._password: str = ""   # held only during an active connection
+        if not parallel:
+            try:
+                parallel = int(os.environ.get("MERIDIAN_RFC_PARALLEL") or 4)
+            except ValueError:
+                parallel = 4
+        self._parallel = max(1, min(8, parallel))
+        self._open_extra: Optional[Callable[[], _Conn]] = None  # opens another connection like the primary
+        self._extra: Optional[list[_Conn]] = None  # extra connections; None = not opened yet
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
     def connect(self, params: SAPConnectionParams) -> None:
+        if self._conn is not None or self._extra is not None:
+            self.close()  # a stale pool from a previous connect() would keep old params and sessions open
         try:
             import pyrfc  # optional dependency
         except ImportError:
@@ -52,15 +75,32 @@ class RFCConnector(SAPConnector):
             safe = self._mask_password(str(e), params.password)
             self._password = ""
             raise SAPConnectorError(safe) from e
+        self._open_extra = lambda: pyrfc.Connection(ashost=params.host, client=params.client, user=params.user,
+                                                    passwd=params.password, sysnr=params.sysnr)
 
     def close(self) -> None:
-        if self._conn is not None:
-            try:
-                self._conn.close()
-            except Exception:
-                pass
-            self._conn = None
+        for c in [self._conn, *(self._extra or [])]:
+            if c is not None:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+        self._conn, self._extra, self._open_extra = None, None, None
         self._password = ""   # clear from memory
+
+    def _pool(self) -> list[_Conn]:
+        """The primary connection plus up to parallel-1 more, opened on first use.
+        SAP may refuse extra sessions: read over the ones that opened."""
+        if self._extra is None:
+            self._extra = []
+            while self._open_extra and len(self._extra) < self._parallel - 1:
+                try:
+                    self._extra.append(self._open_extra())
+                except Exception as e:
+                    logger.warning("extra RFC connection refused, reading over %d: %s", 1 + len(self._extra),
+                                   self._mask_password(str(e), self._password))
+                    break
+        return [self._conn, *self._extra]
 
     # ── Operations ─────────────────────────────────────────────────────────────
 
@@ -124,10 +164,39 @@ class RFCConnector(SAPConnector):
         groups = self._groups(table, keys, rest)
         merged: Optional[pd.DataFrame] = None
         report = on_progress or (lambda done, n, rows: None)
+        # Extra SAP sessions cost a logon each and are worth it only once a read
+        # is big enough to split: probe group 1's open range on the primary
+        # first, and open the pool only if that came back full.
+        probe, full = None, False
+        if keys and groups and self._parallel > 1:
+            try:
+                probe = self._read_paged(table, keys + groups[0], where, page_size, page_size)
+                full = len(probe) >= page_size
+            except SAPConnectorError as e:
+                if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or page_size <= 1000:
+                    raise
+                probe, full = None, True  # SAP is already short on memory for one page: worth parallelising
+        if full and len(conns := self._pool()) > 1:
+            n = len(groups)
+            merged, ranges = self._read_ranges_pool(table, [keys + groups[0]], keys[0], where, page_size,
+                                                    lambda rows: report(0, n, rows), None, max_rows, conns)[0]
+            per = max(len(merged), 1)
+
+            def report_rest(rows: int) -> None:  # groups 2..n read at once: report in group-sized steps
+                g = min(n - 1, 1 + rows // per)
+                report(g, n, rows - (g - 1) * per)
+            if n > 1:
+                for part, _ in self._read_ranges_pool(table, [keys + g for g in groups[1:]], keys[0], where,
+                                                      page_size, report_rest, ranges, 0, conns):
+                    merged = merged.merge(part, on=keys, how="outer")
+            return merged
         ranges = None  # found by the first group, reused by the others
         for i, group in enumerate(groups):
             on_page = lambda rows: report(i, len(groups), rows)
-            if keys:
+            if keys and i == 0 and probe is not None and not full:
+                part, ranges = probe, [(">=", None, None)]  # the whole table: already read by the probe above
+                on_page(len(part))
+            elif keys:
                 part, ranges = self._read_ranges(table, keys + group, keys[0], where, page_size, on_page, ranges,
                                                  max_rows)
             else:
@@ -187,11 +256,9 @@ class RFCConnector(SAPConnector):
         todo, done, pages, rows = list(ranges or [(">=", None, None)]), [], [], 0
         while todo and not (max_rows and rows >= max_rows):
             op, lo, hi = todo.pop(0)
-            cond = " AND ".join(c for c in (
-                where, lo is not None and f"{key} {op} {_literal(lo)}",
-                hi is not None and f"{key} < {_literal(hi)}") if c)
             try:
-                page = self._read_paged(table, fields, cond, 0 if op == "=" else page_size, page_size)
+                page = self._read_paged(table, fields, _range_where(where, key, (op, lo, hi)),
+                                        0 if op == "=" else page_size, page_size)
             except SAPConnectorError as e:
                 # SAP's memory quota per call can hold fewer rows than page_size
                 if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or page_size <= 1000:
@@ -201,14 +268,7 @@ class RFCConnector(SAPConnector):
                 todo.insert(0, (op, lo, hi))
                 continue
             if op != "=" and len(page) >= page_size:
-                values = sorted(set(page[key]))
-                cuts = sorted({values[len(values) * j // 4] for j in (1, 2, 3)} | {values[-1]})
-                cuts = [c for c in cuts if lo is None or c > lo]
-                if not cuts:  # every row returned has key == lo
-                    todo[:0] = [("=", lo, None), (">", lo, hi)]
-                    continue
-                edges = [lo, *cuts, hi]
-                todo[:0] = [(op if a == lo else ">=", a, b) for a, b in zip(edges, edges[1:])]
+                todo[:0] = _split(page, key, (op, lo, hi))
                 continue
             pages.append(page)
             done.append((op, lo, hi))
@@ -216,15 +276,99 @@ class RFCConnector(SAPConnector):
             on_page(rows)
         return pd.concat(pages, ignore_index=True), done
 
+    def _read_ranges_pool(self, table: str, groups: list[list[str]], key: str, where: Optional[str],
+                          page_size: int, on_rows: Callable[[int], None], ranges: Optional[list], max_rows: int,
+                          conns: list[_Conn]) -> list[tuple[pd.DataFrame, list]]:
+        """``_read_ranges`` for each field list in ``groups``, over several connections at once.
+
+        Every (group, range) is a separate read; a full page is split and its
+        parts queued, like the serial read. Each connection serves one read at
+        a time. Pages are joined in key order, not completion order. A capped
+        read stops once the ranges below every pending one hold ``max_rows``,
+        so it returns the same lowest keys as the serial read. ``on_rows`` is
+        called on the caller's thread only. Returns (rows, ranges) per group.
+        """
+        # A heap keyed on key order: pushing a range's split/retry is O(log n),
+        # against resorting the whole list (and recomputing _range_order for
+        # every entry) after every completed read.
+        seq = count()  # tiebreak so entries with an equal key never compare r itself
+        def entry(g: int, r: tuple) -> tuple:
+            return (_range_order(r), g, next(seq), r)
+        todo = [entry(g, r) for g in range(len(groups)) for r in (ranges or [(">=", None, None)])]
+        heapq.heapify(todo)
+        pages: list[dict] = [{} for _ in groups]
+        free: queue.Queue[_Conn] = queue.Queue()
+        for c in conns:
+            free.put(c)
+
+        def read(g: int, r: tuple, size: int) -> pd.DataFrame:
+            conn = free.get()
+            try:
+                return self._read_paged(table, groups[g], _range_where(where, key, r),
+                                        0 if r[0] == "=" else size, size, conn=conn)
+            finally:
+                free.put(conn)
+
+        rows = 0
+        running: dict[Future, tuple[int, tuple, int]] = {}
+        with ThreadPoolExecutor(max_workers=len(conns)) as pool:
+            try:
+                while todo or running:
+                    while todo and len(running) < len(conns):
+                        _, g, _, r = heapq.heappop(todo)
+                        running[pool.submit(read, g, r, page_size)] = (g, r, page_size)
+                    finished, _ = wait(running, return_when=FIRST_COMPLETED)
+                    for f in finished:
+                        g, r, size = running.pop(f)
+                        try:
+                            page = f.result()
+                        except SAPConnectorError as e:
+                            # SAP's memory quota per call can hold fewer rows than page_size
+                            if "TSV_TNEW_PAGE_ALLOC_FAILED" not in str(e) or (size == page_size and page_size <= 1000):
+                                raise
+                            if size == page_size:  # not already halved by another read
+                                page_size //= 2
+                                logger.warning("%s: SAP out of memory, page size now %d", table, page_size)
+                            heapq.heappush(todo, entry(g, r))
+                            continue
+                        if r[0] != "=" and len(page) >= size:
+                            for s in _split(page, key, r):
+                                heapq.heappush(todo, entry(g, s))
+                            continue
+                        pages[g][r] = page
+                        rows += len(page)
+                        on_rows(rows)
+                    pending = [r for _, r, _ in running.values()] + ([todo[0][3]] if todo else [])
+                    if max_rows and _capped(pages[0], pending, max_rows):
+                        break
+            finally:
+                for f in running:
+                    f.cancel()
+        out = []
+        for p in pages:
+            done = sorted(p, key=_range_order)
+            if max_rows:  # serial semantics: ranges in key order until the cap is reached
+                total, keep = 0, []
+                for r in done:
+                    if total >= max_rows:
+                        break
+                    keep.append(r)
+                    total += len(p[r])
+                done = keep
+            out.append((pd.concat([p[r] for r in done], ignore_index=True), done))
+        return out
+
     def _read_paged(self, table: str, fields: list[str], where: Optional[str],
-                    max_rows: int, page_size: int, on_page: Callable[[int], None] = lambda rows: None) -> pd.DataFrame:
+                    max_rows: int, page_size: int, on_page: Callable[[int], None] = lambda rows: None,
+                    conn: Optional[_Conn] = None) -> pd.DataFrame:
+        conn = conn or self._conn
         pages, skip = [], 0
         while True:
             want = page_size if not max_rows else min(page_size, max_rows - skip)
             if want <= 0:
                 break
             try:
-                result = self._conn.call(
+                result = conn.call(
                     "RFC_READ_TABLE", QUERY_TABLE=table, FIELDS=[{"FIELDNAME": f} for f in fields],
                     OPTIONS=where_options(where), ROWSKIPS=skip, ROWCOUNT=want,
                 )
@@ -294,6 +438,41 @@ class RFCConnector(SAPConnector):
 
 def _literal(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
+
+
+def _range_where(where: Optional[str], key: str, r: tuple) -> str:
+    """WHERE for the key range (op, lo, hi): ``key op lo AND key < hi``, None = open."""
+    op, lo, hi = r
+    return " AND ".join(c for c in (
+        where, lo is not None and f"{key} {op} {_literal(lo)}",
+        hi is not None and f"{key} < {_literal(hi)}") if c)
+
+
+def _split(page: pd.DataFrame, key: str, r: tuple) -> list[tuple]:
+    """Split a range that filled a page at the quartiles of the keys it returned."""
+    op, lo, hi = r
+    values = sorted(set(page[key]))
+    cuts = sorted({values[len(values) * j // 4] for j in (1, 2, 3)} | {values[-1]})
+    cuts = [c for c in cuts if lo is None or c > lo]
+    if not cuts:  # every row returned has key == lo
+        return [("=", lo, None), (">", lo, hi)]
+    edges = [lo, *cuts, hi]
+    return [(op if a == lo else ">=", a, b) for a, b in zip(edges, edges[1:])]
+
+
+def _range_order(r: tuple) -> tuple:
+    """Sort key putting ranges in key order: open start first, ``= lo`` before ``> lo``."""
+    op, lo, _ = r
+    return (lo is not None, "" if lo is None else str(lo), op != "=")
+
+
+def _capped(pages: dict, pending: list[tuple], max_rows: int) -> bool:
+    """True once the finished ranges below every pending range hold ``max_rows`` rows."""
+    # ponytail: O(ranges) per call, so O(ranges^2) over a capped read. Fine at a
+    # 5M-row cap (tens of pages); keep a running prefix total if caps grow much past that.
+    frontier = min(map(_range_order, pending), default=None)
+    total = sum(len(p) for r, p in pages.items() if frontier is None or _range_order(r) < frontier)
+    return total >= max_rows
 
 
 def where_options(where: Optional[str]) -> list[dict]:

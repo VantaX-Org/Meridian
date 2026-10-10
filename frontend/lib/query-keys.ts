@@ -32,6 +32,13 @@ export const queryKeys = {
   remediationMonitor: () => ["remediation", "monitor"] as const,
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,
   systems: () => ["systems"] as const,
+  migrationWaves: () => ["migration", "waves"] as const,
+  migrationCockpit: (waveId: string) => ["migration", "cockpit", waveId] as const,
+  migrationGaps: (runId: string, filter: Record<string, unknown>) =>
+    ["migration", "gaps", runId, normalizeFilters(filter)] as const,
+  migrationFieldMap: (module: string, destType: string) => ["migration", "field-map", module, destType] as const,
+  migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
+  s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
@@ -76,6 +83,7 @@ export const queryKeys = {
   miningPatterns: (filters: Record<string, unknown>) =>
     ["mining-patterns", normalizeFilters(filters)] as const,
   systemVersions: (systemId: string) => ["system-versions", systemId] as const,
+  systemTrends: (systemId: string) => ["system-trends", systemId] as const,
   versionProfile: (systemId: string, versionId: string, object?: string) =>
     ["version-profile", systemId, versionId, object ?? ""] as const,
   pdReference: () => ["pd-reference"] as const,
@@ -135,6 +143,7 @@ export const queryKeys = {
   designCoverage: (systemId: string) => ["design-coverage", systemId] as const,
   designSnapshots: (systemId: string) => ["design-snapshots", systemId] as const,
   designDiff: (systemId: string, a: string, b: string) => ["design-diff", systemId, a, b] as const,
+  alertChannels: () => ["alert-channels"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

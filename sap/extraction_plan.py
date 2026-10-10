@@ -122,6 +122,8 @@ def normalise_scope(scope: Optional[dict]) -> dict:
             out[key] = str(v)
     if out.get("date_from") and out.get("date_to") and out["date_from"] > out["date_to"]:
         raise ValueError("date_from is after date_to")
+    if (scope or {}).get("exclude_deleted"):
+        out["exclude_deleted"] = True
     return out
 
 
@@ -131,6 +133,25 @@ def _scope_filters(table: str, dictionary: Dictionary, scope: dict) -> list[str]
         if scope.get(key) and dictionary.field(table, field) is not None:
             out.append(f"{field} IN (" + ", ".join(f"'{v}'" for v in scope[key]) + ")")
     return out
+
+
+# Deletion-flag fields: material child tables use LVORM, customer/vendor
+# company- and sales-area children use LOEVM. A module's root/header table
+# (MARA, KNA1, LFA1, BUT000, ...) is keyed on the master object alone
+# (one DDIC key field); every plant/org/storage-level child adds a
+# segmenting key field (WERKS, BUKRS, VKORG, LGNUM, ...). Header tables are
+# excluded from this filter and always read in full — inactive header data
+# is itself a DQ finding, only the bulky per-segment child tables get filtered.
+_DELETION_FLAGS = ("LVORM", "LOEVM")
+
+
+def _deletion_filters(table: str, dictionary: Dictionary, scope: dict, keys: list[str]) -> list[str]:
+    if not scope.get("exclude_deleted") or len(keys) <= 1:
+        return []  # single-key table: the module's root/header, stays complete
+    for flag in _DELETION_FLAGS:
+        if dictionary.field(table, flag) is not None:
+            return [f"{flag} = ''"]
+    return []
 
 
 def widen(template: str, factor: int = 4, cap: int = 24) -> Optional[str]:
@@ -253,10 +274,11 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                 wide = filters + [render_where(widen(w["where"]))]
             filters.append(_window(w["where"], scope or {}))
         scoped = _scope_filters(t, dictionary, scope or {}) if p.purpose == "data" else []
-        filters += scoped
-        p.partial = bool(w.get("where") or w.get("via") or scoped)
+        deleted = _deletion_filters(t, dictionary, scope or {}, p.keys) if p.purpose == "data" else []
+        filters += scoped + deleted
+        p.partial = bool(w.get("where") or w.get("via") or scoped or deleted)
         p.where = " AND ".join(filters) or None
-        p.wide_where = " AND ".join(wide + scoped) if wide else None
+        p.wide_where = " AND ".join(wide + scoped + deleted) if wide else None
         p.via = w.get("via") if w.get("via") in plans else None
 
     # the check table of every field read: the DDIC conformance check value-checks each one

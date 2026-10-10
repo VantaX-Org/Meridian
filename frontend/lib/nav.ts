@@ -15,6 +15,7 @@
 import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowLeftRight,
   BarChart3,
   Boxes,
   ChevronRight,
@@ -111,6 +112,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects health" },
       { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
     ],
   },
   {

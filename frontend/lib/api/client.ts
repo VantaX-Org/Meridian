@@ -14,7 +14,7 @@ function instrument(client: AxiosInstance): AxiosInstance {
       config.params.per_page = PER_PAGE_CAP;
       if (process.env.NODE_ENV !== "production" && !warnedPerPageCap) {
         warnedPerPageCap = true;
-        // eslint-disable-next-line no-console
+         
         console.warn(`per_page ${perPage} clamped to ${PER_PAGE_CAP}`);
       }
     }

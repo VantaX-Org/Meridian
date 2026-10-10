@@ -59,13 +59,19 @@ export function checkClassLabel(id: string): string {
 
 const DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const DATETIME_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
+/** SAST (UTC+2) — the zone the scheduler's cron runs in (workers/scheduler.py). Used only for
+ * schedule / next-run times (systems page), never as the default: every other caller of
+ * formatDate keeps rendering in UTC. */
+const DATETIME_SAST_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Africa/Johannesburg" });
 
-/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC). An unparseable value is an em dash. */
-export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" = "date"): string {
+/** The one date style: "2 Oct 2026" or "2 Oct 2026, 05:09" (UTC), or with `tz: "SAST"`,
+ * "2 Oct 2026, 07:09 SAST". An unparseable value is an em dash. */
+export function formatDate(iso: string | number | Date | null | undefined, kind: "date" | "datetime" = "date", tz: "UTC" | "SAST" = "UTC"): string {
   if (iso === null || iso === undefined || iso === "") return "—";
   const d = iso instanceof Date ? iso : new Date(typeof iso === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(iso) ? `${iso}Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return (kind === "date" ? DATE_FMT : DATETIME_FMT).format(d);
+  if (kind === "date") return DATE_FMT.format(d);
+  return tz === "SAST" ? `${DATETIME_SAST_FMT.format(d)} SAST` : DATETIME_FMT.format(d);
 }
 
 const LABEL_OVERRIDES: Record<string, string> = {

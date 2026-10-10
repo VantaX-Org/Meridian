@@ -18,9 +18,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.services import jobs
-from workers.celery_app import celery_app
+from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
-from workers.tasks.limits import EXTRACT_TIME_LIMIT  # noqa: F401 — re-exported for existing importers
 
 logger = logging.getLogger("meridian.workers.extraction")
 

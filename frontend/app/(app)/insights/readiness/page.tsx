@@ -1,6 +1,7 @@
 // frontend/app/(app)/insights/readiness/page.tsx
 "use client";
 
+import { Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -60,9 +61,15 @@ export default function ReadinessPage() {
         <table className="w-full text-[13px]">
           <thead>
             <tr>
-              <th className="text-left p-2">Object</th>
+              <th scope="col" className="text-left p-2">Object</th>
               {waves.map((w) => (
-                <th key={w} className="text-left p-2">{w}</th>
+                <Fragment key={w}>
+                  <th scope="col" className="text-left p-2">{w}</th>
+                  {/* Sub-headers repeat their wave name so each cell's accessible name
+                      is unambiguous to screen readers when there are 2+ waves. */}
+                  <th scope="col" className="text-right p-2">{`${w} readiness`}</th>
+                  <th scope="col" className="text-right p-2">{`${w} records blocked`}</th>
+                </Fragment>
               ))}
             </tr>
           </thead>
@@ -72,14 +79,26 @@ export default function ReadinessPage() {
                 <td className="p-2">{module}</td>
                 {waves.map((wave) => {
                   const cell = data?.cells.find((c) => c.module === module && c.wave === wave);
-                  if (!cell) return <td key={wave} className="p-2">—</td>;
+                  if (!cell) {
+                    return (
+                      <Fragment key={wave}>
+                        <td className="p-2">—</td>
+                        <td className="text-right tabular-nums">—</td>
+                        <td className="text-right tabular-nums">—</td>
+                      </Fragment>
+                    );
+                  }
                   return (
-                    <td key={wave} className="p-2">
-                      {/* DrillLink filters is Record<string, string>; stringify the boolean */}
-                      <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
-                        <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
-                      </DrillLink>
-                    </td>
+                    <Fragment key={wave}>
+                      <td className="p-2">
+                        {/* DrillLink filters is Record<string, string>; stringify the boolean */}
+                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
+                          <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
+                        </DrillLink>
+                      </td>
+                      <td className="text-right tabular-nums">{cell.score === null ? "—" : `${cell.score.toFixed(1)}%`}</td>
+                      <td className="text-right tabular-nums">{cell.records_blocked.toLocaleString()}</td>
+                    </Fragment>
                   );
                 })}
               </tr>

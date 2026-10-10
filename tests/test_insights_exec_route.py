@@ -75,7 +75,7 @@ async def test_get_exec_returns_report_for_latest_version(tenant_a_version, monk
 
 
 @pytest.mark.anyio
-async def test_get_exec_404s_for_tenant_with_no_runs(tenant_a_version, monkeypatch):
+async def test_get_exec_is_empty_for_tenant_with_no_runs(tenant_a_version, monkeypatch):
     t1, t2, version_id = tenant_a_version
     headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
 
@@ -83,4 +83,7 @@ async def test_get_exec_404s_for_tenant_with_no_runs(tenant_a_version, monkeypat
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get("/api/v1/insights/exec", headers=headers)
-    assert r.status_code == 404
+    assert r.status_code == 200
+    body = r.json()
+    assert body["version_id"] is None
+    assert body["readiness_cells"] == [] and body["impact_rows"] == []

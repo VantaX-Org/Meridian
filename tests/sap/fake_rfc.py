@@ -9,6 +9,8 @@ from the bundled SAP dictionary.
 from __future__ import annotations
 
 import re
+import threading
+import time
 
 import pandas as pd
 
@@ -26,11 +28,23 @@ class FakeConnection:
         self.calls: list[tuple[str, dict]] = []
         self.extra_rows: dict[str, int] = {}  # rows SAP counts but the read does not return
         self.probe_checks_width = True  # some systems raise DATA_BUFFER_EXCEEDED only on the real read
+        self.delay = 0.0  # seconds per call, so parallel reads overlap
+        self.closed = False
+        self._busy = threading.Lock()  # a pyrfc Connection serves one thread at a time
 
     def close(self):
-        pass
+        self.closed = True
 
     def call(self, fm: str, **p):
+        if not self._busy.acquire(blocking=False):
+            raise AssertionError("connection used by two threads at once")
+        try:
+            time.sleep(self.delay)
+            return self._call(fm, **p)
+        finally:
+            self._busy.release()
+
+    def _call(self, fm: str, **p):
         self.calls.append((fm, p))
         if fm == "RFC_READ_TABLE":
             return self._read(**p)
@@ -109,10 +123,19 @@ def _filter(df: pd.DataFrame, where: str) -> pd.DataFrame:
 
 
 class FakeRFCConnector:
-    """RFCConnector with the fake connection injected (no pyrfc needed)."""
+    """RFCConnector with the fake connection injected (no pyrfc needed).
 
-    def __new__(cls, tables, release="ecc6"):
+    ``parallel`` > 1 lets it open more fakes over the same tables; they are
+    listed in ``c.fakes`` (primary first) in the order they were opened."""
+
+    def __new__(cls, tables, release="ecc6", parallel=1):
         from sap.rfc import RFCConnector
-        c = RFCConnector()
+        c = RFCConnector(parallel=parallel)
         c._conn = FakeConnection(tables, release)
+        c.fakes = [c._conn]
+        if parallel > 1:
+            def open_extra():
+                c.fakes.append(FakeConnection(tables, release))
+                return c.fakes[-1]
+            c._open_extra = open_extra
         return c

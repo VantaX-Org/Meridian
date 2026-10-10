@@ -64,18 +64,19 @@ def test_overview_items():
 
 
 def test_sidebar_systems_and_data_items():
-    """Systems and data (second group) has Systems, Import file, Download history, Migration."""
+    """Systems and data (second group) has Systems, Import file, Download history, Migration
+    (at /migration, its own wave cockpit page — not /insights/readiness)."""
     block = _group_block(_nav(), "Systems and data")
-    for href in ("/systems", "/import", "/insights/readiness"):
+    for href in ("/systems", "/import", "/migration"):
         assert f'"{href}"' in block, f"{href} missing from Systems and data"
 
 
 def test_sidebar_quality_items():
-    """Quality has Findings (/objects), Failing records (/inbox) and Compare versions (/runs)."""
+    """Quality has Findings (/objects), Failing records (/inbox) and Runs (/runs)."""
     block = _group_block(_nav(), "Quality")
     assert 'href: "/objects", label: "Findings"' in block
     assert 'href: "/inbox", label: "Failing records"' in block
-    assert 'href: "/runs", label: "Compare versions"' in block
+    assert 'href: "/runs", label: "Runs"' in block
 
 
 def test_sidebar_fix_items():

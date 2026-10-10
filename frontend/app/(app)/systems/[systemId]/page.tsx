@@ -20,6 +20,7 @@ import {
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
+import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
@@ -185,7 +186,7 @@ export default function SystemPage() {
           router.replace(`/systems/${systemId}?${params.toString()}`, { scroll: false });
         }}
         items={[
-          { value: "overview", label: "Overview", content: <Overview versions={versions} modules={modules} /> },
+          { value: "overview", label: "Overview", content: <Overview systemId={systemId} versions={versions} modules={modules} /> },
           {
             value: "objects",
             label: "Objects",
@@ -230,7 +231,7 @@ export default function SystemPage() {
 
 /* ── Overview ──────────────────────────────────────────────────────────── */
 
-function Overview({ modules, versions }: { modules: SystemModule[]; versions: SystemVersion[] }) {
+function Overview({ systemId, modules, versions }: { systemId: string; modules: SystemModule[]; versions: SystemVersion[] }) {
   const router = useRouter();
   const scored = versions.filter((v) => meanDqs(v) !== null).slice(0, 12).reverse();
   const byRows = [...modules].filter((m) => m.row_count > 0).sort((a, b) => b.row_count - a.row_count).slice(0, 12);
@@ -267,6 +268,7 @@ function Overview({ modules, versions }: { modules: SystemModule[]; versions: Sy
           )}
         </div>
       </div>
+      <TrendPanel systemId={systemId} />
       <div>
         <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Last 5 runs</p>
         {versions.length ? (
