@@ -46,3 +46,26 @@ def test_related_ids_exist_in_readiness_pack_or_cvi():
     for r in load_sim.rules().values():
         for cid in r.related:
             assert cid in known or cid.startswith("S4-CVI-") or cid.startswith("S4-CRM-"), (r.id, cid)
+
+
+def test_cvi_overlap_grouping_mandatory_tax_knvk():
+    lfa1 = pd.DataFrame({"LIFNR": ["100", "200"], "NAME1": ["Alpha Supply", ""], "LAND1": ["ZA", "ZA"],
+                         "KTOKK": ["KRED", "ZXXX"], "STCD1": ["T1", "T9"]})
+    kna1 = pd.DataFrame({"KUNNR": ["100", "300"], "NAME1": ["Other Name", "Gamma"], "LAND1": ["ZA", ""],
+                         "KTOKD": ["DEBI", "DEBI"], "STCD1": ["T2", "T1"]})
+    knvk = pd.DataFrame({"PARNR": ["1", "2"], "KUNNR": ["300", "999"], "LIFNR": ["", ""]})
+    gaps = load_sim.check_cvi(_tf(LFA1=lfa1, KNA1=kna1, KNVK=knvk), "business_partner",
+                              {"KRED": "BP01", "DEBI": "BP02"})
+    got = {(g.record_key, g.detail.split(" ", 1)[0]) for g in gaps}
+    assert ("LIFNR=100", "S4L-BP-NUM-OVERLAP") in got and ("KUNNR=100", "S4L-BP-NUM-OVERLAP") in got
+    assert ("LIFNR=200", "S4L-BP-GROUPING") in got
+    assert ("LIFNR=200", "S4L-BP-MANDATORY") in got and ("KUNNR=300", "S4L-BP-MANDATORY") in got
+    assert ("LIFNR=100", "S4L-BP-TAX") in got and ("KUNNR=300", "S4L-BP-TAX") in got
+    assert ("PARNR=2", "S4L-BP-KNVK-ORPHAN") in got and ("PARNR=1", "S4L-BP-KNVK-ORPHAN") not in got
+
+
+def test_cvi_same_number_same_name_is_not_overlap():
+    lfa1 = pd.DataFrame({"LIFNR": ["100"], "NAME1": ["Same"], "LAND1": ["ZA"], "KTOKK": ["KRED"]})
+    kna1 = pd.DataFrame({"KUNNR": ["100"], "NAME1": ["same "], "LAND1": ["ZA"], "KTOKD": ["DEBI"]})
+    gaps = load_sim.check_cvi(_tf(LFA1=lfa1, KNA1=kna1), "business_partner", {"KRED": "B", "DEBI": "B"})
+    assert "S4L-BP-NUM-OVERLAP" not in _ids(gaps)
