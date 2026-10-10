@@ -9,6 +9,7 @@ import { getLicenceManifest } from "@/lib/api/licence";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { AlertChannelsPanel } from "./alert-channels-panel";
 
 // ponytail: FIX_HREF kept local to this page (only consumer); legacy version lived in
 // the legacy admin surface, pointing at hash-tab routes (/admin?tab=ai, /admin?tab=licence)
@@ -60,6 +61,8 @@ export default function AdminSettingsPage() {
           <dt style={{ color: "var(--m-ink-3)" }}>Language model</dt><dd>{l?.llm_config ? `${l.llm_config.model}, tier ${l.llm_config.tier}` : "Not configured"}</dd>
         </dl>
       </section>
+
+      {can("manage_settings") ? <AlertChannelsPanel /> : null}
 
       {can("manage_system") && doctor.isError ? (
         <ErrorState message={apiErrorMessage(doctor.error) || "Health checks could not be read."} onRetry={() => doctor.refetch()} />

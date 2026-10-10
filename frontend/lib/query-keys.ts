@@ -130,6 +130,7 @@ export const queryKeys = {
   designCoverage: (systemId: string) => ["design-coverage", systemId] as const,
   designSnapshots: (systemId: string) => ["design-snapshots", systemId] as const,
   designDiff: (systemId: string, a: string, b: string) => ["design-diff", systemId, a, b] as const,
+  alertChannels: () => ["alert-channels"] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
