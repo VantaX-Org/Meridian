@@ -122,9 +122,7 @@ def _detect_relationships(df: pd.DataFrame, module: str, max_pairs: int = 100) -
     
     # Limit total pairs for performance
     if len(pairs_to_check) > max_pairs:
-        # Sample pairs
-        import random
-        pairs_to_check = random.sample(pairs_to_check, max_pairs)
+        pairs_to_check = sorted(pairs_to_check)[:max_pairs]  # deterministic: same data, same pairs
     
     for col_a, col_b in pairs_to_check:
         try:
