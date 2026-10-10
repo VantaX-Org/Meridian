@@ -10,7 +10,8 @@ from tests import pdf_fixtures as fx
 weasyprint = pytest.importorskip("weasyprint")
 
 
-@pytest.mark.parametrize("name", ["analysis", "extraction", "cleaning", "comparison", "executive"])
+@pytest.mark.parametrize("name", ["analysis", "extraction", "cleaning", "comparison", "executive",
+                                  "object"])
 def test_every_report_renders(name):
     from scripts.render_report_previews import contexts
 
@@ -112,3 +113,30 @@ def test_timestamps_are_sast():
     assert ctx["generated_sast"] == "4 Oct 2026, 11:30 SAST"
     html = pr._env().get_template("analysis_report.html").render(**ctx)
     assert "11:30 SAST" in html
+
+
+# ── T18: object report ────────────────────────────────────────────────────
+
+
+def test_object_context_unknown_module_is_not_in_modules():
+    """load_object()'s 404 relies on _modules(); a made-up module name must not be in it."""
+    assert "material_master" in pr._modules()
+    assert "not_a_real_module" not in pr._modules()
+
+
+def test_object_report_shows_field_values_columns():
+    ctx = pr.object_context("material_master", fx.V2["dqs_summary"]["material_master"],
+                            [f for f in fx.FINDINGS2 if f["module"] == "material_master"], fx.SAMPLES,
+                            tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["sample_cols"] == ["MARA.MTART", "MARA.MATNR", "MARA.ERSDA"]
+    html = pr._env().get_template("object_report.html").render(**ctx)
+    assert "MARA.MTART" in html and "MARA.MATNR" in html
+
+
+def test_object_report_zero_findings_module_renders():
+    ctx = pr.object_context("fi_gl", {}, [], [], tenant_name=fx.TENANT, generated_at=fx.GENERATED)
+    pdf = pr.render("object_report.html", ctx)
+    assert pdf.startswith(b"%PDF")
+    html = pr._env().get_template("object_report.html").render(**ctx)
+    assert "No check found failing records for this module in this run." in html
+    assert "No rule ran for this module in this run." in html

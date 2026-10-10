@@ -145,6 +145,14 @@ REPORT_JSON = {
     "modules": [],
 }
 
+# T18: failing-record samples for the object report (module material_master, matching
+# FINDINGS2's MM003/MM011 checks).
+SAMPLES = [
+    {"check_id": "MM003", "record_key": "MATNR=100-100", "field_values": {"MARA.MTART": "", "MARA.MATNR": "100-100"}},
+    {"check_id": "MM003", "record_key": "MATNR=100-200", "field_values": {"MARA.MTART": "", "MARA.MATNR": "100-200"}},
+    {"check_id": "MM011", "record_key": "MATNR=100-300", "field_values": {"MARA.ERSDA": None, "MARA.MATNR": "100-300"}},
+]
+
 SUPPLEMENTARY = {
     "cleaning": {"total": 8_985, "applied": 2_100, "approved": 310, "pending": 6_480},
     "dedup": {"total": 640, "pending": 410, "merged": 180},

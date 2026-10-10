@@ -167,3 +167,21 @@ def test_summary_section_shows_previous_run_delta(app_engine):
         from api.services.pdf_reports import build
         pdf = build(s, a, "analysis", v["v2"])
         assert pdf.startswith(b"%PDF")
+
+
+def test_object_report_404_for_unknown_module_and_tenant_scoped(app_engine):
+    """T18: the object report 404s for a module the rule catalogue does not know, renders
+    for a real one with findings, and is tenant-scoped like every other report."""
+    from api.services.pdf_reports import build
+    from workers.db import tenant_session
+
+    owner, app_eng = app_engine
+    a, b, v = _seed(owner, app_eng)
+
+    with tenant_session(app_eng, a) as s:
+        assert build(s, a, "object", v["v2"], module="not_a_real_module") is None
+        pdf = build(s, a, "object", v["v2"], module="material_master")
+        assert pdf.startswith(b"%PDF")
+
+    with tenant_session(app_eng, b) as s:
+        assert build(s, b, "object", v["v2"], module="material_master") is None

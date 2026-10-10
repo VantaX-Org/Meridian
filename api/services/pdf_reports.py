@@ -229,6 +229,14 @@ def _rule(check_id: str) -> dict:
         return {}
 
 
+@lru_cache(maxsize=1)
+def _modules() -> frozenset[str]:
+    """Every module the rule catalogue knows about, for the object report's 404 on an unknown module."""
+    from api.services.tenant_seed import rule_catalogue
+
+    return frozenset(r["module"] for r in rule_catalogue())
+
+
 def failing(f: dict) -> bool:
     return not (f.get("details") or {}).get("error") and (f.get("affected_count") or 0) > 0
 
@@ -632,6 +640,58 @@ def executive_context(report_json: dict, supplementary: dict, version: dict, fin
             "ai_summary": ai, "report": report_json, **supplementary}
 
 
+# ── object report (one module, one run) ───────────────────────────────────────
+
+
+def object_context(module: str, module_dqs: dict, findings: list[dict], samples: list[dict], *,
+                   tenant_name: str, system: Optional[dict] = None,
+                   generated_at: Optional[datetime] = None) -> dict:
+    """T18: every rule, finding and failing-record sample for one module in one run.
+    ``module_dqs`` is ``version['dqs_summary'][module]`` (or ``{}`` if the module scored
+    nothing); passing it through ``composite_dqs``/``dimension_scores`` as a single-module
+    slice gets the module's own composite/tier/capped flag and dimension scores for free."""
+    summary = {module: module_dqs or {}}
+    overall = composite_dqs([summary])
+    dims = dimension_scores(summary)
+    ran = [f for f in findings if not errored(f)]
+    errs = [_check_row(f) for f in findings if errored(f)]
+    rules = sorted((_check_row(f) for f in ran),
+                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
+    fails = [r for r in rules if r["affected"] > 0]
+    score = (module_dqs or {}).get("composite_score")
+    readiness = compute_readiness_status(score, int((module_dqs or {}).get("critical_count") or 0)) \
+        if score is not None else None
+
+    if score is None:
+        verdict = f"{fmt_module(module)} produced no data quality score in this run."
+    else:
+        verdict = (f"{fmt_module(module)} scored {score:.1f} out of 100 in this run. {len(fails)} of {len(ran)} "
+                   f"checks found failing records.")
+        if (module_dqs or {}).get("critical_count"):
+            verdict += " Critical failures cap the score and block migration until they are fixed."
+        if errs:
+            verdict += (f" {len(errs)} check{'s' if len(errs) != 1 else ''} could not be evaluated "
+                        f"and {'are' if len(errs) != 1 else 'is'} excluded from the score.")
+
+    cols: list[str] = []
+    for r in samples:
+        for k in (r.get("field_values") or {}):
+            if k not in cols:
+                cols.append(k)
+
+    now = _now(generated_at)
+    return {
+        "title": f"{fmt_module(module)} object report", "eyebrow": "Object data quality", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)), ("Module", fmt_module(module)),
+                 ("Generated", fmt_dt(now))],
+        "module": module, "overall": overall, "dims": dims, "readiness": readiness,
+        "dim_chart": _quality_chart(dims), "headline": verdict,
+        "rules": rules, "top_findings": fails[:10],
+        "samples": samples, "sample_cols": cols, "errored": errs,
+    }
+
+
 # ── loaders (sync; tenant RLS already set on the session) ────────────────────
 
 
@@ -782,7 +842,30 @@ def load_comparison(s: Session, tid: str, vid1: str, vid2: str) -> Optional[dict
             "record_diff": diff, "system": load_system(s, tid, v2)}
 
 
-def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None) -> Optional[bytes]:
+def load_object(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
+    """T18: findings + failing-record samples for one module in one run. Returns ``None``
+    for an unknown run or a module the rule catalogue does not know (-> 404)."""
+    if module not in _modules():
+        return None
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    findings = _all(s, "SELECT module, check_id, severity, dimension, affected_count, total_count, pass_rate, "
+                       "details FROM findings WHERE version_id = :v AND tenant_id = :t AND module = :m",
+                    v=str(vid), t=tid, m=module)
+    top3 = [r["check_id"] for r in
+            sorted((_check_row(f) for f in findings if failing(f)),
+                   key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))[:3]]
+    samples = _all(s, "SELECT check_id, record_key, field_values FROM finding_records WHERE tenant_id = :t "
+                      "AND version_id = :v AND module = :m AND check_id = ANY(:ids) "
+                      "ORDER BY check_id, record_key LIMIT 25",
+                   t=tid, v=str(vid), m=module, ids=top3) if top3 else []
+    return {"version": v, "findings": findings, "module_dqs": (v.get("dqs_summary") or {}).get(module) or {},
+            "samples": samples, "system": load_system(s, tid, v)}
+
+
+def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None,
+         module: Optional[str] = None) -> Optional[bytes]:
     """Load one report's data for a tenant and render it. ``None`` when the run is not found
     (or, for an extraction report, the run was not extracted from SAP)."""
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
@@ -811,4 +894,8 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
         return d and render("executive_report.html", executive_context(
             d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
             previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
+    if kind == "object":
+        d = load_object(s, tid, vid, module)
+        return d and render("object_report.html", object_context(
+            module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], **kw))
     raise ValueError(kind)
