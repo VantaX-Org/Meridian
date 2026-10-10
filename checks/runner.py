@@ -32,6 +32,7 @@ from checks.types.dependency_check import DependencyCheck
 from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
 from checks.types.group_sum_check import GroupSumCheck, child_sums
+from checks.types.group_range_check import GroupRangeCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -123,6 +124,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "dependency_check": DependencyCheck,
     "hierarchy_check": HierarchyCheck,
     "group_sum_check": GroupSumCheck,
+    "group_range_check": GroupRangeCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract

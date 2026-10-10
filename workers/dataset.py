@@ -12,7 +12,7 @@ from __future__ import annotations
 import io
 import logging
 import os
-from typing import Optional
+from typing import Callable, Iterator, Optional
 from urllib.parse import quote, unquote
 
 import pandas as pd
@@ -46,6 +46,32 @@ def _read(client, bucket: str, name: str) -> bytes:
 def parquet_name(table: str) -> str:
     """Bundle object name for a table; /SCWM/AQUA → %2FSCWM%2FAQUA.parquet (one object, no sub-folders)."""
     return quote(table, safe="") + ".parquet"
+
+
+CHUNK_ROWS = 250_000
+
+
+def bundle_object(path: str, table: str) -> str:
+    """Object name of one table inside an extraction bundle prefix."""
+    return path + parquet_name(table)
+
+
+def iter_parquet_chunks(path: str, keep: Optional[Callable[[str], bool]] = None,
+                        chunk_rows: int = CHUNK_ROWS) -> Iterator[pd.DataFrame]:
+    """Row batches of one parquet object in file order, projected to the columns ``keep``
+    accepts. Only one decoded batch is in pandas at a time.
+
+    ponytail: the compressed object is read into memory once; switch to a ranged
+    MinIO file object if single parquet objects outgrow worker RAM."""
+    import pyarrow.parquet as pq
+
+    bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
+    pf = pq.ParquetFile(io.BytesIO(_read(_client(), bucket, path)))
+    cols = [c for c in pf.schema_arrow.names if keep is None or keep(c)]
+    if not cols:
+        return
+    for batch in pf.iter_batches(batch_size=chunk_rows, columns=cols):
+        yield batch.to_pandas()
 
 
 def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,

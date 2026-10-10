@@ -6,7 +6,9 @@ high-confidence auto_fix proposals) → approved (a second person) → exported
 Meridian never posts to SAP; see api/services/remediation.py.
 """
 
+import hashlib
 import io
+import json
 import uuid
 from typing import Literal, Optional
 
@@ -111,6 +113,66 @@ async def create_batch(
     uid, label = current_user_id(request), current_user_label()
     out = await db.run_sync(lambda s: remediation.draft_batch(s, str(tenant.id), body.name, f.model_dump_json(),
                                                               issues, uid, label))
+    await db.commit()
+    return out
+
+
+class FromCleaning(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=MAX_ITEMS)
+
+
+class FromSimulation(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    simulation_id: str = Field(min_length=1, max_length=100)
+
+
+@router.post("/batches/from-cleaning")
+async def create_batch_from_cleaning(
+    body: FromCleaning,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("apply")),
+):
+    """Draft batch from approved cleaning items. Still needs a second person's approval before export."""
+    await _rls(db, tenant)
+    rows = (await db.execute(text("""
+        SELECT object_type, rule_id, record_key, record_data_before, record_data_after FROM cleaning_queue
+         WHERE tenant_id = :tid AND id = ANY(:ids) AND status = 'approved'
+    """), {"tid": str(tenant.id), "ids": [str(i) for i in body.ids]})).mappings().all()
+    items = remediation.items_from_cleaning([dict(r) for r in rows])
+    if not items:
+        raise HTTPException(status_code=400, detail="None of these cleaning items is approved with a changed value.")
+    uid, label = current_user_id(request), current_user_label()
+    filt = json.dumps({"source": "cleaning", "ids": sorted(str(i) for i in body.ids)})
+    out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
+    await db.commit()
+    return out
+
+
+@router.post("/batches/from-simulation")
+async def create_batch_from_simulation(
+    body: FromSimulation,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("apply")),
+):
+    """Draft batch from a finished simulation's record fixes (Redis, 24 h)."""
+    from api.services.task_progress import _redis_client
+    from workers.tasks.run_simulation import result_key
+
+    client = _redis_client()
+    raw = client.get(result_key(str(tenant.id), body.simulation_id)) if client is not None else None
+    doc = json.loads(raw) if raw else None
+    if not doc or not doc.get("record_fixes"):
+        raise HTTPException(status_code=404, detail="Simulation not found, expired, or it changed no records.")
+    items = remediation.items_from_simulation(doc["record_fixes"])
+    await _rls(db, tenant)
+    uid, label = current_user_id(request), current_user_label()
+    filt = json.dumps({"source": "simulation", "simulation_id": body.simulation_id})
+    out = await db.run_sync(lambda s: remediation.store_batch(s, str(tenant.id), body.name, filt, items, uid, label))
     await db.commit()
     return out
 
@@ -255,14 +317,20 @@ async def approve_batch(
     return {"id": str(batch_id), "status": "approved", "approved_by": current_user_label()}
 
 
-_MEDIA = {"csv": "text/csv", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+_MEDIA = {"csv": "text/csv", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "zip": "application/zip", "json": "application/json"}
+
+ExportFormat = Literal["cockpit_xlsx", "cockpit_csv", "mass_change_csv",
+                       "ltmc_xlsx", "mass_maintenance_zip", "mdg_cr_json"]
 
 
 @router.post("/batches/{batch_id}/export")
 async def export_batch(
     batch_id: uuid.UUID,
     request: Request,
-    format: Literal["cockpit_xlsx", "cockpit_csv", "mass_change_csv"] = Query("cockpit_xlsx"),
+    format: ExportFormat = Query("cockpit_xlsx"),
+    cr_type: Optional[str] = Query(None, max_length=40, pattern=r"^[A-Z0-9_]+$",
+                                   description="mdg_cr_json only: the change-request type"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export")),
@@ -271,14 +339,28 @@ async def export_batch(
     b = await _batch(db, tenant, batch_id)
     if b["status"] == "draft":
         raise HTTPException(status_code=409, detail="Approve the batch before exporting it.")
+    uid = current_user_id(request)
+    if b["created_by"] and uid and uid == b["created_by"]:
+        # the batch creator may never export it either, even once someone else has approved it
+        raise HTTPException(status_code=403, detail="The batch creator cannot export it.")
     items = await _items(db, batch_id)
+    from api.services import sap_packages
     if format == "mass_change_csv":
         data, ext = remediation.mass_change(items).to_csv(index=False).encode(), "csv"
+    elif format == "mass_maintenance_zip":
+        data, ext = sap_packages.mass_maintenance_zip(items), "zip"
+    elif format == "mdg_cr_json":
+        if not cr_type:
+            raise HTTPException(status_code=422, detail="cr_type is required for mdg_cr_json")
+        data, ext = sap_packages.mdg_change_request(
+            items, batch_id=str(batch_id), batch_name=b["name"], cr_type=cr_type), "json"
     else:
         from sap.ddic import get_dictionary
         d = get_dictionary("s4hana")
         if format == "cockpit_csv":
             data, ext = remediation.cockpit_csv(items, d).to_csv(index=False).encode(), "csv"
+        elif format == "ltmc_xlsx":
+            data, ext = sap_packages.ltmc_workbook(items, d), "xlsx"
         else:
             buf = io.BytesIO()
             import pandas as pd
@@ -286,14 +368,48 @@ async def export_batch(
                 sheets = remediation.cockpit_sheets(items, d) or {"EMPTY": pd.DataFrame()}
                 for table, df in sheets.items():
                     df.to_excel(xw, sheet_name=table[:31], index=False)
-                    for row in xw.sheets[table[:31]].iter_rows():
-                        for cell in row:
-                            if cell.data_type == "f":  # SAP values like "=A" stay text, never a formula
-                                cell.data_type = "s"
+                    sap_packages.no_formulas(xw.sheets[table[:31]])
             data, ext = buf.getvalue(), "xlsx"
+    digest = hashlib.sha256(data).hexdigest()
+    filename = f"remediation_{batch_id}_{format}.{ext}"
     await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
                      {"id": batch_id})
+    await db.execute(text(
+        "INSERT INTO export_packages (tenant_id, batch_id, format, filename, sha256, size_bytes, item_count, "
+        "created_by, created_by_label, approved_by_label) VALUES (:tid, :bid, :fmt, :fn, :sha, :size, :cnt, "
+        "CAST(:uid AS uuid), :label, :approved_label)"),
+        {"tid": str(tenant.id), "bid": batch_id, "fmt": format, "fn": filename, "sha": digest, "size": len(data),
+         "cnt": len(items), "uid": uid, "label": current_user_label(), "approved_label": b["approved_by_label"]})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
     await db.commit()
     return StreamingResponse(io.BytesIO(data), media_type=_MEDIA[ext], headers={
-        "Content-Disposition": f"attachment; filename=remediation_{batch_id}_{format}.{ext}"})
+        "Content-Disposition": f"attachment; filename={filename}",
+        "X-Content-SHA256": digest,
+        "Access-Control-Expose-Headers": "X-Content-SHA256"})
+
+
+@router.get("/batches/{batch_id}/diff")
+async def batch_diff_route(
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("view")),
+):
+    """Before/after per record, grouped — what this batch actually changes."""
+    await _batch(db, tenant, batch_id)
+    return {"records": remediation.batch_diff(await _items(db, batch_id))}
+
+
+@router.get("/batches/{batch_id}/packages")
+async def batch_packages(
+    batch_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _perm: str = Depends(require_permission("view")),
+):
+    """Audit trail of every file exported for this batch: format, sha256, who, when."""
+    await _batch(db, tenant, batch_id)
+    rows = await db.execute(text(
+        "SELECT id, format, filename, sha256, size_bytes, item_count, created_by_label, approved_by_label, "
+        "created_at FROM export_packages WHERE batch_id = :bid ORDER BY created_at DESC"), {"bid": batch_id})
+    return {"items": [_row(r) for r in rows.fetchall()]}

@@ -26,9 +26,11 @@ import { useNowSec } from "@/hooks/use-now";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import {
-  acceptHighConfidence, approveBatch, errorText, exportBatch, getBatch, getBatchEvents, getMonitor, listBatches,
-  patchItem, CONFIDENCE_LABEL, EVENT_LABEL, FORMAT_LABEL, RECON_LABEL, SOURCE_LABEL, STATUS_LABEL,
-  type Batch, type BatchItem, type BatchStatus, type BatchSummary, type ExportFormat, type MonitorItem,
+  acceptHighConfidence, approveBatch, errorText, exportBatch, getBatch, getBatchDiff, getBatchEvents,
+  getBatchPackages, getMonitor, listBatches, patchItem,
+  CONFIDENCE_LABEL, EVENT_LABEL, FORMAT_LABEL, RECON_LABEL, SOURCE_LABEL, STATUS_LABEL,
+  type Batch, type BatchItem, type BatchStatus, type BatchSummary, type DiffChange, type DiffRecord,
+  type ExportFormat, type ExportPackage, type MonitorItem,
 } from "@/lib/api/remediation";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -239,10 +241,15 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const detail = useQuery({ queryKey: queryKeys.remediationBatch(batchId), queryFn: () => getBatch(batchId) });
   const events = useQuery({ queryKey: queryKeys.remediationEvents(batchId), queryFn: () => getBatchEvents(batchId) });
   const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
+  const diff = useQuery({ queryKey: queryKeys.remediationDiff(batchId), queryFn: () => getBatchDiff(batchId) });
+  const packages = useQuery({
+    queryKey: queryKeys.remediationPackages(batchId), queryFn: () => getBatchPackages(batchId), enabled: canExport,
+  });
   const [itemPage, setItemPage] = useState(1);
   const [editing, setEditing] = useState<string | null>(null);
   const [draftValue, setDraftValue] = useState("");
   const [format, setFormat] = useState<ExportFormat>("cockpit_xlsx");
+  const [crType, setCrType] = useState("");
   const [ask, setAsk] = useState<"approve" | "export" | null>(null);
 
   const refresh = () => {
@@ -268,8 +275,13 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
     onError: (e) => toast.error(errorText(e)),
   });
   const doExport = useMutation({
-    mutationFn: () => exportBatch(batchId, format),
-    onSuccess: () => { toast.success("Export ready"); setAsk(null); refresh(); },
+    mutationFn: () => exportBatch(batchId, format, format === "mdg_cr_json" ? crType.trim() || undefined : undefined),
+    onSuccess: () => {
+      toast.success("Export ready");
+      setAsk(null);
+      refresh();
+      qc.invalidateQueries({ queryKey: queryKeys.remediationPackages(batchId) });
+    },
     onError: (e) => toast.error(errorText(e)),
   });
 
@@ -335,6 +347,12 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
     : !canApprove
       ? "Approving needs the approve permission."
       : undefined;
+  const exportTitle = isCreator
+    ? "The batch creator cannot export it. Ask a second person to export."
+    : !canExport
+      ? "Exporting needs the export permission."
+      : undefined;
+  const crTypeMissing = format === "mdg_cr_json" && crType.trim() === "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -366,7 +384,22 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
           </p>
           <div className="flex items-center gap-2">
             {ask === "export" ? <Select value={format} onValueChange={(v) => setFormat(v as ExportFormat)} options={FORMATS} /> : null}
-            <Button onClick={() => (ask === "approve" ? approve : doExport).mutate()} disabled={approve.isPending || doExport.isPending}>
+            {ask === "export" && format === "mdg_cr_json" ? (
+              <Field label="Change request type">
+                <input
+                  aria-label="Change request type"
+                  value={crType}
+                  onChange={(e) => setCrType(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 40))}
+                  className="rounded border px-3 py-1.5 text-[13px]"
+                  style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+                />
+              </Field>
+            ) : null}
+            <Button
+              onClick={() => (ask === "approve" ? approve : doExport).mutate()}
+              disabled={approve.isPending || doExport.isPending || (ask === "export" && crTypeMissing)}
+              title={ask === "export" && crTypeMissing ? "Enter a change request type to export." : undefined}
+            >
               {ask === "approve" ? (approve.isPending ? "Approving…" : "Approve") : doExport.isPending ? "Preparing…" : "Export"}
             </Button>
             <Button variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
@@ -385,7 +418,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "approved" ? (
-            <Button disabled={!canExport} title={!canExport ? "Exporting needs the export permission." : undefined} onClick={() => setAsk("export")}>
+            <Button disabled={!canExport || isCreator} title={exportTitle} onClick={() => setAsk("export")}>
               Export batch
             </Button>
           ) : null}
@@ -409,6 +442,10 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         )}
       </section>
 
+      <DiffSection records={diff.data?.records} />
+
+      {canExport ? <PackagesSection items={packages.data?.items} /> : null}
+
       {events.data?.items.length ? (
         <section>
           <h3 className="text-[13px] font-semibold">History</h3>
@@ -422,6 +459,56 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         </section>
       ) : null}
     </div>
+  );
+}
+
+interface DiffRow extends DiffChange {
+  id: string;
+  record_key: string;
+  table: string;
+}
+
+/** Before/after per changed field, flattened from the batch diff for the table. */
+function DiffSection({ records }: { records: DiffRecord[] | undefined }) {
+  const rows: DiffRow[] = (records ?? []).flatMap((r) =>
+    r.changes.map((c) => ({ id: `${r.record_key}|${r.table}.${c.field}`, record_key: r.record_key, table: r.table, ...c })),
+  );
+  const columns: ColumnDef<DiffRow>[] = [
+    { id: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
+    { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.table}.{row.original.field}</Mono> },
+    { id: "before", header: "Before", cell: ({ row }) => <Mono>{row.original.before ?? "—"}</Mono> },
+    { id: "after", header: "After", cell: ({ row }) => <Mono>{row.original.after}</Mono> },
+  ];
+  if (!rows.length) return null;
+  return (
+    <section>
+      <h3 className="text-[13px] font-semibold">Before and after</h3>
+      <DataTable columns={columns} data={rows} getRowId={(r) => r.id} />
+    </section>
+  );
+}
+
+/** Audit trail of every file this batch has exported: format, who, and the sha256 to verify the file against. */
+function PackagesSection({ items }: { items: ExportPackage[] | undefined }) {
+  if (!items?.length) return null;
+  return (
+    <section className="flex flex-col gap-2">
+      <h3 className="text-[13px] font-semibold">Exported files</h3>
+      <ul className="flex flex-col gap-1">
+        {items.map((p) => (
+          <li key={p.id} className="text-[13px] flex items-center gap-2">
+            <span>{FORMAT_LABEL[p.format]}</span>
+            <Tooltip label={p.sha256}>
+              <span style={{ color: "var(--m-ink-2)" }}><Mono>{p.sha256.slice(0, 12)}</Mono></span>
+            </Tooltip>
+            <span style={{ color: "var(--m-ink-3)" }}>
+              {p.created_by_label ? `exported by ${p.created_by_label}` : "exported"}
+              {p.approved_by_label ? `, approved by ${p.approved_by_label}` : ""}, {relativeTime(p.created_at)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

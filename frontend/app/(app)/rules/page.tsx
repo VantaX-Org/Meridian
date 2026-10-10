@@ -239,6 +239,7 @@ export default function RulesPage() {
         ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
         : null}
       {filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
+      <Button variant="secondary" render={<Link href="/rules/learned" />}>Learned from your data</Button>
       {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
     </div>
   );

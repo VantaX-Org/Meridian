@@ -68,11 +68,20 @@ _DEV_TENANT = Tenant(
 
 
 async def get_tenant(request: Request) -> Tenant:
+    # TenantMiddleware runs before routing/dependency resolution, so it can
+    # only guess a default tenant (request.state.tenant_id). This dependency
+    # is the actual source of truth (overridden in tests, JWT-derived in
+    # prod) and resolves later, inside the route. Write the real tenant back
+    # onto request.state so anything that reads it *after* the route runs —
+    # e.g. AuditMiddleware building its row once the response comes back —
+    # sees the request's real tenant instead of the middleware's guess.
     if settings.auth_mode == "local":
+        request.state.tenant_id = _DEV_TENANT.id
         return _DEV_TENANT
 
     # JWT extraction for local auth
     # For now, return dev tenant as fallback
+    request.state.tenant_id = _DEV_TENANT.id
     return _DEV_TENANT
 
 

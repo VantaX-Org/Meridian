@@ -267,19 +267,24 @@ Respond in JSON format only:
         return []
 
 
-def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int) -> None:
-    """Notify admin and steward users that new rule proposals await review."""
+def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int, *,
+                      roles: tuple[str, ...] = ("admin", "steward", "ai_reviewer"),
+                      title: str | None = None, body: str | None = None,
+                      link: str = "/settings?tab=ai-rules") -> None:
+    """Notify reviewer users (admin/steward/ai_reviewer by default) that items await review."""
     from api.services.notifications import create_notification_sync
 
-    # Find all admin and steward users for this tenant
     reviewers = session.execute(
         text(
             "SELECT id FROM users "
-            "WHERE tenant_id = :tid AND role IN ('admin', 'steward', 'ai_reviewer') "
+            "WHERE tenant_id = :tid AND role = ANY(:roles) "
             "AND is_active = true"
         ),
-        {"tid": tenant_id},
+        {"tid": tenant_id, "roles": list(roles)},
     ).fetchall()
+
+    title = title or f"{count} new AI-proposed match rules"
+    body = body or f"Domain: {domain}. Review and approve or reject proposed rules in Settings."
 
     for (user_id,) in reviewers:
         try:
@@ -287,9 +292,9 @@ def _notify_reviewers(session: Session, tenant_id: str, domain: str, count: int)
                 tenant_id=tenant_id,
                 user_id=str(user_id),
                 type="rule_proposal",
-                title=f"{count} new AI-proposed match rules",
-                body=f"Domain: {domain}. Review and approve or reject proposed rules in Settings.",
-                link="/settings?tab=ai-rules",
+                title=title,
+                body=body,
+                link=link,
                 session=session,
             )
         except Exception as e:

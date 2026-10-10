@@ -1,8 +1,9 @@
-"""Mining orchestrator — fans out dedup, anomaly and relationship tasks.
+"""Mining orchestrator — fans out dedup, anomaly, relationship and house_rules tasks.
 
 Consumes the latest completed `analysis_versions` row for a tenant, looks up
 the per-module parquet paths that were produced by the extraction task, and
-fans out `run_dedup`, `run_anomaly` and `run_relationship` to the worker pool.
+fans out `run_dedup`, `run_anomaly`, `run_relationship` and `run_house_rules`
+to the worker pool.
 
 No LLM usage anywhere in this path.
 """
@@ -20,6 +21,7 @@ from workers.db import get_sync_engine
 
 from workers.tasks.mining.anomaly import run_anomaly
 from workers.tasks.mining.dedup import run_dedup
+from workers.tasks.mining.house_rules import run_house_rules
 from workers.tasks.mining.relationship import run_relationship
 
 logger = logging.getLogger("meridian.worker.mining.orchestrator")
@@ -69,11 +71,11 @@ def run_mining_for_version(
         tenant_id: tenant UUID
         version_id: analysis_versions.id
         modules: optional whitelist of module ids (else all from version metadata)
-        include: which mining tasks to run — subset of {"dedup","anomaly","relationship"}
+        include: which mining tasks to run — subset of {"dedup","anomaly","relationship","house_rules"}
 
     Returns summary {dispatched: N, skipped: N, errors: N}.
     """
-    include_set = set(include or ["dedup", "anomaly", "relationship"])
+    include_set = set(include or ["dedup", "anomaly", "relationship", "house_rules"])
     engine = get_sync_engine()
     dispatched = 0
     skipped = 0
@@ -101,6 +103,8 @@ def run_mining_for_version(
             tasks.append(run_anomaly.s(version_id, tenant_id, module_id, parquet_path))
         if "relationship" in include_set:
             tasks.append(run_relationship.s(version_id, tenant_id, module_id, parquet_path))
+        if "house_rules" in include_set:
+            tasks.append(run_house_rules.s(version_id, tenant_id, module_id, parquet_path))
 
     for sig in tasks:
         try:

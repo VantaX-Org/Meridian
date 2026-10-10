@@ -169,6 +169,17 @@ def require_permission(action: str):
         tenant: Tenant = Depends(get_tenant),
         db: AsyncSession = Depends(get_db),
     ) -> str:
+        # TenantMiddleware runs before routing and can only guess a default
+        # tenant onto request.state.tenant_id. `tenant` here is the real,
+        # per-request resolution (JWT-derived in prod, dependency-overridden
+        # in tests) and is known earlier than anywhere else in the request.
+        # Publish it back onto request.state so anything reading that
+        # attribute *after* the route runs — chiefly AuditMiddleware, which
+        # builds its row once the response comes back — sees the request's
+        # actual tenant instead of the middleware's placeholder. Without
+        # this, AuditMiddleware's auto-logged row is attributed to the wrong
+        # tenant whenever the two diverge (a tenant-isolation defect).
+        request.state.tenant_id = tenant.id
         role = await _get_user_role(tenant, db, request)
         if not has_permission(role, action):
             raise HTTPException(

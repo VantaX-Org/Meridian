@@ -56,6 +56,7 @@ def test_rule_record_fixes_from_fix_value_map():
     res = _r("T1", 3, 4, keys=["LIFNR=V2", "LIFNR=V3", "LIFNR=V4"])
     fixes = fs.rule_record_fixes(rule, res, f)
     assert sorted((x["record_key"], x["new_value"]) for x in fixes) == [("LIFNR=V2", "ZA"), ("LIFNR=V3", "ZA")]
+    assert "current_value" in fixes[0]
 
 
 def test_rule_record_fixes_falls_back_to_single_option_suggestion():
@@ -63,7 +64,7 @@ def test_rule_record_fixes_falls_back_to_single_option_suggestion():
     res = _r("T1", 1, 4, keys=["LIFNR=V4"]).model_copy(
         update={"value_fix_map": {"XX1": {"suggested_value": "XX"}}})
     assert fs.rule_record_fixes({"field": "LFA1.LAND1"}, res, f) == [
-        {"field": "LFA1.LAND1", "record_key": "LIFNR=V4", "new_value": "XX"}]
+        {"field": "LFA1.LAND1", "record_key": "LIFNR=V4", "new_value": "XX", "current_value": "XX1"}]
 
 
 def test_end_to_end_resolves_blank_country_on_real_rules():
