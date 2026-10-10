@@ -98,3 +98,21 @@ def test_similarity_check_finds_typos_not_variants():
     r = SimilarityCheck({**rule, "max_block": 4}).run(big)
     assert r.affected_count == 0 and r.details["blocks_skipped_too_large"] == 1
     assert r.total_count == 0 and r.details["records_not_compared"] == 5  # unknown, not passing
+
+
+def test_blocks_and_near_pairs_helpers():
+    from checks.types.similarity_check import blocks, near_pairs
+
+    df = pd.DataFrame({
+        "N": ["ACME ENGINEERING", "ACME ENGINERING", "OTHER THING", "ACME ENGINEERING",
+              "PLANT ONE", "PLANT TWO", "PLANT SIX", "PLANT TEN", None, "AB"],
+        "C": ["DE", "DE", "DE", "FR", "ZA", "ZA", "ZA", "ZA", "DE", "DE"],
+    })
+    kept, oversized = blocks(df, "N", ["C"], max_block=3)
+    # Blank name (8) and a name key under 5 characters (9) are in no block.
+    assert [list(g) for g in kept] == [[0, 1, 2], [3]]
+    assert [list(g) for g in oversized] == [[4, 5, 6, 7]]
+
+    pairs = near_pairs(df, "N", kept, 0.9)
+    assert [(a, b) for a, b, _ in pairs] == [(0, 1)]  # same name in another country is another block
+    assert 0.9 <= pairs[0][2] < 1.0
