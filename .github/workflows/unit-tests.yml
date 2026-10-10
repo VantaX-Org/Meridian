@@ -10,10 +10,22 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# A new push to a PR cancels that PR's running check. On main, runs never
+# cancel: one runs, and only the newest waiting commit queues behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    timeout-minutes: 75  # ponytail: suite passed 45 min with the MM and SF rule packs; split or run in parallel (xdist) if it nears 75
+    # The full suite took 70 of 75 min on one runner. Four shards (split per
+    # test id in tests/conftest.py) each run about a quarter of it.
+    timeout-minutes: 45  # ponytail: add a shard (matrix and PYTEST_SHARD) if one nears 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     services:
       postgres:
@@ -71,4 +83,6 @@ jobs:
         run: pytest tests/ --collect-only -q
 
       - name: Run tests
+        env:
+          PYTEST_SHARD: ${{ matrix.shard }}/4
         run: pytest tests/ -q

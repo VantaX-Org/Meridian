@@ -323,14 +323,22 @@ def test_unset_tenant_returns_nothing(engine, two_tenants):
             {"tid": str(tid_a)},
         )
 
+    from sqlalchemy.exc import DBAPIError
+
+    # A pooled connection keeps whatever app.tenant_id an earlier test set,
+    # so this check needs a session that never set it.
+    app_eng.dispose()
     with app_eng.connect() as conn:
         # Intentionally DO NOT call _set_tenant. The RLS policy is
-        # `tenant_id = current_setting('app.tenant_id')::uuid`. When the
-        # GUC is unset the USING expression either errors or yields NULL
-        # — either way the row is *filtered out*, so an unscoped SELECT
-        # returns zero rows. That's the safety property: forgetting to
-        # SET means "see nothing" rather than "see everything".
-        rows = conn.execute(text("SELECT * FROM audit_log")).fetchall()
+        # `tenant_id = current_setting('app.tenant_id')::uuid`. With the GUC
+        # never set (or reset to '') the cast raises, so the query fails
+        # closed. Forgetting to SET must mean "see nothing" or an error,
+        # never "see everything".
+        try:
+            rows = conn.execute(text("SELECT * FROM audit_log")).fetchall()
+        except DBAPIError as exc:
+            assert exc.orig.pgcode in ("42704", "22P02"), exc  # undefined GUC, bad uuid
+            return
         assert len(rows) == 0, (
             f"RLS leak: unscoped session saw {len(rows)} row(s) — "
             "every table should return zero rows until app.tenant_id is set"
