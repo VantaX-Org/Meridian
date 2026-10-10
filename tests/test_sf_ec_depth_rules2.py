@@ -450,6 +450,22 @@ def test_ec441_fires_on_status_t_rows_and_is_disjoint_from_ec258_and_ec060():
     assert run_rule(dict(BY_ID["EC441"]), TableFrames(closed, S4, module="employee_central"), {})[1] is None
 
 
+def test_ec441_treats_empemployment_sentinel_end_date_as_open():
+    """EC441's fail_when must treat EMPEMPLOYMENT.END_DATE's 9999 sentinel the same as a blank
+    end date: a non-null '9999-12-31' is still open, not a real end date, so the rule must still
+    fire for a STATUS-T job record whose employment carries the sentinel instead of None."""
+    tables = {
+        "EMPJOBHIST": frame("EMPJOBHIST", USERID=["u1"], STATUS=["T"],
+                            START_DATE=["20260101"], END_DATE=["9999-12-31"]),
+        "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"], END_DATE=["9999-12-31"]),
+    }
+    assert fire("EC441", tables) == 1
+    # A real, closed EMPEMPLOYMENT.END_DATE must not fire: the termination did carry through.
+    closed = {**tables, "EMPEMPLOYMENT": frame("EMPEMPLOYMENT", USERID=["u1"], STATUS=["A"],
+                                                END_DATE=["20260101"])}
+    assert fire("EC441", closed) == 0
+
+
 def test_job_history_continuous_gap_detected():
     tables = {"EMPJOBHIST": frame("EMPJOBHIST",
         USERID=["u1", "u1"], START_DATE=["20200101", "20200601"], END_DATE=["20200301", "99991231"])}

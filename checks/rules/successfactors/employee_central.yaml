@@ -5542,7 +5542,7 @@ rules:
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: job history record on {EMPJOBHIST.START_DATE} has no time
     zone.'
   id: EC270
-- field: EMPJOBHIST.START_DATE,EMPJOBHIST.END_DATE
+- field: EMPJOBHIST.START_DATE
   check_class: interval_check
   group_by:
   - EMPJOBHIST.USERID
@@ -5696,7 +5696,7 @@ rules:
   sap_impact: Password resets and system notifications may be delivered to or actioned by the wrong account holder.
   fix_map:
     __other__: Correct the email address so it is unique to one account.
-  record_fix_template: 'User account {USERACCOUNT.USER_ID}: email {USERACCOUNT.EMAIL} is used by more than one account.'
+  record_fix_template: 'User account {USERACCOUNT.USER_ID}: the email address on this account is used by more than one account.'
   id: EC281
 - field: USERACCOUNT.USER_ID
   grain: USERACCOUNT
@@ -5732,7 +5732,7 @@ rules:
     - op: strip
     - op: lower
     confidence: low
-  record_fix_template: 'User account {USERACCOUNT.USER_ID}: email {USERACCOUNT.EMAIL} is not a valid format.'
+  record_fix_template: 'User account {USERACCOUNT.USER_ID}: the email address on this account is not a valid format.'
   id: EC283
 - field: USERACCOUNT.USERNAME
   grain: USERACCOUNT
@@ -6100,7 +6100,7 @@ rules:
   record_fix_template: 'Position {POSITION.CODE}: effective end date {POSITION.EFFECTIVE_END_DATE} is before start
     date {POSITION.EFFECTIVE_START_DATE}.'
   id: EC305
-- field: POSITION.CODE,POSITION.EFFECTIVE_START_DATE
+- field: POSITION.EFFECTIVE_START_DATE
   grain: POSITION
   check_class: interval_check
   group_by:
@@ -6853,7 +6853,7 @@ rules:
   sap_impact: Statutory correspondence and tax address validation fail without a postal code.
   fix_map:
     __blank__: Set the postal code on the address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: {PERADDRESS.ADDRESS_TYPE} address has no postal code.'
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: this address record has no postal code.'
   id: EC356
 - field: PERADDRESS.PERSON_ID
   check_class: uniqueness_check
@@ -6870,8 +6870,7 @@ rules:
   sap_impact: Replication fails on the duplicate key, or one of the records silently overwrites the other.
   fix_map:
     __other__: Remove the duplicate address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: duplicate {PERADDRESS.ADDRESS_TYPE} address record starting
-    {PERADDRESS.START_DATE}.'
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: duplicate address record starting {PERADDRESS.START_DATE}.'
   id: EC357
 - field: PERADDRESS.PERSON_ID
   check_class: exists_check
@@ -7301,7 +7300,7 @@ rules:
   record_fix_template: 'Employee {EMPJOBHIST.USERID}: job history record on {EMPJOBHIST.START_DATE} has negative
     sequence number {EMPJOBHIST.SEQ_NUMBER}.'
   id: EC378
-- field: EMPJOBHIST.USERID,EMPJOBHIST.START_DATE
+- field: EMPJOBHIST.START_DATE
   check_class: interval_check
   group_by:
   - EMPJOBHIST.USERID
@@ -8242,7 +8241,7 @@ rules:
 - field: EMPJOBHIST.STATUS
   check_class: cross_field_check
   grain: EMPJOBHIST
-  fail_when: "`EMPEMPLOYMENT.END_DATE`.isna() & ~`EMPEMPLOYMENT.STATUS`.isin(['T', 'R'])"
+  fail_when: "(`EMPEMPLOYMENT.END_DATE`.isna() | (`EMPEMPLOYMENT.END_DATE` >= '9999-01-01')) & ~`EMPEMPLOYMENT.STATUS`.isin(['T', 'R'])"
   applies_when:
     EMPJOBHIST.STATUS:
     - T
@@ -8308,8 +8307,8 @@ rules:
     fraction.
   fix_map:
     __other__: Correct the FTE on the job record, or correct the pay component amount.
-  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE is {EMPEMPLOYMENT.FTE} but has a pay component of
-    {COMPINFO.SALARY}.'
+  record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: FTE is {EMPEMPLOYMENT.FTE} but has a positive recurring
+    pay component.'
 - id: EC445
   field: PAYMENTINFO.AMOUNT
   check_class: cross_field_check
@@ -8389,8 +8388,8 @@ rules:
     sharing the ID.
   fix_map:
     __other__: Verify the ID against each employee's documents and correct the wrong one.
-  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID {PERINFO.NATIONAL_ID} ({PERINFO.NATIONAL_ID_COUNTRY})
-    is also held by another person.'
+  record_fix_template: 'Person {PERINFO.PERSON_ID}: national ID in country {PERINFO.NATIONAL_ID_COUNTRY} is also
+    held by another person.'
 - id: EC449
   field: PERINFO.PERSON_ID
   check_class: exists_check

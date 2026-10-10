@@ -95,7 +95,7 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
             if allowed.get("open_ended"):
                 from checks.types.domain_value_check import _parse_dates
                 # Blank / SAP initial date '00000000' = no end recorded = open. A non-blank value
-                # that does not parse ('garbage', '31.12.9999') is NOT open-ended: fail closed.
+                # that does not parse ('garbage', '9999-99-99') is NOT open-ended: fail closed.
                 blank = values.fillna("").isin(("", "00000000"))
                 parsed = _parse_dates(values)
                 mask &= blank | (parsed >= pd.Timestamp("9999-01-01")).fillna(False)
