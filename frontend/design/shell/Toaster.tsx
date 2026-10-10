@@ -3,11 +3,13 @@
 import { Toaster as Sonner } from "sonner";
 import type { CSSProperties } from "react";
 
-/** Sonner viewport, themed from the Meridian tokens. Mounted once in the root layout. */
+/** The one toast viewport, themed from the Meridian tokens. Mounted once in the root layout.
+ *  `expand` keeps every visible toast readable; collapsed, the toasts behind the front one show as empty slivers. */
 export function Toaster() {
   return (
     <Sonner
       position="top-right"
+      expand
       style={
         {
           "--normal-bg": "var(--m-sheet-raised)",

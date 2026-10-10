@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Pill, Rail, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
+import { Button, Pill, Rail, TopBar, CommandPalette, RunSelector, type RunOption } from "@/design";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { flattenNav } from "@/lib/nav";
@@ -51,7 +51,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-      <ToastViewport />
     </AuthGuard>
   );
 }

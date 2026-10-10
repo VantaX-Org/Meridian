@@ -1,10 +1,11 @@
 "use client";
 
+import { toast } from "sonner";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono, Pill, toastManager } from "@/design";
+import { Button, DataTable, ExplorerPage, Mono, Pill } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -33,15 +34,15 @@ export default function BatchPage() {
 
   const approve = useMutation({
     mutationFn: (id: string) => approveCleaning(id),
-    onSuccess: () => { toastManager.add({ title: "Approved" }); invalidate(); },
+    onSuccess: () => { toast("Approved"); invalidate(); },
   });
   const reject = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectCleaning(id, reason),
-    onSuccess: () => { toastManager.add({ title: "Rejected" }); invalidate(); },
+    onSuccess: () => { toast("Rejected"); invalidate(); },
   });
   const acceptHighConfidence = useMutation({
     mutationFn: () => bulkApprove({ max_count: confident.length }),
-    onSuccess: (r) => { toastManager.add({ title: `Approved ${r.approved_count}` }); invalidate(); },
+    onSuccess: (r) => { toast(`Approved ${r.approved_count}`); invalidate(); },
   });
   const exportBatch = useMutation({
     mutationFn: () => downloadCleaningExport("csv", "approved", items[0]?.object_type),

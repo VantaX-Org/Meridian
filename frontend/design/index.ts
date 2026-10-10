@@ -12,7 +12,6 @@ export * from "./primitives/Tabs";
 export * from "./primitives/Drawer";
 export * from "./primitives/Dialog";
 export * from "./primitives/Menu";
-export * from "./primitives/Toast";
 export * from "./primitives/Tooltip";
 export * from "./primitives/Skeleton";
 export * from "./primitives/EmptyState";

@@ -1,6 +1,7 @@
 // frontend/app/(app)/insights/duplicates/page.tsx
 "use client";
 
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ import {
   Field,
   Graph,
   Select,
-  toastManager,
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
@@ -77,12 +77,8 @@ export default function DuplicatesPage() {
   async function handleCreateMergeProposals() {
     if (pairs.length === 0) return;
     const result = await createMergeProposals(pairs);
-    toastManager.add({
-      title: `Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`,
-      actionProps: {
-        children: "Review in stewardship",
-        onClick: () => router.push("/workbench?tab=queue"),
-      },
+    toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
+      action: { label: "Review in stewardship", onClick: () => router.push("/workbench?tab=queue") },
     });
   }
 

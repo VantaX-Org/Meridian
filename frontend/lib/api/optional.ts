@@ -24,5 +24,6 @@ export function apiErrorMessage(err: unknown): string {
       return ((detail as { errors: unknown[] }).errors).map(String).join("; ");
     }
   }
-  return err instanceof Error ? err.message : String(err);
+  const text = err instanceof Error ? err.message : String(err ?? "");
+  return text.trim() || "Something went wrong.";
 }

@@ -1,10 +1,11 @@
 // frontend/app/(app)/mdm/glossary/[id]/page.tsx
 "use client";
 
+import { toast } from "sonner";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, EmptyState, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, toastManager, type RecordStatus } from "@/design";
+import { Button, EmptyState, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { queryKeys } from "@/lib/query-keys";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
@@ -25,7 +26,7 @@ export default function GlossaryTermPage() {
   });
 
   const onMutationError = (error: unknown) => {
-    toastManager.add({ title: error instanceof Error ? error.message : "Something went wrong." });
+    toast.error(error instanceof Error ? error.message : "Something went wrong.");
   };
   const save = useMutation({
     mutationFn: (body: Parameters<typeof updateGlossaryTerm>[1]) => updateGlossaryTerm(id, body),
