@@ -3,19 +3,13 @@
    No gradients. Fonts are vendored so output does not depend on the host;
    HTML(string=..., base_url=TEMPLATE_DIR) resolves the relative paths.
 
-   ponytail: the brand type is Public Sans (frontend/DESIGN.md); it is loaded
-   there via next/font/google at build time and no woff2 file is vendored
-   anywhere in the repo to copy from, and this sandbox has no network access
-   to fetch the OFL release. Font-family keeps the "Public Sans" name first
-   (so it picks up the real font the moment someone vendors it) with the
-   already-vendored Inter as the @font-face fallback. Upgrade: drop
-   PublicSans-{400,500,600}.woff2 into fonts/ and add their @font-face rules
-   above the Inter ones. */
+   Body type is Public Sans, the brand face (frontend/DESIGN.md); mono is
+   JetBrains Mono for SAP identifiers only. */
 
-@font-face { font-family: "Inter"; font-weight: 400; src: url("fonts/Inter-400.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 500; src: url("fonts/Inter-500.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 600; src: url("fonts/Inter-600.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 700; src: url("fonts/Inter-700.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 400; src: url("fonts/PublicSans-400.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 500; src: url("fonts/PublicSans-500.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 600; src: url("fonts/PublicSans-600.woff2") format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 700; src: url("fonts/PublicSans-700.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("fonts/JetBrainsMono-500.woff2") format("woff2"); }
 
@@ -40,27 +34,27 @@
     size: A4;
     margin: 22mm 16mm 20mm 16mm;
     @top-left {
-        font: 500 7.5pt "Inter"; color: #5C6872;
+        font: 500 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: bottom; padding-bottom: 4mm;
     }
     @top-right {
-        font: 500 7.5pt "Inter"; color: #5C6872;
+        font: 500 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: bottom; padding-bottom: 4mm;
     }
     @bottom-left {
-        font: 400 7.5pt "Inter"; color: #5C6872;
+        font: 400 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: top; padding-top: 4mm;
     }
     @bottom-right {
         content: "Page " counter(page) " of " counter(pages);
-        font: 400 7.5pt "Inter"; color: #5C6872;
+        font: 400 7.5pt "Public Sans"; color: #5C6872;
         vertical-align: top; padding-top: 4mm;
     }
 }
 
 /* ── Base type ─────────────────────────────────────────────────────────── */
 
-html { font-family: "Inter", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
+html { font-family: "Public Sans", sans-serif; font-size: 9pt; line-height: 1.45; color: var(--ink); }
 body { margin: 0; }
 .num, td.r, th.r { font-variant-numeric: tabular-nums lining-nums; }
 .mono { font-family: "JetBrains Mono", monospace; font-size: 8pt; }

@@ -169,7 +169,7 @@ def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, u
     w, lw, vw, rh = 640, 150, 80, 20
     bw = w - lw - vw
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {rh * len(rows) + 4}" '
-           f'font-family="Inter" font-size="11">']
+           f'font-family="Public Sans" font-size="11">']
     for i, (label, value) in enumerate(rows):
         y = i * rh + 4
         out.append(f'<text x="0" y="{y + 11}" fill="{_INK}">{escape(label)}</text>')
@@ -193,7 +193,7 @@ def delta_bars(rows: Iterable[tuple[str, Optional[float]]], unit: str = " pts") 
     mid = lw + bw / 2
     scale = max([abs(v) for _, v in rows if v is not None] + [1.0])
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {rh * len(rows) + 4}" '
-           f'font-family="Inter" font-size="11">',
+           f'font-family="Public Sans" font-size="11">',
            f'<line x1="{mid}" y1="0" x2="{mid}" y2="{rh * len(rows) + 4}" stroke="{_MUTED}" stroke-width="0.75"/>']
     for i, (label, v) in enumerate(rows):
         y = i * rh + 4

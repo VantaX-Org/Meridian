@@ -56,7 +56,7 @@
 <thead><tr><th>Table</th><th>Status</th><th class="r">Rows read</th><th class="r">Rows in SAP</th><th>Window</th><th class="r">Read time</th></tr></thead>
 <tbody>
 {% for c in coverage %}
-<tr><td class="mono">{{ c.table }}{% if c.purpose %}<span class="sub" style="font-family:Inter">{{ c.purpose }}</span>{% endif %}</td>
+<tr><td class="mono">{{ c.table }}{% if c.purpose %}<span class="sub" style="font-family:&quot;Public Sans&quot;">{{ c.purpose }}</span>{% endif %}</td>
     <td>{% if c.status == 'live' %}<span class="st {{ 'warn' if c.truncated or c.partial else 'ok' }}">{{ 'Truncated' if c.truncated else 'Partial' if c.partial else 'Read' }}</span>
         {% elif c.status == 'failed' %}<span class="st bad">Failed</span>
         {% elif c.status == 'not_in_system' %}<span class="st na">Not in system</span>
