@@ -879,9 +879,14 @@ def load_object(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
     top3 = [r["check_id"] for r in
             sorted((_check_row(f) for f in findings if failing(f)),
                    key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))[:3]]
-    samples = _all(s, "SELECT check_id, record_key, field_values FROM finding_records WHERE tenant_id = :t "
-                      "AND version_id = :v AND module = :m AND check_id = ANY(:ids) "
-                      "ORDER BY check_id, record_key LIMIT 25",
+    # Per-rule cap (not a single global LIMIT) so a rule with many failures can't crowd the
+    # other top-3 rules out of the sample: each of the top 3 check_ids gets its own 9 rows.
+    samples = _all(s, "SELECT check_id, record_key, field_values FROM ("
+                      "SELECT check_id, record_key, field_values, "
+                      "ROW_NUMBER() OVER (PARTITION BY check_id ORDER BY record_key) AS rn "
+                      "FROM finding_records WHERE tenant_id = :t AND version_id = :v "
+                      "AND module = :m AND check_id = ANY(:ids)) ranked "
+                      "WHERE rn <= 9 ORDER BY check_id, record_key",
                    t=tid, v=str(vid), m=module, ids=top3) if top3 else []
     return {"version": v, "findings": findings, "module_dqs": (v.get("dqs_summary") or {}).get(module) or {},
             "samples": samples, "system": load_system(s, tid, v)}

@@ -189,7 +189,9 @@ def test_object_report_404_for_unknown_module_and_tenant_scoped(app_engine):
 
 def test_record_report_404_without_extracted_dataset(app_engine):
     """T19: the record report 404s when the run has no dataset_path (nothing was
-    extracted into object storage for it, as in this fixture's seeded runs)."""
+    extracted into object storage for it, as in this fixture's seeded runs), and is
+    tenant-scoped like the object report (T18): tenant B gets 404 for tenant A's run
+    too, via RLS, not just because of the missing dataset."""
     from api.services.pdf_reports import build
     from workers.db import tenant_session
 
@@ -198,3 +200,42 @@ def test_record_report_404_without_extracted_dataset(app_engine):
 
     with tenant_session(app_eng, a) as s:
         assert build(s, a, "record", v["v2"], matnr="100-100") is None
+
+    with tenant_session(app_eng, b) as s:
+        assert build(s, b, "record", v["v2"], matnr="100-100") is None
+
+
+def test_object_report_samples_are_capped_per_rule_not_globally(app_engine):
+    """Fix round 1 (Important): load_object's failing-record sample must take the top
+    rows of EACH of the top-3 failing rules, not the top N rows overall. A rule with
+    many failures (here MM003, which also sorts first) must not crowd the other two
+    top-3 rules' rows out of a shared global cap. Against the pre-fix query (a single
+    ORDER BY check_id, record_key LIMIT 25), MM003 alone would fill the whole 25-row
+    budget and MM011/MM012 would be entirely absent from the sample."""
+    from sqlalchemy import text
+
+    from api.services.pdf_reports import load_object
+    from workers.db import tenant_session
+
+    owner, app_eng = app_engine
+    a, b, v = _seed(owner, app_eng)
+
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": a})
+        for check_id, n in (("MM003", 30), ("MM011", 2)):
+            for i in range(n):
+                c.execute(text("INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, "
+                               "record_key) VALUES (:t, :v, :c, 'material_master', 'MARA', :k)"),
+                          {"t": a, "v": v["v2"], "c": check_id, "k": f"MATNR={check_id}-{i:03d}"})
+
+    with tenant_session(app_eng, a) as s:
+        d = load_object(s, a, v["v2"], "material_master")
+        samples = d["samples"]
+        by_check = {}
+        for r in samples:
+            by_check.setdefault(r["check_id"], []).append(r)
+
+        assert "MM003" in by_check
+        assert "MM011" in by_check, "MM011's rows were crowded out by MM003's volume"
+        assert len(by_check["MM003"]) <= 9
+        assert len(by_check["MM011"]) == 2
