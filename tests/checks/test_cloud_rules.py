@@ -241,6 +241,25 @@ def test_sf_job_history_reads_all_effective_dated_records(monkeypatch):
     assert ("PerEmergencyContacts", {}) in conn.kwargs  # non-history entities read as of today
 
 
+def test_sf_boolean_fields_lowercased_like_rest_extractor(monkeypatch):
+    """NEW-5: SF OData V2 JSON booleans arrive as Python bool. _extract_rest lowercases BOOLEAN
+    fields to 'true'/'false' for target_when/applies_when string matches (EC446/EC449); this must
+    hold for SuccessFactors too, or every such rule false-positives on 100% of live tenants."""
+    import api.services.source_design as sd
+    monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
+    conn = _Fake({
+        "EmpJob": [{"userId": "U1", "startDate": "2024-01-01", "seqNumber": 1}],
+        "EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "isPrimary": True}],
+        "PerPhone": [{"personIdExternal": "P1", "isPrimary": False}],
+    })
+    cm = object.__new__(ConnectivityManager)
+    cm.session = None
+    frames, _ = ConnectivityManager._extract_successfactors(
+        cm, conn, ["employee_central"], dictionary_for_system("successfactors"), None)
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.IS_PRIMARY"].tolist() == ["true"]
+    assert frames["PERPHONE"]["PERPHONE.IS_PRIMARY"].tolist() == ["false"]
+
+
 class _Resp:
     def __init__(self, status, body):
         self.status_code, self._body = status, body

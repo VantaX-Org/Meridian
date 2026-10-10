@@ -16,16 +16,19 @@ try:  # Python ≥ 3.11 moved the regex parser
 except ImportError:  # pragma: no cover
     import sre_constants
     import sre_parse
-from datetime import date, datetime, timezone
 
 import pandas as pd
 
+from checks.base import as_of_time
 from checks.frames import TableFrames, _graph, internal_format, tables_of
 from checks.runner import rule_columns, run_rule
 
-TODAY = date.today().strftime("%Y%m%d")
-NOW = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-CUR_YEAR = date.today().strftime("%Y")
+# The engine's own clock (as_of_time: now, tz-naive UTC), so `@today` and these probes
+# always fall on the same calendar day whatever the machine's local timezone.
+_NOW = as_of_time()
+TODAY = _NOW.strftime("%Y%m%d")
+NOW = _NOW.strftime("%Y-%m-%dT%H:%M:%S")
+CUR_YEAR = _NOW.strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],
     "num": ["", "0", "1", "-1", "100", "1000000", CUR_YEAR],
@@ -351,7 +354,7 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else [in_scope]  # inside the scope
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
-                vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
+                vals += ["20000101", TODAY]
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if iso_pair and c == iso_pair[0]:
@@ -588,6 +591,15 @@ def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     # no longer collapse into one candidate; a large block of such look-alikes can crowd the
     # front of `passing` and push the one genuinely-distinct good record past the [:600] cap
     # below (PS070). Dedup on the non-key fields first so the cap sees distinct candidates.
+    # Two known ceilings in this dedup (tracked, not fixed -- no behaviour change needed
+    # while every shipped rule's pass/fail distinction lives in a non-whole-key column):
+    #   1. The dedup signature excludes whole-key columns entirely, so two candidates that
+    #      differ only in a whole-key value collapse to one. If a future rule's pass/fail
+    #      distinction depends on a whole-key column that isn't in its own field/fields, the
+    #      good candidate can be dropped here.
+    #   2. `whole_keys` only recognizes single-column keys (`dictionary.keys(t) == (k,)`);
+    #      composite-key tables are never added to it, so a composite-key table can hit the
+    #      original look-alike-collision class this block exists to prevent.
     seen: set = set()
     passing = [i for i in passing
                if (sig := tuple(sorted((c, v) for c, v in values[i].items() if c not in whole_keys)))

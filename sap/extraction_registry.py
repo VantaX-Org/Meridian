@@ -40,6 +40,7 @@ class ExtractionTarget:
     description: str = ""
     is_config: bool = False
     rename_map: dict = field(default_factory=dict)
+    from_date: Optional[str] = None  # OData fromDate for effective-dated entities (cloud SAP only). None = current record only.
 
 
 # ============================================================================
@@ -760,6 +761,14 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             description="Compensation data",
         ),
         # Config targets
+        # I4 (fix round 3, safe-to-ship-as-is per review): none of the FO*
+        # targets below set from_date, so SF returns one current row per
+        # external code and the current-record assumption built into the
+        # rules written against them holds. Add an effective-start-date
+        # field to $select and a from_date here only together with a
+        # matching key change on the FO canonical tables, or the implicit
+        # "current" assumption breaks the same way described for Position
+        # (I1) above.
         ExtractionTarget(
             source="FOCompany",
             fields=["externalCode", "name", "country", "currency", "status"],
@@ -821,6 +830,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                 "holidayCalendarCode", "timeTypeProfileCode",
             ],
             description="Job history (every effective-dated record)",
+            from_date="1900-01-01",
             rename_map={
                 "userId": "USERID", "startDate": "START_DATE",
                 "seqNumber": "SEQ_NUMBER", "endDate": "END_DATE",
@@ -884,6 +894,15 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                 "targetFTE", "standardHours", "payGrade",
             ],
             description="Positions (position management)",
+            # I1 (fix round 3, safe-to-ship-as-is per review): no from_date
+            # is set here, so SF returns one current row per position code
+            # and POSITION.keys=[CODE] (sap/dictionaries/canonical/
+            # successfactors.yaml) does not collide, even though the row
+            # also carries effectiveStartDate/effectiveEndDate as if it
+            # were effective-dated history. If this target ever gains
+            # from_date, POSITION.keys must also gain
+            # EFFECTIVE_START_DATE or EC299 (uniqueness on POSITION.CODE)
+            # will mass-fire on every position that was ever changed.
             # ponytail: parentPosition and incumbent omitted — both are
             # navigation-only properties on the standard Position entity
             # (parentPosition/code, incumbent/userId) and read_entity_set()

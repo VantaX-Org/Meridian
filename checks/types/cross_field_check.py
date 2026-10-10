@@ -2,7 +2,7 @@ import re
 
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation, is_blank, sap_number
+from checks.base import BaseCheck, Evaluation, as_of_time, is_blank, sap_number
 
 _BACKTICKED = re.compile(r"`([^`]+)`")
 _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16_DEC",
@@ -88,7 +88,7 @@ class CrossFieldCheck(BaseCheck):
     ``require_populated: true`` limits the population to rows where every
     referenced field has a value (blanks are null_check's job).
     Evaluated with ``DataFrame.eval(engine="python")`` on DDIC-typed values;
-    ``@today`` is the current date (future hire dates, ages).
+    ``@today`` is the run's as-of (snapshot) date, or today in UTC (future hire dates, ages).
     """
 
     check_class = "cross_field_check"
@@ -104,8 +104,11 @@ class CrossFieldCheck(BaseCheck):
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
         t = typed(df, cols)
+        # the run's snapshot date when pinned, else now in UTC: the same as_of_time()
+        # call freshness_check/value_placement_check make
+        today = as_of_time(self.rule.get("_as_of")).normalize()
         result = t.eval(self._expr(), engine="python",
-                        local_dict={"today": pd.Series(pd.Timestamp.today().normalize(), index=t.index),
+                        local_dict={"today": pd.Series(today, index=t.index),
                                     "iso_alpha3": ISO_ALPHA2_TO_3})
         if not isinstance(result, pd.Series):
             result = pd.Series(result, index=df.index)
