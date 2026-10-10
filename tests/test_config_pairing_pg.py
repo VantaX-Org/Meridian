@@ -364,3 +364,50 @@ def test_queue_proposal_conflict_ignores_open_dupes_but_not_resolved(app_engine)
         assert s.execute(text(count), {"m": mid}).scalar() == 1
         assert s.execute(text("SELECT count(*) FROM stewardship_queue WHERE source_id = CAST(:m AS uuid)"),
                          {"m": mid}).scalar() == 2
+
+
+class _NoApiConnector:
+    def load_config(self, system_type: str, progress=None):
+        from sap.config_snapshot import NOT_AVAILABLE, ConfigSnapshot
+
+        snap = ConfigSnapshot(system_type)
+        snap.mark("T001", NOT_AVAILABLE, "no configuration API")
+        return snap
+
+    def close(self) -> None:
+        pass
+
+
+@pg
+def test_load_config_stores_the_baseline_once_per_load(app_engine):
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from api.services.connectivity_manager import ConnectivityManager
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "S4C", "s4hana_cloud", "target")
+    lid = _load(app, tid, sid, [], status="running")
+    for _ in range(2):  # a retried task reruns load_config on the same load id
+        with Session(app) as s:
+            m = ConnectivityManager(s, tid)
+            m._load_system = lambda system_id: {}
+            m._build_connection_params = lambda row: {"system_type": "s4hana_cloud"}
+            m._get_connector = lambda system_type, params: _NoApiConnector()
+            out = m.load_config(sid, lid)
+    assert out["origin"] == "best_practice" and out["items"] > 0
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        n = c.execute(text("SELECT count(*) FROM config_items WHERE load_id = :l"), {"l": lid}).scalar()
+        origin, objects = c.execute(text("SELECT origin, objects FROM config_loads WHERE id = :l"), {"l": lid}).one()
+    assert n == out["items"] and origin == "best_practice"
+    assert objects[0]["detail"] == "SAP standard baseline; no configuration API"
+
+
+def test_run_load_config_keeps_redelivery_safety_and_limits():
+    from workers.tasks.run_load_config import run_load_config
+
+    # the load is idempotent (items replaced, load row upserted), so late ack stays on (controller ruling L7)
+    assert run_load_config.acks_late and run_load_config.reject_on_worker_lost
+    assert run_load_config.soft_time_limit == 1500 and run_load_config.time_limit == 1560
