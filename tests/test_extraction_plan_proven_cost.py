@@ -23,6 +23,19 @@ def test_registry_has_read_targets():
     assert {"KNVK", "KNKK", "MARD", "T001L", "KONV", "NAST"} <= names
 
 
+def test_proven_cost_tables_planned():
+    t = _tables(["mm_purchasing", "sd_sales_orders", "accounts_payable"])
+    assert {"EKET", "EKBE", "EINA", "EINE", "MARM", "RSEG", "VBUK", "BSAK"} <= t
+
+
+def test_proven_cost_registry_and_ekbe_budat():
+    names = set(get_table_names("ecc", "proven_cost"))
+    assert {"EKET", "EINA", "EINE", "MARM", "RSEG", "VBUK", "BSAK"} <= names
+    from sap.extraction_plan import PROVEN_COST_DATA
+    assert {"BUDAT", "DMBTR"} <= PROVEN_COST_DATA["EKBE"]
+    assert {"LIFSK", "NETWR"} <= PROVEN_COST_DATA["VBAK"]
+
+
 def test_ecc_kna1_has_stcd1():
     """Every ECC KNA1 target must include STCD1 (tax number)."""
     modules = get_available_modules("ecc")

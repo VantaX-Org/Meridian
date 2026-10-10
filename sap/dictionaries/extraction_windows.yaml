@@ -9,6 +9,7 @@
 # Override per deployment with MERIDIAN_EXTRACT_MONTHS (default windows below).
 EKKO:  {where: "BEDAT >= '{months_ago:24}'"}
 EKPO:  {via: EKKO}
+EKET:  {via: EKPO}
 VBAK:  {where: "ERDAT >= '{months_ago:24}'"}
 VBAP:  {via: VBAK}
 VBUK:  {via: VBAK}

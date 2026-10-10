@@ -275,9 +275,9 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="EKPO",
             fields=[
                 "EBELN", "EBELP", "MATNR", "WERKS", "LGORT", "MATKL",
-                "MENGE", "MEINS", "NETPR", "PEINH", "PSTYP", "KNTTP",
+                "MENGE", "MEINS", "BPRME", "NETPR", "PEINH", "PSTYP", "KNTTP",
                 "LOEKZ", "AEDAT", "NETWR", "UEBTO", "UEBTK", "RETPO",
-                "WEPOS", "REPOS",
+                "WEPOS", "REPOS", "INFNR",
             ],
             description="Purchasing document item",
         ),
@@ -285,7 +285,8 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="EKBE",
             fields=[
                 "EBELN", "EBELP", "ZEKKN", "VGABE", "GJAHR", "BELNR",
-                "BUZEI", "MENGE", "WRBTR", "WAERS", "SHKZG",
+                "BUZEI", "BUDAT", "MENGE", "BPMNG", "WRBTR", "DMBTR",
+                "WAERS", "SHKZG", "LFBNR",
             ],
             description="Purchasing document history",
         ),
@@ -585,7 +586,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="KNVV",
             fields=[
                 "KUNNR", "VKORG", "VTWEG", "SPART", "KDGRP", "BZIRK",
-                "WAERS", "KZAZU", "VWERK", "INCO1", "ZTERM",
+                "WAERS", "KZAZU", "VWERK", "INCO1", "ZTERM", "AUFSD", "LIFSD",
             ],
             description="Customer sales area data",
         ),
@@ -600,6 +601,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "VBELN", "AUART", "VKORG", "VTWEG", "SPART", "KUNNR",
                 "BSTNK", "ERDAT", "ERNAM", "NETWR", "WAERK", "VBTYP",
+                "LIFSK", "FAKSK",
             ],
             description="Sales document header",
         ),
@@ -721,6 +723,49 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=["WERKS", "LGORT", "DISKZ"],
             description="Storage locations",
             is_config=True,
+        ),
+    ],
+
+    # ------------------------------------------------------------------
+    # Transaction-proven cost (proves cost from live transactions)
+    # ------------------------------------------------------------------
+    "proven_cost": [
+        ExtractionTarget(
+            source="EKET",
+            fields=["EBELN", "EBELP", "ETENR", "EINDT", "MENGE", "WEMNG"],
+            description="Purchase order schedule lines",
+        ),
+        ExtractionTarget(
+            source="EINA",
+            fields=["INFNR", "MATNR", "LIFNR", "MEINS"],
+            description="Purchasing info record: general data",
+        ),
+        ExtractionTarget(
+            source="EINE",
+            fields=["INFNR", "EKORG", "WERKS", "APLFZ", "NETPR", "PEINH"],
+            description="Purchasing info record: purchasing organisation data",
+        ),
+        ExtractionTarget(
+            source="MARM",
+            fields=["MATNR", "MEINH", "UMREZ", "UMREN"],
+            description="Material unit of measure conversions",
+        ),
+        ExtractionTarget(
+            source="RSEG",
+            fields=["BELNR", "GJAHR", "BUZEI", "EBELN", "EBELP", "MENGE", "BSTME", "WRBTR"],
+            description="Invoice document item (incoming invoice)",
+        ),
+        ExtractionTarget(
+            source="VBUK",
+            fields=["VBELN", "CMGST", "LFSTK", "GBSTK"],
+            description="Sales document header status",
+        ),
+        ExtractionTarget(
+            source="BSAK",
+            fields=["BUKRS", "LIFNR", "GJAHR", "BELNR", "BUZEI", "XBLNR", "WRBTR",
+                    "WAERS", "BLDAT", "AUGDT", "SHKZG", "BLART"],
+            filter="AUGDT >= '{months_ago:12}'",
+            description="Cleared vendor line items",
         ),
     ],
 }
