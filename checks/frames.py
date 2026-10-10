@@ -119,6 +119,9 @@ def internal_format(df: pd.DataFrame, dictionary: Dictionary,
     return df if out is None else out
 
 
+_STRING_BYTES = 14  # decoded bytes per row of a string column under pandas 3 (arrow strings)
+
+
 class ParquetTable:
     """One extracted table held as its compressed parquet bytes; columns decode on access.
 
@@ -135,6 +138,24 @@ class ParquetTable:
         self._added: dict[str, pd.Series] = {}
         self.columns = self._stored
         self._rows = meta.metadata.num_rows
+        self._sizes: dict[str, int] | None = None
+        self._meta = meta.metadata
+        self._strings = {f.name for f in meta.schema_arrow if pa.types.is_string(f.type) or pa.types.is_large_string(f.type)}
+
+    def nbytes(self, col: str) -> int:
+        """Estimated decoded bytes of ``col``: the parquet metadata's uncompressed size, never less
+        than ``_STRING_BYTES`` a row for a string column (pandas 3 holds those as arrow strings)."""
+        if col in self._added:
+            return int(self._added[col].memory_usage(deep=True))
+        if self._sizes is None:
+            sizes: dict[str, int] = {}
+            for i in range(self._meta.num_row_groups):
+                rg = self._meta.row_group(i)
+                for j in range(rg.num_columns):
+                    c = rg.column(j)
+                    sizes[c.path_in_schema] = sizes.get(c.path_in_schema, 0) + c.total_uncompressed_size
+            self._sizes = sizes
+        return max(self._sizes.get(col, 0), _STRING_BYTES * self._rows if col in self._strings else 0)
 
     def with_column(self, name: str, values: pd.Series) -> "ParquetTable":
         """A copy with ``values`` appended as column ``name`` (held decoded; the rest stays compressed)."""
@@ -280,12 +301,43 @@ class TableFrames:
     def lazy(self) -> bool:
         return any(isinstance(f, ParquetTable) for f in self.frames.values())
 
+    def _wanted(self, columns: set[str], g: str) -> set[str] | None:
+        """The columns ``frame_for`` decodes for ``columns`` at grain ``g``; None means every column
+        (a grain without a key in the extract guesses the record id from all of them)."""
+        if not any(f"{g}.{k}" in self.frames[g].columns for k in self.dictionary.keys(g)):
+            return None
+        out = set(columns) | {f"{g}.{k}" for k in self.dictionary.keys(g)}
+        for t in set(tables_of(list(columns))) - {g}:
+            out |= {c for edge, _ in self._path(g, t) or [] for c in _edge_columns(edge)}
+        return out
+
+    def estimate_bytes(self, columns: set[str], grain: str, stripped: set[str] | None = None) -> int:
+        """Decoded bytes of the joined frame ``frame_for`` builds at ``grain`` for ``columns``, from
+        parquet metadata. Every column is held once per grain row; ``stripped`` ones twice (the
+        normalised copy rules keep). Each decoded table, then the join, holds no more than this."""
+        rows = len(self.frames[grain])
+        wanted = self._wanted(columns, grain)
+        total = 0
+        for t in {c.partition(".")[0] for c in columns} | {grain} | {
+                e for tb in set(tables_of(list(columns))) - {grain} for edge, _ in self._path(grain, tb) or []
+                for e in (edge.parent, edge.child)}:
+            src = self.frames.get(t)
+            if src is None or not len(src):
+                continue
+            for c in src.columns:
+                if wanted is not None and c not in wanted:
+                    continue
+                size = src.nbytes(c) if isinstance(src, ParquetTable) else _STRING_BYTES * len(src)
+                total += size * rows // len(src) * (2 if stripped and c in stripped else 1)
+        return total
+
     def prefetch(self, columns: set[str], grain: str) -> None:
         """Lazy tables: build ``grain``'s joined frame once with every column a group of rules
-        reads, so each rule reuses it instead of re-joining (an 18M-row merge costs ~10s)."""
-        cols = sorted(c for c in columns if (t := c.partition(".")[0]) in self.frames
-                      and t not in self.unsplittable and c in self.frames[t].columns
-                      and (t == grain or self._path(grain, t) is not None))
+        reads, so each rule reuses it instead of re-joining (an 18M-row merge costs ~10s).
+        Callers keep ``columns`` within a byte budget (``estimate_bytes``)."""
+        cols = sorted(c for c in columns if c.partition(".")[0] in self.frames
+                      and c in self.frames[c.partition(".")[0]].columns
+                      and (pt := self.path_tables([c], grain)) is not None and pt <= set(self.frames))
         if self.lazy and cols and grain in self.frames:
             self.frame_for(cols, grain=grain)
 

@@ -120,6 +120,9 @@ class Settings(BaseSettings):
     update_window: str = Field(default="", validation_alias="MERIDIAN_UPDATE_WINDOW")
     live_writeback_enabled: bool = Field(default=False, validation_alias="MERIDIAN_LIVE_WRITEBACK_ENABLED")
 
+    # Rule evaluation: decoded-byte budget of one prefetched joined frame (checks/runner.py)
+    checks_prefetch_budget_bytes: int = 5_000_000_000
+
     # SAP RFC sync
     credential_master_key: Optional[str] = None
     sap_rfc_user: str = "RFC_USER"

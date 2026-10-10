@@ -305,3 +305,38 @@ def test_decoding_every_column_outside_the_rule_loop_retains_nothing(bundle: dic
     run_checks(MODULE, frames, "t1", as_of="2026-01-01")
     assert not frames._cache and not frames._norm
     assert all(not getattr(src, "_memo", None) for src in frames.frames.values())
+
+
+def test_prefetch_batches_stay_within_the_byte_budget_and_results_do_not_change(
+        bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+    seen: list[tuple[int, int]] = []  # (columns prefetched, their estimated bytes)
+    orig = fm.TableFrames.prefetch
+
+    def spy(self: TableFrames, columns: set[str], grain: str) -> None:
+        seen.append((len(columns), self.estimate_bytes(set(columns), grain)))
+        orig(self, columns, grain)
+
+    monkeypatch.setattr(fm.TableFrames, "prefetch", spy)
+    eager = _dump(run_checks(MODULE, _frames(bundle, False), "t1", as_of="2026-01-01"))
+    big = _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=10**12))
+    widest = max(b for _, b in seen)
+    seen.clear()
+    budget = widest // 4
+    small = _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=budget))
+    assert eager == big == small
+    assert len(seen) > 4 and all(n == 0 or b <= budget for n, b in seen)  # batched, none over the budget
+    seen.clear()
+    run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=1)
+    assert all(n == 0 for n, _ in seen)  # every rule alone exceeds it: per-rule frames, no prefetch
+
+
+def test_a_failing_prefetch_does_not_abort_the_module(bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+
+    def boom(self: TableFrames, columns: set[str], grain: str) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(fm.TableFrames, "prefetch", boom)
+    eager = _dump(run_checks(MODULE, _frames(bundle, False), "t1", as_of="2026-01-01"))
+    assert _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01")) == eager

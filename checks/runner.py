@@ -39,7 +39,20 @@ from checks.types.group_range_check import GroupRangeCheck
 logger = logging.getLogger("meridian.checks")
 
 
-def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None) -> pd.DataFrame:
+def _context_values(df: pd.DataFrame, field: str, norm: dict[str, pd.Series] | None) -> pd.Series:
+    """``field`` as stripped strings. With ``norm``, the first call (on the unfiltered frame) stores
+    the series and later calls on a filtered frame take their rows from it by label."""
+    if norm is None or field not in df.columns:
+        return df[field].astype("string").str.strip()
+    key = f"ctx|{field}"
+    if key not in norm:
+        norm[key] = df[field].astype("string").str.strip()
+    cached = norm[key]
+    return cached if cached.index.equals(df.index) else cached.loc[df.index]
+
+
+def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None,
+                  norm: dict[str, pd.Series] | None = None) -> pd.DataFrame:
     """Filter `df` to rows that satisfy every condition in `applies_when`.
 
     `applies_when` is a dict of {field: allowed_values}; AND-combined.
@@ -66,7 +79,7 @@ def apply_context(df: pd.DataFrame, applies_when: dict | None, as_of: Any = None
             if isinstance(allowed, dict) and set(allowed) == {"blank"}:
                 continue  # not extracted: no record is known to carry a value (e.g. no branch accounts)
             return df.iloc[:0]
-        values = df[field].astype("string").str.strip()
+        values = _context_values(df, field, norm)
         if isinstance(allowed, dict):
             # Operators: contains_any (multi-value code strings such as
             # LFB1.ZWELS "CT"), not_in, populated, gt (numeric), startswith,
@@ -295,33 +308,37 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             rule = summed
         cols, g, excl, optional = _frame_inputs(rule, check_cls, frames, suppressed)
         cf = (rule.get("_cost") or {}).get("field")
-        built = frames.frame_for(cols, grain=rule.get("grain"), optional=optional)
+        # parent-table flags (LFA1.LOEVM for an LFB1 rule), the cost field (EKPO.NETWR) and auto_fix
+        # inputs join at the same grain, in one build; else cost falls back to severity and
+        # auto_fix proposes nothing
+        need = [c for x in excl for c in (x.get("fields") or [x["field"]])]
+        extra = need + [c for c in [cf, *auto_fix.columns(rule)] if c]
+        built = None
+        # all in one build; when the cost / auto_fix columns cannot join at this grain, the
+        # exclusion flags still do
+        for wanted in (extra, need) if extra != need else (extra,):
+            if g and wanted:
+                try:
+                    built = frames.frame_for(list(dict.fromkeys(cols + wanted)), grain=g, optional=optional)
+                except ValueError:
+                    built = None
+                if built is not None:
+                    break
+        if built is None:
+            built = frames.frame_for(cols, grain=rule.get("grain"), optional=optional)
         if built is None:
             return rule, None  # a table/field this rule needs is not in the extract
         frame, grain, key_cols = built
-        need = [c for x in excl for c in (x.get("fields") or [x["field"]]) if c not in frame.columns]
-        if need and grain:
-            try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
-                wider = frames.frame_for(cols + need, grain=grain, optional=optional)
-                frame = wider[0] if wider is not None else frame
-            except ValueError:
-                pass
-        # the cost field (EKPO.NETWR) and auto_fix inputs (guard, copy, lookup keys) join at
-        # the same grain; else cost falls back to severity and auto_fix proposes nothing
-        extra = [c for c in [cf, *auto_fix.columns(rule)] if c and c not in frame.columns]
-        if extra and grain:
-            try:
-                wider = frames.frame_for(list(dict.fromkeys(cols + need + extra)), grain=grain, optional=optional)
-                frame = wider[0] if wider is not None else frame
-            except ValueError:
-                pass
         if frames.lazy and key_cols:
             # what the lazy frame held for this rule alone: the rule's columns and the grain's key,
             # not what the group's shared frame gained or the join keys; masks then copy only these
             keep = set(cols) | set(optional) | set(key_cols)
             frame = frame[[c for c in frame.columns if c in keep]]
-        frame, excluded = exclude(frame, excl, frames, norm=frames._norm if frames.lazy and grain else None)
-        scoped = apply_context(frame, rule.get("applies_when"), as_of)
+        norm = frames._norm if frames.lazy and grain else None
+        for field in (rule.get("applies_when") or {}) if norm is not None else ():
+            _context_values(frame, field, norm)  # stripped once on the unfiltered frame, reused by later rules
+        frame, excluded = exclude(frame, excl, frames, norm=norm)
+        scoped = apply_context(frame, rule.get("applies_when"), as_of, norm=norm)
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
         result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
@@ -399,19 +416,50 @@ def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: Chec
     return [asdict(f) for f in fixes]
 
 
+def _rule_columns(rule: dict, frames: TableFrames,
+                  suppressed: dict[str, tuple[list[str], set[str]]] | None) -> tuple[set[str], set[str]]:
+    """(every column the rule reads, those rules keep a stripped copy of); empty for a rule that skips."""
+    try:
+        if rule.get("check_class") not in REGISTRY or _missing_context_field(rule, frames):
+            return set(), set()
+        cols, _, excl, optional = _frame_inputs(rule, REGISTRY[rule["check_class"]], frames, suppressed)
+        stripped = {c for x in excl for c in (x.get("fields") or [x["field"]])} | set(rule.get("applies_when") or {})
+        return set(cols) | set(optional), stripped
+    except Exception:  # run_rule reports it
+        return set(), set()
+
+
 def _group_columns(rules: list[dict], frames: TableFrames,
                    suppressed: dict[str, tuple[list[str], set[str]]] | None) -> set[str]:
     """Every column the rules of one grain read (rules that will skip excluded)."""
-    out: set[str] = set()
-    for rule in rules:
-        try:
-            if _missing_context_field(rule, frames):
-                continue
-            cols, _, _, optional = _frame_inputs(rule, REGISTRY[rule["check_class"]], frames, suppressed)
-            out |= set(cols) | set(optional)
-        except Exception:  # run_rule reports it
+    return set().union(*(_rule_columns(r, frames, suppressed)[0] for r in rules))
+
+
+def _prefetch_plan(order: list[int], rules: list[dict], grain: str, frames: TableFrames,
+                   suppressed: dict[str, tuple[list[str], set[str]]] | None, budget: int) -> dict[int, set[str]]:
+    """{first rule of a batch: the columns to prefetch for it}. Walking ``order``, a batch grows
+    while its estimated decoded bytes stay within ``budget``; a rule over it alone gets an empty
+    set, so it builds its own frame as before."""
+    plan: dict[int, set[str]] = {}
+    cur: set[str] = set()
+    again: set[str] = set()
+    start: int | None = None
+    for i in order:
+        cols, stripped = _rule_columns(rules[i], frames, suppressed)
+        if not cols:
             continue
-    return out
+        cols = {c for c in cols if (pt := frames.path_tables([c], grain)) is not None and pt <= set(frames.frames)
+                and c in frames.frames[c.partition(".")[0]].columns}
+        if frames.estimate_bytes(cols, grain, stripped) > budget:
+            plan[i], cur, again, start = set(), set(), set(), None
+        elif start is not None and frames.estimate_bytes(cur | cols, grain, again | stripped) <= budget:
+            cur |= cols
+            again |= stripped
+            plan[start] = cur
+        else:
+            start, cur, again = i, set(cols), set(stripped)
+            plan[i] = cur
+    return plan
 
 
 def run_checks(
@@ -426,6 +474,7 @@ def run_checks(
     *,
     as_of: Any = None,
     sap_utc_offset_seconds: int | None = None,
+    prefetch_budget: int | None = None,
     on_progress: Callable[[int, int, str], None] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
@@ -469,15 +518,29 @@ def run_checks(
     groups = [group_of(r) for r in rules]
     done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
     prev: str | None = None
+    plan: dict[int, set[str]] = {}
+    order = sorted(range(total_rules), key=lambda i: groups[i])
+    if prefetch_budget is None:
+        from api.config import settings
+        prefetch_budget = settings.checks_prefetch_budget_bytes
+    budget = prefetch_budget
     try:
-        for done, i in enumerate(sorted(range(total_rules), key=lambda i: groups[i])):
+        for done, i in enumerate(order):
             rule = rules[i]
             if groups[i][0] != prev:
                 prev = groups[i][0]
                 frames.clear_cache()
+                plan = {}
                 if prev and frames.lazy:
-                    frames.prefetch(_group_columns([r for r, g in zip(rules, groups) if g[0] == prev
-                                                    and r.get("check_class") in REGISTRY], frames, suppressed), prev)
+                    plan = _prefetch_plan([j for j in order if groups[j][0] == prev], rules, prev, frames,
+                                          suppressed, budget)
+            if i in plan:
+                frames.clear_cache()
+                try:  # best effort: a rule that finds nothing prefetched builds its own frame
+                    frames.prefetch(plan[i], prev)
+                except Exception as e:
+                    logger.warning(f"Prefetch for grain {prev} failed, evaluating rule by rule: {e}")
+                    frames.clear_cache()
             if on_progress is not None:
                 try:
                     on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
