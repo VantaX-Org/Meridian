@@ -1,7 +1,15 @@
 """Remediation batches: proposed values, current-value lookup, export layouts."""
 
+import asyncio
+import io
+import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
+import openpyxl
 import pandas as pd
 
+from api.routes.remediation import export_batch
 from api.services import remediation
 from checks.frames import TableFrames
 from sap.ddic import get_dictionary
@@ -42,3 +50,88 @@ def test_exports_skip_blank_proposals():
     mc = remediation.mass_change(items)
     assert list(mc["NEW_VALUE"]) == ["0001", "160000"]
     assert mc.iloc[1][["TCODE", "TABLE", "FIELD", "OLD_VALUE"]].tolist() == ["FK02", "LFB1", "AKONT", "1"]
+
+
+def test_items_from_cleaning_one_item_per_changed_field():
+    rows = [{"object_type": "material", "rule_id": "CL1", "record_key": "000000000000000042",
+             "record_data_before": {"MATKL": "misc", "MTART": "ROH", "MAKTX": "Bolt"},
+             "record_data_after": {"MATKL": "MG-0001", "MTART": "ROH", "MARC.EKGRP": "001"}}]
+    items = remediation.items_from_cleaning(rows)
+    assert [(i["field"], i["current_value"], i["proposed_value"]) for i in items] == [
+        ("MARA.MATKL", "misc", "MG-0001"), ("MARC.EKGRP", None, "001")]
+    assert items[0]["record_key"] == "MATNR=000000000000000042"
+    assert items[0]["check_id"] == "CL1:MARA.MATKL" and items[0]["proposal_source"] == "cleaning"
+
+
+def test_items_from_cleaning_skips_unknown_object_without_qualified_fields():
+    rows = [{"object_type": "unknown", "rule_id": None, "record_key": "1",
+             "record_data_before": {}, "record_data_after": {"X": "1"}}]
+    assert remediation.items_from_cleaning(rows) == []
+
+
+def test_items_from_simulation():
+    fixes = [{"check_id": "AP_T", "module": "accounts_payable", "field": "LFA1.LAND1",
+              "record_key": "LIFNR=0000100002", "current_value": None, "new_value": "DE"}]
+    (i,) = remediation.items_from_simulation(fixes)
+    assert (i["scope"], i["proposal_source"], i["proposed_value"], i["grain"]) == ("simulation", "simulation", "DE", "LFA1")
+
+
+def test_batch_diff_groups_changes_per_record():
+    items = [{"record_key": "MATNR=42", "field": "MARA.MATKL", "current_value": "misc", "proposed_value": "MG-1",
+              "check_id": "LR-000001"},
+             {"record_key": "MATNR=42", "field": "MARA.MTART", "current_value": "ROH", "proposed_value": None,
+              "check_id": "X"},
+             {"record_key": "MATNR=41", "field": "MARA.MATKL", "current_value": None, "proposed_value": "MG-2",
+              "check_id": "LR-000001"}]
+    assert remediation.batch_diff(items) == [
+        {"record_key": "MATNR=41", "table": "MARA",
+         "changes": [{"field": "MATKL", "before": None, "after": "MG-2", "rule": "LR-000001"}]},
+        {"record_key": "MATNR=42", "table": "MARA",
+         "changes": [{"field": "MATKL", "before": "misc", "after": "MG-1", "rule": "LR-000001"}]},
+    ]
+
+
+def test_export_batch_cockpit_xlsx_builds_real_workbook():
+    """I9: build a real workbook through the remediation cockpit export route and
+    reload it with openpyxl — sheet/column names, N3's narrowed SAP-reimport guard
+    on a negative value, and the shared "meridian-" filename stamp."""
+    batch_id = uuid.uuid4()
+    tenant = SimpleNamespace(id=uuid.uuid4(), name="Acme Corp")
+
+    batch_row = SimpleNamespace(_mapping={"id": str(batch_id), "status": "approved", "name": "B1",
+                                          "created_by": None, "approved_by_label": "approver"})
+    item_row = SimpleNamespace(_mapping={
+        "module": "accounts_payable", "check_id": "AP005", "field": "LFB1.ZTERM",
+        "proposed_value": "-5", "current_value": "0001", "record_key": "LIFNR=1|BUKRS=1000",
+    })
+
+    db = AsyncMock()
+    db.execute.side_effect = [
+        MagicMock(),  # RLS set_config
+        MagicMock(fetchone=lambda: batch_row),  # _batch select
+        MagicMock(fetchall=lambda: [item_row]),  # _items select
+        MagicMock(),  # UPDATE remediation_batches ... status = 'exported'
+        MagicMock(),  # export_packages audit insert
+        MagicMock(),  # _event insert
+    ]
+    db.commit = AsyncMock()
+
+    response = asyncio.run(
+        export_batch(batch_id=batch_id, request=None, format="cockpit_xlsx", cr_type=None, db=db, tenant=tenant)
+    )
+
+    disposition = response.headers["content-disposition"]
+    filename = disposition.split("filename=", 1)[1].strip('"')
+    assert filename.startswith("meridian-")
+
+    async def _collect() -> bytes:
+        chunks = [c async for c in response.body_iterator]
+        return b"".join(chunks)
+
+    wb = openpyxl.load_workbook(io.BytesIO(asyncio.run(_collect())))
+    assert "LFB1" in wb.sheetnames
+    ws = wb["LFB1"]
+    headers = [c.value for c in ws[1]]
+    assert headers == ["LIFNR", "BUKRS", "ZTERM"]
+    # N3: a leading "-" on a proposed value must survive unguarded for SAP reimport.
+    assert ws.cell(row=2, column=3).value == "-5"

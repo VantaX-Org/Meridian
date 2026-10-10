@@ -31,6 +31,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.branded_xlsx import (
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from api.services.rbac import current_user_label, has_permission, require_permission
 from checks import lifecycle
 
@@ -133,6 +141,55 @@ async def list_rules(
     return {"rules": rules, "total": total, "limit": limit, "offset": offset}
 
 
+_RULES_EXPORT_COLUMNS = [
+    ColumnSpec("id", "ID", kind="mono"),
+    ColumnSpec("name", "Name"),
+    ColumnSpec("module", "Module"),
+    ColumnSpec("category", "Category"),
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("enabled", "Enabled"),
+    ColumnSpec("source", "Source"),
+    ColumnSpec("last_pass_rate", "Last pass rate", kind="pct", scale=1.0),
+    ColumnSpec("last_run_at", "Last run"),
+    ColumnSpec("description", "Description"),
+]
+
+
+@router.get("/rules/export", dependencies=[Depends(require_permission("export"))])
+async def export_rules(
+    category: Optional[str] = Query(None),
+    module: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    enabled: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
+    format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Every rule matching the same filters as GET /rules, as CSV or XLSX (no pagination)."""
+    # list_rules caps at 1000 (its own Query(le=1000)); the rule catalog this
+    # tenant can see is bounded by that same limit, so the source query itself
+    # is the cap — flag it on the cover note if the catalog ever reaches it.
+    _RULES_QUERY_LIMIT = 1000
+    body = await list_rules(category=category, module=module, severity=severity, enabled=enabled,
+                            search=search, source=source, limit=_RULES_QUERY_LIMIT, offset=0,
+                            db=db, tenant=tenant)
+    rows = body["rules"]
+    note = (f"Truncated to {_RULES_QUERY_LIMIT:,} rules; narrow the filter to export the rest."
+            if len(rows) >= _RULES_QUERY_LIMIT else None)
+    if format == "csv":
+        return csv_response(rows, _RULES_EXPORT_COLUMNS, "rules", None)
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=None,
+        run_id=None,
+        title="Rules export",
+        sheets=[SheetSpec(title="Rules", columns=_RULES_EXPORT_COLUMNS, rows=rows, note=note)],
+    )
+    return xlsx_response(data, xlsx_filename("rules", None))
+
+
 # ── GET /api/v1/rules/summary ─────────────────────────────────────────────────
 
 
@@ -157,6 +214,52 @@ async def rules_summary(
     )
     rows = [_row_to_dict(r) for r in result.fetchall()]
     return {"summary": rows}
+
+
+@router.get("/rules/history", dependencies=[Depends(require_permission("view"))])
+async def rules_history_batch(
+    version_id: str = Query(...),
+    module: str = Query(...),
+    limit_runs: int = Query(8, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Hit-rate history for every check in one module, newest-run-first: the last
+    ``limit_runs`` runs of the same system lineage as ``version_id``. One windowed
+    query for the whole module, not one query per check_id."""
+    await _set_rls(db, tenant.id)
+    rows = (await db.execute(text("""
+        WITH lineage AS (
+            SELECT COALESCE(metadata->>'system_id', 'upload') AS key, run_at
+              FROM analysis_versions WHERE id = CAST(:vid AS uuid) AND tenant_id = :tid
+        ), runs AS (
+            SELECT av.id AS version_id, av.run_at
+              FROM analysis_versions av, lineage l
+             WHERE av.tenant_id = :tid AND COALESCE(av.metadata->>'system_id', 'upload') = l.key
+               AND av.run_at <= l.run_at
+             ORDER BY av.run_at DESC LIMIT :n
+        )
+        SELECT f.check_id, runs.version_id, runs.run_at, f.severity, f.affected_count, f.total_count,
+               f.pass_rate, COALESCE((f.details->>'suppressed')::boolean, false) AS suppressed
+          FROM runs JOIN findings f ON f.version_id = runs.version_id
+         WHERE f.module = :mod AND f.details->>'error' IS NULL
+         ORDER BY f.check_id, runs.run_at DESC
+    """), {"vid": version_id, "tid": str(tenant.id), "mod": module, "n": limit_runs})).mappings().all()
+    if not rows:
+        known = (await db.execute(text(
+            "SELECT 1 FROM analysis_versions WHERE id = CAST(:vid AS uuid) AND tenant_id = :tid"),
+            {"vid": version_id, "tid": str(tenant.id)})).scalar()
+        if not known:
+            raise HTTPException(404, "Unknown version")
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["check_id"], []).append({
+            "version_id": r["version_id"], "run_at": r["run_at"], "severity": r["severity"],
+            "affected_count": r["affected_count"], "total_count": r["total_count"],
+            "pass_rate": r["pass_rate"], "suppressed": r["suppressed"],
+            "hit_rate": round(r["affected_count"] / r["total_count"] * 100, 2) if r["total_count"] else 0.0,
+        })
+    return {"version_id": version_id, "module": module, "history": out}
 
 
 # ── GET /api/v1/rules/{rule_id} ───────────────────────────────────────────────
@@ -376,6 +479,40 @@ async def rule_history(rule_id: str, limit: int = Query(50, ge=1, le=500),
     return {"rule_id": rule_id, "runs": [
         {**r, "hit_rate": round(r["affected_count"] / r["total_count"] * 100, 2) if r["total_count"] else 0.0}
         for r in rows]}
+
+
+_RULE_HISTORY_EXPORT_COLUMNS = [
+    ColumnSpec("version_id", "Version ID", kind="mono"),
+    ColumnSpec("run_at", "Run at", kind="datetime"),
+    ColumnSpec("module", "Module"),
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("affected_count", "Affected", kind="int"),
+    ColumnSpec("total_count", "Total", kind="int"),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=1.0),
+    ColumnSpec("hit_rate", "Hit rate (%)"),
+    ColumnSpec("suppressed", "Suppressed"),
+]
+
+
+@router.get("/rules/{rule_id}/history/export", dependencies=[Depends(require_permission("export"))])
+async def export_rule_history(rule_id: str, limit: int = Query(500, ge=1, le=5000),
+                              format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+                              db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Hit rate of one rule per analysis run, newest first, as CSV or XLSX."""
+    body = await rule_history(rule_id=rule_id, limit=limit, db=db, tenant=tenant)
+    rows = [{**r, "version_id": str(r["version_id"])} for r in body["runs"]]
+    note = (f"Truncated to {limit:,} runs; raise the limit to export the rest."
+            if len(rows) >= limit else None)
+    if format == "csv":
+        return csv_response(rows, _RULE_HISTORY_EXPORT_COLUMNS, f"rule-history-{rule_id}", None)
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=rule_id,
+        run_id=None,
+        title=f"{rule_id} history export",
+        sheets=[SheetSpec(title="History", columns=_RULE_HISTORY_EXPORT_COLUMNS, rows=rows, note=note)],
+    )
+    return xlsx_response(data, xlsx_filename(f"rule-history-{rule_id}", None))
 
 
 @router.get("/rule-feedback", dependencies=[Depends(require_permission("view"))])

@@ -44,6 +44,7 @@ import workers.tasks.send_password_reset  # noqa: F401, E402
 import workers.tasks.run_cleaning  # noqa: F401
 import workers.tasks.evaluate_contracts  # noqa: F401
 import workers.tasks.run_exception_scan  # noqa: F401
+import workers.tasks.compute_proven_cost  # noqa: F401 — per-version proven-cost metrics
 import workers.tasks.run_sync  # noqa: F401
 import workers.tasks.rule_proposal_task  # noqa: F401
 import workers.tasks.ai_triage  # noqa: F401
@@ -52,12 +53,14 @@ import workers.tasks.snapshot_mdm_metrics  # noqa: F401
 import workers.tasks.ai_health_narrative  # noqa: F401
 import workers.tasks.ai_enrich_report  # noqa: F401
 import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
+import workers.tasks.run_match  # noqa: F401 — match pipeline → match_scores
 import workers.tasks.build_golden_records  # noqa: F401
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
 import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks
 import workers.tasks.run_config_sync  # noqa: F401 — SPRO/FO config sync
 import workers.tasks.run_load_config  # noqa: F401 — read-only config snapshot + flow derivation
 import workers.tasks.run_health_check  # noqa: F401 — scheduled connection health
+import workers.tasks.root_cause  # noqa: F401 — root cause by origin after analysis
 import workers.tasks.run_discovery  # noqa: F401 — source-system design discovery
 import workers.tasks.run_config_intelligence  # noqa: F401 — config + Z-object intelligence per version
 import workers.tasks.revalidate_licence  # noqa: F401

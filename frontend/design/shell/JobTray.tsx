@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Briefcase } from "lucide-react";
 import { useJobs, useJobStream } from "../../hooks/use-jobs";
+import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import { IconButton } from "../primitives/IconButton";
 import { Badge } from "../primitives/Badge";
 import { Drawer } from "../primitives/Drawer";
+import { JobProgress } from "./JobProgress";
 
 export function JobTray() {
   useJobStream();
   const { jobs, active } = useJobs();
   const [open, setOpen] = useState(false);
+  useEffect(() => onJobTrayOpen(() => setOpen(true)), []);
 
   return (
     <>
@@ -30,6 +33,7 @@ export function JobTray() {
           {jobs.map((job) => (
             <li key={job.id} className="text-[13px]" style={{ color: "var(--m-ink)" }}>
               {job.label} — {job.status} ({job.percent}%)
+              {job.status === "running" && <JobProgress job={job} />}
             </li>
           ))}
         </ul>

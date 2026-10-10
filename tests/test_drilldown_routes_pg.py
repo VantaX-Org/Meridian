@@ -206,6 +206,7 @@ def test_drilldown_routes(app_engine):
             # another tenant sees none of it
             who["tenant"] = stranger
             assert (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/records", headers=h)).status_code == 404
+            assert (await c.get(f"/api/v1/versions/{v1}/findings/CHK-A/root-cause", headers=h)).status_code == 404
             assert (await c.get("/api/v1/issues", headers=h, params={"version_id": v1})).json()["total"] == 0
 
     async def main():

@@ -42,7 +42,7 @@ describe("TrendPanel", () => {
   it("shows a retryable error", async () => {
     const spy = vi.spyOn(systemObjectsApi, "getTrends").mockRejectedValue(new Error("network down"));
     renderWithQuery(<TrendPanel systemId="s1" />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     spy.mockResolvedValue({ summary: [], series: {} });
     screen.getByRole("button", { name: /retry/i }).click();
     await waitFor(() => expect(screen.getByText("No analysed run yet.")).toBeInTheDocument());

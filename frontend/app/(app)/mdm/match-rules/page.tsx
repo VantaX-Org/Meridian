@@ -13,6 +13,7 @@ import {
   clearPairConstraint, getPairConstraints, matchTuningDryRun,
   type DryRunResult, type PairConstraint, type PairConstraintKind,
 } from "@/lib/api/merge-explain";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MatchRule, MatchType, SimulationResult } from "@/types/api";
@@ -138,7 +139,7 @@ function RulesTab() {
         <Skeleton height={200} />
       ) : rulesQuery.error ? (
         <ErrorState
-          message={rulesQuery.error instanceof Error ? rulesQuery.error.message : "Match rules could not be loaded."}
+          message={apiErrorMessage(rulesQuery.error)}
           onRetry={() => void rulesQuery.refetch()}
         />
       ) : list.length ? (
@@ -149,7 +150,13 @@ function RulesTab() {
           onRowClick={(r) => { setEditing(r); setDraft({ ...r }); }}
         />
       ) : (
-        <EmptyState title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet. Add one per field the engine should compare."} />
+        <EmptyState
+          title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet."}
+          detail={domain ? undefined : "Add one per field the engine should compare."}
+          action={write ? (
+            <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
+          ) : undefined}
+        />
       )}
       {!write ? <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Changing rules needs MDM write access.</p> : null}
 
@@ -235,7 +242,7 @@ function TuningTab() {
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
         <ErrorState
-          message={rulesQuery.error instanceof Error ? rulesQuery.error.message : "Match rules could not be loaded."}
+          message={apiErrorMessage(rulesQuery.error)}
           onRetry={() => void rulesQuery.refetch()}
         />
       ) : (
@@ -351,7 +358,7 @@ function ConstraintsTab() {
         <Skeleton height={200} />
       ) : list.error ? (
         <ErrorState
-          message={list.error instanceof Error ? list.error.message : "Pair constraints could not be loaded."}
+          message={apiErrorMessage(list.error)}
           onRetry={() => void list.refetch()}
         />
       ) : rows.length ? (

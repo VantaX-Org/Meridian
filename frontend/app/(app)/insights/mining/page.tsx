@@ -34,17 +34,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  DataTable, EmptyState, ErrorState, Graph, Pill, Select, Skeleton, Stat, Tabs,
+  DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
   type GraphEdge, type GraphNode, type PillTone,
 } from "@/design";
-import { getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
+import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { RecordRelationship } from "@/types/api";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const pct = (share: number, digits = 1) => `${(share * 100).toFixed(digits)} %`;
 // ponytail: carried from the legacy component — past ~80 edges the force layout is unreadable, the table lists all.
@@ -80,6 +82,7 @@ function GraphTally() {
 
 function EntityLinks() {
   const [domain, setDomain] = useState("");
+  const dayOne = useDayOne();
   const q = useQuery({ queryKey: queryKeys.relationships({ include_inactive: true }), queryFn: () => getRelationships({ include_inactive: true }) });
   const rels = useMemo(() => q.data?.relationships ?? [], [q.data]);
 
@@ -118,7 +121,7 @@ function EntityLinks() {
   if (q.error) {
     return (
       <ErrorState
-        message={q.error instanceof Error ? q.error.message : "Relationships could not be loaded."}
+        message={apiErrorMessage(q.error)}
         onRetry={() => void q.refetch()}
       />
     );
@@ -130,9 +133,15 @@ function EntityLinks() {
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Click a domain to list its links{domain ? `, showing ${formatModuleName(domain)}` : ""}.
         </p>
-        {q.isLoading ? <Skeleton height={440} />
+        {q.isLoading || dayOne.status === "loading" ? <Skeleton height={440} />
           : nodes.length ? <Graph nodes={nodes} edges={edges} height={440} onNodeClick={(id) => setDomain(id === domain ? "" : id)} />
-          : <EmptyState title="No relationships recorded yet. They appear once an analysis has linked records across domains." />}
+          : (
+            <EmptyState
+              title="No relationships recorded yet."
+              detail={dayOne.step?.detail ?? "They appear once an analysis has linked records across domains."}
+              action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+            />
+          )}
       </div>
       <DataTableWithMaybeEmpty columns={columns} data={shown} getRowId={(r) => r.id} loading={q.isLoading} empty="No relationships." />
     </div>
@@ -143,6 +152,7 @@ function EntityLinks() {
 
 function Dependencies() {
   const router = useRouter();
+  const dayOne = useDayOne();
   const [systemId, setSystemId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [object, setObject] = useState("");
@@ -185,7 +195,14 @@ function Dependencies() {
   ], [profileHref]);
 
   if (systems.data && !systems.data.length) {
-    return <EmptyState title="No SAP systems yet. Connect a system and analyse a download to mine its dependencies." />;
+    if (dayOne.status === "loading") return <Skeleton height={440} />;
+    return (
+      <EmptyState
+        title="No SAP systems yet."
+        detail={dayOne.step?.detail ?? "Connect a system and analyse a download to mine its dependencies."}
+        action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />}
+      />
+    );
   }
   return (
     <div className="flex flex-col gap-6">
@@ -197,10 +214,13 @@ function Dependencies() {
         <Select value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
+        {sid && vid ? (
+          <ExportMenu options={[{ format: "xlsx", run: () => exportVersionProfile(sid, vid, "xlsx", obj || undefined) }]} />
+        ) : null}
       </div>
       {profile.error ? (
         <ErrorState
-          message={profile.error instanceof Error ? profile.error.message : "The profile for this version could not be loaded."}
+          message={apiErrorMessage(profile.error)}
           onRetry={() => void profile.refetch()}
         />
       ) : null}
@@ -243,7 +263,7 @@ function Patterns() {
     const err = patterns.error ?? summary.error;
     return (
       <ErrorState
-        message={err instanceof Error ? err.message : "Patterns could not be loaded."}
+        message={apiErrorMessage(err)}
         onRetry={() => { void summary.refetch(); void patterns.refetch(); }}
       />
     );

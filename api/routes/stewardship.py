@@ -529,6 +529,15 @@ async def _apply_source_action(
                 text("UPDATE glossary_terms SET last_reviewed_at = now(), updated_at = now() WHERE id = :sid"),
                 {"sid": item.source_id},
             )
+    elif item.item_type == "config_value_match" and action in ("approve", "reject"):
+        res = await db.execute(
+            text("UPDATE transfer_value_mappings SET status = :st, updated_by = CAST(:uid AS uuid), "
+                 "updated_at = now() WHERE id = :sid "
+                 "AND tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"),
+            {"st": "confirmed" if action == "approve" else "rejected", "uid": user_id, "sid": item.source_id})
+        if res.rowcount == 0:
+            # The mapping was deleted (or belongs to another tenant) after the item was queued.
+            raise HTTPException(status_code=409, detail="The value mapping for this item no longer exists.")
 
 
 async def _execute_merge(

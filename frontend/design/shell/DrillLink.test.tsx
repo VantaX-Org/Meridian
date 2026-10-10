@@ -13,7 +13,7 @@ describe("DrillLink", () => {
     render(<DrillLink object="material_master" dimension="completeness" run="v1">Completeness</DrillLink>);
     expect(screen.getByText("Completeness")).toHaveAttribute(
       "href",
-      "/objects/material_master?run=v1&dimension=completeness",
+      "/objects/material_master?run=v1&tab=rules&dimension=completeness",
     );
   });
 

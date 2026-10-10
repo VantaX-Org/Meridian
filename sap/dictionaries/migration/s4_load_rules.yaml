@@ -1,0 +1,49 @@
+# S4L rule catalogue: S/4HANA load dry-run checks.
+# Append-only. Never renumber or reuse an id. `related` links to existing finding check_ids
+# (checks/rules/ecc/s4_readiness.yaml + CVI checks) so a load failure drills to its finding.
+rules:
+  - {id: S4L-MM-MATNR-LEN,   area: material, severity: critical, target: MARA.MATNR,
+     reason: "Material number longer than 40 characters cannot load into MATNR (CHAR40)",
+     related: []}
+  - {id: S4L-MM-MATNR-ALPHA, area: material, severity: critical, target: MARA.MATNR,
+     reason: "Numeric material numbers collide after ALPHA conversion (leading zeros differ, same number)",
+     related: []}
+  - {id: S4L-MM-MATNR-CHARS, area: material, severity: high, target: MARA.MATNR,
+     reason: "Material number contains lower-case or characters rejected by the S/4 conversion exit",
+     related: []}
+  - {id: S4L-BP-NUM-OVERLAP, area: business_partner, severity: critical, target: BUT000.PARTNER,
+     reason: "Vendor and customer numbers overlap with different names; same-number BP assignment would merge two parties",
+     related: [S4R-BP-NUM-OVERLAP, S4-CVI-KTOKK-NUM, S4-CVI-KTOKD-NUM]}
+  - {id: S4L-BP-GROUPING,    area: business_partner, severity: critical, target: BUT000.BU_GROUP,
+     reason: "Account group has no BP grouping mapping (KTOKK/KTOKD to BU_GROUP)",
+     related: [S4-CVI-KTOKK-ROLE, S4-CVI-KTOKD-ROLE]}
+  - {id: S4L-BP-MANDATORY,   area: business_partner, severity: critical, target: BUT000,
+     reason: "Mandatory BP field blank (name 1 or country)",
+     related: [S4-CVI-LFA1, S4-CVI-KNA1]}
+  - {id: S4L-BP-TAX,         area: business_partner, severity: high, target: DFKKBPTAXNUM.TAXNUM,
+     reason: "Tax number duplicated across different business partners",
+     related: [S4R-BP-DUP-TAX]}
+  - {id: S4L-BP-KNVK-ORPHAN, area: business_partner, severity: high, target: BUT050,
+     reason: "Contact person has no parent customer/vendor; BP relationship cannot be created",
+     related: [S4R-BP-KNVK-NAME, S4-CVI-KNVK-CUST, S4-CVI-KNVK-VEND]}
+  - {id: S4L-CRM-KNKK,       area: credit_management, severity: high, target: UKMBP_CMS_SGM,
+     reason: "Credit segment without credit control area or for a customer not migrated",
+     related: [S4R-CRM-KNKLI-KKBER, S4-CRM-KKBER]}
+  - {id: S4L-MRP-AREA,       area: mrp, severity: high, target: MDLG,
+     reason: "Storage location excluded from MRP (DISKZ) needs an MRP area; none can be derived",
+     related: [S4R-MRP-MARD-DISKZ, S4R-MRP-T001L-DISKZ]}
+  - {id: S4L-ML-BKLAS,       area: material_ledger, severity: critical, target: MBEW.BKLAS,
+     reason: "Valuated stock without valuation class; material ledger initialisation fails",
+     related: [S4R-ML-BKLAS-BLANK-STOCK]}
+  - {id: S4L-ML-PRICE,       area: material_ledger, severity: high, target: MBEW.VPRSV,
+     reason: "Price control blank or price zero with stock; actual costing cannot open the period",
+     related: [S4R-ML-VPRSV-BLANK-STOCK, S4R-ML-VALUE-NOQTY, S4R-ML-NEG-VALUE]}
+  - {id: S4L-SD-KONV-ORPHAN, area: sales, severity: medium, target: PRCD_ELEMENTS,
+     reason: "Pricing condition (KONV) without a sales/purchasing document header; not converted to PRCD_ELEMENTS",
+     related: []}
+  - {id: S4L-FI-AFLE,        area: finance, severity: low, target: PRCD_ELEMENTS.KWERT,
+     reason: "Amount uses more than 95% of the legacy CURR 13,2 length; downstream interfaces need AFLE review",
+     related: []}
+  - {id: S4L-OUT-NAST-OPEN,  area: output_management, severity: medium, target: APOC_D_OR_ROOT,
+     reason: "Unprocessed NAST output record; not carried to S/4 output management",
+     related: []}

@@ -21,16 +21,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Pill, Select, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
+import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
+import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -73,6 +75,8 @@ async function getAllRules(category?: string): Promise<Rule[]> {
 export default function RulesPage() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
+  const dayOne = useDayOne();
+  const hasFinishedRun = dayOne.status !== "loading" && dayOne.step === null;
   const [category, setCategory] = useUrlState("category", "all");
   const [module, setModule] = useUrlState("module", "");
   const [check, setCheck] = useUrlState("check", "");
@@ -208,8 +212,20 @@ export default function RulesPage() {
       </Field>
     ) : null;
 
+  const exportOptions = [{
+    format: "xlsx" as const,
+    run: () => exportRules("xlsx", {
+      category: category === "all" ? undefined : category,
+      module: module || undefined,
+      severity: severity || undefined,
+      source: source || undefined,
+      search: search || undefined,
+    }),
+  }];
+
   const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
+      <ExportMenu options={visible.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
       <Field label="Search">
         <input
           type="text"
@@ -239,6 +255,7 @@ export default function RulesPage() {
         ? facetSelect("Configuration", cfgSystem, setCfgSystem, (systemsQ.data ?? []).map((s) => s.id), (id) => systemsQ.data?.find((s) => s.id === id)?.name ?? id, "All systems")
         : null}
       {filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : null}
+      <Button variant="secondary" render={<Link href="/rules/learned" />}>Learned from your data</Button>
       {canManage ? <Button onClick={() => setAuthoring(true)}>New rule</Button> : null}
     </div>
   );
@@ -261,19 +278,33 @@ export default function RulesPage() {
       {coverageRows.length ? (
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Coverage by object</p>
-          <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
+          {dayOne.status === "loading" ? (
+            <Skeleton height={160} />
+          ) : hasFinishedRun ? (
+            <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
+          ) : (
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+              <span>Coverage is measured on a finished run.</span>
+              <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />
+            </div>
+          )}
         </div>
       ) : null}
       {rulesQ.isLoading ? (
         <Skeleton height={320} />
       ) : rulesQ.error ? (
-        <ErrorState message={(rulesQ.error as Error).message || "Rules could not be read"} onRetry={() => rulesQ.refetch()} />
+        <ErrorState message={apiErrorMessage(rulesQ.error)} onRetry={() => rulesQ.refetch()} />
       ) : visible.length ? (
         <DataTable columns={columns} data={visible} getRowId={(r) => r.id} onRowClick={(r) => setSelectedId(r.id)} />
-      ) : (
+      ) : filtered ? (
         <EmptyState
           title="No rules match. Built-in rules ship with Meridian; HQ rules arrive through HQ sync; mined and custom rules are your stewards' own."
-          action={filtered ? <Button variant="ghost" onClick={clearFilters}>Clear filters</Button> : undefined}
+          action={<Button variant="ghost" onClick={clearFilters}>Clear filters</Button>}
+        />
+      ) : (
+        <EmptyState
+          title="No rules loaded."
+          action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
         />
       )}
 

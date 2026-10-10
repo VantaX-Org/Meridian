@@ -92,6 +92,18 @@ def test_plan_routes_rules_teams_and_fallback():
     assert plan([{"id": "x", "module": "mm"}], [], {}, {U1}, {}, None) == []
 
 
+def test_plan_tries_owners_before_fallback():
+    rules = [{"id": "r-user", "match": {"severity": ["critical"]}, "assign_user_id": U3}]
+    items = [{"id": "a", "severity": "low", "owners": [U1, U2]},   # U1 inactive → next owner
+             {"id": "b", "severity": "low", "owners": [U1]},       # no active owner → fallback
+             {"id": "c", "severity": "low"},                       # no owners → fallback
+             {"id": "d", "severity": "critical", "owners": [U2]},  # a rule still wins
+             {"id": "e", "severity": "low", "owners": [U3, U2]}]   # first active owner
+    out = plan(items, rules, {}, {U2, U3, FB}, {}, FB)
+    assert out == [("a", U2, None, None), ("b", FB, None, None), ("c", FB, None, None),
+                   ("d", U3, None, "r-user"), ("e", U3, None, None)]
+
+
 # ── calendar ──────────────────────────────────────────────────────────────────
 
 CAL = Calendar("UTC", (1, 2, 3, 4, 5), time(8), time(17))  # 9h days

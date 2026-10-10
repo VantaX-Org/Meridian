@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
-import { ToastViewport } from "@/design";
+import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
 
 const push = vi.fn();
@@ -34,10 +34,15 @@ function explainWithMembers(members: string[]): mergeExplainApi.ExplainResponse 
   };
 }
 
+// Base UI ignores an option click unless the option is highlighted (hover or
+// keyboard). Highlighting lands asynchronously after open, so a bare click can
+// race it. Hover the option and wait for the highlight, then click: no timing
+// dependence, so no inflated timeouts.
 async function pickObjectAndRecord() {
   fireEvent.click(screen.getByRole("combobox"));
   const option = await screen.findByRole("option", { name: "Material master" });
-  await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"));
+  fireEvent.mouseMove(option);
+  await waitFor(() => expect(option).toHaveAttribute("data-highlighted"));
   fireEvent.click(option);
   await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
   fireEvent.change(screen.getByLabelText("Record ID"), { target: { value: "000101" } });
@@ -101,7 +106,7 @@ describe("DuplicatesPage", () => {
     renderWithQuery(
       <>
         <DuplicatesPage />
-        <ToastViewport />
+        <Toaster />
       </>,
     );
     await pickObjectAndRecord();
@@ -145,7 +150,7 @@ describe("DuplicatesPage", () => {
     vi.spyOn(insightsApi, "getDuplicateCluster").mockRejectedValue(new Error("network error"));
     renderWithQuery(<DuplicatesPage />);
     await pickObjectAndRecord();
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the cluster request when the retry button is clicked", async () => {

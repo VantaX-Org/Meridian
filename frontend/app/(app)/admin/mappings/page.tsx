@@ -1,12 +1,13 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -110,9 +111,14 @@ export default function AdminMappingsPage() {
       </div>
 
       {all.isLoading ? <Skeleton height={320} />
-        : all.isError ? (
+        : isListFailure(all) ? (
           <ErrorState message={apiErrorMessage(all.error) || "Field mappings could not be read."} onRetry={() => all.refetch()} />
-        ) : !shown.length ? <EmptyState title="No standard field matches this filter." />
+        ) : !shown.length ? (
+          <EmptyState
+            title={object || search ? "No standard field matches this filter." : "No field mappings."}
+            action={!(object || search) ? <Button render={<Link href="/import">Import file</Link>} /> : undefined}
+          />
+        )
         : (
           <section>
             <h2 className="text-[13px] font-semibold mb-2">{object ? formatModuleName(object) : "All objects"} &mdash; {mapped} of {shown.length} mapped</h2>

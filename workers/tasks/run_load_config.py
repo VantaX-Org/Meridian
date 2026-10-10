@@ -37,13 +37,15 @@ def run_load_config(self, tenant_id, system_id, load_id, job_id):
         try:
             from api.services.connectivity_manager import ConnectivityManager
 
-            system_type = session.execute(
-                text("SELECT system_type FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
-                {"sid": system_id, "tid": tenant_id}).scalar()
+            system_type, role = session.execute(
+                text("SELECT system_type, role FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
+                {"sid": system_id, "tid": tenant_id}).fetchone() or (None, "source")
+            # enqueue_config_load may have inserted this row already; a retry finds it too
             session.execute(
                 text("INSERT INTO config_loads (id, tenant_id, system_id, system_type, role, origin, status) "
-                     "VALUES (:lid, :tid, :sid, :st, 'source', 'connection', 'running')"),
-                {"lid": load_id, "tid": tenant_id, "sid": system_id, "st": system_type or "unknown"})
+                     "VALUES (:lid, :tid, :sid, :st, :role, 'connection', 'running') "
+                     "ON CONFLICT (id) DO UPDATE SET status = 'running', error = NULL, role = EXCLUDED.role"),
+                {"lid": load_id, "tid": tenant_id, "sid": system_id, "st": system_type or "unknown", "role": role})
             session.commit()
             jobs.update_job(tenant_id, job_id, stage="read", message="Reading configuration")
 

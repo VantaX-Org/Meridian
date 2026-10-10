@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/runs/v2/vs/v1",
   useSearchParams: () => searchParams,
 }));
-const can = vi.fn((action: string) => action === "apply");
+const can = vi.fn((action: string) => action === "apply" || action === "export");
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ role: "steward", can, isAdmin: false, isManager: true, isViewer: false }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -50,7 +50,7 @@ beforeEach(() => {
   vi.spyOn(versionsApi, "compareVersions").mockResolvedValue(cmp);
   vi.spyOn(versionsApi, "compareRecords").mockResolvedValue(diff);
   vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: [] });
-  can.mockImplementation((action: string) => action === "apply");
+  can.mockImplementation((action: string) => action === "apply" || action === "export");
 });
 
 describe("CompareRunsPage", () => {
@@ -74,9 +74,9 @@ describe("CompareRunsPage", () => {
   it("downloads the comparison PDF", async () => {
     const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue();
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Download PDF" }));
-    expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
   });
 
   it("creates a fix batch for a newly failing check", async () => {

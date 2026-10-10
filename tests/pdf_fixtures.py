@@ -145,6 +145,31 @@ REPORT_JSON = {
     "modules": [],
 }
 
+# T18: failing-record samples for the object report (module material_master, matching
+# FINDINGS2's MM003/MM011 checks).
+SAMPLES = [
+    {"check_id": "MM003", "record_key": "MATNR=100-100", "field_values": {"MARA.MTART": "", "MARA.MATNR": "100-100"}},
+    {"check_id": "MM003", "record_key": "MATNR=100-200", "field_values": {"MARA.MTART": "", "MARA.MATNR": "100-200"}},
+    {"check_id": "MM011", "record_key": "MATNR=100-300", "field_values": {"MARA.ERSDA": None, "MARA.MATNR": "100-300"}},
+]
+
+# T19: Material 360 fix-sheet by_view sections, shaped like
+# api.services.material_360.build_findings()'s "by_view" output.
+BY_VIEW = [
+    {"view": "basic", "label": "Basic data", "rules": 5, "passing_count": 3, "not_evaluated": [],
+     "failing": [
+         {"check_id": "MM003", "message": "Material type must be set", "severity": "high",
+          "field": "MARA.MTART", "level": "client", "actual_value": "",
+          "record_key": "MATNR=100-100", "issue_id": None, "issue_status": None,
+          "record_fix": "Set MARA.MTART to a valid material type for MATNR=100-100."},
+     ]},
+    {"view": "plant", "label": "Plant data", "rules": 4, "passing_count": 4, "not_evaluated": ["MM099"],
+     "failing": []},
+]
+BY_VIEW_CLEAN = [
+    {"view": "basic", "label": "Basic data", "rules": 5, "passing_count": 5, "not_evaluated": [], "failing": []},
+]
+
 SUPPLEMENTARY = {
     "cleaning": {"total": 8_985, "applied": 2_100, "approved": 310, "pending": 6_480},
     "dedup": {"total": 640, "pending": 410, "merged": 180},

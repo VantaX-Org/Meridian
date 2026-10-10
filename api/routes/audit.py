@@ -8,13 +8,21 @@ import csv
 import io
 import json
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.branded_xlsx import (
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    guard_formula_cell,
+    xlsx_filename,
+    xlsx_response,
+)
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["audit"])
@@ -27,7 +35,6 @@ async def _set_rls(db: AsyncSession, tenant_id: uuid.UUID) -> None:
 _COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, method, path, "
             "status_code, ip, user_agent, before_json, after_json, created_at")
 _EXPORT_MAX = 100_000
-_FORMULA = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until) -> tuple[str, dict]:
@@ -110,7 +117,7 @@ def _csv_cell(value) -> str:
     if value is None:
         return ""
     s = value if isinstance(value, str) else json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
-    return "'" + s if s.startswith(_FORMULA) else s  # spreadsheet formula injection
+    return guard_formula_cell(s)  # spreadsheet formula injection
 
 
 @router.get("/audit/export")
@@ -122,11 +129,12 @@ async def export_audit_entries(
     method: Optional[str] = Query(None),
     since: Optional[str] = Query(None),
     until: Optional[str] = Query(None),
+    format: Literal["csv", "xlsx"] = Query("csv"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
 ):
-    """Audit log as CSV for auditors and SIEM import, oldest first, same filters as /audit.
+    """Audit log as CSV or XLSX for auditors and SIEM import, oldest first, same filters as /audit.
     Capped at 100,000 rows; narrow with since/until for longer histories."""
     await _set_rls(db, tenant.id)
     where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
@@ -135,12 +143,28 @@ async def export_audit_entries(
         text(f"SELECT {_COLUMNS} FROM audit_log WHERE {where_clause} ORDER BY created_at LIMIT :limit"),
         params,
     )
+    cols = [c.strip() for c in _COLUMNS.split(",")]
+    entries = [_entry(row) for row in result.fetchall()]
+
+    if format == "xlsx":
+        sheet = SheetSpec(
+            title="Audit log",
+            columns=[ColumnSpec(key=c, header=c, kind="mono" if c.endswith("_id") or c == "id" else "text") for c in cols],
+            rows=entries,
+        )
+        data = build_workbook(
+            tenant_name=tenant.name,
+            run_label=None,
+            run_id=None,
+            title="Audit log export",
+            sheets=[sheet],
+        )
+        return xlsx_response(data, xlsx_filename("audit-log", None))
+
     buf = io.StringIO()
     out = csv.writer(buf)
-    cols = [c.strip() for c in _COLUMNS.split(",")]
     out.writerow(cols)
-    for row in result.fetchall():
-        d = _entry(row)
+    for d in entries:
         out.writerow([_csv_cell(d.get(c)) for c in cols])
     return Response(
         buf.getvalue(),

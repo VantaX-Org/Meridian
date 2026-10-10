@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 import type { Version, VersionList, VersionComparison } from "@/types/api";
 
 export async function getVersions(params?: {
@@ -22,6 +23,14 @@ export async function archiveVersions(keepLatest = 1): Promise<{ archived: numbe
 export async function restoreVersions(): Promise<{ restored: number }> {
   const { data } = await apiClient.post("/api/v1/versions/restore");
   return data;
+}
+
+/** Runs matching the same filters as `getVersions`, as CSV or XLSX (api/routes/runs.py:export_runs). */
+export function exportRuns(
+  format: "csv" | "xlsx",
+  params?: { module?: string; system_id?: string; include_archived?: boolean }
+): Promise<void> {
+  return downloadBlob("/api/v1/runs/export", { format, ...params }, `runs.${format}`);
 }
 
 export async function getVersion(id: string): Promise<Version> {
@@ -108,5 +117,34 @@ export async function getFindingRecords(
 ): Promise<{ version_id: string; check_id: string; total: number; records: FindingRecord[] }> {
   const { data } = await apiClient.get(
     `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records`, { params });
+  return data;
+}
+
+/** One origin of a finding's failing values: who set them, through which transaction. */
+export interface RootCauseOrigin {
+  origin: "interface" | "dialog" | "migration" | "unknown";
+  username: string;
+  tcode: string;
+  records: number;
+  /** Percent of the analysed failing records. */
+  share: number;
+}
+
+/** Root cause by origin of one check's failing records, from SAP change documents. */
+export interface FindingRootCause {
+  version_id: string;
+  check_id: string;
+  status: "computed" | "not_applicable" | "unavailable" | "not_computed";
+  field: string | null;
+  analysed: number;
+  total: number;
+  origins: RootCauseOrigin[];
+  summary: string;
+  detail: string;
+}
+
+export async function getFindingRootCause(versionId: string, checkId: string): Promise<FindingRootCause> {
+  const { data } = await apiClient.get(
+    `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/root-cause`);
   return data;
 }

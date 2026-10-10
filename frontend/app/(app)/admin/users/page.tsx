@@ -5,13 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { getAuditEntries, type AuditEntry } from "@/lib/api/audit";
-import { downloadBlob } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
+import { apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -52,7 +51,6 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <header>
-        <strong className="text-[17px]">Users and audit</strong>
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
       </header>
       <Tabs
@@ -120,12 +118,13 @@ function UsersView() {
   return (
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" })))}
-        >
-          Export users
-        </Button>
+        <ExportMenu
+          options={[{
+            format: "csv",
+            label: "Export users",
+            run: async () => downloadCsv("meridian-users.csv", users.map((u) => ({ name: u.name, email: u.email, role: u.role, active: u.is_active, last_login: u.last_login ?? "" }))),
+          }]}
+        />
         <Button onClick={() => setInvite(true)}>Invite user</Button>
       </div>
 
@@ -215,9 +214,12 @@ function AuditView() {
   return (
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end">
-        <Button variant="secondary" onClick={() => downloadBlob("/api/v1/audit/export", {}, "audit_log.csv").catch((e) => toast.error(apiErrorMessage(e)))}>
-          Export audit log
-        </Button>
+        <ExportMenu
+          options={[
+            { format: "xlsx", run: () => exportAuditEntries("xlsx") },
+            { format: "csv", run: () => exportAuditEntries("csv") },
+          ]}
+        />
       </div>
       {auditQ.isError ? (
         <ErrorState message={(auditQ.error as Error)?.message || "Could not load the audit log."} onRetry={() => auditQ.refetch()} />

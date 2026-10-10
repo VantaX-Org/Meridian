@@ -24,7 +24,7 @@ describe("admin licence page", () => {
   it("shows a retryable error when the licence fails to load", async () => {
     const spy = vi.spyOn(licenceApi, "getLicenceManifest").mockRejectedValue(new Error("network down"));
     renderWithQuery(<AdminLicencePage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getAllByRole("button", { name: /retry/i })[0];
     spy.mockResolvedValue(MANIFEST);
     retry.click();

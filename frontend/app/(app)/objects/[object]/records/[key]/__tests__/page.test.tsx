@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master", key: "100001" }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const material: materialsApi.Material360 = {
   matnr: "100001",
@@ -79,6 +80,6 @@ describe("RecordFixSheetPage", () => {
       matnr: "100001", algorithm: "exact", threshold: 1, source: "makt", items: [],
     });
     renderWithQuery(<RecordFixSheetPage />);
-    await waitFor(() => expect(screen.getByText(/couldn't load/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 });

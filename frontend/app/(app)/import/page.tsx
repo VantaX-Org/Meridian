@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, Mono, Pill, Stat, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";
@@ -213,7 +213,17 @@ export default function ImportPage() {
         {versions.length || recent.isLoading ? (
           <DataTable columns={columns} data={versions} getRowId={(v) => v.id} />
         ) : (
-          <EmptyState title="Nothing imported yet. Every import becomes a version you can analyse, compare and set as a baseline." />
+          <EmptyState
+            title="No imports yet."
+            detail="Drop a CSV, XLSX, JSON or Parquet export here to create a run."
+            action={
+              canUpload ? (
+                <Button variant="secondary" onClick={() => inputRef.current?.click()}>
+                  Choose file
+                </Button>
+              ) : undefined
+            }
+          />
         )}
       </div>
     </div>

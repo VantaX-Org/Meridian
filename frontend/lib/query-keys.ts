@@ -30,17 +30,22 @@ export const queryKeys = {
   remediationBatch: (id: string) => ["remediation", "batch", id] as const,
   remediationEvents: (id: string) => ["remediation", "events", id] as const,
   remediationMonitor: () => ["remediation", "monitor"] as const,
+  remediationDiff: (id: string) => ["remediation", "diff", id] as const,
+  remediationPackages: (id: string) => ["remediation", "packages", id] as const,
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,
   systems: () => ["systems"] as const,
   migrationWaves: () => ["migration", "waves"] as const,
   migrationCockpit: (waveId: string) => ["migration", "cockpit", waveId] as const,
   migrationGaps: (runId: string, filter: Record<string, unknown>) =>
     ["migration", "gaps", runId, normalizeFilters(filter)] as const,
+  migrationDryRun: (runId: string, filter: Record<string, unknown>) =>
+    ["migration", "dry-run", runId, normalizeFilters(filter)] as const,
+  migrationRun: (runId: string) => ["migration", "run", runId] as const,
   migrationFieldMap: (module: string, destType: string) => ["migration", "field-map", module, destType] as const,
   migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
-  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
+  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
   triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,
@@ -102,9 +107,12 @@ export const queryKeys = {
   configLoadJobId: (systemId: string) => ["config-load-job-id", systemId] as const,
   configLoadJob: (jobId: string | null) => ["config-load-job", jobId] as const,
   configLoad: (systemId: string) => ["config-load", systemId] as const,
+  configCompare: (systemId: string, object?: string) => ["config-compare", systemId, object ?? ""] as const,
+  findingContext: (ruleId: string, run: string) => ["finding-context", ruleId, run] as const,
   configLandscape: () => ["config-landscape"] as const,
   versionsList: (filters: Record<string, unknown>) => ["versions-list", normalizeFilters(filters)] as const,
   rules: (filters: Record<string, unknown>) => ["rules", normalizeFilters(filters)] as const,
+  learnedRules: (filters: Record<string, unknown>) => ["learned-rules", normalizeFilters(filters)] as const,
   rulesSummary: () => ["rules", "summary"] as const,
   ruleDetail: (ruleId: string) => ["rule-detail", ruleId] as const,
   ruleApplicability: (module: string, checkId: string) => ["rule-applicability", module, checkId] as const,
@@ -125,6 +133,12 @@ export const queryKeys = {
   contractCompliance: (id: string) => ["contract-compliance", id] as const,
   scoringSettings: () => ["scoring-settings"] as const,
   findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
+  scoreHistory: (systemId?: string) => ["score-history", systemId ?? ""] as const,
+  ruleHistory: (ruleId: string) => ["rule-history", ruleId] as const,
+  ruleHistoryBatch: (versionId: string, module: string) => ["rule-history-batch", versionId, module] as const,
+  versionProfileByVersion: (versionId: string, object?: string) => ["version-profile-by-version", versionId, object ?? ""] as const,
+  finding: (findingId: string, versionId?: string | null) => ["finding", findingId, versionId ?? ""] as const,
+  findingImpact: (findingId: string) => ["finding-impact", findingId] as const,
   exceptionBilling: (period: string) => ["exception-billing", period] as const,
   pilotScorecard: (systemId: string) => ["pilot-scorecard", systemId] as const,
   systemObjects: (systemId: string) => ["system-objects", systemId] as const,
@@ -137,6 +151,8 @@ export const queryKeys = {
   designCoverage: (systemId: string) => ["design-coverage", systemId] as const,
   designSnapshots: (systemId: string) => ["design-snapshots", systemId] as const,
   designDiff: (systemId: string, a: string, b: string) => ["design-diff", systemId, a, b] as const,
+  owners: (kind: string) => ["owners", kind] as const,
+  ruleLineage: (checkId: string) => ["rule-lineage", checkId] as const,
   alertChannels: () => ["alert-channels"] as const,
 };
 
@@ -179,6 +195,10 @@ export type TouchedEntity =
   | "contract-compliance"
   | "scoring-settings"
   | "findings-aggregate"
+  | "score-history"
+  | "rule-history"
+  | "finding"
+  | "finding-impact"
   | "exception-billing"
   | "pilot-scorecard"
   | "system-objects"

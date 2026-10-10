@@ -23,10 +23,12 @@ import {
   type PillTone,
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
 import { formatModuleName, formatDate } from "@/lib/format";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type {
   BusinessProcessL1, BusinessProcessL3, BusinessProcessL4, BusinessProcessL5Field, ConfigImpactResult,
@@ -189,6 +191,7 @@ function FeaturesList({ results }: { results: ConfigImpactResult[] }) {
 }
 
 function ReadinessView() {
+  const dayOne = useDayOne();
   const { latest, isLoading: versionsLoading, error: versionsError, refetch: refetchVersions } = useLatestVersion();
   const modules = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const [objectChoice, setObject] = useState("");
@@ -222,11 +225,11 @@ function ReadinessView() {
   const processes = bp.data ?? [];
   const l1 = processes.find((p) => p.l1_id === l1Choice) ?? processes[0];
 
-  if (versionsLoading || bp.isLoading) return <Skeleton height={240} />;
+  if (versionsLoading || bp.isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
   if (versionsError) return <ErrorState message={versionsError.message} onRetry={() => void refetchVersions()} />;
   if (!latest) {
-    return <EmptyState title="Readiness is read from the latest completed analysis. Sync a system and run an analysis."
-      action={<Link href="/data" className="underline">Open sync</Link>} />;
+    return <EmptyState title="No process readiness yet." detail={dayOne.step?.detail ?? "Readiness is read from the latest completed analysis. Sync a system and run an analysis."}
+      action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
   }
 
   const objectPicker = (
@@ -378,6 +381,7 @@ const READINESS_LABEL: Record<MiningVariant["readiness"], string> = { green: "Re
 const MAPPED = new Set(["accounts_payable", "accounts_receivable", "fi_gl", "material_master", "mm_purchasing", "sd_customer_master", "sd_sales_orders"]);
 
 function MapView() {
+  const dayOne = useDayOne();
   const { latest, isLoading, error, refetch } = useLatestVersion();
   const router = useRouter();
   const pathname = usePathname();
@@ -413,11 +417,12 @@ function MapView() {
     id: `${t.from}-${t.to}-${i}`, source: t.from, target: t.to, label: t.weight.toLocaleString(),
   })), [graphQ.data]);
 
-  if (isLoading) return <Skeleton height={240} />;
-  if (error) return <ErrorState message={error.message} onRetry={() => void refetch()} />;
+  if (isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
+  if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={() => void refetch()} />;
   if (!latest) {
     return <EmptyState title="The map is mined from a completed analysis. Sync a system and run an analysis to see its process."
-      action={<Link href="/data" className="underline">Open sync</Link>} />;
+      detail={dayOne.step?.detail}
+      action={<DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Open systems" />} />;
   }
   if (!modules.length) {
     return <EmptyState title="This analysis has no object with a process map. Analyse a purchasing, sales, vendor, customer, material or G/L object to see one." />;

@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timezone
 import logging
 import os
+import threading
+import time
 import traceback
 
 import pandas as pd
@@ -23,6 +25,36 @@ from workers.celery_app import celery_app
 from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.worker")
+
+PROGRESS_THROTTLE_S = 5
+HEARTBEAT_S = 30
+
+
+def throttled(fn, interval: float = PROGRESS_THROTTLE_S):
+    """Wrap ``fn`` so it runs at most once per ``interval`` s (time.monotonic)."""
+    last = [float("-inf")]
+
+    def wrapper(*a):
+        now = time.monotonic()
+        if now - last[0] >= interval:
+            last[0] = now
+            fn(*a)
+    return wrapper
+
+
+def start_heartbeat(version_id: str, last: dict, stop: threading.Event, interval: float = HEARTBEAT_S) -> threading.Thread:
+    """Re-publish the last progress payload every ``interval`` s so job ``updated_at`` stays fresh
+    through one long rule. Non-fatal: UX only."""
+    def beat() -> None:
+        while not stop.wait(interval):
+            try:
+                if last:
+                    update_task_progress(version_id, **last)
+            except Exception as exc:
+                logger.warning("progress heartbeat failed: %s", exc)
+    t = threading.Thread(target=beat, daemon=True, name="run-progress-heartbeat")
+    t.start()
+    return t
 
 # One row per tenant, system (NULL = file upload), module and UTC day; the latest run of the
 # day wins. Conflict target = uq_dqs_history_tenant_system_module_day (migration 067).
@@ -312,6 +344,9 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         step_number=check_step_num,
         total_steps=TOTAL_STEPS,
     )
+    last_progress: dict = {"current_step": check_step_name, "step_number": check_step_num, "total_steps": TOTAL_STEPS}
+    hb_stop = threading.Event()
+    start_heartbeat(version_id, last_progress, hb_stop)
 
     try:
         # Step 3: Load the dataset (extraction bundle or flat upload).
@@ -467,18 +502,22 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # even for a single-module run with 2000 rows.
             rows_done_before = int((idx / module_count) * row_count)
             record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
-            update_task_progress(
-                version_id,
-                current_step=f"{check_step_name} — {module_name}",
-                step_number=check_step_num,
-                total_steps=TOTAL_STEPS,
-                rows_processed=rows_done_before,
-                total_rows=row_count,
-            )
+            def publish_rule(done, total, rule_id, idx=idx, module_name=module_name):
+                last_progress.update(
+                    current_step=f"{check_step_name} — {module_name} · rule {done}/{total} · {rule_id}",
+                    rows_processed=int((idx + done / max(total, 1)) / module_count * row_count))
+                update_task_progress(version_id, **last_progress)
+
+            on_rule = throttled(publish_rule)
+
+            last_progress.update(current_step=f"{check_step_name} — {module_name}",
+                                 rows_processed=rows_done_before, total_rows=row_count)
+            update_task_progress(version_id, **last_progress)
             results = execute_checks(module_name, frames, tenant_id, reference_values=live_refs,
                                      overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
                                      cost_model=cost_model, as_of=as_of,
-                                     sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"))
+                                     sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"),
+                                     on_progress=on_rule)
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames.clear_cache()
@@ -498,14 +537,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
             record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
-            update_task_progress(
-                version_id,
-                current_step=f"{check_step_name} — {module_name}",
-                step_number=check_step_num,
-                total_steps=TOTAL_STEPS,
-                rows_processed=rows_done_after,
-                total_rows=row_count,
-            )
+            last_progress.update(current_step=f"{check_step_name} — {module_name}", rows_processed=rows_done_after)
+            update_task_progress(version_id, **last_progress)
+
+        hb_stop.set()  # checks stage over; later stages publish their own progress
 
         # Step 6c: Z-table (customer-namespace) rules. The standard rule
         # packs target SAP-delivered tables only; customers with heavy
@@ -935,22 +970,32 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         except Exception as e:
             logger.warning(f"Failed to enqueue run_exception_scan (non-fatal): {e}")
 
-        # Enqueue mining — dedup / anomaly / relationship (non-blocking).
+        # Enqueue proven-cost metrics (non-blocking — failure is non-fatal)
+        try:
+            from workers.tasks.compute_proven_cost import compute_proven_cost
+            compute_proven_cost.delay(version_id, tenant_id, parquet_path)
+            logger.info(f"Enqueued compute_proven_cost for version_id={version_id}")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue compute_proven_cost (non-fatal): {e}")
+
+        # Enqueue mining — dedup / match / anomaly / relationship (non-blocking).
         # Mirrors the run_cleaning fan-out: each module's mining runs against
-        # the same uploaded parquet and writes data_duplicates / data_anomalies
-        # / data_relationships, which back the Dedup, Mining and Relationships
-        # pages. Previously nothing enqueued these, so those pages stayed empty.
-        # Failure is non-fatal — it must never block analysis completion.
+        # the same uploaded parquet and writes data_duplicates / match_scores /
+        # data_anomalies / data_relationships, which back the Dedup, merge queue,
+        # Mining and Relationships pages. run_match returns at once for modules
+        # it does not match. Failure is non-fatal — it must never block analysis completion.
         try:
             from workers.tasks.mining.dedup import run_dedup
             from workers.tasks.mining.anomaly import run_anomaly
             from workers.tasks.mining.relationship import run_relationship
+            from workers.tasks.run_match import run_match
             for module_name in data_modules:
                 run_dedup.delay(version_id, tenant_id, module_name, parquet_path)
+                run_match.delay(version_id, tenant_id, module_name, parquet_path)
                 run_anomaly.delay(version_id, tenant_id, module_name, parquet_path)
                 run_relationship.delay(version_id, tenant_id, module_name, parquet_path)
             logger.info(
-                f"Enqueued mining (dedup/anomaly/relationship) for "
+                f"Enqueued mining (dedup/match/anomaly/relationship) for "
                 f"version_id={version_id}, modules={modules}"
             )
         except Exception as e:
@@ -972,6 +1017,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         except Exception as e:
             logger.warning(f"Failed to enqueue build_golden_records (non-fatal): {e}")
 
+        # Root cause by origin from SAP change documents (non-blocking, non-fatal; skips uploads)
+        try:
+            from workers.tasks.root_cause import root_cause_findings
+            root_cause_findings.delay(version_id, tenant_id)
+        except Exception as e:
+            logger.warning(f"Failed to enqueue root_cause_findings (non-fatal): {e}")
+
         return {"version_id": version_id, "status": "complete", "findings_count": len(all_results)}
 
     except Exception as e:
@@ -979,3 +1031,5 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         logger.error(f"run_checks failed: {traceback.format_exc()}")
         _mark_failed(engine, tenant_id, version_id, str(e) or e.__class__.__name__)
         raise
+    finally:
+        hb_stop.set()

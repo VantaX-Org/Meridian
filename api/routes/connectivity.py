@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -174,19 +175,13 @@ async def start_config_load(
 ):
     """Load all configuration of the system in one job (every module), then derive the process flows.
     Read only. Call it right after a successful test connection; poll ``GET /api/v1/jobs/{job_id}``."""
-    from workers.tasks.run_load_config import run_load_config
+    from api.services.config_pairing import enqueue_config_load
 
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
-    row = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = :sid AND tenant_id = :tid"),
-                            {"sid": body.system_id, "tid": str(tenant.id)})).fetchone()
-    if not row:
+    out = await enqueue_config_load(db, str(tenant.id), body.system_id, force=True)
+    if out is None:
         raise HTTPException(404, "System not found")
-    load_id = str(uuid.uuid4())
-    job_id = f"cfgload-{load_id}"
-    jobs.start_job(str(tenant.id), job_id, "config_load", f"Configuration load: {row[0]}", status="queued",
-                   system_id=body.system_id, load_id=load_id)
-    run_load_config.apply_async(args=(str(tenant.id), body.system_id, load_id, job_id), task_id=load_id)
-    return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": row[0]}
+    return out
 
 
 @router.get("/config-load", response_model=LandscapeConfigStatus)
@@ -204,7 +199,7 @@ async def list_config_status(
     rows = (await db.execute(text(
         "SELECT s.id::text, s.name, s.system_type, l.id::text, l.status, l.objects, l.error, l.finished_at::text "
         "FROM sap_systems s LEFT JOIN LATERAL (SELECT id, status, objects, error, finished_at FROM config_loads c "
-        "WHERE c.tenant_id = :tid AND c.system_id = s.id AND c.role = 'source' ORDER BY c.created_at DESC LIMIT 1) l "
+        "WHERE c.tenant_id = :tid AND c.system_id = s.id ORDER BY c.created_at DESC LIMIT 1) l "
         "ON true WHERE s.tenant_id = :tid AND s.is_active ORDER BY s.name"), {"tid": tid})).fetchall()
     out = []
     for sid, name, st, lid, lstatus, objects, error, finished in rows:
@@ -226,7 +221,7 @@ async def list_config_status(
 @router.get("/config-load/{system_id}")
 async def get_config_load(
     system_id: str,
-    role: str = "source",
+    role: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -237,7 +232,8 @@ async def get_config_load(
     r = (await db.execute(
         text("SELECT id::text, system_type, role, origin, status, objects, history, error, created_at::text, "
              "finished_at::text, derivation IS NOT NULL FROM config_loads "
-             "WHERE tenant_id = :tid AND system_id = :sid AND role = :role ORDER BY created_at DESC LIMIT 1"),
+             "WHERE tenant_id = :tid AND system_id = :sid AND (CAST(:role AS text) IS NULL OR role = :role) "
+             "ORDER BY created_at DESC LIMIT 1"),
         {"tid": str(tenant.id), "sid": system_id, "role": role})).fetchone()
     if not r:
         raise HTTPException(404, "No configuration load for this system")
@@ -265,7 +261,7 @@ async def get_config_load(
 async def get_config_load_items(
     system_id: str,
     object: str,
-    role: str = "source",
+    role: Optional[str] = None,
     limit: int = 500,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
@@ -275,7 +271,8 @@ async def get_config_load_items(
     rows = (await db.execute(
         text("SELECT i.key, i.\"values\" FROM config_items i WHERE i.tenant_id = :tid AND i.object = :obj "
              "AND i.load_id = (SELECT id FROM config_loads WHERE tenant_id = :tid AND system_id = :sid "
-             "AND role = :role AND status = 'completed' ORDER BY created_at DESC LIMIT 1) "
+             "AND (CAST(:role AS text) IS NULL OR role = :role) AND status = 'completed' "
+             "ORDER BY created_at DESC LIMIT 1) "
              "ORDER BY i.key LIMIT :lim"),
         {"tid": str(tenant.id), "sid": system_id, "obj": object, "role": role,
          "lim": max(1, min(limit, 5000))})).fetchall()

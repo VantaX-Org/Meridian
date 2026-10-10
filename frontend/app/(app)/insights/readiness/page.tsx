@@ -4,9 +4,12 @@
 import { Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -23,6 +26,7 @@ const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = {
 export default function ReadinessPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
+  const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("readiness", run),
@@ -30,13 +34,23 @@ export default function ReadinessPage() {
   });
 
   let state: "loading" | "empty" | "error" | undefined;
-  if (isLoading) {
+  if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isError) {
+  } else if (isListFailure({ isError, error })) {
     state = "error";
   } else if (data && data.cells.length === 0) {
     state = "empty";
   }
+
+  const emptyTitle = data && !data.configured
+    ? "Readiness waves not set."
+    : "No readiness data for this run yet.";
+  const emptyDetail = data && !data.configured
+    ? "Set readiness waves under Settings > Alert Thresholds."
+    : dayOne.step?.detail;
+  const emptyAction = data && !data.configured
+    ? <Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />
+    : <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />;
 
   const modules = Array.from(new Set(data?.cells.map((c) => c.module) ?? []));
   const waves = Array.from(new Set(data?.cells.map((c) => c.wave) ?? []));
@@ -93,9 +107,9 @@ export default function ReadinessPage() {
         </table>
       }
       state={state}
-      emptyProps={{ title: "No readiness data for this run yet." }}
+      emptyProps={{ title: emptyTitle, detail: emptyDetail, action: emptyAction, ghost: "grid" }}
       errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load readiness. Try again.",
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

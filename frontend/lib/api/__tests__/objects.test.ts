@@ -25,7 +25,7 @@ describe("objects.ts", () => {
     mockedGet.mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, {
       status: 404, statusText: "Not Found", data: { detail: "No completed run yet" }, headers: {}, config: {} as never,
     }));
-    await expect(getObjects("latest")).resolves.toEqual({ run_id: "", objects: [] });
+    await expect(getObjects("latest")).resolves.toEqual({ run_id: null, objects: [] });
   });
 
   it("getObjects still throws on a server error", async () => {

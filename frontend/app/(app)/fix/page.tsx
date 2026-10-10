@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Mono, Pill, Tabs } from "@/design";
-import { getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
+import { DataTable, ExplorerPage, ExportMenu, Mono, Pager, Pill, Tabs, emptyExportOptions } from "@/design";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -31,24 +33,42 @@ const columns: ColumnDef<CleaningBatchSummary>[] = [
 
 function CleaningQueueTab() {
   const router = useRouter();
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: queryKeys.batch("list"),
-    queryFn: () => getCleaningQueue({ per_page: 500 }),
+  const dayOne = useDayOne();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: [...queryKeys.batch("list"), page],
+    queryFn: () => getCleaningQueue({ per_page: 100, page }),
   });
   const batches = useMemo(() => groupIntoBatches(data?.items ?? []), [data]);
+  const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / 100));
+  // N2: these call downloadCleaningExport, a plain cleaning-queue export — not the
+  // remediation cockpit workbook or a real mass-change CSV. Labelling them "Cockpit"
+  // / "Mass change CSV" was misleading on files meant for direct SAP reimport.
+  const exportOptions = [
+    { format: "xlsx" as const, label: "Approved fixes (.xlsx)", run: () => downloadCleaningExport("xlsx", "approved") },
+    { format: "csv" as const, label: "Approved fixes (.csv)", run: () => downloadCleaningExport("csv", "approved") },
+  ];
 
   return (
     <ExplorerPage
-      state={isLoading ? "loading" : isError ? "error" : batches.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No batches yet" }}
-      errorProps={{ message: "Could not load the fix queue.", onRetry: refetch }}
+      state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : batches.length === 0 ? "empty" : undefined}
+      emptyProps={{
+        title: "No cleaning proposals.",
+        detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",
+        action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
+      summary={<ExportMenu options={batches.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
-        <DataTable
-          columns={columns}
-          data={batches}
-          getRowId={(row) => row.batch_id}
-          onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
-        />
+        <div className="flex flex-col gap-3">
+          <DataTable
+            columns={columns}
+            data={batches}
+            getRowId={(row) => row.batch_id}
+            onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
+          />
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} onPageChange={setPage} />}
+        </div>
       }
     />
   );

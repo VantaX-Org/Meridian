@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, Field, Select } from "@/design";
 import { getGlossaryTerms } from "@/lib/api/glossary";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { GlossaryTermSummary } from "@/types/api";
 
@@ -39,7 +40,7 @@ export default function GlossaryPage() {
         domain: domain === "all" ? undefined : domain,
         status: status === "all" ? undefined : status,
         search: search || undefined,
-        per_page: 200,
+        per_page: 100,
       }),
   });
 
@@ -50,7 +51,8 @@ export default function GlossaryPage() {
     return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: d }))];
   }, [terms]);
 
-  const state = query.isLoading ? "loading" : query.isError ? "error" : terms.length === 0 ? "empty" : undefined;
+  const state = query.isLoading ? "loading" : isListFailure(query) ? "error" : terms.length === 0 ? "empty" : undefined;
+  const filtered = domain !== "all" || status !== "all" || !!search;
 
   return (
     <ExplorerPage
@@ -82,9 +84,12 @@ export default function GlossaryPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No glossary terms match these filters." }}
+      emptyProps={{
+        title: filtered ? "No glossary terms match these filters." : "No terms yet.",
+        detail: filtered ? undefined : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
+      }}
       errorProps={{
-        message: query.error instanceof Error ? query.error.message : "Could not load the glossary.",
+        message: apiErrorMessage(query.error),
         onRetry: () => query.refetch(),
       }}
     />

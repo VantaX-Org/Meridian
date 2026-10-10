@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 /**
  * Steward inbox: every open stewardship task in one list. Ports the legacy
  * workbench inbox's data wiring (views, sorts, assign, resolve, escalate,
@@ -12,10 +13,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, Field, Pill, Select, Stat, toastManager, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
+import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
@@ -30,9 +32,11 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { getUnreadCount } from "@/lib/api/notifications";
+import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const HOUR = 3_600_000;
@@ -87,6 +91,7 @@ export default function InboxPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { can } = useRole();
+  const dayOne = useDayOne();
   // Backend guards (api/routes/stewardship.py): resolve, assign and bulk approve need `approve`; escalate needs `view`.
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
@@ -118,8 +123,8 @@ export default function InboxPage() {
   const unreadQ = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 30_000 });
 
   const excQ = useQuery({
-    queryKey: queryKeys.inbox({ kind: "exception", per_page: 200 }),
-    queryFn: () => getExceptions({ per_page: 200 }),
+    queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
+    queryFn: () => getExceptions({ per_page: 100 }),
     refetchInterval: 60_000,
     enabled: isExceptions,
   });
@@ -127,7 +132,11 @@ export default function InboxPage() {
   const excRulesQ = useQuery({ queryKey: queryKeys.exceptionRules(), queryFn: getExceptionRules, enabled: isExceptions && rulesOpen });
 
   const isLoading = queues.some((q) => q.isLoading);
-  const isError = queues.some((q) => q.isError);
+  // A 404 means no queue yet: that is the empty state, not an error.
+  const failedQueue = queues.find((q) => q.isError && !isNotFound(q.error));
+  const isError = !!failedQueue;
+  const excFailed = excQ.isError && !isNotFound(excQ.error);
+  const firstError = isExceptions ? excQ.error : failedQueue?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
@@ -188,8 +197,8 @@ export default function InboxPage() {
     void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
   }, [qc]);
   const done = useCallback((verb: string, r: { ok: number; failed: number }) => {
-    if (r.ok) toastManager.add({ title: `${verb} ${plural(r.ok, "task")}` });
-    if (r.failed) toastManager.add({ title: `${plural(r.failed, "task")} not ${verb.toLowerCase()}` });
+    if (r.ok) toast(`${verb} ${plural(r.ok, "task")}`);
+    if (r.failed) toast.error(`${plural(r.failed, "task")} not ${verb.toLowerCase()}`);
     refresh();
   }, [refresh]);
 
@@ -197,11 +206,11 @@ export default function InboxPage() {
     mutationFn: (ids: string[]) =>
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
-      toastManager.add({ title: `Approved ${plural(approved, "task")}` });
-      if (asked > approved) toastManager.add({ title: `${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review` });
+      toast(`Approved ${plural(approved, "task")}`);
+      if (asked > approved) toast(`${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review`);
       refresh();
     },
-    onError: (e) => toastManager.add({ title: (e as Error).message || "Not approved" }),
+    onError: (e) => toast.error((e as Error).message || "Not approved"),
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -213,7 +222,7 @@ export default function InboxPage() {
         if (t) await submitAiFeedback({ queue_item_id: id, steward_decision: "reject", correction_reason: why, domain: t.domain });
       }),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Rejected", r); },
-    onError: () => toastManager.add({ title: "Not rejected" }),
+    onError: () => toast.error("Not rejected"),
   });
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
@@ -239,7 +248,7 @@ export default function InboxPage() {
     mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) =>
       each(ids, (id) => resolveException(id, { resolution_type: "fixed", resolution_notes: why, root_cause_category: "other" })),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Resolved", r); },
-    onError: () => toastManager.add({ title: "Not resolved" }),
+    onError: () => toast.error("Not resolved"),
   });
   const busy = isExceptions
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
@@ -264,11 +273,11 @@ export default function InboxPage() {
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
     onSuccess: () => {
-      toastManager.add({ title: "Exception rule created" });
+      toast("Exception rule created");
       setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
       void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
-    onError: (e) => toastManager.add({ title: (e as Error).message || "Rule not created" }),
+    onError: (e) => toast.error((e as Error).message || "Rule not created"),
   });
   const toggleRule = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateExceptionRule(id, { is_active }),
@@ -340,9 +349,12 @@ export default function InboxPage() {
     },
   ], [excItems, focusedIndex, now, who, canApprove, canSeeTeam, busy, excEscalate, excAssign, user]);
 
+  // Hold "empty" for the all-tasks view until useDayOne() has resolved too —
+  // otherwise the generic "Inbox zero." copy flashes before the day-one step
+  // (which decides the real empty-state detail/action) is known.
   const state: "loading" | "empty" | "error" | undefined = isExceptions
-    ? excQ.isLoading ? "loading" : excQ.isError ? "error" : excItems.length === 0 ? "empty" : undefined
-    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? "empty" : undefined;
+    ? excQ.isLoading ? "loading" : excFailed ? "error" : excItems.length === 0 ? "empty" : undefined
+    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
     <div className="flex flex-wrap gap-2">
@@ -357,8 +369,24 @@ export default function InboxPage() {
   return (
     <ExplorerPage
       state={state}
-      emptyProps={{ title: isExceptions ? "No exceptions in this view." : all.length ? "No tasks in this view." : "Inbox zero." }}
-      errorProps={{ message: "The inbox could not be read.", onRetry: refresh }}
+      emptyProps={
+        isExceptions
+          ? (excQ.data?.exceptions.length ?? 0) === 0
+            ? {
+                title: "No exceptions.",
+                detail: "Exceptions are raised by exception rules on new findings.",
+                action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
+              }
+            : { title: "No exceptions in this view." }
+          : all.length === 0
+          ? {
+              title: "Inbox zero.",
+              detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
+              action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
+            }
+          : { title: "No tasks in this view." }
+      }
+      errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-6">
@@ -380,6 +408,15 @@ export default function InboxPage() {
             )}
           </div>
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
+          {!isExceptions && (
+            <ExportMenu
+              options={
+                items.length === 0
+                  ? emptyExportOptions([{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }])
+                  : [{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }]
+              }
+            />
+          )}
         </div>
       }
       filterBar={

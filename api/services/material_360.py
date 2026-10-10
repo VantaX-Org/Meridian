@@ -22,6 +22,8 @@ from typing import Any, Optional
 import pandas as pd
 import yaml
 
+from checks.frames import unprefix
+
 _ROOT = Path(__file__).resolve().parents[2]
 MODULE = "material_master"
 CHAIN_DEPTH = 3          # MM552 limit
@@ -95,11 +97,6 @@ def _rows(df: Optional[pd.DataFrame], table: str) -> list[dict]:
         return []
     cols = [c for c in _FIELDS[table] if c in df.columns]
     return [{c: (_d(r[c]) if c in _DATES else _s(r[c])) for c in cols} for r in df[cols].to_dict("records")]
-
-
-def unprefix(table: str, df: pd.DataFrame) -> pd.DataFrame:
-    """Frames hold ``TABLE.FIELD`` columns; this service works on plain field names."""
-    return df.rename(columns=lambda c: c.split(".", 1)[1] if str(c).startswith(f"{table}.") else c)
 
 
 def _for(tables: dict[str, pd.DataFrame], t: str, matnr: str, col: str = "MATNR") -> pd.DataFrame:

@@ -6,15 +6,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Pill, Sparkline, type PillTone } from "@/design";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
+import { exportRuns } from "@/lib/api/v1/runs";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { overallDqs, previousRunId, runSeries } from "@/lib/runs";
 import type { Version } from "@/types/api";
+import { isListFailure } from "@/lib/error";
 
 const STATUS_TONE: Record<string, PillTone> = {
   failed: "no-go",
@@ -78,6 +81,7 @@ function scopeName(scope: string, systemName: Map<string, string>): string {
 export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
+  const dayOne = useDayOne();
 
   const all = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions({ limit: 100 }) });
   const filtered = useQuery({
@@ -95,7 +99,7 @@ export default function RunsPage() {
   const rows = system ? filtered.data?.versions ?? [] : allVersions;
   const activeQuery = system ? filtered : all;
 
-  const state = activeQuery.isLoading ? "loading" : activeQuery.isError ? "error" : rows.length === 0 ? "empty" : undefined;
+  const state = activeQuery.isLoading ? "loading" : isListFailure(activeQuery) ? "error" : rows.length === 0 ? "empty" : undefined;
 
   const summary = series.length > 0 && (
     <div className="flex flex-wrap items-center gap-3">
@@ -119,8 +123,11 @@ export default function RunsPage() {
     </div>
   );
 
+  const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
+
   return (
     <ExplorerPage
+      toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={summary}
       table={
         <DataTable
@@ -146,8 +153,13 @@ export default function RunsPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No runs yet. Upload a file or connect a system to start a run." }}
-      errorProps={{ message: `Couldn't load runs. ${errorText(activeQuery.error)}`, onRetry: () => activeQuery.refetch() }}
+      emptyProps={{
+        title: "No runs yet.",
+        detail: dayOne.step?.detail ?? "Connect a system to start your first run.",
+        action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Connect a system" />,
+        ghost: "table",
+      }}
+      errorProps={{ message: errorText(activeQuery.error), onRetry: () => activeQuery.refetch() }}
     />
   );
 }

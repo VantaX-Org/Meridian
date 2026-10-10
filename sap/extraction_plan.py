@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import yaml
 
@@ -58,6 +58,44 @@ DISCOVERY_DATA = {"VBAK": {"AUART", "ERDAT"}, "VBRK": {"FKART", "FKDAT"}, "LIKP"
                   "EKKO": {"BSART", "BEDAT"}, "EBAN": {"BSART", "BADAT"}}
 DISCOVERY_CONFIG = {"TVAK": {"AUART"}, "T156": {"BWART"}, "TVLK": {"LFART"}, "TVFK": {"FKART"}}
 _DISCOVERY_TRIGGER = {"sd_sales_orders", "mm_purchasing", "accounts_payable", "accounts_receivable", "fi_gl"}
+
+# S/4 load dry-run analysis (extraction_registry.py: s4_load_sim module):
+# Key transactional and config tables needed for transaction cost analysis
+S4_LOAD_MODULE = "s4_load_sim"
+S4_LOAD_DATA: dict[str, set[str]] = {
+    "KNVK": {"PARNR", "KUNNR", "LIFNR", "NAME1"},
+    "KNKK": {"KUNNR", "KKBER", "KLIMK", "CTLPC"},
+    "MARD": {"MATNR", "WERKS", "LGORT", "DISKZ"},
+    "KONV": {"KNUMV", "KPOSN", "STUNR", "ZAEHK", "KSCHL", "KWERT"},
+    "NAST": {"KAPPL", "OBJKY", "KSCHL", "PARNR", "PARVW", "VSTAT"},
+}
+S4_LOAD_CONFIG: dict[str, set[str]] = {"T001L": {"WERKS", "LGORT", "DISKZ"}}
+_S4_LOAD_TRIGGER = {"business_partner", "accounts_payable", "accounts_receivable",
+                    "sd_customer_master", "material_master", "sd_sales_orders"}
+
+# Transaction-proven cost (extraction_registry.py: proven_cost module): the
+# transactional tables later tasks read to prove cost from live transactions,
+# plus the fields those tasks add beyond what the rule-derived plan already reads.
+PROVEN_COST_MODULE = "proven_cost"
+PROVEN_COST_DATA: dict[str, set[str]] = {
+    "EKKO": {"EBELN", "LIFNR", "BUKRS", "BEDAT", "WAERS"},
+    "EKPO": {"EBELN", "EBELP", "MATNR", "WERKS", "MENGE", "MEINS", "BPRME",
+             "NETPR", "PEINH", "NETWR", "INFNR"},
+    "EKET": {"EBELN", "EBELP", "ETENR", "EINDT", "MENGE", "WEMNG"},
+    "EKBE": {"BUDAT", "DMBTR", "MENGE", "BPMNG", "LFBNR"},
+    "EINA": {"INFNR", "MATNR", "LIFNR", "MEINS"},
+    "EINE": {"INFNR", "EKORG", "WERKS", "APLFZ", "NETPR", "PEINH"},
+    "MARC": {"MATNR", "WERKS", "PLIFZ"},
+    "MARM": {"MATNR", "MEINH", "UMREZ", "UMREN"},
+    "RSEG": {"BELNR", "GJAHR", "BUZEI", "EBELN", "EBELP", "MENGE", "BSTME", "WRBTR"},
+    "VBAK": {"NETWR", "WAERK", "LIFSK", "FAKSK", "KUNNR", "VKORG", "VTWEG", "SPART", "ERDAT"},
+    "VBUK": {"VBELN", "CMGST", "LFSTK", "GBSTK"},
+    "KNVV": {"KUNNR", "VKORG", "VTWEG", "SPART", "AUFSD", "LIFSD"},
+    "BSAK": {"BUKRS", "LIFNR", "GJAHR", "BELNR", "BUZEI", "XBLNR", "WRBTR",
+              "WAERS", "BLDAT", "AUGDT", "SHKZG", "BLART"},
+}
+_PROVEN_COST_TRIGGER = {"mm_purchasing", "material_master", "sd_sales_orders",
+                        "sd_customer_master", "accounts_payable"}
 
 
 @dataclass
@@ -239,6 +277,16 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
         for t, cols in DISCOVERY_CONFIG.items():
             add(t, set(cols), DISCOVERY_MODULE, purpose="config")
 
+    if _S4_LOAD_TRIGGER & set(modules):
+        for t, cols in S4_LOAD_DATA.items():
+            add(t, set(cols), S4_LOAD_MODULE)
+        for t, cols in S4_LOAD_CONFIG.items():
+            add(t, set(cols), S4_LOAD_MODULE, purpose="config")
+
+    if _PROVEN_COST_TRIGGER & set(modules):
+        for t, cols in PROVEN_COST_DATA.items():
+            add(t, set(cols), PROVEN_COST_MODULE)
+
     # config tables behind the derived process flows (full-table reads), per area module
     from sap.process_definitions import flow_config_tables
     for t, (cols, mods) in flow_config_tables().items():
@@ -314,6 +362,17 @@ def read_order(plans: dict[str, TablePlan]) -> list[str]:
     return done
 
 
+def in_lists(field: str, values: Iterable[str], chunk: int = 60) -> list[str]:
+    """``FIELD IN ('a','b',…)`` clauses of at most ``chunk`` values each. The values are stripped,
+    de-duplicated, sorted and quote-escaped. ``where_options`` then splits each clause into
+    OPTIONS lines of 72 characters or fewer."""
+    from sap.rfc import _literal
+
+    vals = sorted({str(v).strip() for v in values if str(v).strip()})
+    return [f"{field} IN (" + ",".join(_literal(v) for v in vals[i:i + chunk]) + ")"
+            for i in range(0, len(vals), chunk)]
+
+
 def via_filters(child: str, parent: str, parent_rows, chunk: int = 60) -> list[str]:
     """WHERE clauses selecting child rows of already-read parent rows (key IN-lists)."""
     edges, _ = _graph()
@@ -322,9 +381,7 @@ def via_filters(child: str, parent: str, parent_rows, chunk: int = 60) -> list[s
         return []
     # use the most selective single join field (document number) for IN-lists
     child_f, parent_f = max(edge.on, key=lambda cp: cp[1] not in ("BUKRS", "GJAHR", "LGNUM", "MANDT"))
-    values = sorted({str(v).strip() for v in parent_rows[parent_f].tolist() if str(v).strip()})
-    return [f"{child_f} IN (" + ",".join(f"'{v}'" for v in values[i:i + chunk]) + ")"
-            for i in range(0, len(values), chunk)]
+    return in_lists(child_f, parent_rows[parent_f].tolist(), chunk)
 
 
 def _is_config_table(dictionary: Dictionary, table: str) -> bool:

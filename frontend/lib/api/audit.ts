@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 
 export interface AuditEntry {
   id: string;
@@ -56,4 +57,9 @@ export async function getAuditSummary(): Promise<{
 }> {
   const { data } = await apiClient.get("/api/v1/audit/summary");
   return data;
+}
+
+/** GET /api/v1/audit/export — same filters as getAuditEntries, CSV or XLSX. */
+export function exportAuditEntries(format: "csv" | "xlsx", params?: AuditListParams): Promise<void> {
+  return downloadBlob("/api/v1/audit/export", { format, ...params }, `audit_log.${format}`);
 }

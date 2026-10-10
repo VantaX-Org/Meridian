@@ -6,7 +6,9 @@ All endpoints apply require_permission checks.
 
 import logging
 import re
-from typing import Optional
+import uuid
+from datetime import date
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -14,6 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.config_pairing import enqueue_config_load, pair_error
 from api.services.rbac import require_permission
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
@@ -47,6 +50,7 @@ class RegisterSystemRequest(BaseModel):
     username: Optional[str] = None
     # RFC: {"password": ...}. Cloud: {"client_id", "client_secret", "api_key", "password" (basic auth)}
     credentials: dict[str, str] = Field(default_factory=dict)
+    role: str = Field(default="source", pattern="^(source|target)$")
 
 
 class SystemResponse(BaseModel):
@@ -76,6 +80,8 @@ class SystemResponse(BaseModel):
     discovered_at: Optional[str] = None
     sap_release: Optional[str] = None
     last_analysis_at: Optional[str] = None
+    role: str = "source"
+    target_system_id: Optional[str] = None
 
 
 class UpdateSystemRequest(BaseModel):
@@ -90,7 +96,11 @@ class UpdateSystemRequest(BaseModel):
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
+    # migration cut-over: records created before it and never changed are migration-era (root cause)
+    go_live: Optional[date] = None
     credentials: dict[str, str] = Field(default_factory=dict)
+    role: Optional[str] = Field(default=None, pattern="^(source|target)$")
+    target_system_id: Optional[str] = None  # "" clears the target
 
 
 class TestConnectionResponse(BaseModel):
@@ -104,12 +114,15 @@ class CreateSyncProfileRequest(BaseModel):
     tables: list[str]
     schedule_cron: Optional[str] = None
     active: bool = True
+    # delta: re-read only what SAP's change documents say changed since the last download
+    extraction_mode: Literal["full", "delta"] = "full"
 
 
 class UpdateSyncProfileRequest(BaseModel):
     # "" clears the schedule (manual sync only)
     schedule_cron: Optional[str] = None
     active: Optional[bool] = None
+    extraction_mode: Optional[Literal["full", "delta"]] = None
 
 
 class SyncProfileResponse(BaseModel):
@@ -121,6 +134,7 @@ class SyncProfileResponse(BaseModel):
     active: bool
     last_run_at: Optional[str]
     next_run_at: Optional[str]
+    extraction_mode: str = "full"
 
 
 class SyncRunResponse(BaseModel):
@@ -171,11 +185,11 @@ async def register_system(
         text("""
             INSERT INTO sap_systems (
                 id, tenant_id, name, system_type, host, client, sysnr, username,
-                base_url, company_id, auth_type, token_url, description, environment
+                base_url, company_id, auth_type, token_url, description, environment, role
             )
             VALUES (
                 gen_random_uuid(), :tid, :name, :system_type, :host, :client, :sysnr, :username,
-                :base_url, :company_id, :auth_type, :token_url, :description, :environment
+                :base_url, :company_id, :auth_type, :token_url, :description, :environment, :role
             )
             RETURNING id, name, system_type, host, client, sysnr, username, base_url, company_id,
                       auth_type, description, environment, is_active,
@@ -195,6 +209,7 @@ async def register_system(
             "token_url": body.token_url,
             "description": body.description,
             "environment": body.environment,
+            "role": body.role,
         },
     )
     row = result.fetchone()
@@ -231,6 +246,7 @@ async def register_system(
         )
 
     await db.commit()
+    await enqueue_config_load(db, str(tenant.id), system_id)  # config on connect; never fails the register
     # Learn the source system's design straight away (DDIC, Z-objects,
     # configuration). A connection failure is recorded on the snapshot.
     enqueue_discovery(str(tenant.id), system_id)
@@ -251,6 +267,7 @@ async def register_system(
         is_active=row[12],
         created_at=row[13],
         updated_at=row[14],
+        role=body.role,
     )
 
 
@@ -280,7 +297,8 @@ async def list_systems(
                     ORDER BY sr.started_at DESC LIMIT 1) as last_sync_status,
                    s.discovery_status, s.discovered_at::text, s.sap_release,
                    (SELECT max(v.run_at)::text FROM analysis_versions v
-                    WHERE v.metadata->>'system_id' = s.id::text AND v.status = 'complete') AS last_analysis_at
+                    WHERE v.metadata->>'system_id' = s.id::text AND v.status = 'complete') AS last_analysis_at,
+                   s.role, s.target_system_id::text
             FROM sap_systems s
             WHERE s.tenant_id = :tid
             ORDER BY s.created_at DESC
@@ -299,6 +317,7 @@ async def list_systems(
             config_last_synced_at=r[18], config_sync_status=r[19],
             last_sync_at=r[20], last_sync_status=r[21],
             discovery_status=r[22], discovered_at=r[23], sap_release=r[24], last_analysis_at=r[25],
+            role=r[26], target_system_id=r[27],
         )
         for r in rows
     ]
@@ -351,6 +370,31 @@ async def update_system(
     if body.is_active is not None:
         set_parts.append("is_active = :is_active")
         updates["is_active"] = body.is_active
+    if body.go_live is not None:
+        set_parts.append("go_live = :go_live")
+        updates["go_live"] = body.go_live
+    if body.role is not None:
+        set_parts.append("role = :role")
+        updates["role"] = body.role
+        if body.role == "target":
+            set_parts.append("target_system_id = NULL")  # a target has no target of its own
+    if body.target_system_id is not None and body.role != "target":
+        if body.target_system_id == "":
+            set_parts.append("target_system_id = NULL")
+        else:
+            try:
+                uuid.UUID(body.target_system_id)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="The assigned system must have the target role.")
+            roles = (await db.execute(text(
+                "SELECT (SELECT role FROM sap_systems WHERE id = CAST(:sid AS uuid) AND tenant_id = :tid), "
+                "(SELECT role FROM sap_systems WHERE id = CAST(:tgt AS uuid) AND tenant_id = :tid)"),
+                {"sid": system_id, "tgt": body.target_system_id, "tid": str(tenant.id)})).one()
+            msg = pair_error(body.role or roles[0] or "source", roles[1] or "", body.target_system_id == system_id)
+            if msg:
+                raise HTTPException(status_code=400, detail=msg)
+            set_parts.append("target_system_id = CAST(:tgt AS uuid)")
+            updates["tgt"] = body.target_system_id
 
     if set_parts:
         set_parts.append("updated_at = now()")
@@ -359,6 +403,12 @@ async def update_system(
         await db.execute(
             text(f"UPDATE sap_systems SET {', '.join(set_parts)} WHERE id = :sid AND tenant_id = :tid"),
             updates,
+        )
+    if body.role == "source":  # no source may keep pointing at a system that is no longer a target
+        await db.execute(
+            text("UPDATE sap_systems SET target_system_id = NULL "
+                 "WHERE target_system_id = CAST(:sid AS uuid) AND tenant_id = :tid"),
+            {"sid": system_id, "tid": str(tenant.id)},
         )
 
     # Update credentials if provided
@@ -398,7 +448,7 @@ async def update_system(
         text("""
             SELECT id, name, system_type, host, client, sysnr, username, base_url, company_id,
                    auth_type, description, environment, is_active,
-                   created_at::text, updated_at::text
+                   created_at::text, updated_at::text, role, target_system_id::text
             FROM sap_systems WHERE id = :sid AND tenant_id = :tid
         """),
         {"sid": system_id, "tid": str(tenant.id)},
@@ -411,7 +461,7 @@ async def update_system(
         id=str(row[0]), name=row[1], system_type=row[2], host=row[3], client=row[4],
         sysnr=row[5], username=row[6], base_url=row[7], company_id=row[8], auth_type=row[9],
         description=row[10], environment=row[11], is_active=row[12],
-        created_at=row[13], updated_at=row[14],
+        created_at=row[13], updated_at=row[14], role=row[15], target_system_id=row[16],
     )
 
 
@@ -570,6 +620,8 @@ async def test_connection(
     result = _run_connection_test(system_type, params, [password, client_secret, api_key])
     if result.connected and not discovery_status:
         enqueue_discovery(str(tenant.id), system_id)  # first successful connect → learn the design
+    if result.connected:
+        await enqueue_config_load(db, str(tenant.id), system_id)  # no-op once a load exists
     return result
 
 
@@ -638,10 +690,10 @@ async def create_sync_profile(
 
     result = await db.execute(
         text("""
-            INSERT INTO sync_profiles (id, tenant_id, system_id, domain, tables, schedule_cron, active)
-            VALUES (gen_random_uuid(), :tid, :sid, :domain, :tables, :cron, :active)
+            INSERT INTO sync_profiles (id, tenant_id, system_id, domain, tables, schedule_cron, active, extraction_mode)
+            VALUES (gen_random_uuid(), :tid, :sid, :domain, :tables, :cron, :active, :mode)
             RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text
+                      last_run_at::text, next_run_at::text, extraction_mode
         """),
         {
             "tid": str(tenant.id),
@@ -650,6 +702,7 @@ async def create_sync_profile(
             "tables": body.tables,
             "cron": body.schedule_cron,
             "active": body.active,
+            "mode": body.extraction_mode,
         },
     )
     row = result.fetchone()
@@ -658,7 +711,7 @@ async def create_sync_profile(
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
         tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7],
+        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
     )
 
 
@@ -675,7 +728,7 @@ async def list_sync_profiles(
     result = await db.execute(
         text("""
             SELECT id, system_id, domain, tables, schedule_cron, active,
-                   last_run_at::text, next_run_at::text
+                   last_run_at::text, next_run_at::text, extraction_mode
             FROM sync_profiles
             WHERE system_id = :sid AND tenant_id = :tid
             ORDER BY domain
@@ -687,7 +740,7 @@ async def list_sync_profiles(
         SyncProfileResponse(
             id=str(r[0]), system_id=str(r[1]), domain=r[2],
             tables=r[3], schedule_cron=r[4], active=r[5],
-            last_run_at=r[6], next_run_at=r[7],
+            last_run_at=r[6], next_run_at=r[7], extraction_mode=r[8] or "full",
         )
         for r in rows
     ]
@@ -718,6 +771,9 @@ async def update_sync_profile(
     if body.active is not None:
         sets.append("active = :active")
         params["active"] = body.active
+    if body.extraction_mode is not None:
+        sets.append("extraction_mode = :mode")
+        params["mode"] = body.extraction_mode
     if not sets:
         raise HTTPException(status_code=422, detail="Nothing to update")
 
@@ -726,7 +782,7 @@ async def update_sync_profile(
             UPDATE sync_profiles SET {", ".join(sets)}
             WHERE id = :pid AND system_id = :sid AND tenant_id = :tid
             RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text
+                      last_run_at::text, next_run_at::text, extraction_mode
         """),
         params,
     )).fetchone()
@@ -736,7 +792,7 @@ async def update_sync_profile(
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
         tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7],
+        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
     )
 
 

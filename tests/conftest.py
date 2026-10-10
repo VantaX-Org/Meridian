@@ -7,6 +7,13 @@ import pytest
 
 os.environ.setdefault("MERIDIAN_ENV", "development")
 
+# Route tests run the app against the test DB, as CI does (unit-tests.yml sets these).
+# Without them the app engine points at the compose host "db" and every request
+# fails with socket.gaierror.
+if _test_db := os.environ.get("MERIDIAN_TEST_DB_URL"):
+    os.environ.setdefault("DATABASE_URL", _test_db.replace("postgresql://", "postgresql+asyncpg://", 1))
+    os.environ.setdefault("DATABASE_URL_SYNC", _test_db)
+
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """PYTEST_SHARD="i/n" keeps only shard i (1-based) of n, split by test id.

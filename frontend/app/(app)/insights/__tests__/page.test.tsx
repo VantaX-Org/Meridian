@@ -5,6 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import InsightsIndexPage from "../page";
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -12,7 +19,7 @@ function renderWithQuery(ui: React.ReactElement) {
 
 describe("InsightsIndexPage", () => {
   it("renders links to all five insight views", async () => {
-    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [] });
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [], configured: true });
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({
@@ -56,7 +63,7 @@ describe("InsightsIndexPage", () => {
     const getReadiness = vi
       .spyOn(insightsApi, "getReadiness")
       .mockRejectedValueOnce(new Error("network error"))
-      .mockResolvedValueOnce({ version_id: "v1", threshold: 80, cells: [] });
+      .mockResolvedValueOnce({ version_id: "v1", threshold: 80, cells: [], configured: true });
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({

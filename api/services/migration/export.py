@@ -9,18 +9,22 @@ from __future__ import annotations
 
 import io
 import zipfile
+from typing import Optional
 
 import pandas as pd
 
 from checks.base import record_keys
 from checks.frames import TableFrames
+from sap.ddic import Dictionary
+
+from api.services.branded_xlsx import guard_frame
 
 from .engine import Mapping
 
 
 def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], mappings: dict[str, list[Mapping]],
-                      value_maps: dict[str, dict[str, dict[str, str]]], blocked: dict[str, set[str]]
-                      ) -> dict[str, pd.DataFrame]:
+                      value_maps: dict[str, dict[str, dict[str, str]]], blocked: dict[str, set[str]],
+                      target_dict: Optional[Dictionary] = None) -> dict[str, pd.DataFrame]:
     """{target table: frame} for every module's ready records."""
     out: dict[str, list[pd.DataFrame]] = {}
     for module, tables in module_tables.items():
@@ -43,16 +47,32 @@ def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], 
                 if m.value_map:
                     vm = vms.get(m.target, {})
                     vals = vals.map(lambda v, vm=vm: vm.get(v) if isinstance(v, str) else v)
+                elif target_dict is not None:
+                    tf = target_dict.field(t_table, t_field)
+                    if tf is not None and tf.check_ref in vms:
+                        vm = vms[tf.check_ref]
+                        vals = vals.map(lambda v, vm=vm: vm.get(v, v) if isinstance(v, str) else v)
                 frame[t_field] = vals.values
             for t_table, frame in by_target.items():
                 out.setdefault(t_table, []).append(frame)
     return {t: pd.concat(parts, ignore_index=True) for t, parts in out.items() if parts}
 
 
-def to_xlsx(tables: dict[str, pd.DataFrame]) -> bytes:
+def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False) -> bytes:
+    """xlsx of one sheet per table.
+
+    ``sanitize_formulas`` runs every cell through the shared export guard
+    (:func:`api.services.branded_xlsx.guard_frame`). Off by
+    default: the ``/export`` SAP load file route feeds this real target-field values — negative
+    balances, ``+``-prefixed phone numbers, ``@``-containing emails — that must reach SAP
+    byte-for-byte unescaped. Callers presenting findings/report data for human consumption (e.g.
+    the s4_dry_run report) should pass ``sanitize_formulas=True``.
+    """
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
         for name, df in sorted(tables.items()):
+            if sanitize_formulas:
+                df = guard_frame(df)
             df.to_excel(xw, sheet_name=name[:31].replace("/", "_"), index=False)
     return buf.getvalue()
 

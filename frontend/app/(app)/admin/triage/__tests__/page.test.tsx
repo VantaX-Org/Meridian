@@ -45,7 +45,7 @@ describe("admin triage page", () => {
     vi.spyOn(triageApi, "getSlaPolicies").mockResolvedValue([POLICY]);
     vi.spyOn(triageApi, "getTriageSettings").mockResolvedValue(SETTINGS);
     renderWithQuery(<AdminTriagePage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getAllByRole("button", { name: /retry/i })[0];
     spy.mockResolvedValue([TEAM]);
     retry.click();

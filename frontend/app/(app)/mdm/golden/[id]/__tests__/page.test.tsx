@@ -44,11 +44,11 @@ describe("MasterRecordPage", () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockResolvedValue(null as unknown as MasterRecordDetail);
     vi.spyOn(masterRecordsApi, "getMasterRecordHistory").mockResolvedValue([]);
     renderWithQuery(<MasterRecordPage />);
-    await waitFor(() => expect(screen.getByText(/no longer exists/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/record not found/i)).toBeInTheDocument());
   });
 
   it("shows the API error message and retries on click", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecord").mockRejectedValue(new Error("master record service unavailable"));
+    vi.spyOn(masterRecordsApi, "getMasterRecord").mockRejectedValue({ isAxiosError: true, response: { data: { detail: "master record service unavailable" } } });
     renderWithQuery(<MasterRecordPage />);
     await screen.findByText("master record service unavailable");
     const calls = (masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length;

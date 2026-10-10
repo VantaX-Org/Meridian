@@ -15,6 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
+from api.services.branded_xlsx import (
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from api.services.rbac import require_permission
 from api.services.scoring import scoring_config, tier
 
@@ -36,7 +44,7 @@ class ObjectSummaryOut(BaseModel):
 
 
 class ObjectsListOut(BaseModel):
-    run_id: str
+    run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
 
 
@@ -46,17 +54,16 @@ class ObjectsListOut(BaseModel):
 _FINISHED = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched")
 
 
-async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> str:
-    """Resolve the literal `run=latest` to the tenant's newest finished run,
-    otherwise validate the value as a run id."""
+async def _resolve_run(db: AsyncSession, tenant: Tenant, run: str) -> Optional[str]:
+    """Resolve the literal `run=latest` to the tenant's newest finished run (None
+    when the tenant has none — an empty tenant is not an error), otherwise
+    validate the value as a run id."""
     if run == "latest":
         row = (await db.execute(text(
             "SELECT id::text FROM analysis_versions WHERE tenant_id = :t AND status = ANY(:done) "
             "ORDER BY run_at DESC LIMIT 1"
         ), {"t": str(tenant.id), "done": list(_FINISHED)})).fetchone()
-        if not row:
-            raise HTTPException(404, "No completed run yet")
-        return row[0]
+        return row[0] if row else None
     try:
         uuid.UUID(run)
     except ValueError:
@@ -81,6 +88,8 @@ async def list_objects(run: str = Query(..., alias="run"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
     run_id = await _resolve_run(db, tenant, run)
+    if run_id is None:
+        return {"run_id": None, "objects": []}
     summary, thresholds = await _version_summary(db, tenant, run_id)
 
     rows = (await db.execute(text(
@@ -105,6 +114,35 @@ async def list_objects(run: str = Query(..., alias="run"),
             "affected_records": affected,
         })
     return {"run_id": run_id, "objects": objects}
+
+
+_OBJECTS_EXPORT_COLUMNS = [
+    ColumnSpec("module", "Module"),
+    ColumnSpec("label", "Label"),
+    ColumnSpec("composite_score", "Composite score", kind="money"),
+    ColumnSpec("readiness", "Readiness"),
+    ColumnSpec("failing_checks", "Failing checks", kind="int"),
+    ColumnSpec("affected_records", "Affected records", kind="int"),
+]
+
+
+@router.get("/export", dependencies=[Depends(require_permission("export"))])
+async def export_objects(run: str = Query(..., alias="run"),
+                         format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every object (module) summary for one run, as CSV or XLSX — same rows as GET /objects."""
+    body = await list_objects(run=run, db=db, tenant=tenant)
+    rows = body["objects"]
+    if format == "csv":
+        return csv_response(rows, _OBJECTS_EXPORT_COLUMNS, "objects", body["run_id"])
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=body["run_id"],
+        run_id=body["run_id"],
+        title="Objects export",
+        sheets=[SheetSpec(title="Objects", columns=_OBJECTS_EXPORT_COLUMNS, rows=rows)],
+    )
+    return xlsx_response(data, xlsx_filename("objects", body["run_id"]))
 
 
 class ObjectRuleOut(BaseModel):
@@ -152,3 +190,43 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
             for r in rows
         ],
     }
+
+
+_OBJECT_RULES_EXPORT_COLUMNS = [
+    ColumnSpec("check_id", "Check ID", kind="mono"),
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("dimension", "Dimension"),
+    ColumnSpec("affected_count", "Affected", kind="int"),
+    ColumnSpec("total_count", "Total", kind="int"),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=1.0),
+]
+
+_OBJECT_DIMENSIONS_EXPORT_COLUMNS = [
+    ColumnSpec("dimension", "Dimension"),
+    ColumnSpec("score", "Score", kind="money"),
+]
+
+
+@router.get("/{module}/export", dependencies=[Depends(require_permission("export"))])
+async def export_object(module: str, run: uuid.UUID = Query(..., alias="run"),
+                        format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every rule result for one object (module) in one run, as CSV or XLSX."""
+    body = await get_object(module=module, run=run, db=db, tenant=tenant)
+    rows = body["rules"]
+    if format == "csv":
+        return csv_response(rows, _OBJECT_RULES_EXPORT_COLUMNS, f"object-{module}", str(run))
+    dimension_rows = [
+        {"dimension": dim, "score": score} for dim, score in sorted(body["dimension_scores"].items())
+    ]
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=str(run),
+        run_id=str(run),
+        title=f"{body['label']} rules export",
+        sheets=[
+            SheetSpec(title="Dimensions", columns=_OBJECT_DIMENSIONS_EXPORT_COLUMNS, rows=dimension_rows),
+            SheetSpec(title="Rules", columns=_OBJECT_RULES_EXPORT_COLUMNS, rows=rows),
+        ],
+    )
+    return xlsx_response(data, xlsx_filename(f"object-{module}", str(run)))

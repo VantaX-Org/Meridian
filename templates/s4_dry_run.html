@@ -1,0 +1,48 @@
+{% extends "_base.html" %}
+{% block body %}
+<h2>Modules</h2>
+{% if modules %}
+<table class="data">
+<thead><tr><th>Module</th><th>Verdict</th><th class="r">Records</th><th class="r">Blocked</th><th class="r">Readiness</th></tr></thead>
+<tbody>
+{% for m in modules %}
+<tr><td>{{ m.module | module }}</td><td><span class="st {{ m.verdict | st }}">{{ m.verdict | capitalize }}</span></td>
+    <td class="r">{{ m.records | n }}</td><td class="r">{{ m.blocked_records | n }}</td><td class="r">{{ m.score | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No modules in this run.</div>
+{% endif %}
+
+<h2>By rule</h2>
+{% if by_rule %}
+<table class="data">
+<thead><tr><th>Rule</th><th>Area</th><th>Severity</th><th>Reason</th><th class="r">Records</th></tr></thead>
+<tbody>
+{% for r in by_rule %}
+<tr><td class="mono">{{ r.rule_id }}</td><td>{{ r.area }}</td>
+    <td><span class="st {{ r.severity | st }}">{{ r.severity | capitalize }}</span></td>
+    <td>{{ r.reason }}</td><td class="r">{{ r.records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No load-sim rule hits.</div>
+{% endif %}
+
+<h2>Failing records</h2>
+{% if fails %}
+<table class="data">
+<thead><tr><th>Module</th><th>Table</th><th>Record</th><th>Reasons</th></tr></thead>
+<tbody>
+{% for f in fails %}
+<tr><td>{{ f.module | module }}</td><td class="mono">{{ f.source_table }}</td><td class="mono">{{ f.record_key }}</td>
+    <td>{{ f.reasons }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No failing records.</div>
+{% endif %}
+{% endblock %}

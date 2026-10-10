@@ -10,7 +10,8 @@ from tests import pdf_fixtures as fx
 weasyprint = pytest.importorskip("weasyprint")
 
 
-@pytest.mark.parametrize("name", ["analysis", "extraction", "cleaning", "comparison", "executive"])
+@pytest.mark.parametrize("name", ["analysis", "extraction", "cleaning", "comparison", "executive",
+                                  "object", "record"])
 def test_every_report_renders(name):
     from scripts.render_report_previews import contexts
 
@@ -29,6 +30,27 @@ def test_empty_inputs_render():
     assert pr.render("cleaning_report.html", pr.cleaning_context({}, **kw)).startswith(b"%PDF")
     assert pr.render("comparison_report.html",
                      pr.comparison_context(v, v, [], [], record_diff=None, **kw)).startswith(b"%PDF")
+
+
+def test_summary_body_empty_states():
+    """T17: an empty run shows the dashed .empty block in each of the three
+    shared Summary sections, not blank space."""
+    v = {"id": "6f1c2a10-0000-4000-8000-0000000000ff", "label": None, "status": "complete",
+         "run_at": fx.GENERATED, "dqs_summary": {}, "metadata": {}}
+    kw = {"tenant_name": fx.TENANT, "generated_at": fx.GENERATED}
+    html = pr._env().get_template("analysis_report.html").render(**pr.analysis_context(v, [], **kw))
+    assert "This run has no data quality score to summarise." in html
+    assert "No dimension was measured in this run." in html
+    assert "No check found failing records in this run." in html
+
+
+def test_summary_body_shows_score_and_findings_when_present():
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM,
+                              generated_at=fx.GENERATED, previous_dqs=50.0)
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "Change since previous run" in html
+    assert "Data quality score (DQS)" in html
+    assert ctx["previous_dqs"]["composite"] == 50.0
 
 
 def test_check_changes():
@@ -75,3 +97,65 @@ def test_server_addresses_are_redacted():
     ctx = pr.extraction_context(fx.V2, tenant_name=fx.TENANT, generated_at=fx.GENERATED)
     html = pr._env().get_template("extraction_report.html").render(**ctx)
     assert "192.0.2.10" not in html and "[server]" in html
+
+
+def test_cover_has_mark():
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "<svg" in html or "mark-light.svg" in html
+    assert "Meridian" in html
+
+
+def test_timestamps_are_sast():
+    # GENERATED is 09:30 UTC -> 11:30 SAST (UTC+2, no DST).
+    assert pr.fmt_dt(fx.GENERATED) == "4 Oct 2026, 11:30 SAST"
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["generated_sast"] == "4 Oct 2026, 11:30 SAST"
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "11:30 SAST" in html
+
+
+# ── T18: object report ────────────────────────────────────────────────────
+
+
+def test_object_context_unknown_module_is_not_in_modules():
+    """load_object()'s 404 relies on _modules(); a made-up module name must not be in it."""
+    assert "material_master" in pr._modules()
+    assert "not_a_real_module" not in pr._modules()
+
+
+def test_object_report_shows_field_values_columns():
+    ctx = pr.object_context("material_master", fx.V2["dqs_summary"]["material_master"],
+                            [f for f in fx.FINDINGS2 if f["module"] == "material_master"], fx.SAMPLES,
+                            tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["sample_cols"] == ["MARA.MTART", "MARA.MATNR", "MARA.ERSDA"]
+    html = pr._env().get_template("object_report.html").render(**ctx)
+    assert "MARA.MTART" in html and "MARA.MATNR" in html
+
+
+def test_object_report_zero_findings_module_renders():
+    ctx = pr.object_context("fi_gl", {}, [], [], tenant_name=fx.TENANT, generated_at=fx.GENERATED)
+    pdf = pr.render("object_report.html", ctx)
+    assert pdf.startswith(b"%PDF")
+    html = pr._env().get_template("object_report.html").render(**ctx)
+    assert "No check found failing records for this module in this run." in html
+    assert "No rule ran for this module in this run." in html
+
+
+# ── T19: record fix sheet ───────────────────────────────────────────────────
+
+
+def test_record_report_sections_per_view_and_fix_text():
+    ctx = pr.record_context("100-100", fx.BY_VIEW, tenant_name=fx.TENANT, version=fx.V2,
+                            system=fx.SYSTEM, generated_at=fx.GENERATED)
+    html = pr._env().get_template("record_report.html").render(**ctx)
+    assert "Basic data" in html and "Plant data" in html
+    assert "Set MARA.MTART to a valid material type" in html
+
+
+def test_record_report_clean_record_empty_state():
+    ctx = pr.record_context("100-999", fx.BY_VIEW_CLEAN, tenant_name=fx.TENANT, version=fx.V2,
+                            system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["failing_total"] == 0
+    html = pr._env().get_template("record_report.html").render(**ctx)
+    assert "All rules pass for this record." in html

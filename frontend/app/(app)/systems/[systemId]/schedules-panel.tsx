@@ -26,6 +26,12 @@ const PRESETS = [
 const presetLabel = (cron: string | null) =>
   !cron ? "Manual only" : PRESETS.find((p) => p.value === cron)?.label ?? cron;
 
+const MODES = [
+  { value: "full", label: "Full download" },
+  { value: "delta", label: "Changes only" },
+];
+const modeLabel = (m: string | undefined) => MODES.find((x) => x.value === m)?.label ?? "Full download";
+
 function CronPicker({ value, onChange, disabled }: { value: string; onChange: (cron: string) => void; disabled?: boolean }) {
   const [custom, setCustom] = useState(!PRESETS.some((p) => p.value === value));
   const [text, setText] = useState(value);
@@ -52,18 +58,19 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
   const { data: catalogue } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id), enabled: canManage });
   const [adding, setAdding] = useState("");
   const [cron, setCron] = useState(PRESETS[1].value);
+  const [mode, setMode] = useState<"full" | "delta">("full");
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.syncProfiles(id) });
   const onError = (e: unknown) => toast.error((e as Error).message || "Could not save the schedule");
 
   const update = useMutation({
-    mutationFn: ({ p, body }: { p: SyncProfile; body: { schedule_cron?: string; active?: boolean } }) => updateSyncProfile(id, p.id, body),
+    mutationFn: ({ p, body }: { p: SyncProfile; body: { schedule_cron?: string; active?: boolean; extraction_mode?: "full" | "delta" } }) => updateSyncProfile(id, p.id, body),
     onSuccess: () => { toast.success("Schedule saved"); refresh(); },
     onError,
   });
   const create = useMutation({
     mutationFn: () => {
       const o = catalogue?.objects.find((x) => x.object === adding);
-      return createSyncProfile(id, { system_id: id, domain: adding, tables: o?.tables ?? [], schedule_cron: cron, active: true });
+      return createSyncProfile(id, { system_id: id, domain: adding, tables: o?.tables ?? [], schedule_cron: cron, active: true, extraction_mode: mode });
     },
     onSuccess: () => { toast.success("Schedule added"); setAdding(""); refresh(); },
     onError,
@@ -78,11 +85,13 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
           Times are server time; the scheduler looks for due runs every 5 minutes.
+          &ldquo;Changes only&rdquo; re-reads just the records SAP&rsquo;s change log shows changed since the last download, and does a full download at least weekly.
         </p>
         {profiles.length ? (
           <table className="w-full text-[13px]">
             <thead><tr>
               <th className={th} style={thStyle}>Object</th><th className={th} style={thStyle}>Schedule</th>
+              <th className={th} style={thStyle}>Download</th>
               <th className={th} style={thStyle}>Last run</th><th className={th} style={thStyle}>Next run</th>
               <th className={th} style={thStyle}>Status</th><th className={th} style={thStyle} />
             </tr></thead>
@@ -95,6 +104,12 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                       ? <CronPicker value={p.schedule_cron ?? ""} disabled={update.isPending}
                           onChange={(c) => update.mutate({ p, body: { schedule_cron: c } })} />
                       : <span className="font-mono">{presetLabel(p.schedule_cron)}</span>}
+                  </td>
+                  <td className={td} style={tdStyle}>
+                    {canManage
+                      ? <Select value={p.extraction_mode ?? "full"} options={MODES}
+                          onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
+                      : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
                   <td className={td} style={tdStyle}>{p.last_run_at ? relativeTime(p.last_run_at) : "never"}</td>
                   <td className={td} style={tdStyle}>{p.active && p.next_run_at ? formatDate(p.next_run_at, "datetime") : "—"}</td>
@@ -123,6 +138,9 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                 options={addable.map((o) => ({ value: o.object, label: formatModuleName(o.object) }))} onValueChange={setAdding} />
             </div>
             <CronPicker value={cron} onChange={setCron} />
+            <div style={{ width: 160 }}>
+              <Select value={mode} options={MODES} onValueChange={(v) => setMode(v === "delta" ? "delta" : "full")} />
+            </div>
             <Button disabled={!adding || create.isPending} onClick={() => create.mutate()}>Add schedule</Button>
           </div>
         )}

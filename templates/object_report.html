@@ -1,0 +1,80 @@
+{% extends "_base.html" %}
+{% block body %}
+<div class="figures">
+    <div class="figure primary"><div class="v">{% if overall and overall.composite is not none %}{{ overall.composite | n(1) }}<small> / 100</small>{% else %}<span class="muted">—</span>{% endif %}</div><div class="k">Data quality score (DQS), {{ module | module }}</div></div>
+    <div class="figure"><div class="v">{% if readiness %}<span class="st {{ readiness | st }}">{{ readiness | upper }}</span>{% else %}<span class="muted">—</span>{% endif %}</div><div class="k">Migration readiness</div></div>
+</div>
+<p class="lead">{{ headline }}</p>
+{% if overall and overall.capped %}<p class="note">The score is capped because critical checks fail: one critical failure caps a module at 85, two or more at 70.</p>{% endif %}
+
+<h2>Quality by dimension</h2>
+{% if dim_chart %}
+<div class="chart">{{ dim_chart }}</div>
+{% else %}
+<div class="empty">No dimension was measured for this module in this run.</div>
+{% endif %}
+
+<h2>Top findings</h2>
+{% if top_findings %}
+<table class="data">
+<thead><tr><th>Check</th><th>Field checked</th><th class="r">Affected</th><th class="r">Of records</th><th class="r">Pass rate</th></tr></thead>
+<tbody>
+{% for f in top_findings %}
+<tr><td><span class="st {{ f.severity }}">{{ f.severity | capitalize }}</span> {{ f.message or f.check_id }}<span class="sub mono">{{ f.check_id }}</span></td>
+    <td class="mono">{{ (f.details.field_checked if f.details else none) or f.field or "—" }}</td>
+    <td class="r">{{ f.affected | n }}</td><td class="r">{{ f.total | n }}</td><td class="r">{{ f.pass_rate | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No check found failing records for this module in this run.</div>
+{% endif %}
+
+<h2>All rules</h2>
+{% if rules %}
+<p class="note">Every rule run for this module, by severity then number of affected records.</p>
+<table class="data">
+<thead><tr><th>Check</th><th>Severity</th><th>Dimension</th><th class="r">Affected</th><th class="r">Of records</th><th class="r">Fail rate</th></tr></thead>
+<tbody>
+{% for r in rules %}
+<tr><td>{{ r.message or r.check_id }}<span class="sub"><span class="mono">{{ r.check_id }}</span>{% if r.field %} · <span class="mono">{{ r.field }}</span>{% endif %}</span></td>
+    <td><span class="st {{ r.severity }}">{{ r.severity | capitalize }}</span></td><td>{{ r.dimension | module }}</td>
+    <td class="r">{{ r.affected | n }}</td><td class="r">{{ r.total | n }}</td><td class="r">{{ r.fail_pct | pct }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No rule ran for this module in this run.</div>
+{% endif %}
+
+<h2>Failing-record samples</h2>
+{% if samples %}
+<p class="note">First 25 failing records for the top 3 rules by severity and affected count.</p>
+<table class="data">
+<thead><tr><th>Check</th><th>Record</th>{% for c in sample_cols %}<th class="mono">{{ c }}</th>{% endfor %}</tr></thead>
+<tbody>
+{% for s in samples %}
+<tr><td class="mono">{{ s.check_id }}</td><td class="mono">{{ s.record_key }}</td>
+    {% for c in sample_cols %}<td>{{ ((s.field_values or {}).get(c) | string | redact) if (s.field_values or {}).get(c) is not none else "—" }}</td>{% endfor %}</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No failing-record sample is available for this module in this run.</div>
+{% endif %}
+
+<h2>Checks that could not be evaluated</h2>
+{% if errored %}
+<p class="note">These checks raised an error, usually because a table or field they need was not in the data. They are excluded from the score above.</p>
+<table class="data">
+<thead><tr><th>Check</th><th>Reason</th></tr></thead>
+<tbody>
+{% for f in errored %}
+<tr><td>{{ f.message or f.check_id }}<span class="sub mono">{{ f.check_id }}</span></td><td>{{ f.details.error | redact | truncate(160) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">Every check for this module in this run was evaluated.</div>
+{% endif %}
+{% endblock %}

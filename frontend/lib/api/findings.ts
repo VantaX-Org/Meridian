@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 import type { Finding, FindingList, FindingReportContext } from "@/types/api";
 
 export type FindingDetailData = Finding & { context: FindingReportContext["report_context"] };
@@ -98,4 +99,46 @@ export async function saveNamedView(route: string, name: string, filters: Record
 
 export async function deleteSavedView(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/saved-views/${id}`);
+}
+
+export type FindingsExportFilter = FindingsFilter & { baseline?: string; sort?: "severity" | "impact"; type?: "rule" | "anomaly" };
+
+/** GET /api/v1/findings/export — same filters as getFindings, CSV or XLSX. */
+export function exportFindings(format: "csv" | "xlsx", filter: FindingsExportFilter): Promise<void> {
+  return downloadBlob("/api/v1/findings/export", { format, ...filter }, `findings.${format}`);
+}
+
+export interface ScoreHistoryEntry {
+  version_id: string;
+  run_at: string;
+  system_id: string | null;
+  scoring_recorded: boolean;
+  at_the_time: { composite: number | null; tier: "pass" | "warn" | "fail" | null; scoring: Record<string, unknown> | null };
+  under_current: { composite: number | null; tier: "pass" | "warn" | "fail" | null; modules: Record<string, number> };
+}
+
+/** One run's composite score for a single module, part of the per-module series below. */
+export interface ModuleScoreHistoryEntry {
+  version_id: string;
+  composite: number;
+}
+
+/** GET /api/v1/scores/history — composite DQS across runs, as scored at the time and under today's weights. */
+export async function getScoreHistory(
+  params?: { system_id?: string; limit?: number },
+): Promise<{ history: ScoreHistoryEntry[]; modules: Record<string, ModuleScoreHistoryEntry[]> }> {
+  const { data } = await apiClient.get<{ history: ScoreHistoryEntry[]; modules: Record<string, ModuleScoreHistoryEntry[]> }>(
+    "/api/v1/scores/history",
+    { params },
+  );
+  return data;
+}
+
+/** GET /api/v1/versions/{v}/findings/{checkId}/records/export — the full record set behind one check. */
+export function exportFindingRecords(versionId: string, checkId: string, format: "csv" | "xlsx"): Promise<void> {
+  return downloadBlob(
+    `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records/export`,
+    { format },
+    `finding_records.${format}`,
+  );
 }

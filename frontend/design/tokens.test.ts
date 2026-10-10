@@ -1,6 +1,6 @@
 // frontend/design/tokens.test.ts
-import { describe, expect, it } from "vitest";
-import { mColor, mSpace, mRadius, mMotion } from "./tokens";
+import { describe, expect, it, vi } from "vitest";
+import { mColor, mSpace, mRadius, mMotion, reducedMotion } from "./tokens";
 
 describe("design tokens", () => {
   it("exposes 8 chart series colours as CSS var references", () => {
@@ -19,5 +19,16 @@ describe("design tokens", () => {
     expect(mRadius.sheet).toBe(6);
     expect(mMotion.duration).toBe(120);
     expect(mMotion.ease).toBe("ease-out");
+    expect(mMotion.slow).toBe(320);
+    expect(mMotion.draw).toBe(640);
+    expect(mMotion.shimmer).toBe(1400);
+  });
+
+  it("reducedMotion() reads prefers-reduced-motion from matchMedia", () => {
+    const matchMedia = vi.fn().mockReturnValue({ matches: true });
+    vi.stubGlobal("matchMedia", matchMedia);
+    expect(reducedMotion()).toBe(true);
+    expect(matchMedia).toHaveBeenCalledWith("(prefers-reduced-motion: reduce)");
+    vi.unstubAllGlobals();
   });
 });

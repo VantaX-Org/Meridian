@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
-import * as systemsApi from "@/lib/api/systems";
+import * as connectivityApi from "@/lib/api/connectivity";
 import * as versionsApi from "@/lib/api/versions";
 import type { Version } from "@/types/api";
 import ImportPage from "../page";
@@ -15,16 +15,16 @@ const VERSION: Version = {
 
 describe("import page", () => {
   it("renders recent imports once loaded", async () => {
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [VERSION] });
     renderWithQuery(<ImportPage />);
     await waitFor(() => expect(screen.getByText("vendors.csv")).toBeInTheDocument());
   });
 
   it("shows an empty state when nothing has been imported", async () => {
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<ImportPage />);
-    await waitFor(() => expect(screen.getByText(/Nothing imported yet/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/No imports yet/)).toBeInTheDocument());
   });
 });

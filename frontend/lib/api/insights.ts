@@ -19,6 +19,8 @@ export interface ReadinessResponse {
   version_id: string | null;
   threshold: number;
   cells: ReadinessCell[];
+  /** False when the tenant has not set readiness_waves under Settings > Alert Thresholds. */
+  configured: boolean;
 }
 
 export async function getReadiness(params?: { version_id?: string }): Promise<ReadinessResponse> {
@@ -44,6 +46,42 @@ export interface ImpactResponse {
 
 export async function getImpact(params?: { version_id?: string }): Promise<ImpactResponse> {
   const { data } = await apiClient.get<ImpactResponse>("/api/v1/insights/impact", { params });
+  return data;
+}
+
+/* ─── Proven cost (S4 load dry run + transaction cost) ─── */
+
+export type ProvenCostMetric = "late_po" | "grir_uom_variance" | "blocked_sales" | "duplicate_payment";
+
+export interface ProvenCostItem {
+  doc_key: string;
+  master_key: string;
+  amount: number;
+  detail: string;
+  check_ids: string[];
+}
+
+export interface ProvenCostRow {
+  metric: ProvenCostMetric;
+  label: string;
+  amount: number;
+  currency: string | null;
+  by_currency: Record<string, number>;
+  documents: number;
+  check_ids: string[];
+  items: ProvenCostItem[];
+}
+
+export interface ProvenCostResponse {
+  version_id: string | null;
+  currency: string | null;
+  total: number;
+  rows: ProvenCostRow[];
+  value_at_risk_total: number;
+}
+
+export async function getProvenCost(params?: { version_id?: string }): Promise<ProvenCostResponse> {
+  const { data } = await apiClient.get<ProvenCostResponse>("/api/v1/insights/proven-cost", { params });
   return data;
 }
 
@@ -102,12 +140,13 @@ export async function createMergeProposals(
 /* ─── Executive summary (spec 8.5) ─── */
 
 export interface ExecResponse {
-  version_id: string;
+  version_id: string | null;
   narrative: string;
   readiness_cells: ReadinessCell[];
   waterfall: ChartPoint[];
   impact_rows: ImpactRow[];
   owner_rows: OwnerCardResponse[];
+  proven_cost_total?: number;
 }
 
 export async function getExec(params?: { version_id?: string }): Promise<ExecResponse> {

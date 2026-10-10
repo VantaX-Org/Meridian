@@ -412,26 +412,6 @@ export interface ExceptionListResponse {
   per_page: number;
 }
 
-/* ─── Lineage ─── */
-
-export interface LineageNode {
-  id: string;
-  label: string;
-  type: "record" | "finding" | "exception" | "cleaning" | "dedup" | "relationship";
-  data: Record<string, unknown>;
-}
-
-export interface LineageEdge {
-  source: string;
-  target: string;
-  label: string;
-}
-
-export interface LineageGraph {
-  nodes: LineageNode[];
-  edges: LineageEdge[];
-}
-
 /* ─── Contracts ─── */
 
 export type ContractStatus = "draft" | "pending_approval" | "active" | "expired";
@@ -556,6 +536,8 @@ export interface UserListResponse {
 
 /* ─── SAP Systems / Sync ─── */
 
+export type SystemHealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
+
 export interface SAPSystem {
   id: string;
   name: string;
@@ -574,6 +556,8 @@ export interface SAPSystem {
   updated_at: string;
   last_sync_at: string | null;
   last_sync_status: string | null;
+  health_status: SystemHealthStatus;
+  health_message: string | null;
 }
 
 export interface SAPSystemListResponse {
@@ -594,6 +578,8 @@ export interface SyncProfile {
   active: boolean;
   last_run_at: string | null;
   next_run_at: string | null;
+  /** "delta" re-reads only what SAP's change documents say changed since the last download. */
+  extraction_mode: "full" | "delta";
 }
 
 /* ─── Golden Records / MDM ─── */
@@ -821,7 +807,8 @@ export type StewardshipItemType =
   | "exception"
   | "writeback_approval"
   | "contract_breach"
-  | "glossary_review";
+  | "glossary_review"
+  | "config_value_match";
 
 export type StewardshipStatus = "open" | "in_progress" | "resolved" | "escalated";
 
@@ -963,6 +950,8 @@ export interface SAPSystemExtended {
   discovered_at: string | null;
   sap_release: string | null;
   last_analysis_at: string | null;
+  role: "source" | "target";
+  target_system_id: string | null;
 }
 
 export interface SystemModule {
@@ -1058,7 +1047,7 @@ export interface BusinessProcessL1 {
 
 // ── Migration mode ───────────────────────────────────────────────────────────
 
-export type MigrationMode = "source_to_source" | "source_to_destination";
+export type MigrationMode = "source_to_source" | "source_to_destination" | "s4_dry_run";
 export type MigrationStatus =
   | "queued"
   | "running"

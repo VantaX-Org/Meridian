@@ -1,4 +1,6 @@
 import logging
+import time
+from collections.abc import Callable
 from typing import Any
 from dataclasses import asdict
 from functools import lru_cache
@@ -32,6 +34,7 @@ from checks.types.dependency_check import DependencyCheck
 from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
 from checks.types.group_sum_check import GroupSumCheck, child_sums
+from checks.types.group_range_check import GroupRangeCheck
 
 logger = logging.getLogger("meridian.checks")
 
@@ -123,6 +126,7 @@ REGISTRY: dict[str, type[BaseCheck]] = {
     "dependency_check": DependencyCheck,
     "hierarchy_check": HierarchyCheck,
     "group_sum_check": GroupSumCheck,
+    "group_range_check": GroupRangeCheck,
 }
 
 # check types judging a group of rows together: only sound on a complete extract
@@ -377,6 +381,7 @@ def run_checks(
     *,
     as_of: Any = None,
     sap_utc_offset_seconds: int | None = None,
+    on_progress: Callable[[int, int, str], None] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -403,7 +408,14 @@ def run_checks(
     result_rules: list[dict] = []
     skipped = 0
 
-    for rule in rules:
+    total_rules = len(rules)
+    for done, rule in enumerate(rules):
+        if on_progress is not None:
+            try:
+                on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
+            except Exception:  # progress is UX only
+                pass
+        t0 = time.monotonic()
         rule["module"] = module
         rule["_cost"] = cost.resolve(rule, cost_model)
         check_cls = REGISTRY.get(rule.get("check_class", ""))
@@ -420,6 +432,8 @@ def run_checks(
 
         rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
                                 sap_utc_offset_seconds=sap_utc_offset_seconds)
+        if (took := time.monotonic() - t0) > 60:
+            logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
         if result is None:
             skipped += 1
             continue

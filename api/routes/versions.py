@@ -11,6 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.branded_xlsx import (
+    ROW_CAP,
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from db.schema import AnalysisVersion
 
 router = APIRouter(prefix="/api/v1", tags=["versions"])
@@ -276,6 +285,95 @@ async def finding_records(
     """), {**p, "limit": limit, "offset": offset})
     return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),
             "records": [dict(r._mapping) for r in rows.fetchall()]}
+
+
+@router.get("/versions/{version_id}/findings/{check_id}/root-cause")
+async def finding_root_cause(
+    version_id: uuid.UUID,
+    check_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Who set this check's failing values, grouped by origin: an interface or batch user,
+    a dialog transaction, or a migration load before go-live. The data comes from SAP change
+    documents (workers/tasks/root_cause.py, after the analysis). The status is ``not_computed``
+    until that task has run."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    if await _scope_of(db, version_id) is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    row = (await db.execute(text("""
+        SELECT status, field, analysed, total, origins, summary, detail FROM finding_root_causes
+         WHERE version_id = :v AND check_id = :cid AND tenant_id = :tid
+         ORDER BY created_at DESC LIMIT 1
+    """), {"v": version_id, "cid": check_id, "tid": str(tenant.id)})).fetchone()
+    base = {"version_id": str(version_id), "check_id": check_id}
+    if row is None:
+        return {**base, "status": "not_computed", "field": None, "analysed": 0, "total": 0,
+                "origins": [], "summary": "", "detail": ""}
+    return {**base, **dict(row._mapping)}
+
+
+_FINDING_RECORDS_BASE_COLUMNS = [
+    ColumnSpec("record_key", "Record key", kind="mono"),
+    ColumnSpec("grain", "Grain"),
+    ColumnSpec("module", "Module"),
+]
+
+
+@router.get("/versions/{version_id}/findings/{check_id}/records/export",
+           dependencies=[Depends(require_permission("export"))])
+async def export_finding_records(
+    version_id: uuid.UUID,
+    check_id: str,
+    format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Every SAP record this check found failing in this version, as CSV or XLSX.
+
+    One column per field_values key (union across the fetched rows), not one
+    JSON blob column, so each SAP field is independently sortable/filterable.
+    """
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    if await _scope_of(db, version_id) is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    # Cap the source query at ROW_CAP + 1 so build_workbook's own truncation
+    # detection fires and adds the cover note; the +1 row itself is never rendered.
+    rows = await db.execute(text("""
+        SELECT record_key, grain, module, field_values FROM finding_records
+         WHERE version_id = :v AND check_id = :cid
+         ORDER BY record_key LIMIT :limit
+    """), {"v": version_id, "cid": check_id, "limit": ROW_CAP + 1})
+    raw_rows = rows.fetchall()
+
+    field_keys: list[str] = []
+    seen = set()
+    for r in raw_rows:
+        for k in (r.field_values or {}):
+            if k not in seen:
+                seen.add(k)
+                field_keys.append(k)
+
+    columns = [*_FINDING_RECORDS_BASE_COLUMNS, *(ColumnSpec(k, k, kind="mono") for k in field_keys)]
+    dicts = [
+        {
+            "record_key": r.record_key,
+            "grain": r.grain,
+            "module": r.module,
+            **(r.field_values or {}),
+        }
+        for r in raw_rows
+    ]
+    if format == "csv":
+        return csv_response(dicts, columns, f"records-{check_id}", str(version_id))
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=str(version_id),
+        run_id=str(version_id),
+        title=f"{check_id} failing records export",
+        sheets=[SheetSpec(title="Records", columns=columns, rows=dicts)],
+    )
+    return xlsx_response(data, xlsx_filename(f"records-{check_id}", str(version_id)))
 
 
 @router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse"))])

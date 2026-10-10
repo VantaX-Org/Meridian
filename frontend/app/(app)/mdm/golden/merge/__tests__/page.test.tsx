@@ -40,7 +40,7 @@ describe("GoldenRecordMergePage", () => {
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecord").mockRejectedValue(new Error("master record service unavailable"));
     renderWithQuery(<GoldenRecordMergePage />);
-    await screen.findByText("master record service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((masterRecordsApi.getMasterRecord as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));

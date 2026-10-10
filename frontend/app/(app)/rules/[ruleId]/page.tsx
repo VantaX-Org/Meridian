@@ -1,13 +1,22 @@
 "use client";
 
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton } from "@/design";
-import { getRule, updateRule } from "@/lib/api/rules";
+import {
+  Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pill, Skeleton, Stat,
+  buildDrillHref,
+} from "@/design";
+import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
+import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
-import { checkClassLabel, formatModuleName, labelOf } from "@/lib/format";
+import { getRuleLineage } from "@/lib/api/lineage";
+import { apiErrorMessage } from "@/lib/error";
+import { checkClassLabel, formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 const APPLIES_TONE: Record<string, "go" | "no-go" | "neutral"> = {
@@ -90,10 +99,86 @@ function WhereItApplies({ checkId, module }: { checkId: string; module: string }
   );
 }
 
+function LineageRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt style={{ color: "var(--m-ink-3)" }}>{label}</dt>
+      <dd className="text-right">{children}</dd>
+    </div>
+  );
+}
+
+function columnList(cols: string[]): ReactNode {
+  if (!cols.length) return "—";
+  return cols.map((c, i) => (
+    <span key={c}>
+      {i ? ", " : ""}
+      <Mono>{c}</Mono>
+    </span>
+  ));
+}
+
+function LineageAndOwnership({ checkId, builtIn }: { checkId: string; builtIn: boolean }) {
+  const q = useQuery({
+    queryKey: queryKeys.ruleLineage(checkId),
+    queryFn: () => getRuleLineage(checkId),
+    enabled: builtIn,
+    retry: false,
+    meta: { ignoreError: true },
+  });
+  const objectOwner = q.data?.owners.find((o) => o.kind === "object");
+
+  let body: ReactNode;
+  if (!builtIn) {
+    body = <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Lineage is shown for built-in rules only.</p>;
+  } else if (q.isLoading) {
+    body = <Skeleton height={96} />;
+  } else if (q.isError || !q.data) {
+    body = <ErrorState message="Lineage for this rule could not be read." onRetry={() => q.refetch()} />;
+  } else {
+    const l = q.data;
+    body = (
+      <dl className="flex flex-col gap-1 text-[13px]">
+        <LineageRow label="Fields">{columnList(l.fields)}</LineageRow>
+        <LineageRow label="Targets">{columnList(l.targets)}</LineageRow>
+        <LineageRow label="Tables">{columnList(l.tables)}</LineageRow>
+        <LineageRow label="Joins">
+          {l.joins.length
+            ? l.joins.map((j) => `${j.parent} → ${j.child} on ${j.on.map(([a, b]) => (a === b ? a : `${a} = ${b}`)).join(", ")}`).join("; ")
+            : "—"}
+        </LineageRow>
+        <LineageRow label="Glossary terms">
+          {l.glossary_terms.length
+            ? l.glossary_terms.map((t, i) => (
+                <span key={t.id}>
+                  {i ? ", " : ""}
+                  <Link href={`/mdm/glossary/${t.id}`}>{t.business_name}</Link>
+                </span>
+              ))
+            : "—"}
+        </LineageRow>
+        <LineageRow label="Object owner">
+          {objectOwner?.owner_name ?? objectOwner?.steward_name ?? "not set"}
+        </LineageRow>
+      </dl>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-[13px] font-semibold">Lineage and ownership</h2>
+      {body}
+      <OwnerPicker kind="rule" refId={checkId} />
+    </section>
+  );
+}
+
 export default function RulePage() {
   const { ruleId } = useParams<{ ruleId: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.ruleDetail(ruleId), queryFn: () => getRule(ruleId) });
+  const history = useQuery({ queryKey: queryKeys.ruleHistory(ruleId), queryFn: () => getRuleHistory(ruleId, { limit: 20 }) });
   const toggle = useMutation({
     mutationFn: (enabled: boolean) => updateRule(ruleId, { enabled }),
     onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: queryKeys.ruleDetail(ruleId) }); qc.invalidateQueries({ queryKey: ["rules"] }); },
@@ -101,15 +186,29 @@ export default function RulePage() {
   });
 
   if (isLoading) return <Skeleton height={320} />;
-  if (isError || !data) return <ErrorState message={(error as Error)?.message || "Could not load this rule."} onRetry={() => refetch()} />;
+  if (isError && isAxiosError(error) && error.response?.status === 404) {
+    return (
+      <EmptyState
+        title="Rule not found."
+        action={<Button render={<Link href="/rules">All rules</Link>} />}
+      />
+    );
+  }
+  if (isError || !data) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
+
+  // Rule names are "{check id}: {message}"; data.id is the rules row UUID, not the check id.
+  const checkId = data.name.split(":")[0];
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header className="flex items-center gap-3">
-        <Mono>{ruleId}</Mono>
-        <strong>{data.name}</strong>
-        <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
-        <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Mono>{ruleId}</Mono>
+          <strong>{data.name}</strong>
+          <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
+          <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
+        </div>
+        <ExportMenu options={[{ format: "xlsx", run: () => exportRuleHistory(ruleId, "xlsx") }]} />
       </header>
       {data.description ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
 
@@ -122,7 +221,36 @@ export default function RulePage() {
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
 
-      <WhereItApplies checkId={data.id} module={data.module} />
+      <WhereItApplies checkId={checkId} module={data.module} />
+
+      <LineageAndOwnership checkId={checkId} builtIn={data.source === "yaml"} />
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[13px] font-semibold">Pass rate over runs</h2>
+        <div className="flex gap-6">
+          <Stat
+            label="Last pass rate"
+            value={data.last_pass_rate != null ? `${(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %` : "—"}
+          />
+          <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} />
+        </div>
+        {history.isLoading ? (
+          <Skeleton height={120} />
+        ) : !history.data || history.data.runs.length === 0 ? (
+          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>This rule has not run yet.</p>
+        ) : (
+          <Line
+            data={[...history.data.runs].reverse().map((r) => ({
+              x: formatDate(r.run_at, "date"),
+              y: r.pass_rate != null ? r.pass_rate * (r.pass_rate <= 1 ? 100 : 1) : 0,
+              object: r.module,
+              ruleId: data.id,
+              runId: r.version_id,
+            }))}
+            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: data.id, run: p.runId ?? "" }))}
+          />
+        )}
+      </section>
 
       {conditionList(data.conditions).length ? (
         <section>
@@ -147,7 +275,7 @@ export default function RulePage() {
       </Button>
 
       <p className="text-[13px]">
-        <DrillLink object={data.module} ruleId={data.id}>See failing records</DrillLink>
+        <DrillLink object={data.module} ruleId={checkId}>See failing records</DrillLink>
       </p>
     </div>
   );

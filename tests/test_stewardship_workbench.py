@@ -386,9 +386,9 @@ def test_frontend_types_defined():
 
 
 def test_frontend_nav_has_stewardship():
-    """The shared nav (sidebar + ⌘K) has the steward pages in the Fix group."""
+    """The shared nav (sidebar + ⌘K) has the steward inbox as its own section."""
     content = Path("frontend/lib/nav.ts").read_text(encoding="utf-8")
-    assert 'href: "/inbox", label: "Steward inbox", icon: ClipboardIcon' in content
+    assert 'href: "/inbox",\n        label: "Inbox",\n        icon: InboxIcon' in content
     assert 'href: "/stewardship"' not in content
 
 

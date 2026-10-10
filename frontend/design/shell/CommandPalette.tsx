@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { Button } from "../primitives/Button";
+import { Search } from "lucide-react";
 
 const noSubscribe = () => () => {};
 const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
@@ -32,9 +32,24 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
 
   return (
     <>
-      <Button variant="ghost" onClick={() => setOpen(true)} aria-label="Search">
-        Search <kbd style={{ marginLeft: 6, color: "var(--m-ink-3)" }}>{isMac ? "⌘K" : "Ctrl+K"}</kbd>
-      </Button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Search"
+        className="m-motion-fade inline-flex h-8 w-8 xl:w-[220px] items-center justify-center xl:justify-between gap-2 rounded border px-2 xl:px-3 text-[13px] leading-[18px] bg-[var(--m-sheet-raised)] hover:bg-[var(--m-sheet)]"
+        style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)", borderRadius: "var(--m-radius-control)" }}
+      >
+        <span className="flex items-center gap-2">
+          <Search size={16} />
+          <span className="hidden xl:inline">Search</span>
+        </span>
+        <kbd
+          className="hidden xl:inline-flex items-center rounded border px-1 text-[12px] leading-[16px]"
+          style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}
+        >
+          {isMac ? "⌘K" : "Ctrl+K"}
+        </kbd>
+      </button>
       <Command.Dialog open={open} onOpenChange={setOpen} label="Command palette">
         <Command.Input placeholder="Jump to..." />
         <Command.List>

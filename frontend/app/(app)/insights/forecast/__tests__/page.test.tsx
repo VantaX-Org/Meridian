@@ -38,7 +38,7 @@ describe("ForecastPage", () => {
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockRejectedValue(new Error("forecast service unavailable"));
     renderWithQuery(<ForecastPage />);
-    await screen.findByText("forecast service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (analyticsApi.getPredictiveAnalytics as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() =>

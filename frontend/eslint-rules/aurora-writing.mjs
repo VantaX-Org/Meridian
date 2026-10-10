@@ -153,9 +153,9 @@ const rule = {
     // Default values in function signatures (`cancelLabel = "Cancel"`) are
     // deliberately excluded — they're caught in code review, not here, to
     // keep the rule signal-high.
-    // Enum-valued props (`type="submit"`, `status="ok"`) are identifiers
+    // Enum-valued props (`type="submit"`, `status="ok"`, `state="loading"`) are identifiers
     // for code, never shown to users, so they are not copy.
-    const NON_COPY_ATTRS = new Set(["type", "status", "variant"]);
+    const NON_COPY_ATTRS = new Set(["type", "status", "variant", "state"]);
     const isJsxAttrValue = (node) => {
       let attr = null;
       if (node.parent?.type === "JSXAttribute") attr = node.parent;

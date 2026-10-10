@@ -115,15 +115,14 @@ def test_qualified_custom_field_resolves_custom():
     assert res is not None and res.source is FieldStatusSource.CUSTOM
 
 
-def test_custom_field_known_to_dictionary_keeps_dictionary_source():
+def test_custom_field_known_to_dictionary_keeps_dictionary_source(monkeypatch):
     # If a Z field somehow IS in the dictionary, the dictionary wins over the
-    # bare custom recognition (CUSTOM is the weakest tier).
-    fld = next(
-        (f for f in (get_table_metadata(_TABLE) or {}) if f.upper().startswith(("Z", "Y"))),
-        None,
-    )
-    if fld is None:
-        pytest.skip(f"{_TABLE} has no Z/Y field in the dictionary")
+    # bare custom recognition (CUSTOM is the weakest tier). The shipped
+    # dictionary has no Z/Y field on LFA1, so register one for this test.
+    table = get_table_metadata(_TABLE)
+    assert table
+    fld = "ZZKNOWN"
+    monkeypatch.setitem(table, fld, {**next(iter(table.values())), "key": False, "mandatory": False})
     res = resolve_field_status(_TABLE, fld)
     assert res is not None and res.source is FieldStatusSource.DICTIONARY
 

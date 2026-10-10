@@ -675,6 +675,10 @@ class SAPSystem(Base):
     sap_product = Column(Text, nullable=True)  # ecc6 | s4hana | successfactors | …
     last_snapshot_id = Column(UUID(as_uuid=True), nullable=True)
 
+    # Source/target pairing (migration 075)
+    role = Column(Text, nullable=False, server_default="source")  # source | target
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
 
@@ -980,7 +984,7 @@ class RemediationItem(Base):
     field = Column(Text, nullable=True)
     current_value = Column(Text, nullable=True)
     proposed_value = Column(Text, nullable=True)
-    proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual
+    proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual|cleaning|simulation
     confidence = Column(Text, nullable=True)  # auto_fix confidence of a rule proposal: high|medium|low
     accepted = Column(Boolean, nullable=False, server_default=text("false"))  # proposal accepted by a second person
     recon_status = Column(Text, nullable=True)  # fixed|still_failing after the next extraction
@@ -1004,6 +1008,26 @@ class RemediationEvent(Base):
     to_value = Column(Text, nullable=True)
     version_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class ExportPackage(Base):
+    """One row per downloaded correction package — see migration 072."""
+    __tablename__ = "export_packages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    format = Column(Text, nullable=False)
+    filename = Column(Text, nullable=False)
+    sha256 = Column(Text, nullable=False)
+    size_bytes = Column(BigInteger, nullable=False)
+    item_count = Column(Integer, nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    approved_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (Index("ix_export_packages_batch", "tenant_id", "batch_id"),)
 
 
 class ProcessModel(Base):
@@ -1188,6 +1212,37 @@ class FieldDependency(Base):
     )
 
 
+class LearnedRuleProposal(Base):
+    """House rule the tenant's own data follows, awaiting a steward decision — see migration 071."""
+    __tablename__ = "learned_rule_proposals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    module = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)
+    table_name = Column(Text, nullable=False)
+    determinant = Column(Text, nullable=True)  # TABLE.FIELD
+    field = Column(Text, nullable=False)       # TABLE.FIELD
+    fingerprint = Column(Text, nullable=False)
+    body = Column(JSONB, nullable=False)
+    confidence = Column(Float, nullable=False)
+    support_rows = Column(BigInteger, nullable=False)
+    violations = Column(BigInteger, nullable=False)
+    sample_keys = Column(JSONB, nullable=False, server_default="[]")
+    status = Column(Text, nullable=False, server_default="pending")
+    rule_id = Column(Text, nullable=True)
+    decided_by = Column(Text, nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "module", "fingerprint", name="uq_learned_rule_proposals_fp"),
+        Index("ix_learned_rule_proposals_status", "tenant_id", "status"),
+    )
+
+
 class TransferValueMapping(Base):
     """Steward-maintained source → target value mapping (migration 048)."""
 
@@ -1203,8 +1258,15 @@ class TransferValueMapping(Base):
     updated_by = Column(UUID(as_uuid=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
+    # Pair scope and steward status (migration 075); NULL scope = global
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
+    status = Column(Text, nullable=False, server_default="confirmed")  # proposed | confirmed | rejected
+
     __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "target_field", "source_value", name="uq_transfer_value_mappings"),
+        UniqueConstraint("tenant_id", "module", "target_field", "source_value", "source_system_id",
+                         "target_system_id", name="uq_transfer_value_mappings_scope",
+                         postgresql_nulls_not_distinct=True),
     )
 
 
@@ -1579,6 +1641,9 @@ class MatchScore(Base):
     __table_args__ = (
         Index("ix_match_scores_tenant_domain", "tenant_id", "domain"),
         Index("ix_match_scores_tenant_action", "tenant_id", "auto_action"),
+        Index("uq_match_scores_pair", "tenant_id", "domain",
+              text("LEAST(candidate_a_key, candidate_b_key)"),
+              text("GREATEST(candidate_a_key, candidate_b_key)"), unique=True),
     )
 
 
@@ -1671,6 +1736,26 @@ class GlossaryTermRule(Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "term_id", "rule_id", name="uq_glossary_term_rules_tenant_term_rule"),
         Index("ix_glossary_term_rules_tenant_term", "tenant_id", "term_id"),
+    )
+
+
+class DataOwner(Base):
+    """Owner and steward of an object (module id), a rule (check id) or a system.
+    Field ownership stays on GlossaryTerm.data_steward_id."""
+    __tablename__ = "data_owners"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False)
+    ref = Column(Text, nullable=False)
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    steward_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('object', 'rule', 'system')", name="ck_data_owners_kind"),
+        UniqueConstraint("tenant_id", "kind", "ref", name="uq_data_owners_kind_ref"),
     )
 
 

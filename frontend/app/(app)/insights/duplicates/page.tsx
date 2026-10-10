@@ -1,7 +1,9 @@
 // frontend/app/(app)/insights/duplicates/page.tsx
 "use client";
 
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -10,10 +12,10 @@ import {
   Field,
   Graph,
   Select,
-  toastManager,
   type GraphNode,
 } from "@/design";
 import { createMergeProposals, getDuplicateCluster } from "@/lib/api/insights";
+import { apiErrorMessage } from "@/lib/error";
 import { getMergeExplanation } from "@/lib/api/merge-explain";
 import { getObjects } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
@@ -77,12 +79,8 @@ export default function DuplicatesPage() {
   async function handleCreateMergeProposals() {
     if (pairs.length === 0) return;
     const result = await createMergeProposals(pairs);
-    toastManager.add({
-      title: `Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`,
-      actionProps: {
-        children: "Review in stewardship",
-        onClick: () => router.push("/workbench?tab=queue"),
-      },
+    toast(`Created ${result.created.length} merge proposal${result.created.length === 1 ? "" : "s"}`, {
+      action: { label: "Review in stewardship", onClick: () => router.push("/workbench?tab=queue") },
     });
   }
 
@@ -128,9 +126,16 @@ export default function DuplicatesPage() {
         </div>
       }
       state={state}
-      emptyProps={{ title: !object || !recordId ? "Pick an object and a record to see its duplicate cluster." : "No duplicate cluster found for this record." }}
+      emptyProps={
+        !object || !recordId
+          ? { title: "Pick an object and a record to see its duplicate cluster." }
+          : {
+              title: "No duplicate clusters.",
+              action: <Button render={<Link href="/mdm/match-rules">Match rules</Link>} />,
+            }
+      }
       errorProps={{
-        message: cluster.error instanceof Error ? cluster.error.message : "Couldn't load the duplicate cluster. Try again.",
+        message: apiErrorMessage(cluster.error),
         onRetry: () => cluster.refetch(),
       }}
     />

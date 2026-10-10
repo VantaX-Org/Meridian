@@ -6,7 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, Mono, Pill } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { createBlockerFixBatch, getMigrationFindings } from "@/lib/api/migration";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";

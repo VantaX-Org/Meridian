@@ -10,6 +10,7 @@ import {
   signavioExportUrl, type SaveFailure,
 } from "@/lib/api/process-designer";
 import { downloadAuthenticated } from "@/lib/api/download";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import { AttributeDrawer } from "./_components/attributes";
@@ -70,7 +71,7 @@ export default function ProcessDesigner() {
           <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
         </div>
         {failed ? (
-          <ErrorState message={failed instanceof Error ? failed.message : "The process model could not be read."}
+          <ErrorState message={apiErrorMessage(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
         ) : <Skeleton height={240} />}
       </div>
@@ -204,14 +205,14 @@ function Editor(p: EditorProps) {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-[22px] font-semibold">Process designer</h2>
           <p style={{ color: "var(--m-ink-2)" }}>
             {reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
             onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
@@ -274,14 +275,14 @@ function Editor(p: EditorProps) {
           delta={p.latestId ? (unmapped.length ? "Found in the data, not on any sub-process." : "Every variant sits on a sub-process.") : "Run an analysis to find unmapped variants."} />
       </div>
 
-      <div className="flex gap-4">
-        <aside className="w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Process tree">
+      <div className="flex flex-col gap-4 md:flex-row">
+        <aside className="w-full md:w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Process tree">
           <ProcessTree doc={doc} selected={node} editable={editable} onBlocked={blocked} actions={actions}
             colour={(item, level) => (ov ? D.worstUnder(item, level, actColour) : null)}
             onSelect={(id) => go({ node: id, attr: null })} />
           <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} />
         </aside>
-        <section className="flex-1" aria-label="Process view">
+        <section className="flex-1 min-w-0 overflow-x-auto" aria-label="Process view">
           {l4 ? (
             <>
               <div className="flex items-center justify-between gap-2 mb-2">

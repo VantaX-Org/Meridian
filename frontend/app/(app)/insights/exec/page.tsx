@@ -4,9 +4,12 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { DataTable, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
   go: "go",
@@ -41,43 +44,34 @@ const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
 export default function ExecPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
+  const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.insights("exec", run),
     queryFn: () => getExec({ version_id: run }),
   });
 
-  const state: "loading" | "empty" | "error" | undefined = isLoading
+  const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
-    : isError
+    : isListFailure({ isError, error })
       ? "error"
       : data && data.readiness_cells.length === 0 && data.impact_rows.length === 0 && data.owner_rows.length === 0
         ? "empty"
         : undefined;
 
-  // ReportPage's onExport is a callback with no href, so it cannot render a
-  // link whose href the test can assert against. Rendering a plain anchor
-  // here (in the charts slot) is a documented deviation from the brief's
-  // exportAction={{label, href}} prop, which does not exist on ReportPage.
-  const exportHref = data ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
+  const exportHref = data?.version_id ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
 
   return (
     <ReportPage
       narrative={data?.narrative ?? ""}
-      charts={
-        <div className="flex flex-col gap-3">
-          {exportHref && (
-            <a
-              href={exportHref}
-              className="self-end text-[13px] underline"
-              style={{ color: "var(--m-accent)" }}
-            >
-              Export PDF
-            </a>
-          )}
-          <Waterfall data={data?.waterfall ?? []} />
-        </div>
+      exportMenu={
+        exportHref ? (
+          <ExportMenu
+            options={[{ format: "pdf", run: () => downloadAuthenticated(exportHref, `executive_${data?.version_id}.pdf`) }]}
+          />
+        ) : undefined
       }
+      charts={<Waterfall data={data?.waterfall ?? []} />}
       tables={
         <div className="flex flex-col gap-6">
           <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} />
@@ -86,9 +80,13 @@ export default function ExecPage() {
         </div>
       }
       state={state}
-      emptyProps={{ title: "No executive summary data for this run yet." }}
+      emptyProps={{
+        title: "No executive summary data for this run yet.",
+        detail: dayOne.step?.detail,
+        action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+      }}
       errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load the executive summary. Try again.",
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

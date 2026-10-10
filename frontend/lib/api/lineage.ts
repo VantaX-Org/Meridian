@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import type { DataOwner } from "./owners";
 
 export type LineageNodeType =
   | "config"
@@ -164,5 +165,21 @@ export async function getLineageGuards(params: {
   version_id?: string;
 }): Promise<LineageGuards> {
   const { data } = await apiClient.get<LineageGuards>("/api/v1/lineage/guards", { params });
+  return data;
+}
+
+export interface RuleLineage {
+  check_id: string;
+  module: string;
+  fields: string[];
+  targets: string[];
+  tables: string[];
+  joins: { parent: string; child: string; on: [string, string][]; cardinality: string }[];
+  glossary_terms: { id: string; business_name: string; sap_table: string; sap_field: string }[];
+  owners: DataOwner[];
+}
+
+export async function getRuleLineage(checkId: string): Promise<RuleLineage> {
+  const { data } = await apiClient.get<RuleLineage>(`/api/v1/lineage/rule/${encodeURIComponent(checkId)}`);
   return data;
 }

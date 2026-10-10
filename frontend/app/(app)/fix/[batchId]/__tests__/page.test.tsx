@@ -6,6 +6,7 @@ import BatchPage from "../page";
 import { approveCleaning, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ batchId: "B1" }) }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
   return { ...actual, getCleaningQueue: vi.fn(), approveCleaning: vi.fn(), rejectCleaning: vi.fn(), bulkApprove: vi.fn(), downloadCleaningExport: vi.fn() };
@@ -27,7 +28,7 @@ beforeEach(() => {
 
 describe("BatchPage", () => {
   it("shows every item in the batch and approves one", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 500 });
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
     vi.mocked(approveCleaning).mockResolvedValue({ id: "i1", status: "approved" });
 
     renderWithQuery(<BatchPage />);
@@ -38,15 +39,14 @@ describe("BatchPage", () => {
     await waitFor(() => expect(approveCleaning).toHaveBeenCalledWith("i1"));
   });
 
-  it("filters out items from other batches", async () => {
-    vi.mocked(getCleaningQueue).mockResolvedValue({
-      items: [item({}), item({ id: "i2", record_key: "200002", batch_id: "B2" })],
-      total: 2, page: 1, per_page: 500,
-    });
+  it("asks the server for this batch only, not a client-side filter over one page", async () => {
+    // Regression for I11: a client-side filter over a fixed 100-item page missed
+    // batches further back in the queue. The filter must be server-side now.
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
 
     renderWithQuery(<BatchPage />);
 
     await screen.findByText("100001");
-    expect(screen.queryByText("200002")).not.toBeInTheDocument();
+    expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ batch_id: "B1" }));
   });
 });

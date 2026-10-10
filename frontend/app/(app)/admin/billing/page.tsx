@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, Field, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ExceptionBilling } from "@/types/api";
 
@@ -42,7 +43,7 @@ export default function ExceptionBillingPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   if (q.isLoading) state = "loading";
-  else if (q.isError) state = "error";
+  else if (isListFailure(q)) state = "error";
   else if (!b) state = "empty";
 
   return (
@@ -71,8 +72,8 @@ export default function ExceptionBillingPage() {
         ) : null
       }
       state={state}
-      emptyProps={{ title: "Pick a month to see its billing." }}
-      errorProps={{ message: q.error instanceof Error ? q.error.message : "Billing could not be read.", onRetry: () => q.refetch() }}
+      emptyProps={{ title: "No billable exceptions this period.", detail: "Try an earlier month, or check back after the next billing run." }}
+      errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
     />
   );
 }

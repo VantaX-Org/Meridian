@@ -6,19 +6,40 @@
 <link rel="stylesheet" href="assets/report.css">
 <style>
 @page {
-    @top-left { content: {{ ("Meridian · " ~ title) | css_str }}; }
+    /* ponytail: WeasyPrint has no element()/running(); the mark is the same
+       inline SVG as the cover, written straight into the margin-box content. */
+    @top-left { content: url("assets/brand/mark-light.svg") {{ (" Meridian") | css_str }} {{ (" " ~ title) | css_str }}; }
     @top-right { content: {{ scope_label | css_str }}; }
-    @bottom-left { content: {{ ("Generated " ~ (generated_at | dt) ~ "  ·  Confidential") | css_str }}; }
+    @bottom-left { content: {{ ("Generated " ~ generated_sast ~ " SAST. Confidential.") | css_str }}; }
+}
+@page cover {
+    margin: 0;
+    @top-left { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
 }
 </style>
 </head>
 <body>
 
+{% if cover %}
+<section class="cover">
+    <img class="cover-mark" src="assets/brand/mark-light.svg" alt="Meridian">
+    <div class="cover-word">Meridian</div>
+    <h1 class="cover-title">{{ title }}</h1>
+    <table class="meta cover-meta">
+    {% for k, v in meta %}<tr><td class="k">{{ k }}</td><td{% if k == "Run ID" %} class="mono"{% endif %}>{{ v }}</td></tr>{% endfor %}
+    <tr><td class="k">Scope</td><td>{{ scope_label }}</td></tr>
+    </table>
+    {% if headline %}<p class="cover-verdict">{{ headline }}</p>{% endif %}
+</section>
+{% endif %}
+
 <header class="doc-head">
-    <div class="eyebrow">{{ eyebrow }}</div>
     <h1>{{ title }}</h1>
     <table class="meta">
-    {% for k, v in meta %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+    {% for k, v in meta[:3] %}<tr><td class="k">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
     </table>
 </header>
 

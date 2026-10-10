@@ -9,12 +9,12 @@ export interface SelectOption {
 }
 
 export function Select({
-  value, onValueChange, options, placeholder,
-}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string }) {
+  value, onValueChange, options, placeholder, className,
+}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; className?: string }) {
   return (
     <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options}>
       <BaseSelect.Trigger
-        className="inline-flex items-center justify-between gap-2 rounded border px-3 py-1.5 text-[13px] min-w-[160px]"
+        className={className ?? "inline-flex items-center justify-between gap-2 rounded border px-3 py-1.5 text-[13px] min-w-[160px]"}
         style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
       >
         <BaseSelect.Value placeholder={placeholder} />

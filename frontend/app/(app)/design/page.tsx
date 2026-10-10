@@ -3,6 +3,8 @@ import {
   Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
 } from "@/design";
 
+import { ExportDemo } from "./export-demo";
+
 export const dynamic = "force-dynamic";
 
 /** Storybook-free visual check (spec section 13). Dev only — 404s in production. */
@@ -47,6 +49,9 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <Skeleton width={120} />
             <Mono>MATNR.PLANT</Mono>
+          </div>
+          <div className="flex gap-4 items-center">
+            <ExportDemo />
           </div>
         </section>
       ))}

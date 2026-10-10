@@ -21,7 +21,9 @@ import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const pct = (v: number | null | undefined) => (v == null ? "" : `${(v * 100).toFixed(1)}%`);
 // ponytail: force layout past this many nodes is unreadable. Narrow the trace depth to see the rest.
@@ -106,6 +108,7 @@ export default function LineagePage() {
   const [depth, setDepth] = useState(4);
   const [selId, setSelId] = useState<string | null>(null);
   const { latest } = useLatestVersion();
+  const dayOne = useDayOne();
 
   const modelQ = useQuery({ queryKey: queryKeys.lineageModel(), queryFn: getLineageModel });
   const impactQ = useQuery({
@@ -160,7 +163,7 @@ export default function LineagePage() {
 
   if (modelQ.isLoading) return <div className="p-6"><Skeleton height={240} /></div>;
   if (modelQ.error) {
-    return <div className="p-6"><ErrorState message={modelQ.error instanceof Error ? modelQ.error.message : "The lineage model could not be read."} onRetry={() => void modelQ.refetch()} /></div>;
+    return <div className="p-6"><ErrorState message={apiErrorMessage(modelQ.error)} onRetry={() => void modelQ.refetch()} /></div>;
   }
   if (!modelQ.data) return <div className="p-6"><EmptyState title="The lineage model could not be read." /></div>;
   const model = modelQ.data;
@@ -190,7 +193,7 @@ export default function LineagePage() {
             </form>
             {graphQ.isLoading ? <Skeleton height={240} />
               : graphQ.error ? (
-                <ErrorState message={graphQ.error instanceof Error ? graphQ.error.message : `${focus} is not in the lineage model.`} onRetry={() => void graphQ.refetch()} />
+                <ErrorState message={apiErrorMessage(graphQ.error)} onRetry={() => void graphQ.refetch()} />
               )
               : nodes.length ? (
                 <>
@@ -208,9 +211,17 @@ export default function LineagePage() {
             onRowClick={(r) => trace(r.id)}
           />
         }
-        state={impactQ.isLoading ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
-        emptyProps={{ title: latest ? "No failing rule reaches a KPI, process or feature." : "Impact needs a completed analysis." }}
-        errorProps={{ message: impactQ.error instanceof Error ? impactQ.error.message : "Impact could not be read.", onRetry: () => impactQ.refetch() }}
+        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(impactQ) ? "error" : rows.length === 0 ? "empty" : undefined}
+        emptyProps={
+          latest
+            ? { title: "No failing rule reaches a KPI, process or feature." }
+            : {
+                title: "No lineage yet.",
+                detail: dayOne.step?.detail ?? "Impact needs a completed analysis.",
+                action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+              }
+        }
+        errorProps={{ message: apiErrorMessage(impactQ.error), onRetry: () => impactQ.refetch() }}
       />
 
       <Drawer open={!!sel} onOpenChange={(o) => { if (!o) setSelId(null); }} title={sel?.label ?? ""}>

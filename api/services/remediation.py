@@ -94,15 +94,59 @@ def auto_approvable(item: dict) -> bool:
         and item.get("proposed_value") is not None
 
 
+# object type → (anchor table, its business key) for cleaning rows whose record_key is a bare number
+ANCHOR: dict[str, tuple[str, str]] = {
+    "material": ("MARA", "MATNR"), "material_master": ("MARA", "MATNR"),
+    "customer": ("KNA1", "KUNNR"), "customer_master": ("KNA1", "KUNNR"), "sd_customer_master": ("KNA1", "KUNNR"),
+    "accounts_receivable": ("KNA1", "KUNNR"),
+    "vendor": ("LFA1", "LIFNR"), "vendor_master": ("LFA1", "LIFNR"), "accounts_payable": ("LFA1", "LIFNR"),
+    "business_partner": ("BUT000", "PARTNER"),
+}
+
+
+def _item(scope: str, module: str, check_id: str, record_key: str, field: str,
+         current: Optional[str], proposed: str) -> dict:
+    return {"issue_id": None, "scope": scope, "module": module, "check_id": check_id, "record_key": record_key,
+            "grain": field.split(".", 1)[0], "field": field, "current_value": current,
+            "proposed_value": proposed, "proposal_source": scope, "confidence": None}
+
+
+def items_from_cleaning(rows: list[dict]) -> list[dict]:
+    """Approved cleaning_queue rows → one item per field whose value changes.
+
+    ``check_id`` is ``"{rule}:{TABLE.FIELD}"``, not just the rule, because
+    ``uq_remediation_items`` is (batch, check, record) and one cleaning row can
+    change several fields."""
+    out = []
+    for r in rows:
+        table, key = ANCHOR.get(r["object_type"], (None, None))
+        before, after = r.get("record_data_before") or {}, r.get("record_data_after") or {}
+        rk = r["record_key"] if "=" in r["record_key"] or key is None else f"{key}={r['record_key']}"
+        for f in after:
+            old, new = before.get(f), after.get(f)
+            if new is None or str(new) == str(old if old is not None else ""):
+                continue
+            field = f if "." in f else (f"{table}.{f}" if table else None)
+            if field is None:
+                continue
+            out.append(_item("cleaning", r["object_type"], f"{r.get('rule_id') or 'CLEANING'}:{field}", rk, field,
+                             None if old is None else str(old), str(new)))
+    return out
+
+
+def items_from_simulation(fixes: list[dict]) -> list[dict]:
+    """Record fixes a simulation applied (``[{check_id, module, field, record_key,
+    current_value, new_value}]``)."""
+    return [_item("simulation", f["module"], f["check_id"], f["record_key"], f["field"], f.get("current_value"),
+                  str(f["new_value"])) for f in fixes if f.get("field") and f.get("new_value") is not None]
+
+
 def draft_batch(session, tenant_id: str, name: str, filter_json: str, issues: list[dict],
                 user_id: Optional[str], user_label: Optional[str]) -> dict:
     """Insert a draft batch for record issues (rows of issue_id, scope, module, check_id,
     record_key, grain, last_seen_version, field). Current values come from each issue's
     latest extraction, read locally. Sync: the API calls it through ``run_sync``, the
     monitor from the worker. ``user_id`` None marks a system-drafted batch."""
-    import json
-    import uuid
-
     from api.services.source_design import dictionary_for
     from workers.dataset import load_dataset
 
@@ -121,6 +165,15 @@ def draft_batch(session, tenant_id: str, name: str, filter_json: str, issues: li
             except Exception:
                 frames = None  # dataset gone: current values stay blank
         items += build_items(group, frames)
+
+    return store_batch(session, tenant_id, name, filter_json, items, user_id, user_label)
+
+
+def store_batch(session, tenant_id: str, name: str, filter_json: str, items: list[dict],
+                user_id: Optional[str], user_label: Optional[str]) -> dict:
+    """Insert a draft batch + its items + 'created' events. Caller has set app.tenant_id."""
+    import json
+    import uuid
 
     batch_id = uuid.uuid4()
     session.execute(text("""
@@ -178,6 +231,17 @@ def cockpit_csv(items: list[dict], dictionary=None) -> pd.DataFrame:
     sheets = cockpit_sheets(items, dictionary)
     return pd.concat([df.assign(TABLE=t)[["TABLE", *df.columns]] for t, df in sheets.items()],
                      ignore_index=True).fillna("") if sheets else pd.DataFrame(columns=["TABLE"])
+
+
+def batch_diff(items: list[dict]) -> list[dict]:
+    """Before/after per record: only fields with a value to load."""
+    recs: dict[tuple[str, str], list[dict]] = {}
+    for i in _exportable(items):
+        table, field = i["field"].split(".", 1)
+        recs.setdefault((i["record_key"], table), []).append(
+            {"field": field, "before": i.get("current_value"), "after": i["proposed_value"], "rule": i["check_id"]})
+    return [{"record_key": k, "table": t, "changes": sorted(c, key=lambda x: x["field"])}
+            for (k, t), c in sorted(recs.items())]
 
 
 def mass_change(items: list[dict]) -> pd.DataFrame:

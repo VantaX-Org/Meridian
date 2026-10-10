@@ -558,4 +558,74 @@ BASELINE_CONFIG: dict[str, dict[str, dict[str, list[dict]]]] = {
             ],
         },
     },
+
+    # =========================================================================
+    # S/4HANA Cloud (public edition) — SAP Best Practices standard values.
+    # No configuration API: a load of an S/4HANA Cloud or BTP system stores this
+    # baseline with origin best_practice (api/services/config_pairing.with_baseline).
+    # =========================================================================
+    "s4hana_cloud": {
+        "finance": {
+            "T001": [
+                {"BUKRS": "1010", "BUTXT": "Company Code 1010", "LAND1": "DE", "WAERS": "EUR"},
+                {"BUKRS": "1710", "BUTXT": "Company Code 1710", "LAND1": "US", "WAERS": "USD"},
+            ],
+            "T052": [
+                {"ZTERM": "0001", "TEXT1": "Pay immediately w/o deduction", "ZTAG1": 0},
+                {"ZTERM": "0002", "TEXT1": "Within 14 days 2% cash discount, 30 days net", "ZTAG1": 14},
+                {"ZTERM": "0004", "TEXT1": "Net 30 days", "ZTAG1": 30},
+                {"ZTERM": "0005", "TEXT1": "Net 45 days", "ZTAG1": 45},
+            ],
+        },
+        "plant": {
+            "T001W": [
+                {"WERKS": "1010", "NAME1": "Plant 1 DE", "BWKEY": "1010"},
+                {"WERKS": "1710", "NAME1": "Plant 1 US", "BWKEY": "1710"},
+            ],
+            "T001L": [
+                {"WERKS": "1010", "LGORT": "101A", "LGOBE": "Standard storage 1"},
+                {"WERKS": "1010", "LGORT": "101B", "LGOBE": "Standard storage 2"},
+                {"WERKS": "1710", "LGORT": "171A", "LGOBE": "Standard storage 1"},
+                {"WERKS": "1710", "LGORT": "171B", "LGOBE": "Standard storage 2"},
+            ],
+        },
+        "material_master": {
+            "T134": [
+                {"MTART": "FERT", "MTBEZ": "Finished product"},
+                {"MTART": "HALB", "MTBEZ": "Semi-finished product"},
+                {"MTART": "ROH", "MTBEZ": "Raw material"},
+                {"MTART": "HAWA", "MTBEZ": "Trading good"},
+                {"MTART": "DIEN", "MTBEZ": "Service"},
+                {"MTART": "NLAG", "MTBEZ": "Non-stock material"},
+                {"MTART": "UNBW", "MTBEZ": "Non-valuated material"},
+                {"MTART": "VERP", "MTBEZ": "Packaging material"},
+                {"MTART": "ERSA", "MTBEZ": "Spare part"},
+            ],
+            "T006": [
+                {"MSEHI": "EA", "MSEHL": "Each", "DIMID": "AAAADL"},
+                {"MSEHI": "PC", "MSEHL": "Piece", "DIMID": "AAAADL"},
+                {"MSEHI": "KG", "MSEHL": "Kilogram", "DIMID": "MASS"},
+                {"MSEHI": "G", "MSEHL": "Gram", "DIMID": "MASS"},
+                {"MSEHI": "TO", "MSEHL": "Metric ton", "DIMID": "MASS"},
+                {"MSEHI": "L", "MSEHL": "Litre", "DIMID": "VOLUME"},
+                {"MSEHI": "M", "MSEHL": "Metre", "DIMID": "LENGTH"},
+                {"MSEHI": "H", "MSEHL": "Hour", "DIMID": "TIME"},
+            ],
+        },
+        "accounts_payable": {
+            "T077K": [
+                {"KTOKK": "SUPL", "TXT30": "Supplier"},
+                {"KTOKK": "CPDL", "TXT30": "One-time supplier"},
+            ],
+        },
+        "accounts_receivable": {
+            "T077D": [
+                {"KTOKD": "CUST", "TXT30": "Customer"},
+                {"KTOKD": "CPDA", "TXT30": "One-time customer"},
+            ],
+        },
+    },
 }
+
+# BTP has no configuration API of its own; data loaded through BTP lands in an S/4HANA Cloud tenant.
+BASELINE_CONFIG["btp"] = BASELINE_CONFIG["s4hana_cloud"]

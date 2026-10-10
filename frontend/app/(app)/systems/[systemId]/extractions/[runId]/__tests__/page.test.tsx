@@ -5,6 +5,7 @@ import * as runsApi from "@/lib/api/v1/runs";
 import ExtractionPage from "../page";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ systemId: "s1", runId: "r1" }) }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("extraction run page", () => {
   it("shows the decisive error line for a failed step", async () => {
