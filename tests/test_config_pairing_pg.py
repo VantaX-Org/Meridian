@@ -342,7 +342,7 @@ def test_scope_sql_matches_only_global_and_exact_pair(app_engine):
                            "(gen_random_uuid(), CAST(:t AS uuid), 'config', 'T.F', 'a', 'b', :n, "
                            "CAST(:a AS uuid), CAST(:b AS uuid), 'confirmed')"), {"t": tid, "n": name, "a": a, "b": b})
         q = f"SELECT note FROM transfer_value_mappings WHERE {SCOPE_SQL} ORDER BY note"
-        assert [r[0] for r in s.execute(text(q), {"src": src, "tgt": tgt})] == ["global", "pair"]
+        assert [r[0] for r in s.execute(text(q), {"src": src, "tgt": tgt})] == ["global", "pair", "src_only"]
         assert [r[0] for r in s.execute(text(q), {"src": src, "tgt": None})] == ["global", "src_only"]
 
 
@@ -694,3 +694,148 @@ def test_load_target_config_reports_its_basis(app_engine):
         assert load_target_config(s, base)[1] == "baseline"
         cfg, basis = load_target_config(s, None)
         assert basis == "baseline" and "SUPL" in cfg["T077K.KTOKK"]
+
+
+@pg
+def test_source_only_map_survives_target_assignment_and_pair_row_wins(app_engine):
+    from sqlalchemy import text
+
+    from workers.tasks.run_migration import load_value_maps
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD")
+    ins = ("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value, "
+           "source_system_id, target_system_id, status) VALUES (gen_random_uuid(), :t, 'config', 'T077K.KTOKK', "
+           ":sv, :tv, CAST(:s AS uuid), CAST(:g AS uuid), 'confirmed')")
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                       "target_value, status) VALUES (gen_random_uuid(), :t, 'config', 'T077K.KTOKK', 'LIEF', "
+                       "'GLOBAL', 'confirmed')"), {"t": tid})
+        c.execute(text(ins), {"t": tid, "sv": "LIEF", "tv": "SRC_ONLY", "s": src, "g": None})
+        c.execute(text(ins), {"t": tid, "sv": "KRED", "tv": "KEPT", "s": src, "g": None})
+    with _session(app, tid) as s:
+        assert load_value_maps(s, "x", src, tgt)["T077K.KTOKK"] == {"LIEF": "SRC_ONLY", "KRED": "KEPT"}
+    with app.begin() as c:  # the source gets a target; a pair row for one key now wins
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text(ins), {"t": tid, "sv": "LIEF", "tv": "PAIR", "s": src, "g": tgt})
+    with _session(app, tid) as s:
+        assert load_value_maps(s, "x", src, tgt)["T077K.KTOKK"] == {"LIEF": "PAIR", "KRED": "KEPT"}
+
+
+@pg
+def test_value_map_routes_upsert_confirm_and_hide_proposed(app_engine, monkeypatch):
+    from sqlalchemy import text
+
+    from api.routes.migration import router
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                       "target_value, status) VALUES (gen_random_uuid(), :t, 'accounts_payable', 'BUT000.BU_GROUP', "
+                       "'PROP', 'X', 'proposed'), (gen_random_uuid(), :t, 'accounts_payable', 'BUT000.BU_GROUP', "
+                       "'LIEF', 'OLD', 'proposed')"), {"t": tid})
+
+    def body(tv: str) -> dict:
+        return {"module": "accounts_payable", "target_field": "but000.bu_group",
+                "entries": [{"source_value": "LIEF", "target_value": tv}]}
+
+    async def calls(c):
+        await c.put("/api/v1/migration/value-map", json=body("BP01"))
+        await c.put("/api/v1/migration/value-map", json=body("BP02"))
+        return (await c.get("/api/v1/migration/value-map", params={"module": "accounts_payable"})).json()
+
+    entries = _client_run(app, tid, router, calls, monkeypatch)["entries"]
+    assert [(e["source_value"], e["target_value"]) for e in entries] == [("LIEF", "BP02")]  # one row, proposed hidden
+    with _session(app, tid) as s:
+        n = s.execute(text("SELECT count(*) FROM transfer_value_mappings WHERE source_value = 'LIEF'")).scalar()
+    assert n == 1  # the PUT updated the proposed row in place instead of duplicating it
+
+
+@pg
+def test_enqueue_run_defaults_dest_to_the_sources_target(app_engine, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.routes.migration import _enqueue_run
+    from workers.tasks import run_migration as rm
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    monkeypatch.setattr(rm.run_migration, "delay", lambda *a, **k: SimpleNamespace(id="t"))
+
+    async def main() -> list[tuple[str, str | None]]:
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        out = []
+        try:
+            async with async_sessionmaker(aeng, expire_on_commit=False)() as db:
+                await db.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": tid})
+                for mode, dest in [("source_to_destination", None), ("source_to_destination", src),
+                                   ("source_to_source", None)]:
+                    r = await _enqueue_run(db, uuid.UUID(tid), None, mode, src, dest, ["accounts_payable"], None, "s4hana")
+                    out.append((mode, (await db.execute(text("SELECT dest_system_id::text FROM migration_runs "
+                                                              "WHERE id = :i"), {"i": r["run_id"]})).scalar()))
+        finally:
+            await aeng.dispose()
+        return out
+
+    got = asyncio.run(main())
+    assert got == [("source_to_destination", tgt), ("source_to_destination", src), ("source_to_source", None)]
+
+
+@pg
+def test_export_uses_scoped_maps_and_target_dict(app_engine, monkeypatch):
+    import io
+    import zipfile
+
+    import pandas as pd
+    from sqlalchemy import text
+
+    import workers.dataset
+    import workers.db
+    from api.routes.migration import router
+    from api.services.migration.engine import Mapping
+    from checks.frames import TableFrames
+    from sap.ddic import get_dictionary
+    from workers.tasks import run_migration as rm
+
+    ecc, s4 = get_dictionary("ecc6"), get_dictionary("s4hana")
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    vid, rid = str(uuid.uuid4()), str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, metadata) VALUES (:v, :t, "
+                       "CAST('{\"dataset_path\": \"x\"}' AS jsonb))"), {"v": vid, "t": tid})
+        c.execute(text("INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, dest_system_id, modules, "
+                       "status, source_version_id, target_release) VALUES (:r, :t, 'source_to_destination', :s, :d, "
+                       "ARRAY['accounts_payable'], 'analysed', :v, 's4hana')"), {"r": rid, "t": tid, "s": src, "d": tgt, "v": vid})
+        c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                       "target_value, source_system_id, target_system_id, status) VALUES (gen_random_uuid(), :t, "
+                       "'config', 'T077K.KTOKK', 'LIEF', 'KRED', :s, :d, 'confirmed')"), {"t": tid, "s": src, "d": tgt})
+    frames = TableFrames({"LFA1": pd.DataFrame({"LFA1.LIFNR": ["1", "2"], "LFA1.KTOKK": ["LIEF", "KRED"]})}, ecc)
+    monkeypatch.setattr(workers.dataset, "load_dataset", lambda *a, **k: (frames, None, None, None))
+    monkeypatch.setattr(workers.db, "get_sync_engine", lambda: app)
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: s4 if sid == tgt else ecc)
+    monkeypatch.setattr(rm, "module_source_tables", lambda m, f: ["LFA1"])
+    monkeypatch.setattr(rm, "load_mappings", lambda s, m, t: [Mapping("LFA1.LIFNR", "LFA1.LIFNR"),
+                                                              Mapping("LFA1.KTOKK", "LFA1.KTOKK")])
+
+    async def calls(c):
+        return await c.get(f"/api/v1/migration/export/{rid}/csv")
+
+    resp = _client_run(app, tid, router, calls, monkeypatch)
+    assert resp.status_code == 200, resp.text
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+        assert z.read("LFA1.csv").decode().split() == ["SOURCE_RECORD,LIFNR,KTOKK", "LIFNR=1,1,KRED", "LIFNR=2,2,KRED"]

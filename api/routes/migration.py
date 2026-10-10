@@ -932,7 +932,6 @@ async def upsert_value_map(
                 ON CONFLICT ON CONSTRAINT uq_transfer_value_mappings_scope
                 DO UPDATE SET target_value = EXCLUDED.target_value, note = EXCLUDED.note,
                               updated_by = EXCLUDED.updated_by, updated_at = now(), status = 'confirmed'
-
             """),
             {"tid": str(tenant.id), "m": body.module, "tf": body.target_field.upper(), "sv": e.source_value,
              "tv": e.target_value, "note": e.note, "uid": current_user_id(request)},

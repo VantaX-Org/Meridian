@@ -156,12 +156,14 @@ def pair_error(source_role: str, target_role: str, same: bool) -> Optional[str]:
     return None
 
 
-# Scope predicate for transfer_value_mappings: global rows (both ids NULL) OR exactly this source/target pair.
+# Scope predicate for transfer_value_mappings: global rows (both ids NULL), the source's rows with no target
+# (they keep applying once a target is assigned), or exactly this source/target pair. Callers order by
+# specificity: pair beats (source, NULL) beats global.
 # Binds: :src (source system uuid text), :tgt (target system uuid text, may be NULL).
 SCOPE_SQL = (
     "((source_system_id IS NULL AND target_system_id IS NULL) "
-    "OR (source_system_id IS NOT DISTINCT FROM CAST(:src AS uuid) "
-    "AND target_system_id IS NOT DISTINCT FROM CAST(:tgt AS uuid)))"
+    "OR (source_system_id = CAST(:src AS uuid) "
+    "AND (target_system_id IS NULL OR target_system_id = CAST(:tgt AS uuid))))"
 )
 
 

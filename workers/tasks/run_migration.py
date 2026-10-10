@@ -76,7 +76,7 @@ def save_seed(session, tenant_id, module, target_type, mappings) -> None:
 def load_value_maps(session: Session, module: str, source_system_id: str | None = None,
                     target_system_id: str | None = None) -> dict[str, dict[str, str]]:
     """Confirmed maps of ``module`` plus the 'config' module's (a config map applies to every module).
-    Global rows first, then the pair's (which win); within a scope the module's own rows beat config rows."""
+    Global first, then (source, no target), then (source, target) — later wins; within a scope the module's own rows beat config rows."""
     from api.services.config_pairing import SCOPE_SQL
 
     out: dict[str, dict[str, str]] = {}
@@ -85,7 +85,7 @@ def load_value_maps(session: Session, module: str, source_system_id: str | None 
             SELECT target_field, source_value, target_value FROM transfer_value_mappings
             WHERE module IN (:m, 'config') AND status = 'confirmed' AND {SCOPE_SQL}
               AND tenant_id = CAST(current_setting('app.tenant_id') AS uuid)
-            ORDER BY (source_system_id IS NOT NULL), (module = 'config') DESC
+            ORDER BY (source_system_id IS NOT NULL), (target_system_id IS NOT NULL), (module = 'config') DESC
         """),
         {"m": module, "src": str(source_system_id) if source_system_id else None,
          "tgt": str(target_system_id) if target_system_id else None},
@@ -180,7 +180,7 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     save_seed(session, tenant_id, module, target_type, seed)
                     session.commit()
                     mappings = seed
-                gaps, res = analyze(module, frames, tables, mappings, target_dict, 
+                gaps, res = analyze(module, frames, tables, mappings, target_dict,
                                     load_value_maps(session, module, source_system_id, dest_system_id),
                                     target_config, None, bool(dest_system_id), config_basis=config_basis)
                 rows = [{
