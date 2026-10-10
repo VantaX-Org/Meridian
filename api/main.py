@@ -31,6 +31,7 @@ from api.routes.triage import router as triage_router
 from api.routes.remediation import router as remediation_router
 from api.routes.rule_authoring import router as rule_authoring_router
 from api.routes.system_objects import router as system_objects_router
+from api.routes.field_profiles import by_version_router as field_profiles_by_version_router
 from api.routes.field_profiles import router as field_profiles_router
 from api.routes.pilot import router as pilot_router
 from api.routes.analytics import router as analytics_router
@@ -296,6 +297,7 @@ app.include_router(remediation_router)
 app.include_router(rule_authoring_router)
 app.include_router(system_objects_router)
 app.include_router(field_profiles_router)
+app.include_router(field_profiles_by_version_router)
 app.include_router(pilot_router)
 app.include_router(analytics_router)
 app.include_router(contracts_router)

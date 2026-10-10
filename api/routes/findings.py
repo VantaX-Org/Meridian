@@ -289,7 +289,13 @@ async def score_history(
                     "at_the_time": {"composite": then["composite"], "tier": then.get("tier"), "scoring": r["scoring"]},
                     "under_current": {"composite": now["composite"], "tier": now.get("tier"),
                                       "modules": now["modules"]}})
-    return {"history": out}
+    # Per-module series, each aligned to the composite series above by version_id
+    # (same rows, same order; a module is simply absent from a run that lacked it).
+    modules: dict[str, list[dict]] = {}
+    for r in out:
+        for m, c in r["under_current"]["modules"].items():
+            modules.setdefault(m, []).append({"version_id": r["version_id"], "composite": c})
+    return {"history": out, "modules": modules}
 
 
 @router.get("/findings")

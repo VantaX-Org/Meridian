@@ -21,6 +21,9 @@ from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xls
 from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1/systems", tags=["field-profiles"])
+# Version-keyed profile: same data, no system_id in the path (connectivity-free
+# versions — e.g. uploads — have no system_id to key off).
+by_version_router = APIRouter(prefix="/api/v1/versions", tags=["field-profiles"])
 
 
 class ShapeCount(BaseModel):
@@ -112,7 +115,29 @@ async def version_profile(system_id: uuid.UUID, version_id: uuid.UUID,
         {"v": version_id, "tid": tid, "sid": str(system_id)})).scalar()
     if not found:
         raise HTTPException(status_code=404, detail="Version not found for this system")
+    return await _build_profile(db, tid, version_id, object)
 
+
+@by_version_router.get("/{version_id}/profile", response_model=ProfileOut,
+                       dependencies=[Depends(require_permission("view"))])
+async def version_profile_by_version(version_id: uuid.UUID,
+                                     object: Optional[str] = Query(None, max_length=80),
+                                     db: AsyncSession = Depends(get_db),
+                                     tenant: Tenant = Depends(get_tenant)) -> ProfileOut:
+    """Same profile as the system-keyed route, found by version alone — works for
+    versions with no system_id (e.g. uploads)."""
+    tid = str(tenant.id)
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tid})
+    found = (await db.execute(text(
+        "SELECT 1 FROM analysis_versions WHERE id = :v AND tenant_id = :tid"),
+        {"v": version_id, "tid": tid})).scalar()
+    if not found:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return await _build_profile(db, tid, version_id, object)
+
+
+async def _build_profile(db: AsyncSession, tid: str, version_id: uuid.UUID,
+                         object: Optional[str]) -> ProfileOut:
     objects = list((await db.execute(text(
         "SELECT DISTINCT module FROM field_profiles WHERE tenant_id = :tid AND version_id = :v ORDER BY module"),
         {"tid": tid, "v": version_id})).scalars().all())
