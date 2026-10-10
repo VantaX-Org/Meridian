@@ -189,8 +189,9 @@ async def _enqueue_run(db: AsyncSession, tenant_id: uuid.UUID, user_id: Optional
                        source_version_id: Optional[str], target_release: str,
                        wave_id: Optional[str] = None) -> dict:
     if src and not dest and mode == "source_to_destination":
-        dest = (await db.execute(text("SELECT target_system_id::text FROM sap_systems WHERE id = CAST(:s AS uuid)"),
-                                 {"s": src})).scalar()  # default to the source's assigned target
+        dest = (await db.execute(text("SELECT target_system_id::text FROM sap_systems "
+                                      "WHERE id = CAST(:s AS uuid) AND tenant_id = CAST(:t AS uuid)"),
+                                 {"s": src, "t": str(tenant_id)})).scalar()  # default to the source's assigned target
     run_id = str(uuid.uuid4())
     await db.execute(
         text("""

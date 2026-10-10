@@ -36,7 +36,7 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
   const propose = useMutation({
     mutationFn: () => proposeConfigMatches(systemId),
     onSuccess: (r) => {
-      toast.success(r.proposed ? `${r.proposed} matches sent to the steward queue.` : "No new matches to propose.");
+      toast.success(r.proposed ? `${r.proposed} ${r.proposed === 1 ? "match" : "matches"} sent to the steward queue.` : "No new matches to propose.");
       void qc.invalidateQueries({ queryKey: ["config-compare", systemId] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Matches were not proposed."),

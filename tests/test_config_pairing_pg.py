@@ -325,6 +325,34 @@ def test_finding_context_uses_the_rule_condition_object(app_engine, monkeypatch)
 
 
 @pg
+def test_finding_context_ignores_another_tenants_version_without_rls(app_engine, monkeypatch):
+    import json
+
+    from sqlalchemy import text
+
+    from api.services import config_applicability
+    from api.services.config_pairing import finding_context
+    from workers.db import tenant_session
+
+    owner, app = app_engine
+    ta, tb = _tenant(owner), _tenant(owner)
+    src = _system(app, tb, "PRD")
+    _load(app, tb, src, [("T077K", "KTOKK=KRED", {"KTOKK": "KRED"})])
+    vid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tb})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": tb, "m": json.dumps({"system_id": src})})
+    monkeypatch.setattr(config_applicability, "condition",
+                        lambda module, check_id: {"requires": {"object": "T077K"}})
+    # the owner role bypasses RLS, so only the explicit tenant predicate can hide tenant B's rows
+    with tenant_session(owner, ta) as s:
+        ctx = finding_context(s, "AP-001", "accounts_payable", vid, [])
+    assert ctx["system_id"] is None and ctx["source"] == []
+
+
+@pg
 def test_scope_sql_matches_only_global_and_exact_pair(app_engine):
     from sqlalchemy import text
 

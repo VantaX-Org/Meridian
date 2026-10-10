@@ -168,6 +168,9 @@ SCOPE_SQL = (
 )
 
 
+_TENANT = "tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"
+
+
 BASIS_SQL = (
     "SELECT bool_or(status = 'completed'), "
     f"bool_or(status IN ('queued', 'running') AND created_at > now() - interval '{STALE_MINUTES} minutes') "
@@ -186,7 +189,7 @@ def config_basis(s: Session, sid: str) -> str:
 def latest_completed_load(s: Session, sid: str) -> Optional[tuple[str, str, str]]:
     row = s.execute(text(
         "SELECT id::text, origin, system_type FROM config_loads "
-        "WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' "
+        f"WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' AND {_TENANT} "
         "ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1"), {"sid": sid}).fetchone()
     return (row[0], row[1], row[2]) if row else None
 
@@ -195,7 +198,7 @@ def load_items(s: Session, load_id: str, obj: Optional[str] = None) -> list[Conf
     # ponytail: capped at ITEM_CAP items per read; page by object if a load is larger.
     rows = s.execute(text(
         'SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid) '
-        "AND (CAST(:obj AS text) IS NULL OR object = :obj) ORDER BY object, key LIMIT :cap"),
+        f"AND {_TENANT} AND (CAST(:obj AS text) IS NULL OR object = :obj) ORDER BY object, key LIMIT :cap"),
         {"lid": load_id, "obj": obj, "cap": ITEM_CAP}).fetchall()
     return [ConfigItem(r[0], r[1], r[2] or {}) for r in rows]
 
@@ -213,7 +216,9 @@ def resolve_target(s: Session, source_id: str) -> Target:
     """The source's assigned target: its latest completed load, else its type's baseline, else the S/4 baseline."""
     row = s.execute(text(
         "SELECT t.id::text, t.name, t.system_type FROM sap_systems s "
-        "LEFT JOIN sap_systems t ON t.id = s.target_system_id WHERE s.id = CAST(:sid AS uuid)"),
+        "LEFT JOIN sap_systems t ON t.id = s.target_system_id "
+        "AND t.tenant_id = CAST(current_setting('app.tenant_id') AS uuid) "
+        "WHERE s.id = CAST(:sid AS uuid) AND s.tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"),
         {"sid": source_id}).fetchone()
     if row is None or row[0] is None:
         return Target(None, BASELINE_TYPE, None, True, BASELINE_LABEL)
@@ -264,9 +269,10 @@ _DRIFT_SQL = """
 WITH prev AS (
     SELECT id FROM config_loads
     WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' AND id <> CAST(:lid AS uuid)
+      AND tenant_id = CAST(:tid AS uuid)
     ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1),
-a AS (SELECT object, key, "values" FROM config_items WHERE load_id = (SELECT id FROM prev)),
-b AS (SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid))
+a AS (SELECT object, key, "values" FROM config_items WHERE load_id = (SELECT id FROM prev) AND tenant_id = CAST(:tid AS uuid)),
+b AS (SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid))
 INSERT INTO config_drift_log (id, tenant_id, run_id, module, element_type, element_value, change_type,
                               previous_value, current_value)
 SELECT gen_random_uuid(), CAST(:tid AS uuid), CAST(:lid AS uuid), 'config',
@@ -330,7 +336,8 @@ def finding_context(s: Session, rule_id: str, module: str, version_id: Optional[
     from api.services.config_applicability import condition
     from api.services.source_design import dictionary_for
 
-    sid = s.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
+    sid = s.execute(text("SELECT metadata->>'system_id' FROM analysis_versions "
+                         f"WHERE id = CAST(:v AS uuid) AND {_TENANT}"),
                     {"v": version_id}).scalar() if version_id else None
     cond = condition(module, rule_id)
     obj: Optional[str] = (cond.get("requires") or {}).get("object") if cond else None
@@ -368,6 +375,8 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
     load_id: Optional[str] = None
     queued = False
     try:
+        # the caller has committed; a pooled connection may carry another tenant's (or no) session GUC
+        await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": tid})
         st = (await db.execute(text("SELECT system_type FROM sap_systems "
                                     "WHERE id = CAST(:sid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
                                {"sid": sid, "tid": tid})).scalar()
@@ -401,12 +410,11 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
                 logger.exception("Could not mark config load %s failed", load_id)
         if force:
             raise
-        logger.exception("Config load could not be queued for system %s", sid)
+        logger.warning("Config load could not be queued for system %s", sid, exc_info=True)
         return None
 
 
 REPORT_CAP = 5000
-_TENANT = "tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"
 
 
 def realignment_sheets(s: Session, run_id: str) -> tuple[Optional[RowMapping], pd.DataFrame, pd.DataFrame]:
@@ -429,6 +437,8 @@ def realignment_sheets(s: Session, run_id: str) -> tuple[Optional[RowMapping], p
         "ORDER BY records DESC, module, field LIMIT :cap"), {"r": run_id, "cap": REPORT_CAP}).mappings()],
         columns=["module", "field", "gap_type", "severity", "provenance", "source_value", "records"])
     # One row per value: the most specific scope wins, as in load_value_maps.
+    # ponytail: the key includes module, but load_value_maps merges module='config' maps into every module, so a
+    # config row and a module row with the same field/value both show; drop module from the key for config maps.
     applied = pd.DataFrame([dict(r) for r in s.execute(text(
         "SELECT * FROM (SELECT DISTINCT ON (module, target_field, source_value) module, target_field, "
         "source_value, target_value, "
