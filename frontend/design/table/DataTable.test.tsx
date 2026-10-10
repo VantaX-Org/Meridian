@@ -26,7 +26,7 @@ describe("DataTable", () => {
 
   it("filters rows via the global filter input", () => {
     render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
-    fireEvent.change(screen.getByPlaceholderText("Filter..."), { target: { value: "Bravo" } });
+    fireEvent.change(screen.getByPlaceholderText("Type to filter rows"), { target: { value: "Bravo" } });
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
     expect(screen.getByText("Bravo")).toBeInTheDocument();
   });
