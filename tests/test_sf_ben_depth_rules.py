@@ -1,16 +1,20 @@
-"""SuccessFactors benefits depth rules (BEN086-BEN113): integrity, enrichment
+"""SuccessFactors benefits depth rules (BEN086-BEN102): integrity, enrichment
 and fixture-based fire/clean tests, mirroring tests/test_sf_ec_depth_rules.py.
 
-Round 2 (re-review response): the new-range rule count dropped from 70 to 28
-after deleting duplicates/subsets (C3), EC-owned/offboarding-cluster checks
-(I10), unfixable auto_fix blocks (I11, both surviving auto_fix rules had
-their auto_fix removed entirely rather than repaired), and literal/relation
-assumptions that don't hold across tenants (I2, I4). Quality over count per
-the controller's ruling: a small net-new set is fine. No rule in this range
-carries auto_fix any more -- the two rules that used to (old BEN131/BEN132,
-now BEN104/BEN105) had it stripped per I11, and the other two auto_fix
-rules from round 1 (old BEN110, BEN118) were deleted outright as
-duplicates/subsets per C3.
+Round 3 (re-review 2 response): the new-range rule count dropped from 28 to
+17 after deleting duplicates/subsets and EC-owned checks (M1, M2, M4),
+invented relationship-type literals that never shipped on any real tenant
+(H4: BEN096/BEN101's and BEN109's 'domestic_partner' variants), a rule that
+duplicated a base-pack check (H1: BEN113 duplicated BEN080), a strict subset
+of a base uniqueness check (H2: BEN098), and two rules whose fail_when
+thresholds the proof suite's fixed date-probe pool can never reach (H3:
+BEN095, BEN100 -- both "or delete them" per the controller's ruling; no
+amount of YAML editing fixes an unreachable probe range, and padding the
+count back up is explicitly out of scope this round). The offboarding
+cluster (BEN086) was further trimmed (M3) to drop the CONTRACT_END_DATE and
+LAST_DATE_WORKED branches, which fire while an employee is still correctly
+active. Quality over count per the controller's ruling: no new rules were
+added to pad the number back up.
 """
 import re
 from datetime import date, timedelta
@@ -25,7 +29,7 @@ from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
 MODULE = "benefits"
-START, COUNT = 86, 28
+START, COUNT = 86, 17
 
 RULES = yaml.safe_load(open("checks/rules/successfactors/benefits.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
@@ -59,22 +63,11 @@ def test_new_rules_fully_enriched(rule):
 
 
 def test_no_rule_in_this_range_carries_auto_fix():
-    # I11: the only two auto_fix rules that survived the re-review (old
-    # BEN131/BEN132, now BEN104/BEN105) had their auto_fix removed because
+    # I11 (round 2): the only two auto_fix rules that ever survived (old
+    # BEN131/BEN132, now BEN094/BEN095) had their auto_fix removed because
     # collapse_spaces+strip cannot make "u 1" satisfy ^\S+$ (an internal
-    # space has no deterministic single fix). The other two auto_fix rules
-    # from round 1 (old BEN110, BEN118) were deleted as duplicates/subsets.
+    # space has no deterministic single fix).
     assert not any("auto_fix" in r for r in NEW)
-
-
-def test_df_eval_accepts_p4_backreference_regex():
-    # Proof for proposal P4 (new BEN113): df.eval must accept a raw-string
-    # backreference regex inside str.contains(regex=True) exactly as written
-    # in the rule's fail_when, finding a dependent id repeated in a
-    # semicolon-separated list.
-    df = pd.DataFrame({"BENEFITENROLLMENT.DEPENDENT_LINK": ["u1;u2", "u1;u2;u1", "u1;u1", "a;b;c", None]})
-    res = df.eval(BY_ID["BEN113"]["fail_when"])
-    assert res.tolist() == [False, True, True, False, False]
 
 
 # ---------------------------------------------------------------------------
@@ -133,97 +126,74 @@ DP = {"PERSON_ID": "p1", "RELATED_PERSON_ID": "d1", "RELATIONSHIP_TYPE": "child"
       "DEPENDENT_BIRTH": "20100101", "IS_BENEFICIARY": "true", "END_DATE": None}
 
 CASES = {
-    # BEN086: offboarding-cluster collapse (I10). EVENT uses mixed case to prove
-    # the EC-pack convention's case-insensitive 'termination' match.
+    # BEN086: offboarding-cluster collapse, now trimmed to EVENT + PAYROLL_END_DATE
+    # only (M3 dropped CONTRACT_END_DATE/LAST_DATE_WORKED). EVENT mixed case to
+    # prove the case-insensitive 'termination' match.
     "BEN086": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
                "EMPEMPLOYMENT": [c(EE, EVENT="Termination")]},
-    "BEN087": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="RETIREMENT"), c(BE, PLAN_TYPE="MEDICAL")],
+    # L3: PLAN_TYPE matched case-insensitively now; lower-case dirty value proves it.
+    "BEN087": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="retirement"), c(BE, PLAN_TYPE="MEDICAL")],
                "EMPEMPLOYMENT": [c(EE, IS_CONTINGENT_WORKER="true")]},
-    "BEN088": {"BENEFITENROLLMENT": [c(BE, USERID="uXXX"), c(BE, USERID="u1")],
-               "USERACCOUNT": [UA]},
-    "BEN089": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "POSITION": [c(PS, VACANT="true")]},
-    "BEN090": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
+    "BEN088": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
                "EMPEMPLOYMENT": [EE], "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
-    "BEN091": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="60000"), c(BE, EMPLOYEE_COST="500")]},
-    "BEN092": {"BENEFITENROLLMENT": [c(BE, EMPLOYER_COST="60000"), c(BE, EMPLOYER_COST="500")]},
-    "BEN093": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="1000"),
+    "BEN089": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="60000"), c(BE, EMPLOYEE_COST="500")]},
+    "BEN090": {"BENEFITENROLLMENT": [c(BE, EMPLOYER_COST="60000"), c(BE, EMPLOYER_COST="500")]},
+    "BEN091": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="1000"),
                                       c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="100")]},
-    "BEN094": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="FSA", EMPLOYEE_COST="0"),
-                                      c(BE, PLAN_TYPE="FSA", EMPLOYEE_COST="50")]},
-    # third row: the 9999-12-31 open-end sentinel is >36500 days in the future by raw
-    # arithmetic but must NOT fire once `.dt.year < 9999` guards it.
-    "BEN095": {"DEPENDENT": [c(DP, END_DATE=_day(-40000)), c(DP, RELATED_PERSON_ID="d2", END_DATE=_day(-10)),
-                             c(DP, RELATED_PERSON_ID="d3", END_DATE="99991231")]},
-    "BEN096": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH="20050101"),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Domestic_Partner",
-                                DEPENDENT_BIRTH="19800101")],
-               "PERINFO": [PN]},
-    # P1 rework: dirty row carries the open-end sentinel (not null) to prove the
-    # isna()|year>=9999 guard fires on it; relationship type is mixed-case 'Child'.
-    "BEN097": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Child", DEPENDENT_BIRTH=_day(9500), END_DATE="99991231"),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(3000),
+    # L2: dirty row carries the open-end 99991231 sentinel (year>=9999), not a blank
+    # END_DATE -- the isna() branch was dropped, so a blank END_DATE must NOT fire.
+    "BEN092": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Child", DEPENDENT_BIRTH=_day(9500), END_DATE="99991231"),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(9500),
                                 END_DATE=None)]},
-    # uniqueness_check: two rows share PERSON_ID+RELATED_PERSON_ID+START_DATE (duplicate,
-    # case-enumerated 'CHILD'/'Child'); third row has a different START_DATE (effective-dated
-    # history, not a duplicate) so it stays clean.
-    "BEN098": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="CHILD", START_DATE="20100101"),
-                              c(DP, RELATIONSHIP_TYPE="Child", START_DATE="20100101"),
-                              c(DP, RELATIONSHIP_TYPE="child", START_DATE="20150101")]},
-    "BEN099": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="LIFE")],
+    # L3: PLAN_TYPE matched case-insensitively now; lower-case dirty value proves it.
+    "BEN093": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="medical"), c(BE, STATUS="A", PLAN_TYPE="LIFE")],
                "EMPEMPLOYMENT": [c(EE, IS_FULLTIME="false", FTE="0.2")]},
-    "BEN100": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="parent", DEPENDENT_BIRTH=_day(42000)),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Parent", DEPENDENT_BIRTH=_day(20000))]},
-    "BEN101": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH=_day(3000)),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="DOMESTIC_PARTNER",
-                                DEPENDENT_BIRTH=_day(10000))]},
-    # mixed-case 'Spouse'/'spouse'; sentinel end date on the clean row proves the
-    # `.dt.year < 9999` guard still excludes an open-ended spouse record.
-    "BEN102": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Spouse", END_DATE=_day(-10)),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="spouse", END_DATE="99991231")]},
-    "BEN103": {"DEPENDENT": [c(DP, START_DATE="20200101", END_DATE="20200101"),
-                              c(DP, RELATED_PERSON_ID="d2", START_DATE="20200101", END_DATE="20210101")]},
-    "BEN104": {"BENEFITENROLLMENT": [c(BE, USERID="u 1"), c(BE, USERID="u1")]},
-    "BEN105": {"DEPENDENT": [c(DP, PERSON_ID="p 1"), c(DP, RELATED_PERSON_ID="d2")]},
-    "BEN106": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="GAP")],
+    "BEN094": {"BENEFITENROLLMENT": [c(BE, USERID="u 1"), c(BE, USERID="u1")]},
+    "BEN095": {"DEPENDENT": [c(DP, PERSON_ID="p 1"), c(DP, RELATED_PERSON_ID="d2")]},
+    # L3: PLAN_TYPE matched case-insensitively now; lower-case dirty value proves it.
+    "BEN096": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="medical"), c(BE, STATUS="A", PLAN_TYPE="GAP")],
                "EMPEMPLOYMENT": [c(EE, IS_PRIMARY="false")]},
-    "BEN107": {"DEPENDENT": [c(DP, DEPENDENT_BIRTH=None), c(DP, RELATED_PERSON_ID="d2")]},
-    "BEN108": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1"), c(BE, DEPENDENT_LINK="d1")]},
+    # L1 rework: null_check -> cross_field_check excluding spouse/child. Dirty row is
+    # a non-spouse/child relationship (parent) with no date of birth; clean row is a
+    # spouse with no date of birth, proving the exclusion (BEN056 owns that case, not
+    # this rule) rather than a populated-DOB clean row.
+    "BEN097": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="parent", DEPENDENT_BIRTH=None),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Spouse", DEPENDENT_BIRTH=None)]},
+    "BEN098": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1"), c(BE, DEPENDENT_LINK="d1")]},
     # interval_check, group_by=PERSON_ID: p1's pair is a properly closed-out marriage
     # followed by a new one (no overlap, second row carries the open-end sentinel
     # handled natively by interval_check) so neither fails; p2's pair genuinely
-    # overlaps (both open-ended) so the later-starting row (domestic partner, mixed
-    # case) fails. Relationship types are case-enumerated per applies_when.
-    "BEN109": {"DEPENDENT": [
+    # overlaps (both open-ended) so the later-starting row fails. H4 removed the
+    # domestic_partner variants from applies_when, so both rows in each pair are now
+    # spouse (mixed case, still case-enumerated per applies_when).
+    "BEN099": {"DEPENDENT": [
         c(DP, PERSON_ID="p1", RELATED_PERSON_ID="d1", RELATIONSHIP_TYPE="Spouse",
           START_DATE="20100101", END_DATE="20150101"),
         c(DP, PERSON_ID="p1", RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="SPOUSE",
           START_DATE="20160101", END_DATE="99991231"),
         c(DP, PERSON_ID="p2", RELATED_PERSON_ID="d3", RELATIONSHIP_TYPE="spouse",
           START_DATE="20100101", END_DATE="99991231"),
-        c(DP, PERSON_ID="p2", RELATED_PERSON_ID="d4", RELATIONSHIP_TYPE="Domestic_Partner",
+        c(DP, PERSON_ID="p2", RELATED_PERSON_ID="d4", RELATIONSHIP_TYPE="Spouse",
           START_DATE="20120101", END_DATE="99991231"),
     ]},
-    "BEN110": {"BENEFITENROLLMENT": [c(BE, STATUS="T", EFFECTIVE_DATE=_day(-10)),
+    "BEN100": {"BENEFITENROLLMENT": [c(BE, STATUS="T", EFFECTIVE_DATE=_day(-10)),
                                       c(BE, STATUS="T", EFFECTIVE_DATE=_day(10))]},
-    # P2: a non-child dependent (mixed-case 'Spouse') cannot start after the employee's
-    # date of death; a child dependent is exempt (may be born/added after death).
-    "BEN111": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Spouse", START_DATE="20240601"),
+    # a non-child dependent (mixed-case 'Spouse') cannot start after the employee's
+    # date of death; a child dependent is exempt (may be born/added after death; see BEN102).
+    "BEN101": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Spouse", START_DATE="20240601"),
                               c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="CHILD", START_DATE="20240601")],
                "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
-    # P3: a child born more than ~300 days after the employee's date of death is
+    # a child born more than ~300 days after the employee's date of death is
     # implausible; a child born 300 days or less after is biologically plausible.
-    "BEN112": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH="20250301"),
+    "BEN102": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH="20250301"),
                               c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Child", DEPENDENT_BIRTH="20240301")],
                "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
-    # P4: the same dependent id repeated in the ';'-separated DEPENDENT_LINK list.
-    "BEN113": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1;u2;u1"), c(BE, DEPENDENT_LINK="u1;u2")]},
 }
 
-# uniqueness_check and interval_check rules can fail more than one row and/or run
-# against more than 2 rows; every other rule uses the default 2-row (dirty, clean)
-# fixture that scores (total=2, affected=1).
-EXPECTED = {"BEN095": (3, 1), "BEN098": (3, 2), "BEN109": (4, 1)}
+# interval_check rules can fail more than one row and/or run against more than 2
+# rows; every other rule uses the default 2-row (dirty, clean) fixture that
+# scores (total=2, affected=1).
+EXPECTED = {"BEN099": (4, 1)}
 
 
 def test_enough_fixtures():

@@ -1386,59 +1386,31 @@ rules:
   - id: BEN086
     field: BENEFITENROLLMENT.STATUS
     check_class: cross_field_check
-    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & ((`EMPEMPLOYMENT.EVENT`.str.lower() == ''termination'') | (`EMPEMPLOYMENT.CONTRACT_END_DATE`.notna() & (`EMPEMPLOYMENT.CONTRACT_END_DATE` < @today)) | (`EMPEMPLOYMENT.LAST_DATE_WORKED`.notna() & (`EMPEMPLOYMENT.LAST_DATE_WORKED` < @today)) | (`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna() & (`EMPEMPLOYMENT.PAYROLL_END_DATE` < @today)))'
+    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & ((`EMPEMPLOYMENT.EVENT`.str.lower() == ''termination'') | (`EMPEMPLOYMENT.PAYROLL_END_DATE`.notna() & (`EMPEMPLOYMENT.PAYROLL_END_DATE` < @today)))'
     severity: high
     dimension: consistency
     message: 'Active enrolment persists after an employment offboarding signal'
-    why_it_matters: 'EMPEMPLOYMENT.EVENT, CONTRACT_END_DATE, LAST_DATE_WORKED and PAYROLL_END_DATE each independently signal that offboarding has started, often before EMPEMPLOYMENT.END_DATE itself is populated or updated. Base BEN032 only tests END_DATE, so it misses an active enrolment flagged by any of these four lagging indicators. This rule merges the four separate per-signal checks from the previous round (termination event, contract end, last date worked, payroll end) into one rule per the re-review''s instruction to collapse the offboarding cluster to at most one rule.'
+    why_it_matters: 'EMPEMPLOYMENT.EVENT and PAYROLL_END_DATE each independently signal that offboarding has started, often before EMPEMPLOYMENT.END_DATE itself is populated or updated. Base BEN032 only tests END_DATE, so it misses an active enrolment flagged by either of these two lagging indicators. The CONTRACT_END_DATE and LAST_DATE_WORKED branches from the previous round were dropped per the round-3 review: both fields are routinely populated well ahead of an actual termination (a fixed-term contract end date or last day worked is often scheduled months in advance while the employee is still actively working and correctly enrolled), so including them produced false positives on employees who are still active today.'
     rule_authority: best_practice
     sap_impact: 'Carrier continues to bill, and payroll may continue to deduct, for coverage that should have ended with one of these offboarding signals.'
     fix_map:
       __other__: 'Review the offboarding signal and terminate the enrolment if appropriate via Admin Center > Benefits.'
-    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment active after an offboarding signal (termination event, contract end, last date worked, or payroll end). Review and terminate if applicable.'
+    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: enrolment active after an offboarding signal (termination event or payroll end). Review and terminate if applicable.'
   - id: BEN087
     field: BENEFITENROLLMENT.EFFECTIVE_DATE
     check_class: cross_field_check
-    fail_when: '`EMPEMPLOYMENT.IS_CONTINGENT_WORKER`.str.lower().isin([''true'',''x'',''1'']) & (`BENEFITENROLLMENT.PLAN_TYPE` == ''RETIREMENT'') & `BENEFITENROLLMENT.EFFECTIVE_DATE`.notna()'
+    fail_when: '`EMPEMPLOYMENT.IS_CONTINGENT_WORKER`.str.lower().isin([''true'',''x'',''1'']) & (`BENEFITENROLLMENT.PLAN_TYPE`.str.upper() == ''RETIREMENT'') & `BENEFITENROLLMENT.EFFECTIVE_DATE`.notna()'
     require_populated: true
     severity: medium
     dimension: consistency
     message: 'Contingent worker is enrolled in a retirement plan'
-    why_it_matters: 'Contingent (non-permanent) workers are typically excluded from employer-sponsored retirement plans by plan design. An enrolment on a contingent worker record suggests either a misclassification or an eligibility rule that was bypassed. PENSION was removed from the plan-type list because it is not one of base BEN040''s PLAN_TYPE values.'
-    rule_authority: best_practice
+    why_it_matters: 'Contingent (non-permanent) workers are typically excluded from employer-sponsored retirement plans by plan design. An enrolment on a contingent worker record suggests either a misclassification or an eligibility rule that was bypassed. PENSION was removed from the plan-type list because it is not one of base BEN040''s PLAN_TYPE values. PLAN_TYPE is matched case-insensitively because tenants do not consistently key it in upper case.'
+    rule_authority: customer_configured
     sap_impact: 'Plan administrator may reject the contribution file or the employer may incur a compliance exposure for enrolling an ineligible worker class.'
     fix_map:
       __other__: 'Confirm the worker classification and plan eligibility; correct whichever is wrong via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: contingent worker enrolled in {BENEFITENROLLMENT.PLAN_TYPE}. Confirm eligibility.'
   - id: BEN088
-    field: BENEFITENROLLMENT.USERID
-    check_class: exists_check
-    target_table: USERACCOUNT
-    target_fields: [USER_ID]
-    severity: high
-    dimension: consistency
-    message: 'Enrolled user has no matching user account record'
-    why_it_matters: 'Every benefit enrolment should trace to a known login account. A USERID with no matching USERACCOUNT record means either the account was deleted without cleaning up benefits, or the USERID was mistyped.'
-    rule_authority: best_practice
-    sap_impact: 'Self-service benefit elections and statements cannot be delivered because there is no account to deliver them to.'
-    fix_map:
-      __other__: 'Correct the USERID or create the missing user account record via Admin Center > Benefits.'
-    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: no matching USERACCOUNT record found. Correct the USERID or restore the account.'
-  - id: BEN089
-    field: BENEFITENROLLMENT.STATUS
-    check_class: cross_field_check
-    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & (`POSITION.VACANT`.str.lower().isin([''true'',''x'',''1'']))'
-    require_populated: true
-    severity: low
-    dimension: consistency
-    message: 'Active enrolment is tied to a position marked vacant'
-    why_it_matters: 'A position marked vacant should have no incumbent, and therefore no active benefit enrolment tied to it through the employee''s assignment. This usually means the position record was not updated when the employee moved or left.'
-    rule_authority: best_practice
-    sap_impact: 'Workforce and position reporting double counts headcount against a position that reporting treats as unoccupied.'
-    fix_map:
-      __other__: 'Correct the position''s vacancy flag or the employee''s position assignment via Admin Center > Benefits.'
-    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: active enrolment tied to a position flagged vacant. Reconcile the position assignment.'
-  - id: BEN090
     field: BENEFITENROLLMENT.STATUS
     check_class: cross_field_check
     fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & `PERINFO.DATE_OF_DEATH`.notna()'
@@ -1452,7 +1424,7 @@ rules:
     fix_map:
       __other__: 'Terminate the enrolment immediately and route to survivor benefit processing via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: active enrolment but PERINFO records a date of death. Terminate the enrolment and initiate survivor benefit processing.'
-  - id: BEN091
+  - id: BEN089
     field: BENEFITENROLLMENT.EMPLOYEE_COST
     check_class: cross_field_check
     fail_when: '`BENEFITENROLLMENT.EMPLOYEE_COST` > 50000'
@@ -1465,7 +1437,7 @@ rules:
     fix_map:
       __other__: 'Verify the contribution amount and unit against the plan rate table via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: employee cost {BENEFITENROLLMENT.EMPLOYEE_COST} is implausibly high. Verify against the plan rate table.'
-  - id: BEN092
+  - id: BEN090
     field: BENEFITENROLLMENT.EMPLOYER_COST
     check_class: cross_field_check
     fail_when: '`BENEFITENROLLMENT.EMPLOYER_COST` > 50000'
@@ -1478,7 +1450,7 @@ rules:
     fix_map:
       __other__: 'Verify the contribution amount and unit against the plan rate table via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: employer cost {BENEFITENROLLMENT.EMPLOYER_COST} is implausibly high. Verify against the plan rate table.'
-  - id: BEN093
+  - id: BEN091
     field: BENEFITENROLLMENT.EMPLOYER_COST
     check_class: cross_field_check
     fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & (`BENEFITENROLLMENT.EMPLOYER_COST` > 0) & (`BENEFITENROLLMENT.EMPLOYEE_COST` > 0) & (`BENEFITENROLLMENT.EMPLOYER_COST` > (`BENEFITENROLLMENT.EMPLOYEE_COST` * 50))'
@@ -1487,157 +1459,39 @@ rules:
     dimension: accuracy
     message: 'Employer cost is more than fifty times the employee cost on the same enrolment'
     why_it_matters: 'A cost-share ratio this extreme is outside typical employer/employee contribution splits and is worth a plausibility check, even though some plans are fully employer-paid at EMPLOYEE_COST of zero.'
-    rule_authority: best_practice
+    rule_authority: customer_configured
     sap_impact: 'Cost-share reporting used for total-rewards statements may be built on a mis-keyed amount.'
     fix_map:
       __other__: 'Verify both cost amounts against the plan''s contribution split via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: employer cost is far larger than employee cost on the same plan. Verify the contribution split.'
-  - id: BEN094
-    field: BENEFITENROLLMENT.EMPLOYEE_COST
-    check_class: cross_field_check
-    fail_when: '`BENEFITENROLLMENT.PLAN_TYPE`.isin([''FSA'',''HSA'']) & (`BENEFITENROLLMENT.EMPLOYEE_COST` == 0) & (`BENEFITENROLLMENT.STATUS` == ''A'')'
-    require_populated: true
-    severity: medium
-    dimension: completeness
-    message: 'Active FSA or HSA enrolment has no employee contribution amount'
-    why_it_matters: 'FSA and HSA accounts are funded by employee election; an active enrolment with no employee contribution amount is not a usable account. Base BEN035 only fails when both EMPLOYER_COST and EMPLOYEE_COST are zero; this rule catches the distinct defect of a zero employee cost on an FSA/HSA even when the employer side is non-zero, which BEN035 cannot see.'
-    rule_authority: best_practice
-    sap_impact: 'Payroll has nothing to deduct into the account, so the account is never actually funded despite being shown as active.'
-    fix_map:
-      __blank__: 'Load the employee''s elected contribution amount via Admin Center > Benefits.'
-    record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: active {BENEFITENROLLMENT.PLAN_TYPE} enrolment has no employee contribution. Load the elected amount.'
-  - id: BEN095
+  - id: BEN092
     field: DEPENDENT.END_DATE
     check_class: cross_field_check
-    fail_when: '`DEPENDENT.END_DATE`.notna() & (`DEPENDENT.END_DATE`.dt.year < 9999) & (`DEPENDENT.END_DATE` > @today) & ((`DEPENDENT.END_DATE` - @today).dt.days > 36500)'
-    severity: low
-    dimension: accuracy
-    message: 'Dependent coverage end date is more than 100 years in the future'
-    why_it_matters: 'An end date a century or more away is not a genuine open-ended coverage record; it is almost always a placeholder or data-entry error rather than a deliberately far-future end date.'
-    rule_authority: best_practice
-    sap_impact: 'Reporting that treats END_DATE literally (e.g. time-to-expiry dashboards) produces nonsensical values.'
-    fix_map:
-      __other__: 'Clear the placeholder end date or set it to the true coverage end via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: end date {DEPENDENT.END_DATE} is implausibly far in the future. Correct or clear it.'
-  - id: BEN096
-    field: DEPENDENT.DEPENDENT_BIRTH
-    check_class: cross_field_check
-    fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''domestic_partner'') & ((`DEPENDENT.DEPENDENT_BIRTH` - `PERINFO.DATE_OF_BIRTH`).dt.days > 4383)'
-    require_populated: true
-    severity: low
-    dimension: accuracy
-    message: 'Domestic partner dependent is recorded as more than 12 years younger than the employee'
-    why_it_matters: 'A partner age gap this large is not impossible, but it is uncommon enough to warrant a plausibility check for a mis-keyed date of birth, mirroring the existing spouse age-gap check. ''domestic_partner'' is not a code defined in the base pack or the EC pack, so this rule is customer_configured: it only fires on tenants whose RELATIONSHIP_TYPE picklist actually uses that value.'
-    rule_authority: customer_configured
-    sap_impact: 'Age-banded dependent pricing for the domestic partner tier may be calculated from an incorrect date of birth.'
-    fix_map:
-      __other__: 'Verify the domestic partner''s date of birth via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: domestic partner recorded more than 12 years younger than the employee. Verify the date of birth.'
-  - id: BEN097
-    field: DEPENDENT.END_DATE
-    check_class: cross_field_check
-    fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''child'') & ((@today - `DEPENDENT.DEPENDENT_BIRTH`).dt.days > 9497) & (`DEPENDENT.END_DATE`.isna() | (`DEPENDENT.END_DATE`.dt.year >= 9999))'
+    fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''child'') & ((@today - `DEPENDENT.DEPENDENT_BIRTH`).dt.days > 9497) & (`DEPENDENT.END_DATE`.dt.year >= 9999)'
     severity: high
     dimension: timeliness
-    message: 'Child dependent is past the standard dependent age-out limit but has no end date, or an open-ended end date, planned'
-    why_it_matters: 'Base BEN058 requires END_DATE.isna() to fire, so it never catches a dependent carrying the 99991231 open-end sentinel; the old BEN116 in this pack stopped at 9497 days (26 years) and never checked past that. This rule is sentinel-safe (isna() or year >= 9999) and fires for every child over the standard age-out limit that still has no real end date, closing both gaps. The 26-year threshold itself can be customer_configured per plan design.'
+    message: 'Child dependent is past the standard dependent age-out limit but still carries an open-ended sentinel end date'
+    why_it_matters: 'Base BEN058 requires END_DATE.isna() to fire, so it never catches a dependent carrying the 99991231 open-end sentinel; the old BEN116 in this pack stopped at 9497 days (26 years) and never checked past that. This rule closes that sentinel gap and fires only when END_DATE carries the year >= 9999 open-end sentinel. It no longer also fires on a blank END_DATE: the failing value here is never blank, it is always a populated 99991231-style sentinel, so a blank END_DATE is left to base BEN058 and the fix_map below only ever needs the __other__ bucket. The 26-year threshold itself can be customer_configured per plan design.'
     rule_authority: best_practice
     sap_impact: 'Without this check, the carrier feed continues coverage indefinitely past the plan''s age-out date before anyone notices.'
     fix_map:
-      __blank__: 'Set the dependent''s age-out end date via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: child dependent is past the standard age-out limit with no end date planned. Set the end date.'
-  - id: BEN098
-    field: DEPENDENT.RELATED_PERSON_ID
-    check_class: uniqueness_check
-    fields:
-    - DEPENDENT.RELATED_PERSON_ID
-    - DEPENDENT.PERSON_ID
-    - DEPENDENT.START_DATE
-    applies_when:
-      DEPENDENT.RELATIONSHIP_TYPE:
-      - child
-      - Child
-      - CHILD
-    severity: low
-    dimension: uniqueness
-    message: 'Same child dependent identifier is linked to the same employee more than once as a child relationship with the same start date'
-    why_it_matters: 'A repeated RELATED_PERSON_ID under the same employee, relationship type and START_DATE represents the same child being recorded twice for the same period, which fragments that child''s coverage history across two rows. START_DATE was added to the uniqueness key so that normal effective-dated history (a new START_DATE for the same child) is no longer flagged as a duplicate. The relationship-type match is enumerated case-by-case rather than lower-cased in fail_when because uniqueness_check has no fail_when hook — runner.apply_context matches applies_when values with an exact, case-sensitive isin, so a .str.lower() cannot be inserted here the way the base pack does for cross_field_check rules.'
-    rule_authority: best_practice
-    sap_impact: 'Dependent coverage history for the child is split, so continuity-of-coverage checks and age-out tracking give an incomplete picture.'
-    fix_map:
-      __other__: 'Merge the duplicate child dependent rows into one continuous record via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: same child linked more than once for the same period. Merge the duplicate rows.'
-  - id: BEN099
+      __other__: 'Set the dependent''s real age-out end date via Admin Center > Benefits.'
+    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: child dependent is past the standard age-out limit but end date is still the open-ended 99991231 sentinel. Set the real end date.'
+  - id: BEN093
     field: BENEFITENROLLMENT.PLAN_TYPE
     check_class: cross_field_check
-    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & `BENEFITENROLLMENT.PLAN_TYPE`.isin([''MEDICAL'',''DENTAL'',''VISION'']) & (`EMPEMPLOYMENT.IS_FULLTIME`.str.lower().isin([''false'',''0''])) & (`EMPEMPLOYMENT.FTE` < 0.5)'
+    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & `BENEFITENROLLMENT.PLAN_TYPE`.str.upper().isin([''MEDICAL'',''DENTAL'',''VISION'']) & (`EMPEMPLOYMENT.IS_FULLTIME`.str.lower().isin([''false'',''0''])) & (`EMPEMPLOYMENT.FTE` < 0.5)'
     require_populated: true
     severity: medium
     dimension: consistency
     message: 'Health plan enrolment belongs to a part-time employee working under half-time'
-    why_it_matters: 'Most employer-sponsored health plans require a minimum FTE threshold, commonly half-time, to be eligible. The exact threshold is plan-design-specific, so this rule is customer_configured: tenants with a different part-time eligibility threshold should adjust it rather than treat every sub-half-time enrolment as a defect.'
+    why_it_matters: 'Most employer-sponsored health plans require a minimum FTE threshold, commonly half-time, to be eligible. The exact threshold is plan-design-specific, so this rule is customer_configured: tenants with a different part-time eligibility threshold should adjust it rather than treat every sub-half-time enrolment as a defect. PLAN_TYPE is matched case-insensitively because tenants do not consistently key it in upper case.'
     rule_authority: customer_configured
     sap_impact: 'Enrolling an ineligible part-time employee in a health plan can expose the employer to carrier contract violations and unbudgeted premium cost.'
     fix_map:
       __other__: 'Confirm plan eligibility against the employee''s FTE and correct whichever is wrong via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: health plan enrolment on an employee below half-time FTE. Confirm eligibility.'
-  - id: BEN100
-    field: DEPENDENT.DEPENDENT_BIRTH
-    check_class: cross_field_check
-    fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''parent'') & ((@today - `DEPENDENT.DEPENDENT_BIRTH`).dt.days > 40150)'
-    require_populated: true
-    severity: low
-    dimension: accuracy
-    message: 'Parent dependent''s recorded age exceeds 110 years'
-    why_it_matters: 'An age over 110 years is not physically plausible for a living dependent of this relationship type and points to a date-of-birth entry error. The future-birth-date branch that this rule previously also tested was removed: base BEN051 already tests every dependent, regardless of relationship type, for a future DEPENDENT_BIRTH, so that branch was a full subset of BEN051. This rule now isolates the implausible-age ceiling that is specific to parent dependents, which BEN051 does not test.'
-    rule_authority: best_practice
-    sap_impact: 'Age-banded dependent pricing for this relationship tier is calculated from an implausible age.'
-    fix_map:
-      __other__: 'Verify and correct the dependent''s date of birth via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: parent dependent''s recorded age exceeds 110 years. Verify the date of birth.'
-  - id: BEN101
-    field: DEPENDENT.DEPENDENT_BIRTH
-    check_class: cross_field_check
-    fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''domestic_partner'') & ((@today - `DEPENDENT.DEPENDENT_BIRTH`).dt.days < 5844)'
-    require_populated: true
-    severity: medium
-    dimension: accuracy
-    message: 'Domestic Partner dependent''s recorded age is under 16 years'
-    why_it_matters: 'A domestic partner dependent under 16 years is implausible and almost always reflects an incorrect date of birth rather than a genuine dependent of this type. ''domestic_partner'' is not a code defined in the base pack or the EC pack, so this rule is customer_configured: it only fires on tenants whose RELATIONSHIP_TYPE picklist actually uses that value.'
-    rule_authority: customer_configured
-    sap_impact: 'Age-banded dependent pricing for this relationship tier is calculated from an implausible age.'
-    fix_map:
-      __other__: 'Verify and correct the dependent''s date of birth via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: domestic_partner dependent''s recorded age is under 16 years. Verify the date of birth.'
-  - id: BEN102
-    field: DEPENDENT.END_DATE
-    check_class: cross_field_check
-    fail_when: '`DEPENDENT.END_DATE`.notna() & (`DEPENDENT.END_DATE`.dt.year < 9999) & (`DEPENDENT.END_DATE` > @today) & (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''spouse'')'
-    require_populated: true
-    severity: low
-    dimension: timeliness
-    message: 'Spouse dependent has a future-dated end date already scheduled'
-    why_it_matters: 'A future end date on a spouse dependent is unusual outside a known life event (e.g. a planned divorce date agreed in a settlement). Surfacing it prompts confirmation that the scheduled end is correct and intentional.'
-    rule_authority: best_practice
-    sap_impact: 'Coverage may end unexpectedly for a dependent whose scheduled end date was set in error.'
-    fix_map:
-      __blank__: 'Confirm the scheduled end date is correct and intentional via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: spouse dependent has a future end date {DEPENDENT.END_DATE} already scheduled. Confirm it is correct.'
-  - id: BEN103
-    field: DEPENDENT.END_DATE
-    check_class: cross_field_check
-    fail_when: '`DEPENDENT.END_DATE`.notna() & (`DEPENDENT.END_DATE` - `DEPENDENT.START_DATE`).dt.days < 1'
-    require_populated: true
-    severity: low
-    dimension: accuracy
-    message: 'Dependent coverage window is less than a day long'
-    why_it_matters: 'A coverage window of zero or negative length (beyond the already-checked end-before-start case) means the record was effectively never in force, which is itself worth flagging as a likely data entry mistake rather than a deliberate same-day add/remove.'
-    rule_authority: best_practice
-    sap_impact: 'Carrier feed would enrol and immediately un-enrol the dependent in the same cycle, which many carrier systems reject as an invalid transaction.'
-    fix_map:
-      __other__: 'Confirm the intended coverage window and correct the dates via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: coverage window is less than a day long. Confirm the intended dates.'
-  - id: BEN104
+  - id: BEN094
     field: BENEFITENROLLMENT.USERID
     check_class: regex_check
     pattern: '^\S+$'
@@ -1650,7 +1504,7 @@ rules:
     fix_map:
       __other__: 'Remove the embedded whitespace from USERID via Admin Center > Benefits.'
     record_fix_template: 'Record {BENEFITENROLLMENT.USERID}: USERID contains whitespace. Remove it.'
-  - id: BEN105
+  - id: BEN095
     field: DEPENDENT.PERSON_ID
     check_class: regex_check
     pattern: '^\S+$'
@@ -1663,33 +1517,34 @@ rules:
     fix_map:
       __other__: 'Remove the embedded whitespace from PERSON_ID via Admin Center > Benefits.'
     record_fix_template: 'Record {DEPENDENT.PERSON_ID}: PERSON_ID contains whitespace. Remove it.'
-  - id: BEN106
+  - id: BEN096
     field: BENEFITENROLLMENT.STATUS
     check_class: cross_field_check
-    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & (`EMPEMPLOYMENT.IS_PRIMARY`.str.lower().isin([''false'',''0''])) & `BENEFITENROLLMENT.PLAN_TYPE`.isin([''MEDICAL'',''DENTAL'',''VISION'',''LIFE'',''RETIREMENT''])'
+    fail_when: '(`BENEFITENROLLMENT.STATUS` == ''A'') & (`EMPEMPLOYMENT.IS_PRIMARY`.str.lower().isin([''false'',''0''])) & `BENEFITENROLLMENT.PLAN_TYPE`.str.upper().isin([''MEDICAL'',''DENTAL'',''VISION'',''LIFE'',''RETIREMENT''])'
     require_populated: true
     severity: medium
     dimension: consistency
     message: 'Benefit enrolment is attached to a non-primary employment assignment'
-    why_it_matters: 'Most core benefit plans attach to an employee''s primary assignment only. An active enrolment on a secondary (non-primary) assignment suggests the enrolment was keyed against the wrong assignment record. PENSION was removed from the plan-type list because it is not one of base BEN040''s PLAN_TYPE values.'
+    why_it_matters: 'Most core benefit plans attach to an employee''s primary assignment only. An active enrolment on a secondary (non-primary) assignment suggests the enrolment was keyed against the wrong assignment record. PENSION was removed from the plan-type list because it is not one of base BEN040''s PLAN_TYPE values. PLAN_TYPE is matched case-insensitively because tenants do not consistently key it in upper case.'
     rule_authority: best_practice
     sap_impact: 'Benefit cost and coverage could be duplicated or misallocated across an employee''s concurrent assignments.'
     fix_map:
       __other__: 'Confirm the enrolment is attached to the primary assignment via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: benefit enrolment attached to a non-primary assignment. Confirm the correct assignment.'
-  - id: BEN107
+  - id: BEN097
     field: DEPENDENT.DEPENDENT_BIRTH
-    check_class: null_check
+    check_class: cross_field_check
+    fail_when: '~`DEPENDENT.RELATIONSHIP_TYPE`.str.lower().isin([''spouse'',''child'']) & `DEPENDENT.DEPENDENT_BIRTH`.isna()'
     severity: medium
     dimension: completeness
-    message: 'Dependent record has no date of birth recorded'
-    why_it_matters: 'DEPENDENT_BIRTH underpins every age-based eligibility rule in this pack (age-out thresholds, minimum ages, implausible ages). Without it none of those checks can run for this dependent at all. Base BEN056 and BEN057 only test DEPENDENT_BIRTH for spouse and child relationship types respectively; this unconditional null check catches the distinct defect of a missing date of birth on any other relationship type (parent, domestic_partner, etc), which BEN056/BEN057 cannot see.'
+    message: 'Non-spouse, non-child dependent record has no date of birth recorded'
+    why_it_matters: 'DEPENDENT_BIRTH underpins every age-based eligibility rule in this pack (age-out thresholds, minimum ages, implausible ages). Without it none of those checks can run for this dependent at all. Base BEN056 and BEN057 already test DEPENDENT_BIRTH for spouse and child relationship types respectively, so this rule excludes spouse and child to avoid double-firing on the same missing value; it catches the distinct defect of a missing date of birth on any other relationship type (parent, domestic_partner, etc), which BEN056/BEN057 cannot see.'
     rule_authority: best_practice
     sap_impact: 'Age-banded dependent pricing and age-out processing cannot be evaluated for this dependent.'
     fix_map:
       __blank__: 'Load the dependent''s date of birth via Admin Center > Benefits.'
     record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: no date of birth recorded. Load the date of birth.'
-  - id: BEN108
+  - id: BEN098
     field: BENEFITENROLLMENT.DEPENDENT_LINK
     check_class: cross_field_check
     fail_when: '`BENEFITENROLLMENT.DEPENDENT_LINK`.notna() & (`BENEFITENROLLMENT.DEPENDENT_LINK` == `BENEFITENROLLMENT.USERID`)'
@@ -1703,7 +1558,7 @@ rules:
     fix_map:
       __other__: 'Remove the employee''s own identifier from the dependent linkage via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: listed as their own dependent in DEPENDENT_LINK. Remove the self-reference.'
-  - id: BEN109
+  - id: BEN099
     field: DEPENDENT.START_DATE
     check_class: interval_check
     group_by:
@@ -1715,19 +1570,16 @@ rules:
       - spouse
       - Spouse
       - SPOUSE
-      - domestic_partner
-      - Domestic_Partner
-      - DOMESTIC_PARTNER
     severity: high
     dimension: uniqueness
-    message: 'Employee has overlapping spouse or domestic partner dependent periods'
-    why_it_matters: 'An employee should have at most one active spouse or domestic partner at a time. This rule uses interval_check (grouped by DEPENDENT.PERSON_ID) instead of a simple duplicate count: a properly end-dated prior spouse followed by a new spouse no longer fails, only genuinely overlapping periods do, which fixes the false positive the previous uniqueness_check version raised on a normal divorce-then-remarriage history. interval_check also handles the 99991231 open-end sentinel natively (it maps it to pandas'' own ceiling date before comparing), so no separate isna()/year>=9999 guard is needed here. ''domestic_partner'' is not a code defined in the base pack or the EC pack, so this rule is customer_configured: the relationship-type match is also enumerated case-by-case rather than lower-cased, because applies_when is matched by runner.apply_context with an exact, case-sensitive isin and has no .str.lower() hook.'
-    rule_authority: customer_configured
+    message: 'Employee has overlapping spouse dependent periods'
+    why_it_matters: 'An employee should have at most one active spouse at a time. This rule uses interval_check (grouped by DEPENDENT.PERSON_ID) instead of a simple duplicate count: a properly end-dated prior spouse followed by a new spouse no longer fails, only genuinely overlapping periods do, which fixes the false positive the previous uniqueness_check version raised on a normal divorce-then-remarriage history. The relationship-type match is enumerated case-by-case rather than lower-cased because applies_when is matched by runner.apply_context with an exact, case-sensitive isin and has no .str.lower() hook. domestic_partner was removed from this list per the round-3 review: it is not a code defined in the base pack or the EC pack, and keeping an invented literal in applies_when risked the rule silently never firing on any real tenant. Limitation: interval_check treats a blank END_DATE as open rather than as a gap, and only maps the 99991231 sentinel to pandas'' own ceiling date before comparing; it does not coerce a genuinely blank END_DATE the same way. A current spouse stored with a blank end date instead of 99991231 is therefore never checked against an overlapping spouse. Tenants that leave END_DATE blank for a current spouse should backfill 99991231 to get full coverage from this rule.'
+    rule_authority: best_practice
     sap_impact: 'Carrier feed receives two concurrent spouse-level dependents, which is typically rejected or results in duplicate coverage billing.'
     fix_map:
-      __other__: 'Close out the superseded spouse or domestic partner dependent via Admin Center > Benefits.'
-    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: overlapping spouse or domestic partner dependent periods. Close out the superseded one.'
-  - id: BEN110
+      __other__: 'Close out the superseded spouse dependent via Admin Center > Benefits.'
+    record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: overlapping spouse dependent periods. Close out the superseded one.'
+  - id: BEN100
     field: BENEFITENROLLMENT.STATUS
     check_class: cross_field_check
     fail_when: '(`BENEFITENROLLMENT.STATUS` == ''T'') & `BENEFITENROLLMENT.EFFECTIVE_DATE`.notna() & (`BENEFITENROLLMENT.EFFECTIVE_DATE` > @today)'
@@ -1741,7 +1593,7 @@ rules:
     fix_map:
       __other__: 'Confirm whether the enrolment was cancelled before it started and correct the dates via Admin Center > Benefits.'
     record_fix_template: 'Employee {BENEFITENROLLMENT.USERID}: terminated enrolment has a future effective date {BENEFITENROLLMENT.EFFECTIVE_DATE}. Confirm and correct the dates.'
-  - id: BEN111
+  - id: BEN101
     field: DEPENDENT.START_DATE
     check_class: cross_field_check
     fail_when: '`PERINFO.DATE_OF_DEATH`.notna() & (`DEPENDENT.START_DATE` > `PERINFO.DATE_OF_DEATH`) & (`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() != ''child'')'
@@ -1749,13 +1601,13 @@ rules:
     severity: medium
     dimension: consistency
     message: 'Spouse or parent dependent was added after the employee''s recorded date of death'
-    why_it_matters: 'A spouse or parent dependent record cannot genuinely begin after the sponsoring employee has died; only a child conceived before death can legitimately be added afterward (see BEN112). This is a new check made possible by the PERINFO to DEPENDENT join on PERSON_ID.'
+    why_it_matters: 'A spouse or parent dependent record cannot genuinely begin after the sponsoring employee has died; only a child conceived before death can legitimately be added afterward (see BEN102). This is a new check made possible by the PERINFO to DEPENDENT join on PERSON_ID.'
     rule_authority: best_practice
     sap_impact: 'Carrier feed would add a new dependent to a plan that should already have moved to survivor benefit processing.'
     fix_map:
       __other__: 'Correct or remove the dependent record added after the date of death via Admin Center > Benefits.'
     record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: relationship started {DEPENDENT.START_DATE}, after the employee''s recorded date of death. Correct or remove the record.'
-  - id: BEN112
+  - id: BEN102
     field: DEPENDENT.DEPENDENT_BIRTH
     check_class: cross_field_check
     fail_when: '(`DEPENDENT.RELATIONSHIP_TYPE`.str.lower() == ''child'') & `PERINFO.DATE_OF_DEATH`.notna() & ((`DEPENDENT.DEPENDENT_BIRTH` - `PERINFO.DATE_OF_DEATH`).dt.days > 300)'
@@ -1769,17 +1621,3 @@ rules:
     fix_map:
       __other__: 'Verify the dependent''s date of birth and the employee''s date of death via Admin Center > Benefits.'
     record_fix_template: 'Dependent of {DEPENDENT.PERSON_ID}: child born {DEPENDENT.DEPENDENT_BIRTH}, more than 300 days after the employee''s recorded date of death. Verify both dates.'
-  - id: BEN113
-    field: BENEFITENROLLMENT.DEPENDENT_LINK
-    check_class: cross_field_check
-    fail_when: '`BENEFITENROLLMENT.DEPENDENT_LINK`.notna() & `BENEFITENROLLMENT.DEPENDENT_LINK`.str.contains(r''(?:^|;)([^;]+);(?:.*;)?\1(?:;|$)'', regex=True)'
-    require_populated: true
-    severity: medium
-    dimension: uniqueness
-    message: 'The same dependent is listed twice in one enrolment''s dependent link list'
-    why_it_matters: 'DEPENDENT_LINK stores one or more dependent identifiers separated by semicolons. Base BEN041 validates only the format of the list and BEN071/old BEN146 only count the entries; neither one catches the same identifier appearing twice. This rule uses a backreference regex to find a repeated entry anywhere in the ``;``-separated list. A test in tests/test_sf_ben_depth_rules.py confirms df.eval accepts this raw-string backreference pattern inside str.contains(regex=True).'
-    rule_authority: best_practice
-    sap_impact: 'Carrier feed would enrol the same dependent twice under one enrolment, overstating the dependent count and the premium.'
-    fix_map:
-      __other__: 'Remove the duplicate dependent entry from the dependent link list via Admin Center > Benefits.'
-    record_fix_template: 'Enrolment {BENEFITENROLLMENT.USERID}: dependent link list {BENEFITENROLLMENT.DEPENDENT_LINK} lists the same dependent twice. Remove the duplicate entry.'

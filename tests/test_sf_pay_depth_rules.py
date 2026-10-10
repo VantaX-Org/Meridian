@@ -11,7 +11,7 @@ from checks.runner import run_checks
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
-PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41), ("BEN", 86, 28)],
+PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41), ("BEN", 86, 17)],
          "payroll_integration": [("PAY", 31, 23), ("HPY", 31, 27)]}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
