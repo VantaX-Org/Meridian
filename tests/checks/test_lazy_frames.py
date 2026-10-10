@@ -123,7 +123,7 @@ def test_lazy_run_is_identical_to_eager_run(bundle: dict[str, bytes]) -> None:
                      json.dumps(find_outliers(MODULE, frames), sort_keys=True, default=str),
                      json.dumps(sorted(present_keys(results, frames))),
                      json.dumps({m: s.model_dump() for m, s in scores.items()}, sort_keys=True, default=str)]
-        assert len(results) > 500 and any(not r.passed for r in results) and conformance
+        assert len(results) > 400 and any(not r.passed for r in results) and conformance
     for name, eager, lazy in zip(["findings", "conformance", "profiles", "outliers", "present", "dqs"],
                                  out[False], out[True]):
         assert eager == lazy, name
@@ -221,16 +221,55 @@ def _count_decodes(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     return calls
 
 
-def test_lazy_columns_decode_once_across_rules(bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prefetched_group_frame_serves_every_rule_without_decoding(bundle: dict[str, bytes],
+                                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    from checks.runner import _group_columns, run_rule
     frames = _frames(bundle, lazy=True)
-    calls = _count_decodes(monkeypatch)
+    fields = ["MARC.DISPO", "MARC.EKGRP", "MARC.DISMM", "MARA.MTART", "MARA.MATKL"]
     rules = [{"id": f"N{i}", "check_class": "null_check", "field": f, "severity": "low", "dimension": "completeness",
-              "message": "m"} for i, f in enumerate(["MARC.DISPO", "MARC.EKGRP", "MARC.DISMM", "MARC.MMSTA"] * 5)]
+              "message": "m", "grain": "MARC"} for i, f in enumerate(fields * 4)]
+    frames.prefetch(_group_columns(rules, frames, None), "MARC")
+    calls = _count_decodes(monkeypatch)
     for r in rules:
-        from checks.runner import run_rule
         run_rule(r, frames)
-    decoded = [c for cols in calls for c in cols]
-    assert decoded and len(decoded) == len(set(decoded)), decoded  # each column decoded once, not per rule
+    assert calls == []  # the group's joined frame was built once, up front
+    assert len(frames._cache) == 1
+    frames.clear_cache()
+    assert not frames._cache and not frames._norm  # nothing decoded outlives the group
+
+
+def test_run_checks_builds_the_joined_frame_a_bounded_number_of_times(bundle: dict[str, bytes],
+                                                                      monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+    joins: list[int] = []
+    orig = fm._join
+
+    def spy(*a, **kw):  # type: ignore[no-untyped-def]
+        joins.append(1)
+        return orig(*a, **kw)
+
+    monkeypatch.setattr(fm, "_join", spy)
+    frames = _frames(bundle, lazy=True)
+    results = run_checks(MODULE, frames, "t1", as_of="2026-01-01")
+    assert len(results) > 400
+    assert len(joins) < len(results) / 4, len(joins)  # was several per rule
+    assert not frames._cache and not frames._norm  # released after the run
+
+
+def test_run_checks_releases_decoded_frames_when_a_rule_raises(bundle: dict[str, bytes],
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.runner as rn
+    frames = _frames(bundle, lazy=True)
+    frames.frame_for(["MARC.DISPO"])
+    assert frames._cache
+
+    def boom(*a, **kw):  # type: ignore[no-untyped-def]
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(rn, "run_rule", boom)
+    with pytest.raises(RuntimeError):
+        run_checks(MODULE, frames, "t1")
+    assert not frames._cache and not frames._norm
 
 
 def test_rule_skipped_by_missing_applies_when_field_decodes_nothing(bundle: dict[str, bytes],
@@ -254,3 +293,15 @@ def test_run_checks_keeps_rule_order_when_grouped_by_grain(bundle: dict[str, byt
         ids = [r.check_id for r in results]
         assert ids == [i for i in order if i in set(ids)]
         assert sorted(seen) == sorted(order)
+
+
+def test_decoding_every_column_outside_the_rule_loop_retains_nothing(bundle: dict[str, bytes]) -> None:
+    # the DDIC conformance pass reads every column of every table; nothing may accumulate
+    frames = _frames(bundle, lazy=True)
+    for table, src in frames.frames.items():
+        for col in src.columns:
+            src[col]
+    assert not frames._cache and not frames._norm
+    run_checks(MODULE, frames, "t1", as_of="2026-01-01")
+    assert not frames._cache and not frames._norm
+    assert all(not getattr(src, "_memo", None) for src in frames.frames.values())

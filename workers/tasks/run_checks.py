@@ -542,6 +542,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
 
         hb_stop.set()  # checks stage over; later stages publish their own progress
 
+        frames.clear_cache()  # a failed outlier pass must not leave a decoded frame behind
         # Step 6c: Z-table (customer-namespace) rules. The standard rule
         # packs target SAP-delivered tables only; customers with heavy
         # Y*/Z* customisation get validation coverage via this pass. Rules
@@ -574,6 +575,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         except Exception as e:
             logger.warning(f"Z-table check pass failed, continuing: {e}")
 
+        frames.clear_cache()  # the conformance pass decodes every column: nothing may accumulate
         # Step 6d: DDIC conformance — every extracted field against the
         # source system's own dictionary definition (type, length, case,
         # fixed values, live check-table values).

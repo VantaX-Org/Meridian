@@ -276,6 +276,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         # periods) is not an unbalanced / unmatched / interrupted group
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(),
                                             f"not evaluated: extraction of {', '.join(partial)} is incomplete")
+    if _missing_context_field(rule, frames):
+        return rule, None  # decided from the columns alone: nothing decoded for a rule that cannot apply
     if rule.get("check_class") in ("referential_check", "domain_value_check"):
         rule = _with_reference(rule, frames.dictionary, reference_values or {})
     if rule.get("check_class") == "exists_check":
@@ -291,21 +293,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             if summed is None:
                 return rule, None  # the child table is not in the extract
             rule = summed
-        cols = rule_columns(rule)
-        g = frames.grain_for(cols, rule.get("grain"))
-        excl = exclusions(rule, [g] if g else tables_of(cols), cols)
-        hidden = (suppressed or {}).get(rule.get("field", ""))
-        if hidden and rule.get("check_class") != "field_status_check":
-            # the system's own field status hides this field for these groups: nothing to fill there
-            excl = excl + [{"id": "hidden_by_field_status", "fields": hidden[0], "values": sorted(hidden[1])}]
+        cols, g, excl, optional = _frame_inputs(rule, check_cls, frames, suppressed)
         cf = (rule.get("_cost") or {}).get("field")
-        # read when their table is joined anyway: optional check inputs, exclusion flags,
-        # the cost field and auto_fix inputs (a lazily decoded frame holds nothing else)
-        optional = list(dict.fromkeys(check_cls(rule).optional_columns()
-                                      + [c for x in excl for c in (x.get("fields") or [x["field"]])]
-                                      + [c for c in [cf, *auto_fix.columns(rule)] if c]))
-        if _missing_context_field(rule, frames):
-            return rule, None  # decided from the columns alone: no decoding for a rule that cannot apply
         built = frames.frame_for(cols, grain=rule.get("grain"), optional=optional)
         if built is None:
             return rule, None  # a table/field this rule needs is not in the extract
@@ -326,7 +315,12 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
-        frame, excluded = exclude(frame, excl, frames)
+        if frames.lazy and key_cols:
+            # what the lazy frame held for this rule alone: the rule's columns and the grain's key,
+            # not what the group's shared frame gained or the join keys; masks then copy only these
+            keep = set(cols) | set(optional) | set(key_cols)
+            frame = frame[[c for c in frame.columns if c in keep]]
+        frame, excluded = exclude(frame, excl, frames, norm=frames._norm if frames.lazy and grain else None)
         scoped = apply_context(frame, rule.get("applies_when"), as_of)
         if len(scoped) == 0:
             return rule, None  # no records in the rule's population
@@ -344,14 +338,36 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
 
 
+def _frame_inputs(rule: dict, check_cls: type[BaseCheck], frames: TableFrames,
+                  suppressed: dict[str, tuple[list[str], set[str]]] | None
+                  ) -> tuple[list[str], str | None, list[dict], list[str]]:
+    """(columns, grain, population exclusions, optional columns) of a rule's frame."""
+    cols = rule_columns(rule)
+    g = frames.grain_for(cols, rule.get("grain"))
+    excl = exclusions(rule, [g] if g else tables_of(cols), cols)
+    hidden = (suppressed or {}).get(rule.get("field", ""))
+    if hidden and rule.get("check_class") != "field_status_check":
+        # the system's own field status hides this field for these groups: nothing to fill there
+        excl = excl + [{"id": "hidden_by_field_status", "fields": hidden[0], "values": sorted(hidden[1])}]
+    cf = (rule.get("_cost") or {}).get("field")
+    # read when their table is joined anyway: optional check inputs, exclusion flags,
+    # the cost field and auto_fix inputs (a lazily decoded frame holds nothing else)
+    optional = list(dict.fromkeys(check_cls(rule).optional_columns()
+                                  + [c for x in excl for c in (x.get("fields") or [x["field"]])]
+                                  + [c for c in [cf, *auto_fix.columns(rule)] if c]))
+    return cols, g, excl, optional
+
+
 def _missing_context_field(rule: dict, frames: TableFrames) -> bool:
     """True when an ``applies_when`` field is not a column of its extracted table, so
     apply_context would leave no records (a {blank: true} condition on it still holds)."""
-    for field, allowed in (rule.get("applies_when") or {}).items():
-        table = field.partition(".")[0]
-        src = frames.frames.get(table)
-        if (src is not None and table not in frames.unsplittable and field not in src.columns
-                and not (isinstance(allowed, dict) and set(allowed) == {"blank"})):
+    cols = rule_columns(rule)
+    if (not rule.get("applies_when") or any(t in frames.unsplittable for t in tables_of(cols))
+            or frames.path_tables(cols, rule.get("grain")) is None):  # no join path: run_rule reports it
+        return False
+    for field, allowed in rule["applies_when"].items():
+        src = frames.frames.get(field.partition(".")[0])
+        if src is not None and field not in src.columns and not (isinstance(allowed, dict) and set(allowed) == {"blank"}):
             return True
     return False
 
@@ -381,6 +397,21 @@ def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: Chec
         recs, result.details.get("id_field_used") or "record_key", field, rule.get("fix_map") or {},
         rule.get("record_fix_template"), table or None, props)
     return [asdict(f) for f in fixes]
+
+
+def _group_columns(rules: list[dict], frames: TableFrames,
+                   suppressed: dict[str, tuple[list[str], set[str]]] | None) -> set[str]:
+    """Every column the rules of one grain read (rules that will skip excluded)."""
+    out: set[str] = set()
+    for rule in rules:
+        try:
+            if _missing_context_field(rule, frames):
+                continue
+            cols, _, _, optional = _frame_inputs(rule, REGISTRY[rule["check_class"]], frames, suppressed)
+            out |= set(cols) | set(optional)
+        except Exception:  # run_rule reports it
+            continue
+    return out
 
 
 def run_checks(
@@ -423,47 +454,54 @@ def run_checks(
     skipped = 0
 
     total_rules = len(rules)
-    # evaluate grouped by grain so a lazily held bundle decodes one group's tables at a
-    # time; results go back in rule order
-    def grain_of(rule: dict) -> str:
-        try:
-            check_cls = REGISTRY.get(rule.get("check_class", ""))
-            return (frames.grain_for(rule_columns(rule), rule.get("grain")) or "") if check_cls else ""
-        except Exception:
-            return ""
-    grains = [grain_of(r) for r in rules]
-    done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
-    prev: str | None = None
-    for done, i in enumerate(sorted(range(total_rules), key=lambda i: grains[i])):
-        rule = rules[i]
-        if grains[i] != prev:
-            frames.clear_cache()
-            prev = grains[i]
-        if on_progress is not None:
-            try:
-                on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
-            except Exception:  # progress is UX only
-                pass
-        t0 = time.monotonic()
+    for rule in rules:
         rule["module"] = module
         rule["_cost"] = cost.resolve(rule, cost_model)
-        check_cls = REGISTRY.get(rule.get("check_class", ""))
-        if check_cls is None:
-            done_by_rule[i] = (rule, CheckResult(
-                check_id=rule.get("id", "UNKNOWN"), module=module, field=rule.get("field", ""),
-                severity=rule.get("severity", "medium"), dimension=rule.get("dimension", ""),
-                passed=False, affected_count=0, total_count=0, pass_rate=0.0,
-                message=rule.get("message", ""), details={},
-                error=f"Unknown check_class: {rule.get('check_class')}",
-            ))
-            continue
 
-        rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
-                                sap_utc_offset_seconds=sap_utc_offset_seconds)
-        if (took := time.monotonic() - t0) > 60:
-            logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
-        done_by_rule[i] = (rule, result) if result is not None else None
-    frames.clear_cache()
+    # evaluate grouped by grain (then table set) so a lazily held bundle joins and decodes one
+    # group at a time; results go back in rule order
+    def group_of(rule: dict) -> tuple[str, tuple[str, ...]]:
+        try:
+            cols = rule_columns(rule) if rule.get("check_class") in REGISTRY else []
+            return frames.grain_for(cols, rule.get("grain")) or "", tuple(sorted(tables_of(cols)))
+        except Exception:
+            return "", ()
+    groups = [group_of(r) for r in rules]
+    done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
+    prev: str | None = None
+    try:
+        for done, i in enumerate(sorted(range(total_rules), key=lambda i: groups[i])):
+            rule = rules[i]
+            if groups[i][0] != prev:
+                prev = groups[i][0]
+                frames.clear_cache()
+                if prev and frames.lazy:
+                    frames.prefetch(_group_columns([r for r, g in zip(rules, groups) if g[0] == prev
+                                                    and r.get("check_class") in REGISTRY], frames, suppressed), prev)
+            if on_progress is not None:
+                try:
+                    on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
+                except Exception:  # progress is UX only
+                    pass
+            t0 = time.monotonic()
+            check_cls = REGISTRY.get(rule.get("check_class", ""))
+            if check_cls is None:
+                done_by_rule[i] = (rule, CheckResult(
+                    check_id=rule.get("id", "UNKNOWN"), module=module, field=rule.get("field", ""),
+                    severity=rule.get("severity", "medium"), dimension=rule.get("dimension", ""),
+                    passed=False, affected_count=0, total_count=0, pass_rate=0.0,
+                    message=rule.get("message", ""), details={},
+                    error=f"Unknown check_class: {rule.get('check_class')}",
+                ))
+                continue
+
+            rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
+                                    sap_utc_offset_seconds=sap_utc_offset_seconds)
+            if (took := time.monotonic() - t0) > 60:
+                logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
+            done_by_rule[i] = (rule, result) if result is not None else None
+    finally:
+        frames.clear_cache()
     for i in range(total_rules):
         if done_by_rule[i] is None:
             skipped += 1

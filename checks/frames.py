@@ -133,7 +133,6 @@ class ParquetTable:
         index = {c for c in (meta.schema_arrow.pandas_metadata or {}).get("index_columns", []) if isinstance(c, str)}
         self._stored = pd.Index([c for c in meta.schema_arrow.names if c not in index])
         self._added: dict[str, pd.Series] = {}
-        self._memo: dict[str, pd.Series] = {}  # stored columns decoded so far; release() drops them
         self.columns = self._stored
         self._rows = meta.metadata.num_rows
 
@@ -151,10 +150,6 @@ class ParquetTable:
     def empty(self) -> bool:
         return self._rows == 0 or len(self.columns) == 0
 
-    def release(self) -> None:
-        """Drop the decoded columns (the bytes stay); the next read decodes again."""
-        self._memo.clear()
-
     def __getitem__(self, cols: str | list[str]) -> pd.Series | pd.DataFrame:
         if isinstance(cols, str):
             return self[[cols]][cols]
@@ -166,11 +161,7 @@ class ParquetTable:
             first = list(self._stored[:1])
             frame = pd.read_parquet(io.BytesIO(self._data), columns=first).drop(columns=first)
         else:
-            todo = [c for c in stored if c not in self._memo]
-            if todo:  # each column decodes once, however many rules read it
-                part = pd.read_parquet(io.BytesIO(self._data), columns=todo)
-                self._memo.update({c: part[c] for c in todo})
-            frame = pd.DataFrame({c: self._memo[c] for c in stored})
+            frame = pd.read_parquet(io.BytesIO(self._data), columns=stored)
         if len(stored) == len(cols):
             return frame
         return frame.assign(**{c: self._added[c] for c in cols if c in self._added})[list(cols)]
@@ -210,7 +201,7 @@ class TableFrames:
         self.unsplittable = unsplittable or set()
         self.module = module
         self._cache: dict[tuple, tuple[pd.DataFrame, str, list[str]]] = {}
-        self._read: dict[tuple, set[str]] = {}  # columns each lazy cached frame was built with
+        self._norm: dict[str, pd.Series] = {}  # stripped string columns of the cached frame (population.exclude)
         self.incomplete: set[str] = set()  # tables the extraction could not read completely
         self.partial: set[str] = set()  # tables read by window or scope (not every record)
         self._apply_moved_fields()
@@ -281,12 +272,22 @@ class TableFrames:
         return grain or self._resolve_grain(tables)
 
     def clear_cache(self) -> None:
-        """Drop the joined per-rule frames and the decoded columns of lazily held tables."""
+        """Drop the joined per-rule frames (they hold decoded copies of the tables)."""
         self._cache.clear()
-        self._read.clear()
-        for f in self.frames.values():
-            if isinstance(f, ParquetTable):
-                f.release()
+        self._norm.clear()
+
+    @property
+    def lazy(self) -> bool:
+        return any(isinstance(f, ParquetTable) for f in self.frames.values())
+
+    def prefetch(self, columns: set[str], grain: str) -> None:
+        """Lazy tables: build ``grain``'s joined frame once with every column a group of rules
+        reads, so each rule reuses it instead of re-joining (an 18M-row merge costs ~10s)."""
+        cols = sorted(c for c in columns if (t := c.partition(".")[0]) in self.frames
+                      and t not in self.unsplittable and c in self.frames[t].columns
+                      and (t == grain or self._path(grain, t) is not None))
+        if self.lazy and cols and grain in self.frames:
+            self.frame_for(cols, grain=grain)
 
     def frame_for(self, columns: list[str], grain: str | None = None, optional: list[str] | None = None
                   ) -> Optional[tuple[pd.DataFrame, str | None, list[str]]]:
@@ -303,18 +304,20 @@ class TableFrames:
             return self.flat, None, []
         if any(t not in self.frames for t in tables):
             return None  # table not extracted → rule not applicable
-        # lazily held tables decode only the columns rules read: the cached frame is rebuilt
-        # wider when a rule needs more than it has, and only the last one is kept
-        lazy = any(isinstance(f, ParquetTable) for f in self.frames.values())
+        # a lazy frame holds only the columns rules asked for, so a cached one serves a rule
+        # that needs no more tables and columns than it has; only the last one is kept
+        lazy = self.lazy
         read = set(columns) | set(optional or [])
-        cache_key = (self.module, grain, tuple(sorted(tables)))
-        if cache_key in self._cache and (not lazy or read <= self._read[cache_key]):
-            return self._cache[cache_key]
-        read |= self._read.get(cache_key, set())
-
         g = self.grain_for(columns, grain)
         if g not in self.frames:
             return None
+        want = set(tables) | {g}
+        cache_key = (self.module, g, tuple(sorted(want)))
+        avail = {c for c in read if c.partition(".")[0] in want and c in self.frames[c.partition(".")[0]].columns}
+        for key, hit in self._cache.items():
+            if key == cache_key or (lazy and key[:2] == cache_key[:2] and want <= set(key[2])):
+                if not lazy or avail <= set(hit[0].columns):
+                    return hit
         paths = {t: self._path(g, t) for t in tables if t != g}
         wanted: set[str] | None = None
         if lazy and any(f"{g}.{k}" in self.frames[g].columns for k in self.dictionary.keys(g)):
@@ -335,8 +338,7 @@ class TableFrames:
                 frame = _join(frame, right, edge, need, up=(direction == "up"))
         keys = [f"{g}.{k}" for k in self.dictionary.keys(g) if f"{g}.{k}" in frame.columns]
         if lazy:
-            self._cache.clear()
-            self._read = {cache_key: read}
+            self.clear_cache()
         self._cache[cache_key] = (frame, g, keys)
         return self._cache[cache_key]
 
