@@ -177,24 +177,26 @@ _NOT_FOUND = {
     "comparison": "One or both runs not found.",
     "executive": "Run not found.",
     "object": "Run not found, or this module was not evaluated.",
+    "record": "Run not found, or this material is not in the extracted dataset.",
 }
 
 
 def _build_sync(tenant_id: str, kind: str, vid: Optional[str], vid1: Optional[str],
-                module: Optional[str] = None) -> Optional[bytes]:
+                module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
     from api.services.pdf_reports import build
     from workers.db import get_sync_engine, tenant_session
 
     with tenant_session(get_sync_engine(), tenant_id) as session:
-        return build(session, tenant_id, kind, vid, vid1, module=module)
+        return build(session, tenant_id, kind, vid, vid1, module=module, matnr=matnr)
 
 
 async def _pdf(tenant: Tenant, kind: str, filename: str, vid: Optional[uuid.UUID] = None,
-               vid1: Optional[uuid.UUID] = None, module: Optional[str] = None) -> Response:
+               vid1: Optional[uuid.UUID] = None, module: Optional[str] = None,
+               matnr: Optional[str] = None) -> Response:
     try:
         pdf = await asyncio.to_thread(_build_sync, str(tenant.id), kind,
                                       str(vid) if vid else None, str(vid1) if vid1 else None,
-                                      module)
+                                      module, matnr)
     except Exception:
         logger.exception("PDF report %s failed", kind)
         raise HTTPException(status_code=500, detail="Failed to generate PDF report")
@@ -250,3 +252,10 @@ async def object_report_pdf(version_id: uuid.UUID, module: str, tenant: Tenant =
     top findings, and failing-record samples for its top 3 failing rules. 404 when the module
     is not one the rule catalogue knows about, or the run was not found."""
     return await _pdf(tenant, "object", f"meridian_object_{module}_{version_id}.pdf", version_id, module=module)
+
+
+@router.get("/reports/record/{version_id}/{matnr}.pdf")
+async def record_report_pdf(version_id: uuid.UUID, matnr: str, tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Material 360 fix sheet for one material: failing rules by view, with actual values
+    and record fixes. 404 when the run has no extracted dataset or the material is not in it."""
+    return await _pdf(tenant, "record", f"meridian_record_{matnr}_{version_id}.pdf", version_id, matnr=matnr)

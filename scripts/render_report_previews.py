@@ -33,6 +33,8 @@ def contexts() -> dict[str, tuple[str, dict]]:
             "material_master", fx.V2["dqs_summary"]["material_master"],
             [f for f in fx.FINDINGS2 if f["module"] == "material_master"], fx.SAMPLES,
             system=fx.SYSTEM, **kw)),
+        "record": ("record_report.html", pr.record_context(
+            "100-100", fx.BY_VIEW, version=fx.V2, system=fx.SYSTEM, **kw)),
     }
 
 

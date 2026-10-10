@@ -692,6 +692,29 @@ def object_context(module: str, module_dqs: dict, findings: list[dict], samples:
     }
 
 
+# ── record fix sheet (Material 360, one record, one run) ─────────────────────
+
+
+def record_context(matnr: str, by_view: list[dict], *, tenant_name: str, version: dict,
+                   system: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
+    """T19: Material 360 fix sheet for one MATNR — the same by-view sections and
+    failing rules as ``GET /materials/{matnr}/findings`` (api/routes/materials.py),
+    rendered as a PDF rather than JSON. Masked fields reach the template only through
+    the shared ``redact`` filter; the data itself is already masked by migration 054."""
+    failing_views = [v for v in by_view if v.get("failing")]
+    now = _now(generated_at)
+    return {
+        "title": "Material 360 fix sheet", "eyebrow": "Record remediation", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
+        "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
+                 ("Material", matnr), ("Run", version.get("label") or str(version["id"])),
+                 ("Generated", fmt_dt(now))],
+        "matnr": matnr, "by_view": by_view, "failing_views": failing_views,
+        "rules_total": sum(v.get("rules") or 0 for v in by_view),
+        "failing_total": sum(len(v.get("failing") or []) for v in by_view),
+    }
+
+
 # ── loaders (sync; tenant RLS already set on the session) ────────────────────
 
 
@@ -864,8 +887,40 @@ def load_object(s: Session, tid: str, vid: str, module: str) -> Optional[dict]:
             "samples": samples, "system": load_system(s, tid, v)}
 
 
+def load_record(s: Session, tid: str, vid: str, matnr: str) -> Optional[dict]:
+    """T19: the same data materials.py's ``GET /{matnr}/findings`` builds (by-view sections,
+    failing rules with actual values and record fixes), loaded synchronously for the PDF
+    report rather than through that async route."""
+    from api.services import material_360 as m360
+    from api.services.source_design import dictionary_for
+
+    v = load_version(s, tid, vid)
+    if not v:
+        return None
+    m = m360.norm_matnr(matnr)
+    cat = m360.rule_catalogue()
+    names = {r["table"] for r in cat.values() if r["table"]} | {"MARA"}
+    path = (v.get("metadata") or {}).get("dataset_path")
+    if not path:
+        return None
+    d = dictionary_for(s, (v.get("metadata") or {}).get("system_id"))
+    tables = m360.load_tables(path, d, names)
+    if m360._for(tables, "MARA", m).empty:
+        return None
+    like = {"exact": f"MATNR={m}", "pre": f"MATNR={m}|%"}
+    fr = _all(s, "SELECT check_id, record_key, field_values FROM finding_records WHERE tenant_id = :t "
+                 "AND version_id = :v AND module = :mod AND (record_key = :exact OR record_key LIKE :pre)",
+             t=tid, v=str(vid), mod=m360.MODULE, **like)
+    iss = _all(s, "SELECT id, check_id, record_key, status FROM record_issues WHERE tenant_id = :t "
+                  "AND module = :mod AND (record_key = :exact OR record_key LIKE :pre)",
+              t=tid, mod=m360.MODULE, **like)
+    issues = {(r["check_id"], r["record_key"]): {"id": r["id"], "status": r["status"]} for r in iss}
+    out = m360.build_findings(fr, issues, m360.present_tables(tables, m), set(tables))
+    return {"version": v, "matnr": m, "by_view": out["by_view"], "system": load_system(s, tid, v)}
+
+
 def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Optional[str] = None,
-         module: Optional[str] = None) -> Optional[bytes]:
+         module: Optional[str] = None, matnr: Optional[str] = None) -> Optional[bytes]:
     """Load one report's data for a tenant and render it. ``None`` when the run is not found
     (or, for an extraction report, the run was not extracted from SAP)."""
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
@@ -898,4 +953,8 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
         d = load_object(s, tid, vid, module)
         return d and render("object_report.html", object_context(
             module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], **kw))
+    if kind == "record":
+        d = load_record(s, tid, vid, matnr)
+        return d and render("record_report.html", record_context(
+            d["matnr"], d["by_view"], version=d["version"], system=d["system"], **kw))
     raise ValueError(kind)

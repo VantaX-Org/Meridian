@@ -11,7 +11,7 @@ weasyprint = pytest.importorskip("weasyprint")
 
 
 @pytest.mark.parametrize("name", ["analysis", "extraction", "cleaning", "comparison", "executive",
-                                  "object"])
+                                  "object", "record"])
 def test_every_report_renders(name):
     from scripts.render_report_previews import contexts
 
@@ -140,3 +140,22 @@ def test_object_report_zero_findings_module_renders():
     html = pr._env().get_template("object_report.html").render(**ctx)
     assert "No check found failing records for this module in this run." in html
     assert "No rule ran for this module in this run." in html
+
+
+# ── T19: record fix sheet ───────────────────────────────────────────────────
+
+
+def test_record_report_sections_per_view_and_fix_text():
+    ctx = pr.record_context("100-100", fx.BY_VIEW, tenant_name=fx.TENANT, version=fx.V2,
+                            system=fx.SYSTEM, generated_at=fx.GENERATED)
+    html = pr._env().get_template("record_report.html").render(**ctx)
+    assert "Basic data" in html and "Plant data" in html
+    assert "Set MARA.MTART to a valid material type" in html
+
+
+def test_record_report_clean_record_empty_state():
+    ctx = pr.record_context("100-999", fx.BY_VIEW_CLEAN, tenant_name=fx.TENANT, version=fx.V2,
+                            system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["failing_total"] == 0
+    html = pr._env().get_template("record_report.html").render(**ctx)
+    assert "All rules pass for this record." in html

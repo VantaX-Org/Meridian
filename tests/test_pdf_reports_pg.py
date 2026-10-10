@@ -185,3 +185,16 @@ def test_object_report_404_for_unknown_module_and_tenant_scoped(app_engine):
 
     with tenant_session(app_eng, b) as s:
         assert build(s, b, "object", v["v2"], module="material_master") is None
+
+
+def test_record_report_404_without_extracted_dataset(app_engine):
+    """T19: the record report 404s when the run has no dataset_path (nothing was
+    extracted into object storage for it, as in this fixture's seeded runs)."""
+    from api.services.pdf_reports import build
+    from workers.db import tenant_session
+
+    owner, app_eng = app_engine
+    a, b, v = _seed(owner, app_eng)
+
+    with tenant_session(app_eng, a) as s:
+        assert build(s, a, "record", v["v2"], matnr="100-100") is None
