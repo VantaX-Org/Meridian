@@ -943,22 +943,24 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         except Exception as e:
             logger.warning(f"Failed to enqueue compute_proven_cost (non-fatal): {e}")
 
-        # Enqueue mining — dedup / anomaly / relationship (non-blocking).
+        # Enqueue mining — dedup / match / anomaly / relationship (non-blocking).
         # Mirrors the run_cleaning fan-out: each module's mining runs against
-        # the same uploaded parquet and writes data_duplicates / data_anomalies
-        # / data_relationships, which back the Dedup, Mining and Relationships
-        # pages. Previously nothing enqueued these, so those pages stayed empty.
-        # Failure is non-fatal — it must never block analysis completion.
+        # the same uploaded parquet and writes data_duplicates / match_scores /
+        # data_anomalies / data_relationships, which back the Dedup, merge queue,
+        # Mining and Relationships pages. run_match returns at once for modules
+        # it does not match. Failure is non-fatal — it must never block analysis completion.
         try:
             from workers.tasks.mining.dedup import run_dedup
             from workers.tasks.mining.anomaly import run_anomaly
             from workers.tasks.mining.relationship import run_relationship
+            from workers.tasks.run_match import run_match
             for module_name in data_modules:
                 run_dedup.delay(version_id, tenant_id, module_name, parquet_path)
+                run_match.delay(version_id, tenant_id, module_name, parquet_path)
                 run_anomaly.delay(version_id, tenant_id, module_name, parquet_path)
                 run_relationship.delay(version_id, tenant_id, module_name, parquet_path)
             logger.info(
-                f"Enqueued mining (dedup/anomaly/relationship) for "
+                f"Enqueued mining (dedup/match/anomaly/relationship) for "
                 f"version_id={version_id}, modules={modules}"
             )
         except Exception as e:

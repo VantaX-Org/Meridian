@@ -7,15 +7,17 @@ Endpoints:
   PUT   /glossary/{id}             — update term (approve permission)
   POST  /glossary/{id}/review      — mark term as reviewed (approve permission)
   POST  /glossary/batch-lookup     — batch field name lookup for integration points
+  GET   /owners                    — data owners and stewards per object, rule or system
+  PUT   /owners                    — set one owner and steward (assign permission)
 """
 
 import asyncio
 import logging
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -608,3 +610,74 @@ async def batch_lookup(
             )
 
     return BatchLookupResponse(lookup=lookup)
+
+
+# ── Data owners (object / rule / system; field ownership stays on the terms) ──
+
+OwnerKind = Literal["object", "rule", "system"]
+
+_OWNER_SQL = """
+    SELECT d.kind, d.ref, d.owner_user_id::text AS owner_user_id, o.name AS owner_name,
+           d.steward_user_id::text AS steward_user_id, s.name AS steward_name, d.updated_at
+      FROM data_owners d
+      LEFT JOIN users o ON o.id = d.owner_user_id
+      LEFT JOIN users s ON s.id = d.steward_user_id
+     WHERE d.tenant_id = :tid AND ({where})
+     ORDER BY d.kind, d.ref"""
+
+
+async def owner_rows(db: AsyncSession, tid: str, where: str, params: dict[str, str]) -> list[dict]:
+    """Owner rows of the tenant. ``where`` is a trusted fragment over alias ``d``; values go in params."""
+    rows = (await db.execute(text(_OWNER_SQL.format(where=where)), {"tid": tid, **params})).mappings().all()
+    return [{**r, "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None} for r in rows]
+
+
+class OwnerUpdate(BaseModel):
+    kind: OwnerKind
+    ref: str = Field(min_length=1, max_length=200)
+    owner_user_id: Optional[uuid.UUID] = None
+    steward_user_id: Optional[uuid.UUID] = None
+
+
+@router.get("/owners")
+async def list_owners(
+    kind: Optional[OwnerKind] = Query(None),
+    role: str = Depends(require_permission("view")),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> dict:
+    tid = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+    if kind:
+        return {"owners": await owner_rows(db, tid, "d.kind = :kind", {"kind": kind})}
+    return {"owners": await owner_rows(db, tid, "true", {})}
+
+
+@router.put("/owners")
+async def put_owner(
+    body: OwnerUpdate,
+    role: str = Depends(require_permission("assign")),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> dict:
+    tid = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+    wanted = {u for u in (body.owner_user_id, body.steward_user_id) if u}
+    if wanted:
+        found = {r[0] for r in (await db.execute(
+            text("SELECT id FROM users WHERE tenant_id = :tid AND is_active AND id = ANY(CAST(:ids AS uuid[]))"),
+            {"tid": tid, "ids": list(wanted)})).all()}
+        if found != wanted:
+            raise HTTPException(status_code=422, detail="owner and steward must be active users of this tenant")
+    await db.execute(text("""
+        INSERT INTO data_owners (tenant_id, kind, ref, owner_user_id, steward_user_id)
+        VALUES (:tid, :kind, :ref, :owner, :steward)
+        ON CONFLICT (tenant_id, kind, ref) DO UPDATE
+           SET owner_user_id = EXCLUDED.owner_user_id, steward_user_id = EXCLUDED.steward_user_id,
+               updated_at = now()"""),
+        {"tid": tid, "kind": body.kind, "ref": body.ref,
+         "owner": body.owner_user_id, "steward": body.steward_user_id})
+    # Read before commit: after commit the pooled connection may no longer carry app.tenant_id.
+    rows = await owner_rows(db, tid, "d.kind = :kind AND d.ref = :ref", {"kind": body.kind, "ref": body.ref})
+    await db.commit()
+    return rows[0]

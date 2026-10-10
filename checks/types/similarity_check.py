@@ -10,8 +10,12 @@ Branch 2), and keys shorter than 5 characters are not compared. Identical names
 are left to the exact rule only when one exists (``exact_rule: true``, the ND
 rules); otherwise they are reported here too. Records in a block larger than
 ``max_block`` are not compared, so they leave the population (never counted as
-passing) and are reported as skipped."""
+passing) and are reported as skipped.
 
+``blocks()`` and ``near_pairs()`` are shared with the match pipeline
+(workers/tasks/run_match.py), so a candidate pair there is found exactly as here."""
+
+from collections.abc import Hashable
 from difflib import SequenceMatcher
 from itertools import combinations
 
@@ -27,6 +31,59 @@ def _key(s: pd.Series) -> pd.Series:
     return t.map(lambda v: " ".join(sorted(v.split())) if isinstance(v, str) else "")
 
 
+def blocks(df: pd.DataFrame, field: str, block_by: list[str],
+           max_block: int) -> tuple[list[pd.Index], list[pd.Index]]:
+    """Group comparable records by ``block_by``. Returns (kept, oversized) blocks.
+
+    A record is comparable when ``field`` and every block field are populated and its
+    compact name key has at least 5 characters. Blocks larger than ``max_block`` are
+    returned separately: their records are not compared, so callers report them."""
+    from checks.value_placement import name_key
+    populated = ~is_blank(df[field])
+    for c in block_by:
+        populated &= ~is_blank(df[c])
+    scope = populated & (name_key(df[field]).fillna("").str.len() >= 5)
+    # fillna: rows with a blank block field are already excluded via scope below, but the
+    # join itself runs over the whole frame first and NA breaks str.join before that mask applies.
+    group = (df[block_by].astype("string").fillna("").apply(lambda s: s.str.strip().str.upper()).agg("|".join, axis=1)
+             if block_by else pd.Series("", index=df.index))
+    kept: list[pd.Index] = []
+    oversized: list[pd.Index] = []
+    for _, idx in group[scope].groupby(group[scope]).groups.items():
+        (oversized if len(idx) > max_block else kept).append(idx)
+    return kept, oversized
+
+
+def near_pairs(df: pd.DataFrame, field: str, groups: list[pd.Index], threshold: float,
+               exact_elsewhere: bool = False) -> list[tuple[Hashable, Hashable, float]]:
+    """Index pairs inside each group whose names score >= ``threshold``.
+
+    Names with different numbers never pair. Identical compact keys score 1.0, or are
+    skipped when ``exact_elsewhere`` (an exact-duplicate rule reports them)."""
+    from checks.value_placement import name_key
+    key = _key(df[field])
+    compact = name_key(df[field]).fillna("")  # the exact-duplicate rule's own key
+    digits = key.str.replace(r"[^0-9]", "", regex=True)
+    out: list[tuple[Hashable, Hashable, float]] = []
+    for idx in groups:
+        for a, b in combinations(idx, 2):
+            ka, kb = compact[a], compact[b]
+            if digits[a] != digits[b] or (ka == kb and exact_elsewhere):
+                continue  # other numbers, other things; identical names: the exact rule's
+            if ka == kb:
+                score = 1.0
+            else:
+                sm = SequenceMatcher(None, key[a], key[b])
+                # cheap upper bounds first: skip the real ratio() scan when either
+                # says the pair can't reach threshold
+                score = (sm.ratio()
+                         if sm.real_quick_ratio() >= threshold and sm.quick_ratio() >= threshold
+                         else 0.0)
+            if score >= threshold:
+                out.append((a, b, score))
+    return out
+
+
 class SimilarityCheck(BaseCheck):
     check_class = "similarity_check"
     default_dimension = "uniqueness"
@@ -38,35 +95,17 @@ class SimilarityCheck(BaseCheck):
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         r = self.rule
         threshold, max_block = float(r.get("threshold", 0.9)), int(r.get("max_block", 300))
-        blocks = list(r.get("block_by") or [])
-        populated = ~is_blank(df[r["field"]])
-        for c in blocks:
-            populated &= ~is_blank(df[c])
-        from checks.value_placement import name_key
-        key = _key(df[r["field"]])
-        compact = name_key(df[r["field"]]).fillna("")  # the exact-duplicate rule's own key
-        digits = key.str.replace(r"[^0-9]", "", regex=True)
-        group = (df[blocks].astype("string").apply(lambda s: s.str.strip().str.upper()).agg("|".join, axis=1)
-                 if blocks else pd.Series("", index=df.index))
+        kept, oversized = blocks(df, r["field"], list(r.get("block_by") or []), max_block)
+        # Records in an oversized block are not compared: unknown, not clean, so out of scope.
+        scope = pd.Series(df.index.isin([i for g in kept for i in g]), index=df.index)
         failing = pd.Series(False, index=df.index)
-        pairs, skipped = [], 0
-        scope = populated & (compact.str.len() >= 5)
-        skipped_records = 0
-        exact_elsewhere = bool(r.get("exact_rule"))
         ev_col = r.get("evidence_key") or r["field"]  # evidence_key: show this column's values, not the compared (personal) field
-        for _, idx in group[scope].groupby(group[scope]).groups.items():
-            if len(idx) > max_block:
-                skipped += 1
-                skipped_records += len(idx)
-                scope[idx] = False  # not compared: unknown, not clean
-                continue
-            for a, b in combinations(idx, 2):
-                ka, kb = compact[a], compact[b]
-                if digits[a] != digits[b] or (ka == kb and exact_elsewhere):
-                    continue  # other numbers, other things; identical names: the exact rule's
-                if ka == kb or SequenceMatcher(None, key[a], key[b]).ratio() >= threshold:
-                    failing[a] = failing[b] = True
-                    if len(pairs) < 20:
-                        pairs.append([str(df.at[a, ev_col]), str(df.at[b, ev_col])])
-        return Evaluation(scope, failing, {"near_duplicate_pairs": pairs, "blocks_skipped_too_large": skipped,
-                                           "records_not_compared": skipped_records, "threshold": threshold})
+        pairs: list[list[str]] = []
+        for a, b, _ in near_pairs(df, r["field"], kept, threshold, bool(r.get("exact_rule"))):
+            failing[a] = failing[b] = True
+            if len(pairs) < 20:
+                pairs.append([str(df.at[a, ev_col]), str(df.at[b, ev_col])])
+        return Evaluation(scope, failing, {"near_duplicate_pairs": pairs,
+                                           "blocks_skipped_too_large": len(oversized),
+                                           "records_not_compared": sum(len(g) for g in oversized),
+                                           "threshold": threshold})

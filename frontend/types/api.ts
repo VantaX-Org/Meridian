@@ -412,26 +412,6 @@ export interface ExceptionListResponse {
   per_page: number;
 }
 
-/* ─── Lineage ─── */
-
-export interface LineageNode {
-  id: string;
-  label: string;
-  type: "record" | "finding" | "exception" | "cleaning" | "dedup" | "relationship";
-  data: Record<string, unknown>;
-}
-
-export interface LineageEdge {
-  source: string;
-  target: string;
-  label: string;
-}
-
-export interface LineageGraph {
-  nodes: LineageNode[];
-  edges: LineageEdge[];
-}
-
 /* ─── Contracts ─── */
 
 export type ContractStatus = "draft" | "pending_approval" | "active" | "expired";

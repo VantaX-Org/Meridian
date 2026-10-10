@@ -1630,6 +1630,9 @@ class MatchScore(Base):
     __table_args__ = (
         Index("ix_match_scores_tenant_domain", "tenant_id", "domain"),
         Index("ix_match_scores_tenant_action", "tenant_id", "auto_action"),
+        Index("uq_match_scores_pair", "tenant_id", "domain",
+              text("LEAST(candidate_a_key, candidate_b_key)"),
+              text("GREATEST(candidate_a_key, candidate_b_key)"), unique=True),
     )
 
 
@@ -1722,6 +1725,26 @@ class GlossaryTermRule(Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "term_id", "rule_id", name="uq_glossary_term_rules_tenant_term_rule"),
         Index("ix_glossary_term_rules_tenant_term", "tenant_id", "term_id"),
+    )
+
+
+class DataOwner(Base):
+    """Owner and steward of an object (module id), a rule (check id) or a system.
+    Field ownership stays on GlossaryTerm.data_steward_id."""
+    __tablename__ = "data_owners"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False)
+    ref = Column(Text, nullable=False)
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    steward_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('object', 'rule', 'system')", name="ck_data_owners_kind"),
+        UniqueConstraint("tenant_id", "kind", "ref", name="uq_data_owners_kind_ref"),
     )
 
 

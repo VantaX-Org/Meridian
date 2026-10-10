@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Bar, DataTable, ReportPage, SeverityDot, isSeverity } from "@/design";
+import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getObject, type ObjectRule } from "@/lib/api/v1/objects";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -64,23 +65,28 @@ export default function ObjectDetailPage() {
     : [];
 
   return (
-    <ReportPage
-      narrative={narrative}
-      charts={<Bar data={dimensionPoints} />}
-      tables={
-        <DataTable
-          columns={columns}
-          data={rulesRanked}
-          getRowId={(row) => row.check_id}
-          onRowClick={(row) => router.push(`/objects/${object}/rules/${row.check_id}?run=${run}`)}
-        />
-      }
-      state={state}
-      emptyProps={emptyProps}
-      errorProps={{
-        message: `Couldn't load this object. ${error?.message ?? ""}`.trim(),
-        onRetry: () => refetch(),
-      }}
-    />
+    <div className="flex flex-col">
+      <div className="px-6 pt-6">
+        <OwnerPicker kind="object" refId={object} />
+      </div>
+      <ReportPage
+        narrative={narrative}
+        charts={<Bar data={dimensionPoints} />}
+        tables={
+          <DataTable
+            columns={columns}
+            data={rulesRanked}
+            getRowId={(row) => row.check_id}
+            onRowClick={(row) => router.push(`/objects/${object}/rules/${row.check_id}?run=${run}`)}
+          />
+        }
+        state={state}
+        emptyProps={emptyProps}
+        errorProps={{
+          message: `Couldn't load this object. ${error?.message ?? ""}`.trim(),
+          onRetry: () => refetch(),
+        }}
+      />
+    </div>
   );
 }

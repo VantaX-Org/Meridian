@@ -53,6 +53,7 @@ import workers.tasks.snapshot_mdm_metrics  # noqa: F401
 import workers.tasks.ai_health_narrative  # noqa: F401
 import workers.tasks.ai_enrich_report  # noqa: F401
 import workers.tasks.mining.orchestrator  # noqa: F401 — registers dedup/anomaly/relationship + mining
+import workers.tasks.run_match  # noqa: F401 — match pipeline → match_scores
 import workers.tasks.build_golden_records  # noqa: F401
 import workers.tasks.run_migration  # noqa: F401 — source→source/dest migration
 import workers.tasks.run_extraction  # noqa: F401 — live SAP extraction → checks

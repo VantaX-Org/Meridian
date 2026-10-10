@@ -17,17 +17,22 @@ VERSION_ID = "00000000-0000-0000-0000-000000000099"
 
 
 class TestDetectDuplicates:
-    def test_exact_match_on_email(self, engine):
+    def test_exact_primary_key_duplicates(self, engine):
+        df = pd.DataFrame({
+            "partner": ["BP001", "BP001", "BP002"],
+            "name": ["Acme Trading", "Acme Trading", "Zeta Holdings"],
+        })
+        results = engine.detect_duplicates(df, "business_partner", VERSION_ID, TENANT_ID)
+        assert [(r["record_key"], r["match_method"], r["category"]) for r in results] == [
+            ("BP001|BP001_dup1", "exact_pk", "dedup")]
+
+    def test_near_names_are_left_to_the_match_pipeline(self, engine):
         df = pd.DataFrame({
             "partner": ["BP001", "BP002", "BP003"],
             "name": ["Acme Trading Pty Ltd", "Acme Trading (Pty) Ltd", "Unrelated Corp"],
             "email": ["info@acme.co.za", "info@acme.co.za", "other@test.com"],
         })
-        results = engine.detect_duplicates(df, "business_partner", VERSION_ID, TENANT_ID)
-        assert len(results) >= 1
-        match = results[0]
-        assert match["category"] == "dedup"
-        assert match["confidence"] >= 80
+        assert engine.detect_duplicates(df, "business_partner", VERSION_ID, TENANT_ID) == []
 
     def test_no_duplicates(self, engine):
         df = pd.DataFrame({

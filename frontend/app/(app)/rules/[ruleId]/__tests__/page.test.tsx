@@ -1,10 +1,14 @@
 import { screen, waitFor } from "@testing-library/react";
-import { vi, describe, it, expect } from "vitest";
+import { vi, beforeEach, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as rulesApi from "@/lib/api/rules";
 import type { Rule } from "@/lib/api/rules";
 import * as configLoadApi from "@/lib/api/config-load";
 import type { RuleApplicability } from "@/lib/api/config-load";
+import * as lineageApi from "@/lib/api/lineage";
+import type { RuleLineage } from "@/lib/api/lineage";
+import * as ownersApi from "@/lib/api/owners";
+import * as usersApi from "@/lib/api/users";
 import RulePage from "../page";
 
 vi.mock("next/navigation", () => ({
@@ -36,7 +40,24 @@ const APPLICABILITY: RuleApplicability = {
   ],
 };
 
+const LINEAGE: RuleLineage = {
+  check_id: "AP001",
+  module: "business_partner",
+  fields: ["LFB1.LNRZE"],
+  targets: ["LFA1.LIFNR"],
+  tables: ["LFB1", "LFA1"],
+  joins: [{ parent: "LFA1", child: "LFB1", on: [["LIFNR", "LIFNR"]], cardinality: "many" }],
+  glossary_terms: [{ id: "g1", business_name: "Vendor number", sap_table: "LFA1", sap_field: "LIFNR" }],
+  owners: [],
+};
+
 describe("rule detail page", () => {
+  beforeEach(() => {
+    vi.spyOn(lineageApi, "getRuleLineage").mockResolvedValue(LINEAGE);
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
+    vi.spyOn(usersApi, "getAssignableUsers").mockRejectedValue(new Error("forbidden"));
+  });
+
   it("renders the rule once loaded", async () => {
     vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
     vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
@@ -61,5 +82,28 @@ describe("rule detail page", () => {
     spy.mockResolvedValue(RULE);
     retry.click();
     await waitFor(() => expect(screen.getByText("AP001: Vendor number is mandatory")).toBeInTheDocument());
+  });
+
+  it("shows lineage and ownership by check id", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue(RULE);
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    await waitFor(() => expect(screen.getByText("LFB1.LNRZE")).toBeInTheDocument());
+    expect(configLoadApi.getRuleApplicability).toHaveBeenCalledWith("AP001", "business_partner");
+    expect(lineageApi.getRuleLineage).toHaveBeenCalledWith("AP001");
+    expect(screen.getByText("LFA1 → LFB1 on LIFNR")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Vendor number" })).toHaveAttribute("href", "/mdm/glossary/g1");
+    expect(screen.getByRole("link", { name: "See failing records" })).toHaveAttribute(
+      "href", "/objects/business_partner/rules/AP001",
+    );
+    await waitFor(() => expect(screen.getByText("No owner set.")).toBeInTheDocument());
+  });
+
+  it("explains that custom rules have no lineage", async () => {
+    vi.spyOn(rulesApi, "getRule").mockResolvedValue({ ...RULE, source: "custom" });
+    vi.spyOn(configLoadApi, "getRuleApplicability").mockResolvedValue(APPLICABILITY);
+    renderWithQuery(<RulePage />);
+    await waitFor(() => expect(screen.getByText("Lineage is shown for built-in rules only.")).toBeInTheDocument());
+    expect(lineageApi.getRuleLineage).not.toHaveBeenCalled();
   });
 });

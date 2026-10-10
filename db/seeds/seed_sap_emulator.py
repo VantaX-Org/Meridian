@@ -1683,7 +1683,7 @@ def _persist_to_database(db_url: str, tenant_id: str, payload: dict) -> None:
             psycopg2.extras.execute_values(cur, """
                 INSERT INTO match_scores (id, tenant_id, candidate_a_key, candidate_b_key, domain, total_score, field_scores, ai_semantic_score, auto_action, created_at)
                 VALUES %s
-                ON CONFLICT (id) DO NOTHING
+                ON CONFLICT DO NOTHING
             """, [
                 (
                     m["id"], tenant_id, m["record_a_key"], m["record_b_key"],

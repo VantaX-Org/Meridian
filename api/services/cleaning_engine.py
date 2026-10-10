@@ -1,15 +1,13 @@
 """Cleaning Engine — detects cleaning candidates across 5 categories.
 
-Uses jellyfish for fuzzy string matching, thefuzz for token overlap.
+Near-duplicate records are scored by the match pipeline (workers/tasks/run_match.py).
 Pure detection — no database writes, returns candidate dicts for bulk insert.
 """
 
 import logging
 from datetime import datetime, timezone
 
-import jellyfish
 import pandas as pd
-from thefuzz import fuzz
 
 from api.services.standardisers import (
     country_code,
@@ -47,8 +45,6 @@ _DESC_COLS = [
 ]
 _PAYMENT_COLS = ["payment_terms", "zterm"]
 _CURRENCY_COLS = ["currency", "waers", "curr", "currency_code"]
-_TAX_COLS = ["tax_number", "stcd1", "vat_number", "stceg", "tax_id"]
-_BANK_ACCT_COLS = ["bank_account", "bankn", "banka", "bankl", "bank_key"]
 _MATERIAL_GROUP_COLS = ["material_group", "matkl"]
 _BASE_UNIT_COLS = ["base_unit", "meins", "base_uom"]
 _ACTIVITY_COLS = [
@@ -155,7 +151,8 @@ class CleaningEngine:
         version_id: str,
         tenant_id: str,
     ) -> list[dict]:
-        """Category 1: Exact primary-key duplicates + O(n^2) fuzzy dedup."""
+        """Category 1: exact primary-key duplicates. Near-duplicates are scored by the
+        match pipeline (workers/tasks/run_match.py), which blocks the whole frame."""
         results: list[dict] = []
 
         # Phase 1: Exact duplicate detection on primary key (applies to all modules)
@@ -196,106 +193,6 @@ class CleaningEngine:
                             "match_fields": {pk_col: {"a": str(pk_val), "b": str(pk_val), "method": "exact_pk"}},
                             "category": "dedup",
                         })
-
-        # Phase 2: Fuzzy matching on name/email/tax/bank (O(n^2), capped at 500 rows)
-        name_col = _find_col(df, _NAME_COLS)
-        email_col = _find_col(df, _EMAIL_COLS)
-        tax_col = _find_col(df, _TAX_COLS)
-        bank_col = _find_col(df, _BANK_ACCT_COLS)
-
-        if not name_col and not email_col and not tax_col and not bank_col:
-            return results
-
-        # Limit to first 500 rows to keep O(n^2) feasible
-        subset = df.head(500)
-        seen_pairs: set[tuple[int, int]] = set()
-
-        for i in range(len(subset)):
-            for j in range(i + 1, len(subset)):
-                if (i, j) in seen_pairs:
-                    continue
-
-                row_a = subset.iloc[i]
-                row_b = subset.iloc[j]
-                score = 0
-                method = ""
-                match_fields: dict[str, dict] = {}
-
-                # Exact match on tax_number, bank_account, or email
-                for col, col_name in [(tax_col, "tax_number"), (bank_col, "bank_account"), (email_col, "email")]:
-                    if col and pd.notna(row_a.get(col)) and pd.notna(row_b.get(col)):
-                        val_a = str(row_a[col]).strip()
-                        val_b = str(row_b[col]).strip()
-                        if val_a and val_b and val_a.lower() == val_b.lower():
-                            score = max(score, 95)
-                            method = "exact"
-                            match_fields[col_name] = {"a": val_a, "b": val_b, "method": "exact"}
-
-                # Name-based matching
-                if name_col and pd.notna(row_a.get(name_col)) and pd.notna(row_b.get(name_col)):
-                    name_a = str(row_a[name_col]).strip()
-                    name_b = str(row_b[name_col]).strip()
-
-                    if name_a and name_b and len(name_a) > 5 and len(name_b) > 5:
-                        # Levenshtein
-                        lev_dist = jellyfish.levenshtein_distance(name_a.lower(), name_b.lower())
-                        if lev_dist <= 3:
-                            if score < 80:
-                                score = 80
-                                method = method or "fuzzy"
-                            match_fields["name_levenshtein"] = {"a": name_a, "b": name_b, "distance": lev_dist}
-
-                        # Soundex
-                        if jellyfish.soundex(name_a) == jellyfish.soundex(name_b):
-                            if score < 70:
-                                score = 70
-                                method = method or "phonetic"
-                            match_fields["name_soundex"] = {"a": name_a, "b": name_b, "soundex": jellyfish.soundex(name_a)}
-
-                        # Token overlap (Jaccard)
-                        tokens_a = set(name_a.lower().split())
-                        tokens_b = set(name_b.lower().split())
-                        if tokens_a and tokens_b:
-                            jaccard = len(tokens_a & tokens_b) / len(tokens_a | tokens_b) * 100
-                            if jaccard > 80:
-                                if score < 75:
-                                    score = 75
-                                    method = method or "token_overlap"
-                                match_fields["name_token_overlap"] = {"a": name_a, "b": name_b, "jaccard": round(jaccard, 1)}
-
-                if score < 60:
-                    continue
-
-                seen_pairs.add((i, j))
-                key_a = _record_key(row_a, df)
-                key_b = _record_key(row_b, df)
-
-                # Build merge preview — prefer non-empty, longer value
-                merge_preview: dict[str, dict] = {}
-                for col in df.columns:
-                    val_a = row_a.get(col)
-                    val_b = row_b.get(col)
-                    str_a = str(val_a) if pd.notna(val_a) else ""
-                    str_b = str(val_b) if pd.notna(val_b) else ""
-                    survivor = str_a if len(str_a) >= len(str_b) else str_b
-                    merge_preview[col] = {"a": str_a, "b": str_b, "survivor": survivor}
-
-                results.append({
-                    "object_type": object_type,
-                    "status": "detected",
-                    "record_key": f"{key_a}|{key_b}",
-                    "record_data_before": {"record_a": key_a, "record_b": key_b},
-                    "record_data_after": None,
-                    "confidence": score,
-                    "rule_id": None,
-                    "version_id": version_id,
-                    "tenant_id": tenant_id,
-                    "priority": 70 if score >= 85 else 50,
-                    "merge_preview": merge_preview,
-                    "match_method": method,
-                    "match_fields": match_fields,
-                    "category": "dedup",
-                })
 
         return results
 
