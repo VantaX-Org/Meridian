@@ -150,7 +150,26 @@ def test_duplicate_payment_single_vendor_no_cluster() -> None:
     bsak = pd.DataFrame({"BUKRS": ["1"] * 2, "LIFNR": ["700", "700"],
                          "BELNR": ["B1", "B2"], "XBLNR": ["INV-X", "INV-X"],
                          "WRBTR": [1200.0, 1200.0], "WAERS": ["ZAR"] * 2,
-                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101"] * 2})
+                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101"] * 2, "GJAHR": ["2025", "2025"]})
     r = pc.duplicate_payments(_tf(BSAK=bsak), {})
     assert r.amount == 1200.0 and r.documents == 1
     assert r.items[0]["master_key"] == "LIFNR=700"
+
+
+def test_duplicate_payment_gjahr_separates_documents() -> None:
+    bsak = pd.DataFrame({"BUKRS": ["1"] * 2, "LIFNR": ["100", "100"],
+                         "BELNR": ["1400000001", "1400000001"], "XBLNR": ["INV-9", "INV-9"],
+                         "WRBTR": [5000.0, 5000.0], "WAERS": ["ZAR"] * 2,
+                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101", "20260101"], "GJAHR": ["2025", "2026"]})
+    r = pc.duplicate_payments(_tf(BSAK=bsak), pc.vendor_clusters([]))
+    assert r.amount == 5000.0 and r.documents == 1
+    assert r.items[0]["master_key"] == "LIFNR=100"
+
+
+def test_duplicate_payment_reversed_payments_excluded() -> None:
+    bsak = pd.DataFrame({"BUKRS": ["1"] * 2, "LIFNR": ["100", "100"],
+                         "BELNR": ["B1", "B2"], "XBLNR": ["INV-X", "INV-X"],
+                         "WRBTR": [5000.0, -5000.0], "WAERS": ["ZAR"] * 2,
+                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101", "20260101"], "GJAHR": ["2025", "2025"]})
+    r = pc.duplicate_payments(_tf(BSAK=bsak), {})
+    assert r.amount == 0 and r.items == []

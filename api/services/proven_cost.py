@@ -197,14 +197,18 @@ def duplicate_payments(frames: TableFrames, clusters: dict[str, str]) -> MetricR
     (bsak,) = got
     p = bsak[_s(bsak, "SHKZG") == "S"]
     p = p.assign(lif=_s(p, "LIFNR").str.lstrip("0"), BELNR=_s(p, "BELNR"), BUKRS=_s(p, "BUKRS"),
-                 currency=_s(p, "WAERS"), amt=_num(p, "WRBTR").abs(),
+                 GJAHR=_s(p, "GJAHR"), currency=_s(p, "WAERS"), amt=_num(p, "WRBTR"),
                  ref=_s(p, "XBLNR").str.upper().str.replace(r"[^A-Z0-9]", "", regex=True))
-    p = p.assign(cluster=p["lif"].map(clusters).fillna(p["lif"]), ref=p["ref"].where(p["ref"] != "", "BLDAT:" + _s(p, "BLDAT")))
+    p = p[p["lif"] != ""]
+    p = p[p["amt"] > 0]
+    # ponytail: reversed payments still count; exclude via BKPF.STBLG once extracted.
+    p = p.assign(cluster=p["lif"].map(clusters).fillna(p["lif"]), ref=p["ref"].where(p["ref"] != "", "BLDAT:" + _s(p, "BLDAT")),
+                 doc=p["GJAHR"] + "/" + p["BELNR"])
     g = p.groupby(["cluster", "BUKRS", "currency", "amt", "ref"]).agg(
-        docs=("BELNR", "nunique"), lifs=("lif", lambda s: ",".join(sorted(set(s)))), belnr=("BELNR", lambda s: ",".join(sorted(set(s))))
+        docs=("doc", "nunique"), lifs=("lif", lambda s: ",".join(sorted(set(s)))), doc=("doc", lambda s: ",".join(sorted(set(s))))
     ).reset_index()
     g = g[g["docs"] > 1]
-    rows = pd.DataFrame({"doc_key": "BUKRS=" + g["BUKRS"] + "|BELNR=" + g["belnr"],
+    rows = pd.DataFrame({"doc_key": "BUKRS=" + g["BUKRS"] + "|GJAHR/BELNR=" + g["doc"],
                          "master_key": "LIFNR=" + g["lifs"], "amount": g["amt"] * (g["docs"] - 1),
                          "currency": g["currency"],
                          "detail": g["docs"].astype(str) + " payments of " + g["amt"].round(2).astype(str)
