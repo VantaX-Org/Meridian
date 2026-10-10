@@ -190,6 +190,8 @@ def test_config_basis_reads_completed_then_fresh_running(app_engine):
     _load(app, tid, c, [], status="running", minutes_ago=45)  # stale
     with _session(app, tid) as s:
         assert [config_basis(s, x) for x in (a, b, c)] == ["loaded", "loading", "none"]
+    with _session(app, _tenant(owner)) as s:  # another tenant never sees these loads
+        assert config_basis(s, a) == "none"
 
 
 @pg

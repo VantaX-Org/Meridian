@@ -168,7 +168,8 @@ SCOPE_SQL = (
 BASIS_SQL = (
     "SELECT bool_or(status = 'completed'), "
     f"bool_or(status IN ('queued', 'running') AND created_at > now() - interval '{STALE_MINUTES} minutes') "
-    "FROM config_loads WHERE system_id = CAST(:sid AS uuid)"
+    "FROM config_loads WHERE system_id = CAST(:sid AS uuid) "
+    "AND tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"  # the session's tenant, as RLS sees it
 )
 
 

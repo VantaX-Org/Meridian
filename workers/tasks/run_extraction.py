@@ -13,6 +13,7 @@ import json
 import logging
 import uuid
 
+from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -51,7 +52,7 @@ def latest_activity(frames: dict) -> str | None:
 CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
 
 
-def wait_for_config(task, session: Session, system_id: str) -> str:
+def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     """'loaded' when the system has a completed config load; retry while a fresh load runs; else 'baseline'."""
     from api.services.config_pairing import config_basis
 
