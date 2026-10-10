@@ -372,7 +372,8 @@ async def dry_run_report(
 
     name = f"s4_dry_run_{run_id}"
     if fmt == "xlsx":
-        content = to_xlsx({"Summary": summary_df, "Load fail": fail_df, "By rule": rule_df})
+        content = to_xlsx({"Summary": summary_df, "Load fail": fail_df, "By rule": rule_df},
+                          sanitize_formulas=True)
         return _stream(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
 
     ctx = {

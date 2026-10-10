@@ -205,6 +205,61 @@ async def test_dry_run_xlsx_export(analysed_dry_run, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_dry_run_xlsx_export_escapes_formula_injection(analysed_dry_run, monkeypatch):
+    """A gap detail/record_key that starts with a formula char must come out of the xlsx
+    export prefixed with a single quote (Excel/Sheets formula-injection guard)."""
+    import openpyxl
+
+    rid = analysed_dry_run["rid"]
+    t1 = analysed_dry_run["t1"]
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as c:
+        c.execute(text("""
+            INSERT INTO migration_gap_findings (tenant_id, run_id, module, object_type, record_key,
+                                                 gap_type, severity, detail)
+            VALUES (:t, :r, 'material_master', 'MARA', '=cmd|/C calc', 's4_load', 'critical',
+                    '=HYPERLINK("http://evil") formula payload')
+        """), {"t": t1, "r": rid})
+    engine.dispose()
+
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get(f"/api/v1/migration/runs/{rid}/dry-run/xlsx", headers=_HEADERS)
+    assert r.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(r.content))
+    ws = wb["Load fail"]
+    header = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+    rk_col = header.index("record_key")
+    reason_col = header.index("reasons")
+    rows = [[c.value for c in row] for row in ws.iter_rows(min_row=2)]
+    hit = next(row for row in rows if "cmd" in str(row[rk_col]))
+    assert hit[rk_col].startswith("'=")
+    assert hit[reason_col].startswith("'=")
+
+
+def test_to_xlsx_sanitize_formulas_flag():
+    """Default to_xlsx leaves every value byte-for-byte (the /export SAP load file route relies
+    on this for real '+' phone numbers and '-' balances). sanitize_formulas=True escapes formula
+    chars but still leaves numeric '-'/'+' values untouched."""
+    import pandas as pd
+    import openpyxl
+
+    from api.services.migration.export import to_xlsx
+
+    df = pd.DataFrame({"v": ["=1+1", "+27115551234", "-5", "-1.2", "@mention", "plain"]})
+
+    default_wb = openpyxl.load_workbook(io.BytesIO(to_xlsx({"Sheet": df})))
+    default_vals = [c[0].value for c in default_wb["Sheet"].iter_rows(min_row=2)]
+    assert default_vals == ["=1+1", "+27115551234", "-5", "-1.2", "@mention", "plain"]
+
+    sanitized_wb = openpyxl.load_workbook(io.BytesIO(to_xlsx({"Sheet": df}, sanitize_formulas=True)))
+    sanitized_vals = [c[0].value for c in sanitized_wb["Sheet"].iter_rows(min_row=2)]
+    # '+' is always escaped (formula char); '-' only when non-numeric, so -5/-1.2 stay bare.
+    assert sanitized_vals == ["'=1+1", "'+27115551234", "-5", "-1.2", "'@mention", "plain"]
+
+
+@pytest.mark.anyio
 async def test_dry_run_pdf_export(analysed_dry_run, monkeypatch):
     pytest.importorskip("weasyprint")
 
