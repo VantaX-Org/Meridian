@@ -12,15 +12,17 @@ RULES_DIR = Path(__file__).parent.parent.parent / "checks" / "rules" / "successf
 
 # Expected rule counts per module
 EXPECTED_COUNTS = {
-    "employee_central": 260,
-    "compensation": 92,
+    # Fix round 3: EC380/EC381/EC443 tombstoned (append-only id contract: see
+    # tests/test_sf_ec_depth_rules2.py DELETED), dropping the live count by 3.
+    "employee_central": 460,
+    "compensation": 222,  # COMP137 deleted; tombstoned, see tests/test_sf_comp_depth_rules.py DELETED
     "recruiting_onboarding": 80,
     "learning_management": 80,
     "performance_goals": 80,
     "succession_planning": 80,
     "time_attendance": 80,
-    "benefits": 81,
-    "payroll_integration": 109,
+    "benefits": 98,
+    "payroll_integration": 265,
 }
 
 REQUIRED_ENRICHMENT_FIELDS = ["fix_map", "rule_authority", "why_it_matters", "sap_impact"]
@@ -139,12 +141,12 @@ def test_ec_null_check_finds_failures_with_enrichment():
 # ---- Test 5: Total rule count across all SF modules ----
 
 def test_total_sf_rule_count():
-    """Total across all 9 SF modules should be 559 rules."""
+    """Total across all 9 SF modules should be 1445 rules."""
     total = 0
     for module_name in EXPECTED_COUNTS:
         rules = _load_rules(module_name)
         total += len(rules)
-    assert total == 942, f"Expected 942 total SF rules, got {total}"
+    assert total == 1445, f"Expected 1445 total SF rules, got {total}"
 
 
 # ---- Test 6: domain_value_check rules have valid_values_with_labels ----

@@ -120,8 +120,8 @@ def test_s4_wm_rules_are_tagged():
 
 
 def test_readiness_areas_reference_existing_rules():
-    known = {r["id"] for f in glob.glob("checks/rules/*/*.yaml") for r in (yaml.safe_load(open(f)) or {}).get("rules", [])
-             if isinstance(yaml.safe_load(open(f)), dict)}
+    docs = (yaml.safe_load(open(f)) for f in glob.glob("checks/rules/*/*.yaml"))
+    known = {r["id"] for d in docs if isinstance(d, dict) for r in d.get("rules", [])}
     for area in ("warehouse_ewm", "ariba_integration", "concur_integration"):
         rel = S4_PACK["areas"][area]["related"]
         ids = rel.get("blocking", []) + rel.get("warning", [])

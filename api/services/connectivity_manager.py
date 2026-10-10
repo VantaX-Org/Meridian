@@ -482,6 +482,14 @@ class ConnectivityManager:
             if merged is None:
                 continue
             merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
+            # BOOLEAN fields arrive as Python bool from OData V2 JSON; astype("string") would give
+            # "True"/"False", but rules match the lowercase 'true'/'false' form (same normalisation
+            # as _extract_rest below, so a rule's target_when/applies_when 'true' match works for
+            # every connector, not just REST ones).
+            for f in t.fields.values():
+                col = f"{table}.{f.name}"
+                if (f.type or "").upper() == "BOOLEAN" and col in merged.columns:
+                    merged[col] = merged[col].map(lambda v: str(v).lower() if v is not None and v == v else v)
             # legacy-picklist fields return the option id; rules and picklists speak external codes
             for f in t.fields.values():
                 col, opts = f"{table}.{f.name}", options.get(f.picklist or "")
@@ -676,7 +684,16 @@ class ConnectivityManager:
                 where=render_where(target.filter) if target.filter else None,
                 max_rows=effective_max,
             )
-        elif system_type in ("successfactors", "s4hana_cloud", "btp"):
+        elif system_type == "successfactors":
+            return connector.read_entity_set(
+                target.source,
+                select=target.fields if target.fields else None,
+                filter_expr=target.filter,
+                top=effective_max,
+                from_date=target.from_date,
+            )
+        elif system_type in ("s4hana_cloud", "btp"):
+            # OData V4 (S/4HANA Cloud, BTP) has no fromDate param; from_date is SF-only.
             return connector.read_entity_set(
                 target.source,
                 select=target.fields if target.fields else None,

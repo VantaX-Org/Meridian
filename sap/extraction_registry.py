@@ -40,6 +40,7 @@ class ExtractionTarget:
     description: str = ""
     is_config: bool = False
     rename_map: dict = field(default_factory=dict)
+    from_date: Optional[str] = None  # OData fromDate for effective-dated entities (cloud SAP only). None = current record only.
 
 
 # ============================================================================
@@ -760,6 +761,14 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             description="Compensation data",
         ),
         # Config targets
+        # I4 (fix round 3, safe-to-ship-as-is per review): none of the FO*
+        # targets below set from_date, so SF returns one current row per
+        # external code and the current-record assumption built into the
+        # rules written against them holds. Add an effective-start-date
+        # field to $select and a from_date here only together with a
+        # matching key change on the FO canonical tables, or the implicit
+        # "current" assumption breaks the same way described for Position
+        # (I1) above.
         ExtractionTarget(
             source="FOCompany",
             fields=["externalCode", "name", "country", "currency", "status"],
@@ -807,6 +816,160 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=["externalCode", "name", "event", "status"],
             description="Event reason picklist",
             is_config=True,
+        ),
+        ExtractionTarget(
+            source="EmpJob",
+            fields=[
+                "userId", "startDate", "seqNumber", "endDate", "company",
+                "businessUnit", "division", "department", "location",
+                "costCenter", "jobCode", "position", "managerId",
+                "employeeClass", "employmentType", "emplStatus",
+                "eventReason", "event", "payGrade", "payGroup",
+                "standardHours", "fte", "timezone", "countryOfCompany",
+                "isFulltimeEmployee", "workScheduleCode",
+                "holidayCalendarCode", "timeTypeProfileCode",
+            ],
+            description="Job history (every effective-dated record)",
+            from_date="1900-01-01",
+            rename_map={
+                "userId": "USERID", "startDate": "START_DATE",
+                "seqNumber": "SEQ_NUMBER", "endDate": "END_DATE",
+                "company": "COMPANY", "businessUnit": "BUSINESS_UNIT",
+                "division": "DIVISION", "department": "DEPARTMENT",
+                "location": "LOCATION", "costCenter": "COST_CENTER",
+                "jobCode": "JOB_CODE", "position": "POSITION",
+                "managerId": "MANAGER_ID", "employeeClass": "EMPLOYEE_CLASS",
+                "employmentType": "EMPLOYMENT_TYPE", "emplStatus": "STATUS",
+                "eventReason": "EVENT_REASON", "event": "EVENT",
+                "payGrade": "PAY_GRADE", "payGroup": "PAY_GROUP",
+                "standardHours": "STANDARD_HOURS", "fte": "FTE",
+                "timezone": "TIMEZONE",
+                "countryOfCompany": "COUNTRY_OF_COMPANY",
+                "isFulltimeEmployee": "IS_FULLTIME",
+                "workScheduleCode": "WORK_SCHEDULE",
+                "holidayCalendarCode": "HOLIDAY_CALENDAR",
+                "timeTypeProfileCode": "TIME_TYPE_PROFILE",
+            },
+        ),
+        ExtractionTarget(
+            source="PerPerson",
+            fields=["personIdExternal", "dateOfBirth", "countryOfBirth", "placeOfBirth", "perPersonUuid"],
+            description="Person bio data (date/place of birth, UUID)",
+            rename_map={
+                "personIdExternal": "PERSON_ID",
+                "dateOfBirth": "DATE_OF_BIRTH",
+                "countryOfBirth": "COUNTRY_OF_BIRTH",
+                "placeOfBirth": "PLACE_OF_BIRTH",
+                "perPersonUuid": "PERSON_UUID",
+            },
+        ),
+        ExtractionTarget(
+            source="User",
+            fields=[
+                "userId", "username", "status", "email", "firstName",
+                "lastName", "empId", "hireDate", "department", "division",
+                "location", "timeZone", "defaultLocale",
+            ],
+            description="System user accounts",
+            # ponytail: managerId omitted — standard User.managerId is a
+            # navigation-only property (manager/userId) and read_entity_set()
+            # has no $expand support; add if the connector gains $expand.
+            rename_map={
+                "userId": "USER_ID", "username": "USERNAME",
+                "status": "STATUS", "email": "EMAIL",
+                "firstName": "FIRST_NAME", "lastName": "LAST_NAME",
+                "empId": "EMP_ID", "hireDate": "HIRE_DATE",
+                "department": "DEPARTMENT", "division": "DIVISION",
+                "location": "LOCATION", "timeZone": "TIMEZONE",
+                "defaultLocale": "DEFAULT_LOCALE",
+            },
+        ),
+        ExtractionTarget(
+            source="Position",
+            fields=[
+                "code", "effectiveStartDate", "effectiveEndDate",
+                "effectiveStatus", "externalName_defaultValue", "company",
+                "businessUnit", "division", "department", "location",
+                "costCenter", "jobCode", "positionCriticality", "vacant",
+                "targetFTE", "standardHours", "payGrade",
+            ],
+            description="Positions (position management)",
+            # I1 (fix round 3, safe-to-ship-as-is per review): no from_date
+            # is set here, so SF returns one current row per position code
+            # and POSITION.keys=[CODE] (sap/dictionaries/canonical/
+            # successfactors.yaml) does not collide, even though the row
+            # also carries effectiveStartDate/effectiveEndDate as if it
+            # were effective-dated history. If this target ever gains
+            # from_date, POSITION.keys must also gain
+            # EFFECTIVE_START_DATE or EC299 (uniqueness on POSITION.CODE)
+            # will mass-fire on every position that was ever changed.
+            # ponytail: parentPosition and incumbent omitted — both are
+            # navigation-only properties on the standard Position entity
+            # (parentPosition/code, incumbent/userId) and read_entity_set()
+            # has no $expand support; add if the connector gains $expand.
+            rename_map={
+                "code": "CODE", "effectiveStartDate": "EFFECTIVE_START_DATE",
+                "effectiveEndDate": "EFFECTIVE_END_DATE",
+                "effectiveStatus": "EFFECTIVE_STATUS",
+                "externalName_defaultValue": "EXTERNAL_NAME",
+                "company": "COMPANY", "businessUnit": "BUSINESS_UNIT",
+                "division": "DIVISION", "department": "DEPARTMENT",
+                "location": "LOCATION", "costCenter": "COST_CENTER",
+                "jobCode": "JOB_CODE",
+                "positionCriticality": "CRITICALITY", "vacant": "VACANT",
+                "targetFTE": "TARGET_FTE", "standardHours": "STANDARD_HOURS",
+                "payGrade": "PAY_GRADE",
+            },
+        ),
+        ExtractionTarget(
+            source="PerAddressDEFLT",
+            fields=[
+                "personIdExternal", "addressType", "startDate", "address1",
+                "address2", "city", "state", "zipCode", "country",
+            ],
+            description="Home addresses",
+            rename_map={
+                "personIdExternal": "PERSON_ID", "addressType": "ADDRESS_TYPE",
+                "startDate": "START_DATE", "address1": "ADDRESS_LINE1",
+                "address2": "ADDRESS_LINE2", "city": "CITY",
+                "state": "STATE", "zipCode": "ZIPCODE", "country": "COUNTRY",
+            },
+        ),
+        ExtractionTarget(
+            source="PerEmergencyContacts",
+            fields=["personIdExternal", "name", "relationship", "phone", "email", "primaryFlag"],
+            description="Emergency contacts",
+            rename_map={
+                "personIdExternal": "PERSON_ID", "name": "NAME",
+                "relationship": "RELATIONSHIP", "phone": "PHONE",
+                "email": "EMAIL", "primaryFlag": "PRIMARY_FLAG",
+            },
+        ),
+        ExtractionTarget(
+            source="EmpJobRelationships",
+            fields=["userId", "relationshipType", "startDate", "endDate", "relUserId"],
+            description="Job relationships (matrix/dotted-line manager, HR partner)",
+            rename_map={
+                "userId": "USERID", "relationshipType": "RELATIONSHIP_TYPE",
+                "startDate": "START_DATE", "endDate": "END_DATE",
+                "relUserId": "RELATED_USER_ID",
+            },
+        ),
+        ExtractionTarget(
+            source="FOBusinessUnit",
+            fields=["externalCode", "status"],
+            description="Business unit picklist",
+            # ponytail: not is_config=True — that flag feeds
+            # sap.config_loader.planned_objects(), which api/services/
+            # config_areas.py's area_defs() must also list; this task's
+            # scope excludes api/, so this stays a plain extraction target.
+            # Upgrade path: flip to is_config=True and add it to that area
+            # definition in a task that may touch api/.
+        ),
+        ExtractionTarget(
+            source="FODivision",
+            fields=["externalCode", "status"],
+            description="Division picklist",
         ),
     ],
 

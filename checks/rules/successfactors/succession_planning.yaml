@@ -619,9 +619,18 @@ rules:
   - id: SUC037
     field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
     check_class: domain_value_check
+    # Case-tolerant: the SuccessFactors connector lowercases BOOLEAN-typed fields
+    # (api/services/connectivity_manager.py), so a source 'Y' or Edm.Boolean true can
+    # arrive as 'y' / 'true' / 'True'. All of these are valid flag values.
     allowed_values:
     - 'Y'
     - 'N'
+    - 'y'
+    - 'n'
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
     severity: low
     dimension: validity
     message: Emergency successor flag must be Y or N
@@ -633,6 +642,12 @@ rules:
     valid_values_with_labels:
       'Y': Flagged as an emergency successor
       'N': Not an emergency successor
+      'y': Flagged as an emergency successor
+      'n': Not an emergency successor
+      'true': Flagged as an emergency successor
+      'false': Not an emergency successor
+      'True': Flagged as an emergency successor
+      'False': Not an emergency successor
     fix_map:
       __other__: Emergency successor flag '{invalid_value}' is invalid. Use Y or N.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: EMERGENCY_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
@@ -652,9 +667,18 @@ rules:
   - id: SUC038
     field: SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG
     check_class: domain_value_check
+    # Case-tolerant: the SuccessFactors connector lowercases BOOLEAN-typed fields
+    # (api/services/connectivity_manager.py), so a source 'Y' or Edm.Boolean true can
+    # arrive as 'y' / 'true' / 'True'. All of these are valid flag values.
     allowed_values:
     - 'Y'
     - 'N'
+    - 'y'
+    - 'n'
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
     severity: low
     dimension: validity
     message: Backup successor flag must be Y or N
@@ -665,6 +689,12 @@ rules:
     valid_values_with_labels:
       'Y': Backup (non-primary) successor
       'N': Primary successor
+      'y': Backup (non-primary) successor
+      'n': Primary successor
+      'true': Backup (non-primary) successor
+      'false': Primary successor
+      'True': Backup (non-primary) successor
+      'False': Primary successor
     fix_map:
       __other__: Backup successor flag '{invalid_value}' is invalid. Use Y or N.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: BACKUP_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
@@ -684,9 +714,18 @@ rules:
   - id: SUC039
     field: SUCCESSIONCANDIDATE.MOBILITY_FLAG
     check_class: domain_value_check
+    # Case-tolerant: the SuccessFactors connector lowercases BOOLEAN-typed fields
+    # (api/services/connectivity_manager.py), so a source 'Y' or Edm.Boolean true can
+    # arrive as 'y' / 'true' / 'True'. All of these are valid flag values.
     allowed_values:
     - 'Y'
     - 'N'
+    - 'y'
+    - 'n'
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
     severity: low
     dimension: validity
     message: Mobility flag must be Y or N
@@ -697,6 +736,12 @@ rules:
     valid_values_with_labels:
       'Y': Willing to relocate or transfer
       'N': Not willing to relocate or transfer
+      'y': Willing to relocate or transfer
+      'n': Not willing to relocate or transfer
+      'true': Willing to relocate or transfer
+      'false': Not willing to relocate or transfer
+      'True': Willing to relocate or transfer
+      'False': Not willing to relocate or transfer
     fix_map:
       __other__: Mobility flag '{invalid_value}' is invalid. Use Y or N.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: MOBILITY_FLAG ''{actual_value}'' is invalid.'
@@ -716,9 +761,18 @@ rules:
   - id: SUC040
     field: SUCCESSIONCANDIDATE.DIVERSITY_CANDIDATE_FLAG
     check_class: domain_value_check
+    # Case-tolerant: the SuccessFactors connector lowercases BOOLEAN-typed fields
+    # (api/services/connectivity_manager.py), so a source 'Y' or Edm.Boolean true can
+    # arrive as 'y' / 'true' / 'True'. All of these are valid flag values.
     allowed_values:
     - 'Y'
     - 'N'
+    - 'y'
+    - 'n'
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
     severity: low
     dimension: validity
     message: Diversity candidate flag must be Y or N
@@ -729,6 +783,12 @@ rules:
     valid_values_with_labels:
       'Y': Counted in diverse-slate representation reporting
       'N': Not flagged for diverse-slate reporting
+      'y': Counted in diverse-slate representation reporting
+      'n': Not flagged for diverse-slate reporting
+      'true': Counted in diverse-slate representation reporting
+      'false': Not flagged for diverse-slate reporting
+      'True': Counted in diverse-slate representation reporting
+      'False': Not flagged for diverse-slate reporting
     fix_map:
       __other__: Diversity candidate flag '{invalid_value}' is invalid. Use Y or N.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: DIVERSITY_CANDIDATE_FLAG ''{actual_value}'' is invalid.'
@@ -748,9 +808,18 @@ rules:
   - id: SUC041
     field: SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG
     check_class: domain_value_check
+    # Case-tolerant: the SuccessFactors connector lowercases BOOLEAN-typed fields
+    # (api/services/connectivity_manager.py), so a source 'Y' or Edm.Boolean true can
+    # arrive as 'y' / 'true' / 'True'. All of these are valid flag values.
     allowed_values:
     - 'Y'
     - 'N'
+    - 'y'
+    - 'n'
+    - 'true'
+    - 'false'
+    - 'True'
+    - 'False'
     severity: medium
     dimension: validity
     message: Eligible successor flag must be Y or N
@@ -761,6 +830,12 @@ rules:
     valid_values_with_labels:
       'Y': Meets the position's minimum eligibility criteria
       'N': Does not meet the position's minimum eligibility criteria
+      'y': Meets the position's minimum eligibility criteria
+      'n': Does not meet the position's minimum eligibility criteria
+      'true': Meets the position's minimum eligibility criteria
+      'false': Does not meet the position's minimum eligibility criteria
+      'True': Meets the position's minimum eligibility criteria
+      'False': Does not meet the position's minimum eligibility criteria
     fix_map:
       __other__: Eligible successor flag '{invalid_value}' is invalid. Use Y or N.
     record_fix_template: 'Nominee {SUCCESSIONCANDIDATE.NOMINEE_ID}: ELIGIBLE_SUCCESSOR_FLAG ''{actual_value}'' is invalid.'
@@ -1150,8 +1225,11 @@ rules:
     fail_when: '`SUCCESSIONCANDIDATE.READINESS` != ''READY_NOW'''
     require_populated: true
     applies_when:
-      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:  # case-tolerant: Y or lowercased/boolean forms
       - Y
+      - y
+      - 'true'
+      - 'True'
     severity: high
     dimension: consistency
     message: Emergency successor is not ready now
@@ -1170,8 +1248,11 @@ rules:
     fields:
     - SUCCESSIONCANDIDATE.POSITION_ID
     applies_when:
-      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:  # case-tolerant: Y or lowercased/boolean forms
       - Y
+      - y
+      - 'true'
+      - 'True'
       SUCCESSIONCANDIDATE.APPROVAL_STATUS: *id001
     severity: medium
     dimension: uniqueness
@@ -1210,7 +1291,7 @@ rules:
   - id: SUC065
     field: SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG
     check_class: cross_field_check
-    fail_when: (`SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG` == 'Y') | (`SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG` == 'Y')
+    fail_when: "`SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG`.str.lower().isin(['y','true']) | `SUCCESSIONCANDIDATE.BACKUP_SUCCESSOR_FLAG`.str.lower().isin(['y','true'])"
     applies_when:
       SUCCESSIONCANDIDATE.APPROVAL_STATUS:
       - REJECTED
@@ -1327,7 +1408,7 @@ rules:
   - id: SUC072
     field: SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG
     check_class: cross_field_check
-    fail_when: '`SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG` == ''N'''
+    fail_when: "`SUCCESSIONCANDIDATE.ELIGIBLE_SUCCESSOR_FLAG`.str.lower().isin(['n','false'])"
     require_populated: true
     applies_when:
       SUCCESSIONCANDIDATE.APPROVAL_STATUS:
@@ -1525,8 +1606,11 @@ rules:
     fail_when: '`EMPEMPLOYMENT.STATUS`.isin([''U'',''P'',''S''])'
     require_populated: true
     applies_when:
-      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:
+      SUCCESSIONCANDIDATE.EMERGENCY_SUCCESSOR_FLAG:  # case-tolerant: Y or lowercased/boolean forms
       - Y
+      - y
+      - 'true'
+      - 'True'
     severity: medium
     dimension: consistency
     message: Emergency successor is on leave or suspended

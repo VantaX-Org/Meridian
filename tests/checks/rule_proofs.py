@@ -16,16 +16,19 @@ try:  # Python ≥ 3.11 moved the regex parser
 except ImportError:  # pragma: no cover
     import sre_constants
     import sre_parse
-from datetime import date, datetime, timezone
 
 import pandas as pd
 
-from checks.frames import TableFrames, _graph, tables_of
+from checks.base import as_of_time
+from checks.frames import TableFrames, _graph, internal_format, tables_of
 from checks.runner import rule_columns, run_rule
 
-TODAY = date.today().strftime("%Y%m%d")
-NOW = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-CUR_YEAR = date.today().strftime("%Y")
+# The engine's own clock (as_of_time: now, tz-naive UTC), so `@today` and these probes
+# always fall on the same calendar day whatever the machine's local timezone.
+_NOW = as_of_time()
+TODAY = _NOW.strftime("%Y%m%d")
+NOW = _NOW.strftime("%Y-%m-%dT%H:%M:%S")
+CUR_YEAR = _NOW.strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],
     "num": ["", "0", "1", "-1", "100", "1000000", CUR_YEAR],
@@ -156,6 +159,65 @@ def sample_regex_violation(pattern: str) -> str | None:
     return s if hit and not re.match(pattern, s) else None
 
 
+def sample_regex_overflow(pattern: str) -> str | None:
+    """One string one char longer than a bounded ``{m,n}``/``{n}`` repeat allows, e.g. for a
+    length-only pattern like ``^.{1,32}$`` that has no negative lookahead for
+    sample_regex_violation to embed. None if the pattern has no finite-max repeat."""
+    try:
+        tree = sre_parse.parse(pattern)
+    except Exception:
+        return None
+    bumped = []
+
+    def gen(items) -> str:
+        out = []
+        for op, av in items:
+            if op is sre_constants.LITERAL:
+                out.append(chr(av))
+            elif op is sre_constants.NOT_LITERAL:
+                out.append("A" if av != ord("A") else "B")
+            elif op is sre_constants.ANY:
+                out.append("A")
+            elif op is sre_constants.IN:
+                out.append(_in(av))
+            elif op in (sre_constants.MAX_REPEAT, sre_constants.MIN_REPEAT):
+                lo, hi, sub = av
+                n = max(lo, 1 if hi and hi >= 1 else 0)
+                if not bumped and hi is not None and hi < 2**32:
+                    bumped.append(True)
+                    n = hi + 1  # one more than the pattern allows
+                out.append(gen(sub) * n)
+            elif op is sre_constants.SUBPATTERN:
+                out.append(gen(av[-1]))
+            elif op is sre_constants.BRANCH:
+                out.append(gen(av[1][0]))
+            elif op in (sre_constants.AT, sre_constants.ASSERT, sre_constants.ASSERT_NOT):
+                continue
+            elif op is sre_constants.GROUPREF:
+                out.append("")
+            else:
+                raise ValueError(op)
+        return "".join(out)
+
+    def _in(items) -> str:
+        for op, av in items:
+            if op is sre_constants.NEGATE:
+                return "A"
+            if op is sre_constants.LITERAL:
+                return chr(av)
+            if op is sre_constants.RANGE:
+                return chr(av[0])
+            if op is sre_constants.CATEGORY:
+                return {"CATEGORY_DIGIT": "1", "CATEGORY_WORD": "A", "CATEGORY_SPACE": " "}.get(str(av).split(".")[-1], "A")
+        return "A"
+
+    try:
+        s = gen(tree)
+    except Exception:
+        return None
+    return s if bumped and not re.match(pattern, s) else None
+
+
 def _kind(dictionary, col: str) -> str:
     f = dictionary.resolve(col)
     t = (f.type or "").upper() if f else ""
@@ -170,12 +232,48 @@ _PLACEMENT_SAMPLES = {"misplaced": ["ap@example.co.za", "www.acme.com", "0115551
                       "vat_checksum": ["DE136695977", "DE136695976", "AU", "51824753557", "51824753556"]}
 _FORMAT_SAMPLES = {"gtin": "4006381333931", "ean": "4006381333931", "iban": "GB82WEST12345698765432",
                    "luhn": "4539148803436467", "email": "ap@example.co.za", "date": TODAY}
+# a cross_field_check comparing a slice of a column (IBAN prefix at [0:2], or a BIC/SWIFT
+# country code at [4:6], etc.) mapped through ``@iso_alpha3`` (an alpha-2 -> alpha-3 country
+# map, checks/types/cross_field_check.py) to a plain Country-FO field: neither generic char
+# probes nor the paired-column "@=" hint can produce a row where the mapped side resolves to
+# a real value (the map only has real alpha-2 keys) or one where it equals the other side
+# (different code spaces) — so without this, such a rule is unprovable (never_fails). The
+# slice bounds are captured so the candidate places "GB" at the actual sliced position
+# (e.g. characters 4-6 of a BIC), not just the start of the string.
+_ISO_ALPHA3_MAP_BEFORE = re.compile(
+    r"`([^`]+)`(?:\.str\.slice\((\d+),\s*(\d+)\))?[^`]*\.map\(@iso_alpha3\)\s*(?:==|!=)\s*`([^`]+)`")
+_ISO_ALPHA3_MAP_AFTER = re.compile(
+    r"`([^`]+)`\s*(?:==|!=)\s*`([^`]+)`(?:\.str\.slice\((\d+),\s*(\d+)\))?[^`]*\.map\(@iso_alpha3\)")
 
+
+def _iso_alpha3_pair(expr: str) -> tuple[str, str, int, int] | None:
+    """(mapped_column, other_column, slice_start, slice_end), or None — see the comment above."""
+    m = _ISO_ALPHA3_MAP_BEFORE.search(expr)
+    if m:
+        start, end = m.group(2), m.group(3)
+        return m.group(1), m.group(4), int(start or 0), int(end) if end else int(start or 0) + 2
+    m = _ISO_ALPHA3_MAP_AFTER.search(expr)
+    if m:
+        start, end = m.group(3), m.group(4)
+        return m.group(2), m.group(1), int(start or 0), int(end) if end else int(start or 0) + 2
+    return None
+
+
+def _inequality_cols(expr: str) -> set[str]:
+    """Columns appearing in a magnitude comparison (<, <=, >, >=) anywhere in ``expr``,
+    e.g. both sides of ``ANNUAL_SALARY < (PAY_RANGE_MIN * 0.5)``. Equality-only columns
+    (==, !=) are excluded: those are satisfied by the "@=" same-value pairing instead."""
+    cols: set[str] = set()
+    for seg in re.split(r"\band\b|\bor\b", expr):
+        if re.search(r"(?<![<>=])[<>](?!=)|<=|>=", seg):
+            cols |= set(re.findall(r"`([^`]+)`", seg))
+    return cols
 
 
 def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
     cols = rule_columns(rule)
     expr = rule.get("fail_when") or rule.get("condition") or ""
+    iso_pair = _iso_alpha3_pair(expr)
     literals = [a or b for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", expr)]
     # columns compared with each other: also try "the same value as the other side"
     paired: dict[str, list[str]] = {}
@@ -183,6 +281,32 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
         paired.setdefault(a, []).append(f"@={b}")
         paired.setdefault(b, []).append(f"@={a}")
     numbers = re.findall(r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", expr)
+    # a literal boundary alone (e.g. "-1" in `X` < -1) never satisfies a strict </>: offer values
+    # just past each boundary, and the midpoint between adjacent boundaries (e.g. 0 and 1 -> 0.5)
+    # for an open interval like `0 < X < 1`. Digits inside a quoted string (e.g. an embedded regex
+    # like '[1-9][0-9]{2}') aren't magnitude-comparison boundaries at all: strip quotes first, or
+    # they flood the per-column candidate cap and evict the probe values other rules rely on
+    # (asset_accounting AA204/AA214).
+    _n = sorted(set(float(x) for x in re.findall(
+        r"(?<![\w.`])(-?\d+(?:\.\d+)?)(?![\w`])", re.sub(r"'[^']*'|\"[^\"]*\"", "", expr))))
+
+    def _fmt(v: float) -> str:
+        return str(int(v)) if v == int(v) else str(round(v, 3))
+
+    # midpoints first: an open-interval check (`0 < X < 1`) needs one to ever fail at all,
+    # while a single-boundary check (`X < -1`) only needs the +/-1 offsets that follow.
+    number_variants = [_fmt((a + b) / 2) for a, b in zip(_n, _n[1:])]
+    # a column that is some table's own key, or a cross-table join key, must keep its
+    # identity-default ("K{i}" from _rows(), propagated across the join) rather than collapse
+    # onto one of a handful of probe values shared by every generated record (sd_sales_orders
+    # SDSO232 etc: VBAP.MATNR is the join key to MARC/MARA; giving it e.g. "X" for every row
+    # made every row join the same material, so none of them stayed out of scope).
+    _tables = set(tables_of(cols))
+    _edges, _ = _graph()
+    _key_or_joined = {f"{t}.{k}" for t in _tables for k in dictionary.keys(t)} | \
+        {f"{e.child}.{jc}" for e in _edges if e.parent in _tables and e.child in _tables for jc, _ in e.on} | \
+        {f"{e.parent}.{jp}" for e in _edges if e.parent in _tables and e.child in _tables for _, jp in e.on}
+    number_variants += [_fmt(v + 1) for v in _n] + [_fmt(v - 1) for v in _n]
     out = {}
     for c in cols:
         if c in (rule.get("group_by") or []):
@@ -191,8 +315,14 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             out[c] = ["000000"]  # freshness time-of-day: one value, so the date probes stay inside MAX_ROWS
             continue
         vals: list[str] = []
-        if c == rule.get("field") and expr and f"`{c}`" not in expr and not (rule.get("applies_when") or {}).get(c):
-            continue  # a cross-field rule's anchor: keep the record id
+        if (c == rule.get("field") and expr and f"`{c}`" not in expr
+                and not (rule.get("applies_when") or {}).get(c)
+                and c in _key_or_joined):
+            continue  # a cross-field rule's anchor that is itself a key/join column: keep the
+            # record id, or giving it a probe value collapses distinct rows onto the same join
+            # (sd_sales_orders SDSO232 etc). A non-key, non-join anchor (e.g. COMP143's SALARY,
+            # flagged but absent from fail_when) still needs a value, since _rows() only
+            # defaults key/join columns to "K{i}".
         if rule.get("check_class") == "value_placement_check" and c in (rule.get("fields") or [rule["field"]]):
             vals += _PLACEMENT_SAMPLES[rule["family"]]
         if c == rule.get("split_field"):
@@ -204,11 +334,13 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
                 vals += [_FORMAT_SAMPLES.get(str(rule["format"]).lower(), "")]
             if rule.get("_live_value"):
                 vals.insert(0, rule["_live_value"])
+            overflow = None
             if rule.get("pattern"):
                 s = sample_regex(rule["pattern"])
                 vals += [s] if s is not None else []
                 bad = sample_regex_violation(rule["pattern"])
                 vals += [bad] if bad is not None else []
+                overflow = sample_regex_overflow(rule["pattern"])
             f = dictionary.resolve(c)
             vals += sorted(f.allowed_values())[:3] if f is not None and f.allowed_values() else []
         aw = (rule.get("applies_when") or {}).get(c)
@@ -222,13 +354,26 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else [in_scope]  # inside the scope
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
-                vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
+                vals += ["20000101", TODAY]
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
+        if iso_pair and c == iso_pair[0]:
+            start, end = iso_pair[2], iso_pair[3]
+            # pad so the sliced region [start:end] is exactly "GB", a real iso_alpha3 key
+            vals.insert(0, "A" * start + "GB" + "A" * max(0, (end - start) - 2))
+        elif iso_pair and c == iso_pair[1]:
+            vals.insert(0, "GBR")  # the matching alpha-3 value: makes an equal (passing) pair
+        if c == rule.get("field") and overflow is not None:
+            # Appended after allowed_values/reference_values/applies_when probes (not before,
+            # as it was in round 2) so the 10-item cap below evicts this candidate first
+            # instead of evicting a higher-priority probe value.
+            vals += [overflow]
         if f"`{c}`" in expr:
-            vals += literals[:4] + numbers[:4]
+            vals += literals[:4] + numbers[:4] + number_variants[:4]
             if re.search(rf"`{re.escape(c)}`[^`]*\.str\.islower\(\)", expr):
                 vals.append("a")  # case-check rule: a lowercase-first candidate to trip it
+            if ".round(" in expr:
+                vals.append("1.004")  # a value whose cents aren't a whole number, for precision/rounding checks
         vals += paired.get(c, [])[:1] + _PROBES[_kind(dictionary, c)]
         out[c] = list(dict.fromkeys(vals))[:10]
     return out
@@ -255,8 +400,10 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                     r[f"{e.child}.{f}"] = fv
         same = {k: x[2:] for k, x in v.items() if isinstance(x, str) and x.startswith("@=")}
         v = {k: x for k, x in v.items() if k not in same}
+        live_vals = rule.get("_live_value")
+        live_vals = live_vals if isinstance(live_vals, (set, frozenset, list, tuple)) else {live_vals}
         for k, x in v.items():  # a join field keeps its partner in step, so records still link
-            if x and k in joined and x != rule.get("_live_value"):  # the live code must stay as the reference has it
+            if x and k in joined and x not in live_vals:  # the live code must stay as the reference has it
                 x = f"{x}{i}"
             r[k] = x
             for e in edges:
@@ -267,7 +414,18 @@ def _rows(rule: dict, dictionary, values: list[dict[str, str]]) -> pd.DataFrame:
                         elif k == f"{e.parent}.{p}":
                             r[f"{e.child}.{c}"] = x
         for k, other in same.items():  # "the same value as the other side", after every other value is set
-            r[k] = r.get(other, "")
+            x = r[k] = r.get(other, "")
+            # k may itself be a join key (e.g. REC077's ONBOARDINGCANDIDATEINFO.USERID, linked
+            # to EMPEMPLOYMENT.USERID): keep its join partner in step too, or the two tables'
+            # frames silently fail to join and the record drops out of the evaluated population
+            # instead of landing in pass/fail.
+            for e in edges:
+                if e.parent in tables and e.child in tables:
+                    for c, p in e.on:
+                        if k == f"{e.child}.{c}":
+                            r[f"{e.parent}.{p}"] = x
+                        elif k == f"{e.parent}.{p}":
+                            r[f"{e.child}.{c}"] = x
         recs.append(r)
     return pd.DataFrame(recs)
 
@@ -277,7 +435,10 @@ def _failing_rows(result, df: pd.DataFrame, dictionary) -> set[int]:
     keys = [k for k in (result.details or {}).get("record_key_fields") or [] if k in df.columns]
     if not keys:
         return {int(m) for k in failing for m in re.findall(r"K(\d+)", k)[:1]}
-    rk = df[keys].astype("string").fillna("").apply(lambda s: s.str.strip())
+    # engine builds record_key_fields from the internal (ALPHA/MATN1 zero-padded)
+    # form (checks/frames.py:internal_format); mirror that so a purely-numeric
+    # key literal (e.g. an AUFNR-style field) matches the padded failing key.
+    rk = internal_format(df[keys], dictionary)[keys].astype("string").fillna("").apply(lambda s: s.str.strip())
     strings = rk.apply(lambda r: "|".join(f"{c.split('.')[-1]}={r[c]}" for c in keys), axis=1)
     return {i for i, v in strings.items() if v in failing}
 
@@ -296,22 +457,57 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
     cols = list(cand)
     if rule.get("check_class") == "uniqueness_check":
         aw = rule.get("applies_when") or {}
+        across = rule.get("unique_across")
         dup = {c: cand[c][0] if c in aw else (cand[c][1] if len(cand[c]) > 1 else "X") for c in cols}
         # two records sharing the value but differing elsewhere (not a repeated flat row)
         grain = tables_of(cols)[0]
         other = next((f"{grain}.{f.name}" for f in dictionary.table(grain).fields.values()
-                      if f.name not in dictionary.keys(grain) and f"{grain}.{f.name}" not in cols), None)
+                      if f.name not in dictionary.keys(grain) and f"{grain}.{f.name}" not in cols
+                      and f"{grain}.{f.name}" != across), None)
         a, b = dict(dup), dict(dup)
         if other:
             a[other], b[other] = "D1", "D2"
-        rows = [{**{c: dup[c] if c in aw else f"U{c[-3:]}" for c in cols}, **({other: "D3"} if other else {})}, a, b]
+        # a field gated by an exact-literal applies_when (a list) or a value-shaped dict
+        # operator (blank/contains_any/not_in/gt/startswith/older_than_days/within_days) must
+        # keep the candidate's gating value to stay in scope; only a pure 'populated: true'
+        # dict gate has no required value (any distinct non-blank value satisfies it), so the
+        # unique row can take its own value there instead of colliding with the duplicate pair
+        def _needs_literal(gate):
+            if isinstance(gate, list):
+                return True
+            if isinstance(gate, dict):
+                return not (set(gate) <= {"populated"} and gate.get("populated"))
+            return False
+        first = {c: dup[c] if _needs_literal(aw.get(c)) else f"U{c[-3:]}" for c in cols}
+        if other:
+            first[other] = "D3"
+        if across:
+            # the unique row and 'a' share one owner (own effective-dated history, not a
+            # duplicate); 'b' is a second, distinct owner — a genuine cross-owner collision
+            first[across] = a[across] = "OWN1"
+            b[across] = "OWN2"
+        rows = [first, a, b]
+        # the duplicated field may itself be a join key reachable from the rule's table (e.g. a
+        # Foundation-Object EXTERNAL_CODE); keep its shared value intact so the two rows still collide
+        rule = {**rule, "_live_value": set(dup.values()) | set(rule.get("_live_value") or ())}
         return _verify(rule, dictionary, rows, (3, 2), live)
     if rule.get("check_class") == "interval_check":
-        # one group: two adjoining periods, then a third starting inside the first
         g = {**{c: cand[c][0] for c in cand if c in (rule.get("applies_when") or {})}, **{c: "G1" for c in rule["group_by"]}}  # inside the scope
         s, e = rule["start"], rule["end"]
+        if rule.get("mode") == "open_ended_only":
+            # overlap/gap checks are skipped in this mode; only the group's last (latest-start)
+            # row is checked for reaching the open-ended sentinel. Two rows, same group, both
+            # non-overlapping (so overlap logic — if it ran — wouldn't matter): the later one
+            # is end-dated, not open, which is the only thing this mode flags.
+            rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "20211231"}]
+            rule = {**rule, "_live_value": "G1"}
+            return _verify(rule, dictionary, rows, (2, 1), live)
+        # one group: two adjoining periods, then a third starting inside the first
         rows = [{**g, s: "20200101", e: "20201231"}, {**g, s: "20210101", e: "99991231"},
                 {**g, s: "20200601", e: "20200630"}]
+        # a group_by column may also be a cross-table join key (e.g. USERID): keep "G1" intact
+        # across all three rows, or _rows() suffixes it per-row and silently splits the group
+        rule = {**rule, "_live_value": "G1"}
         return _verify(rule, dictionary, rows, (3, 1), live)
     if rule.get("check_class") == "aggregate_check":
         return _prove_aggregate(rule, dictionary, cand, live)
@@ -347,12 +543,35 @@ def prove(rule: dict, dictionary) -> tuple[str, str]:
         # retry with the checked field varying fastest: with several scope conditions the first MAX_ROWS
         # combinations may otherwise never reach a second value of it
         verdict = _prove_generic(rule, dictionary, cand, sorted(cols, key=lambda c: c == rule["field"]), live)
+    if verdict[0] != "proven":
+        # a two-column magnitude comparison (e.g. SALARY < RANGE_MIN * 0.5) needs both sides to
+        # vary together: move every column on either side of a <, <=, >, >= to the fastest-varying
+        # tail (nested), or one side sits frozen at its first candidate for the whole MAX_ROWS budget
+        priority = _inequality_cols(rule.get("fail_when") or rule.get("condition") or "") & set(cols)
+        if priority - {rule.get("field")}:
+            verdict = _prove_generic(rule, dictionary, cand, sorted(cols, key=lambda c: c in priority), live)
     return verdict
 
 
 def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     combos = itertools.product(*(cand[c] for c in cols))
     values = [dict(zip(cols, combo)) for combo in itertools.islice(combos, MAX_ROWS)]
+    # a column that is some table's whole primary key must still identify one record per
+    # candidate row here; two unrelated combos sharing a literal (e.g. both probing USER_ID="X")
+    # would otherwise collide into a single synthetic record and corrupt the pass/fail screening
+    # below (tests/checks/test_rule_proofs.py EC392). The "@=" paired-value marker is resolved
+    # against the *other* column's final value inside _rows(), so suffixing here still lets two
+    # fields land equal when a candidate is deliberately probing for that.
+    # the rule's own tested field(s) are excluded: suffixing them would change the literal
+    # a probe is specifically chosen for (e.g. a str.len() check on a whole-key column would
+    # never see its short literal again once an index is appended) (CNU036).
+    own_fields = {rule["field"]} if rule.get("field") else set(rule.get("fields") or ())
+    whole_keys = {f"{t}.{k}" for t in tables_of(cols) for k in dictionary.keys(t)
+                  if tuple(dictionary.keys(t)) == (k,)} - own_fields
+    for i, v in enumerate(values):
+        for c in whole_keys & v.keys():
+            if v[c] and not str(v[c]).startswith("@="):
+                v[c] = f"{v[c]}{i}"
     df = _rows(rule, dictionary, values)
     frames = TableFrames.from_flat(df, dictionary, module=rule.get("module"))
     _, result = run_rule(rule, frames, live)
@@ -367,6 +586,24 @@ def _prove_generic(rule, dictionary, cand, cols, live) -> tuple[str, str]:
     # populated records first (a blank the rule's scope requires does not count)
     blanks = lambda i: sum(1 for c, x in values[i].items() if x == "" and c not in must_blank)  # noqa: E731
     passing = sorted((i for i in range(len(values)) if i not in failing), key=blanks)
+    # whole-key suffixing (above) makes every row's key literal unique, so rows that are
+    # otherwise identical (same non-key fields, e.g. all out of the rule's applies_when scope)
+    # no longer collapse into one candidate; a large block of such look-alikes can crowd the
+    # front of `passing` and push the one genuinely-distinct good record past the [:600] cap
+    # below (PS070). Dedup on the non-key fields first so the cap sees distinct candidates.
+    # Two known ceilings in this dedup (tracked, not fixed -- no behaviour change needed
+    # while every shipped rule's pass/fail distinction lives in a non-whole-key column):
+    #   1. The dedup signature excludes whole-key columns entirely, so two candidates that
+    #      differ only in a whole-key value collapse to one. If a future rule's pass/fail
+    #      distinction depends on a whole-key column that isn't in its own field/fields, the
+    #      good candidate can be dropped here.
+    #   2. `whole_keys` only recognizes single-column keys (`dictionary.keys(t) == (k,)`);
+    #      composite-key tables are never added to it, so a composite-key table can hit the
+    #      original look-alike-collision class this block exists to prevent.
+    seen: set = set()
+    passing = [i for i in passing
+               if (sig := tuple(sorted((c, v) for c, v in values[i].items() if c not in whole_keys)))
+               not in seen and not seen.add(sig)]
     bad = sorted(failing, key=blanks)
     for tries, p in enumerate(passing[:600]):
         for f in bad[: 1 if tries >= 50 else 4]:  # the first failing record may sit outside the population

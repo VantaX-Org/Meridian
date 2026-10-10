@@ -43,8 +43,9 @@ MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "
              "sap_impact", "fix_map", "record_fix_template"]
 ECC = get_dictionary("ecc6")
 S4 = get_dictionary("s4hana")
-PERSONAL = re.compile(r"\{[A-Z0-9_]+\.(NACHN|VORNA|GBDAT|BANKN|IBAN|BET01|PERID|SALARY|EMAIL\w*|FIRSTNAME|LASTNAME|"
-                      r"NATIONAL_ID|DATE_OF_BIRTH|ANSAL|STRAS|USRID\w*|PHONE\w*|ADDRESS\w*|GROSS_PAY|NET_PAY)\}")
+# ADDRESS_TYPE is a picklist code (home, mailing), not personal data
+PERSONAL = re.compile(r"\{[A-Z0-9_]+\.(NACHN|VORNA|GBDAT|BANKN|IBAN|ACCOUNT_NUMBER|BET01|PERID|SALARY|EMAIL\w*|FIRSTNAME|LASTNAME|"
+                      r"NATIONAL_ID|DATE_OF_BIRTH|ANSAL|STRAS|USRID\w*|PHONE\w*|ADDRESS(?!_TYPE\})\w*|GROSS_PAY|NET_PAY)\}")
 
 
 def frame(table, **cols):

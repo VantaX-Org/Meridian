@@ -258,7 +258,6 @@ edges:
   - {parent: EMPEMPLOYMENT, child: FODEPARTMENT, join: {EXTERNAL_CODE: DEPARTMENT}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: EMPJOBHIST, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPWORKPERMIT, join: {USERID: USERID}, cardinality: many}
-  - {parent: EMPEMPLOYMENT, child: PAYMENTINFO, join: {USERID: USERID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: EMPGLOBALASSIGNMENT, join: {USERID: USERID}, cardinality: one}
   - {parent: PERINFO, child: PEREMERGENCY, join: {PERSON_ID: PERSON_ID}, cardinality: many}
   - {parent: EMPEMPLOYMENT, child: FOEVENTREASON, join: {EXTERNAL_CODE: EVENT_REASON}, cardinality: one}
@@ -268,6 +267,14 @@ edges:
   - {parent: EMPEMPLOYMENT, child: FODIVISION, join: {EXTERNAL_CODE: DIVISION}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: FOBUSINESSUNIT, join: {EXTERNAL_CODE: BUSINESS_UNIT}, cardinality: one}
   - {parent: EMPEMPLOYMENT, child: FOCOSTCENTER, join: {EXTERNAL_CODE: COST_CENTER}, cardinality: one}
+  # USERACCOUNT and EMPJOBHIST's own foundation-object attributes (EC239+ depth pack):
+  # EMPEMPLOYMENT stays the anchor/first parent for POSITION and FOJOBCODE (unchanged
+  # resolution for all pre-existing rules), these are additional cardinality-one edges
+  # that only extend reachability for rules that explicitly need the EMPJOBHIST/USERACCOUNT grain.
+  - {parent: EMPEMPLOYMENT, child: USERACCOUNT, join: {USER_ID: USERID}, cardinality: one}
+  - {parent: EMPJOBHIST, child: FOJOBCODE, join: {EXTERNAL_CODE: JOB_CODE}, cardinality: one}
+  - {parent: EMPJOBHIST, child: POSITION, join: {CODE: POSITION}, cardinality: one}
+  - {parent: EMPEMPLOYMENT, child: EMPJOBRELATIONSHIPS, join: {USERID: USERID}, cardinality: many}
 
   # Concur Expense and SAP Ariba (canonical views, sap/dictionaries/canonical)
   - {parent: CONCUR_USER, child: CONCUR_REPORT, join: {OWNER_LOGIN_ID: LOGIN_ID}, cardinality: many}
@@ -299,6 +306,7 @@ anchors:
   mdg_master_data: USMD120C
   interface_health: EDIDC
   employee_central: EMPEMPLOYMENT
+  payroll_integration: PAYMENTINFO
   s4hc_master_data: BUT000
   concur_expense: CONCUR_REPORT
   concur_users: CONCUR_USER

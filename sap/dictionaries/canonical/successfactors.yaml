@@ -66,6 +66,11 @@ tables:
       IS_CONTINGENT_WORKER: {source: EmpEmployment.isContingentWorker, type: BOOLEAN, verify: true, description: Contingent worker flag}
       IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment)}
       ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: ST standard, GA global assignment, PH higher duty, ...}
+      PAY_GRADE:       {source: EmpJob.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade}
+      WORK_SCHEDULE:   {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true, description: Work schedule code}
+      HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar code}
+      TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true, description: Time type profile code}
+      JOB_END_DATE:    {source: EmpJob.endDate, type: DATE, verify: true, description: Effective end date of the current job record}
 
   PERINFO:
     description: Personal information (PerPersonal ⋈ PerPerson ⋈ primary PerNationalId)
@@ -88,6 +93,8 @@ tables:
       COUNTRY_OF_BIRTH: {source: PerPerson.countryOfBirth, type: STRING, length: 128, verify: true, check_table: Country, description: Country of birth}
       DATE_OF_DEATH:  {source: PerPerson.dateOfDeath, type: DATE, verify: true, description: Date of death}
       SECOND_NATIONALITY: {source: PerPersonal.secondNationality, type: STRING, length: 128, verify: true, check_table: Country, description: Second nationality}
+      PLACE_OF_BIRTH: {source: PerPerson.placeOfBirth, type: STRING, length: 128, verify: true, description: Place of birth}
+      PERSON_UUID:    {source: PerPerson.perPersonUuid, type: STRING, length: 128, verify: true, description: Person UUID (stable surrogate key)}
 
   PEREMAIL:
     description: E-mail addresses
@@ -115,10 +122,16 @@ tables:
   PERADDRESS:
     description: Home address (default country format)
     source: PerAddressDEFLT
-    keys: [PERSON_ID, ADDRESS_TYPE]
+    # Record-key migration (added START_DATE alongside PERSON_ID/ADDRESS_TYPE): this is a
+    # legitimate fix, not a revert candidate -- addresses are effective-dated in SF and the
+    # 2-part key collapsed distinct historical rows. Any persisted remediation/finding state
+    # keyed on the old 2-part failing_record_keys shape will not match after this change and
+    # needs a migration or re-run; it is not auto-migrated here.
+    keys: [PERSON_ID, ADDRESS_TYPE, START_DATE]
     fields:
       PERSON_ID:     {source: PerAddressDEFLT.personIdExternal, type: STRING, length: 100}
       ADDRESS_TYPE:  {source: PerAddressDEFLT.addressType, type: STRING, length: 128, picklist: addressType}
+      START_DATE:    {source: PerAddressDEFLT.startDate, type: DATE, verify: true, description: Effective start date of the address record}
       ADDRESS_LINE1: {source: PerAddressDEFLT.address1, type: STRING, length: 256}
       ADDRESS_LINE2: {source: PerAddressDEFLT.address2, type: STRING, length: 256}
       CITY:          {source: PerAddressDEFLT.city, type: STRING, length: 256}
@@ -201,26 +214,6 @@ tables:
       DEDUCTIONS:   {source: payroll_export.deductions, type: DECIMAL, verify: true}
       CURRENCY:     {source: payroll_export.currency, type: STRING, length: 5, verify: true}
       DELTA_FLAG:   {source: payroll_export.delta_flag, type: STRING, length: 1, verify: true}
-
-  PAYMENTINFO:
-    description: Payment information detail (PaymentInformationDetailV3 under PaymentInformationV3)
-    source: PaymentInformationV3, PaymentInformationDetailV3
-    keys: [USERID, EFFECTIVE_DATE, EXTERNAL_CODE]
-    fields:
-      USERID:         {source: PaymentInformationV3.worker, type: STRING, length: 100}
-      EFFECTIVE_DATE: {source: PaymentInformationV3.effectiveStartDate, type: DATE}
-      EXTERNAL_CODE:  {source: PaymentInformationDetailV3.externalCode, type: STRING, length: 128, description: Sequence of the payment detail}
-      PAY_TYPE:       {source: PaymentInformationDetailV3.payType, type: STRING, length: 128, verify: true, description: Main payment / regular / bonus / expenses}
-      PAYMENT_METHOD: {source: PaymentInformationDetailV3.paymentMethod, type: STRING, length: 128, verify: true, description: Bank transfer / cheque / cash}
-      BANK_COUNTRY:   {source: PaymentInformationDetailV3.bankCountry, type: STRING, length: 128, verify: true}
-      BANK:           {source: PaymentInformationDetailV3.bank, type: STRING, length: 128, verify: true, description: Bank (Bank foundation object)}
-      ACCOUNT_NUMBER: {source: PaymentInformationDetailV3.accountNumber, type: STRING, length: 128, verify: true}
-      IBAN:           {source: PaymentInformationDetailV3.iban, type: STRING, length: 34, verify: true}
-      BIC:            {source: PaymentInformationDetailV3.businessIdentifierCode, type: STRING, length: 11, verify: true, description: SWIFT/BIC of the bank}
-      ROUTING_NUMBER: {source: PaymentInformationDetailV3.routingNumber, type: STRING, length: 128, verify: true, description: Bank routing / branch code}
-      CURRENCY:       {source: PaymentInformationDetailV3.currency, type: STRING, length: 20, verify: true}
-      AMOUNT:         {source: PaymentInformationDetailV3.amount, type: DECIMAL, verify: true, description: Fixed amount paid to this account}
-      PERCENT:        {source: PaymentInformationDetailV3.percent, type: DECIMAL, verify: true, description: Share of net pay paid to this account}
 
   TIMESHEET:
     description: Time recording (EmployeeTimeSheetEntry, EmployeeTime, TimeAccount)
@@ -494,6 +487,12 @@ tables:
       CPE_HOURS:       {source: learningHistory.cpeHours, type: DECIMAL, verify: true, description: Continuing professional education hours}
       GRADE:           {source: learningHistory.grade, type: STRING, length: 90, verify: true, description: Grade awarded}
 
+  # I1 (review): Position extracts with from_date=None (no fromDate sent, see
+  # sap/successfactors.py), so SF returns only the as-of-today row per position code and
+  # keys: [CODE] never collides even though effectiveStartDate/effectiveEndDate are selected.
+  # This is safe only because of that current-record-only extraction: the moment Position is
+  # extracted with an effective-dated from_date, multiple rows per CODE become live and
+  # EC299 (uniqueness on POSITION.CODE) will mass-fire on every position ever changed.
   POSITION:
     description: Positions (Position Management), current record
     source: Position
@@ -506,11 +505,25 @@ tables:
       COST_CENTER:      {source: Position.costCenter, type: STRING, length: 128, verify: true, description: Cost centre of the position}
       VACANT:           {source: Position.vacant, type: BOOLEAN, description: Position flagged as vacant (to be hired)}
       EFFECTIVE_STATUS: {source: Position.effectiveStatus, type: STRING, length: 2, description: A active / I inactive}
-      CRITICALITY:      {source: Position.criticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
+      CRITICALITY:      {source: Position.positionCriticality, type: STRING, length: 128, verify: true, description: Position criticality (key position indicator)}
       TARGET_FTE:       {source: Position.targetFTE, type: DECIMAL, verify: true, description: Target FTE of the position}
       MULTIPLE_INCUMBENTS: {source: Position.multipleIncumbentsAllowed, type: BOOLEAN, verify: true, description: More than one incumbent allowed}
       STANDARD_HOURS:   {source: Position.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours of the position}
+      EFFECTIVE_START_DATE: {source: Position.effectiveStartDate, type: DATE, verify: true, description: Effective start date of the current position record}
+      EFFECTIVE_END_DATE:   {source: Position.effectiveEndDate, type: DATE, verify: true, description: Effective end date of the current position record}
+      BUSINESS_UNIT:    {source: Position.businessUnit, type: STRING, length: 128, verify: true, check_table: FOBusinessUnit, description: Business unit of the position}
+      DIVISION:         {source: Position.division, type: STRING, length: 128, verify: true, check_table: FODivision, description: Division of the position}
+      LOCATION:         {source: Position.location, type: STRING, length: 128, verify: true, check_table: FOLocation, description: Location of the position}
+      PAY_GRADE:        {source: Position.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade of the position}
+      EXTERNAL_NAME:    {source: Position.externalName_defaultValue, type: STRING, length: 256, verify: true, description: External (job-board facing) position name}
 
+  # I4 (review): every FO* target below (FOCompany, FODepartment, FODivision, FOLocation,
+  # FOJobCode, FOCostCenter, FOBusinessUnit, FOEventReason, ...) also extracts with
+  # from_date=None, so each selects exactly one current row per externalCode and none of
+  # them carries an effective-start date. Rules written against these tables implicitly
+  # assume "current" and that assumption holds today. No effective-dated FO* rule is
+  # possible until a from_date is set on these targets; see the coverage-gap list for the
+  # rules that gap blocks.
   FOCOMPANY:
     description: Legal entities (Foundation Object), current record
     source: FOCompany
@@ -547,6 +560,24 @@ tables:
       COMPANY:      {source: EmpJob.company, type: STRING, length: 128, verify: true, check_table: FOCompany}
       POSITION:     {source: EmpJob.position, type: STRING, length: 128, verify: true}
       MANAGER_ID:   {source: EmpJob.managerId, type: STRING, length: 100, verify: true}
+      BUSINESS_UNIT: {source: EmpJob.businessUnit, type: STRING, length: 128, verify: true, check_table: FOBusinessUnit}
+      DIVISION:     {source: EmpJob.division, type: STRING, length: 128, verify: true, check_table: FODivision}
+      DEPARTMENT:   {source: EmpJob.department, type: STRING, length: 128, verify: true, check_table: FODepartment}
+      LOCATION:     {source: EmpJob.location, type: STRING, length: 128, verify: true, check_table: FOLocation}
+      COST_CENTER:  {source: EmpJob.costCenter, type: STRING, length: 128, verify: true, check_table: FOCostCenter}
+      JOB_CODE:     {source: EmpJob.jobCode, type: STRING, length: 128, verify: true, check_table: FOJobCode}
+      EMPLOYEE_CLASS: {source: EmpJob.employeeClass, type: STRING, length: 128, verify: true, picklist: employee-class}
+      EMPLOYMENT_TYPE: {source: EmpJob.employmentType, type: STRING, length: 128, verify: true, picklist: employmentType}
+      PAY_GRADE:    {source: EmpJob.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade}
+      PAY_GROUP:    {source: EmpJob.payGroup, type: STRING, length: 128, verify: true, check_table: FOPayGroup}
+      STANDARD_HOURS: {source: EmpJob.standardHours, type: DECIMAL, verify: true}
+      FTE:          {source: EmpJob.fte, type: DECIMAL, verify: true}
+      TIMEZONE:     {source: EmpJob.timezone, type: STRING, length: 128, verify: true}
+      COUNTRY_OF_COMPANY: {source: EmpJob.countryOfCompany, type: STRING, length: 128, verify: true}
+      IS_FULLTIME:  {source: EmpJob.isFulltimeEmployee, type: BOOLEAN, verify: true}
+      WORK_SCHEDULE: {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true}
+      HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true}
+      TIME_TYPE_PROFILE: {source: EmpJob.timeTypeProfileCode, type: STRING, length: 128, verify: true}
 
   EMPWORKPERMIT:
     description: Work permits and visas
@@ -660,3 +691,43 @@ tables:
       EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
       LEGAL_ENTITY:  {source: FOCostCenter.legalEntity, type: STRING, length: 128, verify: true}
+
+  USERACCOUNT:
+    # ponytail: named USERACCOUNT, not the bare entity name USER, to avoid any
+    # reserved-word collision in SQL-facing tooling; upgrade path: none needed,
+    # this is a stable canonical name, not a shortcut.
+    description: System user account (SF User entity), current record
+    source: User
+    keys: [USER_ID]
+    fields:
+      USER_ID:       {source: User.userId, type: STRING, length: 100, description: User ID}
+      USERNAME:      {source: User.username, type: STRING, length: 128, verify: true, description: Login username}
+      STATUS:        {source: User.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
+      EMAIL:         {source: User.email, type: STRING, length: 256, verify: true, description: Primary e-mail address}
+      FIRST_NAME:    {source: User.firstName, type: STRING, length: 128, verify: true, description: First name}
+      LAST_NAME:     {source: User.lastName, type: STRING, length: 128, verify: true, description: Last name}
+      EMP_ID:        {source: User.empId, type: STRING, length: 100, verify: true, description: Linked employee ID}
+      HIRE_DATE:     {source: User.hireDate, type: DATE, verify: true, description: Hire date}
+      DEPARTMENT:    {source: User.department, type: STRING, length: 128, verify: true, check_table: FODepartment, description: Department}
+      DIVISION:      {source: User.division, type: STRING, length: 128, verify: true, check_table: FODivision, description: Division}
+      LOCATION:      {source: User.location, type: STRING, length: 128, verify: true, check_table: FOLocation, description: Location}
+      TIMEZONE:      {source: User.timeZone, type: STRING, length: 128, verify: true, description: Time zone}
+      DEFAULT_LOCALE: {source: User.defaultLocale, type: STRING, length: 20, verify: true, description: Default locale}
+      # MANAGER_ID intentionally omitted: standard User.managerId is a
+      # navigation-only property (manager/userId); the connector's
+      # read_entity_set() has no $expand support, so it cannot be selected.
+
+  EMPJOBRELATIONSHIPS:
+    description: Job-record relationships (e.g. matrix/dotted-line manager, HR business partner)
+    source: EmpJobRelationships
+    keys: [USERID, RELATIONSHIP_TYPE, START_DATE]
+    fields:
+      USERID:            {source: EmpJobRelationships.userId, type: STRING, length: 100, verify: true, description: User ID of the employee}
+      RELATIONSHIP_TYPE: {source: EmpJobRelationships.relationshipType, type: STRING, length: 128, verify: true, picklist: relationshipType, description: Type of relationship (e.g. matrix manager, HR partner)}
+      START_DATE:        {source: EmpJobRelationships.startDate, type: DATE, verify: true, description: Effective start date of the relationship}
+      END_DATE:          {source: EmpJobRelationships.endDate, type: DATE, verify: true, description: Effective end date of the relationship}
+      RELATED_USER_ID:   {source: EmpJobRelationships.relUserId, type: STRING, length: 100, verify: true, description: User ID of the related person}
+      # relUserId is left unverified: SAP's EC OData reference documents the
+      # related-person property on EmpJobRelationships inconsistently across
+      # versions (relUserId vs. a navigation-only "relUser"). verify: true
+      # flags it for the connector's $metadata check on this tenant.

@@ -13,7 +13,7 @@ from sap.ddic import get_dictionary
 S4 = get_dictionary("s4hana")
 RULES = yaml.safe_load(open("checks/rules/successfactors/employee_central.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
-NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and int(r["id"][2:]) >= 121]
+NEW = [r for r in RULES if re.fullmatch(r"EC\d+", r["id"]) and 121 <= int(r["id"][2:]) <= 238]
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 ALLOWED_OPS = {"strip", "collapse_spaces", "upper", "lower", "title", "pad_left", "strip_leading_zeros",

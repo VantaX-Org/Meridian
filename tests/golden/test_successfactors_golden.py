@@ -208,6 +208,7 @@ def test_employee_central_golden():
         "EC004": {"PERSON_ID=100109"},
         "EC018": {"PERSON_ID=100110|EMAIL_TYPE=B"},
         "EC033": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
+        "EC356": {"PERSON_ID=100111|ADDRESS_TYPE=home"},
         "EC020": {"PERSON_ID=100112|PHONE_TYPE=M"},
         "EC048": {"USERID=100115"},
         "EC058": {"USERID=100116"},
@@ -287,6 +288,9 @@ def test_compensation_golden():
         "COMP019": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},
         "COMP015": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},
         "COMP021": {"USERID=100118|EFFECTIVE_DATE=2025-04-01"},
+        # new depth rules (COMP095+) also legitimately fire on this fixture:
+        "COMP117": {"USERID=100117|EFFECTIVE_DATE=2025-04-01"},  # pay range max below min
+        "COMP228": {"USERID=100110|EFFECTIVE_DATE=2025-04-01"},  # currency "ZA" is not 3-letter ISO
     }, found
 
 
