@@ -1188,6 +1188,37 @@ class FieldDependency(Base):
     )
 
 
+class LearnedRuleProposal(Base):
+    """House rule the tenant's own data follows, awaiting a steward decision — see migration 071."""
+    __tablename__ = "learned_rule_proposals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id", ondelete="SET NULL"), nullable=True)
+    module = Column(Text, nullable=False)
+    kind = Column(Text, nullable=False)
+    table_name = Column(Text, nullable=False)
+    determinant = Column(Text, nullable=True)  # TABLE.FIELD
+    field = Column(Text, nullable=False)       # TABLE.FIELD
+    fingerprint = Column(Text, nullable=False)
+    body = Column(JSONB, nullable=False)
+    confidence = Column(Float, nullable=False)
+    support_rows = Column(BigInteger, nullable=False)
+    violations = Column(BigInteger, nullable=False)
+    sample_keys = Column(JSONB, nullable=False, server_default="[]")
+    status = Column(Text, nullable=False, server_default="pending")
+    rule_id = Column(Text, nullable=True)
+    decided_by = Column(Text, nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "module", "fingerprint", name="uq_learned_rule_proposals_fp"),
+        Index("ix_learned_rule_proposals_status", "tenant_id", "status"),
+    )
+
+
 class TransferValueMapping(Base):
     """Steward-maintained source → target value mapping (migration 048)."""
 
