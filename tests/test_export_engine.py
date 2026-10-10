@@ -4,6 +4,7 @@ import csv
 import io
 import json
 
+import openpyxl
 import pytest
 
 from api.services.export_engine import (
@@ -275,6 +276,54 @@ class TestExportSFCSV:
         headers = next(reader)
         assert "material_id" in headers
         assert "description" in headers
+
+
+# ── XLSX (routed through branded_xlsx.build_workbook) ───────────────────────
+
+
+class TestExportXLSX:
+    def test_xlsx_has_cover_and_data_sheet(self, engine: ExportEngine):
+        result = engine.export_xlsx(CUSTOMER_RECORDS, "customer", tenant_name="Acme")
+        wb = openpyxl.load_workbook(io.BytesIO(result))
+        assert wb.sheetnames[0] == "Cover"
+        assert "customer_cleaned" in wb.sheetnames
+
+    def test_xlsx_headers_are_sap_field_codes(self, engine: ExportEngine):
+        """Reimport tooling (LSMW/BAPI/IDoc) needs the literal SAP field code as
+        the header, not a human-readable branded label."""
+        result = engine.export_xlsx(CUSTOMER_RECORDS, "customer")
+        wb = openpyxl.load_workbook(io.BytesIO(result))
+        ws = wb["customer_cleaned"]
+        headers = [c.value for c in ws[1]]
+        assert headers == list(SAP_EXPORT_FIELDS["customer"].values())
+
+    def test_xlsx_data_round_trips(self, engine: ExportEngine):
+        result = engine.export_xlsx(CUSTOMER_RECORDS, "customer")
+        wb = openpyxl.load_workbook(io.BytesIO(result))
+        ws = wb["customer_cleaned"]
+        headers = [c.value for c in ws[1]]
+        kunnr_idx = headers.index("KUNNR")
+        name1_idx = headers.index("NAME1")
+        row2 = [c.value for c in ws[2]]
+        assert row2[kunnr_idx] == "1000000001"
+        assert row2[name1_idx] == "Acme Pty Ltd"
+
+    def test_xlsx_multi_one_sheet_per_object_type(self, engine: ExportEngine):
+        result = engine.export_xlsx_multi(
+            {"customer": CUSTOMER_RECORDS, "material": MATERIAL_RECORDS}, tenant_name="Acme"
+        )
+        wb = openpyxl.load_workbook(io.BytesIO(result))
+        assert "customer_cleaned" in wb.sheetnames
+        assert "material_cleaned" in wb.sheetnames
+        ws = wb["material_cleaned"]
+        headers = [c.value for c in ws[1]]
+        assert "MATNR" in headers
+        assert "MAKTX" in headers
+
+    def test_xlsx_multi_empty_still_builds(self, engine: ExportEngine):
+        result = engine.export_xlsx_multi({})
+        wb = openpyxl.load_workbook(io.BytesIO(result))
+        assert "Cover" in wb.sheetnames
 
 
 # ── Edge cases ───────────────────────────────────────────────────────────────

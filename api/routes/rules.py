@@ -31,7 +31,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
+from api.services.branded_xlsx import (
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from api.services.rbac import current_user_label, has_permission, require_permission
 from checks import lifecycle
 
@@ -142,7 +149,7 @@ _RULES_EXPORT_COLUMNS = [
     ColumnSpec("severity", "Severity"),
     ColumnSpec("enabled", "Enabled"),
     ColumnSpec("source", "Source"),
-    ColumnSpec("last_pass_rate", "Last pass rate", kind="pct", scale=100.0),
+    ColumnSpec("last_pass_rate", "Last pass rate", kind="pct", scale=1.0),
     ColumnSpec("last_run_at", "Last run"),
     ColumnSpec("description", "Description"),
 ]
@@ -161,28 +168,24 @@ async def export_rules(
     tenant: Tenant = Depends(get_tenant),
 ):
     """Every rule matching the same filters as GET /rules, as CSV or XLSX (no pagination)."""
+    # list_rules caps at 1000 (its own Query(le=1000)); the rule catalog this
+    # tenant can see is bounded by that same limit, so the source query itself
+    # is the cap — flag it on the cover note if the catalog ever reaches it.
+    _RULES_QUERY_LIMIT = 1000
     body = await list_rules(category=category, module=module, severity=severity, enabled=enabled,
-                            search=search, source=source, limit=1000, offset=0, db=db, tenant=tenant)
+                            search=search, source=source, limit=_RULES_QUERY_LIMIT, offset=0,
+                            db=db, tenant=tenant)
     rows = body["rules"]
+    note = (f"Truncated to {_RULES_QUERY_LIMIT:,} rules; narrow the filter to export the rest."
+            if len(rows) >= _RULES_QUERY_LIMIT else None)
     if format == "csv":
-        import csv
-        import io as io_mod
-
-        from fastapi.responses import StreamingResponse
-
-        buf = io_mod.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _RULES_EXPORT_COLUMNS])
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({c.key: row.get(c.key) for c in _RULES_EXPORT_COLUMNS})
-        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                                 headers={"Content-Disposition": "attachment; filename=rules.csv"})
+        return csv_response(rows, _RULES_EXPORT_COLUMNS, "rules", None)
     data = build_workbook(
         tenant_name=tenant.name,
         run_label=None,
         run_id=None,
         title="Rules export",
-        sheets=[SheetSpec(title="Rules", columns=_RULES_EXPORT_COLUMNS, rows=rows)],
+        sheets=[SheetSpec(title="Rules", columns=_RULES_EXPORT_COLUMNS, rows=rows, note=note)],
     )
     return xlsx_response(data, xlsx_filename("rules", None))
 
@@ -439,7 +442,7 @@ _RULE_HISTORY_EXPORT_COLUMNS = [
     ColumnSpec("severity", "Severity"),
     ColumnSpec("affected_count", "Affected", kind="int"),
     ColumnSpec("total_count", "Total", kind="int"),
-    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=100.0),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=1.0),
     ColumnSpec("hit_rate", "Hit rate (%)"),
     ColumnSpec("suppressed", "Suppressed"),
 ]
@@ -452,25 +455,16 @@ async def export_rule_history(rule_id: str, limit: int = Query(500, ge=1, le=500
     """Hit rate of one rule per analysis run, newest first, as CSV or XLSX."""
     body = await rule_history(rule_id=rule_id, limit=limit, db=db, tenant=tenant)
     rows = [{**r, "version_id": str(r["version_id"])} for r in body["runs"]]
+    note = (f"Truncated to {limit:,} runs; raise the limit to export the rest."
+            if len(rows) >= limit else None)
     if format == "csv":
-        import csv
-        import io as io_mod
-
-        from fastapi.responses import StreamingResponse
-
-        buf = io_mod.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _RULE_HISTORY_EXPORT_COLUMNS])
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({c.key: row.get(c.key) for c in _RULE_HISTORY_EXPORT_COLUMNS})
-        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                                 headers={"Content-Disposition": f"attachment; filename={rule_id}_history.csv"})
+        return csv_response(rows, _RULE_HISTORY_EXPORT_COLUMNS, f"rule-history-{rule_id}", None)
     data = build_workbook(
         tenant_name=tenant.name,
         run_label=rule_id,
         run_id=None,
         title=f"{rule_id} history export",
-        sheets=[SheetSpec(title="History", columns=_RULE_HISTORY_EXPORT_COLUMNS, rows=rows)],
+        sheets=[SheetSpec(title="History", columns=_RULE_HISTORY_EXPORT_COLUMNS, rows=rows, note=note)],
     )
     return xlsx_response(data, xlsx_filename(f"rule-history-{rule_id}", None))
 

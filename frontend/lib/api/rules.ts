@@ -262,5 +262,5 @@ export function exportRules(
 
 /** GET /api/v1/rules/{ruleId}/history/export — one rule's run-over-run finding history. */
 export function exportRuleHistory(ruleId: string, format: "csv" | "xlsx", limit?: number): Promise<void> {
-  return downloadBlob(`/api/v1/rules/${ruleId}/history/export`, { format, limit }, `rule_history.${format}`);
+  return downloadBlob(`/api/v1/rules/${encodeURIComponent(ruleId)}/history/export`, { format, limit }, `rule_history.${format}`);
 }

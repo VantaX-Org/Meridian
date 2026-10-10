@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Mono, Pager, Pill, Tabs } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Mono, Pager, Pill, Tabs, emptyExportOptions } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
+import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -41,6 +41,10 @@ function CleaningQueueTab() {
   });
   const batches = useMemo(() => groupIntoBatches(data?.items ?? []), [data]);
   const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / 100));
+  const exportOptions = [
+    { format: "xlsx" as const, label: "Cockpit (.xlsx)", run: () => downloadCleaningExport("xlsx", "approved") },
+    { format: "csv" as const, label: "Mass change CSV", run: () => downloadCleaningExport("csv", "approved") },
+  ];
 
   return (
     <ExplorerPage
@@ -51,6 +55,7 @@ function CleaningQueueTab() {
         action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
+      summary={<ExportMenu options={batches.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
         <div className="flex flex-col gap-3">
           <DataTable

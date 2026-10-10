@@ -156,13 +156,19 @@ async def version_profile(system_id: uuid.UUID, version_id: uuid.UUID,
 
 _FIELD_PROFILE_COLUMNS = [
     ColumnSpec("field", "Field", kind="mono"),
+    ColumnSpec("description", "Description"),
     ColumnSpec("rows", "Rows", kind="int"),
-    ColumnSpec("blank_pct", "Blank %"),
+    ColumnSpec("blank", "Blank", kind="int"),
+    ColumnSpec("blank_pct", "Blank %", kind="pct", scale=1.0),
     ColumnSpec("distinct", "Distinct", kind="int"),
     ColumnSpec("min_length", "Min length", kind="int"),
     ColumnSpec("max_length", "Max length", kind="int"),
     ColumnSpec("ddic_type", "DDIC type"),
+    ColumnSpec("numeric_stats", "Numeric stats"),
+    ColumnSpec("date_stats", "Date stats"),
+    ColumnSpec("top_shape", "Top shape"),
     ColumnSpec("masked", "Masked"),
+    ColumnSpec("mask_reason", "Mask reason"),
     ColumnSpec("top_values", "Top values"),
 ]
 
@@ -186,6 +192,27 @@ def _top_values_cell(stats: FieldStats) -> str:
     return "; ".join(f"{v.value} ({v.count})" for v in stats.top_values)
 
 
+def _numeric_stats_cell(stats: FieldStats) -> str:
+    if stats.numeric is None:
+        return ""
+    n = stats.numeric
+    return f"min {n.min}, max {n.max}, mean {n.mean}, non-numeric {n.non_numeric}"
+
+
+def _date_stats_cell(stats: FieldStats) -> str:
+    if stats.dates is None:
+        return ""
+    d = stats.dates
+    return f"min {d.min}, max {d.max}, invalid {d.invalid}"
+
+
+def _top_shape_cell(stats: FieldStats) -> str:
+    if not stats.shapes:
+        return ""
+    top = max(stats.shapes, key=lambda s: s.count)
+    return f"{top.shape} ({top.count})"
+
+
 @router.get("/{system_id}/versions/{version_id}/profile/export", dependencies=[Depends(require_permission("export"))])
 async def export_version_profile(
     system_id: uuid.UUID, version_id: uuid.UUID,
@@ -204,13 +231,19 @@ async def export_version_profile(
         rows = [
             {
                 "field": f.field,
+                "description": f.stats.description,
                 "rows": f.stats.rows,
+                "blank": f.stats.blank,
                 "blank_pct": f.stats.blank_pct,
                 "distinct": f.stats.distinct,
                 "min_length": f.stats.min_length,
                 "max_length": f.stats.max_length,
                 "ddic_type": f.stats.ddic_type,
+                "numeric_stats": _numeric_stats_cell(f.stats),
+                "date_stats": _date_stats_cell(f.stats),
+                "top_shape": _top_shape_cell(f.stats),
                 "masked": f.stats.masked,
+                "mask_reason": f.stats.mask_reason,
                 "top_values": _top_values_cell(f.stats),
             }
             for f in t.fields
@@ -229,23 +262,21 @@ async def export_version_profile(
     if format == "csv":
         # ponytail: CSV flattens all sheets into one file (one "sheet" column
         # prefix) rather than a zip of files — add a zip if a caller needs
-        # per-table CSVs; no caller does yet.
-        import csv
-        import io as io_mod
+        # per-table CSVs; no caller does yet. csv_response guards every
+        # text/mono cell against formula injection.
+        from api.services.branded_xlsx import csv_response
 
-        from fastapi.responses import StreamingResponse
-
-        buf = io_mod.StringIO()
         all_keys = [c.key for c in _FIELD_PROFILE_COLUMNS]
         all_keys += [k for k in (c.key for c in _DEPENDENCIES_COLUMNS) if k not in all_keys]
-        fieldnames = ["sheet"] + all_keys
-        writer = csv.DictWriter(buf, fieldnames=fieldnames)
-        writer.writeheader()
-        for sheet in sheets:
-            for row in sheet.rows:
-                writer.writerow({"sheet": sheet.title, **{k: row.get(k) for k in all_keys}})
-        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                                 headers={"Content-Disposition": "attachment; filename=profile.csv"})
+        flattened = [
+            {"sheet": sheet.title, **{k: row.get(k) for k in all_keys}}
+            for sheet in sheets
+            for row in sheet.rows
+        ]
+        flat_columns = [ColumnSpec("sheet", "Sheet", kind="mono")] + [
+            ColumnSpec(k, k, kind="text") for k in all_keys
+        ]
+        return csv_response(flattened, flat_columns, "profile", str(version_id))
 
     data = build_workbook(
         tenant_name=tenant.name,

@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 from typing import Optional
@@ -12,7 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
+from api.services.branded_xlsx import (
+    ROW_CAP,
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from db.schema import AnalysisVersion
 
 router = APIRouter(prefix="/api/v1", tags=["versions"])
@@ -280,13 +287,10 @@ async def finding_records(
             "records": [dict(r._mapping) for r in rows.fetchall()]}
 
 
-_FINDING_RECORDS_EXPORT_COLUMNS = [
+_FINDING_RECORDS_BASE_COLUMNS = [
     ColumnSpec("record_key", "Record key", kind="mono"),
     ColumnSpec("grain", "Grain"),
     ColumnSpec("module", "Module"),
-    # ponytail: field_values' keys vary by check/module; one JSON column avoids
-    # per-check schema inference. Split into real columns if a report needs that.
-    ColumnSpec("field_values", "Field values"),
 ]
 
 
@@ -299,43 +303,49 @@ async def export_finding_records(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
-    """Every SAP record this check found failing in this version, as CSV or XLSX."""
+    """Every SAP record this check found failing in this version, as CSV or XLSX.
+
+    One column per field_values key (union across the fetched rows), not one
+    JSON blob column, so each SAP field is independently sortable/filterable.
+    """
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     if await _scope_of(db, version_id) is None:
         raise HTTPException(status_code=404, detail="Version not found")
+    # Cap the source query at ROW_CAP + 1 so build_workbook's own truncation
+    # detection fires and adds the cover note; the +1 row itself is never rendered.
     rows = await db.execute(text("""
         SELECT record_key, grain, module, field_values FROM finding_records
          WHERE version_id = :v AND check_id = :cid
-         ORDER BY record_key LIMIT 50000
-    """), {"v": version_id, "cid": check_id})
+         ORDER BY record_key LIMIT :limit
+    """), {"v": version_id, "cid": check_id, "limit": ROW_CAP + 1})
+    raw_rows = rows.fetchall()
+
+    field_keys: list[str] = []
+    seen = set()
+    for r in raw_rows:
+        for k in (r.field_values or {}):
+            if k not in seen:
+                seen.add(k)
+                field_keys.append(k)
+
+    columns = [*_FINDING_RECORDS_BASE_COLUMNS, *(ColumnSpec(k, k, kind="mono") for k in field_keys)]
     dicts = [
         {
             "record_key": r.record_key,
             "grain": r.grain,
             "module": r.module,
-            "field_values": json.dumps(r.field_values) if r.field_values is not None else "",
+            **(r.field_values or {}),
         }
-        for r in rows.fetchall()
+        for r in raw_rows
     ]
     if format == "csv":
-        import csv
-        import io as io_mod
-
-        from fastapi.responses import StreamingResponse
-
-        buf = io_mod.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _FINDING_RECORDS_EXPORT_COLUMNS])
-        writer.writeheader()
-        for row in dicts:
-            writer.writerow(row)
-        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                                 headers={"Content-Disposition": f"attachment; filename={check_id}_records.csv"})
+        return csv_response(dicts, columns, f"records-{check_id}", str(version_id))
     data = build_workbook(
         tenant_name=tenant.name,
         run_label=str(version_id),
         run_id=str(version_id),
         title=f"{check_id} failing records export",
-        sheets=[SheetSpec(title="Records", columns=_FINDING_RECORDS_EXPORT_COLUMNS, rows=dicts)],
+        sheets=[SheetSpec(title="Records", columns=columns, rows=dicts)],
     )
     return xlsx_response(data, xlsx_filename(f"records-{check_id}", str(version_id)))
 

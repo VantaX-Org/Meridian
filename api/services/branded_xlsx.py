@@ -120,11 +120,11 @@ def _cell_value_and_format(raw: object, kind: ColumnKind, scale: float) -> tuple
     if kind == "date":
         d = raw
         if isinstance(d, datetime):
-            d = _to_sast(d)
+            d = _to_sast(d).replace(tzinfo=None)
         return (d, "yyyy-mm-dd")
     if kind == "datetime":
         if isinstance(raw, datetime):
-            return (_to_sast(raw), "yyyy-mm-dd hh:mm")
+            return (_to_sast(raw).replace(tzinfo=None), "yyyy-mm-dd hh:mm")
         return (raw, "yyyy-mm-dd hh:mm")
     if kind == "mono":
         return (guard_formula_cell(raw), None)
@@ -216,13 +216,13 @@ def _write_cover_sheet(
 
     ws["A3"] = "Meridian"
     ws["A3"].font = Font(bold=True, size=20, color=_ACCENT)
-    ws["A4"] = title
+    ws["A4"] = guard_formula_cell(title)
     ws["A4"].font = Font(size=14)
 
     rows: list[tuple[str, object]] = [
-        ("Organisation", tenant_name),
-        ("Run", run_label or "—"),
-        ("Run ID", run_id or "—"),
+        ("Organisation", guard_formula_cell(tenant_name)),
+        ("Run", guard_formula_cell(run_label) or "—"),
+        ("Run ID", guard_formula_cell(run_id) or "—"),
         ("Generated", _fmt_generated(generated_at)),
     ]
     row_idx = 6
@@ -239,9 +239,9 @@ def _write_cover_sheet(
     for sheet_title, count, note in sheet_meta:
         text = f"{sheet_title} — {count:,} row{'s' if count != 1 else ''}"
         if note:
-            text += f". {note}"
-        ws.cell(row=row_idx, column=1, value=sheet_title).font = Font(bold=False)
-        ws.cell(row=row_idx, column=2, value=text)
+            text += f". {guard_formula_cell(note)}"
+        ws.cell(row=row_idx, column=1, value=guard_formula_cell(sheet_title)).font = Font(bold=False)
+        ws.cell(row=row_idx, column=2, value=guard_formula_cell(text))
         row_idx += 1
 
 
@@ -299,10 +299,54 @@ def xlsx_response(data: bytes, filename: str) -> Response:
     )
 
 
-def xlsx_filename(kind: str, run_label: Optional[str], generated_at: Optional[datetime] = None) -> str:
-    """``meridian-{kind}-{run_label_slug}-{YYYYMMDD-HHMM-SAST}.xlsx``."""
+def _export_filename(kind: str, run_label: Optional[str], ext: str, generated_at: Optional[datetime] = None) -> str:
+    """``meridian-{kind}-{run_label_slug}-{YYYYMMDD-HHMM-SAST}.{ext}``."""
     generated_at = generated_at or datetime.now(timezone.utc)
     sast = _to_sast(generated_at)
     slug = "-".join((run_label or "export").lower().split())
     slug = "".join(c if c.isalnum() or c == "-" else "-" for c in slug).strip("-") or "export"
-    return f"meridian-{kind}-{slug}-{sast.strftime('%Y%m%d-%H%M')}-SAST.xlsx"
+    return f"meridian-{kind}-{slug}-{sast.strftime('%Y%m%d-%H%M')}-SAST.{ext}"
+
+
+def xlsx_filename(kind: str, run_label: Optional[str], generated_at: Optional[datetime] = None) -> str:
+    """``meridian-{kind}-{run_label_slug}-{YYYYMMDD-HHMM-SAST}.xlsx``."""
+    return _export_filename(kind, run_label, "xlsx", generated_at)
+
+
+def csv_filename(kind: str, run_label: Optional[str], generated_at: Optional[datetime] = None) -> str:
+    """``meridian-{kind}-{run_label_slug}-{YYYYMMDD-HHMM-SAST}.csv``."""
+    return _export_filename(kind, run_label, "csv", generated_at)
+
+
+def csv_response(
+    rows: Iterable[Mapping[str, object]],
+    columns: list[ColumnSpec],
+    kind: str,
+    run_label: Optional[str] = None,
+) -> Response:
+    """Build a guarded, ``meridian-``-prefixed CSV download for one flat row set.
+
+    Every ``text``/``mono`` cell is passed through ``guard_formula_cell`` — the
+    same guard the xlsx writer applies to data-sheet cells, so pasting SAP values
+    (or any user-controlled text) into Excel can never execute as a formula.
+    """
+    import csv as csv_mod
+
+    buf = io.StringIO()
+    fieldnames = [c.key for c in columns]
+    writer = csv_mod.DictWriter(buf, fieldnames=fieldnames)
+    writer.writerow({c.key: c.header for c in columns})
+    for row in rows:
+        out: dict[str, object] = {}
+        for c in columns:
+            value = row.get(c.key)
+            if c.kind in ("mono", "text"):
+                value = guard_formula_cell(value)
+            out[c.key] = value
+        writer.writerow(out)
+    filename = csv_filename(kind, run_label)
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

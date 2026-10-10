@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
+import { apiErrorMessage } from "../../lib/error";
 import { useRole } from "../../hooks/use-role";
 import { Button } from "./Button";
 import { Menu } from "./Menu";
@@ -13,6 +15,16 @@ export interface ExportOption {
   format: ExportFormat;
   label?: string;
   run: () => Promise<void>;
+  /** True for a placeholder option (see emptyExportOptions) — runOption shows its own toast and skips the success toast. */
+  empty?: boolean;
+}
+
+/** The server's `detail` when there is one (even behind a blob response, via downloadBlob's rethrow),
+ * else a generic fallback — never the raw Error/AxiosError message. */
+function exportErrorMessage(err: unknown): string {
+  if (isAxiosError(err)) return apiErrorMessage(err);
+  if (err instanceof Error && err.message) return err.message;
+  return "Export failed";
 }
 
 export interface ExportMenuProps {
@@ -38,9 +50,9 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
     setBusy(true);
     try {
       await option.run();
-      toast.success("Download started");
+      if (!option.empty) toast.success("Download started");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Export failed");
+      toast.error(exportErrorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -84,6 +96,7 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
 export function emptyExportOptions(options: ExportOption[]): ExportOption[] {
   return options.map((option) => ({
     ...option,
+    empty: true,
     run: async () => {
       toast.error("Nothing to export");
     },

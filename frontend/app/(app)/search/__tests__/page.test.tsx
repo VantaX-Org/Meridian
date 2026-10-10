@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("q=business"),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("SearchPage", () => {
   it("ranks a matching rule into the results table", async () => {

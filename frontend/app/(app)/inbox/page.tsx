@@ -12,10 +12,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, Field, Pill, Select, Stat, toastManager, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, toastManager, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
+import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
@@ -403,6 +404,15 @@ export default function InboxPage() {
             )}
           </div>
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
+          {!isExceptions && (
+            <ExportMenu
+              options={
+                items.length === 0
+                  ? emptyExportOptions([{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }])
+                  : [{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }]
+              }
+            />
+          )}
         </div>
       }
       filterBar={

@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/systems",
   useSearchParams: () => new URLSearchParams(),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,

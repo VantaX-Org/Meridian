@@ -5,6 +5,8 @@ import io
 import json
 from typing import Any
 
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+
 
 # ── SAP field mappings per object type ────────────────────────────────────────
 
@@ -305,12 +307,15 @@ class ExportEngine:
 
         return output.getvalue()
 
-    def _write_sheet(self, ws, records: list[dict], object_type: str) -> None:
-        """Write a single worksheet using the SAP field map for ``object_type``.
+    def _sheet_spec(self, object_type: str, records: list[dict]) -> SheetSpec:
+        """Build one branded-xlsx SheetSpec using the SAP field map for ``object_type``.
 
-        If the object type isn't registered in ``SAP_EXPORT_FIELDS`` the raw
-        record keys are used as headers so the export still carries data
-        rather than dropping it silently.
+        Column headers are the literal SAP field codes (``kind="mono"``) so the
+        sheet still re-imports cleanly via LSMW/BAPI tooling; ``kind="mono"``
+        also runs every cell through the shared formula-injection guard. If the
+        object type isn't registered in ``SAP_EXPORT_FIELDS`` the raw record
+        keys are used as headers so the export still carries data rather than
+        dropping it silently.
         """
         field_map = SAP_EXPORT_FIELDS.get(object_type, {})
         if field_map:
@@ -320,59 +325,43 @@ class ExportEngine:
         else:
             sap_headers = []
 
-        ws.append(sap_headers)
-
+        columns = [ColumnSpec(h, h, kind="mono") for h in sap_headers]
+        rows = []
         for record in records:
             if field_map:
                 mapped = self._map_record(record, object_type)
-                row = [mapped.get(h, "") for h in sap_headers]
+                rows.append({h: mapped.get(h, "") for h in sap_headers})
             else:
-                row = [
-                    str(record.get(h, "")) if record.get(h) is not None else ""
-                    for h in sap_headers
-                ]
-            ws.append(row)
+                rows.append({h: str(record.get(h, "")) if record.get(h) is not None else "" for h in sap_headers})
 
-        # Auto-size columns
-        for col_cells in ws.columns:
-            max_len = max(len(str(cell.value or "")) for cell in col_cells)
-            ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 50)
+        return SheetSpec(title=f"{object_type}_cleaned"[:31], columns=columns, rows=rows)
 
-    def export_xlsx(self, records: list[dict], object_type: str) -> bytes:
-        """Generate Excel (.xlsx) with SAP field headers using openpyxl."""
-        import openpyxl
+    def export_xlsx(self, records: list[dict], object_type: str, tenant_name: str = "Export") -> bytes:
+        """Branded Excel (.xlsx) with SAP field headers, via branded_xlsx.build_workbook."""
+        return build_workbook(
+            tenant_name=tenant_name,
+            run_label=None,
+            run_id=None,
+            title=f"{object_type} export",
+            sheets=[self._sheet_spec(object_type, records)],
+        )
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = f"{object_type}_cleaned"[:31]  # Excel sheet name limit
-        self._write_sheet(ws, records, object_type)
-
-        buf = io.BytesIO()
-        wb.save(buf)
-        return buf.getvalue()
-
-    def export_xlsx_multi(self, records_by_type: dict[str, list[dict]]) -> bytes:
-        """Generate an Excel workbook with one sheet per object type.
+    def export_xlsx_multi(self, records_by_type: dict[str, list[dict]], tenant_name: str = "Export") -> bytes:
+        """Branded Excel workbook with one sheet per object type.
 
         Used when a single cleaning export spans multiple object types —
         each sheet uses the SAP field mapping for its own type instead of
         falling back to a single hardcoded type for the whole workbook.
         """
-        import openpyxl
-
-        wb = openpyxl.Workbook()
-        # Remove the default sheet created by Workbook(); we'll add named ones.
-        default = wb.active
-        wb.remove(default)
-
-        for object_type, records in records_by_type.items():
-            ws = wb.create_sheet(title=f"{object_type}_cleaned"[:31])
-            self._write_sheet(ws, records, object_type)
-
-        if not wb.sheetnames:
-            # openpyxl requires at least one sheet; create an empty one.
-            wb.create_sheet(title="empty")
-
-        buf = io.BytesIO()
-        wb.save(buf)
+        sheets = [self._sheet_spec(object_type, records) for object_type, records in records_by_type.items()]
+        if not sheets:
+            # build_workbook requires at least one sheet; use an empty one.
+            sheets = [SheetSpec(title="empty", columns=[], rows=[])]
+        return build_workbook(
+            tenant_name=tenant_name,
+            run_label=None,
+            run_id=None,
+            title="Cleaning export",
+            sheets=sheets,
+        )
         return buf.getvalue()

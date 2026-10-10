@@ -280,20 +280,32 @@ async def export_batch(
         if format == "cockpit_csv":
             data, ext = remediation.cockpit_csv(items, d).to_csv(index=False).encode(), "csv"
         else:
-            buf = io.BytesIO()
-            import pandas as pd
-            with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-                sheets = remediation.cockpit_sheets(items, d) or {"EMPTY": pd.DataFrame()}
-                for table, df in sheets.items():
-                    df.to_excel(xw, sheet_name=table[:31], index=False)
-                    for row in xw.sheets[table[:31]].iter_rows():
-                        for cell in row:
-                            if cell.data_type == "f":  # SAP values like "=A" stay text, never a formula
-                                cell.data_type = "s"
-            data, ext = buf.getvalue(), "xlsx"
+            from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+            sheets_by_table = remediation.cockpit_sheets(items, d)
+            sheet_specs = []
+            for table, df in (sheets_by_table or {}).items():
+                # kind="mono" keeps SAP values like "=A" as guarded text, never a formula,
+                # and preserves the literal SAP field code as the header for reimport.
+                columns = [ColumnSpec(col, col, kind="mono") for col in df.columns]
+                sheet_specs.append(SheetSpec(title=table[:31], columns=columns, rows=df.to_dict("records")))
+            if not sheet_specs:
+                sheet_specs = [SheetSpec(title="EMPTY", columns=[], rows=[])]
+            data = build_workbook(
+                tenant_name=tenant.name,
+                run_label=str(batch_id),
+                run_id=str(batch_id),
+                title="Remediation cockpit export",
+                sheets=sheet_specs,
+            )
+            ext = "xlsx"
     await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
                      {"id": batch_id})
     await _event(db, tenant, batch_id, "exported", request, to_value=format)
     await db.commit()
+    if ext == "xlsx":
+        from api.services.branded_xlsx import xlsx_filename
+        filename = xlsx_filename(f"remediation-{format}", str(batch_id))
+    else:
+        filename = f"remediation_{batch_id}_{format}.{ext}"
     return StreamingResponse(io.BytesIO(data), media_type=_MEDIA[ext], headers={
-        "Content-Disposition": f"attachment; filename=remediation_{batch_id}_{format}.{ext}"})
+        "Content-Disposition": f"attachment; filename={filename}"})

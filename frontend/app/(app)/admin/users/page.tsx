@@ -9,8 +9,7 @@ import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, 
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
-import { getAuditEntries, type AuditEntry } from "@/lib/api/audit";
-import { downloadBlob } from "@/lib/api/download";
+import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import { apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
@@ -216,7 +215,10 @@ function AuditView() {
     <div className="flex flex-col gap-4 pt-4">
       <div className="flex justify-end">
         <ExportMenu
-          options={[{ format: "csv", label: "Export audit log", run: () => downloadBlob("/api/v1/audit/export", {}, "audit_log.csv") }]}
+          options={[
+            { format: "xlsx", run: () => exportAuditEntries("xlsx") },
+            { format: "csv", run: () => exportAuditEntries("csv") },
+          ]}
         />
       </div>
       {auditQ.isError ? (

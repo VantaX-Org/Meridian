@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
 from api.services.rbac import current_user_id, require_permission
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
@@ -290,10 +290,6 @@ async def export_findings(
     where, params = _findings_where(run_id, module, gap_type, severity, None, None)
     rows = (await db.execute(text(f"SELECT {_FINDING_COLS} FROM migration_gap_findings WHERE {where}"), params)).fetchall()
     dicts = [_row(x) for x in rows]
-    if format == "csv":
-        import pandas as pd
-
-        return _stream(pd.DataFrame(dicts).to_csv(index=False).encode(), "text/csv", f"migration_gaps_{run_id}.csv")
     keys = list(dicts[0].keys()) if dicts else [
         "module", "source_table", "record_key", "source_field", "source_value", "dest_table",
         "target_field", "target_value", "gap_type", "severity", "detail", "provenance", "grounded",
@@ -302,6 +298,8 @@ async def export_findings(
         ColumnSpec(key=k, header=k, kind="mono" if k in ("record_key", "source_table", "dest_table") else "text")
         for k in keys
     ]
+    if format == "csv":
+        return csv_response(dicts, columns, "migration-gaps", str(run_id))
     data = build_workbook(
         tenant_name=tenant.name,
         run_label=None,

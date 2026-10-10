@@ -11,7 +11,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import ConfigAwareScore, RuleApplicability
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, guard_formula_cell, xlsx_filename, xlsx_response
+from api.services.branded_xlsx import (
+    ROW_CAP,
+    ColumnSpec,
+    SheetSpec,
+    build_workbook,
+    csv_response,
+    xlsx_filename,
+    xlsx_response,
+)
 from api.services.rbac import current_user_id, require_permission
 from api.services.tenant_seed import rule_catalogue
 from db.schema import Finding, Report
@@ -417,27 +425,40 @@ async def list_findings(
     }
 
 
+def _object_label(module: str) -> str:
+    """Match frontend/lib/format.ts:formatModuleName — same as objects.py:_label."""
+    return " ".join(w.capitalize() for w in module.split("_"))
+
+
 _EXPORT_COLUMNS = [
     ColumnSpec("id", "ID", kind="mono"),
     ColumnSpec("module", "Module"),
+    ColumnSpec("object_label", "Object"),
     ColumnSpec("check_id", "Check ID", kind="mono"),
     ColumnSpec("finding_type", "Type"),
     ColumnSpec("severity", "Severity"),
     ColumnSpec("dimension", "Dimension"),
+    ColumnSpec("message", "Message"),
     ColumnSpec("affected_count", "Affected", kind="int"),
     ColumnSpec("total_count", "Total", kind="int"),
-    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=100.0),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=1.0),
     ColumnSpec("cost_at_risk", "Cost at risk", kind="money"),
     ColumnSpec("impact_score", "Impact score"),
     ColumnSpec("baseline", "Baseline"),
     ColumnSpec("remediation_text", "Remediation"),
-    ColumnSpec("created_at", "Created"),
+    ColumnSpec("created_at", "Created", kind="datetime"),
 ]
 
-# export caps at this many findings per request — narrow filters to get the rest.
-# ponytail: same fixed cap pattern as the other re-routed exports; a cursor-based
-# streaming export would scale further but no producer needs that yet.
-_EXPORT_ROW_CAP = 50_000
+_SUMMARY_COLUMNS = [
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("findings", "Findings", kind="int"),
+    ColumnSpec("affected_count", "Affected records", kind="int"),
+]
+
+# Cap the source query at ROW_CAP + 1 so build_workbook's own truncation
+# detection (it flags truncated when a sheet hits ROW_CAP rows) fires and adds
+# the cover note; the +1 row itself is never rendered.
+_EXPORT_ROW_CAP = ROW_CAP + 1
 
 
 @router.get("/findings/export")
@@ -464,7 +485,11 @@ async def export_findings(
 
     base = select(Finding).where(Finding.tenant_id == tenant.id)
     if version_id:
-        base = base.where(Finding.version_id == uuid.UUID(version_id))
+        try:
+            version_uuid = uuid.UUID(version_id)
+        except ValueError:
+            raise HTTPException(422, "version_id must be a UUID")
+        base = base.where(Finding.version_id == version_uuid)
     else:
         base = base.where(Finding.version_id.in_(await _latest_version_ids(db, tenant)))
     if check_id:
@@ -498,10 +523,12 @@ async def export_findings(
         {
             "id": str(f.id),
             "module": f.module,
+            "object_label": _object_label(f.module),
             "check_id": f.check_id,
             "finding_type": f.finding_type,
             "severity": f.severity,
             "dimension": f.dimension,
+            "message": (f.rule_context or {}).get("message") or "",
             "affected_count": f.affected_count,
             "total_count": f.total_count,
             "pass_rate": float(f.pass_rate) if f.pass_rate is not None else None,
@@ -509,34 +536,33 @@ async def export_findings(
             "impact_score": float(f.impact_score) if f.impact_score is not None else None,
             "baseline": (f.details or {}).get("baseline", "live_config"),
             "remediation_text": f.remediation_text,
-            "created_at": f.created_at.isoformat() if f.created_at else None,
+            "created_at": f.created_at,
         }
         for f in findings
     ]
 
     if format == "csv":
-        import csv as csv_mod
-        import io as io_mod
+        return csv_response(rows, _EXPORT_COLUMNS, "findings", version_id)
 
-        from fastapi.responses import StreamingResponse
-
-        buf = io_mod.StringIO()
-        writer = csv_mod.DictWriter(buf, fieldnames=[c.key for c in _EXPORT_COLUMNS])
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({c.key: guard_formula_cell(row.get(c.key)) for c in _EXPORT_COLUMNS})
-        return StreamingResponse(
-            iter([buf.getvalue()]),
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=findings.csv"},
-        )
+    summary_by_severity: dict[str, dict[str, int]] = {}
+    for row in rows:
+        bucket = summary_by_severity.setdefault(row["severity"], {"findings": 0, "affected_count": 0})
+        bucket["findings"] += 1
+        bucket["affected_count"] += row["affected_count"] or 0
+    summary_rows = [
+        {"severity": severity, "findings": counts["findings"], "affected_count": counts["affected_count"]}
+        for severity, counts in sorted(summary_by_severity.items())
+    ]
 
     data = build_workbook(
         tenant_name=tenant.name,
         run_label=version_id,
         run_id=version_id,
         title="Findings export",
-        sheets=[SheetSpec(title="Findings", columns=_EXPORT_COLUMNS, rows=rows)],
+        sheets=[
+            SheetSpec(title="Summary", columns=_SUMMARY_COLUMNS, rows=summary_rows),
+            SheetSpec(title="Findings", columns=_EXPORT_COLUMNS, rows=rows),
+        ],
     )
     return xlsx_response(data, xlsx_filename("findings", version_id))
 

@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, ExplorerPage, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
+import { exportRuns } from "@/lib/api/versions";
 import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -161,6 +162,8 @@ export default function SystemsPage() {
   else if (isError) state = "error";
   else if (systems.length === 0) state = "empty";
 
+  const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];
+
   return (
     <ExplorerPage
       filterBar={
@@ -172,8 +175,8 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        configQ.data ? (
-          <div className="flex gap-6">
+        <div className="flex items-center gap-6">
+          {configQ.data ? (
             <Stat
               label="Configuration loaded"
               value={
@@ -185,8 +188,9 @@ export default function SystemsPage() {
               }
               delta={<Pill tone={cfgVerdictTone}>{cfgVerdict}</Pill>}
             />
-          </div>
-        ) : undefined
+          ) : null}
+          <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+        </div>
       }
       table={
         <DataTable

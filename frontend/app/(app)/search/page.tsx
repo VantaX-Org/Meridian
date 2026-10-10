@@ -5,8 +5,9 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Field, emptyExportOptions } from "@/design";
 import { getCleaningQueue } from "@/lib/api/cleaning";
+import { exportFindings } from "@/lib/api/findings";
 import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
@@ -69,6 +70,9 @@ export default function SearchPage() {
   }, [rules.data, systems.data, batches.data, objects.data, runs.data, run]);
 
   const results = rankResults(q, candidates);
+  const exportOptions = [
+    { format: "xlsx" as const, label: "Findings (.xlsx)", run: () => exportFindings("xlsx", { version_id: run || undefined }) },
+  ];
   const loading = rules.isLoading || systems.isLoading || batches.isLoading || runs.isLoading || (!!run && objects.isLoading);
   const failedQuery = [rules, systems, batches, objects, runs].find((query) => query.isError);
   const refetchAll = () => {
@@ -81,6 +85,7 @@ export default function SearchPage() {
 
   return (
     <ExplorerPage
+      summary={<ExportMenu options={results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       filterBar={
         <form
           className="flex items-end gap-2"

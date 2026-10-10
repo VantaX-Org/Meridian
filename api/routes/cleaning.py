@@ -573,14 +573,11 @@ async def export_cleaning_data(
     # xlsx with multiple object types → one sheet per type. For a single type
     # this is still correct and produces one sheet named after that type.
     if export_format == "xlsx":
-        content_bytes = engine.export_xlsx_multi(records_by_type)
+        from api.services.branded_xlsx import xlsx_filename, xlsx_response
+
+        content_bytes = engine.export_xlsx_multi(records_by_type, tenant_name=tenant.name)
         filename_suffix = object_type if object_type else "all"
-        filename = f"cleaning_export_{status}_{filename_suffix}.xlsx"
-        return StreamingResponse(
-            io.BytesIO(content_bytes),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
+        return xlsx_response(content_bytes, xlsx_filename(f"cleaning-{status}", filename_suffix))
 
     format_dispatch = {
         "csv": engine.export_csv,

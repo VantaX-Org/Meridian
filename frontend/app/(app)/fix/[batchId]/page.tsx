@@ -14,6 +14,9 @@ import {
   rejectCleaning,
   type CleaningQueueItem,
 } from "@/lib/api/cleaning";
+import { downloadAuthenticated } from "@/lib/api/download";
+import { exportBatch } from "@/lib/api/remediation";
+import { getCleaningReportUrl } from "@/lib/api/reports";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -94,7 +97,16 @@ export default function BatchPage() {
           </Button>
           <ExportMenu
             disabled={items.length === 0}
-            options={[{ format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) }]}
+            options={[
+              { format: "xlsx", label: "Cockpit (.xlsx)", run: () => exportBatch(batchId, "cockpit_xlsx") },
+              { format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) },
+              { format: "csv", label: "Mass change CSV", run: () => exportBatch(batchId, "mass_change_csv") },
+              {
+                format: "pdf",
+                label: "PDF cleaning report",
+                run: () => downloadAuthenticated(getCleaningReportUrl(), `cleaning_${batchId}.pdf`),
+              },
+            ]}
           />
         </div>
       }

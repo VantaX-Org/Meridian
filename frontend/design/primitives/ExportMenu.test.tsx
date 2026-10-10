@@ -61,5 +61,6 @@ describe("ExportMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Nothing to export"));
     expect(run).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

@@ -88,7 +88,7 @@ async def export_config_matches(
         "ambiguous": 0,
         "modules_with_deviations": [],
     }
-    stream = generate_config_match_excel(export_rows, summary, version_id)
+    stream = generate_config_match_excel(export_rows, summary, version_id, tenant_name=tenant.name)
     return Response(
         content=stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

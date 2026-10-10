@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 import type { Version, VersionList, VersionComparison } from "@/types/api";
 
 export async function getVersions(params?: {
@@ -22,6 +23,14 @@ export async function archiveVersions(keepLatest = 1): Promise<{ archived: numbe
 export async function restoreVersions(): Promise<{ restored: number }> {
   const { data } = await apiClient.post("/api/v1/versions/restore");
   return data;
+}
+
+/** Runs matching the same filters as `getVersions`, as CSV or XLSX (api/routes/runs.py:export_runs). */
+export function exportRuns(
+  format: "csv" | "xlsx",
+  params?: { module?: string; system_id?: string; include_archived?: boolean }
+): Promise<void> {
+  return downloadBlob("/api/v1/runs/export", { format, ...params }, `runs.${format}`);
 }
 
 export async function getVersion(id: string): Promise<Version> {
