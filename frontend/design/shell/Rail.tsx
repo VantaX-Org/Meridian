@@ -253,7 +253,7 @@ export function Rail() {
 
     const label = (
       <>
-        {showPip && expanded ? <Tooltip label={systemsTooltipLabel ?? item.label} side="right">{iconSpan}</Tooltip> : iconSpan}
+        {showPip && expanded ? <Tooltip label={systemsTooltipLabel ?? item.label} side="right" render={<span />}>{iconSpan}</Tooltip> : iconSpan}
         {expanded && <span className="flex-1 truncate">{item.label}</span>}
         {expanded && count > 0 && (
           <span key={count} className="m-motion-rise">
@@ -352,7 +352,7 @@ export function Rail() {
     // Collapsed: a child-less item gets a simple right-side tooltip; a parent gets the hover/focus flyout below.
     return (
       <li key={item.href} className="relative">
-        {hasChildren ? row : <Tooltip label={showPip ? systemsTooltipLabel ?? item.label : item.label} side="right">{row}</Tooltip>}
+        {hasChildren ? row : <Tooltip label={showPip ? systemsTooltipLabel ?? item.label : item.label} side="right" render={<div />}>{row}</Tooltip>}
       </li>
     );
   };

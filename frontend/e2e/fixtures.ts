@@ -170,6 +170,9 @@ async function mockObjects(page: Page) {
         { check_id: "MM132", severity: "medium", dimension: "completeness", affected_count: 1, total_count: 418, pass_rate: 0.9976 },
       ],
     })));
+  // The rules tab loads the per-rule trend batch; no prior runs means every trend reads "—".
+  await page.route(/\/api\/v1\/rules\/history(\?|$)/, (r) =>
+    r.fulfill(json({ version_id: VERSION_ID, module: "material_master", history: {} })));
   await page.route(/\/api\/v1\/versions\/[^/]+\/findings\/MM551\/records/, (r) =>
     r.fulfill(json({
       version_id: VERSION_ID, check_id: "MM551", total: 1,

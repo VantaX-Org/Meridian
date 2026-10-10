@@ -102,7 +102,7 @@ export default function ObjectsPage() {
           columns={columns}
           data={data?.objects ?? []}
           getRowId={(row) => row.module}
-          onRowClick={(row) => router.push(`/objects/${row.module}?run=${run}`)}
+          onRowClick={(row) => router.push(`/objects/${row.module}?run=${run}&tab=rules`)}
         />
       }
       state={state}

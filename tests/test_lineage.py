@@ -161,12 +161,20 @@ def test_lineage_routes_registered():
             "/api/v1/lineage/rule/{check_id}"} <= paths
     assert "/api/v1/lineage/{object_type}/{record_key}" not in paths  # legacy record lineage is gone
 
-    # Nothing registered earlier shadows the lineage routes.
+    # Nothing registered earlier shadows the lineage routes. Newer FastAPI keeps
+    # each included router as one path-less _IncludedRouter entry, so descend into it.
+    def first_match(routes, scope):
+        for r in routes:
+            if r.matches(scope)[0] == Match.FULL:
+                hit = first_match(r.original_router.routes, scope) if hasattr(r, "original_router") else r
+                if hit is not None:
+                    return hit
+        return None
+
     for path, want in (("/api/v1/lineage/rule/AP084", "/api/v1/lineage/rule/{check_id}"),
                        ("/api/v1/lineage/impact/x", "/api/v1/lineage/impact/{version_id}")):
         scope = {"type": "http", "path": path, "method": "GET", "root_path": ""}
-        hit = next(r for r in app.router.routes if r.matches(scope)[0] == Match.FULL)
-        assert getattr(hit, "path", "") == want
+        assert getattr(first_match(app.router.routes, scope), "path", "") == want
 
 
 class _Res:
