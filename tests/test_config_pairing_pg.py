@@ -170,3 +170,173 @@ def test_migration_075_downgrades_cleanly(app_engine):
         assert "role" not in cols and "target_system_id" not in cols
         assert c.execute(text("SELECT 1 FROM pg_constraint WHERE conname = 'uq_transfer_value_mappings'")).scalar()
     _alembic("upgrade", "head")
+
+
+def _session(app, tid: str):
+    from workers.db import tenant_session
+
+    return tenant_session(app, tid)
+
+
+@pg
+def test_config_basis_reads_completed_then_fresh_running(app_engine):
+    from api.services.config_pairing import config_basis
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    a, b, c = (_system(app, tid, n) for n in ("PRD", "QAS", "DEV"))
+    _load(app, tid, a, [], status="completed")
+    _load(app, tid, b, [], status="running", minutes_ago=5)
+    _load(app, tid, c, [], status="running", minutes_ago=45)  # stale
+    with _session(app, tid) as s:
+        assert [config_basis(s, x) for x in (a, b, c)] == ["loaded", "loading", "none"]
+
+
+@pg
+def test_resolve_target_prefers_a_completed_load_then_the_baseline(app_engine):
+    from api.services.config_pairing import BASELINE_LABEL, resolve_target
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    lone = _system(app, tid, "DEV")
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    with _session(app, tid) as s:
+        t = resolve_target(s, lone)
+        assert (t.system_id, t.baseline, t.label, t.system_type) == (None, True, BASELINE_LABEL, "s4hana_cloud")
+        t = resolve_target(s, src)
+        assert (t.system_id, t.baseline, t.label) == (tgt, True, f"S4D ({BASELINE_LABEL})")
+    lid = _load(app, tid, tgt, [("T001", "BUKRS=1000", {"BUKRS": "1000"})])
+    with _session(app, tid) as s:
+        t = resolve_target(s, src)
+        assert (t.load_id, t.baseline, t.label) == (lid, False, "S4D")
+
+
+@pg
+def test_compare_counts_objects_and_returns_rows_for_one_object(app_engine):
+    from api.services.config_pairing import compare
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    _load(app, tid, src, [("T077K", "KTOKK=KRED", {"KTOKK": "KRED"}), ("T077K", "KTOKK=0001", {"KTOKK": "0001"}),
+                          ("T001", "BUKRS=1000", {"BUKRS": "1000"}), ("TVAK", "AUART=ZOR", {"AUART": "ZOR"})])
+    _load(app, tid, tgt, [("T077K", "KTOKK=KRED", {"KTOKK": "KRED"}), ("T077K", "KTOKK=1", {"KTOKK": "1"}),
+                          ("T001", "BUKRS=2000", {"BUKRS": "2000"})])
+    with _session(app, tid) as s:
+        out = compare(s, src, "T077K")
+    assert out["target"] == {"system_id": tgt, "label": "S4D", "baseline": False}
+    assert [o["object"] for o in out["objects"]] == ["T001", "T077K"]  # TVAK is not in the target
+    t077k = next(o for o in out["objects"] if o["object"] == "T077K")
+    assert (t077k["exists"], t077k["key_match"], t077k["missing"], t077k["proposable"]) == (1, 1, 0, 1)
+    assert {r["source_key"] for r in out["rows"]} == {"KTOKK=KRED", "KTOKK=0001"}
+
+
+@pg
+def test_compare_with_no_source_load_is_empty(app_engine):
+    from api.services.config_pairing import compare
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    src = _system(app, tid, "PRD")
+    with _session(app, tid) as s:
+        out = compare(s, src)
+    assert out["source_load_id"] is None and out["objects"] == [] and out["target"]["baseline"] is True
+
+
+@pg
+def test_write_drift_diffs_against_the_previous_completed_load(app_engine):
+    from sqlalchemy import text
+
+    from api.services.config_pairing import write_drift
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "PRD")
+    first = _load(app, tid, sid, [("T001", "BUKRS=1000", {"BUTXT": "A"}), ("T001", "BUKRS=2000", {"BUTXT": "B"})],
+                  minutes_ago=10)
+    with _session(app, tid) as s:
+        assert write_drift(s, tid, sid, first) == 0  # first load: nothing to diff
+        s.commit()
+    second = _load(app, tid, sid, [("T001", "BUKRS=1000", {"BUTXT": "A2"}), ("T001", "BUKRS=3000", {"BUTXT": "C"})])
+    with _session(app, tid) as s:
+        assert write_drift(s, tid, sid, second) == 3
+        assert write_drift(s, tid, sid, second) == 3  # idempotent per load
+        s.commit()
+        rows = s.execute(text("SELECT element_value, change_type FROM config_drift_log WHERE run_id = :l "
+                              "ORDER BY element_value"), {"l": second}).fetchall()
+    assert [tuple(r) for r in rows] == [("BUKRS=1000", "changed"), ("BUKRS=2000", "removed"),
+                                        ("BUKRS=3000", "added")]
+
+
+@pg
+def test_propose_scopes_to_the_pair_and_queues_once(app_engine):
+    from sqlalchemy import text
+
+    from api.services.config_pairing import propose
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    _load(app, tid, src, [("T077K", "KTOKK=0001", {"KTOKK": "0001"})])
+    _load(app, tid, tgt, [("T077K", "KTOKK=1", {"KTOKK": "1"})])
+    with _session(app, tid) as s:
+        assert propose(s, tid, src) == {"proposed": 1, "skipped": 0, "target": "S4D"}
+        s.commit()
+        assert propose(s, tid, src) == {"proposed": 0, "skipped": 1, "target": "S4D"}
+        s.commit()
+        m = s.execute(text("SELECT target_field, source_value, target_value, status, source_system_id::text, "
+                           "target_system_id::text FROM transfer_value_mappings")).fetchone()
+        q = s.execute(text("SELECT item_type, domain, ai_recommendation, ai_confidence FROM stewardship_queue")).fetchall()
+    assert tuple(m) == ("T077K.KTOKK", "0001", "1", "proposed", src, tgt)
+    assert [tuple(r) for r in q] == [("config_value_match", "config", "T077K.KTOKK: 0001 → 1 (key match)", 1.0)]
+
+
+@pg
+def test_finding_context_uses_the_rule_condition_object(app_engine, monkeypatch):
+    import json
+
+    from sqlalchemy import text
+
+    from api.services import config_applicability
+    from api.services.config_pairing import finding_context
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    src = _system(app, tid, "PRD")
+    _load(app, tid, src, [("T077K", "KTOKK=KRED", {"KTOKK": "KRED"}), ("T077K", "KTOKK=ZZZZ", {"KTOKK": "ZZZZ"})])
+    vid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'complete', CAST(:m AS jsonb))"),
+                  {"v": vid, "t": tid, "m": json.dumps({"system_id": src})})
+    monkeypatch.setattr(config_applicability, "condition",
+                        lambda module, check_id: {"requires": {"object": "T077K"}})
+    with _session(app, tid) as s:
+        ctx = finding_context(s, "AP-001", "accounts_payable", vid, [])
+    assert ctx["object"] == "T077K" and ctx["system_id"] == src and ctx["baseline"] is True
+    assert ctx["source"] == ["KTOKK=KRED", "KTOKK=ZZZZ"]
+    assert "KTOKK=ZZZZ" in ctx["missing"] and ctx["missing_total"] == len(ctx["missing"])
+
+
+@pg
+def test_propose_twice_leaves_one_open_queue_item(app_engine):
+    from sqlalchemy import text
+
+    from api.services.config_pairing import propose
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    _load(app, tid, src, [("T077K", "KTOKK=0001", {"KTOKK": "0001"})])
+    _load(app, tid, tgt, [("T077K", "KTOKK=1", {"KTOKK": "1"})])
+    with _session(app, tid) as s:
+        propose(s, tid, src)
+        s.commit()
+        propose(s, tid, src)
+        s.commit()
+        assert s.execute(text("SELECT count(*) FROM stewardship_queue WHERE status != 'resolved'")).scalar() == 1

@@ -7,10 +7,13 @@ Read only towards SAP: this module reads stored config_items and writes Meridian
 from __future__ import annotations
 
 import difflib
+from collections import Counter
 from dataclasses import asdict, dataclass
 from typing import Optional
 
 import pandas as pd
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from sap.config_snapshot import NOT_AVAILABLE, ConfigItem, ConfigSnapshot
 
@@ -146,3 +149,191 @@ def pair_error(source_role: str, target_role: str, same: bool) -> Optional[str]:
     if target_role != "target":
         return "The assigned system must have the target role."
     return None
+
+
+# Scope predicate for transfer_value_mappings: global rows OR rows for this source/target pair.
+# Binds: :src (source system uuid text), :tgt (target system uuid text, may be NULL).
+SCOPE_SQL = (
+    "(source_system_id IS NOT DISTINCT FROM CAST(:src AS uuid) OR source_system_id IS NULL) "
+    "AND (target_system_id IS NOT DISTINCT FROM CAST(:tgt AS uuid) OR target_system_id IS NULL)"
+)
+
+
+BASIS_SQL = (
+    "SELECT bool_or(status = 'completed'), "
+    f"bool_or(status IN ('queued', 'running') AND created_at > now() - interval '{STALE_MINUTES} minutes') "
+    "FROM config_loads WHERE system_id = CAST(:sid AS uuid)"
+)
+
+
+def config_basis(s: Session, sid: str) -> str:
+    """'loaded' (a completed load), 'loading' (a load started in the last 30 minutes) or 'none'."""
+    # ponytail: a running load older than STALE_MINUTES counts as stale; a heartbeat column would be exact.
+    done, running = s.execute(text(BASIS_SQL), {"sid": sid}).one()
+    return "loaded" if done else "loading" if running else "none"
+
+
+def latest_completed_load(s: Session, sid: str) -> Optional[tuple[str, str, str]]:
+    row = s.execute(text(
+        "SELECT id::text, origin, system_type FROM config_loads "
+        "WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' "
+        "ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1"), {"sid": sid}).fetchone()
+    return (row[0], row[1], row[2]) if row else None
+
+
+def load_items(s: Session, load_id: str, obj: Optional[str] = None) -> list[ConfigItem]:
+    # ponytail: capped at ITEM_CAP items per read; page by object if a load is larger.
+    rows = s.execute(text(
+        'SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid) '
+        "AND (CAST(:obj AS text) IS NULL OR object = :obj) ORDER BY object, key LIMIT :cap"),
+        {"lid": load_id, "obj": obj, "cap": ITEM_CAP}).fetchall()
+    return [ConfigItem(r[0], r[1], r[2] or {}) for r in rows]
+
+
+@dataclass
+class Target:
+    system_id: Optional[str]
+    system_type: str
+    load_id: Optional[str]
+    baseline: bool
+    label: str
+
+
+def resolve_target(s: Session, source_id: str) -> Target:
+    """The source's assigned target: its latest completed load, else its type's baseline, else the S/4 baseline."""
+    row = s.execute(text(
+        "SELECT t.id::text, t.name, t.system_type FROM sap_systems s "
+        "LEFT JOIN sap_systems t ON t.id = s.target_system_id WHERE s.id = CAST(:sid AS uuid)"),
+        {"sid": source_id}).fetchone()
+    if row is None or row[0] is None:
+        return Target(None, BASELINE_TYPE, None, True, BASELINE_LABEL)
+    tid_, name, stype = row
+    load = latest_completed_load(s, tid_)
+    if load and load[1] != "best_practice":
+        return Target(tid_, stype, load[0], False, name)
+    return Target(tid_, stype, load[0] if load else None, True, f"{name} ({BASELINE_LABEL})")
+
+
+def target_items(s: Session, t: Target, obj: Optional[str] = None) -> list[ConfigItem]:
+    if t.load_id:
+        return load_items(s, t.load_id, obj)
+    return [i for i in baseline_snapshot(t.system_type).items if obj is None or i.object == obj]
+
+
+def _by_object(items: list[ConfigItem]) -> dict[str, list[ConfigItem]]:
+    out: dict[str, list[ConfigItem]] = {}
+    for i in items:
+        out.setdefault(i.object, []).append(i)
+    return out
+
+
+def _compare_all(s: Session, source_id: str) -> tuple[Target, Optional[str], dict[str, list[MatchRow]]]:
+    t = resolve_target(s, source_id)
+    src = latest_completed_load(s, source_id)
+    if src is None:
+        return t, None, {}
+    source, target = _by_object(load_items(s, src[0])), _by_object(target_items(s, t))
+    return t, src[0], {o: compare_object(o, source[o], target[o]) for o in sorted(set(source) & set(target))}
+
+
+def compare(s: Session, source_id: str, obj: Optional[str] = None) -> dict[str, object]:
+    t, load_id, by_obj = _compare_all(s, source_id)
+    objects: list[dict[str, object]] = []
+    for o, rows in by_obj.items():
+        counts = Counter(r.status for r in rows)
+        objects.append({"object": o, **{k: counts.get(k, 0) for k in STATUSES},
+                        "proposable": sum(r.proposable for r in rows)})
+    return {"source_load_id": load_id,
+            "target": {"system_id": t.system_id, "label": t.label, "baseline": t.baseline},
+            "objects": objects,
+            "rows": [r.as_dict() for r in by_obj.get(obj or "", [])]}
+
+
+_DRIFT_SQL = """
+WITH prev AS (
+    SELECT id FROM config_loads
+    WHERE system_id = CAST(:sid AS uuid) AND status = 'completed' AND id <> CAST(:lid AS uuid)
+    ORDER BY finished_at DESC NULLS LAST, created_at DESC LIMIT 1),
+a AS (SELECT object, key, "values" FROM config_items WHERE load_id = (SELECT id FROM prev)),
+b AS (SELECT object, key, "values" FROM config_items WHERE load_id = CAST(:lid AS uuid))
+INSERT INTO config_drift_log (id, tenant_id, run_id, module, element_type, element_value, change_type,
+                              previous_value, current_value)
+SELECT gen_random_uuid(), CAST(:tid AS uuid), CAST(:lid AS uuid), 'config',
+       LEFT(COALESCE(b.object, a.object), 80), LEFT(COALESCE(b.key, a.key), 500),
+       CASE WHEN a.key IS NULL THEN 'added' WHEN b.key IS NULL THEN 'removed' ELSE 'changed' END,
+       a."values"::text, b."values"::text
+FROM a FULL OUTER JOIN b ON a.object = b.object AND a.key = b.key
+WHERE EXISTS (SELECT 1 FROM prev) AND (a.key IS NULL OR b.key IS NULL OR a."values" <> b."values")
+"""
+
+
+def write_drift(s: Session, tid: str, sid: str, lid: str) -> int:
+    """Diff load ``lid`` against the system's previous completed load into config_drift_log (run_id = lid)."""
+    # ponytail: duplicate keys inside one load multiply drift rows; config_items has no unique key.
+    s.execute(text("DELETE FROM config_drift_log WHERE run_id = CAST(:lid AS uuid)"), {"lid": lid})
+    return s.execute(text(_DRIFT_SQL), {"tid": tid, "sid": sid, "lid": lid}).rowcount
+
+
+def propose(s: Session, tid: str, source_id: str) -> dict[str, object]:
+    """Insert each proposable match as a 'proposed' pair-scoped value map plus one steward queue item."""
+    t, _, by_obj = _compare_all(s, source_id)
+    proposed = skipped = 0
+    for o, rows in by_obj.items():
+        for r in rows:
+            if not r.proposable:
+                continue
+            new_id = s.execute(text("""
+                INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, target_value,
+                    note, source_system_id, target_system_id, status, updated_at)
+                VALUES (gen_random_uuid(), CAST(:tid AS uuid), 'config', :tf, :sv, :tv, :note,
+                        CAST(:src AS uuid), CAST(:tgt AS uuid), 'proposed', now())
+                ON CONFLICT ON CONSTRAINT uq_transfer_value_mappings_scope DO NOTHING
+                RETURNING id::text
+            """), {"tid": tid, "tf": f"{o}.{r.field}", "sv": r.source_value, "tv": r.target_value,
+                   "note": f"{r.status.replace('_', ' ')} {r.source_key} → {r.target_key}",
+                   "src": source_id, "tgt": t.system_id}).scalar()
+            if new_id is None:
+                skipped += 1
+                continue
+            proposed += 1
+            s.execute(text("""
+                INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority, due_at, sla_hours,
+                                               ai_recommendation, ai_confidence)
+                VALUES (CAST(:tid AS uuid), 'config_value_match', CAST(:sid AS uuid), 'config', 3,
+                        now() + interval '72 hours', 72, :rec, :conf)
+                ON CONFLICT (source_id, item_type) WHERE status != 'resolved' DO NOTHING
+            """), {"tid": tid, "sid": new_id, "conf": r.score,
+                   "rec": f"{o}.{r.field}: {r.source_value} → {r.target_value} ({r.status.replace('_', ' ')})"})
+    return {"proposed": proposed, "skipped": skipped, "target": t.label}
+
+
+def finding_context(s: Session, rule_id: str, module: str, version_id: Optional[str],
+                    fields: list[str]) -> dict[str, object]:
+    """Source and target keys of the config object a rule depends on, and the source keys missing in the target."""
+    from api.services.config_applicability import condition
+    from api.services.source_design import dictionary_for
+
+    sid = s.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
+                    {"v": version_id}).scalar() if version_id else None
+    cond = condition(module, rule_id)
+    obj: Optional[str] = cond["requires"]["object"] if cond else None
+    if obj is None and sid:
+        ddic = dictionary_for(s, sid)
+        for f in fields:
+            table, _, name = f.partition(".")
+            fd = ddic.field(table, name) if name else None
+            if fd is not None and fd.check_table:
+                obj = fd.check_table
+                break
+    empty: dict[str, object] = {"object": obj, "system_id": sid, "target_label": BASELINE_LABEL, "baseline": True,
+                                "source": [], "target": [], "missing": [], "missing_total": 0}
+    if obj is None or sid is None:
+        return empty
+    t = resolve_target(s, sid)
+    src = latest_completed_load(s, sid)
+    source = load_items(s, src[0], obj) if src else []
+    target = target_items(s, t, obj)
+    missing = [r.source_key for r in compare_object(obj, source, target) if r.status == "missing"]
+    return {"object": obj, "system_id": sid, "target_label": t.label, "baseline": t.baseline,
+            "source": [i.key for i in source[:50]], "target": [i.key for i in target[:50]],
+            "missing": missing[:50], "missing_total": len(missing)}
