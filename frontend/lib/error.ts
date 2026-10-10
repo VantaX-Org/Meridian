@@ -30,3 +30,8 @@ export function apiErrorMessage(error: unknown): string {
 export function isNotFound(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 404;
 }
+
+/** Query failure for list/collection data: a 404 there means "nothing yet", not an error. */
+export function isListFailure(q: { isError: boolean; error: unknown }): boolean {
+  return q.isError && !isNotFound(q.error);
+}
