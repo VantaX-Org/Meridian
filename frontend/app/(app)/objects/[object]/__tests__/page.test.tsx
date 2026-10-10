@@ -87,6 +87,13 @@ describe("ObjectDetailPage", () => {
     expect(batch).toHaveBeenCalledWith({ version_id: "v1", module: "material_master", limit_runs: 8 });
   });
 
+  it("shows an error state when the rule history batch request fails", async () => {
+    vi.spyOn(rulesApi, "getRuleHistoryBatch").mockRejectedValue(new Error("network error"));
+    renderWithQuery(<ObjectDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Rules" }));
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
+  });
+
   it("shows an empty rules state when the run has no rules for this object", async () => {
     vi.spyOn(objectsApi, "getObject").mockResolvedValue({ ...OBJECT, rules: [] });
     renderWithQuery(<ObjectDetailPage />);

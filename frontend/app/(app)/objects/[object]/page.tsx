@@ -117,6 +117,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       />
     );
   }
+  if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
 
   return (
     <DataTable
