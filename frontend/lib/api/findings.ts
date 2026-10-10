@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 import type { Finding, FindingList, FindingReportContext } from "@/types/api";
 
 export type FindingDetailData = Finding & { context: FindingReportContext["report_context"] };
@@ -98,4 +99,20 @@ export async function saveNamedView(route: string, name: string, filters: Record
 
 export async function deleteSavedView(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/saved-views/${id}`);
+}
+
+export type FindingsExportFilter = FindingsFilter & { baseline?: string; sort?: "severity" | "impact"; type?: "rule" | "anomaly" };
+
+/** GET /api/v1/findings/export — same filters as getFindings, CSV or XLSX. */
+export function exportFindings(format: "csv" | "xlsx", filter: FindingsExportFilter): Promise<void> {
+  return downloadBlob("/api/v1/findings/export", { format, ...filter }, `findings.${format}`);
+}
+
+/** GET /api/v1/versions/{v}/findings/{checkId}/records/export — the full record set behind one check. */
+export function exportFindingRecords(versionId: string, checkId: string, format: "csv" | "xlsx"): Promise<void> {
+  return downloadBlob(
+    `/api/v1/versions/${versionId}/findings/${encodeURIComponent(checkId)}/records/export`,
+    { format },
+    `finding_records.${format}`,
+  );
 }

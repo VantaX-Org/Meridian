@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 
 export interface Rule {
   id: string;
@@ -249,4 +250,17 @@ export interface RuleVersion {
 export async function getRuleVersions(ruleUuid: string): Promise<{ rule_id: string; shipped: boolean; versions: RuleVersion[] }> {
   const { data } = await apiClient.get(`/api/v1/rules/${ruleUuid}/versions`);
   return data;
+}
+
+/** GET /api/v1/rules/export — same filters as getRules, CSV or XLSX. */
+export function exportRules(
+  format: "csv" | "xlsx",
+  params?: { category?: string; module?: string; severity?: string; enabled?: boolean; search?: string; source?: string },
+): Promise<void> {
+  return downloadBlob("/api/v1/rules/export", { format, ...params }, `rules.${format}`);
+}
+
+/** GET /api/v1/rules/{ruleId}/history/export — one rule's run-over-run finding history. */
+export function exportRuleHistory(ruleId: string, format: "csv" | "xlsx", limit?: number): Promise<void> {
+  return downloadBlob(`/api/v1/rules/${ruleId}/history/export`, { format, limit }, `rule_history.${format}`);
 }

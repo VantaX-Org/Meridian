@@ -1,4 +1,5 @@
 import apiClient from "./client";
+import { downloadBlob } from "./download";
 
 /** Why a field carries no top values: personal data, or not a short code field. */
 export type MaskReason = "privacy" | "not_code_like";
@@ -83,6 +84,20 @@ export async function getVersionProfile(
       params: { object },
     })
   ).data;
+}
+
+/** GET /api/v1/systems/{systemId}/versions/{versionId}/profile/export — one sheet per table plus Dependencies. */
+export function exportVersionProfile(
+  systemId: string,
+  versionId: string,
+  format: "csv" | "xlsx",
+  object?: string,
+): Promise<void> {
+  return downloadBlob(
+    `/api/v1/systems/${systemId}/versions/${versionId}/profile/export`,
+    { format, object },
+    `profile.${format}`,
+  );
 }
 
 /** Accept a mined dependency as a check run on every later analysis of the object. */

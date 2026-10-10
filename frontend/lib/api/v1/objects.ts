@@ -1,4 +1,5 @@
 import apiClient from "../client";
+import { downloadBlob } from "../download";
 import type { Material360 } from "../materials";
 import { optional } from "../optional";
 
@@ -43,3 +44,13 @@ export const getObjectRecord = (
   params: { version_id?: string; plant?: string } = {},
 ) =>
   get<Material360>(`/api/v1/objects/${encodeURIComponent(object)}/records/${encodeURIComponent(key)}`, params);
+
+/** GET /api/v1/objects/export — every object's summary row for the run, as CSV or XLSX. */
+export function exportObjects(run: string, format: "csv" | "xlsx" = "xlsx"): Promise<void> {
+  return downloadBlob("/api/v1/objects/export", { run, format }, `objects.${format}`);
+}
+
+/** GET /api/v1/objects/{module}/export — the rules table behind one object, as CSV or XLSX. */
+export function exportObject(module: string, run: string, format: "csv" | "xlsx" = "xlsx"): Promise<void> {
+  return downloadBlob(`/api/v1/objects/${encodeURIComponent(module)}/export`, { run, format }, `${module}.${format}`);
+}
