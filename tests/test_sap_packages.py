@@ -1,5 +1,6 @@
 """SAP correction packages: files only, never a call to SAP."""
 import io
+import json
 import zipfile
 
 from openpyxl import load_workbook
@@ -41,3 +42,14 @@ def test_mass_maintenance_zip_groups_by_field_and_value():
     assert changes[0] == "TCODE\tTABLE\tFIELD\tNEW_VALUE\tRECORD_KEY\tOLD_VALUE\tRULE"
     assert "MG-0001" in z.read("README.txt").decode()
     assert pk.mass_maintenance_zip(ITEMS) == pk.mass_maintenance_zip(list(reversed(ITEMS)))   # deterministic
+
+
+def test_mdg_change_request_groups_entities_by_model():
+    doc = json.loads(pk.mdg_change_request(ITEMS, batch_id="b1", batch_name="Fix MATKL", cr_type="ZMAT_CHG"))
+    models = {cr["data_model"]: cr for cr in doc["change_requests"]}
+    assert set(models) == {"MM", "BP"} and doc["skipped"] == 0
+    mara = next(e for e in models["MM"]["entities"] if e["entity_type"] == "MARA")
+    assert mara["key"] == {"MATNR": "000000000000000042"}
+    assert mara["changes"] == [{"attribute": "MATKL", "old": "misc", "new": "MG-0001", "rule": "LR-000001"}]
+    assert models["MM"]["change_request_type"] == "ZMAT_CHG"
+    assert "no MDG or SAP call" in doc["note"]

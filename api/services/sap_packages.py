@@ -4,10 +4,12 @@ opens a connection to SAP (Meridian is read-only on SAP).
 
   ltmc_workbook           Migration Cockpit file-staging layout (S/4 migration load)
   mass_maintenance_zip    MM17 / XD99 / XK99 key lists + change log (fix in place)
+  mdg_change_request      MDG change-request payload file (customer-side import)
 """
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from collections.abc import Iterable
 
@@ -128,3 +130,35 @@ def mass_maintenance_zip(items: list[dict]) -> bytes:
 # ponytail: for plant-level fields (MARC), MM17 also needs the plant in its selection. The key
 # list holds only the object's business key (MATNR/KUNNR/LIFNR). changes.tsv carries the full
 # key, so the steward filters by plant from there. Split groups per plant if stewards ask.
+
+
+# SAP table's object -> MDG data model (transaction MDGIMG decides which; we only route by object).
+MDG_MODEL = {"material": "MM", "customer": "BP", "vendor": "BP"}
+
+
+def mdg_change_request(items: list[dict], *, batch_id: str, batch_name: str, cr_type: str | None) -> bytes:
+    """MDG change-request payload file, grouped by data model (MM/BP) then by entity and key.
+    The change_request_type is MDG configuration (transaction MDGIMG) and is never defaulted."""
+    by_model: dict[str, dict[tuple[str, str], dict]] = {}
+    skipped = 0
+    for i in _exportable(items):
+        table, field = i["field"].split(".", 1)
+        model = MDG_MODEL.get(TABLE_OBJECT.get(table, ""))
+        if model is None:
+            skipped += 1
+            continue
+        ent = by_model.setdefault(model, {}).setdefault(
+            (table, i["record_key"]), {"entity_type": table, "key": _key_parts(i["record_key"]), "changes": []})
+        ent["changes"].append({"attribute": field, "old": i.get("current_value"), "new": i["proposed_value"],
+                               "rule": i["check_id"]})
+    doc = {
+        "format": "meridian.mdg-change-request/1", "batch_id": batch_id, "description": batch_name,
+        "change_requests": [
+            {"data_model": m, "change_request_type": cr_type,
+             "entities": [{**e, "changes": sorted(e["changes"], key=lambda c: c["attribute"])}
+                          for _, e in sorted(ents.items())]}
+            for m, ents in sorted(by_model.items())],
+        "skipped": skipped,
+        "note": "File only. Meridian makes no MDG or SAP call. Import it with your MDG file upload or a customer mapping.",
+    }
+    return json.dumps(doc, indent=2, sort_keys=True).encode()
