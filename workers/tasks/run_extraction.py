@@ -92,7 +92,8 @@ def baseline_loader(prefix: str) -> Callable[[str], "Optional[pd.DataFrame]"]:
     def load(table: str) -> Optional[pd.DataFrame]:
         try:
             data = download_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}")
-        except Exception:  # ponytail: any storage miss reads the table in full; narrow once storage errors are typed
+        except Exception as e:  # ponytail: any storage miss reads the table in full; narrow once storage errors are typed
+            logger.warning(f"Delta baseline {prefix}{parquet_name(table)}: {e}")
             return None
         df = pd.read_parquet(io.BytesIO(data))
         return df.fillna("").astype(str).rename(columns=lambda c: c.split(".", 1)[-1])
@@ -190,7 +191,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                                                delta=request)
             fell_back = request is None or any(c["table"] == "CDHDR:delta" and c["status"] == "delta_fallback"
                                                for c in coverage)
-            delta_meta = {"full_at": started["started_at"]} if fell_back or not dplan or not baseline else \
+            delta_meta = {"full_at": started["started_at"]} if fell_back else \
                 {"baseline_version_id": baseline["id"], "since": dplan[0], "full_at": dplan[1]}
             progress({"step": "saving", "percent": 99})
             jobs.update_job(tenant_id, job_id, stage="store", message="Storing data")
