@@ -24,7 +24,7 @@ from api.services.branded_xlsx import (
     xlsx_response,
 )
 from api.services.rbac import require_permission
-from api.services.scoring import scoring_config, tier
+from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
@@ -46,6 +46,8 @@ class ObjectSummaryOut(BaseModel):
 class ObjectsListOut(BaseModel):
     run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
+    # the tenant's DQS bands {target, warning, critical}, for the score rings
+    thresholds: dict[str, float] = DEFAULT_THRESHOLDS
 
 
 # Finished runs, as api/routes/versions.py's _DONE minus 'failed': run_agents.py and
@@ -113,7 +115,7 @@ async def list_objects(run: str = Query(..., alias="run"),
             "failing_checks": failing,
             "affected_records": affected,
         })
-    return {"run_id": run_id, "objects": objects}
+    return {"run_id": run_id, "objects": objects, "thresholds": thresholds}
 
 
 _OBJECTS_EXPORT_COLUMNS = [

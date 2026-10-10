@@ -1,5 +1,6 @@
 import apiClient from "../client";
 import { downloadBlob } from "../download";
+import type { ScoreBands } from "@/design/primitives/ScoreRing";
 import type { Material360 } from "../materials";
 import { optional } from "../optional";
 
@@ -32,7 +33,7 @@ const get = async <T>(path: string, params?: Record<string, string | undefined>)
 /** A tenant with no completed run answers 200 with `run_id: null` and an
  *  empty list for run=latest — that is an empty state, not an error. */
 export const getObjects = async (run: string) =>
-  (await optional(() => get<{ run_id: string | null; objects: ObjectSummary[] }>("/api/v1/objects", { run })))
+  (await optional(() => get<{ run_id: string | null; objects: ObjectSummary[]; thresholds?: ScoreBands }>("/api/v1/objects", { run })))
   ?? { run_id: null, objects: [] };
 
 export const getObject = (module: string, run: string) =>

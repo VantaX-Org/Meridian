@@ -205,6 +205,7 @@ rules:
   - id: EWMS013
     field: LAGP.MAXLE
     check_class: null_check
+    zero_is_blank: false  # MAXLE 0 means no storage-unit count limit (interim, dynamic and fixed bins)
     severity: medium
     dimension: completeness
     message: Maximum bin capacity prevents overstocking and enables capacity-based putaway

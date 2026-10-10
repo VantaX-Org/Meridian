@@ -97,11 +97,12 @@ def test_mixed_severities_no_critical_no_cap():
     assert result.medium_count == 1
     # Scoring uses record-level pass_rate, not binary pass/fail.
     # _make_result sets pass_rate=90.0 when passed=False, else 100.0.
-    # completeness dim avg = (100 + 90) / 2 = 95.0 (weight 0.25)
-    # accuracy dim avg    = (100 + 90) / 2 = 95.0 (weight 0.25)
+    # Severity-weighted (medium w2, high w3) with severity multipliers (high k2):
+    # completeness = (2·100 + 3·(100 − 2·10)) / 5 = 88.0
+    # accuracy     = (2·100 + 2·90) / 4 = 95.0
     # Unmeasured dimensions (coverage 0) are excluded from the composite —
     # absence of evidence is not a pass — so weights renormalise over the two.
-    assert result.composite_score == 95.0
+    assert result.composite_score == 91.5
     assert result.weights == {"completeness": 0.5, "accuracy": 0.5}
 
 
@@ -136,9 +137,9 @@ def test_custom_tenant_weights():
     result = score_module(findings, custom_weights)
     # Scoring uses record-level pass_rate, not binary.
     # completeness: [100] avg 100, × 0.50 = 50
-    # accuracy:     [90]  avg 90,  × 0.50 = 45  (passed=False → pass_rate=90)
+    # accuracy:     [90] high, multiplier 2 → 100 − 2·10 = 80, × 0.50 = 40
     # others: 100 × 0.00 = 0
-    assert result.composite_score == 95.0
+    assert result.composite_score == 90.0
 
 
 def test_score_all_modules():

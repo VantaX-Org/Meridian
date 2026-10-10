@@ -15,7 +15,7 @@ from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.profiling import is_sensitive
 from checks.fix_generator import FixGenerator
-from checks.types.null_check import NullCheck
+from checks.types.null_check import ZERO_IS_BLANK_TYPES, NullCheck
 from checks.types.regex_check import RegexCheck
 from checks.types.domain_value_check import DomainValueCheck
 from checks.types.cross_field_check import CrossFieldCheck
@@ -285,6 +285,10 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
     if sap_utc_offset_seconds is not None:
         rule = {**rule, "_sap_utc_offset_seconds": sap_utc_offset_seconds}
     check_cls = REGISTRY[rule["check_class"]]
+    if rule["check_class"] == "null_check" and rule.get("zero_is_blank") is not False:
+        f = frames.dictionary.resolve(rule.get("field") or "")
+        if rule.get("zero_is_blank") or (f is not None and f.type in ZERO_IS_BLANK_TYPES):
+            rule = {**rule, "_zero_is_blank": True}
     partial = sorted(set(tables_of(rule_columns(rule) + target_columns(rule))) & getattr(frames, "incomplete", set()))
     if rule.get("check_class") in _WHOLE_GROUP and partial:
         # a group missing rows in the extract (document lines, PO history, validity
@@ -342,7 +346,7 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         frame, excluded = exclude(frame, excl, frames, norm=norm)
         scoped = apply_context(frame, rule.get("applies_when"), as_of, norm=norm)
         if len(scoped) == 0:
-            return rule, None  # no records in the rule's population
+            return {**rule, "_skip": "not_applicable"}, None  # no records in the rule's population
         result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
         if result is not None and excluded:
             result.details["population_excluded"] = excluded
@@ -482,6 +486,8 @@ def run_checks(
     sap_utc_offset_seconds: int | None = None,
     prefetch_budget: int | None = None,
     on_progress: Callable[[int, int, str], None] | None = None,
+    stats: dict[str, int] | None = None,
+    on_result: Callable[[CheckResult], None] | None = None,
 ) -> list[CheckResult]:
     """Load a module's YAML rules and evaluate each at its correct record grain.
 
@@ -492,6 +498,10 @@ def run_checks(
     rules naming that ``reference_table`` use them instead of their SAP-standard list.
     ``as_of`` is the snapshot date that ageing, freshness and future-date rules
     measure against; None means now (wall clock).
+    ``stats`` (out) counts rules that produced no result: ``not_applicable`` (no records in
+    the rule's population) and ``not_evaluable`` (table, field or reference not in the extract).
+    ``on_result`` receives each result as it is produced, while it still holds every failing
+    record key (``_all_failing_keys``); the keys are dropped right after.
     """
     with open(_find_module_yaml(module_name), "r") as f:
         config = yaml.safe_load(f)
@@ -568,15 +578,24 @@ def run_checks(
                                     sap_utc_offset_seconds=sap_utc_offset_seconds)
             if (took := time.monotonic() - t0) > 60:
                 logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
-            done_by_rule[i] = (rule, result) if result is not None else None
+            if result is not None:
+                # failing keys are fed and dropped as each result lands, not held until the end
+                if on_result is not None:
+                    on_result(result)
+                result._all_failing_keys = None
+            done_by_rule[i] = (rule, result)
     finally:
         frames.clear_cache()
     for i in range(total_rules):
-        if done_by_rule[i] is None:
+        rule, result = done_by_rule[i]
+        if result is None:
             skipped += 1
-        else:
-            result_rules.append(done_by_rule[i][0])
-            results.append(done_by_rule[i][1])
+            if stats is not None:
+                why = rule.get("_skip", "not_evaluable")
+                stats[why] = stats.get(why, 0) + 1
+            continue
+        results.append(result)
+        result_rules.append(rule)
 
     if skipped:
         logger.info(f"Module '{module}': skipped {skipped} checks (tables/fields not in extract)")

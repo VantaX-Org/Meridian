@@ -312,6 +312,7 @@ rules:
 - id: SDSO018
   field: VBAP.NETWR
   check_class: null_check
+  zero_is_blank: false  # free-of-charge item categories (e.g. TANN) carry a deliberate net value of 0
   severity: high
   dimension: completeness
   message: "Item net value missing \u2014 order line has no financial value"

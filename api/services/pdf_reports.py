@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from api.routes.findings import composite_dqs
 from api.services.deterministic_report import compute_readiness_status
+from api.services.scoring import critical_over_tolerance
 from api.services.report_pdf import TEMPLATE_DIR
 
 DIMENSIONS = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
@@ -340,7 +341,7 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
     for mod in sorted(summary):
         r = summary[mod] or {}
         score = r.get("composite_score")
-        status = compute_readiness_status(score or 0, int(r.get("critical_count") or 0)) if score is not None else None
+        status = compute_readiness_status(score, critical_over_tolerance(r), overall.get("thresholds")) if score is not None else None
         mf = [f for f in findings if f["module"] == mod]
         modules.append({"name": mod, "score": score, "status": status,
                         "checks": int(r.get("total_checks") or len(mf)),
@@ -669,7 +670,7 @@ def object_context(module: str, module_dqs: dict, findings: list[dict], samples:
                    key=lambda f: (_SEV_RANK.get(f.get("severity"), 9), -f["affected"], f["check_id"]))
     fails = [r for r in rules if r["affected"] > 0]
     score = (module_dqs or {}).get("composite_score")
-    readiness = compute_readiness_status(score, int((module_dqs or {}).get("critical_count") or 0)) \
+    readiness = compute_readiness_status(score, critical_over_tolerance(module_dqs or {}), overall.get("thresholds")) \
         if score is not None else None
 
     if score is None:

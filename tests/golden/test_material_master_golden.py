@@ -275,6 +275,8 @@ def test_material_master_golden():
         "ST-MARA": {"MATNR=000000000000300030"},                 # "DO NOT USE" but no MSTAE block
         "MM043": {"MATNR=000000000000200060|WERKS=1000"},        # standard price 0 under price control S
         "MM151": {"MATNR=000000000000500095|WERKS=1000"},        # price unit 0 in the accounting view
+        "MM036": {"MATNR=000000000000500095|WERKS=1000"},        # price unit 0 reads as blank (zero_is_blank on DEC)
+        "MM127": {"MATNR=000000000000500095|WERKS=1000"},        # moving average price 0 reads as blank (CURR)
         "MM159": {"MATNR=000000000000400330"},                   # weights without a weight unit
         "MM157": {"MATNR=000000000000300040|WERKS=1000|LGORT=0001"},  # negative quality-inspection stock
         "MM380": {"MATNR=000000000000300099|WERKS=1000"},        # plant row active though the material is flagged for deletion

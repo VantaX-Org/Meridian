@@ -146,7 +146,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       )}
       trendPoints={trendPoints}
       dimensionPoints={dimensionBarPoints(latest)}
-      heatmapCells={dimensionHeatmapCells(scoredObjects, latest)}
+      heatmapCells={dimensionHeatmapCells(scoredObjects, latest, objectsQ.data?.thresholds)}
       heatmapRows={heatmapRows}
       heatmapCols={heatmapCols}
       versionId={latest.id}

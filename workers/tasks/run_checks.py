@@ -491,6 +491,23 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         fs_rules = fs_rules + vp_rules + authored + mined_rules
         module_count = max(len(modules), 1)
         outliers: dict[str, dict] = {}
+        # coverage (rules that produced no result) and clean records per driving object,
+        # both fed from the rule loop so full failing key sets are never held per rule
+        from api.services.scoring import CleanRecords
+        from checks.base import CheckResult
+        skips: dict[str, dict[str, int]] = {}
+        trackers = {m: CleanRecords(anchors.get(m) if anchors.get(m) in frames.frames else None,
+                                    dictionary.keys(anchors[m]) if anchors.get(m) else (), n)
+                    for m, n in module_rows.items()}
+
+        def feed(r: CheckResult) -> None:
+            keys = r._all_failing_keys
+            tracker = trackers.get(r.module)
+            if tracker is None or keys is None or r.check_id in sup_rules:
+                return
+            if sup_records.get(r.check_id):
+                keys = keys[~keys.isin(sup_records[r.check_id])]
+            tracker.add(r.check_id, keys)
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
@@ -517,7 +534,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                      overrides=rule_overrides, extra_rules=fs_rules, suppressed=fs_suppressed,
                                      cost_model=cost_model, as_of=as_of,
                                      sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"),
-                                     on_progress=on_rule)
+                                     on_progress=on_rule, stats=skips.setdefault(module_name, {}),
+                                     on_result=feed)
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
             frames.clear_cache()
@@ -567,6 +585,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                                                  optional=check_cls(rule).optional_columns())
                         res = check_cls(rule).run(built[0], key_cols=built[2], grain=built[1]) if built else None
                         if res is not None:
+                            feed(res)
+                            res._all_failing_keys = None
                             all_results.append(res)
                     except Exception as e:
                         logger.warning(
@@ -612,8 +632,11 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     table_frames[t] = frames.flat[[c for c in frames.flat.columns if c.startswith(t + ".")]]
             for table, tdf in table_frames.items():
                 keys = [f"{table}.{k}" for k in dictionary.keys(table)]
-                all_results.extend(run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
-                                                   keys, live_refs, value_checked, reported))
+                for res in run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
+                                           keys, live_refs, value_checked, reported):
+                    feed(res)
+                    res._all_failing_keys = None
+                    all_results.append(res)
         except Exception as e:
             logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)
 
@@ -649,8 +672,12 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         from api.services.scoring import score_all_modules, scoring_config
 
         # suppressed rules / records (rule_suppressions) stay out of the score until they expire
-        dqs_results = score_all_modules(lifecycle.for_scoring(all_results, sup_rules, sup_records), tenant_weights)
+        dqs_results = score_all_modules(lifecycle.for_scoring(all_results, sup_rules, sup_records), tenant_weights,
+                                        skips)
         dqs_summary = {mod: result.model_dump() for mod, result in dqs_results.items()}
+        for mod, tracker in trackers.items():
+            if mod in dqs_summary:
+                dqs_summary[mod].update(tracker.result())
 
         # Step 9: Insert findings into Postgres via a single executemany call.
         # Previous code looped per row inside batches, which was ~200x slower
@@ -863,6 +890,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 module_names=modules,
                 findings=findings_for_report,
                 dqs_scores=dqs_summary,
+                thresholds=scoring_config(tenant_weights)["thresholds"],
             )
 
             with Session(engine) as session:

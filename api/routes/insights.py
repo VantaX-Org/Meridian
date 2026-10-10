@@ -17,6 +17,7 @@ from api.services.insights_impact import value_at_risk
 from api.services.insights_owners import OWNER_ISSUE_SQL, baseline_cutoff, build_owner_card, load_owner_aggregates
 from api.services.insights_readiness import build_wave_cells
 from api.services.rbac import require_permission
+from api.services.scoring import scoring_config
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
 
@@ -35,11 +36,12 @@ async def get_readiness(
     tenant: Tenant = Depends(get_tenant),
 ):
     await _rls(db, tenant)
-    thresholds = (await db.execute(
-        text("SELECT alert_thresholds FROM tenants WHERE id = :t"),
+    alerts, scoring = (await db.execute(
+        text("SELECT alert_thresholds, dqs_weights FROM tenants WHERE id = :t"),
         {"t": str(tenant.id)},
-    )).scalar() or {}
-    dqs_threshold = thresholds.get("readiness_dqs_threshold", 70)
+    )).one_or_none() or (None, None)
+    # unset: the warning band of the one DQS band set
+    dqs_threshold = (alerts or {}).get("readiness_dqs_threshold", scoring_config(scoring)["thresholds"]["warning"])
     waves = (await db.execute(text(
         "SELECT id, name, modules, min_readiness, min_dqs FROM migration_waves "
         "WHERE tenant_id = :t ORDER BY target_date NULLS LAST, name"), {"t": str(tenant.id)})).fetchall()

@@ -20,7 +20,9 @@ class AgentState(TypedDict):
     # NEVER include raw row data. Summaries only.
 
     dqs_scores: dict
-    # {module: {composite_score, dimension_scores, critical_count, capped}}
+    # {module: {composite_score, dimension_scores, critical_count, critical_breaches, capped}}
+    thresholds: dict
+    # DQS bands {target, warning, critical} from the tenant scoring config
 
     # Populated by analyst_agent
     root_causes: list[dict]

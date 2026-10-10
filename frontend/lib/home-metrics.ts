@@ -2,15 +2,16 @@
 import type { Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import { round1, formatDate, formatModuleName } from "@/lib/format";
+import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
 
 export const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 export type DimensionKey = (typeof DIMENSIONS)[number];
 
 export type Readiness = "go" | "at-risk" | "no-go";
 
-/** The same thresholds as `ScoreRing`: >=85 go, >=60 at-risk, else no-go. */
-export function readinessOf(score: number): Readiness {
-  return score >= 85 ? "go" : score >= 60 ? "at-risk" : "no-go";
+/** The same bands as `ScoreRing`: >= target go, >= warning at-risk, else no-go. */
+export function readinessOf(score: number, bands: ScoreBands = DEFAULT_SCORE_BANDS): Readiness {
+  return score >= bands.target ? "go" : score >= bands.warning ? "at-risk" : "no-go";
 }
 
 /** Mean `composite_score` across every module scored in this run, or null if none are. */
@@ -100,13 +101,13 @@ export interface HeatmapCell {
 }
 
 /** One cell per object x dimension, from this run's `dqs_summary` (spec 7.1 "Object readiness grid"). */
-export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version): HeatmapCell[] {
+export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version, bands?: ScoreBands): HeatmapCell[] {
   const cells: HeatmapCell[] = [];
   for (const obj of objects) {
     const summary = v.dqs_summary?.[obj.module];
     if (!summary) continue;
     for (const dim of DIMENSIONS) {
-      cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim]) });
+      cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim], bands) });
     }
   }
   return cells;

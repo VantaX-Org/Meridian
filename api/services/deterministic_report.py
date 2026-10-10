@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from api.services.scoring import critical_over_tolerance, readiness_status
+
 logger = logging.getLogger("meridian.services.deterministic_report")
 
 
@@ -307,15 +309,8 @@ def detect_cross_finding_patterns(findings: list[dict]) -> list[dict]:
 # 5. Readiness
 # ---------------------------------------------------------------------------
 
-def compute_readiness_status(composite_score: float, critical_count: int) -> str:
-    """Determine go / no-go / conditional from DQS composite and critical count."""
-    if critical_count > 0:
-        return "no-go"
-    if composite_score >= 90:
-        return "go"
-    if composite_score >= 70:
-        return "conditional"
-    return "no-go"
+# go / conditional / no-go from the one band set (api/services/scoring.py)
+compute_readiness_status = readiness_status
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +323,7 @@ def generate_deterministic_report(
     module_names: list[str],
     findings: list[dict],
     dqs_scores: dict[str, Any],
+    thresholds: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Generate the complete report from check results — no LLM needed.
 
@@ -351,8 +347,7 @@ def generate_deterministic_report(
     for module in module_names:
         mod_dqs = dqs_scores.get(module, {})
         composite = mod_dqs.get("composite_score", 0.0)
-        critical_count = mod_dqs.get("critical_count", 0)
-        status = compute_readiness_status(composite, critical_count)
+        status = compute_readiness_status(composite, critical_over_tolerance(mod_dqs), thresholds)
         readiness_scores[module] = {
             "score": composite,
             "status": status,

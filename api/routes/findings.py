@@ -54,32 +54,54 @@ async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUI
 
 
 def composite_dqs(summaries: list[dict], scoring: dict | None = None) -> dict:
-    """One DQS over several modules/versions: module scores weighted by the number of
-    checks behind them times the tenant's module weight (``scoring`` = the raw
-    ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}). Pure — tested directly."""
-    from api.services.scoring import scoring_config, tier
+    """One DQS over several modules/versions: module scores weighted by the tenant's
+    module weight (default 1); a dimension averages only the modules that measured it
+    (``scoring`` = the raw ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}).
+    ``legacy`` is the pre-calibration roll-up (check-count weights, every module's
+    dimension). Pure — tested directly."""
+    from api.services.scoring import DEFAULT_WEIGHTS, LOW_CONFIDENCE_COVERAGE, scoring_config, tier
     cfg = scoring_config(scoring)
     mods: dict[str, dict] = {}
     for s in summaries:
         for module, r in (s or {}).items():
             if isinstance(r, dict) and r.get("composite_score") is not None:
                 mods[module] = r
-    weight = {m: cfg["module_weights"].get(m, 1.0) * max(1, int(r.get("total_checks") or 1)) for m, r in mods.items()}
+    weight = {m: cfg["module_weights"].get(m, 1.0) for m in mods}
     total = sum(weight.values())
     if not total:
-        return {"composite": None, "dimension_scores": {}, "modules": {}}
+        return {"composite": None, "dimension_scores": {}, "modules": {}, "thresholds": cfg["thresholds"]}
     dims: dict[str, float] = {}
-    for d in ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"):
-        have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})]
-        if have:
-            w = sum(weight[m] for m, _ in have)
-            if w:
-                dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
+    for d in DEFAULT_WEIGHTS:
+        # stored before coverage was recorded: the module counts as having measured it
+        have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})
+                and (r.get("dimension_coverage") or {}).get(d, 1)]
+        w = sum(weight[m] for m, _ in have)
+        if w:
+            dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
     composite = round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2)
+    executed = sum(int(r.get("total_checks") or 0) for r in mods.values())
+    attempted = executed + sum(int(r.get("skipped_checks") or 0) + int(r.get("errored_checks") or 0)
+                               for r in mods.values())
+    coverage = round(executed / attempted, 4) if attempted else None
     return {"composite": composite, "tier": tier(composite, cfg["thresholds"]),
             "dimension_scores": dims,
             "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
-            "capped": any(r.get("capped") for r in mods.values())}
+            "capped": any(r.get("capped") for r in mods.values()),
+            "coverage": coverage,
+            "low_confidence": coverage is not None and coverage < LOW_CONFIDENCE_COVERAGE,
+            "thresholds": cfg["thresholds"],
+            "legacy": _legacy_composite(mods, cfg)}
+
+
+def _legacy_composite(mods: dict[str, dict], cfg: dict) -> dict | None:
+    """The pre-calibration roll-up over each module's stored ``legacy`` score."""
+    legacy = {m: {**r, **r["legacy"]} for m, r in mods.items() if isinstance(r.get("legacy"), dict)}
+    weight = {m: cfg["module_weights"].get(m, 1.0) * max(1, int(r.get("total_checks") or 1)) for m, r in legacy.items()}
+    total = sum(weight.values())
+    if not total:
+        return None
+    composite = round(sum(r["composite_score"] * weight[m] for m, r in legacy.items()) / total, 2)
+    return {"composite": composite, "modules": {m: r["composite_score"] for m, r in legacy.items()}}
 
 
 async def _scoring_raw(db: AsyncSession, tenant: Tenant) -> dict:

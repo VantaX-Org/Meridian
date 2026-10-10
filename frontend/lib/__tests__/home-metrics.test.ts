@@ -41,11 +41,13 @@ function version(id: string, runAt: string, scores: Record<string, number>, over
 }
 
 describe("home-metrics", () => {
-  it("readinessOf applies the ScoreRing thresholds", () => {
+  it("readinessOf applies the ScoreRing bands (target 90, warning 75 by default)", () => {
     expect(readinessOf(90)).toBe("go");
-    expect(readinessOf(85)).toBe("go");
-    expect(readinessOf(70)).toBe("at-risk");
-    expect(readinessOf(59)).toBe("no-go");
+    expect(readinessOf(85)).toBe("at-risk");
+    expect(readinessOf(75)).toBe("at-risk");
+    expect(readinessOf(74)).toBe("no-go");
+    expect(readinessOf(85, { target: 85, warning: 60, critical: 50 })).toBe("go");
+    expect(readinessOf(70, { target: 85, warning: 60, critical: 50 })).toBe("at-risk");
   });
 
   it("runDqs averages composite_score across modules, or null with none", () => {

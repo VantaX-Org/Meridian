@@ -49,11 +49,13 @@ def _finding(dim, pass_rate, total, passed=True):
 
 def test_scoring_record_weights_by_total_count():
     # Two completeness checks: 100% over 1000 rows, 0% over 10 rows.
-    # Naive mean = 50; record-weighted = (100*1000+0*10)/1010 ≈ 99.01.
+    # Dimensions weight rules by severity, not row count: a rule that fails on
+    # every one of its rows counts as much as one that passes on many, so the
+    # equal-severity mean is (100 + 0) / 2 = 50.
     findings = [_finding("completeness", 100.0, 1000),
                 _finding("completeness", 0.0, 10, passed=False)]
     res = score_module(findings, {})
-    assert abs(res.dimension_scores["completeness"] - 99.01) < 0.1
+    assert res.dimension_scores["completeness"] == 50.0
     assert res.dimension_coverage["completeness"] == 2
     # dimensions with no checks report coverage 0 (not a fabricated pass count)
     assert res.dimension_coverage["accuracy"] == 0
