@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
 from api.services.rbac import current_user_id, current_user_label, has_permission, require_permission
 
 router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
@@ -72,6 +73,14 @@ _SELECT = """
 """
 _ORDER = ("ORDER BY CASE ri.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, "
           "ri.first_seen_at, ri.check_id, ri.record_key")
+# Column aliases from _SELECT, in order — used to build the xlsx header row when there are no rows.
+_SELECT_KEYS = [
+    "id", "scope", "module", "check_id", "record_key", "grain", "severity", "status", "resolution",
+    "assigned_to", "assignee_email", "first_seen_version", "last_seen_version", "resolved_version",
+    "first_seen_at", "last_seen_at", "resolved_at", "reopened_count", "priority", "assigned_team_id",
+    "acknowledged_at", "due_at", "ack_due_at", "risk_at", "sla_state", "sla_paused_at", "snoozed_until",
+    "snooze_reason", "message", "field",
+]
 
 
 def _row(r) -> dict:
@@ -129,18 +138,30 @@ async def export_issues(
     _perm: str = Depends(require_permission("export")),
 ):
     """The work list with SAP record keys — hand to the team correcting data in SAP."""
-    import pandas as pd
-
     await _rls(db, tenant)
     where, p = _where(status, module, check_id, severity, assigned_to, scope, search, request, version_id)
     rows = (await db.execute(text(f"{_SELECT} WHERE {where} {_ORDER} LIMIT 1000000"), p)).fetchall()
-    df = pd.DataFrame([_row(r) for r in rows])
-    if format == "csv":
-        data, media, ext = df.to_csv(index=False).encode(), "text/csv", "csv"
+    dicts = [_row(r) for r in rows]
+
+    if format == "xlsx":
+        keys = list(dicts[0].keys()) if dicts else _SELECT_KEYS
+        columns = [
+            ColumnSpec(key=k, header=k, kind="mono" if k in ("id", "check_id", "record_key") else "text")
+            for k in keys
+        ]
+        data = build_workbook(
+            tenant_name=tenant.name,
+            run_label=None,
+            run_id=None,
+            title="Record issues export",
+            sheets=[SheetSpec(title="Record issues", columns=columns, rows=dicts)],
+        )
+        media, ext = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"
     else:
-        buf = io.BytesIO()
-        df.to_excel(buf, index=False, engine="openpyxl")
-        data, media, ext = buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"
+        import pandas as pd
+
+        data = pd.DataFrame(dicts).to_csv(index=False).encode()
+        media, ext = "text/csv", "csv"
     return StreamingResponse(io.BytesIO(data), media_type=media,
                              headers={"Content-Disposition": f"attachment; filename=record_issues.{ext}"})
 

@@ -25,12 +25,13 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 SAST = ZoneInfo("Africa/Johannesburg")
 
-_ACCENT = "2D3A8C"
+ACCENT = "2D3A8C"
+_ACCENT = ACCENT
 _LINE = "D5DBE0"
 _WHITE = "FFFFFF"
 
 # Spreadsheet formula-injection guard — same prefixes as api.routes.audit._csv_cell.
-FORMULA_PREFIXES = ("=", "+", "-", "@", "\t")
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 MAX_SHEET_TITLE = 31
 ROW_CAP = 100_000

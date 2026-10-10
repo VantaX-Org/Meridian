@@ -18,9 +18,15 @@ from openpyxl.styles import (
 )
 from openpyxl.utils import get_column_letter
 
-# ── Colour constants ──────────────────────────────────────────────────────────
+from api.services.branded_xlsx import ACCENT, guard_formula_cell
 
-MERIDIAN_GREEN = "0D5639"
+# ── Colour constants ──────────────────────────────────────────────────────────
+# ponytail: header colour now reuses the shared brand accent (ACCENT) instead
+# of its own green; full re-route through build_workbook's SheetSpec/ColumnSpec
+# is skipped because this report's Summary sheet uses bespoke merged cells
+# that the generic column writer doesn't model — add that when this report's
+# layout is simplified to a plain table.
+
 WHITE = "FFFFFF"
 ERROR_FILL = "FFE8E8"
 DEVIATION_FILL = "FFFDE0"
@@ -35,7 +41,7 @@ _THIN_BORDER = Border(
 )
 
 _HEADER_FONT = Font(bold=True, color=WHITE, size=11)
-_HEADER_FILL = PatternFill(fill_type="solid", fgColor=MERIDIAN_GREEN)
+_HEADER_FILL = PatternFill(fill_type="solid", fgColor=ACCENT)
 
 _CLASSIFICATION_FILL: dict[str, PatternFill] = {
     "data_error": PatternFill(fill_type="solid", fgColor=ERROR_FILL),
@@ -93,7 +99,7 @@ def _write_detail_row(
         "Fix Priority": match.get("fix_priority", ""),
     }
     for col_idx, col_name in enumerate(columns, start=1):
-        cell = ws.cell(row=row_idx, column=col_idx, value=col_map.get(col_name, ""))
+        cell = ws.cell(row=row_idx, column=col_idx, value=guard_formula_cell(col_map.get(col_name, "")))
         _apply_data_style(cell, clf)
 
 
@@ -117,7 +123,7 @@ def _build_summary_sheet(
     ws.merge_cells("A1:F1")
     title_cell = ws["A1"]
     title_cell.value = "Meridian Config Match Report"
-    title_cell.font = Font(bold=True, size=14, color=MERIDIAN_GREEN)
+    title_cell.font = Font(bold=True, size=14, color=ACCENT)
     title_cell.alignment = Alignment(horizontal="left", vertical="center")
 
     # Row 2 — version + date
