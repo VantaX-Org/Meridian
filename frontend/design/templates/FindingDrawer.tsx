@@ -21,6 +21,11 @@ import { checkClassLabel, AUTHORITY_SENTENCE, formatModuleName } from "@/lib/for
 const heading = "text-[13px] font-semibold";
 const dim = { color: "var(--m-ink-3)" } as const;
 
+/** getFinding (lib/api/findings.ts) throws a plain Error rather than a 404 when the id doesn't match any finding in scope. */
+function isFindingNotFound(error: unknown): boolean {
+  return error instanceof Error && error.message === "Finding not found";
+}
+
 export interface FindingDrawerProps {
   /** null closes the drawer. */
   findingId: string | null;
@@ -51,10 +56,10 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
           <Skeleton height={24} />
           <Skeleton height={120} />
         </div>
+      ) : isFindingNotFound(findingQuery.error) || !findingQuery.data ? (
+        <EmptyState title="Finding not found." detail="It may belong to a run that has since been deleted." />
       ) : findingQuery.isError ? (
         <ErrorState message={apiErrorMessage(findingQuery.error)} onRetry={() => findingQuery.refetch()} />
-      ) : !findingQuery.data ? (
-        <EmptyState title="Finding not found." detail="It may belong to a run that has since been deleted." />
       ) : (
         (() => {
           const finding = findingQuery.data;
