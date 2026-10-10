@@ -6853,7 +6853,7 @@ rules:
   sap_impact: Statutory correspondence and tax address validation fail without a postal code.
   fix_map:
     __blank__: Set the postal code on the address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: this address record has no postal code.'
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: {PERADDRESS.ADDRESS_TYPE} address has no postal code.'
   id: EC356
 - field: PERADDRESS.PERSON_ID
   check_class: uniqueness_check
@@ -6870,7 +6870,8 @@ rules:
   sap_impact: Replication fails on the duplicate key, or one of the records silently overwrites the other.
   fix_map:
     __other__: Remove the duplicate address record.
-  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: duplicate address record starting {PERADDRESS.START_DATE}.'
+  record_fix_template: 'Person {PERADDRESS.PERSON_ID}: duplicate {PERADDRESS.ADDRESS_TYPE} address record starting
+    {PERADDRESS.START_DATE}.'
   id: EC357
 - field: PERADDRESS.PERSON_ID
   check_class: exists_check

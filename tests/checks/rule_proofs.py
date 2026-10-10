@@ -16,19 +16,19 @@ try:  # Python ≥ 3.11 moved the regex parser
 except ImportError:  # pragma: no cover
     import sre_constants
     import sre_parse
-from datetime import date, datetime
 
 import pandas as pd
 
+from checks.base import as_of_time
 from checks.frames import TableFrames, _graph, internal_format, tables_of
 from checks.runner import rule_columns, run_rule
 
-TODAY = date.today().strftime("%Y%m%d")
-# Local time, not UTC: must land on the same calendar day as TODAY (date.today(), also
-# local), or a timestamp-typed "now" probe near local midnight falls on the wrong side of
-# the UTC/local day boundary and looks like a past value, flaking never_passes proofs.
-NOW = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-CUR_YEAR = date.today().strftime("%Y")
+# The engine's own clock (as_of_time: now, tz-naive UTC), so `@today` and these probes
+# always fall on the same calendar day whatever the machine's local timezone.
+_NOW = as_of_time()
+TODAY = _NOW.strftime("%Y%m%d")
+NOW = _NOW.strftime("%Y-%m-%dT%H:%M:%S")
+CUR_YEAR = _NOW.strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],
     "num": ["", "0", "1", "-1", "100", "1000000", CUR_YEAR],
@@ -225,7 +225,7 @@ def candidates(rule: dict, dictionary) -> dict[str, list[str]]:
             vals += [""] if aw.get("blank") else ["N0"] if "not_in" in aw else [in_scope]  # inside the scope
             vals += [f"{p}1" for p in (aw.get("startswith") or [])[:2]]
             if "older_than_days" in aw or "within_days" in aw:
-                vals += ["20000101", pd.Timestamp.today().strftime("%Y%m%d")]
+                vals += ["20000101", TODAY]
             if "older_than_days" in aw:
                 vals.insert(0, "20000101")  # first candidate: in scope for the proof rows
         if f"`{c}`" in expr:

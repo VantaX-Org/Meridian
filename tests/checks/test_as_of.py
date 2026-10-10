@@ -55,6 +55,16 @@ def test_future_date_bound_uses_as_of():
     assert now.affected_count == 0
 
 
+def test_cross_field_today_uses_as_of():
+    rule = {"id": "TD", "field": "LFA1.ERDAT", "check_class": "cross_field_check",
+            "fail_when": "`LFA1.ERDAT` > @today", "module": "accounts_payable"}
+    frames = _lfa1(["20240101"])
+    _, at_snapshot = run_rule(rule, frames, as_of=SNAP)
+    assert at_snapshot.affected_count == 1  # after the 2020-06-30 snapshot
+    _, now = run_rule(rule, frames)
+    assert now.affected_count == 0
+
+
 class _Session:
     def __init__(self, started):
         self.started = started

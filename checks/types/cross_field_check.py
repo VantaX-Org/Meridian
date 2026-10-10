@@ -56,7 +56,7 @@ class CrossFieldCheck(BaseCheck):
     ``require_populated: true`` limits the population to rows where every
     referenced field has a value (blanks are null_check's job).
     Evaluated with ``DataFrame.eval(engine="python")`` on DDIC-typed values;
-    ``@today`` is the current date (future hire dates, ages).
+    ``@today`` is the run's as-of (snapshot) date, or today in UTC (future hire dates, ages).
     """
 
     check_class = "cross_field_check"
@@ -72,10 +72,9 @@ class CrossFieldCheck(BaseCheck):
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
         t = typed(df, cols)
-        # UTC, not wall-clock local time: matches as_of_time()'s freshness convention
-        # (checks/base.py) so `@today` lands on the same calendar day the rest of the
-        # engine's date-relative rules (e.g. older_than_days) judge against.
-        today = as_of_time().normalize()
+        # the run's snapshot date when pinned, else now in UTC: the same as_of_time()
+        # call freshness_check/value_placement_check make
+        today = as_of_time(self.rule.get("_as_of")).normalize()
         result = t.eval(self._expr(), engine="python",
                         local_dict={"today": pd.Series(today, index=t.index)})
         if not isinstance(result, pd.Series):
