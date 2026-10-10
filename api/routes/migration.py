@@ -614,6 +614,7 @@ async def wave_report(
 
     import pandas as pd
 
+    from api.services.branded_xlsx import guard_frame
     from api.services.migration.cockpit import load_cockpit, readiness_report_context, readiness_report_sheets
     from api.services.pdf_reports import render
 
@@ -630,7 +631,7 @@ async def wave_report(
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
         for sheet, df in readiness_report_sheets(cockpit).items():
-            df.to_excel(xw, sheet_name=sheet, index=False)
+            guard_frame(df).to_excel(xw, sheet_name=sheet, index=False)
     return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
 
 
@@ -646,6 +647,7 @@ async def realignment_report(
 
     import pandas as pd
 
+    from api.services.branded_xlsx import guard_frame
     from api.services.config_pairing import realignment_context, realignment_sheets
     from api.services.pdf_reports import render
 
@@ -662,8 +664,8 @@ async def realignment_report(
         return _stream(pdf, "application/pdf", f"{name}.pdf")
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-        unmapped.to_excel(xw, sheet_name="Unmapped values", index=False)
-        applied.to_excel(xw, sheet_name="Applied mappings", index=False)
+        guard_frame(unmapped).to_excel(xw, sheet_name="Unmapped values", index=False)
+        guard_frame(applied).to_excel(xw, sheet_name="Applied mappings", index=False)
     return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
 
 

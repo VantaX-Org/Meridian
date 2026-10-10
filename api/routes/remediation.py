@@ -345,8 +345,11 @@ async def export_batch(
         raise HTTPException(status_code=403, detail="The batch creator cannot export it.")
     items = await _items(db, batch_id)
     from api.services import sap_packages
+    from api.services.branded_xlsx import guard_frame
     if format == "mass_change_csv":
-        data, ext = remediation.mass_change(items).to_csv(index=False).encode(), "csv"
+        # SAP load file: every column is reimported, so the narrowed guard (as kind="raw").
+        mc = remediation.mass_change(items)
+        data, ext = guard_frame(mc, mc.columns).to_csv(index=False).encode(), "csv"
     elif format == "mass_maintenance_zip":
         data, ext = sap_packages.mass_maintenance_zip(items), "zip"
     elif format == "mdg_cr_json":
@@ -358,7 +361,8 @@ async def export_batch(
         from sap.ddic import get_dictionary
         d = get_dictionary("s4hana")
         if format == "cockpit_csv":
-            data, ext = remediation.cockpit_csv(items, d).to_csv(index=False).encode(), "csv"
+            cc = remediation.cockpit_csv(items, d)
+            data, ext = guard_frame(cc, cc.columns).to_csv(index=False).encode(), "csv"
         elif format == "ltmc_xlsx":
             data, ext = sap_packages.ltmc_workbook(items, d), "xlsx"
         else:

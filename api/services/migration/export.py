@@ -8,7 +8,6 @@ traceability. Only records with no blocking (critical/high) gap are included.
 from __future__ import annotations
 
 import io
-import re
 import zipfile
 from typing import Optional
 
@@ -17,6 +16,8 @@ import pandas as pd
 from checks.base import record_keys
 from checks.frames import TableFrames
 from sap.ddic import Dictionary
+
+from api.services.branded_xlsx import guard_frame
 
 from .engine import Mapping
 
@@ -57,35 +58,11 @@ def build_load_tables(frames: TableFrames, module_tables: dict[str, list[str]], 
     return {t: pd.concat(parts, ignore_index=True) for t, parts in out.items() if parts}
 
 
-# Leading whitespace before a formula char still executes in Excel/Sheets (they strip it),
-# so match optional whitespace (\t \r \n space) first — same rule as upload.py's uploaded-file
-# sanitiser, but applied per-cell here rather than per-column, since these sheets have no
-# SAP-mapped-column exemption to honour (see to_xlsx's sanitize_formulas docstring).
-_FORMULA_PREFIX = re.compile(r"^\s*[=+@\t\r]")
-_DASH_PREFIX = re.compile(r"^\s*-")
-
-
-def _is_numeric(v: str) -> bool:
-    try:
-        float(v)
-        return True
-    except ValueError:
-        return False
-
-
-def _sanitize_cell(v: object) -> object:
-    if not isinstance(v, str):
-        return v
-    if _FORMULA_PREFIX.match(v) or (_DASH_PREFIX.match(v) and not _is_numeric(v)):
-        return "'" + v
-    return v
-
-
 def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False) -> bytes:
     """xlsx of one sheet per table.
 
-    ``sanitize_formulas`` prefixes string cells that would execute as a formula in Excel/Sheets
-    (``=``, ``+``, ``@``, tab, CR, or a non-numeric leading ``-``) with a single quote. Off by
+    ``sanitize_formulas`` runs every cell through the shared export guard
+    (:func:`api.services.branded_xlsx.guard_frame`). Off by
     default: the ``/export`` SAP load file route feeds this real target-field values — negative
     balances, ``+``-prefixed phone numbers, ``@``-containing emails — that must reach SAP
     byte-for-byte unescaped. Callers presenting findings/report data for human consumption (e.g.
@@ -95,7 +72,7 @@ def to_xlsx(tables: dict[str, pd.DataFrame], *, sanitize_formulas: bool = False)
     with pd.ExcelWriter(buf, engine="openpyxl") as xw:
         for name, df in sorted(tables.items()):
             if sanitize_formulas:
-                df = df.map(_sanitize_cell)
+                df = guard_frame(df)
             df.to_excel(xw, sheet_name=name[:31].replace("/", "_"), index=False)
     return buf.getvalue()
 

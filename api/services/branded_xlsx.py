@@ -13,7 +13,7 @@ import io
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Literal, Mapping, Optional
+from typing import TYPE_CHECKING, Iterable, Literal, Mapping, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import Response
@@ -22,6 +22,9 @@ from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 SAST = ZoneInfo("Africa/Johannesburg")
 
@@ -49,7 +52,8 @@ def guard_formula_cell(value: object) -> object:
     """
     if not isinstance(value, str):
         return value
-    if value.startswith(FORMULA_PREFIXES):
+    # Excel/Sheets strip leading spaces and newlines, so " =1+1" still evaluates.
+    if value.lstrip(" \n").startswith(FORMULA_PREFIXES):
         return "'" + value
     return value
 
@@ -74,9 +78,23 @@ def guard_sap_reimport_cell(value: object) -> object:
     """
     if not isinstance(value, str):
         return value
-    if value.startswith(_SAP_REIMPORT_FORMULA_PREFIXES):
+    if value.lstrip(" \n").startswith(_SAP_REIMPORT_FORMULA_PREFIXES):
         return "'" + value
     return value
+
+
+def guard_frame(df: pd.DataFrame, sap_columns: Iterable[str] = ()) -> pd.DataFrame:
+    """The shared formula-injection guard for every DataFrame export writer (xlsx or csv).
+
+    Columns in ``sap_columns`` carry SAP-mapped values that are reimported, so they get the
+    narrowed :func:`guard_sap_reimport_cell` (a negative quantity or "-" code stays as is).
+    Every other column gets the full :func:`guard_formula_cell`. Returns a copy.
+    """
+    sap = set(sap_columns)
+    out = df.copy()
+    for col in out.columns:
+        out[col] = out[col].map(guard_sap_reimport_cell if col in sap else guard_formula_cell)
+    return out
 
 
 @dataclass(frozen=True)
@@ -378,6 +396,8 @@ def csv_response(
             value = row.get(c.key)
             if c.kind in ("mono", "text"):
                 value = guard_formula_cell(value)
+            elif c.kind == "raw":
+                value = guard_sap_reimport_cell(value)
             out[c.key] = value
         writer.writerow(out)
     filename = csv_filename(kind, run_label)

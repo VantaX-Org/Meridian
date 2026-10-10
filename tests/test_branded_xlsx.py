@@ -10,6 +10,7 @@ from api.services.branded_xlsx import (
     SheetSpec,
     build_workbook,
     guard_formula_cell,
+    guard_frame,
     guard_sap_reimport_cell,
     xlsx_filename,
 )
@@ -201,3 +202,18 @@ def test_xlsx_filename_format():
     name = xlsx_filename("findings", "Nightly Run", datetime(2025, 6, 1, 10, 0, tzinfo=timezone.utc))
     assert name.startswith("meridian-findings-nightly-run-")
     assert name.endswith("-SAST.xlsx")
+
+
+def test_guard_frame_is_the_shared_export_guard():
+    """One guard for every DataFrame export writer: full prefixes on report columns
+    (leading spaces included), the narrowed SAP guard on SAP-mapped columns."""
+    import pandas as pd
+
+    df = pd.DataFrame({"note": ["=1+1", " =cmd", "-x", "\tx", "\rx", "ok"],
+                       "MENGE": ["-5", "+5", "=1+1", "@SUM(A1)", " -1", "10"],
+                       "qty": [1, -2, 3, 4, 5, 6]})
+    out = guard_frame(df, sap_columns=["MENGE"])
+    assert out["note"].tolist() == ["'=1+1", "' =cmd", "'-x", "'\tx", "'\rx", "ok"]
+    assert out["MENGE"].tolist() == ["-5", "+5", "'=1+1", "'@SUM(A1)", " -1", "10"]
+    assert out["qty"].tolist() == [1, -2, 3, 4, 5, 6]
+    assert df["note"][0] == "=1+1"  # input untouched

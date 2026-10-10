@@ -5,7 +5,7 @@ import io
 import json
 from typing import Any
 
-from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, guard_sap_reimport_cell
 
 
 # ── SAP field mappings per object type ────────────────────────────────────────
@@ -232,7 +232,7 @@ class ExportEngine:
 
         for record in records:
             mapped = self._map_record(record, object_type)
-            writer.writerow([mapped.get(h, "") for h in sap_headers])
+            writer.writerow([guard_sap_reimport_cell(mapped.get(h, "")) for h in sap_headers])
 
         return output.getvalue()
 
@@ -306,7 +306,7 @@ class ExportEngine:
 
         for record in records:
             row = [str(record.get(f, "")) if record.get(f) is not None else "" for f in source_fields]
-            writer.writerow(row)
+            writer.writerow([guard_sap_reimport_cell(v) for v in row])
 
         return output.getvalue()
 

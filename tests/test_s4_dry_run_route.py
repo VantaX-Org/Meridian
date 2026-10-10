@@ -263,7 +263,7 @@ async def test_dry_run_xlsx_export_escapes_formula_injection(analysed_dry_run, m
 def test_to_xlsx_sanitize_formulas_flag():
     """Default to_xlsx leaves every value byte-for-byte (the /export SAP load file route relies
     on this for real '+' phone numbers and '-' balances). sanitize_formulas=True escapes formula
-    chars but still leaves numeric '-'/'+' values untouched."""
+    every formula prefix through the shared export guard."""
     import pandas as pd
     import openpyxl
 
@@ -277,8 +277,8 @@ def test_to_xlsx_sanitize_formulas_flag():
 
     sanitized_wb = openpyxl.load_workbook(io.BytesIO(to_xlsx({"Sheet": df}, sanitize_formulas=True)))
     sanitized_vals = [c[0].value for c in sanitized_wb["Sheet"].iter_rows(min_row=2)]
-    # '+' is always escaped (formula char); '-' only when non-numeric, so -5/-1.2 stay bare.
-    assert sanitized_vals == ["'=1+1", "'+27115551234", "-5", "-1.2", "'@mention", "plain"]
+    # Shared guard_frame: a human report, so every prefix is escaped (numeric columns stay numbers).
+    assert sanitized_vals == ["'=1+1", "'+27115551234", "'-5", "'-1.2", "'@mention", "plain"]
 
 
 @pytest.mark.anyio
