@@ -195,6 +195,42 @@ async def test_readiness_prefers_dry_run_over_newer_non_dry_run(two_tenants, mon
 
 
 @pytest.mark.anyio
+async def test_readiness_prefers_dry_run_over_newer_non_dry_run_same_wave(two_tenants, monkeypatch):
+    """Same as the tenant-level fallback case, but both runs share a real wave_id — the
+    dry run must still win the per-wave lookup branch, not just the tenant-wide fallback."""
+    t1, _t2 = two_tenants
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    wave_id = str(uuid.uuid4())
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO migration_waves (id, tenant_id, name, modules) "
+            "VALUES (:id, :t, 'Wave Dry Run Per-Wave', '{material_master}')"), {"id": wave_id, "t": t1})
+        # Older run: s4_dry_run, no-go, same wave_id.
+        conn.execute(text(
+            "INSERT INTO migration_runs (tenant_id, mode, wave_id, status, completed_at, gap_summary) "
+            "VALUES (:t, 's4_dry_run', :w, 'analysed', now() - interval '1 hour', CAST(:g AS jsonb))"), {
+            "t": t1, "w": wave_id,
+            "g": '{"material_master": {"verdict": "no-go", "score": 40.0, "blocked_records": 60, "gaps": {}}}',
+        })
+        # Newer run: source_to_destination, go, same wave_id.
+        conn.execute(text(
+            "INSERT INTO migration_runs (tenant_id, mode, wave_id, status, completed_at, gap_summary) "
+            "VALUES (:t, 'source_to_destination', :w, 'analysed', now(), CAST(:g AS jsonb))"), {
+            "t": t1, "w": wave_id,
+            "g": '{"material_master": {"verdict": "go", "score": 100.0, "blocked_records": 0, "gaps": {}}}',
+        })
+
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/api/v1/insights/readiness", headers=headers)
+    assert r.status_code == 200
+    cells = {c["wave"]: c for c in r.json()["cells"]}
+    assert cells["Wave Dry Run Per-Wave"]["verdict"] == "no_go"
+
+
+@pytest.mark.anyio
 async def test_readiness_wave_min_dqs_override_changes_verdict(two_tenants, monkeypatch):
     """A wave's min_dqs override produces a different verdict than the tenant default
     threshold would, proving the override is actually applied."""

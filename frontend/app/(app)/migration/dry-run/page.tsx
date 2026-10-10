@@ -38,7 +38,7 @@ export default function DryRunPage() {
   const runId = search.get("run") ?? undefined;
 
   const runQuery = useQuery({
-    queryKey: queryKeys.run(runId ?? ""),
+    queryKey: queryKeys.migrationRun(runId ?? ""),
     queryFn: () => getMigrationRun(runId as string),
     enabled: !!runId,
   });

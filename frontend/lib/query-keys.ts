@@ -38,6 +38,7 @@ export const queryKeys = {
     ["migration", "gaps", runId, normalizeFilters(filter)] as const,
   migrationDryRun: (runId: string, filter: Record<string, unknown>) =>
     ["migration", "dry-run", runId, normalizeFilters(filter)] as const,
+  migrationRun: (runId: string) => ["migration", "run", runId] as const,
   migrationFieldMap: (module: string, destType: string) => ["migration", "field-map", module, destType] as const,
   migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
