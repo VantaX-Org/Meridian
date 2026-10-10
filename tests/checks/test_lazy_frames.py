@@ -207,3 +207,50 @@ def test_moved_field_joins_only_the_join_columns_and_keeps_the_table_compressed(
     for cols in (["VBAK.GBSTK"], ["VBAK.AUART", "VBAK.LFSTK"]):
         frame = lazy.frame_for(cols)[0]
         pd.testing.assert_frame_equal(frame, eager.frame_for(cols)[0][list(frame.columns)])
+
+
+def _count_decodes(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    calls: list[list[str]] = []
+    orig = pd.read_parquet
+
+    def spy(path, *a, **kw):  # type: ignore[no-untyped-def]
+        calls.append(list(kw.get("columns") or []))
+        return orig(path, *a, **kw)
+
+    monkeypatch.setattr(pd, "read_parquet", spy)
+    return calls
+
+
+def test_lazy_columns_decode_once_across_rules(bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    frames = _frames(bundle, lazy=True)
+    calls = _count_decodes(monkeypatch)
+    rules = [{"id": f"N{i}", "check_class": "null_check", "field": f, "severity": "low", "dimension": "completeness",
+              "message": "m"} for i, f in enumerate(["MARC.DISPO", "MARC.EKGRP", "MARC.DISMM", "MARC.MMSTA"] * 5)]
+    for r in rules:
+        from checks.runner import run_rule
+        run_rule(r, frames)
+    decoded = [c for cols in calls for c in cols]
+    assert decoded and len(decoded) == len(set(decoded)), decoded  # each column decoded once, not per rule
+
+
+def test_rule_skipped_by_missing_applies_when_field_decodes_nothing(bundle: dict[str, bytes],
+                                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    from checks.runner import run_rule
+    frames = _frames(bundle, lazy=True)
+    calls = _count_decodes(monkeypatch)
+    rule = {"id": "S1", "check_class": "null_check", "field": "MARC.DISPO", "severity": "low",
+            "dimension": "completeness", "message": "m", "applies_when": {"MARC.NOT_A_FIELD": ["X"]}}
+    assert run_rule(rule, frames)[1] is None
+    assert calls == []
+
+
+def test_run_checks_keeps_rule_order_when_grouped_by_grain(bundle: dict[str, bytes]) -> None:
+    rules = yaml.safe_load(_find_module_yaml(MODULE).read_text())["rules"]
+    order = [r["id"] for r in rules]
+    for lazy in (False, True):
+        seen: list[str] = []
+        results = run_checks(MODULE, _frames(bundle, lazy), "t1", as_of="2026-01-01",
+                             on_progress=lambda d, n, rid: seen.append(rid))
+        ids = [r.check_id for r in results]
+        assert ids == [i for i in order if i in set(ids)]
+        assert sorted(seen) == sorted(order)

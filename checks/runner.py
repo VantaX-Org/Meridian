@@ -304,6 +304,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         optional = list(dict.fromkeys(check_cls(rule).optional_columns()
                                       + [c for x in excl for c in (x.get("fields") or [x["field"]])]
                                       + [c for c in [cf, *auto_fix.columns(rule)] if c]))
+        if _missing_context_field(rule, frames):
+            return rule, None  # decided from the columns alone: no decoding for a rule that cannot apply
         built = frames.frame_for(cols, grain=rule.get("grain"), optional=optional)
         if built is None:
             return rule, None  # a table/field this rule needs is not in the extract
@@ -340,6 +342,18 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
+
+
+def _missing_context_field(rule: dict, frames: TableFrames) -> bool:
+    """True when an ``applies_when`` field is not a column of its extracted table, so
+    apply_context would leave no records (a {blank: true} condition on it still holds)."""
+    for field, allowed in (rule.get("applies_when") or {}).items():
+        table = field.partition(".")[0]
+        src = frames.frames.get(table)
+        if (src is not None and table not in frames.unsplittable and field not in src.columns
+                and not (isinstance(allowed, dict) and set(allowed) == {"blank"})):
+            return True
+    return False
 
 
 def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: CheckResult,
@@ -409,7 +423,22 @@ def run_checks(
     skipped = 0
 
     total_rules = len(rules)
-    for done, rule in enumerate(rules):
+    # evaluate grouped by grain so a lazily held bundle decodes one group's tables at a
+    # time; results go back in rule order
+    def grain_of(rule: dict) -> str:
+        try:
+            check_cls = REGISTRY.get(rule.get("check_class", ""))
+            return (frames.grain_for(rule_columns(rule), rule.get("grain")) or "") if check_cls else ""
+        except Exception:
+            return ""
+    grains = [grain_of(r) for r in rules]
+    done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
+    prev: str | None = None
+    for done, i in enumerate(sorted(range(total_rules), key=lambda i: grains[i])):
+        rule = rules[i]
+        if grains[i] != prev:
+            frames.clear_cache()
+            prev = grains[i]
         if on_progress is not None:
             try:
                 on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
@@ -420,25 +449,27 @@ def run_checks(
         rule["_cost"] = cost.resolve(rule, cost_model)
         check_cls = REGISTRY.get(rule.get("check_class", ""))
         if check_cls is None:
-            results.append(CheckResult(
+            done_by_rule[i] = (rule, CheckResult(
                 check_id=rule.get("id", "UNKNOWN"), module=module, field=rule.get("field", ""),
                 severity=rule.get("severity", "medium"), dimension=rule.get("dimension", ""),
                 passed=False, affected_count=0, total_count=0, pass_rate=0.0,
                 message=rule.get("message", ""), details={},
                 error=f"Unknown check_class: {rule.get('check_class')}",
             ))
-            result_rules.append(rule)
             continue
 
         rule, result = run_rule(rule, frames, reference_values, suppressed, as_of=as_of,
                                 sap_utc_offset_seconds=sap_utc_offset_seconds)
         if (took := time.monotonic() - t0) > 60:
             logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
-        if result is None:
+        done_by_rule[i] = (rule, result) if result is not None else None
+    frames.clear_cache()
+    for i in range(total_rules):
+        if done_by_rule[i] is None:
             skipped += 1
-            continue
-        results.append(result)
-        result_rules.append(rule)
+        else:
+            result_rules.append(done_by_rule[i][0])
+            results.append(done_by_rule[i][1])
 
     if skipped:
         logger.info(f"Module '{module}': skipped {skipped} checks (tables/fields not in extract)")
