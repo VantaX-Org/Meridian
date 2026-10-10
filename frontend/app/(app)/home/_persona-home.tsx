@@ -5,15 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  HomePage, InstrumentPanel, SeverityDot, Sparkline, type HeatmapCell,
+  ExportMenu, HomePage, InstrumentPanel, SeverityDot, Sparkline, type HeatmapCell,
 } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
 import { getShellCounts } from "@/lib/api/shell";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigLandscape } from "@/lib/api/config-load";
+import { getExecutiveReportUrl } from "@/lib/api/reports";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
+import { useRole } from "@/hooks/use-role";
 import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import {
   cappedReason, dimensionBarPoints, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
@@ -58,6 +61,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const router = useRouter();
   const dayOne = useDayOne();
   const { active } = useJobs();
+  const { can } = useRole();
 
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
@@ -231,6 +235,19 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       panel={panel}
       tiles={tiles}
       lists={<>{objectLists}{lists}</>}
+      headerActions={
+        can("export") ? (
+          <ExportMenu
+            options={[
+              {
+                format: "pdf",
+                label: "Executive report (PDF)",
+                run: () => downloadAuthenticated(getExecutiveReportUrl(latest.id), `meridian-executive-${latest.label ?? latest.id}.pdf`),
+              },
+            ]}
+          />
+        ) : null
+      }
     />
   );
 }

@@ -8,6 +8,11 @@ export function getReportJsonExportUrl(versionId: string): string {
   return `/api/v1/reports/${versionId}/export.json`;
 }
 
+/** The home page's executive summary PDF for the latest run. */
+export function getExecutiveReportUrl(versionId: string): string {
+  return `/api/v1/reports/executive/${versionId}.pdf`;
+}
+
 /* Deterministic run reports (PDF, rendered on request). */
 export function getAnalysisReportUrl(versionId: string): string {
   return `/api/v1/reports/analysis/${versionId}.pdf`;

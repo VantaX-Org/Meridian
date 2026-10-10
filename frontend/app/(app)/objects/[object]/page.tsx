@@ -15,7 +15,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords } from "@/lib/api/findings";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
-import { getVersionProfile } from "@/lib/api/field-profile";
+import { getVersionProfile, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorMessage } from "@/lib/error";
 import { getRuleHistory } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
@@ -27,15 +27,34 @@ const RULE_HISTORY_CAP = 25;
 
 const READINESS_TONE: Record<string, "go" | "at-risk" | "no-go"> = { pass: "go", warn: "at-risk", fail: "no-go" };
 
+/** The field's most common value shape (highest share), or "—" when none was profiled. */
+function topShape(shapes: ShapeCount[]): string {
+  if (shapes.length === 0) return "—";
+  const top = shapes.reduce((best, s) => (s.share > best.share ? s : best), shapes[0]);
+  return `${top.shape} (${Math.round(top.share * 100)}%)`;
+}
+
+/** The field's most common values, joined for display, or "—" when not profiled/eligible. */
+function topValues(values: ValueCount[] | null): string {
+  if (!values || values.length === 0) return "—";
+  return values.slice(0, 3).map((v) => `${v.value} (${v.count})`).join(", ");
+}
+
 function RulesTab({ object, run }: { object: string; run: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dimension = searchParams.get("dimension");
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.object(object, run),
     queryFn: () => getObject(object, run),
     enabled: !!run,
   });
 
-  const rulesRanked = data ? [...data.rules].sort((a, b) => b.affected_count - a.affected_count) : [];
+  const rulesRanked = data
+    ? [...data.rules]
+        .filter((r) => !dimension || r.dimension === dimension)
+        .sort((a, b) => b.affected_count - a.affected_count)
+    : [];
   const historyRows = rulesRanked.slice(0, RULE_HISTORY_CAP);
   // G1: fan out one request per visible rule instead of one batch call, capped above.
   const histories = useQueries({
@@ -92,6 +111,15 @@ function RulesTab({ object, run }: { object: string; run: string }) {
         title="No results for this object in this run."
         detail="The run did not include this object's module."
         action={<Button render={<Link href={`/objects?run=${run}`}>All objects</Link>} />}
+      />
+    );
+  }
+  if (rulesRanked.length === 0) {
+    return (
+      <EmptyState
+        title={`No ${dimension} checks for this object.`}
+        detail="Clear the dimension filter to see every check."
+        action={<Button render={<Link href={`/objects/${object}?run=${run}&tab=rules`}>Clear filter</Link>} />}
       />
     );
   }
@@ -183,6 +211,17 @@ function FieldsTab({ object, run, systemId }: { object: string; run: string; sys
                 cell: ({ row }) => `${Math.round(row.original.stats.blank_pct * 100)}%`,
               },
               { id: "distinct", header: "Distinct", cell: ({ row }) => String(row.original.stats.distinct) },
+              { id: "top_shape", header: "Top shape", cell: ({ row }) => topShape(row.original.stats.shapes) },
+              {
+                id: "top_values",
+                header: "Top values",
+                cell: ({ row }) =>
+                  row.original.stats.masked ? (
+                    <span style={{ color: "var(--m-ink-3)" }}>masked: {row.original.stats.mask_reason ?? "unknown"}</span>
+                  ) : (
+                    topValues(row.original.stats.top_values)
+                  ),
+              },
             ]}
             data={table.fields}
             getRowId={(f) => f.field}
@@ -201,11 +240,28 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
     enabled: !!run && !!checkId,
   });
 
+  // Spec §5.2: one mono column per field_values key, unioned across the current page of records.
+  const fieldValueKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const r of data?.records ?? []) {
+      if (r.field_values) for (const k of Object.keys(r.field_values)) keys.add(k);
+    }
+    return [...keys];
+  }, [data]);
+
   const columns = useMemo<ColumnDef<FindingRecord>[]>(
     () => [
       { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
       { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
       { accessorKey: "module", header: "Module" },
+      ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
+        id: `field_values.${key}`,
+        header: key,
+        cell: ({ row }) => {
+          const value = row.original.field_values?.[key];
+          return value == null ? "—" : <Mono>{value}</Mono>;
+        },
+      })),
       {
         id: "fix",
         header: "Fix sheet",
@@ -220,7 +276,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         ),
       },
     ],
-    [object, run],
+    [object, run, fieldValueKeys],
   );
 
   if (isLoading) return <Skeleton height={240} />;
@@ -260,7 +316,11 @@ export default function ObjectDetailPage() {
   const tab = search.get("tab") ?? "overview";
   const checkId = search.get("check_id") ?? "";
 
-  const setTab = (next: string) => router.push(`/objects/${object}?run=${run}&tab=${next}`);
+  const setTab = (next: string) => {
+    const params = new URLSearchParams(search.toString());
+    params.set("tab", next);
+    router.push(`/objects/${object}?${params.toString()}`);
+  };
 
   const { data } = useQuery({
     queryKey: queryKeys.object(object, run),
