@@ -38,7 +38,7 @@ def test_versions_before_delta_count_their_start_as_the_full_read():
         ("20261008", "2026-10-09T01:00:00+00:00")
 
 
-pytestmark = pytest.mark.skipif(
+pg = pytest.mark.skipif(
     not os.getenv("MERIDIAN_TEST_DB_URL"), reason="requires MERIDIAN_TEST_DB_URL"
 )
 
@@ -68,6 +68,7 @@ def _insert_version(engine, tenant_id: str, system_id: str, scope: object, statu
     return version_id
 
 
+@pg
 def test_delta_baseline_ignores_a_differently_scoped_version(tenant_and_system):
     """A scoped manual baseline must not be picked as the baseline for an unscoped (sync) delta."""
     engine, tenant_id, system_id = tenant_and_system
@@ -78,6 +79,7 @@ def test_delta_baseline_ignores_a_differently_scoped_version(tenant_and_system):
         assert delta_baseline(session, tenant_id, system_id, ["material_master"], {"plant": "1000"})["id"] == scoped
 
 
+@pg
 def test_delta_baseline_matches_the_same_scope(tenant_and_system):
     engine, tenant_id, system_id = tenant_and_system
     unscoped = _insert_version(engine, tenant_id, system_id, {})
