@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import yaml
 
@@ -314,6 +314,17 @@ def read_order(plans: dict[str, TablePlan]) -> list[str]:
     return done
 
 
+def in_lists(field: str, values: Iterable[str], chunk: int = 60) -> list[str]:
+    """``FIELD IN ('a','b',…)`` clauses of at most ``chunk`` values each. The values are stripped,
+    de-duplicated, sorted and quote-escaped. ``where_options`` then splits each clause into
+    OPTIONS lines of 72 characters or fewer."""
+    from sap.rfc import _literal
+
+    vals = sorted({str(v).strip() for v in values if str(v).strip()})
+    return [f"{field} IN (" + ",".join(_literal(v) for v in vals[i:i + chunk]) + ")"
+            for i in range(0, len(vals), chunk)]
+
+
 def via_filters(child: str, parent: str, parent_rows, chunk: int = 60) -> list[str]:
     """WHERE clauses selecting child rows of already-read parent rows (key IN-lists)."""
     edges, _ = _graph()
@@ -322,9 +333,7 @@ def via_filters(child: str, parent: str, parent_rows, chunk: int = 60) -> list[s
         return []
     # use the most selective single join field (document number) for IN-lists
     child_f, parent_f = max(edge.on, key=lambda cp: cp[1] not in ("BUKRS", "GJAHR", "LGNUM", "MANDT"))
-    values = sorted({str(v).strip() for v in parent_rows[parent_f].tolist() if str(v).strip()})
-    return [f"{child_f} IN (" + ",".join(f"'{v}'" for v in values[i:i + chunk]) + ")"
-            for i in range(0, len(values), chunk)]
+    return in_lists(child_f, parent_rows[parent_f].tolist(), chunk)
 
 
 def _is_config_table(dictionary: Dictionary, table: str) -> bool:
