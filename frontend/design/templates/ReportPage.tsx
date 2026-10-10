@@ -56,7 +56,7 @@ export function ReportPage({
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</p>
+        <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</div>
         {exportMenu}
       </div>
       {body}

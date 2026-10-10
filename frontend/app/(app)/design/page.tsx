@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import {
-  Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono, ExportMenu,
+  Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
 } from "@/design";
+
+import { ExportDemo } from "./export-demo";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +51,7 @@ export default function DesignGalleryPage() {
             <Mono>MATNR.PLANT</Mono>
           </div>
           <div className="flex gap-4 items-center">
-            <ExportMenu
-              options={[
-                { format: "xlsx", run: () => Promise.resolve() },
-                { format: "csv", run: () => Promise.resolve() },
-              ]}
-            />
+            <ExportDemo />
           </div>
         </section>
       ))}

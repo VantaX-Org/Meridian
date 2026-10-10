@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 
 export interface MenuItemDef {
@@ -11,7 +11,8 @@ export interface MenuItemDef {
 export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDef[] }) {
   return (
     <BaseMenu.Root>
-      <BaseMenu.Trigger>{trigger}</BaseMenu.Trigger>
+      {/* An element trigger (Button, etc.) becomes the trigger itself; wrapping it would nest a button in a button. */}
+      {isValidElement(trigger) ? <BaseMenu.Trigger render={trigger as ReactElement<Record<string, unknown>>} /> : <BaseMenu.Trigger>{trigger}</BaseMenu.Trigger>}
       <BaseMenu.Portal>
         <BaseMenu.Positioner>
           <BaseMenu.Popup className="rounded border shadow-sm py-1" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
