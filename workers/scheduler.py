@@ -46,7 +46,11 @@ def _set_rls(session: Session, tenant_id: str) -> None:
 @celery_app.task(name="workers.scheduler.daily_analysis",
                  soft_time_limit=1800, time_limit=1860)
 def daily_analysis():
-    """Re-run checks on latest data for each tenant, update DQS history and cache."""
+    """AI quality score and dashboard cache for each tenant's latest analysed run.
+
+    Does not re-run checks: fresh data arrives through sync_profiles
+    (sync_profile_scheduler -> run_sync -> run_checks), and run_checks writes dqs_history.
+    Re-scoring the last parquet here only re-measured old data under today's date."""
     logger.info("Trigger 1: daily_analysis starting")
     engine = get_sync_engine()
 
@@ -60,26 +64,22 @@ def daily_analysis():
                 _set_rls(session, tid)
 
                 # Get latest complete version
-                result = session.execute(
+                row = session.execute(
                     text("""
-                        SELECT id, run_at, dqs_summary, metadata->>'parquet_path' AS parquet_path
+                        SELECT id, run_at, dqs_summary
                         FROM analysis_versions
                         WHERE tenant_id = :tid AND status IN ('complete', 'agents_complete')
                         ORDER BY run_at DESC LIMIT 1
                     """),
                     {"tid": tid},
-                )
-                row = result.fetchone()
+                ).fetchone()
                 if not row:
                     logger.info(f"  tenant={tid}: no complete version, skipping")
                     continue
 
                 version = dict(row._mapping)
                 version_id = str(version["id"])
-                parquet_path = version.get("parquet_path")
-                if not parquet_path:
-                    logger.warning(f"  tenant={tid}: latest version {version_id} has no parquet_path, skipping re-run")
-                    continue
+                dqs_summary = version.get("dqs_summary")
                 today = datetime.now(SAST).date()
 
                 run_date = version["run_at"]
@@ -133,40 +133,6 @@ def daily_analysis():
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: ai_sync_quality scoring failed: {e} — continuing")
                     session.rollback()
-
-                # Enqueue run_checks
-                from workers.tasks.run_checks import run_checks
-                run_checks.delay(version_id, tid, parquet_path)
-                logger.info(f"  tenant={tid}: enqueued run_checks for version={version_id}")
-
-                # Insert dqs_history record from latest dqs_summary
-                dqs_summary = version.get("dqs_summary")
-                if dqs_summary and isinstance(dqs_summary, dict):
-                    for module, scores in dqs_summary.items():
-                        if not isinstance(scores, dict):
-                            continue
-                        dim = scores.get("dimension_scores", scores)
-                        session.execute(
-                            text("""
-                                INSERT INTO dqs_history (id, tenant_id, module_id,
-                                    dqs_score, completeness, accuracy, consistency,
-                                    timeliness, uniqueness, validity, recorded_at)
-                                VALUES (gen_random_uuid(), :tid, :mod,
-                                    :comp, :compl, :acc, :cons, :tim, :uniq, :val, now())
-                                ON CONFLICT DO NOTHING
-                            """),
-                            {
-                                "tid": tid, "mod": module,
-                                "comp": scores.get("composite_score", 0),
-                                "compl": dim.get("completeness", 0),
-                                "acc": dim.get("accuracy", 0),
-                                "cons": dim.get("consistency", 0),
-                                "tim": dim.get("timeliness", 0),
-                                "uniq": dim.get("uniqueness", 0),
-                                "val": dim.get("validity", 0),
-                            },
-                        )
-                    session.commit()
 
                 # Cache dashboard summary in Redis
                 try:
