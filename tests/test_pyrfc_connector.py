@@ -45,7 +45,7 @@ def client():
 
     with patch("api.routes.connect._check_rfc_rate_limit"), \
          patch("api.middleware.local_auth._load_jwt_secret", return_value="test-secret"), \
-         patch.dict(os.environ, {"MERIDIAN_DEV_ROLE_HEADER": "1"}), \
+         patch.dict(os.environ, {"MERIDIAN_DEV_ROLE_HEADER": "1", "MERIDIAN_RFC_PARALLEL": "1"}), \
          patch(
              "api.middleware.local_auth.decode_access_token",
              return_value={

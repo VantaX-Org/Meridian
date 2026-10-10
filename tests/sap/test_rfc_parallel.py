@@ -117,6 +117,27 @@ def test_row_cap_returns_the_same_lowest_keys_as_serial():
         pd.testing.assert_frame_equal(out, serial)
 
 
+def test_small_read_opens_no_extra_connections():
+    df = _mard(20)
+    c = FakeRFCConnector({"MARD": df}, parallel=4)
+    c._open_extra = lambda: pytest.fail("opened an extra connection for a small read")
+    out = c.read_table_full("MARD", MARD_COLS, MARD_KEYS, page_size=50)
+    assert len(out) == 20
+    assert c._extra is None  # the pool was never opened
+
+
+def test_capped_read_does_far_fewer_data_reads_than_a_full_read():
+    df = _mard(3000)
+    full = _parallel({"MARD": df})
+    full_out = full.read_table_full("MARD", MARD_COLS, MARD_KEYS, page_size=50)
+    capped = _parallel({"MARD": df})
+    capped_out = capped.read_table_full("MARD", MARD_COLS, MARD_KEYS, page_size=50, max_rows=100)
+    full_reads = sum(len(_data_reads(f)) for f in full.fakes)
+    capped_reads = sum(len(_data_reads(f)) for f in capped.fakes)
+    assert len(full_out) == 3000 and len(capped_out) >= 100
+    assert capped_reads < full_reads / 2  # the early stop, not just the trim, saves the reads
+
+
 def test_refused_extra_connection_reads_over_the_ones_that_opened(caplog):
     df = _mard(300)
     c = FakeRFCConnector({"MARD": df}, parallel=4)
