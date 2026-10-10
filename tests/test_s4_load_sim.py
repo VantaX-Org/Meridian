@@ -69,3 +69,28 @@ def test_cvi_same_number_same_name_is_not_overlap():
     kna1 = pd.DataFrame({"KUNNR": ["100"], "NAME1": ["same "], "LAND1": ["ZA"], "KTOKD": ["DEBI"]})
     gaps = load_sim.check_cvi(_tf(LFA1=lfa1, KNA1=kna1), "business_partner", {"KRED": "B", "DEBI": "B"})
     assert "S4L-BP-NUM-OVERLAP" not in _ids(gaps)
+
+
+def test_credit_mrp_ml():
+    kna1 = pd.DataFrame({"KUNNR": ["1"]})
+    knkk = pd.DataFrame({"KUNNR": ["1", "2", "1"], "KKBER": ["1000", "1000", ""]})
+    mard = pd.DataFrame({"MATNR": ["M1", "M2"], "WERKS": ["P1", "P1"], "LGORT": ["L1", "L2"], "DISKZ": ["1", ""]})
+    t001l = pd.DataFrame({"WERKS": ["P1", "P1"], "LGORT": ["L1", "L2"], "DISKZ": ["", ""]})
+    mbew = pd.DataFrame({"MATNR": ["M1", "M2", "M3"], "BWKEY": ["P1"] * 3, "BWTAR": [""] * 3,
+                         "LBKUM": [5, 5, 0], "BKLAS": ["", "3000", ""], "VPRSV": ["S", "", ""],
+                         "STPRS": [1, 0, 0], "VERPR": [0, 0, 0]})
+    f = _tf(KNA1=kna1, KNKK=knkk, MARD=mard, T001L=t001l, MBEW=mbew)
+    assert {g.record_key for g in load_sim.check_credit(f, "sd_customer_master")} == {"KUNNR=2|KKBER=1000", "KUNNR=1|KKBER="}
+    assert [g.record_key for g in load_sim.check_mrp_area(f, "material_master")] == ["MATNR=M1|WERKS=P1|LGORT=L1"]
+    ml = {(g.record_key.split("|")[0], g.detail.split(" ", 1)[0]) for g in load_sim.check_material_ledger(f, "material_master")}
+    assert ml == {("MATNR=M1", "S4L-ML-BKLAS"), ("MATNR=M2", "S4L-ML-PRICE")}
+
+
+def test_material_ledger_without_price_columns():
+    """Test that check_material_ledger works when STPRS/VERPR columns are absent."""
+    mbew = pd.DataFrame({"MATNR": ["M1", "M2"], "BWKEY": ["P1", "P1"], "BWTAR": ["", ""],
+                         "LBKUM": [5, 0]})
+    gaps = load_sim.check_material_ledger(_tf(MBEW=mbew), "material_master")
+    # M1 has stock but no BKLAS, so should flag with S4L-ML-BKLAS
+    assert any(g.record_key == "MATNR=M1|BWKEY=P1|BWTAR=" and "S4L-ML-BKLAS" in g.detail for g in gaps)
+    assert not any(g.record_key == "MATNR=M2" for g in gaps)

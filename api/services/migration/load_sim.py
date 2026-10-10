@@ -133,3 +133,52 @@ def check_matnr(frames: TableFrames, module: str) -> list[Gap]:
     out += _gaps("S4L-MM-MATNR-CHARS", module, "MARA", "MATNR",
                   ~numeric & ~m.str.fullmatch(_ALLOWED), df, m)
     return out
+
+
+def check_credit(frames: TableFrames, module: str) -> list[Gap]:
+    """S/4 credit management load checks: KNKK credit segment records with missing
+    credit control area or customer number not in KNA1."""
+    knkk = _frame(frames, "KNKK")
+    kna1 = _frame(frames, "KNA1")
+    if knkk is None:
+        return []
+    cust = set(_norm(kna1["KUNNR"])) if kna1 is not None else set()
+    bad = _norm(knkk["KKBER"]).eq("") | ~_norm(knkk["KUNNR"]).isin(cust)
+    return _gaps("S4L-CRM-KNKK", module, "KNKK", "KKBER", bad, knkk, _norm(knkk["KKBER"]))
+
+
+def check_mrp_area(frames: TableFrames, module: str) -> list[Gap]:
+    """S/4 MRP area load checks: MARD storage location-material combinations with
+    MRP exclusion set (DISKZ) but the storage location itself not configured as
+    MRP-excluded in T001L/MDLG."""
+    mard = _frame(frames, "MARD")
+    t001l = _frame(frames, "T001L")
+    if mard is None or "DISKZ" not in mard.columns:
+        return []
+    # Collect storage locations that are MRP-excluded in T001L
+    loc_excl = set()
+    if t001l is not None and "DISKZ" in t001l.columns:
+        t = t001l[_norm(t001l["DISKZ"]) != ""]
+        loc_excl = set(_norm(t["WERKS"]) + "|" + _norm(t["LGORT"]))
+    loc = _norm(mard["WERKS"]) + "|" + _norm(mard["LGORT"])
+    bad = (_norm(mard["DISKZ"]) != "") & ~loc.isin(loc_excl)
+    return _gaps("S4L-MRP-AREA", module, "MARD", "DISKZ", bad, mard, _norm(mard["DISKZ"]))
+
+
+def check_material_ledger(frames: TableFrames, module: str) -> list[Gap]:
+    """S/4 material ledger load checks: MBEW valuation records with stock but missing
+    valuation class or missing price/cost valuation strategy."""
+    mbew = _frame(frames, "MBEW")
+    if mbew is None:
+        return []
+    stock = pd.to_numeric(mbew.get("LBKUM", 0), errors="coerce").fillna(0) > 0
+    bklas = _norm(mbew["BKLAS"]) if "BKLAS" in mbew.columns else pd.Series("", index=mbew.index)
+    vprsv = _norm(mbew["VPRSV"]) if "VPRSV" in mbew.columns else pd.Series("", index=mbew.index)
+    # Handle missing STPRS/VERPR columns by returning zero Series
+    stprs = pd.to_numeric(mbew["STPRS"], errors="coerce").fillna(0) if "STPRS" in mbew.columns else pd.Series(0, index=mbew.index)
+    verpr = pd.to_numeric(mbew["VERPR"], errors="coerce").fillna(0) if "VERPR" in mbew.columns else pd.Series(0, index=mbew.index)
+    price = stprs + verpr
+    no_class = stock & bklas.eq("")
+    out = _gaps("S4L-ML-BKLAS", module, "MBEW", "BKLAS", no_class, mbew)
+    out += _gaps("S4L-ML-PRICE", module, "MBEW", "VPRSV", stock & ~no_class & (vprsv.eq("") | price.le(0)), mbew)
+    return out
