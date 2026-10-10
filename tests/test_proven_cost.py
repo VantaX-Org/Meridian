@@ -83,3 +83,33 @@ def test_blocked_sales_needs_customer_defect():
     r = pc.blocked_sales(_tf(VBAK=vbak, VBUK=vbuk, KNVV=knvv, KNA1=kna1))
     assert {i["doc_key"] for i in r.items} == {"VBELN=S1", "VBELN=S2"}  # S2: no KNVV; S3: master clean
     assert r.amount == 950.0
+
+
+def test_blocked_sales_duplicate_knvv_not_double_counted():
+    vbak = pd.DataFrame({"VBELN": ["S1"], "KUNNR": ["C1"], "VKORG": ["O"],
+                         "VTWEG": ["D"], "SPART": ["X"], "NETWR": [900.0],
+                         "WAERK": ["ZAR"], "LIFSK": [""], "FAKSK": [""]})
+    vbuk = pd.DataFrame({"VBELN": ["S1"], "CMGST": ["B"]})
+    knvv = pd.DataFrame({"KUNNR": ["C1", "C1"], "VKORG": ["O", "O"], "VTWEG": ["D", "D"],
+                         "SPART": ["X", "X"], "AUFSD": ["01", "01"], "LIFSD": ["", ""]})
+    kna1 = pd.DataFrame({"KUNNR": ["C1"], "AUFSD": [""], "LIFSD": [""]})
+    r = pc.blocked_sales(_tf(VBAK=vbak, VBUK=vbuk, KNVV=knvv, KNA1=kna1))
+    assert r.amount == 900.0
+    assert len(r.items) == 1
+    assert r.documents == 1
+
+
+def test_blocked_sales_partial_vbuk_falls_back_to_vbak():
+    vbak = pd.DataFrame({"VBELN": ["S1", "S2"], "KUNNR": ["C1", "C1"], "VKORG": ["O", "O"],
+                         "VTWEG": ["D", "D"], "SPART": ["X", "X"], "NETWR": [100.0, 50.0],
+                         "WAERK": ["ZAR", "ZAR"], "LIFSK": ["", ""], "FAKSK": ["", ""],
+                         "CMGST": ["B", ""]})
+    vbuk = pd.DataFrame({"VBELN": ["S2"], "CMGST": [""]})
+    knvv = pd.DataFrame({"KUNNR": [], "VKORG": [], "VTWEG": [], "SPART": [],
+                         "AUFSD": [], "LIFSD": []})
+    kna1 = pd.DataFrame({"KUNNR": ["C1"], "AUFSD": [""], "LIFSD": [""]})
+    r = pc.blocked_sales(_tf(VBAK=vbak, VBUK=vbuk, KNVV=knvv, KNA1=kna1))
+    # S1 has CMGST="B" in VBAK; S2 has no VBUK row, so falls back to VBAK's CMGST=""
+    # S1 is credit-blocked with no KNVV for its sales area, so counted. S2 not blocked.
+    assert {i["doc_key"] for i in r.items} == {"VBELN=S1"}
+    assert r.amount == 100.0

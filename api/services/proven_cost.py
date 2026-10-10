@@ -119,16 +119,23 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     area = ["KUNNR", "VKORG", "VTWEG", "SPART"]
     so = vbak.assign(**{c: _s(vbak, c) for c in ["VBELN", *area, "LIFSK", "FAKSK", "CMGST"]},
                      amount=_num(vbak, "NETWR"), currency=_s(vbak, "WAERK"))
+    vbak_cmgst = so["CMGST"].copy()
     vbuk = frames.frames.get("VBUK")
     if vbuk is not None and not vbuk.empty:
         so = so.drop(columns="CMGST").merge(vbuk.assign(VBELN=_s(vbuk, "VBELN"), CMGST=_s(vbuk, "CMGST"))[["VBELN", "CMGST"]],
                                             on="VBELN", how="left")
-        so["CMGST"] = so["CMGST"].fillna("")
+        so["CMGST"] = so["CMGST"].fillna(vbak_cmgst)
     credit, deliv, bill = so["CMGST"].isin(["B", "C"]), so["LIFSK"] != "", so["FAKSK"] != ""
-    so = so[credit | deliv | bill].assign(_c=credit, _d=deliv, _b=bill)
+    so = so[credit | deliv | bill].assign(_c=credit[so.index], _d=deliv[so.index], _b=bill[so.index])
     knvv = frames.frames.get("KNVV")
-    kv = (knvv.assign(**{c: _s(knvv, c) for c in [*area, "AUFSD", "LIFSD"]})[[*area, "AUFSD", "LIFSD"]]
-          if knvv is not None and not knvv.empty else pd.DataFrame(columns=[*area, "AUFSD", "LIFSD"]))
+    if knvv is not None and not knvv.empty:
+        kv = knvv.assign(**{c: _s(knvv, c) for c in [*area, "AUFSD", "LIFSD"]})
+        kv = kv.groupby(area, as_index=False).agg({
+            "AUFSD": lambda x: "" if (x == "").all() else "B",
+            "LIFSD": lambda x: "" if (x == "").all() else "B",
+        })
+    else:
+        kv = pd.DataFrame(columns=[*area, "AUFSD", "LIFSD"])
     so = so.merge(kv, on=area, how="left", indicator=True)
     kna1 = frames.frames.get("KNA1")
     central: set[str] = set()
@@ -137,16 +144,28 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     no_area = so["_merge"] == "left_only"
     area_block = (so["AUFSD"].fillna("") != "") | (so["LIFSD"].fillna("") != "")
     cen = so["KUNNR"].isin(central)
-    so = so[no_area | area_block | cen]
-    why = (so["_c"].map({True: "credit block; ", False: ""}) + so["_d"].map({True: "delivery block; ", False: ""})
-           + so["_b"].map({True: "billing block; ", False: ""})
-           + no_area[so.index].map({True: "no KNVV for sales area", False: ""})
-           + area_block[so.index].map({True: "KNVV order/delivery block", False: ""})
-           + cen[so.index].map({True: " KNA1 central block", False: ""}))
+    so = so.assign(_no_area=no_area, _area_block=area_block, _cen=cen)
+    so = so[so["_no_area"] | so["_area_block"] | so["_cen"]]
+    def _make_detail(row):
+        parts = []
+        if row["_c"]:
+            parts.append("credit block")
+        if row["_d"]:
+            parts.append("delivery block")
+        if row["_b"]:
+            parts.append("billing block")
+        if row["_no_area"]:
+            parts.append("no KNVV for sales area")
+        if row["_area_block"]:
+            parts.append("KNVV order/delivery block")
+        if row["_cen"]:
+            parts.append("KNA1 central block")
+        return "; ".join(parts)
+    why = so.apply(_make_detail, axis=1) if not so.empty else pd.Series(dtype="string")
     rows = pd.DataFrame({"doc_key": "VBELN=" + so["VBELN"],
                          "master_key": "KUNNR=" + so["KUNNR"] + "|VKORG=" + so["VKORG"] + "|VTWEG=" + so["VTWEG"]
                                        + "|SPART=" + so["SPART"],
-                         "amount": so["amount"], "currency": so["currency"], "detail": why.str.strip()})
+                         "amount": so["amount"], "currency": so["currency"], "detail": why})
     return _result("blocked_sales", rows)
 
 
