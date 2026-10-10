@@ -386,6 +386,61 @@ async def run_wave(
                               list(w.modules), None, w.target_release, str(wave_id))
 
 
+@router.get("/waves/{wave_id}/cockpit")
+async def wave_cockpit(
+    wave_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    from api.services.migration.cockpit import load_cockpit
+
+    await _set_rls(db, tenant.id)
+    return await load_cockpit(db, str(tenant.id), await _load_wave(db, tenant.id, wave_id))
+
+
+@router.post("/waves/{wave_id}/signoff")
+async def signoff_wave(
+    wave_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("approve")),
+):
+    import json
+
+    from api.services.migration.cockpit import load_cockpit
+    from api.services.rbac import current_user_label
+
+    await _set_rls(db, tenant.id)
+    w = await _load_wave(db, tenant.id, wave_id)
+    if w.signed_off_at:
+        raise HTTPException(status_code=409, detail="This wave is already signed off.")
+    cockpit = await load_cockpit(db, str(tenant.id), w)
+    if cockpit["verdict"] != "go":
+        raise HTTPException(status_code=409, detail="Only a wave with a go verdict can be signed off.")
+    uid = current_user_id(request)
+    row = (await db.execute(text(f"""
+        UPDATE migration_waves SET signed_off_by = :u, signed_off_at = now(), updated_at = now()
+         WHERE id = :w AND tenant_id = :t RETURNING {_WAVE_COLS}"""),
+        {"u": uid, "w": str(wave_id), "t": str(tenant.id)})).fetchone()
+
+    def snap(r) -> dict:
+        return {"stage": r.stage, "signed_off_by": str(r.signed_off_by) if r.signed_off_by else None,
+                "signed_off_at": r.signed_off_at.isoformat() if r.signed_off_at else None,
+                "verdict": cockpit["verdict"], "score": cockpit["score"]}
+
+    await db.execute(text("""
+        INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, method, path,
+                               status_code, before_json, after_json)
+        VALUES (:t, :u, :e, 'signoff', 'migration_wave', :w, 'POST', :p, 200,
+                CAST(:b AS jsonb), CAST(:a AS jsonb))"""),
+        {"t": str(tenant.id), "u": uid, "e": current_user_label(), "w": str(wave_id), "p": request.url.path,
+         "b": json.dumps(snap(w)), "a": json.dumps(snap(row))})
+    await db.commit()
+    return _row(row)
+
+
 # Critical gaps with no record key hit every record (missing/obsolete target field) → export gate.
 _STRUCTURAL_SQL = ("SELECT COUNT(*) FROM migration_gap_findings WHERE run_id = :rid "
                    "AND severity = 'critical' AND record_key IS NULL")
