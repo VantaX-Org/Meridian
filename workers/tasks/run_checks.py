@@ -7,6 +7,7 @@ import traceback
 import pandas as pd
 import yaml
 
+from celery import Task
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
@@ -249,7 +250,8 @@ def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) ->
                  soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60,
                  # Redelivered after a worker restart; every write below upserts, so a rerun is safe.
                  acks_late=True, reject_on_worker_lost=True)
-def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
+def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
+               reanalyse: bool = False) -> dict[str, str | int]:
     """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
     engine = get_sync_engine()
     # One run per version: concurrent runs each load the full dataset and exhaust memory.
@@ -261,25 +263,22 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             return {"version_id": version_id, "status": "already_running"}
         try:
             task_id = self.request.id
-            if _count_delivery(task_id) > _MAX_LOST:
-                logger.error(f"run_checks {task_id} for version_id={version_id}: {_LOST_ERROR}")
-                _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
+            try:  # only a killed worker skips the clearing and leaves its delivery counted
+                if _count_delivery(task_id) > _MAX_LOST:
+                    logger.error(f"run_checks {task_id} for version_id={version_id}: {_LOST_ERROR}")
+                    _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
+                    return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
+                return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+            finally:
                 _clear_deliveries(task_id)
-                return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
-            try:
-                out = _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
-            except Exception:
-                _clear_deliveries(task_id)
-                raise
-            _clear_deliveries(task_id)
-            return out
         finally:
             lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
     finally:
         lock.close()
 
 
-def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool):
+def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, parquet_path: str,
+                reanalyse: bool) -> dict[str, str | int]:
     logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
 
     with Session(engine) as session:
@@ -482,11 +481,11 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                                      sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"))
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
-            frames._cache.clear()
+            frames.clear_cache()
             if module_name in data_modules:
                 from checks.outliers import find as find_outliers
                 outliers.update(find_outliers(module_name, frames))  # reported, never scored
-                frames._cache.clear()
+                frames.clear_cache()
                 # Field profile + candidate hidden rules of the module's tables
                 # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
                 # profiling failure is logged and never fails the analysis.

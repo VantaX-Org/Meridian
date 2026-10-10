@@ -115,7 +115,7 @@ def _run(frames, modules: list[str], tenant_id: str, run_kwargs: dict) -> list:
     out = []
     for m in modules:
         out += run_checks(m, frames, tenant_id, **run_kwargs)
-        frames._cache.clear()
+        frames.clear_cache()
     return out
 
 

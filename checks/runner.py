@@ -287,30 +287,36 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
             if summed is None:
                 return rule, None  # the child table is not in the extract
             rule = summed
-        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
-        if built is None:
-            return rule, None  # a table/field this rule needs is not in the extract
-        frame, grain, key_cols = built
         cols = rule_columns(rule)
-        excl = exclusions(rule, [grain] if grain else tables_of(cols), cols)
+        g = frames.grain_for(cols, rule.get("grain"))
+        excl = exclusions(rule, [g] if g else tables_of(cols), cols)
         hidden = (suppressed or {}).get(rule.get("field", ""))
         if hidden and rule.get("check_class") != "field_status_check":
             # the system's own field status hides this field for these groups: nothing to fill there
             excl = excl + [{"id": "hidden_by_field_status", "fields": hidden[0], "values": sorted(hidden[1])}]
+        cf = (rule.get("_cost") or {}).get("field")
+        # read when their table is joined anyway: optional check inputs, exclusion flags,
+        # the cost field and auto_fix inputs (a lazily decoded frame holds nothing else)
+        optional = list(dict.fromkeys(check_cls(rule).optional_columns()
+                                      + [c for x in excl for c in (x.get("fields") or [x["field"]])]
+                                      + [c for c in [cf, *auto_fix.columns(rule)] if c]))
+        built = frames.frame_for(cols, grain=rule.get("grain"), optional=optional)
+        if built is None:
+            return rule, None  # a table/field this rule needs is not in the extract
+        frame, grain, key_cols = built
         need = [c for x in excl for c in (x.get("fields") or [x["field"]]) if c not in frame.columns]
         if need and grain:
             try:  # parent-table flags (LFA1.LOEVM for an LFB1 rule) join at the same grain
-                wider = frames.frame_for(cols + need, grain=grain)
+                wider = frames.frame_for(cols + need, grain=grain, optional=optional)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass
-        cf = (rule.get("_cost") or {}).get("field")
         # the cost field (EKPO.NETWR) and auto_fix inputs (guard, copy, lookup keys) join at
         # the same grain; else cost falls back to severity and auto_fix proposes nothing
         extra = [c for c in [cf, *auto_fix.columns(rule)] if c and c not in frame.columns]
         if extra and grain:
             try:
-                wider = frames.frame_for(list(dict.fromkeys(cols + need + extra)), grain=grain)
+                wider = frames.frame_for(list(dict.fromkeys(cols + need + extra)), grain=grain, optional=optional)
                 frame = wider[0] if wider is not None else frame
             except ValueError:
                 pass

@@ -22,6 +22,11 @@ class ValuePlacementCheck(BaseCheck):
             return [self.rule["fields"][0], self.rule["block_fields"][0]]
         return super().columns()
 
+    def optional_columns(self) -> list[str]:
+        if self.rule["family"] == "status_text":
+            return super().optional_columns() + self.rule["fields"][1:] + self.rule["block_fields"][1:]
+        return super().optional_columns()
+
     def evaluate(self, df: pd.DataFrame) -> Evaluation | None:
         family = self.rule["family"]
         if family == "misplaced":

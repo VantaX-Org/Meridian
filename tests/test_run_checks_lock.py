@@ -49,13 +49,9 @@ def _deliver(mod, redis: _Redis, body: MagicMock) -> dict:
 def test_third_delivery_after_two_lost_workers_fails_the_job_without_running():
     from workers.tasks import run_checks as mod
 
+    # the OOM killer's SIGKILL runs no Python handler: each lost delivery leaves its count
     redis = _Redis()
-    # stands in for the OOM killer's SIGKILL: no Python exception handler runs after it
-    killed = MagicMock(side_effect=KeyboardInterrupt)
-    for _ in range(2):
-        with pytest.raises(KeyboardInterrupt):
-            _deliver(mod, redis, killed)
-    assert killed.call_count == 2
+    redis.store[mod._delivery_key("task-1")] = 2
     body = MagicMock()
     out = _deliver(mod, redis, body)
     body.assert_not_called()
@@ -63,6 +59,16 @@ def test_third_delivery_after_two_lost_workers_fails_the_job_without_running():
     _deliver.failed.assert_called_once()
     assert "ran out of memory twice" in _deliver.failed.call_args.args[-1]
     assert redis.store == {}  # the aborted delivery is acknowledged; a re-run starts afresh
+
+
+@pytest.mark.parametrize("stop", [SystemExit, KeyboardInterrupt, RuntimeError])
+def test_a_run_ended_by_any_exception_is_not_a_lost_delivery(stop: type[BaseException]):
+    from workers.tasks import run_checks as mod
+
+    redis = _Redis()
+    with pytest.raises(stop):
+        _deliver(mod, redis, MagicMock(side_effect=stop))
+    assert redis.store == {}
 
 
 def test_completed_runs_do_not_count_as_lost_deliveries():
