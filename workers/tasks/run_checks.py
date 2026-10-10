@@ -527,7 +527,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                         continue
                     try:
                         from checks.runner import rule_columns
-                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"),
+                                                 optional=check_cls(rule).optional_columns())
                         res = check_cls(rule).run(built[0], key_cols=built[2], grain=built[1]) if built else None
                         if res is not None:
                             all_results.append(res)

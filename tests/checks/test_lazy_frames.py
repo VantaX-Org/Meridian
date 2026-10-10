@@ -183,7 +183,7 @@ def test_every_rule_pack_scores_the_same_lazy_and_eager(module: str) -> None:
     for lazy in (False, True):
         frames = TableFrames({t: ParquetTable(b) if lazy else pd.read_parquet(io.BytesIO(b)) for t, b in bundle.items()},
                              D, module=module)
-        out[lazy] = {(r.check_id, r.field): (r.affected_count, r.total_count, r.pass_rate, r.error)
+        out[lazy] = {(r.check_id, r.field): {k: v for k, v in r.model_dump().items() if k not in ("created_at",)}
                      for r in run_checks(module, frames, "t1", extra_rules=extra, as_of="2026-01-01")}
     diff = {k: (out[False].get(k), out[True].get(k)) for k in out[False].keys() | out[True].keys()
             if out[False].get(k) != out[True].get(k)}
