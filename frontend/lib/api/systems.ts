@@ -51,6 +51,8 @@ export async function updateSystem(
     environment?: string;
     is_active?: boolean;
     credentials?: Record<string, string>;
+    role?: "source" | "target";
+    target_system_id?: string; // "" clears the target
   }
 ): Promise<SAPSystem> {
   const { data } = await apiClient.put<SAPSystem>(
