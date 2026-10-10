@@ -85,7 +85,7 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
           Each schedule re-downloads the object and re-runs its checks, so the trends and alert thresholds pick up every run.
           Times are server time; the scheduler looks for due runs every 5 minutes.
-          "Changes only" re-reads just the records SAP's change log shows changed since the last download, and does a full download at least weekly.
+          &ldquo;Changes only&rdquo; re-reads just the records SAP&rsquo;s change log shows changed since the last download, and does a full download at least weekly.
         </p>
         {profiles.length ? (
           <table className="w-full text-[13px]">
