@@ -1,5 +1,17 @@
-"""SuccessFactors benefits depth rules (BEN086-BEN155): integrity, enrichment, auto_fix
-contract and fixture-based fire/clean tests, mirroring tests/test_sf_ec_depth_rules.py."""
+"""SuccessFactors benefits depth rules (BEN086-BEN113): integrity, enrichment
+and fixture-based fire/clean tests, mirroring tests/test_sf_ec_depth_rules.py.
+
+Round 2 (re-review response): the new-range rule count dropped from 70 to 28
+after deleting duplicates/subsets (C3), EC-owned/offboarding-cluster checks
+(I10), unfixable auto_fix blocks (I11, both surviving auto_fix rules had
+their auto_fix removed entirely rather than repaired), and literal/relation
+assumptions that don't hold across tenants (I2, I4). Quality over count per
+the controller's ruling: a small net-new set is fine. No rule in this range
+carries auto_fix any more -- the two rules that used to (old BEN131/BEN132,
+now BEN104/BEN105) had it stripped per I11, and the other two auto_fix
+rules from round 1 (old BEN110, BEN118) were deleted outright as
+duplicates/subsets per C3.
+"""
 import re
 from datetime import date, timedelta
 
@@ -7,14 +19,13 @@ import pandas as pd
 import pytest
 import yaml
 
-from checks.auto_fix import propose
 from checks.frames import TableFrames
 from checks.runner import run_checks
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
 MODULE = "benefits"
-START, COUNT = 86, 70
+START, COUNT = 86, 28
 
 RULES = yaml.safe_load(open("checks/rules/successfactors/benefits.yaml"))["rules"]
 BY_ID = {r["id"]: r for r in RULES}
@@ -22,15 +33,6 @@ NEW = [r for r in RULES if re.fullmatch(r"BEN\d+", r["id"]) and START <= int(r["
 
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
-OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
-       "pad_left": {"width", "char"}, "strip_leading_zeros": set(), "regex_replace": {"pattern", "repl"},
-       "truncate": {"width"}, "map": {"values"}, "set": {"value"}, "copy": {"from"},
-       "lookup": {"table", "match", "value"}, "date_format": {"to"}, "gtin_check_digit": set(),
-       "round": {"ndigits"}}
-# judgement-call monetary fields: EMPLOYEE_COST/EMPLOYER_COST get no auto_fix at all. The
-# pack's one attempt at a decimal-precision check on these fields (regex_check against the
-# raw string, which SF's Edm.Decimal scale breaks) was deleted as unfixable rather than kept.
-NO_AUTOFIX_FIELDS = re.compile(r"EMPLOYEE_COST|EMPLOYER_COST$")
 
 
 # ---------------------------------------------------------------------------
@@ -56,42 +58,23 @@ def test_new_rules_fully_enriched(rule):
         assert field in D.tables[table].fields, (rule["id"], table, field)
 
 
-def test_auto_fix_uses_only_contract_ops():
-    fixes = [(r["id"], r["auto_fix"]) for r in NEW if "auto_fix" in r]
-    # I11 removed several auto_fix blocks that could not make their own value pass
-    # (collapse_spaces+strip can't satisfy ^\S+$ with an internal space); 4 survive, each
-    # proven by test_auto_fix_output_passes_its_own_rule below. Floor reflects that honestly.
-    assert len(fixes) >= 4
-    for rid, af in fixes:
-        assert set(af) <= {"when", "steps", "confidence"}, rid
-        assert af["confidence"] in {"high", "medium", "low"}, rid
-        assert af["steps"], rid
-        for step in af["steps"]:
-            op = step["op"]
-            assert op in OPS, (rid, op)
-            assert set(step) - {"op"} == OPS[op], (rid, step)
-            if op == "regex_replace":
-                re.compile(step["pattern"])
+def test_no_rule_in_this_range_carries_auto_fix():
+    # I11: the only two auto_fix rules that survived the re-review (old
+    # BEN131/BEN132, now BEN104/BEN105) had their auto_fix removed because
+    # collapse_spaces+strip cannot make "u 1" satisfy ^\S+$ (an internal
+    # space has no deterministic single fix). The other two auto_fix rules
+    # from round 1 (old BEN110, BEN118) were deleted as duplicates/subsets.
+    assert not any("auto_fix" in r for r in NEW)
 
 
-FORMAT_ONLY_OPS = {"strip", "collapse_spaces", "upper", "lower", "title", "pad_left",
-                    "strip_leading_zeros", "truncate", "round", "date_format"}
-VALUE_GUESS_OPS = {"map", "set", "copy", "lookup", "regex_replace", "gtin_check_digit"}
-
-
-def test_no_auto_fix_where_business_judgement_is_needed():
-    for r in NEW:
-        if "auto_fix" not in r:
-            continue
-        col = r["field"].split(".")[1]
-        ops = {s["op"] for s in r["auto_fix"]["steps"]}
-        # cost amounts never get a guessed value (no EMPLOYEE_COST/EMPLOYER_COST rule carries auto_fix)
-        if col in {"EMPLOYEE_COST", "EMPLOYER_COST"}:
-            assert ops <= {"round"}, r["id"]
-        # judgement-call fields may only get deterministic *formatting* normalization
-        # (strip/upper/collapse_spaces/...), never a guessed replacement value.
-        if col in {"STATUS", "EFFECTIVE_DATE", "ENROL_DATE", "COST"}:
-            assert ops <= FORMAT_ONLY_OPS, r["id"]
+def test_df_eval_accepts_p4_backreference_regex():
+    # Proof for proposal P4 (new BEN113): df.eval must accept a raw-string
+    # backreference regex inside str.contains(regex=True) exactly as written
+    # in the rule's fail_when, finding a dependent id repeated in a
+    # semicolon-separated list.
+    df = pd.DataFrame({"BENEFITENROLLMENT.DEPENDENT_LINK": ["u1;u2", "u1;u2;u1", "u1;u1", "a;b;c", None]})
+    res = df.eval(BY_ID["BEN113"]["fail_when"])
+    assert res.tolist() == [False, True, True, False, False]
 
 
 # ---------------------------------------------------------------------------
@@ -130,8 +113,7 @@ def c(base, **kw):
 
 
 # Join keys: EMPEMPLOYMENT<->BENEFITENROLLMENT on USERID; EMPEMPLOYMENT<->USERACCOUNT on
-# USER_ID:USERID; EMPEMPLOYMENT<->POSITION on POSITION:CODE; EMPEMPLOYMENT<->FO* on
-# EXTERNAL_CODE:<field>; PERINFO<->EMPEMPLOYMENT and PERINFO<->DEPENDENT on PERSON_ID.
+# USER_ID:USERID; EMPEMPLOYMENT<->POSITION on POSITION:CODE; PERINFO<->DEPENDENT on PERSON_ID.
 EE = {"USERID": "u1", "USER_ID": "u1", "PERSON_ID": "p1", "START_DATE": "20200101", "STATUS": "A",
       "EVENT": "HIRE", "IS_CONTINGENT_WORKER": "false", "CONTRACT_END_DATE": None,
       "PROBATION_END_DATE": "20200401", "JOB_START_DATE": "20200101", "LAST_DATE_WORKED": None,
@@ -144,15 +126,6 @@ EE = {"USERID": "u1", "USER_ID": "u1", "PERSON_ID": "p1", "START_DATE": "2020010
 UA = {"USER_ID": "u1", "STATUS": "A", "HIRE_DATE": "20200101", "EMAIL": "a@b.com", "DEPARTMENT": "DEPT1"}
 PN = {"PERSON_ID": "p1", "DATE_OF_BIRTH": "19800101", "MARITAL_STATUS": "MARRIED", "DATE_OF_DEATH": None}
 PS = {"CODE": "POS1", "VACANT": "false", "EFFECTIVE_STATUS": "A", "EFFECTIVE_END_DATE": "20991231"}
-GA = {"USERID": "u1", "END_DATE": "20991231", "PLANNED_END_DATE": "20991231"}
-FD = {"EXTERNAL_CODE": "DEPT1", "STATUS": "A", "COST_CENTER": "CC1"}
-FL = {"EXTERNAL_CODE": "LOC1", "STATUS": "A", "STANDARD_HOURS": "40"}
-FJ = {"EXTERNAL_CODE": "JOB1", "STATUS": "A", "EMPLOYEE_CLASS": "STANDARD", "REGULAR_TEMP": "REGULAR"}
-FDIV = {"EXTERNAL_CODE": "DIV1", "STATUS": "A"}
-FBU = {"EXTERNAL_CODE": "BU1", "STATUS": "A"}
-FCC = {"EXTERNAL_CODE": "CC1", "STATUS": "A", "LEGAL_ENTITY": "LE1"}
-FER = {"EXTERNAL_CODE": "ER1", "STATUS": "A"}
-FCO = {"EXTERNAL_CODE": "C1", "CURRENCY": "ZAR", "COUNTRY": "ZA"}
 BE = {"USERID": "u1", "PLAN_ID": "MED1", "PLAN_TYPE": "MEDICAL", "ENROL_DATE": "20250101",
       "EFFECTIVE_DATE": "20250201", "STATUS": "A", "COVERAGE_LEVEL": "EMP_ONLY",
       "EMPLOYEE_COST": "100", "EMPLOYER_COST": "200", "DEPENDENT_LINK": None}
@@ -160,140 +133,104 @@ DP = {"PERSON_ID": "p1", "RELATED_PERSON_ID": "d1", "RELATIONSHIP_TYPE": "child"
       "DEPENDENT_BIRTH": "20100101", "IS_BENEFICIARY": "true", "END_DATE": None}
 
 CASES = {
-    "BEN086": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="RETIREMENT", EFFECTIVE_DATE="20200201"),
-                                      c(BE, PLAN_TYPE="RETIREMENT", EFFECTIVE_DATE="20200601")],
-               "EMPEMPLOYMENT": [EE]},
-    "BEN087": {"BENEFITENROLLMENT": [c(BE, STATUS="T"), c(BE, STATUS="A")],
-               # EMPEMPLOYMENT.END_DATE is the 9999-12-31 open-end sentinel, not null; the
-               # fail_when's (`isna()` | `.dt.year >= 9999`) guard must still catch it (I3/M4).
-               "EMPEMPLOYMENT": [c(EE, END_DATE="99991231")]},
-    "BEN088": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               # EVENT uses the EC-pack convention (case-insensitive 'termination'), not 'TERM' (I4).
+    # BEN086: offboarding-cluster collapse (I10). EVENT uses mixed case to prove
+    # the EC-pack convention's case-insensitive 'termination' match.
+    "BEN086": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
                "EMPEMPLOYMENT": [c(EE, EVENT="Termination")]},
-    "BEN090": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [c(EE, CONTRACT_END_DATE=_day(10))]},
-    "BEN091": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "USERACCOUNT": [c(UA, STATUS="I")]},
-    "BEN092": {"BENEFITENROLLMENT": [c(BE, USERID="uXXX"), c(BE, USERID="u1")],
+    "BEN087": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="RETIREMENT"), c(BE, PLAN_TYPE="MEDICAL")],
+               "EMPEMPLOYMENT": [c(EE, IS_CONTINGENT_WORKER="true")]},
+    "BEN088": {"BENEFITENROLLMENT": [c(BE, USERID="uXXX"), c(BE, USERID="u1")],
                "USERACCOUNT": [UA]},
-    "BEN093": {"BENEFITENROLLMENT": [c(BE, EFFECTIVE_DATE="20200101"), c(BE, EFFECTIVE_DATE="20260101")],
-               "EMPEMPLOYMENT": [EE], "USERACCOUNT": [c(UA, HIRE_DATE="20250601")]},
-    "BEN094": {"BENEFITENROLLMENT": [BE, c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "FODEPARTMENT": [c(FD, STATUS="I")]},
-    "BEN100": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
+    "BEN089": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
                "EMPEMPLOYMENT": [EE], "POSITION": [c(PS, VACANT="true")]},
-    "BEN102": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "EMPGLOBALASSIGNMENT": [c(GA, END_DATE=_day(10))]},
-    "BEN104": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
+    "BEN090": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
                "EMPEMPLOYMENT": [EE], "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
-    "BEN105": {"BENEFITENROLLMENT": [BE, c(BE, USERID="u2")],
-               "EMPEMPLOYMENT": [EE, c(EE, USERID="u2", USER_ID="u2", PERSON_ID="p2")],
-               "PERINFO": [c(PN, DATE_OF_BIRTH=_day(1000)), c(PN, PERSON_ID="p2", DATE_OF_BIRTH="19900101")]},
-    "BEN106": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="60000"), c(BE, EMPLOYEE_COST="500")]},
-    "BEN107": {"BENEFITENROLLMENT": [c(BE, EMPLOYER_COST="60000"), c(BE, EMPLOYER_COST="500")]},
-    "BEN108": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="1000"),
+    "BEN091": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="60000"), c(BE, EMPLOYEE_COST="500")]},
+    "BEN092": {"BENEFITENROLLMENT": [c(BE, EMPLOYER_COST="60000"), c(BE, EMPLOYER_COST="500")]},
+    "BEN093": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="1000"),
                                       c(BE, EMPLOYEE_COST="10", EMPLOYER_COST="100")]},
-    "BEN109": {"BENEFITENROLLMENT": [c(BE, STATUS="P", EFFECTIVE_DATE=_day(300)),
-                                      c(BE, STATUS="P", EFFECTIVE_DATE=_day(10))]},
-    "BEN110": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK=";d1;;d2;"), c(BE, DEPENDENT_LINK="d1;d2")]},
-    "BEN111": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="FSA", EMPLOYEE_COST="0"),
+    "BEN094": {"BENEFITENROLLMENT": [c(BE, PLAN_TYPE="FSA", EMPLOYEE_COST="0"),
                                       c(BE, PLAN_TYPE="FSA", EMPLOYEE_COST="50")]},
     # third row: the 9999-12-31 open-end sentinel is >36500 days in the future by raw
-    # arithmetic but must NOT fire once `.dt.year < 9999` guards it (C1).
-    "BEN112": {"DEPENDENT": [c(DP, END_DATE=_day(-40000)), c(DP, RELATED_PERSON_ID="d2", END_DATE=_day(-10)),
+    # arithmetic but must NOT fire once `.dt.year < 9999` guards it.
+    "BEN095": {"DEPENDENT": [c(DP, END_DATE=_day(-40000)), c(DP, RELATED_PERSON_ID="d2", END_DATE=_day(-10)),
                              c(DP, RELATED_PERSON_ID="d3", END_DATE="99991231")]},
-    "BEN128": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="spouse", END_DATE=_day(-10)),
-                             c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="spouse", END_DATE="99991231")]},
-    "BEN114": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH="20050101"),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH="19800101")],
+    "BEN096": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH="20050101"),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Domestic_Partner",
+                                DEPENDENT_BIRTH="19800101")],
                "PERINFO": [PN]},
-    # open-end sentinel (not null) on the dirty row proves the isna()|year>=9999 guard (I3).
-    "BEN116": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(8000), END_DATE="99991231"),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(3000), END_DATE=None)]},
-    "BEN118": {"BENEFITENROLLMENT": [c(BE, COVERAGE_LEVEL="EMP ONLY"), c(BE, COVERAGE_LEVEL="EMP_ONLY")]},
-    "BEN119": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL", EMPLOYEE_COST=None),
-                                      c(BE, STATUS="A", PLAN_TYPE="MEDICAL", EMPLOYEE_COST="100")]},
-    "BEN120": {"BENEFITENROLLMENT": [c(BE, EFFECTIVE_DATE="20191201"), c(BE, EFFECTIVE_DATE="20200601")],
-               "EMPEMPLOYMENT": [c(EE, JOB_START_DATE="20200101")]},
-    "BEN121": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [c(EE, LAST_DATE_WORKED=_day(10))]},
-    "BEN123": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="LIFE")],
+    # P1 rework: dirty row carries the open-end sentinel (not null) to prove the
+    # isna()|year>=9999 guard fires on it; relationship type is mixed-case 'Child'.
+    "BEN097": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Child", DEPENDENT_BIRTH=_day(9500), END_DATE="99991231"),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(3000),
+                                END_DATE=None)]},
+    # uniqueness_check: two rows share PERSON_ID+RELATED_PERSON_ID+START_DATE (duplicate,
+    # case-enumerated 'CHILD'/'Child'); third row has a different START_DATE (effective-dated
+    # history, not a duplicate) so it stays clean.
+    "BEN098": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="CHILD", START_DATE="20100101"),
+                              c(DP, RELATIONSHIP_TYPE="Child", START_DATE="20100101"),
+                              c(DP, RELATIONSHIP_TYPE="child", START_DATE="20150101")]},
+    "BEN099": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="LIFE")],
                "EMPEMPLOYMENT": [c(EE, IS_FULLTIME="false", FTE="0.2")]},
-    "BEN129": {"DEPENDENT": [c(DP, START_DATE=_day(-10)), c(DP, RELATED_PERSON_ID="d2", START_DATE=_day(10))]},
-    "BEN130": {"DEPENDENT": [c(DP, START_DATE="20200101", END_DATE="20200101"),
+    "BEN100": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="parent", DEPENDENT_BIRTH=_day(42000)),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Parent", DEPENDENT_BIRTH=_day(20000))]},
+    "BEN101": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="domestic_partner", DEPENDENT_BIRTH=_day(3000)),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="DOMESTIC_PARTNER",
+                                DEPENDENT_BIRTH=_day(10000))]},
+    # mixed-case 'Spouse'/'spouse'; sentinel end date on the clean row proves the
+    # `.dt.year < 9999` guard still excludes an open-ended spouse record.
+    "BEN102": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Spouse", END_DATE=_day(-10)),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="spouse", END_DATE="99991231")]},
+    "BEN103": {"DEPENDENT": [c(DP, START_DATE="20200101", END_DATE="20200101"),
                               c(DP, RELATED_PERSON_ID="d2", START_DATE="20200101", END_DATE="20210101")]},
-    "BEN131": {"BENEFITENROLLMENT": [c(BE, USERID="u 1"), c(BE, USERID="u1")]},
-    "BEN132": {"DEPENDENT": [c(DP, PERSON_ID="p 1"), c(DP, RELATED_PERSON_ID="d2")]},
-    "BEN133": {"BENEFITENROLLMENT": [c(BE, STATUS="E", EMPLOYEE_COST="50"), c(BE, STATUS="E", EMPLOYEE_COST="0")]},
-    "BEN135": {"BENEFITENROLLMENT": [c(BE, ENROL_DATE="20190101"), c(BE, ENROL_DATE="20200601")],
-               "EMPEMPLOYMENT": [c(EE, CREATED_DATE="20200101")]},
-    "BEN136": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL", EMPLOYER_COST=None),
-                                      c(BE, STATUS="A", PLAN_TYPE="MEDICAL", EMPLOYER_COST="200")]},
-    "BEN137": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="spouse"), c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="child")],
-               "PERINFO": [c(PN, MARITAL_STATUS="SINGLE")]},
-    "BEN138": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "POSITION": [c(PS, EFFECTIVE_END_DATE=_day(10))]},
-    "BEN140": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="GAP", DEPENDENT_LINK="d1"),
-                                      c(BE, STATUS="A", PLAN_TYPE="GAP", DEPENDENT_LINK=None)]},
-    "BEN141": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="RETIREMENT", EMPLOYEE_COST="50", EMPLOYER_COST=None),
-                                      c(BE, STATUS="A", PLAN_TYPE="RETIREMENT", EMPLOYEE_COST="50", EMPLOYER_COST="50")]},
-    "BEN142": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="GAP")],
+    "BEN104": {"BENEFITENROLLMENT": [c(BE, USERID="u 1"), c(BE, USERID="u1")]},
+    "BEN105": {"DEPENDENT": [c(DP, PERSON_ID="p 1"), c(DP, RELATED_PERSON_ID="d2")]},
+    "BEN106": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="GAP")],
                "EMPEMPLOYMENT": [c(EE, IS_PRIMARY="false")]},
-    "BEN145": {"DEPENDENT": [c(DP, DEPENDENT_BIRTH=None), c(DP, RELATED_PERSON_ID="d2")]},
-    "BEN147": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1"), c(BE, DEPENDENT_LINK="d1")]},
-    "BEN148": {"DEPENDENT": [c(DP, IS_BENEFICIARY="true", RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH=_day(1000)),
-                              c(DP, RELATED_PERSON_ID="d2", IS_BENEFICIARY="true", RELATIONSHIP_TYPE="child",
-                                DEPENDENT_BIRTH=_day(8000))]},
-    "BEN150": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="spouse"),
-                              c(DP, RELATIONSHIP_TYPE="spouse"),
-                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="domestic_partner")]},
-    "BEN151": {"BENEFITENROLLMENT": [c(BE, EMPLOYEE_COST="20"), c(BE, EMPLOYEE_COST="0")],
-               "EMPEMPLOYMENT": [EE], "USERACCOUNT": [c(UA, STATUS="I")]},
-    "BEN152": {"BENEFITENROLLMENT": [c(BE, STATUS="A", PLAN_TYPE="MEDICAL"), c(BE, STATUS="A", PLAN_TYPE="GAP")],
-               "EMPEMPLOYMENT": [c(EE, JOB_END_DATE=_day(10))]},
-    "BEN153": {"BENEFITENROLLMENT": [c(BE, ENROL_DATE="20250601", EFFECTIVE_DATE="20250101"),
-                                      c(BE, ENROL_DATE="20250110", EFFECTIVE_DATE="20250101")]},
-    "BEN154": {"BENEFITENROLLMENT": [c(BE, STATUS="A", EFFECTIVE_DATE=_day(-60)),
-                                      c(BE, STATUS="A", EFFECTIVE_DATE=_day(-10))]},
-    "BEN155": {"BENEFITENROLLMENT": [c(BE, STATUS="T", EFFECTIVE_DATE=_day(-10)),
+    "BEN107": {"DEPENDENT": [c(DP, DEPENDENT_BIRTH=None), c(DP, RELATED_PERSON_ID="d2")]},
+    "BEN108": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1"), c(BE, DEPENDENT_LINK="d1")]},
+    # interval_check, group_by=PERSON_ID: p1's pair is a properly closed-out marriage
+    # followed by a new one (no overlap, second row carries the open-end sentinel
+    # handled natively by interval_check) so neither fails; p2's pair genuinely
+    # overlaps (both open-ended) so the later-starting row (domestic partner, mixed
+    # case) fails. Relationship types are case-enumerated per applies_when.
+    "BEN109": {"DEPENDENT": [
+        c(DP, PERSON_ID="p1", RELATED_PERSON_ID="d1", RELATIONSHIP_TYPE="Spouse",
+          START_DATE="20100101", END_DATE="20150101"),
+        c(DP, PERSON_ID="p1", RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="SPOUSE",
+          START_DATE="20160101", END_DATE="99991231"),
+        c(DP, PERSON_ID="p2", RELATED_PERSON_ID="d3", RELATIONSHIP_TYPE="spouse",
+          START_DATE="20100101", END_DATE="99991231"),
+        c(DP, PERSON_ID="p2", RELATED_PERSON_ID="d4", RELATIONSHIP_TYPE="Domestic_Partner",
+          START_DATE="20120101", END_DATE="99991231"),
+    ]},
+    "BEN110": {"BENEFITENROLLMENT": [c(BE, STATUS="T", EFFECTIVE_DATE=_day(-10)),
                                       c(BE, STATUS="T", EFFECTIVE_DATE=_day(10))]},
-    "BEN095": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "FOLOCATION": [c(FL, STATUS="I")]},
-    "BEN097": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "FODIVISION": [c(FDIV, STATUS="I")]},
-    "BEN098": {"BENEFITENROLLMENT": [c(BE, STATUS="A"), c(BE, STATUS="T")],
-               "EMPEMPLOYMENT": [EE], "FOBUSINESSUNIT": [c(FBU, STATUS="I")]},
+    # P2: a non-child dependent (mixed-case 'Spouse') cannot start after the employee's
+    # date of death; a child dependent is exempt (may be born/added after death).
+    "BEN111": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="Spouse", START_DATE="20240601"),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="CHILD", START_DATE="20240601")],
+               "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
+    # P3: a child born more than ~300 days after the employee's date of death is
+    # implausible; a child born 300 days or less after is biologically plausible.
+    "BEN112": {"DEPENDENT": [c(DP, RELATIONSHIP_TYPE="child", DEPENDENT_BIRTH="20250301"),
+                              c(DP, RELATED_PERSON_ID="d2", RELATIONSHIP_TYPE="Child", DEPENDENT_BIRTH="20240301")],
+               "PERINFO": [c(PN, DATE_OF_DEATH="20240101")]},
+    # P4: the same dependent id repeated in the ';'-separated DEPENDENT_LINK list.
+    "BEN113": {"BENEFITENROLLMENT": [c(BE, DEPENDENT_LINK="u1;u2;u1"), c(BE, DEPENDENT_LINK="u1;u2")]},
 }
 
-# auto_fix output must itself pass the rule it belongs to (I11): every surviving regex_check
-# rule with an auto_fix, fed its own documented dirty value, must come out matching `pattern`.
-AUTOFIX_DIRTY = {
-    "BEN110": ";d1;;d2;",
-    "BEN118": "EMP ONLY",
-    "BEN131": "u 1",
-    "BEN132": "p 1",
-}
-
-
-# uniqueness_check rules fail every member of a duplicate group (keep=False), so a
-# dirty/dirty/clean fixture scores (3, 2) rather than the default (2, 1).
-# BEN150 (ex-BEN226) is such a fixture. BEN112 adds a third, sentinel-dated clean row
-# (C1 regression) so it scores (3, 1) instead of the default (2, 1).
-EXPECTED = {"BEN150": (3, 2), "BEN112": (3, 1)}
+# uniqueness_check and interval_check rules can fail more than one row and/or run
+# against more than 2 rows; every other rule uses the default 2-row (dirty, clean)
+# fixture that scores (total=2, affected=1).
+EXPECTED = {"BEN095": (3, 1), "BEN098": (3, 2), "BEN109": (4, 1)}
 
 
 def test_enough_fixtures():
-    assert len(CASES) >= 50
+    assert len(CASES) == COUNT
+    assert set(CASES) == {r["id"] for r in NEW}
 
 
 @pytest.mark.parametrize("rule_id", list(CASES))
 def test_rule_flags_dirty_and_passes_clean(rule_id):
     assert run(rule_id, CASES[rule_id]) == EXPECTED.get(rule_id, (2, 1))
-
-
-@pytest.mark.parametrize("rule_id", list(AUTOFIX_DIRTY))
-def test_auto_fix_output_passes_its_own_rule(rule_id):
-    rule = BY_ID[rule_id]
-    value, confidence = propose(rule, {rule["field"]: AUTOFIX_DIRTY[rule_id]})
-    assert confidence in {"high", "medium", "low"}, rule_id
-    assert re.fullmatch(rule["pattern"], value), (rule_id, value)
