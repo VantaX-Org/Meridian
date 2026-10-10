@@ -2,7 +2,11 @@
 
 from sap import extraction_plan as ep
 from sap.ddic import get_dictionary
-from sap.extraction_registry import get_table_names
+from sap.extraction_registry import (
+    get_available_modules,
+    get_extraction_targets,
+    get_table_names,
+)
 
 
 def _tables(modules: list[str]) -> set[str]:
@@ -17,3 +21,16 @@ def test_s4_load_tables_planned_for_master_modules():
 def test_registry_has_read_targets():
     names = set(get_table_names("ecc", "s4_load_sim"))
     assert {"KNVK", "KNKK", "MARD", "T001L", "KONV", "NAST"} <= names
+
+
+def test_ecc_kna1_has_stcd1():
+    """Every ECC KNA1 target must include STCD1 (tax number)."""
+    modules = get_available_modules("ecc")
+    for module in modules:
+        targets = get_extraction_targets("ecc", module)
+        for target in targets:
+            if target.source == "KNA1":
+                assert "STCD1" in target.fields, (
+                    f"KNA1 in module '{module}' missing STCD1. "
+                    f"Fields: {target.fields}"
+                )

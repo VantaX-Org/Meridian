@@ -577,7 +577,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "KUNNR", "LAND1", "NAME1", "NAME2", "ORT01", "PSTLZ",
                 "REGIO", "SORTL", "STRAS", "ADRNR", "KTOKD", "LOEVM",
-                "SPERR", "AUFSD", "ERDAT", "ERNAM",
+                "SPERR", "AUFSD", "ERDAT", "ERNAM", "STCD1",
             ],
             description="Customer general data",
         ),
