@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
@@ -78,7 +78,7 @@ export default function ObjectsPage() {
   };
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isError) {
+  } else if (isListFailure({ isError, error })) {
     state = "error";
   } else if (data && data.objects.length === 0) {
     state = "empty";

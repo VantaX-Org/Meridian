@@ -21,7 +21,7 @@ import {
   getBlastRadius, getLineage, getLineageGuards, getLineageImpact, getLineageModel,
   type ImpactRow, type LineageDirection, type LineageNode, type Severity,
 } from "@/lib/api/lineage";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
@@ -211,7 +211,7 @@ export default function LineagePage() {
             onRowClick={(r) => trace(r.id)}
           />
         }
-        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : impactQ.isError ? "error" : rows.length === 0 ? "empty" : undefined}
+        state={impactQ.isLoading || dayOne.status === "loading" ? "loading" : isListFailure(impactQ) ? "error" : rows.length === 0 ? "empty" : undefined}
         emptyProps={
           latest
             ? { title: "No failing rule reaches a KPI, process or feature." }

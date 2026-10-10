@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, DrillLink, ReportPage } from "@/design";
 import { getImpact, type ImpactRow } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
@@ -46,7 +46,7 @@ export default function ImpactPage() {
       narrative="value_at_risk = record_count × value_per_record"
       charts={null}
       tables={<DataTable columns={columns} data={rows} getRowId={(row) => row.feature} />}
-      state={isLoading || dayOne.status === "loading" ? "loading" : isError ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={isLoading || dayOne.status === "loading" ? "loading" : isListFailure({ isError, error }) ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No impact results yet.",
         detail: dayOne.step?.detail ?? "Impact builds up once a run has blocked or degraded features.",

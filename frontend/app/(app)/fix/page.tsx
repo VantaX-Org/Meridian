@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, ExportMenu, Mono, Pager, Pill, Tabs, emptyExportOptions } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type CleaningBatchSummary } from "@/lib/api/cleaning";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -51,7 +51,7 @@ function CleaningQueueTab() {
 
   return (
     <ExplorerPage
-      state={isLoading ? "loading" : isError ? "error" : batches.length === 0 ? "empty" : undefined}
+      state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : batches.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "No cleaning proposals.",
         detail: dayOne.step?.detail ?? "Proposals are generated when a run finishes and rules find fixable values.",

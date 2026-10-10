@@ -14,7 +14,7 @@ import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
 import { exportRuns } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
@@ -197,7 +197,7 @@ export default function SystemsPage() {
 
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading) state = "loading";
-  else if (isError) state = "error";
+  else if (isListFailure({ isError, error })) state = "error";
   else if (systems.length === 0) state = "empty";
 
   const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];

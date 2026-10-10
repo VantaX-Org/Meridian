@@ -13,6 +13,7 @@ import {
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
+import { isListFailure } from "@/lib/error";
 import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
 import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
@@ -115,7 +116,7 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
           onRowClick={(o) => router.push(`/objects/${o.module}?run=${versionId}`)}
         />
       }
-      state={objects.isLoading ? "loading" : objects.isError ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={objects.isLoading ? "loading" : isListFailure(objects) ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No objects were scored in this run." }}
       errorProps={{ message: errorText(objects.error), onRetry: () => objects.refetch() }}
     />
@@ -260,7 +261,7 @@ function FindingsTab({ versionId }: { versionId: string }) {
       table={
         <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} />
       }
-      state={findings.isLoading ? "loading" : findings.isError ? "error" : rows.length === 0 ? "empty" : undefined}
+      state={findings.isLoading ? "loading" : isListFailure(findings) ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No findings match these filters." }}
       errorProps={{ message: errorText(findings.error), onRetry: () => findings.refetch() }}
       drawer={<FindingDrawer findingId={findingId} versionId={versionId} onClose={() => openFinding(null)} />}
@@ -383,7 +384,7 @@ export default function RunDetailPage() {
                 narrative={null}
                 charts={null}
                 tables={<DataTable columns={stepColumns} data={stepRows} getRowId={(s) => String(s.step_number)} />}
-                state={steps.isLoading ? "loading" : steps.isError ? "error" : stepRows.length === 0 ? "empty" : undefined}
+                state={steps.isLoading ? "loading" : isListFailure(steps) ? "error" : stepRows.length === 0 ? "empty" : undefined}
                 emptyProps={{ title: "No step history for this run yet." }}
                 errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
               />

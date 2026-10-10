@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { getWaves, runWave } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -75,7 +75,7 @@ export default function MigrationPage() {
         filterBar={<div className="flex justify-end">{createButton}</div>}
         table={<DataTable columns={columns} data={data} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
-        state={waves.isPending ? "loading" : waves.isError ? "error" : data.length === 0 ? "empty" : undefined}
+        state={waves.isPending ? "loading" : isListFailure(waves) ? "error" : data.length === 0 ? "empty" : undefined}
         emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}
         errorProps={{ message: apiErrorMessage(waves.error), onRetry: () => void waves.refetch() }}
       />

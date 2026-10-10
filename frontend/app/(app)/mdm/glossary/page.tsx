@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, Field, Select } from "@/design";
 import { getGlossaryTerms } from "@/lib/api/glossary";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import type { GlossaryTermSummary } from "@/types/api";
 
@@ -51,7 +51,7 @@ export default function GlossaryPage() {
     return [{ value: "all", label: "All domains" }, ...Array.from(seen).sort().map((d) => ({ value: d, label: d }))];
   }, [terms]);
 
-  const state = query.isLoading ? "loading" : query.isError ? "error" : terms.length === 0 ? "empty" : undefined;
+  const state = query.isLoading ? "loading" : isListFailure(query) ? "error" : terms.length === 0 ? "empty" : undefined;
   const filtered = domain !== "all" || status !== "all" || !!search;
 
   return (

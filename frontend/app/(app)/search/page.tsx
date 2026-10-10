@@ -12,7 +12,7 @@ import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { rankResults, type SearchCandidate } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -74,7 +74,7 @@ export default function SearchPage() {
     { format: "xlsx" as const, label: "Findings (.xlsx)", run: () => exportFindings("xlsx", { version_id: run || undefined }) },
   ];
   const loading = rules.isLoading || systems.isLoading || batches.isLoading || runs.isLoading || (!!run && objects.isLoading);
-  const failedQuery = [rules, systems, batches, objects, runs].find((query) => query.isError);
+  const failedQuery = [rules, systems, batches, objects, runs].find((query) => isListFailure(query));
   const refetchAll = () => {
     void rules.refetch();
     void systems.refetch();
