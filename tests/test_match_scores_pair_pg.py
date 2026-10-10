@@ -86,7 +86,7 @@ def test_migration_keeps_one_row_per_pair_and_drops_orphaned_items(app_engine):
     from sqlalchemy import text
 
     owner, _app = app_engine
-    _alembic("downgrade", "068")
+    _alembic("downgrade", "072")
     try:
         t = _tenant(owner)
         with owner.begin() as c:

@@ -1,7 +1,7 @@
 """learned rule proposals
 
 Revision ID: 071
-Revises: 068
+Revises: 070
 Create Date: 2026-10-10
 
 House rules the tenant's own data follows (checks/house_rules.py), awaiting a
@@ -16,7 +16,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "071"
-down_revision: Union[str, None] = "068"
+down_revision: Union[str, None] = "070"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

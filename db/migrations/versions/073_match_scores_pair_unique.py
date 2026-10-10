@@ -1,7 +1,7 @@
 """match_scores: one row per pair per tenant and domain
 
 Revision ID: 073
-Revises: 068
+Revises: 072
 Create Date: 2026-10-10
 
 The match pipeline rescores every pair on every analysis. A pair is the same pair in
@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "073"
-down_revision: Union[str, None] = "068"
+down_revision: Union[str, None] = "072"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

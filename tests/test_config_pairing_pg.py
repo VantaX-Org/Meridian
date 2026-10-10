@@ -163,7 +163,7 @@ def test_migration_075_downgrades_cleanly(app_engine):
     from sqlalchemy import text
 
     owner, _app = app_engine
-    _alembic("downgrade", "068")
+    _alembic("downgrade", "074")
     with owner.begin() as c:
         cols = {r[0] for r in c.execute(text(
             "SELECT column_name FROM information_schema.columns WHERE table_name = 'sap_systems'"))}

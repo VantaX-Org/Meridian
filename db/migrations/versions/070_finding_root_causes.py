@@ -1,7 +1,7 @@
 """finding root causes
 
 Revision ID: 070
-Revises: 068
+Revises: 069
 Create Date: 2026-10-10
 
 Who set each check's failing values, grouped by origin (interface or batch user,
@@ -16,7 +16,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "070"
-down_revision: Union[str, None] = "068"
+down_revision: Union[str, None] = "069"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

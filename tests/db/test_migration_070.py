@@ -12,7 +12,7 @@ def test_070_follows_068():
     spec = importlib.util.spec_from_file_location("m070", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert (mod.revision, mod.down_revision) == ("070", "068")
+    assert (mod.revision, mod.down_revision) == ("070", "069")
 
 
 def test_system_update_takes_go_live():

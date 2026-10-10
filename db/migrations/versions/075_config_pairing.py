@@ -1,7 +1,7 @@
 """Config pairing: sap_systems role and target; transfer_value_mappings pair scope and status.
 
 Revision ID: 075
-Revises: 068
+Revises: 074
 """
 
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision: str = "075"
-down_revision: Union[str, None] = "068"
+down_revision: Union[str, None] = "074"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
