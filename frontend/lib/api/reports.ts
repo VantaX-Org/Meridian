@@ -17,6 +17,16 @@ export function getExtractionReportUrl(versionId: string): string {
   return `/api/v1/reports/extraction/${versionId}.pdf`;
 }
 
+/** One object's rules and fields for one run, rendered on request. */
+export function getObjectReportUrl(versionId: string, module: string): string {
+  return `/api/v1/reports/object/${versionId}/${encodeURIComponent(module)}.pdf`;
+}
+
+/** One record's fix sheet for one run, rendered on request. */
+export function getRecordReportUrl(versionId: string, matnr: string): string {
+  return `/api/v1/reports/record/${versionId}/${encodeURIComponent(matnr)}.pdf`;
+}
+
 /** Without a version: cleaning and fixes across the whole organisation. */
 export function getCleaningReportUrl(versionId?: string): string {
   return versionId ? `/api/v1/reports/cleaning.pdf?version_id=${versionId}` : "/api/v1/reports/cleaning.pdf";

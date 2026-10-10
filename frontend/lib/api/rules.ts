@@ -260,6 +260,25 @@ export function exportRules(
   return downloadBlob("/api/v1/rules/export", { format, ...params }, `rules.${format}`);
 }
 
+export interface RuleHistoryRun {
+  version_id: string;
+  run_at: string;
+  module: string;
+  severity: string;
+  affected_count: number;
+  total_count: number;
+  pass_rate: number | null;
+  suppressed: boolean;
+  hit_rate: number | null;
+}
+
+/** GET /api/v1/rules/{ruleId}/history — this rule's run-over-run finding history, newest first. */
+export async function getRuleHistory(ruleId: string, params?: { limit?: number }): Promise<{ rule_id: string; runs: RuleHistoryRun[] }> {
+  const { data } = await apiClient.get<{ rule_id: string; runs: RuleHistoryRun[] }>(
+    `/api/v1/rules/${encodeURIComponent(ruleId)}/history`, { params });
+  return data;
+}
+
 /** GET /api/v1/rules/{ruleId}/history/export — one rule's run-over-run finding history. */
 export function exportRuleHistory(ruleId: string, format: "csv" | "xlsx", limit?: number): Promise<void> {
   return downloadBlob(`/api/v1/rules/${encodeURIComponent(ruleId)}/history/export`, { format, limit }, `rule_history.${format}`);

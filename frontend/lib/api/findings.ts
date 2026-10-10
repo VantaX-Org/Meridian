@@ -108,6 +108,21 @@ export function exportFindings(format: "csv" | "xlsx", filter: FindingsExportFil
   return downloadBlob("/api/v1/findings/export", { format, ...filter }, `findings.${format}`);
 }
 
+export interface ScoreHistoryEntry {
+  version_id: string;
+  run_at: string;
+  system_id: string | null;
+  scoring_recorded: boolean;
+  at_the_time: { composite: number | null; tier: "pass" | "warn" | "fail" | null; scoring: Record<string, unknown> | null };
+  under_current: { composite: number | null; tier: "pass" | "warn" | "fail" | null; modules: Record<string, number> };
+}
+
+/** GET /api/v1/scores/history — composite DQS across runs, as scored at the time and under today's weights. */
+export async function getScoreHistory(params?: { system_id?: string; limit?: number }): Promise<{ history: ScoreHistoryEntry[] }> {
+  const { data } = await apiClient.get<{ history: ScoreHistoryEntry[] }>("/api/v1/scores/history", { params });
+  return data;
+}
+
 /** GET /api/v1/versions/{v}/findings/{checkId}/records/export — the full record set behind one check. */
 export function exportFindingRecords(versionId: string, checkId: string, format: "csv" | "xlsx"): Promise<void> {
   return downloadBlob(
