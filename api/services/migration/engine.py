@@ -108,8 +108,13 @@ def analyze(
     target_config: dict[str, set[str]] | None = None,
     target_keys: dict[str, set[str]] | None = None,
     target_connected: bool = False,
+    config_basis: str = "live",
 ) -> tuple[list[Gap], ModuleResult]:
-    """Gap-analyse one module's source tables against the target."""
+    """Gap-analyse one module's source tables against the target.
+
+    `config_basis` is `baseline` when the target config is the SAP standard baseline; a check-table miss is
+    then flagged, not blocking.
+    """
     value_maps = value_maps or {}
     target_config = target_config or {}
     _, no_target, mandatory = _standard()
@@ -173,9 +178,14 @@ def analyze(
                     _per_record(gaps, blocked[table], module, "value_unmapped", "critical", miss, rk, df, col,
                                 values, None, table, m.target,
                                 f"no value mapping from {col} to {m.target}", "value_map")
+                elif tf.check_ref and tf.check_ref in value_maps:
+                    # a confirmed config map (module 'config', target_field = the check table's CHECKTABLE.FIELD)
+                    # ponytail: maps by one field; a compound-key config value maps only its differing field
+                    vm = value_maps[tf.check_ref]
+                    mapped = values.map(lambda v, vm=vm: vm.get(v, v) if isinstance(v, str) else v)
                 target_values.setdefault((table, t_table), {})[t_name] = mapped.where(populated)
                 _value_gaps(gaps, blocked[table], module, df, col, values, mapped, populated & mapped.notna(),
-                            rk, table, m.target, tf, target_config, target_connected)
+                            rk, table, m.target, tf, target_config, target_connected, config_basis)
 
         # SAP hard mandatory fields of the target records this source table builds
         for mand, spec in mandatory.items():
@@ -228,7 +238,7 @@ def analyze(
 
 
 def _value_gaps(gaps, blocked, module, df, col, values, mapped, scope, rk, table, target, tf: Field,
-                target_config, target_connected) -> None:
+                target_config, target_connected, config_basis: str = "live") -> None:
     t = (tf.type or "").upper()
     v = mapped.astype("string")
     key_field = tf.key
@@ -275,8 +285,14 @@ def _value_gaps(gaps, blocked, module, df, col, values, mapped, scope, rk, table
         allowed = target_config.get(tf.check_ref)
         if allowed is not None:
             bad = scope & ~v.isin(allowed)
-            _per_record(gaps, blocked, module, "check_table_value", "high", bad, rk, df, col, values, mapped, table,
-                        target, f"value not configured in the target's {tf.check_table}", "target_live_config")
+            if config_basis == "baseline":
+                _per_record(gaps, blocked, module, "check_table_value", "medium", bad, rk, df, col, values, mapped,
+                            table, target, f"value not configured in the SAP standard baseline's {tf.check_table}",
+                            "target_baseline_config")
+            else:
+                _per_record(gaps, blocked, module, "check_table_value", "high", bad, rk, df, col, values, mapped,
+                            table, target, f"value not configured in the target's {tf.check_table}",
+                            "target_live_config")
         elif int(scope.sum()):
             gaps.append(Gap(module, "target_config_unverified", "medium",
                             f"{target} is checked against {tf.check_table} in the target; "

@@ -108,3 +108,29 @@ def test_load_files_exclude_blocked_records_and_apply_value_maps():
     with zipfile.ZipFile(io.BytesIO(to_csv_zip(tables))) as z:
         assert z.namelist() == ["BUT000.csv"]
     assert to_xlsx(tables)[:2] == b"PK"
+
+
+def test_config_value_map_applies_through_the_check_table():
+    vm = {"T077K.KTOKK": {"LIEF": "KRED"}}
+    cfg = {"T077K.KTOKK": {"KRED"}, "TB001.BU_GROUP": {"BP01", "BP02"}}
+    gaps, _ = _run(vm, cfg, connected=True)
+    assert not [g for g in gaps if g.gap_type == "check_table_value" and g.target_field == "LFA1.KTOKK"]
+
+
+def test_baseline_target_config_flags_without_blocking():
+    frames = _frames()
+    maps = seed_mappings({t: list(df.columns) for t, df in frames.frames.items()}, ECC, S4)
+    cfg = {"T077K.KTOKK": {"KRED"}}
+    gaps, _ = analyze("accounts_payable", frames, ["LFA1", "LFB1"], maps, S4, {}, cfg, None, True,
+                      config_basis="baseline")
+    hit = [g for g in gaps if g.gap_type == "check_table_value" and g.target_field == "LFA1.KTOKK"]
+    assert [(g.source_value, g.severity, g.provenance) for g in hit] == [("LIEF", "medium", "target_baseline_config")]
+
+
+def test_load_files_apply_config_maps_through_the_check_table():
+    from api.services.migration.export import build_load_tables
+
+    maps = [Mapping("LFA1.LIFNR", "LFA1.LIFNR"), Mapping("LFA1.KTOKK", "LFA1.KTOKK")]
+    tables = build_load_tables(_frames(), {"accounts_payable": ["LFA1"]}, {"accounts_payable": maps},
+                               {"accounts_payable": {"T077K.KTOKK": {"LIEF": "KRED"}}}, {}, target_dict=S4)
+    assert list(tables["LFA1"]["KTOKK"]) == ["KRED"] * 3
