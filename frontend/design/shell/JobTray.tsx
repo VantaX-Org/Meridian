@@ -7,6 +7,7 @@ import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import { IconButton } from "../primitives/IconButton";
 import { Badge } from "../primitives/Badge";
 import { Drawer } from "../primitives/Drawer";
+import { JobProgress } from "./JobProgress";
 
 export function JobTray() {
   useJobStream();
@@ -32,6 +33,7 @@ export function JobTray() {
           {jobs.map((job) => (
             <li key={job.id} className="text-[13px]" style={{ color: "var(--m-ink)" }}>
               {job.label} — {job.status} ({job.percent}%)
+              {job.status === "running" && <JobProgress job={job} />}
             </li>
           ))}
         </ul>
