@@ -33,22 +33,22 @@ export function Heatmap({
       <thead>
         <tr>
           <th />
-          {cols.map((c) => (
-            <th key={c} className="px-2 py-1" style={{ color: "var(--m-ink-2)" }}>{c}</th>
+          {cols.map((c, ci) => (
+            <th key={`${ci}:${c}`} className="px-2 py-1" style={{ color: "var(--m-ink-2)" }}>{c}</th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
-          <tr key={r}>
+        {rows.map((r, ri) => (
+          <tr key={`${ri}:${r}`}>
             <td className="px-2 py-1" style={{ color: "var(--m-ink-2)" }}>
               {rowHref ? <Link href={rowHref(r)}>{r}</Link> : r}
             </td>
-            {cols.map((c) => {
+            {cols.map((c, ci) => {
               const cell = byKey.get(`${r}:${c}`);
               const index = cellIndex++;
               return (
-                <td key={c} className="p-0">
+                <td key={`${ci}:${c}`} className="p-0">
                   <button
                     type="button"
                     onClick={() => cell && onPointClick?.(cell)}

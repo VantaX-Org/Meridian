@@ -14,6 +14,8 @@ import * as dayOneHook from "@/hooks/use-day-one";
 import type { Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import LeadHomePage from "../lead/page";
+import StewardHomePage from "../steward/page";
+import BasisHomePage from "../basis/page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -98,4 +100,24 @@ describe("PersonaHomePage header actions (T20)", () => {
     await waitFor(() => expect(screen.getByText(/analysed yet|objects are not ready/i)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
   });
+});
+
+describe("PersonaHomePage empty mode (all list APIs 404)", () => {
+  it.each([["lead", LeadHomePage], ["steward", StewardHomePage], ["basis", BasisHomePage]])(
+    "%s logs no duplicate-key warning",
+    async (_role, Page) => {
+      const nf = () => new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse);
+      vi.spyOn(objectsApi, "getObjects").mockRejectedValue(nf());
+      vi.spyOn(versionsApi, "getVersions").mockRejectedValue(nf());
+      vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(nf());
+      vi.spyOn(configLoadApi, "getConfigLandscape").mockRejectedValue(nf());
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      renderWithQuery(<Page />);
+      await new Promise((r) => setTimeout(r, 100));
+
+      const dup = err.mock.calls.filter((c) => String(c[0]).includes("same key") || c.some((a) => String(a).includes("same key")));
+      expect(dup.map((c) => c.map(String).join(" ").slice(0, 200))).toEqual([]);
+    },
+  );
 });
