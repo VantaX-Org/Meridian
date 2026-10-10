@@ -546,3 +546,81 @@ def test_enqueue_config_load_marks_failed_when_queueing_raises(app_engine, monke
     status, retry = asyncio.run(main())
     assert status == "failed"
     assert retry is not None  # a failed load does not block the next attempt
+
+
+def _client_run(app, tid: str, router, calls, monkeypatch):
+    """Run ``calls(client)`` against a mini app with ``router``, as a steward with tenant ``tid``."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+
+    async def main():
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        maker = async_sessionmaker(aeng, expire_on_commit=False)
+        api = FastAPI()
+        api.include_router(router)
+
+        async def _db():
+            async with maker() as s:
+                yield s
+
+        api.dependency_overrides[get_db] = _db
+        api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "T", [])
+        try:
+            async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t",
+                                   headers={"X-User-Role": "admin"}) as client:
+                return await calls(client)
+        finally:
+            await aeng.dispose()
+
+    return asyncio.run(main())
+
+
+@pg
+def test_update_system_assigns_and_clears_a_target(app_engine, monkeypatch):
+    from api.routes.systems import router
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    other = _system(app, tid, "QAS")
+    src = _system(app, tid, "PRD")
+
+    async def calls(c):
+        ok = await c.put(f"/api/v1/systems/{src}", json={"target_system_id": tgt})
+        bad = await c.put(f"/api/v1/systems/{src}", json={"target_system_id": other})
+        listed = await c.get("/api/v1/systems")
+        cleared = await c.put(f"/api/v1/systems/{src}", json={"target_system_id": ""})
+        flipped = await c.put(f"/api/v1/systems/{tgt}", json={"role": "source"})
+        return ok, bad, listed, cleared, flipped
+
+    ok, bad, listed, cleared, flipped = _client_run(app, tid, router, calls, monkeypatch)
+    assert ok.status_code == 200 and ok.json()["target_system_id"] == tgt
+    assert bad.status_code == 400 and bad.json()["detail"] == "The assigned system must have the target role."
+    row = next(s for s in listed.json() if s["id"] == src)
+    assert row["role"] == "source" and row["target_system_id"] == tgt
+    assert cleared.json()["target_system_id"] is None
+    assert flipped.json()["role"] == "source"
+
+
+@pg
+def test_flipping_a_target_to_source_unpoints_its_sources(app_engine, monkeypatch):
+    from api.routes.systems import router
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+
+    async def calls(c):
+        await c.put(f"/api/v1/systems/{tgt}", json={"role": "source"})
+        return (await c.get("/api/v1/systems")).json()
+
+    rows = _client_run(app, tid, router, calls, monkeypatch)
+    assert next(s for s in rows if s["id"] == src)["target_system_id"] is None
