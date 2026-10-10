@@ -1,4 +1,4 @@
-"""Data contracts and lineage API routes."""
+"""Data contracts API routes."""
 
 import json
 import uuid
@@ -272,28 +272,3 @@ async def get_contract_compliance(
     )
     history = [_row_to_dict(r) for r in result.fetchall()]
     return {"contract_id": contract_id, "compliance_history": history}
-
-
-# ── 6. GET /api/v1/lineage/{object_type}/{record_key} — data lineage ────────
-
-
-@router.get("/lineage/{object_type}/{record_key}")
-async def get_lineage_graph(
-    object_type: str,
-    record_key: str,
-    depth: int = Query(2, ge=1, le=4),
-    db: AsyncSession = Depends(get_db),
-    tenant: Tenant = Depends(get_tenant),
-):
-    await _set_rls(db, tenant.id)
-
-    from api.services.lineage_service import get_lineage
-
-    result = await get_lineage(
-        object_type=object_type,
-        record_key=record_key,
-        tenant_id=str(tenant.id),
-        db=db,
-        depth=depth,
-    )
-    return result

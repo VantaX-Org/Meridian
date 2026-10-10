@@ -151,11 +151,22 @@ def test_count_blast_needs_leading_join_field():
 
 
 def test_lineage_routes_registered():
+    from starlette.routing import Match
+
     from api.main import app
     paths = {getattr(r, "path", "") for r in app.routes}
     paths |= {x.path for r in app.routes if hasattr(r, "original_router") for x in r.original_router.routes}
     assert {"/api/v1/lineage/model", "/api/v1/lineage/graph", "/api/v1/lineage/impact/{version_id}",
-            "/api/v1/lineage/blast-radius/{version_id}/{check_id}", "/api/v1/lineage/guards"} <= paths
+            "/api/v1/lineage/blast-radius/{version_id}/{check_id}", "/api/v1/lineage/guards",
+            "/api/v1/lineage/rule/{check_id}"} <= paths
+    assert "/api/v1/lineage/{object_type}/{record_key}" not in paths  # legacy record lineage is gone
+
+    # Nothing registered earlier shadows the lineage routes.
+    for path, want in (("/api/v1/lineage/rule/AP084", "/api/v1/lineage/rule/{check_id}"),
+                       ("/api/v1/lineage/impact/x", "/api/v1/lineage/impact/{version_id}")):
+        scope = {"type": "http", "path": path, "method": "GET", "root_path": ""}
+        hit = next(r for r in app.router.routes if r.matches(scope)[0] == Match.FULL)
+        assert getattr(hit, "path", "") == want
 
 
 class _Res:
@@ -205,3 +216,32 @@ def test_impact_route_scopes_by_tenant(g: svc.Graph):
     assert any(str(tid) in s for s, _ in db.sql if s.startswith("SET app.tenant_id"))
     q = next((s, p) for s, p in db.sql if "FROM findings" in s)
     assert "tenant_id = :tid" in q[0] and q[1]["tid"] == str(tid)
+
+
+def test_rule_lineage_route():
+    import asyncio
+    import uuid
+
+    from fastapi import HTTPException
+
+    from api.deps import Tenant
+    from api.routes.lineage import get_rule_lineage
+
+    tid = uuid.UUID("00000000-0000-0000-0000-0000000000ab")
+    db = _FakeDB([])
+    out = asyncio.run(get_rule_lineage("AP084", db=db, tenant=Tenant(tid, "t", [])))
+    assert out["module"] == "accounts_payable"
+    assert out["fields"] == ["LFB1.LNRZE"]
+    assert out["targets"] == ["LFA1.LIFNR", "LFA1.LOEVM"]
+    assert out["tables"] == ["LFB1", "LFA1"]
+    assert out["joins"] == [{"parent": "LFA1", "child": "LFB1", "on": [["LIFNR", "LIFNR"]], "cardinality": "many"}]
+    assert out["glossary_terms"] == [] and out["owners"] == []
+    assert any(s.startswith(f"SET app.tenant_id = '{tid}'") for s, _ in db.sql)
+    assert any("gtr.tenant_id = :tid" in s and p.get("cid") == "AP084" for s, p in db.sql)
+    assert any("FROM data_owners d" in s and p.get("module") == "accounts_payable" for s, p in db.sql)
+
+    try:
+        asyncio.run(get_rule_lineage("NOPE999", db=_FakeDB([]), tenant=Tenant(tid, "t", [])))
+        raise AssertionError("expected 404")
+    except HTTPException as e:
+        assert e.status_code == 404

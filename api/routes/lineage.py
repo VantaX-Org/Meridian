@@ -16,6 +16,10 @@ from starlette.concurrency import run_in_threadpool
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import lineage as svc
+from api.routes.glossary import owner_rows
+from api.services.tenant_seed import raw_rules
+from checks.frames import _graph, tables_of
+from checks.runner import rule_columns, target_columns
 
 router = APIRouter(prefix="/api/v1/lineage", tags=["lineage"])
 logger = logging.getLogger("meridian.lineage")
@@ -298,3 +302,31 @@ async def get_guards(
     results = {r[0]: {"pass_rate": float(r[1]) if r[1] is not None else None,
                       "affected_count": r[2], "severity": r[3]} for r in rows}
     return {**svc.guards(g, ref, results), "version_id": vid}
+
+
+@router.get("/rule/{check_id}")
+async def get_rule_lineage(
+    check_id: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+) -> dict:
+    """What a shipped rule reads (fields, lookup targets, tables, joins.yaml edges between
+    them), its glossary terms and the owners of the rule and of its object."""
+    hit = next(((m, r) for _, _, m, r in raw_rules() if r["id"] == check_id), None)
+    if hit is None:
+        raise HTTPException(status_code=404, detail="rule not found")
+    module, rule = hit
+    fields, targets = rule_columns(rule), target_columns(rule)
+    tables = tables_of(fields + targets)
+    joins = [{"parent": e.parent, "child": e.child, "on": [list(p) for p in e.on], "cardinality": e.cardinality}
+             for e in _graph()[0] if e.parent in tables and e.child in tables]
+    tid = await _tenant(db, tenant)
+    terms = (await db.execute(text("""
+        SELECT gt.id::text AS id, gt.business_name, gt.sap_table, gt.sap_field
+          FROM glossary_term_rules gtr JOIN glossary_terms gt ON gt.id = gtr.term_id
+         WHERE gtr.tenant_id = :tid AND gtr.rule_id = :cid
+         ORDER BY gt.business_name"""), {"tid": tid, "cid": check_id})).mappings().all()
+    owners = await owner_rows(db, tid, "(d.kind = 'rule' AND d.ref = :cid) OR (d.kind = 'object' AND d.ref = :module)",
+                              {"cid": check_id, "module": module})
+    return {"check_id": check_id, "module": module, "fields": fields, "targets": targets, "tables": tables,
+            "joins": joins, "glossary_terms": [dict(t) for t in terms], "owners": owners}

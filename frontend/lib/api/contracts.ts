@@ -3,7 +3,6 @@ import type {
   ContractListResponse,
   Contract,
   ComplianceHistoryResponse,
-  LineageGraph,
 } from "@/types/api";
 
 export async function getContracts(
@@ -62,18 +61,6 @@ export async function getContractCompliance(
   const { data } = await apiClient.get<ComplianceHistoryResponse>(
     `/api/v1/contracts/${id}/compliance`,
     { params: days ? { days } : undefined },
-  );
-  return data;
-}
-
-export async function getLineage(
-  objectType: string,
-  recordKey: string,
-  depth?: number,
-): Promise<LineageGraph> {
-  const { data } = await apiClient.get<LineageGraph>(
-    `/api/v1/lineage/${objectType}/${recordKey}`,
-    { params: depth ? { depth } : undefined },
   );
   return data;
 }
