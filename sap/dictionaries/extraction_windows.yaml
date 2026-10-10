@@ -38,6 +38,7 @@ RSEG:  {via: RBKP}
 # condition records still valid today or later (expired prices cannot be used)
 KONH:  {where: "DATBI >= '{months_ago:0}'"}
 KONP:  {via: KONH}
+KONV:  {via: VBAK}
 A004:  {where: "DATBI >= '{months_ago:0}'"}
 A005:  {where: "DATBI >= '{months_ago:0}'"}
 A304:  {where: "DATBI >= '{months_ago:0}'"}

@@ -98,7 +98,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             fields=[
                 "KUNNR", "LAND1", "NAME1", "NAME2", "ORT01", "PSTLZ",
                 "REGIO", "SORTL", "STRAS", "ADRNR", "KTOKD", "LOEVM",
-                "SPERR", "AUFSD", "ERDAT", "ERNAM",
+                "SPERR", "AUFSD", "ERDAT", "ERNAM", "STCD1",
             ],
             description="Customer general data",
         ),
@@ -149,7 +149,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="MBEW",
             fields=[
                 "MATNR", "BWKEY", "VPRSV", "VERPR", "STPRS", "BKLAS",
-                "LAEPR",
+                "LAEPR", "LBKUM",
             ],
             description="Material valuation data",
         ),
@@ -684,6 +684,43 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             filter="ARFCDATUM >= '{days_ago:365}'",
             max_rows=100_000,
             description="tRFC/qRFC send status",
+        ),
+    ],
+
+    # ------------------------------------------------------------------
+    # S/4 Load Dry-Run (transaction cost analysis)
+    # ------------------------------------------------------------------
+    "s4_load_sim": [
+        ExtractionTarget(
+            source="KNVK",
+            fields=["PARNR", "KUNNR", "LIFNR", "NAME1"],
+            description="Customer-vendor relationship data",
+        ),
+        ExtractionTarget(
+            source="KNKK",
+            fields=["KUNNR", "KKBER", "KLIMK", "CTLPC"],
+            description="Customer credit control data",
+        ),
+        ExtractionTarget(
+            source="MARD",
+            fields=["MATNR", "WERKS", "LGORT", "DISKZ"],
+            description="Material plant storage location data",
+        ),
+        ExtractionTarget(
+            source="KONV",
+            fields=["KNUMV", "KPOSN", "STUNR", "ZAEHK", "KSCHL", "KWERT"],
+            description="Pricing condition records",
+        ),
+        ExtractionTarget(
+            source="NAST",
+            fields=["KAPPL", "OBJKY", "KSCHL", "PARNR", "PARVW", "VSTAT"],
+            description="Output message status",
+        ),
+        ExtractionTarget(
+            source="T001L",
+            fields=["WERKS", "LGORT", "DISKZ"],
+            description="Storage locations",
+            is_config=True,
         ),
     ],
 }
