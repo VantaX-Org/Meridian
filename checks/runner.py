@@ -230,7 +230,7 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
     if target is None or any(c not in target.columns for c in target_columns(rule)):
         return None
     when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
-    target = apply_context(target, when, as_of)
+    target = apply_context(target[list(dict.fromkeys(target_columns(rule)))], when, as_of)
     return {**rule, "_target_values": set(key_of(target, [f"{t}.{f}" for f in rule["target_fields"]]))}
 
 
@@ -239,6 +239,7 @@ def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
     child = frames.frames.get(tables_of([rule["amount"]])[0])
     if child is None or any(c not in child.columns for c in target_columns(rule)):
         return None
+    child = child[list(dict.fromkeys(target_columns(rule)))]
     return {**rule, "_child_sums": child_sums(rule, apply_context(child, rule.get("child_when")))}
 
 

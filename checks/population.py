@@ -60,6 +60,7 @@ def _status_values(x: dict, frames) -> set[str]:
     t = _lookup(spec["table"], frames)
     if t is None:
         return set()
+    t = t[[c for c in (f"{spec['table']}.{f}" for f in [spec["column"], *spec.get("where", {})]) if c in t.columns]]
     mask = pd.Series(True, index=t.index)
     for f, allowed in spec.get("where", {}).items():
         col = f"{spec['table']}.{f}"

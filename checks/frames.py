@@ -19,6 +19,7 @@ touching such a table fall back to the flat frame as uploaded.
 
 from __future__ import annotations
 
+import io
 import logging
 from collections import deque
 from dataclasses import dataclass
@@ -27,6 +28,8 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import yaml
 
 from sap.ddic import Dictionary, get_dictionary
@@ -108,10 +111,65 @@ def internal_format(df: pd.DataFrame, dictionary: Dictionary,
     return df if out is None else out
 
 
+class ParquetTable:
+    """One extracted table held as its compressed parquet bytes; columns decode on access.
+
+    A wide table of tens of millions of rows takes tens of GB once decoded, while a
+    rule reads a handful of its columns. Indexing returns exactly what the same
+    indexing of the fully decoded frame returns (same values, dtypes and index).
+    """
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+        meta = pq.ParquetFile(io.BytesIO(data))
+        index = {c for c in (meta.schema_arrow.pandas_metadata or {}).get("index_columns", []) if isinstance(c, str)}
+        self.columns = pd.Index([c for c in meta.schema_arrow.names if c not in index])
+        self._rows = meta.metadata.num_rows
+
+    def __len__(self) -> int:
+        return self._rows
+
+    @property
+    def empty(self) -> bool:
+        return self._rows == 0 or len(self.columns) == 0
+
+    def __getitem__(self, cols: str | list[str]) -> pd.Series | pd.DataFrame:
+        if isinstance(cols, str):
+            return self[[cols]][cols]
+        missing = [c for c in cols if c not in self.columns]
+        if missing:
+            raise KeyError(missing)
+        if not cols:  # no columns, the index only: decode one column for it
+            first = list(self.columns[:1])
+            return pd.read_parquet(io.BytesIO(self._data), columns=first).drop(columns=first)
+        return pd.read_parquet(io.BytesIO(self._data), columns=list(cols))
+
+    def head(self, n: int) -> pd.DataFrame:
+        """The first ``n`` rows, all columns, decoding only those rows."""
+        if n >= self._rows:
+            return self[list(self.columns)]
+        pf = pq.ParquetFile(io.BytesIO(self._data))
+        batches: list[pa.RecordBatch] = []
+        for batch in pf.iter_batches(batch_size=max(n, 1)):
+            if sum(len(b) for b in batches) >= n:
+                break
+            batches.append(batch)
+        part = pa.Table.from_batches(batches, schema=pf.schema_arrow).slice(0, n)
+        buf = io.BytesIO()
+        pq.write_table(part.replace_schema_metadata(pf.schema_arrow.metadata), buf)
+        return pd.read_parquet(io.BytesIO(buf.getvalue()))
+
+
+def _edge_columns(edge: Edge) -> set[str]:
+    """Columns a join along ``edge`` reads: its keys on both sides and the child's filter/prefer fields."""
+    return ({f"{edge.child}.{c}" for c, _ in edge.on} | {f"{edge.parent}.{p}" for _, p in edge.on}
+            | {f"{edge.child}.{f}" for f, _ in edge.filter + edge.prefer})
+
+
 class TableFrames:
     """One DataFrame per SAP table plus the original flat frame (if any)."""
 
-    def __init__(self, frames: dict[str, pd.DataFrame], dictionary: Dictionary | None = None,
+    def __init__(self, frames: dict[str, pd.DataFrame | ParquetTable], dictionary: Dictionary | None = None,
                  flat: pd.DataFrame | None = None, unsplittable: set[str] | None = None,
                  module: str | None = None):
         self.dictionary = dictionary or get_dictionary("s4hana")
@@ -159,6 +217,7 @@ class TableFrames:
                 continue
             edge = next((e for e in _graph()[0] if e.parent == s4_table and e.child == origin_table), None)
             if edge:
+                host, src = _decoded(host), _decoded(src)
                 self.frames[s4_table] = _join(host, src, edge, [origin]).rename(columns={origin: s4})
 
     # ── per-rule frame ───────────────────────────────────────────────────
@@ -175,27 +234,37 @@ class TableFrames:
             return self.flat, None, []
         if any(t not in self.frames for t in tables):
             return None  # table not extracted → rule not applicable
-        cache_key = (self.module, grain, tuple(sorted(tables)))
+        # lazily held tables decode per rule only the columns it reads, so the cached
+        # frame depends on the columns; only the last one is kept
+        lazy = any(isinstance(f, ParquetTable) for f in self.frames.values())
+        cache_key = (self.module, grain, tuple(sorted(tables))) + ((tuple(sorted(columns)),) if lazy else ())
         if cache_key in self._cache:
             return self._cache[cache_key]
 
         g = grain or self._resolve_grain(tables)
         if g not in self.frames:
             return None
-        frame = self.frames[g]
-        for t in tables:
-            if t == g:
-                continue
-            path = self._path(g, t)
+        paths = {t: self._path(g, t) for t in tables if t != g}
+        wanted: set[str] | None = None
+        if lazy and any(f"{g}.{k}" in self.frames[g].columns for k in self.dictionary.keys(g)):
+            # the rule's fields, the grain's key and every join's keys; without a key the
+            # record id is guessed from all columns (checks/base.find_id_field), so read all
+            wanted = set(columns) | {f"{g}.{k}" for k in self.dictionary.keys(g)}
+            wanted |= {c for path in paths.values() for edge, _ in path or [] for c in _edge_columns(edge)}
+        frame = _decoded(self.frames[g], wanted)
+        for t, path in paths.items():
             if path is None:
                 raise ValueError(f"No non-fan-out join path from {g} to {t} (sap/dictionaries/joins.yaml)")
             for edge, direction in path:
                 other = edge.parent if direction == "up" else edge.child
                 if other not in self.frames:
                     return None
-                need = [c for c in self.frames[other].columns if c not in frame.columns]
-                frame = _join(frame, self.frames[other], edge, need, up=(direction == "up"))
+                right = _decoded(self.frames[other], wanted)
+                need = [c for c in right.columns if c not in frame.columns]
+                frame = _join(frame, right, edge, need, up=(direction == "up"))
         keys = [f"{g}.{k}" for k in self.dictionary.keys(g) if f"{g}.{k}" in frame.columns]
+        if lazy:
+            self._cache.clear()
         self._cache[cache_key] = (frame, g, keys)
         return self._cache[cache_key]
 
@@ -257,6 +326,13 @@ class TableFrames:
                     seen.add(e.child)
                     queue.append((e.child, path + [(e, "down")]))
         return None
+
+
+def _decoded(table: pd.DataFrame | ParquetTable, columns: set[str] | None = None) -> pd.DataFrame:
+    """``table`` as a DataFrame; a lazily held one decodes only ``columns`` (None: all), in table order."""
+    if not isinstance(table, ParquetTable):
+        return table
+    return table[[c for c in table.columns if columns is None or c in columns]]
 
 
 def _join(left: pd.DataFrame, right: pd.DataFrame, edge: Edge, cols: list[str],
