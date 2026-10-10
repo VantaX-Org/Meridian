@@ -361,9 +361,12 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
     from api.services import jobs
     from workers.tasks.run_load_config import run_load_config
 
+    load_id: Optional[str] = None
+    queued = False
     try:
-        st = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = CAST(:sid AS uuid)"),
-                               {"sid": sid})).scalar()
+        st = (await db.execute(text("SELECT system_type FROM sap_systems "
+                                    "WHERE id = CAST(:sid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
+                               {"sid": sid, "tid": tid})).scalar()
         if st is None:
             return None
         if not force and await db.run_sync(lambda s: config_basis(s, sid)) != "none":
@@ -380,8 +383,18 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
         jobs.start_job(tid, job_id, "config_load", f"Configuration load: {st}", status="queued",
                        system_id=sid, load_id=load_id)
         run_load_config.apply_async(args=(tid, sid, load_id, job_id), task_id=load_id)
+        queued = True
         return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": st}
-    except Exception:
+    except Exception as e:
+        if load_id and not queued:
+            try:  # the running row is committed; do not leave it blocking retries for 30 minutes
+                await db.rollback()
+                await db.execute(text("UPDATE config_loads SET status = 'failed', error = :e, finished_at = now() "
+                                      "WHERE id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
+                                 {"e": str(e)[:500], "lid": load_id, "tid": tid})
+                await db.commit()
+            except Exception:
+                logger.exception("Could not mark config load %s failed", load_id)
         if force:
             raise
         logger.exception("Config load could not be queued for system %s", sid)

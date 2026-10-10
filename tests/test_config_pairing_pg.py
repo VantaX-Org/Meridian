@@ -505,3 +505,44 @@ def test_enqueue_config_load_once_unless_forced(app_engine, monkeypatch):
     assert second is None  # a fresh running load exists
     assert forced is not None and sent == [first["load_id"], forced["load_id"]]
     assert role == "target"
+
+
+@pg
+def test_enqueue_config_load_marks_failed_when_queueing_raises(app_engine, monkeypatch):
+    import asyncio
+
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.services import config_pairing, jobs
+    from workers.tasks import run_load_config as task_mod
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "S4F", "s4hana_onprem", "target")
+    monkeypatch.setattr(jobs, "start_job", lambda *a, **k: None)
+
+    def boom(args, task_id):
+        raise RuntimeError("broker down")
+
+    monkeypatch.setattr(task_mod.run_load_config, "apply_async", boom)
+
+    async def main() -> tuple:
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        try:
+            async with async_sessionmaker(aeng, expire_on_commit=False)() as db:
+                await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+                with pytest.raises(RuntimeError):
+                    await config_pairing.enqueue_config_load(db, tid, sid, force=True)
+                status = (await db.execute(text("SELECT status FROM config_loads WHERE system_id = :s"),
+                                           {"s": sid})).scalar()
+                monkeypatch.setattr(task_mod.run_load_config, "apply_async", lambda args, task_id: None)
+                retry = await config_pairing.enqueue_config_load(db, tid, sid)
+                return status, retry
+        finally:
+            await aeng.dispose()
+
+    status, retry = asyncio.run(main())
+    assert status == "failed"
+    assert retry is not None  # a failed load does not block the next attempt

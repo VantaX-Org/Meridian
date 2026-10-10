@@ -232,7 +232,8 @@ async def get_config_load(
     r = (await db.execute(
         text("SELECT id::text, system_type, role, origin, status, objects, history, error, created_at::text, "
              "finished_at::text, derivation IS NOT NULL FROM config_loads "
-             "WHERE tenant_id = :tid AND system_id = :sid AND (CAST(:role AS text) IS NULL OR role = :role) ORDER BY created_at DESC LIMIT 1"),
+             "WHERE tenant_id = :tid AND system_id = :sid AND (CAST(:role AS text) IS NULL OR role = :role) "
+             "ORDER BY created_at DESC LIMIT 1"),
         {"tid": str(tenant.id), "sid": system_id, "role": role})).fetchone()
     if not r:
         raise HTTPException(404, "No configuration load for this system")
@@ -270,7 +271,8 @@ async def get_config_load_items(
     rows = (await db.execute(
         text("SELECT i.key, i.\"values\" FROM config_items i WHERE i.tenant_id = :tid AND i.object = :obj "
              "AND i.load_id = (SELECT id FROM config_loads WHERE tenant_id = :tid AND system_id = :sid "
-             "AND (CAST(:role AS text) IS NULL OR role = :role) AND status = 'completed' ORDER BY created_at DESC LIMIT 1) "
+             "AND (CAST(:role AS text) IS NULL OR role = :role) AND status = 'completed' "
+             "ORDER BY created_at DESC LIMIT 1) "
              "ORDER BY i.key LIMIT :lim"),
         {"tid": str(tenant.id), "sid": system_id, "obj": object, "role": role,
          "lim": max(1, min(limit, 5000))})).fetchall()
