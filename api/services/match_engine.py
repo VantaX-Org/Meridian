@@ -204,18 +204,27 @@ def _persist_score(
     auto_action: str,
     explanation: Optional[dict] = None,
 ) -> None:
-    """Write match_scores row and optionally a cleaning_queue entry for review."""
+    """Upsert the pair's match_scores row; queue a new review-band pair in cleaning_queue."""
     import json
 
     score_id = str(uuid.uuid4())
 
-    session.execute(
+    # One row per pair (migration 073). A rescore updates an open pair in place, so its
+    # stewardship item stays linked; a reviewed pair is final and the WHERE leaves it alone.
+    row = session.execute(
         text(
             "INSERT INTO match_scores "
             "(id, tenant_id, candidate_a_key, candidate_b_key, domain, "
             " total_score, field_scores, ai_semantic_score, auto_action, explanation) "
             "VALUES (:id, :tid, :a_key, :b_key, :domain, "
-            " :total, CAST(:fs AS jsonb), :ai_score, :action, CAST(:ex AS jsonb))"
+            " :total, CAST(:fs AS jsonb), :ai_score, :action, CAST(:ex AS jsonb)) "
+            "ON CONFLICT (tenant_id, domain, (LEAST(candidate_a_key, candidate_b_key)), "
+            " (GREATEST(candidate_a_key, candidate_b_key))) DO UPDATE SET "
+            " total_score = EXCLUDED.total_score, field_scores = EXCLUDED.field_scores, "
+            " ai_semantic_score = EXCLUDED.ai_semantic_score, auto_action = EXCLUDED.auto_action, "
+            " explanation = EXCLUDED.explanation "
+            "WHERE match_scores.reviewed_at IS NULL AND match_scores.steward_decision IS NULL "
+            "RETURNING (xmax = 0) AS inserted"
         ),
         {
             "id": score_id,
@@ -229,10 +238,13 @@ def _persist_score(
             "action": auto_action,
             "ex": json.dumps(explanation) if explanation is not None else None,
         },
-    )
+    ).first()
+    inserted = bool(row and row.inserted)
 
-    # Route queued items to stewardship via cleaning_queue
-    if auto_action == "queued":
+    # Route new queued pairs to stewardship via cleaning_queue.
+    # ponytail: a rescore that drops out of the review band leaves its open queue item;
+    # resolve stale items in populate_queue if stewards start seeing them.
+    if inserted and auto_action == "queued":
         queue_id = str(uuid.uuid4())
         session.execute(
             text(

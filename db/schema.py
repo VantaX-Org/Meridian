@@ -1579,6 +1579,9 @@ class MatchScore(Base):
     __table_args__ = (
         Index("ix_match_scores_tenant_domain", "tenant_id", "domain"),
         Index("ix_match_scores_tenant_action", "tenant_id", "auto_action"),
+        Index("uq_match_scores_pair", "tenant_id", "domain",
+              text("LEAST(candidate_a_key, candidate_b_key)"),
+              text("GREATEST(candidate_a_key, candidate_b_key)"), unique=True),
     )
 
 
