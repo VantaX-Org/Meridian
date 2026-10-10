@@ -77,3 +77,60 @@ def test_rls_isolates_tenants_and_fingerprint_is_unique(app_engine):
         with app.begin() as c:
             c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": t1})
             c.execute(_INSERT, {"tid": t1, "body": body})
+
+
+def test_approve_creates_active_versions_with_append_only_ids(app_engine):
+    """api.routes.learned_rules.approve_sync: the sync core the approve route calls through
+    db.run_sync. Each approval gets a fresh LR- id (never reused) and an active rule_versions
+    row carrying the frozen ``allowed`` mapping; a second decision on the same proposal is
+    refused."""
+    from sqlalchemy.orm import Session
+
+    from api.routes.learned_rules import approve_sync
+    from checks.lifecycle import load_active_versions
+
+    owner, app = app_engine
+    t = _tenant(owner)
+    body = json.dumps({"check_class": "dependency_check", "determinant": "MARA.MTART", "field": "MARC.BESKZ",
+                       "allowed": {"ROH": ["F"]}, "grain": "MARC", "dimension": "consistency",
+                       "message": "MARC.BESKZ does not follow MARA.MTART"})
+    with Session(app) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": t})
+        ids = []
+        pid = None
+        for fp in ("fp-a", "fp-b"):
+            pid = s.execute(text(
+                "INSERT INTO learned_rule_proposals (tenant_id, module, kind, table_name, determinant, field, "
+                "fingerprint, body, confidence, support_rows, violations) VALUES (:t, 'material_master', "
+                "'dependency', 'MARC', 'MARA.MTART', 'MARC.BESKZ', :fp, CAST(:b AS jsonb), 0.99, 1000, 10) "
+                "RETURNING id"), {"t": t, "fp": fp, "b": body}).scalar()
+            ids.append(approve_sync(s, t, str(pid), "high", None, "checker@example.test")["rule_id"])
+        s.commit()
+        assert ids == ["LR-000001", "LR-000002"]
+        active = load_active_versions(s)
+        assert active["LR-000001"]["module"] == "material_master" and active["LR-000001"]["severity"] == "high"
+        with pytest.raises(LookupError):
+            approve_sync(s, t, str(pid), "high", None, "checker@example.test")  # already decided
+
+
+def test_reject_only_moves_pending_proposals(app_engine):
+    """api.routes.learned_rules.reject_sync: rejecting twice (or a missing id) is refused, not
+    silently re-applied — status only ever moves out of 'pending' once."""
+    from sqlalchemy.orm import Session
+
+    from api.routes.learned_rules import reject_sync
+
+    owner, app = app_engine
+    t = _tenant(owner)
+    body = json.dumps({"check_class": "regex_check", "field": "MARA.MATNR", "pattern": "^[0-9]{18}$",
+                       "dimension": "validity", "message": "shape"})
+    with Session(app) as s:
+        s.execute(text("SET app.tenant_id = :t"), {"t": t})
+        pid = s.execute(text(
+            "INSERT INTO learned_rule_proposals (tenant_id, module, kind, table_name, field, fingerprint, body, "
+            "confidence, support_rows, violations) VALUES (:t, 'material_master', 'format', 'MARA', 'MARA.MATNR', "
+            "'fp-reject', CAST(:b AS jsonb), 0.99, 1000, 10) RETURNING id"), {"t": t, "b": body}).scalar()
+        assert reject_sync(s, t, str(pid), None, "checker@example.test") == "rejected"
+        with pytest.raises(LookupError):
+            reject_sync(s, t, str(pid), None, "checker@example.test")
+        s.commit()
