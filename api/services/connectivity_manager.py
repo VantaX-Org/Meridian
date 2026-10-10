@@ -710,7 +710,8 @@ class ConnectivityManager:
     def load_config(self, system_id: str, load_id: str,
                     progress: Optional[Callable[[int, int, str], None]] = None) -> dict:
         """Read the system's configuration through ``connector.load_config()``, store it as a ``config_loads``
-        snapshot (role from the system, origin connection, or best_practice for a type with no config API), read the change history (ABAP) and derive the process flows.
+        snapshot (role from the system; origin connection, or best_practice for a type with no config API),
+        read the change history (ABAP) and derive the process flows.
         Read only; never writes to SAP. Returns the stored summary."""
         from sap.config_loader import ABAP_TYPES, not_available_history, read_history
 
@@ -752,7 +753,8 @@ class ConnectivityManager:
             {"origin": origin, "o": json.dumps(objects), "h": json.dumps(history),
              "d": json.dumps(derivation) if derivation else None, "lid": load_id, "tid": self.tenant_id})
         # a retried task reruns this load: replace its items instead of doubling them
-        self.session.execute(text("DELETE FROM config_items WHERE load_id = :lid"), {"lid": load_id})
+        self.session.execute(text("DELETE FROM config_items WHERE load_id = :lid AND tenant_id = :tid"),
+                             {"lid": load_id, "tid": self.tenant_id})
         rows = [{"tid": self.tenant_id, "lid": load_id, "obj": i.object, "key": i.key,
                  "vals": json.dumps(i.values, default=str)} for i in snap.items]
         for n in range(0, len(rows), 2000):

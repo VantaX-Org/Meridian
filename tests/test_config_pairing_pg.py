@@ -405,6 +405,62 @@ def test_load_config_stores_the_baseline_once_per_load(app_engine):
     assert objects[0]["detail"] == "SAP standard baseline; no configuration API"
 
 
+def _patch_connector(monkeypatch) -> None:
+    from api.services.connectivity_manager import ConnectivityManager
+
+    monkeypatch.setattr(ConnectivityManager, "_load_system", lambda self, system_id: {})
+    monkeypatch.setattr(ConnectivityManager, "_build_connection_params",
+                        lambda self, row: {"system_type": "s4hana_cloud"})
+    monkeypatch.setattr(ConnectivityManager, "_get_connector", lambda self, system_type, params: _NoApiConnector())
+
+
+@pg
+def test_load_config_writes_drift_once_per_load(app_engine, monkeypatch):
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from api.services.connectivity_manager import ConnectivityManager
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "S4C", "s4hana_cloud", "target")
+    _load(app, tid, sid, [("T001", "ZZZZ", {"WAERS": "USD"})], minutes_ago=10)  # prior completed load, differs
+    lid = _load(app, tid, sid, [], status="running")
+    _patch_connector(monkeypatch)
+    counts = []
+    for _ in range(2):  # a retried task reruns load_config on the same load id
+        with Session(app) as s:
+            ConnectivityManager(s, tid).load_config(sid, lid)
+        with app.begin() as c:
+            c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+            counts.append(c.execute(text("SELECT count(*) FROM config_drift_log WHERE run_id = CAST(:l AS uuid)"),
+                                    {"l": lid}).scalar())
+    assert counts[0] > 0 and counts[0] == counts[1]
+
+
+@pg
+def test_run_load_config_reads_role_and_upserts_the_load(app_engine, monkeypatch):
+    from sqlalchemy import text
+
+    from workers.tasks import run_load_config as task
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "S4C", "s4hana_cloud", "target")
+    lid, job = str(uuid.uuid4()), str(uuid.uuid4())
+    _patch_connector(monkeypatch)
+    monkeypatch.setattr(task, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(task.jobs, "update_job", lambda *a, **k: None)
+    monkeypatch.setattr(task.jobs, "finish_job", lambda *a, **k: None)
+    for _ in range(2):  # redelivery: the row does not exist the first time, exists the second
+        out = task.run_load_config.run(tid, sid, lid, job)
+        assert "error" not in out and out["load_id"] == lid
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        rows = c.execute(text("SELECT role, status, system_type FROM config_loads WHERE id = :l"), {"l": lid}).all()
+    assert [tuple(r) for r in rows] == [("target", "completed", "s4hana_cloud")]
+
+
 def test_run_load_config_keeps_redelivery_safety_and_limits():
     from workers.tasks.run_load_config import run_load_config
 
