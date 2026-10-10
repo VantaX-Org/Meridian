@@ -4,6 +4,11 @@ from celery import Celery
 
 broker_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
+# Extraction task time limit (run_extraction, run_sync): a full live read of a
+# large object takes hours over RFC_READ_TABLE. Lives here so task modules can
+# read it without importing each other.
+EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
+
 celery_app = Celery(
     "meridian",
     broker=broker_url,
@@ -23,7 +28,7 @@ celery_app.conf.update(
     task_hard_time_limit=2100,   # 35 minutes — kills the task
     # acks_late tasks unacked past the visibility timeout (Redis default 1 h) are
     # redelivered while still running; keep it above the longest task (extraction).
-    broker_transport_options={"visibility_timeout": int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600")) + 3600},
+    broker_transport_options={"visibility_timeout": EXTRACT_TIME_LIMIT + 3600},
 )
 
 # Auto-discover tasks in workers/tasks/
@@ -59,6 +64,7 @@ import workers.tasks.revalidate_licence  # noqa: F401
 import workers.tasks.triage_sla  # noqa: F401 — SLA sweep + auto-assign
 import workers.tasks.forced_update  # noqa: F401
 import workers.tasks.run_simulation  # noqa: F401 — fix what-if on a copy of the frames
+import workers.tasks.send_owner_digests  # noqa: F401 — weekly owner digest (beat)
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 
