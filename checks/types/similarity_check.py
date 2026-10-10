@@ -70,7 +70,15 @@ def near_pairs(df: pd.DataFrame, field: str, groups: list[pd.Index], threshold: 
             ka, kb = compact[a], compact[b]
             if digits[a] != digits[b] or (ka == kb and exact_elsewhere):
                 continue  # other numbers, other things; identical names: the exact rule's
-            score = 1.0 if ka == kb else SequenceMatcher(None, key[a], key[b]).ratio()
+            if ka == kb:
+                score = 1.0
+            else:
+                sm = SequenceMatcher(None, key[a], key[b])
+                # cheap upper bounds first: skip the real ratio() scan when either
+                # says the pair can't reach threshold
+                score = (sm.ratio()
+                         if sm.real_quick_ratio() >= threshold and sm.quick_ratio() >= threshold
+                         else 0.0)
             if score >= threshold:
                 out.append((a, b, score))
     return out

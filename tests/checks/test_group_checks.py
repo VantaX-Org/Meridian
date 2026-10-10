@@ -1,7 +1,10 @@
 """aggregate_check (two signed totals per group must agree) and interval_check
 (validity periods per group: no overlap; continuous = no gap either)."""
 
+from itertools import combinations
+
 import pandas as pd
+import pytest
 
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
@@ -116,3 +119,32 @@ def test_blocks_and_near_pairs_helpers():
     pairs = near_pairs(df, "N", kept, 0.9)
     assert [(a, b) for a, b, _ in pairs] == [(0, 1)]  # same name in another country is another block
     assert 0.9 <= pairs[0][2] < 1.0
+
+
+def test_near_pairs_prefilter_matches_brute_force_ratio():
+    # near_pairs() short-circuits SequenceMatcher via real_quick_ratio/quick_ratio before
+    # calling ratio(); this must not change which pairs (or scores) come out, for a block
+    # with a mix of near-identical, somewhat similar, and wildly different names.
+    from difflib import SequenceMatcher
+
+    from checks.types.similarity_check import _key, blocks, near_pairs
+    from checks.value_placement import name_key
+
+    names = ["HYDRAULIC FILTER ELEMENT", "HYDRAULC FILTER ELEMENT", "HYDRAULIC FILTER ASSEMBLY",
+             "COMPLETELY DIFFERENT PART NAME HERE", "GEAR PUMP ASSY", "GEARBOX PUMP HOUSING"]
+    df = pd.DataFrame({"N": names, "C": ["1"] * len(names)})
+    kept, _ = blocks(df, "N", ["C"], max_block=50)
+
+    for threshold in (0.5, 0.75, 0.9):
+        pairs = near_pairs(df, "N", kept, threshold)
+        key = _key(df["N"])
+        compact = name_key(df["N"]).fillna("")
+        expected = []
+        for g in kept:
+            for a, b in combinations(g, 2):
+                score = 1.0 if compact[a] == compact[b] else SequenceMatcher(None, key[a], key[b]).ratio()
+                if score >= threshold:
+                    expected.append((a, b, score))
+        assert [(a, b) for a, b, _ in pairs] == [(a, b) for a, b, _ in expected]
+        for (_, _, s1), (_, _, s2) in zip(pairs, expected):
+            assert s1 == pytest.approx(s2)

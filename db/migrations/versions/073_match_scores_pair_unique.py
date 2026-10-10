@@ -7,7 +7,10 @@ Create Date: 2026-10-10
 The match pipeline rescores every pair on every analysis. A pair is the same pair in
 either key order, so uniqueness is on LEAST/GREATEST of the two keys. Existing
 duplicates are removed first, keeping a reviewed row (then the newest). Open
-merge-decision queue items that pointed at a removed row are removed with it.
+merge-decision queue items that pointed at a removed row are removed with it. The
+cleanup is not limited to rows this migration just deleted: every open
+merge_decision item whose source match_scores row is missing is deleted, including
+orphans that pre-date this migration.
 Both tables are FORCE RLS, so the cleanup runs with FORCE lifted for the owner.
 """
 
