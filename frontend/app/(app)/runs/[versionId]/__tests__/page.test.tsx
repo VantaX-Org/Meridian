@@ -2,7 +2,9 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as downloadApi from "@/lib/api/download";
 import * as findingsApi from "@/lib/api/findings";
+import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as runsApi from "@/lib/api/v1/runs";
 import * as versionsApi from "@/lib/api/versions";
@@ -135,6 +137,21 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Material Master"));
     expect(push).toHaveBeenCalledWith("/objects/material_master?run=v2");
+  });
+
+  it("downloads the narrative report from the Narrative report (PDF) export option, distinct from the Analysis report URL", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(version({ id: "v2", label: "Oct 8", status: "ai_enriched" }));
+    const dl = vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Export" }).length).toBeGreaterThan(0));
+    // The header's ExportMenu renders first in the DOM, ahead of the per-tab single-option export buttons.
+    fireEvent.click(screen.getAllByRole("button", { name: "Export" })[0]);
+    const narrativeItem = await screen.findByRole("menuitem", { name: "Narrative report (PDF)" });
+    fireEvent.click(narrativeItem);
+    await waitFor(() => expect(dl).toHaveBeenCalled());
+    const narrativeUrl = dl.mock.calls[0][0];
+    expect(narrativeUrl).toBe(getReportDownloadUrl("v2"));
+    expect(narrativeUrl).not.toBe(getAnalysisReportUrl("v2"));
   });
 
   it("lists findings on the findings tab", async () => {

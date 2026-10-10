@@ -211,7 +211,7 @@ function FieldsTab({ object, run, systemId }: { object: string; run: string; sys
                 cell: ({ row }) => `${Math.round(row.original.stats.blank_pct * 100)}%`,
               },
               { id: "distinct", header: "Distinct", cell: ({ row }) => String(row.original.stats.distinct) },
-              { id: "top_shape", header: "Top shape", cell: ({ row }) => topShape(row.original.stats.shapes) },
+              { id: "top_shape", header: "Top shape", cell: ({ row }) => <Mono>{topShape(row.original.stats.shapes)}</Mono> },
               {
                 id: "top_values",
                 header: "Top values",
