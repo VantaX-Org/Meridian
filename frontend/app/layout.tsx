@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Public_Sans, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-provider";
 import { Toaster } from "@/design";
 import { Providers } from "@/lib/providers";
+import brand from "../public/brand/brand.json";
 import "./globals.css";
 
 // One family, two widths: Next for the interface, Mono for SAP identifiers.
@@ -34,6 +35,15 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Meridian",
   description: "SAP master-data quality, scored and routed to the people who fix it",
+  icons: { icon: "/icon.svg", apple: "/apple-icon.png" },
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: brand.canvas },
+    { media: "(prefers-color-scheme: dark)", color: brand.canvasDark },
+  ],
 };
 
 export default function RootLayout({

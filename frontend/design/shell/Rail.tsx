@@ -11,6 +11,7 @@ import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
 import { useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
+import { MeridianMark } from "../../components/meridian/icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
@@ -366,21 +367,7 @@ export function Rail() {
       style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-sheet)", borderRight: "1px solid var(--m-line)" }}
     >
       <Link href={withRun(resolveNavHref("/home/lead", role))} className="flex items-center gap-2 h-12 px-3 font-semibold" style={{ color: "var(--m-ink)" }}>
-        <span
-          aria-hidden="true"
-          className="flex items-center justify-center shrink-0"
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: "var(--m-radius-control)",
-            background: "var(--m-accent)",
-            color: "var(--m-sheet)",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          M
-        </span>
+        <MeridianMark size={20} aria-hidden />
         {expanded && <span className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
       </Link>
 

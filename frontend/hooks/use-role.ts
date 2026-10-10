@@ -27,7 +27,8 @@ export function isRole(x: string): x is Role {
 
 export function useRole() {
   const { user } = useAuth();
-  const role = (user?.role ?? "viewer") as Role;
+  const rawRole = user?.role ?? "viewer";
+  const role: Role = isRole(rawRole) ? rawRole : "viewer";
   const perms = new Set(user?.permissions ?? []);
   const can = (action: string): boolean => perms.has(action);
 

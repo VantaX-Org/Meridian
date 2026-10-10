@@ -3,25 +3,38 @@ import type { SVGProps } from "react";
 type IconProps = { size?: number; className?: string; style?: React.CSSProperties } & SVGProps<SVGSVGElement>;
 
 /**
- * Meridian brand mark — solid filled M letterform with a characterful
- * deep inner valley. Single path, single fill, no container. Inherits
- * colour from `currentColor`. Reads cleanly from 16px to a 220px hero
- * watermark.
+ * The meridian M: a square tile in the accent colour with an M whose centre
+ * vertex continues as a plumb line past the baseline — the line is the
+ * meridian, the letterform is the product. Reads as "a square with an M"
+ * from 16px up. Same geometry as the favicon, the XLSX cover and the PDF
+ * cover (frontend/public/brand).
+ *
+ * `variant="tile"` (default) draws the accent tile behind the mark —
+ * `aria-hidden` it when the visible word "Meridian" sits next to it.
+ * `variant="mono"` omits the tile and strokes in `currentColor`, for the
+ * one large brand moment on the sign-in page.
  */
-export function MeridianMark({ size = 32, className, style, ...rest }: IconProps) {
+export function MeridianMark({ size = 32, variant = "tile", className, style, ...rest }: IconProps & { variant?: "tile" | "mono" }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={size}
       height={size}
-      viewBox="0 0 36 32"
-      fill="currentColor"
+      viewBox="0 0 32 32"
       className={className}
       style={style}
       aria-hidden="true"
       {...rest}
     >
-      <path d="M 1 31 L 1 1 L 8 1 L 18 15 L 28 1 L 35 1 L 35 31 L 27 31 L 27 10.5 L 18 23 L 9 10.5 L 9 31 Z" />
+      {variant === "tile" ? <rect width="32" height="32" rx="6" fill="var(--m-accent)" /> : null}
+      <path
+        d="M 7.5 24 V 8.5 M 24.5 24 V 8.5 M 7.5 8.5 L 16 17 L 24.5 8.5 M 16 17 V 25.5"
+        fill="none"
+        stroke={variant === "mono" ? "currentColor" : "var(--m-sheet)"}
+        strokeWidth={3.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

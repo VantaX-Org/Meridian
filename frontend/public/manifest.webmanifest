@@ -1,0 +1,14 @@
+{
+  "name": "Meridian",
+  "short_name": "Meridian",
+  "description": "SAP master-data quality, scored and routed to the people who fix it",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#EDF0F2",
+  "theme_color": "#2D3A8C",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/brand/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
