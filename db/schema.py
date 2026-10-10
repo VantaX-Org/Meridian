@@ -675,6 +675,10 @@ class SAPSystem(Base):
     sap_product = Column(Text, nullable=True)  # ecc6 | s4hana | successfactors | …
     last_snapshot_id = Column(UUID(as_uuid=True), nullable=True)
 
+    # Source/target pairing (migration 075)
+    role = Column(Text, nullable=False, server_default="source")  # source | target
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
 
@@ -1203,8 +1207,15 @@ class TransferValueMapping(Base):
     updated_by = Column(UUID(as_uuid=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
+    # Pair scope and steward status (migration 075); NULL scope = global
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
+    status = Column(Text, nullable=False, server_default="confirmed")  # proposed | confirmed | rejected
+
     __table_args__ = (
-        UniqueConstraint("tenant_id", "module", "target_field", "source_value", name="uq_transfer_value_mappings"),
+        UniqueConstraint("tenant_id", "module", "target_field", "source_value", "source_system_id",
+                         "target_system_id", name="uq_transfer_value_mappings_scope",
+                         postgresql_nulls_not_distinct=True),
     )
 
 
