@@ -45,6 +45,7 @@ export * from "./templates/GhostPanel";
 export * from "./templates/ExplorerPage";
 export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
+export * from "./templates/FindingDrawer";
 
 export * from "./shell/Rail";
 export * from "./shell/TopBar";

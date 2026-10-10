@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master", key: "100001" }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const material: materialsApi.Material360 = {
   matnr: "100001",
