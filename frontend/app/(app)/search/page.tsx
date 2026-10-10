@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, ExplorerPage, Field } from "@/design";
 import { getCleaningQueue } from "@/lib/api/cleaning";
+import { getGlossaryTerms } from "@/lib/api/glossary";
 import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
@@ -31,6 +32,11 @@ export default function SearchPage() {
     queryFn: () => getRules({ search: q }),
     enabled: !!q,
   });
+  const glossary = useQuery({
+    queryKey: queryKeys.glossary("search", { search: q }),
+    queryFn: () => getGlossaryTerms({ search: q }),
+    enabled: !!q,
+  });
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const batches = useQuery({
     queryKey: queryKeys.batch("list"),
@@ -47,6 +53,9 @@ export default function SearchPage() {
     const out: SearchCandidate[] = [];
     for (const r of rules.data?.rules ?? []) {
       out.push({ kind: "rule", id: r.id, label: r.name, href: `/rules/${r.id}` });
+    }
+    for (const t of glossary.data?.terms ?? []) {
+      out.push({ kind: "glossary", id: t.id, label: t.business_name, href: `/mdm/glossary/${t.id}` });
     }
     for (const s of systems.data ?? []) {
       out.push({ kind: "object", id: s.id, label: s.name, href: `/systems/${s.id}` });
@@ -65,13 +74,15 @@ export default function SearchPage() {
       out.push({ kind: "run", id: v.id, label: v.label ?? v.id, href: `/runs/${v.id}` });
     }
     return out;
-  }, [rules.data, systems.data, batches.data, objects.data, runs.data, run]);
+  }, [rules.data, glossary.data, systems.data, batches.data, objects.data, runs.data, run]);
 
   const results = rankResults(q, candidates);
-  const loading = rules.isLoading || systems.isLoading || batches.isLoading || runs.isLoading || (!!run && objects.isLoading);
-  const failedQuery = [rules, systems, batches, objects, runs].find((query) => query.isError);
+  const loading = rules.isLoading || glossary.isLoading || systems.isLoading || batches.isLoading || runs.isLoading
+    || (!!run && objects.isLoading);
+  const failedQuery = [rules, glossary, systems, batches, objects, runs].find((query) => query.isError);
   const refetchAll = () => {
     void rules.refetch();
+    void glossary.refetch();
     void systems.refetch();
     void batches.refetch();
     if (run) void objects.refetch();
@@ -92,7 +103,7 @@ export default function SearchPage() {
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Object, rule, batch or run id"
+              placeholder="Object, rule, glossary term, batch or run id"
               className="rounded border px-3 py-1.5 text-[13px]"
               style={{ borderColor: "var(--m-line)" }}
             />
@@ -108,7 +119,7 @@ export default function SearchPage() {
         />
       }
       state={loading ? "loading" : failedQuery ? "error" : q && results.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No matches. Try an object id, a rule id, a batch id or a run id." }}
+      emptyProps={{ title: "No matches. Try an object id, a rule id, a glossary term, a batch id or a run id." }}
       errorProps={{
         message: failedQuery?.error instanceof Error ? failedQuery.error.message : "Could not load search results.",
         onRetry: refetchAll,

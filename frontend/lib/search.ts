@@ -1,6 +1,6 @@
 // frontend/lib/search.ts
 export interface SearchCandidate {
-  kind: "object" | "material" | "rule" | "batch" | "run";
+  kind: "object" | "material" | "rule" | "batch" | "run" | "glossary";
   id: string;
   label: string;
   href: string;
