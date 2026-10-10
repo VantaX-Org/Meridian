@@ -2323,7 +2323,7 @@ rules:
     target_fields:
     - EXTERNAL_CODE
     severity: medium
-    dimension: referential
+    dimension: consistency
     message: Alternative cost center on a non-recurring payment does not exist in the cost center master
     why_it_matters: The alternative cost center must be a valid, configured cost center so the payment's cost can be posted to it in finance.
     rule_authority: sap_hard_constraint
@@ -2543,7 +2543,7 @@ rules:
     target_fields:
     - USERID
     severity: high
-    dimension: referential
+    dimension: consistency
     message: Compensation record has no matching employment record
     why_it_matters: Every compensation record should belong to a real, extracted employment record. A compensation record with no matching employment is an orphan that cannot be assigned to any job, cost center or manager.
     rule_authority: sap_hard_constraint
@@ -3380,7 +3380,7 @@ rules:
     target_fields:
     - EXTERNAL_CODE
     severity: low
-    dimension: referential
+    dimension: consistency
     message: Compensation event reason is not a configured event reason code
     why_it_matters: An event reason used on a compensation record should exist in the event reason configuration; one that does not usually means a typo or an unmapped reason code.
     rule_authority: best_practice
