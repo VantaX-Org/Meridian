@@ -1,29 +1,55 @@
 // frontend/app/(app)/insights/impact/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, Mono, Pill, ReportPage, Stat } from "@/design";
-import { getImpact, getProvenCost, type ImpactRow, type ProvenCostItem, type ProvenCostRow } from "@/lib/api/insights";
+import { DataTable, EmptyState, ErrorState, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
+import {
+  getImpact,
+  getProvenCost,
+  type ImpactResponse,
+  type ImpactRow,
+  type ProvenCostItem,
+  type ProvenCostResponse,
+  type ProvenCostRow,
+} from "@/lib/api/insights";
 import { queryKeys } from "@/lib/query-keys";
 
+/** Real route for a single check/rule, independent of any module context —
+ * unlike `/objects/[object]`, this resolves from the check id alone. */
+function ruleHref(checkId: string): string {
+  return `/rules/${encodeURIComponent(checkId)}`;
+}
+
+function CheckChips({ ids }: { ids: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {ids.map((id) => (
+        <Link key={id} href={ruleHref(id)}>
+          <Pill>
+            <Mono>{id}</Mono>
+          </Pill>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 const impactColumns: ColumnDef<ImpactRow>[] = [
-  {
-    accessorKey: "feature",
-    header: "Feature",
-    cell: ({ row }) => (
-      <DrillLink object={row.original.feature} filters={{ causing_rules: row.original.causing_rules.join(",") }}>
-        {row.original.feature}
-      </DrillLink>
-    ),
-  },
+  { accessorKey: "feature", header: "Feature" },
   { accessorKey: "status", header: "Status" },
   { accessorKey: "record_count", header: "Blocked records" },
   {
     accessorKey: "value_at_risk",
     header: "Value at risk",
     cell: ({ row }) => row.original.value_at_risk.toLocaleString(),
+  },
+  {
+    id: "causing_rules",
+    header: "Causing rules",
+    cell: ({ row }) => <CheckChips ids={row.original.causing_rules} />,
   },
 ];
 
@@ -47,19 +73,71 @@ const provenCostColumns: ColumnDef<ProvenCostRow>[] = [
   {
     id: "check_ids",
     header: "Linked checks",
-    cell: ({ row }) => (
-      <div className="flex flex-wrap gap-1">
-        {row.original.check_ids.map((checkId) => (
-          <DrillLink key={checkId} object={row.original.metric} filters={{ check_ids: checkId }}>
-            <Pill>
-              <Mono>{checkId}</Mono>
-            </Pill>
-          </DrillLink>
-        ))}
-      </div>
-    ),
+    cell: ({ row }) => <CheckChips ids={row.original.check_ids} />,
   },
 ];
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+/** Each insight query renders its own loading/error/empty state, so one query
+ * failing or still loading never hides the other section's data. */
+function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, Error> }) {
+  if (query.isLoading) return <Skeleton height={120} />;
+  if (query.isError) {
+    return (
+      <ErrorState
+        message={errorMessage(query.error, "Couldn't load proven cost. Try again.")}
+        onRetry={() => query.refetch()}
+      />
+    );
+  }
+
+  const rows = query.data?.rows ?? [];
+  const currency = query.data?.currency ?? "";
+  const total = query.data?.total ?? 0;
+  const valueAtRiskTotal = query.data?.value_at_risk_total ?? 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-6">
+        <Stat label="Proven cost" value={`${total.toLocaleString()} ${currency}`.trim()} />
+        <Stat label="Value at risk" value={`${valueAtRiskTotal.toLocaleString()} ${currency}`.trim()} />
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState title="No proven cost findings for this run yet." />
+      ) : (
+        <DataTable
+          columns={provenCostColumns}
+          data={rows}
+          getRowId={(row) => row.metric}
+          renderDrawer={(row) => (
+            <DataTable columns={itemColumns} data={row.items} getRowId={(item) => item.doc_key} />
+          )}
+        />
+      )}
+    </div>
+  );
+}
+
+function ImpactPanel({ query }: { query: UseQueryResult<ImpactResponse, Error> }) {
+  if (query.isLoading) return <Skeleton height={240} />;
+  if (query.isError) {
+    return (
+      <ErrorState
+        message={errorMessage(query.error, "Couldn't load feature impact. Try again.")}
+        onRetry={() => query.refetch()}
+      />
+    );
+  }
+
+  const rows = query.data?.rows ?? [];
+  if (rows.length === 0) {
+    return <EmptyState title="No blocked or degraded features for this run yet." />;
+  }
+  return <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} />;
+}
 
 export default function ImpactPage() {
   const search = useSearchParams();
@@ -74,49 +152,16 @@ export default function ImpactPage() {
     queryFn: () => getProvenCost({ version_id: run }),
   });
 
-  const rows = impactQuery.data?.rows ?? [];
-  const provenCostRows = provenCostQuery.data?.rows ?? [];
-
-  const isLoading = impactQuery.isLoading || provenCostQuery.isLoading;
-  const isError = impactQuery.isError || provenCostQuery.isError;
-  const error = impactQuery.error ?? provenCostQuery.error;
-  const isEmpty = rows.length === 0 && provenCostRows.length === 0;
-
-  const provenCostTotal = provenCostQuery.data?.total ?? 0;
-  const provenCostCurrency = provenCostQuery.data?.currency ?? "";
-  const valueAtRiskTotal = provenCostQuery.data?.value_at_risk_total ?? 0;
-
   return (
     <ReportPage
       narrative="value_at_risk = record_count × value_per_record"
-      charts={
-        <div className="flex gap-6">
-          <Stat label="Proven cost" value={`${provenCostTotal.toLocaleString()} ${provenCostCurrency}`.trim()} />
-          <Stat label="Value at risk" value={`${valueAtRiskTotal.toLocaleString()} ${provenCostCurrency}`.trim()} />
-        </div>
-      }
+      charts={null}
       tables={
-        <div className="flex flex-col gap-6">
-          <DataTable
-            columns={provenCostColumns}
-            data={provenCostRows}
-            getRowId={(row) => row.metric}
-            renderDrawer={(row) => (
-              <DataTable columns={itemColumns} data={row.items} getRowId={(item) => item.doc_key} />
-            )}
-          />
-          <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} />
+        <div className="flex flex-col gap-8">
+          <ProvenCostPanel query={provenCostQuery} />
+          <ImpactPanel query={impactQuery} />
         </div>
       }
-      state={isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : undefined}
-      emptyProps={{ title: "No blocked or degraded features for this run yet." }}
-      errorProps={{
-        message: error instanceof Error ? error.message : "Couldn't load feature impact. Try again.",
-        onRetry: () => {
-          void impactQuery.refetch();
-          void provenCostQuery.refetch();
-        },
-      }}
     />
   );
 }

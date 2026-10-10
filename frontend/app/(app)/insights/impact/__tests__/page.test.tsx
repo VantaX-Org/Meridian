@@ -65,7 +65,22 @@ describe("ImpactPage", () => {
     expect(screen.getAllByText("Value at risk").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
-    expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toContain("check_ids=MM140");
+    expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toBe("/rules/MM140");
+  });
+
+  it("keeps the impact table rendered when the proven-cost request fails", async () => {
+    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({
+      version_id: "v1",
+      rows: [
+        { feature: "MIGO", status: "blocked", record_count: 42, value_per_record: 150, value_at_risk: 6300, causing_rules: ["MM-003"] },
+      ],
+    });
+    vi.spyOn(insightsApi, "getProvenCost").mockRejectedValue(new Error("proven-cost network error"));
+    renderWithQuery(<ImpactPage />);
+
+    await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
+    expect(screen.getByText(/proven-cost network error/i)).toBeInTheDocument();
+    expect(screen.getByText("MM-003").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
   });
 
   it("shows a loading skeleton while the request is in flight", () => {
