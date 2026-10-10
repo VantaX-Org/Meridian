@@ -61,8 +61,10 @@ def test_delta_rereads_changed_vendors_and_keeps_the_rest_from_the_baseline(monk
 
     assert _names(frames) == {"V1": "A", "V2": "B2", "V4": "D"}  # V2 updated, V3 deleted, V4 created
     cov = {c["table"]: c for c in coverage}
-    # accounts_payable also plans KNA1 (DEBI class) for vendor/customer cross-checks: 0 changes there
-    assert cov["CDHDR:delta"]["status"] == "delta" and cov["CDHDR:delta"]["changed"] == {"KRED": 3, "DEBI": 0}
+    # accounts_payable also plans KNA1 (DEBI class) for vendor/customer cross-checks and MARC (MATERIAL
+    # class) for the S/4 load dry run: 0 changes in both
+    assert cov["CDHDR:delta"]["status"] == "delta"
+    assert cov["CDHDR:delta"]["changed"] == {"KRED": 3, "DEBI": 0, "MATERIAL": 0}
     assert cov["LFA1"]["delta"]["changed"] == 3
     # extract() closes the connector (nulling _conn), so read calls via the surviving fakes list
     reads = [p for fm, p in fake.fakes[0].calls
