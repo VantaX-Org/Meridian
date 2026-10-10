@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Mono, Pill, ReportPage, Stat } from "@/design";
 import { getDryRunRecords, getMigrationRun, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
 import { VERDICT_LABEL, VERDICT_TONE } from "@/app/(app)/migration/page";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MigrationStatus, TransferVerdict, WaveVerdict } from "@/types/api";
@@ -71,7 +71,7 @@ export default function DryRunPage() {
   }
 
   const isLoading = runQuery.isLoading || recordsQuery.isLoading;
-  const isError = runQuery.isError || recordsQuery.isError;
+  const isError = runQuery.isError || isListFailure(recordsQuery);
   const run = runQuery.data?.run;
   const rows = recordsQuery.data?.rows ?? [];
 
@@ -112,7 +112,7 @@ export default function DryRunPage() {
       state={state}
       emptyProps={{ title: "No failing records for this dry run." }}
       errorProps={{
-        message: runQuery.error ? apiErrorMessage(runQuery.error) : recordsQuery.error ? apiErrorMessage(recordsQuery.error) : "Couldn't load the dry run. Try again.",
+        message: runQuery.error ? apiErrorMessage(runQuery.error) : isListFailure(recordsQuery) ? apiErrorMessage(recordsQuery.error) : "Couldn't load the dry run. Try again.",
         onRetry: refetch,
       }}
     />

@@ -10,6 +10,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Mono, Pill, Skeleton, type PillTone } from "@/design";
 import { getConfigCompare, proposeConfigMatches, type MatchStatus } from "@/lib/api/config-pairing";
+import { apiErrorDetail, apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_LABEL: Record<MatchStatus, string> = {
@@ -28,26 +29,27 @@ const STATUS_TONE: Record<MatchStatus, PillTone> = {
 export function ConfigComparePanel({ systemId, canPropose }: { systemId: string; canPropose: boolean }) {
   const qc = useQueryClient();
   const [object, setObject] = useState<string | undefined>(undefined);
-  const { data, error, isPending, refetch } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.configCompare(systemId, object),
     queryFn: () => getConfigCompare(systemId, object),
     placeholderData: keepPreviousData,
   });
+  const { data, isPending, refetch } = query;
   const propose = useMutation({
     mutationFn: () => proposeConfigMatches(systemId),
     onSuccess: (r) => {
       toast.success(r.proposed ? `${r.proposed} ${r.proposed === 1 ? "match" : "matches"} sent to the steward queue.` : "No new matches to propose.");
       void qc.invalidateQueries({ queryKey: ["config-compare", systemId] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Matches were not proposed."),
+    onError: (e) => toast.error(apiErrorDetail(e) ?? "Matches were not proposed."),
   });
 
   let body;
   if (isPending) {
     body = <Skeleton height={96} />;
-  } else if (error) {
-    body = <ErrorState message={`The comparison could not be read. ${error.message}`} onRetry={() => void refetch()} />;
-  } else if (!data.source_load_id) {
+  } else if (isListFailure(query)) {
+    body = <ErrorState message={`The comparison could not be read. ${apiErrorMessage(query.error)}`} onRetry={() => void refetch()} />;
+  } else if (!data?.source_load_id) {
     body = <EmptyState title="Load this system's configuration to compare it with its target." />;
   } else if (data.objects.length === 0) {
     body = <EmptyState title="The source and the target share no configuration objects." />;

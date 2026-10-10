@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ErrorState, Field, Select, Skeleton } from "@/design";
 import { getOwners, putOwner, type OwnerKind } from "@/lib/api/owners";
 import { getAssignableUsers } from "@/lib/api/users";
+import { apiErrorDetail, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 // Base UI Select treats "" as no value, so "not set" is a sentinel.
@@ -39,11 +40,11 @@ export function OwnerPicker({ kind, refId }: { kind: OwnerKind; refId: string })
       toast.success("Saved");
       void qc.invalidateQueries({ queryKey: queryKeys.owners(kind) });
     },
-    onError: (e) => toast.error((e as Error).message || "Not saved"),
+    onError: (e) => toast.error(apiErrorDetail(e) ?? "Not saved"),
   });
 
   if (owners.isLoading || users.isLoading) return <Skeleton height={32} />;
-  if (owners.isError) return <ErrorState message="Owners could not be read." onRetry={() => owners.refetch()} />;
+  if (isListFailure(owners)) return <ErrorState message="Owners could not be read." onRetry={() => owners.refetch()} />;
   if (users.isError || !users.data) {
     return (
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>

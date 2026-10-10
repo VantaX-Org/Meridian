@@ -21,6 +21,7 @@ import {
   type Severity,
 } from "@/lib/api/learnedRules";
 import { errorText } from "@/lib/api/remediation";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_OPTIONS = [
@@ -81,10 +82,10 @@ export default function LearnedRulesPage() {
           <Field label="Kind"><Select value={kind} onValueChange={(v) => setKind(v as "all" | LearnedKind)} options={KIND_OPTIONS} /></Field>
         </div>
       }
-      state={q.isLoading ? "loading" : q.isError ? "error" : items.length === 0 ? "empty" : undefined}
+      state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No learned rules here yet. They appear after the next analysis." }}
       errorProps={{
-        message: q.error instanceof Error ? q.error.message : "Couldn't load learned rules. Try again.",
+        message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),
       }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}

@@ -8,7 +8,7 @@ import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const th = "px-3 py-2 text-left font-medium";
@@ -69,7 +69,7 @@ export function AlertChannelsPanel() {
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
         Each system is compared with its own previous run. Alerts carry counts, rule ids and links, never record values.
       </p>
-      {q.isLoading ? <Skeleton height={64} /> : q.isError ? (
+      {q.isLoading ? <Skeleton height={64} /> : isListFailure(q) ? (
         <ErrorState message={apiErrorMessage(q.error) || "Alert channels could not be read."} onRetry={() => q.refetch()} />
       ) : !q.data?.length ? (
         <EmptyState title="No alert channel yet." />

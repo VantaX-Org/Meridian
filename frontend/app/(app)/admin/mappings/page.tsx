@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button, EmptyState, ErrorState, Mono, Pill, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFieldMappings, resetFieldMappings, updateFieldMapping, type FieldMapping } from "@/lib/api/field-mappings";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -111,7 +111,7 @@ export default function AdminMappingsPage() {
       </div>
 
       {all.isLoading ? <Skeleton height={320} />
-        : all.isError ? (
+        : isListFailure(all) ? (
           <ErrorState message={apiErrorMessage(all.error) || "Field mappings could not be read."} onRetry={() => all.refetch()} />
         ) : !shown.length ? (
           <EmptyState

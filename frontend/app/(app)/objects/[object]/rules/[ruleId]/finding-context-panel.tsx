@@ -3,17 +3,27 @@
 /** The source and target configuration behind a rule: the config object, the target and the source keys it lacks. */
 
 import { useQuery } from "@tanstack/react-query";
-import { Mono, Pill } from "@/design";
+import { ErrorState, Mono, Pill } from "@/design";
 import { getFindingContext } from "@/lib/api/config-pairing";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 export function FindingContextPanel({ ruleId, run, moduleId, fields }: {
   ruleId: string; run: string; moduleId: string; fields: string[];
 }) {
-  const { data } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.findingContext(ruleId, run),
     queryFn: () => getFindingContext({ ruleId, module: moduleId, versionId: run || undefined, fields }),
   });
+  if (isListFailure(query)) {
+    return (
+      <ErrorState
+        message={`The configuration context could not be read. ${apiErrorMessage(query.error)}`}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  }
+  const { data } = query;
   if (!data || !data.object || data.source.length === 0) return null;
   return (
     <div className="rounded border p-3 text-[13px]" style={{ borderColor: "var(--m-line)", color: "var(--m-ink)" }}>

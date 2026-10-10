@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -27,7 +27,7 @@ const deltaColor = (n: number) => (n > 0 ? "var(--m-pass)" : n < 0 ? "var(--m-cr
 export function TrendPanel({ systemId }: { systemId: string }) {
   const q = useQuery({ queryKey: queryKeys.systemTrends(systemId), queryFn: () => getTrends(systemId, undefined, true) });
   if (q.isLoading) return <Skeleton height={96} />;
-  if (q.isError) {
+  if (isListFailure(q)) {
     return <ErrorState message={apiErrorMessage(q.error) || "Trends could not be read."} onRetry={() => q.refetch()} />;
   }
   const summary = q.data?.summary ?? [];

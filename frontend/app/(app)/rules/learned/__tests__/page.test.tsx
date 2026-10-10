@@ -30,7 +30,7 @@ describe("learned rules page", () => {
   it("shows an error state with retry", async () => {
     const get = vi.spyOn(api, "getLearnedRules").mockRejectedValue(new Error("boom"));
     renderWithQuery(<LearnedRulesPage />);
-    expect(await screen.findByText("boom")).toBeInTheDocument();
+    expect(await screen.findByText(/could not reach the server/i)).toBeInTheDocument();
     get.mockResolvedValueOnce({ items: [RULE] });
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(await screen.findByText("MARC.BESKZ")).toBeInTheDocument();

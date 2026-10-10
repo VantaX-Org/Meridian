@@ -1,4 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
+import { AxiosError, type AxiosResponse } from "axios";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { ConfigComparePanel } from "../config-compare-panel";
@@ -41,5 +42,16 @@ describe("ConfigComparePanel", () => {
     renderWithQuery(<ConfigComparePanel systemId="sys1" canPropose={false} />);
     expect(await screen.findByText("Load this system's configuration to compare it with its target.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Propose matches" })).toBeNull();
+  });
+
+  it("treats a 404 as no configuration and shows the error state for other failures", async () => {
+    const nf = new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse);
+    vi.spyOn(pairingApi, "getConfigCompare").mockRejectedValueOnce(nf);
+    const { unmount } = renderWithQuery(<ConfigComparePanel systemId="sys1" canPropose />);
+    expect(await screen.findByText("Load this system's configuration to compare it with its target.")).toBeInTheDocument();
+    unmount();
+    vi.spyOn(pairingApi, "getConfigCompare").mockRejectedValueOnce(new Error("boom"));
+    renderWithQuery(<ConfigComparePanel systemId="sys2" canPropose />);
+    expect(await screen.findByText(/The comparison could not be read\. Could not reach the server\./)).toBeInTheDocument();
   });
 });
