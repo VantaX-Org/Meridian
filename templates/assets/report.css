@@ -129,6 +129,33 @@ table.data .sub { display: block; color: var(--ink-3); font-size: 7.5pt; margin-
 .up { color: var(--ok); }
 .down { color: var(--bad); }
 
+/* Severity marks: colour plus shape (never colour alone).
+   Critical = filled square, high = filled triangle, medium = filled circle,
+   low = hollow circle. These four classes share the severity string itself
+   as the class name, so they stand apart from the status dots above. */
+.st.critical { color: var(--bad); }
+.st.critical::before { background: var(--bad); border-radius: 0; }
+.st.high { color: var(--high); }
+.st.high::before {
+    background: transparent; width: 0; height: 0; border-radius: 0;
+    border-left: 1mm solid transparent; border-right: 1mm solid transparent;
+    border-bottom: 1.8mm solid var(--high);
+}
+.st.medium { color: var(--warn); }
+.st.medium::before { background: var(--warn); border-radius: 50%; }
+.st.low { color: var(--ink-3); font-weight: 500; }
+.st.low::before { background: transparent; border: 0.3mm solid var(--ink-3); border-radius: 50%; }
+
+/* ── Cover page ────────────────────────────────────────────────────────── */
+
+.cover { page: cover; break-after: page; padding: 32mm 20mm 20mm; }
+.cover-mark { width: 28mm; height: 28mm; display: block; margin-bottom: 8mm; }
+.cover-word { font-size: 20pt; font-weight: 600; margin-bottom: 10mm; }
+.cover-title { font-size: 28pt; font-weight: 600; margin-bottom: 8mm; }
+.cover-meta { margin-top: 0; font-size: 9pt; }
+.cover-meta td { padding: 1mm 6mm 1mm 0; }
+.cover-verdict { font-size: 13pt; line-height: 1.5; margin-top: 10mm; max-width: 150mm; }
+
 /* ── Ordered actions ───────────────────────────────────────────────────── */
 
 ol.actions { margin: 0; padding: 0; list-style: none; counter-reset: act; }

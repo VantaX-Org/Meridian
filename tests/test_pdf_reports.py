@@ -75,3 +75,19 @@ def test_server_addresses_are_redacted():
     ctx = pr.extraction_context(fx.V2, tenant_name=fx.TENANT, generated_at=fx.GENERATED)
     html = pr._env().get_template("extraction_report.html").render(**ctx)
     assert "192.0.2.10" not in html and "[server]" in html
+
+
+def test_cover_has_mark():
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "<svg" in html or "mark-light.svg" in html
+    assert "Meridian" in html
+
+
+def test_timestamps_are_sast():
+    # GENERATED is 09:30 UTC -> 11:30 SAST (UTC+2, no DST).
+    assert pr.fmt_dt(fx.GENERATED) == "4 Oct 2026, 11:30 SAST"
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    assert ctx["generated_sast"] == "4 Oct 2026, 11:30 SAST"
+    html = pr._env().get_template("analysis_report.html").render(**ctx)
+    assert "11:30 SAST" in html

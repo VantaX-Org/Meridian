@@ -19,6 +19,7 @@ import json
 import re
 from datetime import datetime, timezone
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 from typing import Any, Iterable, Optional
 
 from jinja2 import Environment, FileSystemLoader, Undefined, select_autoescape
@@ -75,9 +76,12 @@ def fmt_signed(v: Any, dp: int = 1) -> str:
     return f"+{v:,.{dp}f}" if v > 0 else f"−{abs(v):,.{dp}f}"
 
 
+_SAST = ZoneInfo("Africa/Johannesburg")
+
+
 def fmt_dt(v: Any) -> str:
     d = _to_dt(v)
-    return "—" if d is None else d.astimezone(timezone.utc).strftime("%-d %b %Y, %H:%M UTC")
+    return "—" if d is None else d.astimezone(_SAST).strftime("%-d %b %Y, %H:%M SAST")
 
 
 def fmt_dur(seconds: Any) -> str:
@@ -143,8 +147,9 @@ def render(template: str, ctx: dict) -> bytes:
 
 # ── inline SVG charts (no JS) ────────────────────────────────────────────────
 
-_ACCENT, _TRACK, _INK, _MUTED = "#2B7BFF", "#E9EDF3", "#111827", "#6B7280"
-_UP, _DOWN = "#1E9E66", "#E03E40"
+_ACCENT, _TRACK, _INK, _MUTED = "#2D3A8C", "#D5DBE0", "#101418", "#5C6872"
+_UP, _DOWN = "#1E7A46", "#B3261E"
+_HIGH, _MED = "#C65A00", "#8A6A00"
 
 
 def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, unit: str = "",
@@ -336,12 +341,13 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
             headline += (f" {len(errs)} check{'s' if len(errs) != 1 else ''} could not be evaluated "
                          f"and {'are' if len(errs) != 1 else 'is'} excluded from the score.")
 
+    now = _now(generated_at)
     return {
-        "title": "Analysis run report", "eyebrow": "Data quality assessment",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": _now(generated_at),
+        "title": "Analysis run report", "eyebrow": "Data quality assessment", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
-                 ("Run at", fmt_dt(version.get("run_at"))),
+                 ("Run at", fmt_dt(version.get("run_at"))), ("Generated", fmt_dt(now)),
                  ("Modules", ", ".join(fmt_module(m) for m in sorted(summary)) or "—")],
         "version": version, "source": meta.get("source") or "upload",
         "overall": overall, "dims": dims, "readiness": readiness,
@@ -405,11 +411,12 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
     object_rows = meta.get("object_rows") or {}
 
     return {
-        "title": "Extraction run report", "eyebrow": "Data extraction",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": now,
+        "title": "Extraction run report", "eyebrow": "Data extraction", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
-                 ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—")],
+                 ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—"),
+                 ("Generated", fmt_dt(now))],
         "modules": [{"name": m, "records": object_rows.get(m)} for m in (meta.get("modules") or [])],
         "coverage": coverage, "live": len(live),
         "failed": sum(1 for c in coverage if c.get("status") == "failed"),
@@ -447,13 +454,15 @@ def cleaning_context(data: dict, *, tenant_name: str, version: Optional[dict] = 
     recon["unreconciled"] = recon["records"] - recon["fixed"] - recon["still_failing"]
     fixes = data.get("record_fixes") or []
     scope = "This run only" if version else "All runs for this organisation"
+    now = _now(generated_at)
     return {
-        "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation",
+        "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
         "scope_label": f"{tenant_name} · {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
-        "generated_at": _now(generated_at),
+        "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("Scope", scope)]
                 + ([("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"]))]
-                   if version else []),
+                   if version else [])
+                + [("Generated", fmt_dt(now))],
         "statuses": list(by_status), "by_status": by_status, "matrix": matrix,
         "queue_total": sum(by_status.values()), "applied": by_status.get("applied", 0),
         "audit": data.get("audit") or [], "rules_applied": data.get("rules_applied") or [],
@@ -557,13 +566,14 @@ def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: lis
                        if change else f" ({o2['composite']:.1f}).")
                     + f" {len(changes['resolved'])} check{'s' if len(changes['resolved']) != 1 else ''} stopped failing"
                     + f" and {len(changes['new'])} started failing; {len(persisting)} still fail.")
+    now = _now(generated_at)
     return {
-        "title": "Run comparison report", "eyebrow": "Version comparison",
-        "scope_label": _scope_label(tenant_name, system), "generated_at": _now(generated_at),
+        "title": "Run comparison report", "eyebrow": "Version comparison", "cover": True,
+        "scope_label": _scope_label(tenant_name, system), "generated_at": now, "generated_sast": fmt_dt(now),
         "meta": [("Organisation", tenant_name), ("System", _system_line(system)),
                  ("Earlier run", f"{v1.get('label') or v1['id']} — {fmt_dt(v1.get('run_at'))}"),
                  ("Later run", f"{v2.get('label') or v2['id']} — {fmt_dt(v2.get('run_at'))}"),
-                 ("Run IDs", f"{v1['id']} → {v2['id']}")],
+                 ("Run IDs", f"{v1['id']} → {v2['id']}"), ("Generated", fmt_dt(now))],
         "v1": v1, "v2": v2, "o1": o1, "o2": o2, "change": change, "headline": headline,
         "dims": dims, "dim_chart": delta_bars([(fmt_module(d["name"]), d["change"]) for d in dims]),
         "modules": sorted(modules, key=lambda m: (m["change"] is None, m["change"] or 0)),

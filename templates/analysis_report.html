@@ -9,7 +9,7 @@
 <tbody>
 {% for f in failing_checks %}
 <tr><td>{{ f.message or f.check_id }}<span class="sub"><span class="mono">{{ f.check_id }}</span>{% if f.field %} · <span class="mono">{{ f.field }}</span>{% endif %}</span></td>
-    <td>{{ f.module | module }}</td><td><span class="st {{ f.severity | st }}">{{ f.severity | capitalize }}</span></td>
+    <td>{{ f.module | module }}</td><td><span class="st {{ f.severity }}">{{ f.severity | capitalize }}</span></td>
     <td>{{ f.dimension | module }}</td><td class="r">{{ f.affected | n }}</td><td class="r">{{ f.total | n }}</td><td class="r">{{ f.fail_pct | pct }}</td></tr>
 {% endfor %}
 </tbody>

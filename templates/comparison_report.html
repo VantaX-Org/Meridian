@@ -11,7 +11,7 @@
 <tbody>
 {% for c in rows[:20] %}
 <tr><td>{{ c.message or c.check_id }}<span class="sub mono">{{ c.check_id }}</span></td><td>{{ c.module | module }}</td>
-    <td><span class="st {{ c.severity | st }}">{{ c.severity | capitalize }}</span></td>
+    <td><span class="st {{ c.severity }}">{{ c.severity | capitalize }}</span></td>
     <td class="r">{{ c.v1 | n }}</td><td class="r">{{ c.v2 | n }}</td><td class="r">{{ delta(c.change, invert=true) }}</td></tr>
 {% endfor %}
 </tbody>
