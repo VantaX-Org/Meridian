@@ -1,5 +1,6 @@
 """SAP correction packages: files only, never a call to SAP."""
 import io
+import zipfile
 
 from openpyxl import load_workbook
 
@@ -28,3 +29,15 @@ def test_ltmc_workbook_groups_tables_into_object_sheets_and_blocks_formulas():
     assert all(c.data_type != "f" for row in plant.iter_rows() for c in row)
     assert "Supplier - General Data" in wb.sheetnames
     assert "README" in wb.sheetnames                       # names the object, release check, "file only"
+
+
+def test_mass_maintenance_zip_groups_by_field_and_value():
+    z = zipfile.ZipFile(io.BytesIO(pk.mass_maintenance_zip(ITEMS)))
+    names = sorted(z.namelist())
+    assert names == ["MM17/MARA-MATKL-001.txt", "MM17/MARC-EKGRP-001.txt", "README.txt", "XK99/LFA1-LAND1-001.txt",
+                     "changes.tsv"]
+    assert z.read("MM17/MARA-MATKL-001.txt").decode() == "000000000000000042\n"
+    changes = z.read("changes.tsv").decode().splitlines()
+    assert changes[0] == "TCODE\tTABLE\tFIELD\tNEW_VALUE\tRECORD_KEY\tOLD_VALUE\tRULE"
+    assert "MG-0001" in z.read("README.txt").decode()
+    assert pk.mass_maintenance_zip(ITEMS) == pk.mass_maintenance_zip(list(reversed(ITEMS)))   # deterministic

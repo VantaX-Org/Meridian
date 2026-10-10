@@ -168,6 +168,9 @@ TRANSACTION_CODES: dict[str, str] = {
     "sd_sales_orders": "VA02",
 }
 
+# Mass maintenance transactions (one field, one new value, many keys per run) for correction packages.
+MASS_MAINTENANCE_TCODES: dict[str, str] = {"material": "MM17", "customer": "XD99", "vendor": "XK99"}
+
 BAPI_NAMES: dict[str, str] = {
     "customer": "BAPI_CUSTOMER_CHANGEFROMDATA1",
     "vendor": "BAPI_VENDOR_CHANGEFROMDATA",

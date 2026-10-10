@@ -3,15 +3,18 @@ file bytes for a person to download and load through SAP's own tools; nothing he
 opens a connection to SAP (Meridian is read-only on SAP).
 
   ltmc_workbook           Migration Cockpit file-staging layout (S/4 migration load)
+  mass_maintenance_zip    MM17 / XD99 / XK99 key lists + change log (fix in place)
 """
 from __future__ import annotations
 
 import io
+import zipfile
+from collections.abc import Iterable
 
 import pandas as pd
 from openpyxl.worksheet.worksheet import Worksheet
 
-from api.services.remediation import cockpit_sheets
+from api.services.remediation import ANCHOR, _exportable, _key_parts, cockpit_sheets
 from sap.ddic import Dictionary
 
 # object -> (Migration Cockpit migration object, {SAP table: template sheet}).
@@ -66,3 +69,62 @@ def ltmc_workbook(items: list[dict], dictionary: Dictionary | None) -> bytes:
         for ws in xw.book.worksheets:
             no_formulas(ws)
     return buf.getvalue()
+
+
+def _zip(files: Iterable[tuple[str, str]]) -> bytes:
+    """Deterministic zip: sorted names, fixed timestamps."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, body in sorted(files):
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, body)
+    return buf.getvalue()
+
+
+def _tsv(rows: list[list[str]]) -> str:
+    return "".join("\t".join(v.replace("\t", " ").replace("\n", " ") for v in r) + "\n" for r in rows)
+
+
+def _business_key(record_key: str, obj: str) -> str:
+    """The object's business key (MATNR/KUNNR/LIFNR from remediation.ANCHOR), else the key's last part."""
+    parts = _key_parts(record_key)
+    _, key_name = ANCHOR.get(obj, (None, None))
+    if key_name and key_name in parts:
+        return parts[key_name]
+    return list(parts.values())[-1]
+
+
+def mass_maintenance_zip(items: list[dict]) -> bytes:
+    """Zip for MM17 / XD99 / XK99: per (transaction, table, field, new value) a key list to
+    paste into the multiple selection, plus changes.tsv with every old and new value."""
+    from api.services.export_engine import MASS_MAINTENANCE_TCODES
+
+    head = ["TCODE", "TABLE", "FIELD", "NEW_VALUE", "RECORD_KEY", "OLD_VALUE", "RULE"]
+    rows, skipped = [], []
+    for i in _exportable(items):
+        table, field = i["field"].split(".", 1)
+        tcode = MASS_MAINTENANCE_TCODES.get(TABLE_OBJECT.get(table, ""), "")
+        r = [tcode, table, field, str(i["proposed_value"]), i["record_key"], str(i.get("current_value") or ""),
+             i["check_id"]]
+        (rows if tcode else skipped).append(r)
+    rows.sort()
+    groups: dict[tuple[str, str, str, str], list[str]] = {}
+    for r in rows:
+        obj = TABLE_OBJECT.get(r[1], "")
+        groups.setdefault((r[0], r[1], r[2], r[3]), []).append(_business_key(r[4], obj))
+    files, readme, seq = [("changes.tsv", _tsv([head, *rows]))], [], {}
+    for (tcode, table, field, new), keys in sorted(groups.items()):
+        n = seq[(tcode, table, field)] = seq.get((tcode, table, field), 0) + 1
+        name = f"{tcode}/{table}-{field}-{n:03d}.txt"
+        files.append((name, "".join(f"{k}\n" for k in sorted(set(keys)))))
+        readme.append(f"{name}: run {tcode}, table {table}, set {field} to '{new}' for {len(set(keys))} keys "
+                      "(paste the file into the key multiple selection).")
+    if skipped:
+        files.append(("skipped.tsv", _tsv([head, *sorted(skipped)])))
+    files.append(("README.txt", "Meridian correction package. Meridian never writes to SAP; run each step "
+                                "yourself after review.\n" + "\n".join(readme) + "\n"))
+    return _zip(files)
+# ponytail: for plant-level fields (MARC), MM17 also needs the plant in its selection. The key
+# list holds only the object's business key (MATNR/KUNNR/LIFNR). changes.tsv carries the full
+# key, so the steward filters by plant from there. Split groups per plant if stewards ask.
