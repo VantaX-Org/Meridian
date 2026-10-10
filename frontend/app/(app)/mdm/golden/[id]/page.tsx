@@ -1,11 +1,12 @@
 // frontend/app/(app)/mdm/golden/[id]/page.tsx
 "use client";
 
+import { toast } from "sonner";
 import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toastManager, type RecordStatus } from "@/design";
+import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage } from "@/lib/error";
@@ -43,13 +44,13 @@ export default function MasterRecordPage() {
     mutationFn: () => promoteMasterRecord(id, true),
     onSuccess: () => { invalidate(); setConfirmPromote(false); },
     onError: (error) => {
-      toastManager.add({ title: apiErrorMessage(error) });
+      toast.error(apiErrorMessage(error));
     },
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
     onError: (error) => {
-      toastManager.add({ title: apiErrorMessage(error) });
+      toast.error(apiErrorMessage(error));
     },
   });
 

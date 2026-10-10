@@ -19,6 +19,6 @@ test("steward accepts a proposal and sees the batch", async ({ app }) => {
   // app/(app)/fix/[batchId]/page.tsx: per-row "Approve" button, fires approveCleaning.
   await app.getByRole("button", { name: "Approve" }).first().click();
 
-  // onSuccess: toastManager.add({ title: "Approved" }) (design/primitives/Toast.tsx renders <BaseToast.Title />).
+  // onSuccess: toast("Approved") (sonner, mounted once by design/shell/Toaster.tsx).
   await expect(app.getByText("Approved")).toBeVisible();
 });

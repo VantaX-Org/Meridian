@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
 import * as mergeExplainApi from "@/lib/api/merge-explain";
 import * as objectsApi from "@/lib/api/v1/objects";
-import { ToastViewport } from "@/design";
+import { Toaster } from "@/design";
 import DuplicatesPage from "../page";
 
 const push = vi.fn();
@@ -106,7 +106,7 @@ describe("DuplicatesPage", () => {
     renderWithQuery(
       <>
         <DuplicatesPage />
-        <ToastViewport />
+        <Toaster />
       </>,
     );
     await pickObjectAndRecord();

@@ -1,9 +1,9 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect } from "react";
 import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { getJobs, streamJobs } from "@/lib/api/jobs";
-import { toastManager } from "@/design";
 import type { Job } from "@/types/jobs";
 
 export const JOBS_QUERY_KEY = ["jobs"] as const;
@@ -42,12 +42,8 @@ export function useJobStream(): void {
             if (job.touches && job.touches.length > 0) {
               qc.invalidateQueries({ predicate: touchedPredicate(job.touches) });
             } else {
-              toastManager.add({
-                title: `${job.label} finished`,
-                actionProps: {
-                  children: "Refresh",
-                  onClick: () => qc.invalidateQueries(),
-                },
+              toast(`${job.label} finished`, {
+                action: { label: "Refresh", onClick: () => qc.invalidateQueries() },
               });
             }
           }

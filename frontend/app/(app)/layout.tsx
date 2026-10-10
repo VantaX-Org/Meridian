@@ -5,7 +5,7 @@ import { Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, ToastViewport, type RunOption } from "@/design";
+import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, type RunOption } from "@/design";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
@@ -102,7 +102,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-      <ToastViewport />
     </AuthGuard>
   );
 }

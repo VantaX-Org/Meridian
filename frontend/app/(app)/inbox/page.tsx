@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 /**
  * Steward inbox: every open stewardship task in one list. Ports the legacy
  * workbench inbox's data wiring (views, sorts, assign, resolve, escalate,
@@ -12,7 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, toastManager, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -196,8 +197,8 @@ export default function InboxPage() {
     void qc.invalidateQueries({ queryKey: queryKeys.unreadNotifications() });
   }, [qc]);
   const done = useCallback((verb: string, r: { ok: number; failed: number }) => {
-    if (r.ok) toastManager.add({ title: `${verb} ${plural(r.ok, "task")}` });
-    if (r.failed) toastManager.add({ title: `${plural(r.failed, "task")} not ${verb.toLowerCase()}` });
+    if (r.ok) toast(`${verb} ${plural(r.ok, "task")}`);
+    if (r.failed) toast.error(`${plural(r.failed, "task")} not ${verb.toLowerCase()}`);
     refresh();
   }, [refresh]);
 
@@ -205,11 +206,11 @@ export default function InboxPage() {
     mutationFn: (ids: string[]) =>
       ids.length === 1 ? resolveItem(ids[0], "approve").then(() => ({ approved: 1, asked: 1 })) : bulkApprove(ids, BULK_CONFIDENCE).then((d) => ({ approved: d.approved, asked: ids.length })),
     onSuccess: ({ approved, asked }) => {
-      toastManager.add({ title: `Approved ${plural(approved, "task")}` });
-      if (asked > approved) toastManager.add({ title: `${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review` });
+      toast(`Approved ${plural(approved, "task")}`);
+      if (asked > approved) toast(`${asked - approved} below ${BULK_CONFIDENCE * 100}% model confidence or already closed — left for manual review`);
       refresh();
     },
-    onError: (e) => toastManager.add({ title: (e as Error).message || "Not approved" }),
+    onError: (e) => toast.error((e as Error).message || "Not approved"),
   });
   // Rejecting overrides the model's recommendation: the correction reason is recorded on the task
   // and fed to the AI-feedback loop that proposes new match rules (/ai/rules).
@@ -221,7 +222,7 @@ export default function InboxPage() {
         if (t) await submitAiFeedback({ queue_item_id: id, steward_decision: "reject", correction_reason: why, domain: t.domain });
       }),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Rejected", r); },
-    onError: () => toastManager.add({ title: "Not rejected" }),
+    onError: () => toast.error("Not rejected"),
   });
   const escalate = useMutation({
     mutationFn: (ids: string[]) => each(ids, escalateItem),
@@ -247,7 +248,7 @@ export default function InboxPage() {
     mutationFn: ({ ids, reason: why }: { ids: string[]; reason: string }) =>
       each(ids, (id) => resolveException(id, { resolution_type: "fixed", resolution_notes: why, root_cause_category: "other" })),
     onSuccess: (r) => { setRejectIds(null); setReason(""); done("Resolved", r); },
-    onError: () => toastManager.add({ title: "Not resolved" }),
+    onError: () => toast.error("Not resolved"),
   });
   const busy = isExceptions
     ? excAssign.isPending || excEscalate.isPending || excResolve.isPending
@@ -272,11 +273,11 @@ export default function InboxPage() {
   const createRule = useMutation({
     mutationFn: () => createExceptionRule({ ...ruleDraft, auto_assign_to: undefined }),
     onSuccess: () => {
-      toastManager.add({ title: "Exception rule created" });
+      toast("Exception rule created");
       setRuleDraft({ name: "", description: "", rule_type: "", object_type: "", condition: "", severity: "medium" });
       void qc.invalidateQueries({ queryKey: queryKeys.exceptionRules() });
     },
-    onError: (e) => toastManager.add({ title: (e as Error).message || "Rule not created" }),
+    onError: (e) => toast.error((e as Error).message || "Rule not created"),
   });
   const toggleRule = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => updateExceptionRule(id, { is_active }),
