@@ -26,4 +26,13 @@ describe("learned rules page", () => {
     await userEvent.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => expect(approve).toHaveBeenCalledWith("p1", "medium"));
   });
+
+  it("shows an error state with retry", async () => {
+    const get = vi.spyOn(api, "getLearnedRules").mockRejectedValue(new Error("boom"));
+    renderWithQuery(<LearnedRulesPage />);
+    expect(await screen.findByText("boom")).toBeInTheDocument();
+    get.mockResolvedValueOnce({ items: [RULE] });
+    await userEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(await screen.findByText("MARC.BESKZ")).toBeInTheDocument();
+  });
 });

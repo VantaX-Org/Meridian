@@ -82,6 +82,10 @@ export default function LearnedRulesPage() {
       }
       state={q.isLoading ? "loading" : q.isError ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No learned rules here yet. They appear after the next analysis." }}
+      errorProps={{
+        message: q.error instanceof Error ? q.error.message : "Couldn't load learned rules. Try again.",
+        onRetry: () => q.refetch(),
+      }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
     />
   );
