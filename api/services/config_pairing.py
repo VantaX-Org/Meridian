@@ -11,10 +11,11 @@ import logging
 import uuid
 from collections import Counter
 from dataclasses import asdict, dataclass
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Mapping, Optional
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -402,3 +403,58 @@ async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool 
             raise
         logger.exception("Config load could not be queued for system %s", sid)
         return None
+
+
+REPORT_CAP = 5000
+_TENANT = "tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"
+
+
+def realignment_sheets(s: Session, run_id: str) -> tuple[Optional[RowMapping], pd.DataFrame, pd.DataFrame]:
+    """(run row or None, unmapped values, applied mappings) for one migration run, each capped at REPORT_CAP rows."""
+    run = s.execute(text(
+        "SELECT r.id::text AS id, r.modules, r.status, r.source_system_id::text AS source_system_id, "
+        "r.dest_system_id::text AS dest_system_id, src.name AS source_name, dst.name AS dest_name "
+        "FROM migration_runs r LEFT JOIN sap_systems src ON src.id = r.source_system_id "
+        "LEFT JOIN sap_systems dst ON dst.id = r.dest_system_id "
+        "WHERE r.id = CAST(:r AS uuid) AND r.tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"),
+        {"r": run_id}).mappings().fetchone()
+    if run is None:
+        return None, pd.DataFrame(), pd.DataFrame()
+    # ponytail: counts are of stored findings, which MAX_FINDINGS_PER_GAP caps per gap
+    unmapped = pd.DataFrame([dict(r) for r in s.execute(text(
+        "SELECT module, field, gap_type, severity, provenance, source_value, count(*) AS records "
+        f"FROM migration_gap_findings WHERE run_id = CAST(:r AS uuid) AND {_TENANT} "
+        "AND gap_type IN ('check_table_value', 'value_unmapped') "
+        "GROUP BY module, field, gap_type, severity, provenance, source_value "
+        "ORDER BY records DESC, module, field LIMIT :cap"), {"r": run_id, "cap": REPORT_CAP}).mappings()],
+        columns=["module", "field", "gap_type", "severity", "provenance", "source_value", "records"])
+    # One row per value: the most specific scope wins, as in load_value_maps.
+    applied = pd.DataFrame([dict(r) for r in s.execute(text(
+        "SELECT * FROM (SELECT DISTINCT ON (module, target_field, source_value) module, target_field, "
+        "source_value, target_value, "
+        "CASE WHEN source_system_id IS NULL THEN 'global' WHEN target_system_id IS NULL THEN 'source' "
+        "ELSE 'pair' END AS scope "
+        f"FROM transfer_value_mappings WHERE status = 'confirmed' AND {_TENANT} "
+        f"AND (module = ANY(:mods) OR module = 'config') AND {SCOPE_SQL} "
+        "ORDER BY module, target_field, source_value, (source_system_id IS NOT NULL) DESC, "
+        "(target_system_id IS NOT NULL) DESC) v ORDER BY module, target_field, source_value LIMIT :cap"),
+        {"mods": list(run["modules"] or []), "src": run["source_system_id"], "tgt": run["dest_system_id"],
+         "cap": REPORT_CAP}).mappings()],
+        columns=["module", "target_field", "source_value", "target_value", "scope"])
+    return run, unmapped, applied
+
+
+def realignment_context(run: Mapping[str, object], unmapped: pd.DataFrame, applied: pd.DataFrame,
+                        tenant_name: str) -> dict[str, object]:
+    modules = run["modules"] or []
+    return {
+        "title": f"Configuration realignment: {run['source_name'] or 'source'} to {run['dest_name'] or BASELINE_LABEL}",
+        "eyebrow": "Migration",
+        "scope_label": tenant_name,
+        "generated_at": datetime.now(timezone.utc),
+        "meta": [("Source", run["source_name"] or "Not set"), ("Target", run["dest_name"] or BASELINE_LABEL),
+                 ("Objects", ", ".join(modules)), ("Unmapped values", str(len(unmapped))),
+                 ("Applied mappings", str(len(applied)))],
+        "unmapped": unmapped.to_dict("records"),
+        "applied": applied.to_dict("records"),
+    }

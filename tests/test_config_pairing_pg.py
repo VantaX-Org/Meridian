@@ -900,3 +900,64 @@ def test_steward_approve_confirms_a_config_match(app_engine):
             await aeng.dispose()
 
     assert asyncio.run(main()) == "confirmed"
+
+
+@pg
+def test_realignment_report_sheets_and_formats(app_engine, monkeypatch):
+    from sqlalchemy import text
+
+    from api.routes.migration import router
+    from api.services import pdf_reports
+    from api.services.config_pairing import realignment_sheets
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    rid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, dest_system_id, modules, "
+                       "status) VALUES (:r, :t, 'source_to_destination', :s, :d, ARRAY['accounts_payable'], "
+                       "'analysed')"), {"r": rid, "t": tid, "s": src, "d": tgt})
+        for key in ("LIFNR=1", "LIFNR=2"):
+            c.execute(text("INSERT INTO migration_gap_findings (id, tenant_id, run_id, module, record_key, field, "
+                           "gap_type, severity, source_value, provenance) VALUES (gen_random_uuid(), :t, :r, "
+                           "'accounts_payable', :k, 'LFA1.KTOKK', 'check_table_value', 'high', 'LIEF', "
+                           "'target_live_config')"), {"t": tid, "r": rid, "k": key})
+        c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                       "target_value, source_system_id, target_system_id, status) VALUES (gen_random_uuid(), :t, "
+                       "'config', 'T077K.KTOKK', 'ZZZZ', 'KRED', :s, :d, 'confirmed')"), {"t": tid, "s": src, "d": tgt})
+    with _session(app, tid) as s:
+        run, unmapped, applied = realignment_sheets(s, rid)
+        assert run is not None and realignment_sheets(s, str(uuid.uuid4()))[0] is None
+    assert list(unmapped["records"]) == [2] and list(unmapped["source_value"]) == ["LIEF"]
+    assert list(applied["scope"]) == ["pair"] and list(applied["target_value"]) == ["KRED"]
+
+    monkeypatch.setattr(pdf_reports, "render", lambda tpl, ctx: b"%PDF-" + tpl.encode())
+
+    async def calls(c):
+        return (await c.get(f"/api/v1/migration/runs/{rid}/realignment.xlsx"),
+                await c.get(f"/api/v1/migration/runs/{rid}/realignment.pdf"),
+                await c.get(f"/api/v1/migration/runs/{rid}/realignment.csv"))
+
+    xlsx, pdf, bad = _client_run(app, tid, router, calls, monkeypatch)
+    assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"
+    assert pdf.content == b"%PDF-config_realignment_report.html"
+    assert bad.status_code == 404 and bad.json()["detail"] == "Unknown report format."
+
+
+def test_realignment_template_renders():
+    import pandas as pd
+
+    from api.services.config_pairing import realignment_context
+    from api.services.pdf_reports import render
+
+    run = {"id": "r1", "modules": ["accounts_payable"], "status": "analysed", "source_name": "PRD",
+           "dest_name": "S4D"}
+    unmapped = pd.DataFrame([{"module": "accounts_payable", "field": "LFA1.KTOKK", "gap_type": "check_table_value",
+                              "severity": "high", "provenance": "target_live_config", "source_value": "LIEF",
+                              "records": 2}])
+    applied = pd.DataFrame(columns=["module", "target_field", "source_value", "target_value", "scope"])
+    pdf = render("config_realignment_report.html", realignment_context(run, unmapped, applied, "Tenant"))
+    assert pdf[:5] == b"%PDF-"

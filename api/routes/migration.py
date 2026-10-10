@@ -503,6 +503,39 @@ async def wave_report(
     return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
 
 
+@router.get("/runs/{run_id}/realignment.{fmt}")
+async def realignment_report(
+    run_id: uuid.UUID,
+    fmt: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("export")),
+):
+    import asyncio
+
+    import pandas as pd
+
+    from api.services.config_pairing import realignment_context, realignment_sheets
+    from api.services.pdf_reports import render
+
+    if fmt not in ("xlsx", "pdf"):
+        raise HTTPException(status_code=404, detail="Unknown report format.")
+    await _set_rls(db, tenant.id)
+    run, unmapped, applied = await db.run_sync(lambda s: realignment_sheets(s, str(run_id)))
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    name = f"config_realignment_{run_id}"
+    if fmt == "pdf":
+        pdf = await asyncio.to_thread(render, "config_realignment_report.html",
+                                      realignment_context(run, unmapped, applied, tenant.name))
+        return _stream(pdf, "application/pdf", f"{name}.pdf")
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as xw:
+        unmapped.to_excel(xw, sheet_name="Unmapped values", index=False)
+        applied.to_excel(xw, sheet_name="Applied mappings", index=False)
+    return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
+
+
 @router.post("/waves/{wave_id}/blockers/fix-batch")
 async def blocker_fix_batch(
     wave_id: uuid.UUID,
