@@ -610,37 +610,43 @@ def daily_digest():
                 next_actions: list[dict] = []
                 try:
                     from api.services.analytics_engine import PrescriptiveAnalytics
-                    presc = PrescriptiveAnalytics(session, tid)
-                    actions = presc.get_next_best_actions()
-                    next_actions = actions[:5] if actions else []
+                    # Same inputs as GET /analytics/prescriptive: latest complete version's
+                    # findings, open cleaning items and exceptions, the tenant's planner config.
+                    def rows(sql: str) -> list[dict]:
+                        return [dict(r) for r in session.execute(text(sql), {"tid": tid}).mappings()]
+                    findings = rows("""
+                        SELECT * FROM findings WHERE tenant_id = :tid AND version_id = (
+                            SELECT id FROM analysis_versions WHERE tenant_id = :tid AND status = 'complete'
+                            ORDER BY run_at DESC LIMIT 1)""")
+                    queue = rows("SELECT * FROM cleaning_queue WHERE tenant_id = :tid "
+                                 "AND status IN ('detected', 'recommended') LIMIT 100")
+                    excs = rows("SELECT * FROM exceptions WHERE tenant_id = :tid "
+                                "AND status IN ('open', 'investigating') LIMIT 100")
+                    thresholds = session.execute(text("SELECT alert_thresholds FROM tenants WHERE id = :tid"),
+                                                 {"tid": tid}).scalar() or {}
+                    presc = PrescriptiveAnalytics(thresholds.get("planner") or {})
+                    next_actions = presc.generate_next_best_actions(findings, queue, excs, limit=5)
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: prescriptive analytics failed: {e}")
 
-                # 4. Create notification records (skip if table doesn't exist)
+                # 4. Inbox notification. notifications has no metadata column: the warnings and
+                # top actions go into the body text.
+                lines = [f"{new_findings} new findings, {new_cleaning} cleaning items, {new_exceptions} exceptions"]
+                lines += [f"Next: {a['title']} ({a['severity']}, {a['affected_count']} records)" for a in next_actions]
+                if early_warnings:
+                    lines.append(f"{len(early_warnings)} early warning(s) on DQS forecasts")
+                if anomaly_warning:
+                    lines.append(anomaly_warning)
                 try:
                     session.execute(
-                        text("""
-                            INSERT INTO notifications (id, tenant_id, type, title, body, metadata, created_at)
-                            VALUES (gen_random_uuid(), :tid, 'daily_digest', 'Daily Digest',
-                                :body, :meta, now())
-                        """),
-                        {
-                            "tid": tid,
-                            "body": f"{new_findings} new findings, {new_cleaning} cleaning items, {new_exceptions} exceptions",
-                            "meta": json.dumps({
-                                "findings": new_findings,
-                                "cleaning": new_cleaning,
-                                "exceptions": new_exceptions,
-                                "early_warnings": early_warnings,
-                                "next_actions": next_actions,
-                                "anomaly_warning": anomaly_warning,
-                            }),
-                        },
+                        text("INSERT INTO notifications (tenant_id, type, title, body) "
+                             "VALUES (:tid, 'daily_digest', 'Daily digest', :body)"),
+                        {"tid": tid, "body": "\n".join(lines)},
                     )
                     session.commit()
-                except Exception:
+                except Exception as e:
                     session.rollback()
-                    logger.debug(f"  tenant={tid}: notifications table not yet available")
+                    logger.warning(f"  tenant={tid}: digest notification not stored: {type(e).__name__}")
 
                 # 5. Send email if configured
                 resend_key = os.getenv("RESEND_API_KEY")
