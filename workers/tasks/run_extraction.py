@@ -48,6 +48,19 @@ def latest_activity(frames: dict) -> str | None:
     return latest.date().isoformat() if latest is not None else None
 
 
+CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
+
+
+def wait_for_config(task, session: Session, system_id: str) -> str:
+    """'loaded' when the system has a completed config load; retry while a fresh load runs; else 'baseline'."""
+    from api.services.config_pairing import config_basis
+
+    basis = config_basis(session, system_id)
+    if basis == "loading" and task.request.retries < CONFIG_WAIT_RETRIES:
+        raise task.retry(countdown=CONFIG_WAIT_SECONDS, max_retries=CONFIG_WAIT_RETRIES)
+    return "loaded" if basis == "loaded" else "baseline"
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -69,6 +82,11 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     from api.services.task_progress import publish_progress
 
     engine = get_sync_engine()
+    if sync_type != "config":
+        with tenant_session(engine, tenant_id) as s:
+            config_basis = wait_for_config(self, s, system_id)  # raises Retry outside the task's try block
+    else:
+        config_basis = "loaded"
     version_id = version_id or str(uuid.uuid4())
     job_id = f"dl-{version_id}"
     if jobs.get_job(tenant_id, job_id) is None:
@@ -163,6 +181,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 {"vid": version_id, "tid": tenant_id, "st": "pending" if analyse else "extracted",
                  "label": label, "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
+                    "config_basis": config_basis,
                     "scope": scope or {}, "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "latest_activity": max(activity) if activity else None,
