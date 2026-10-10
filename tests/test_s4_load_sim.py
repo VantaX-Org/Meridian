@@ -103,3 +103,15 @@ def test_material_ledger_without_lbkum_column():
     # Should not crash; with no LBKUM (treated as all zeros), stock = False for all rows, so no gaps
     gaps = load_sim.check_material_ledger(_tf(MBEW=mbew), "material_master")
     assert gaps == []
+
+
+def test_konv_orphan_afle_nast():
+    vbak = pd.DataFrame({"VBELN": ["S1"], "KNUMV": ["K1"]})
+    konv = pd.DataFrame({"KNUMV": ["K1", "K9"], "KPOSN": ["10", "10"], "STUNR": ["1", "1"],
+                         "ZAEHK": ["1", "1"], "KWERT": [9_999_999_999.0, 5.0]})
+    nast = pd.DataFrame({"KAPPL": ["V1", "V1"], "OBJKY": ["S1", "S1"], "KSCHL": ["BA00", "BA00"],
+                         "PARNR": ["1", "2"], "VSTAT": ["0", "1"]})
+    gaps = load_sim.check_simplification(_tf(VBAK=vbak, KONV=konv, NAST=nast), "sd_sales_orders")
+    got = {(g.record_key.split("|")[0], g.detail.split(" ", 1)[0]) for g in gaps}
+    assert got == {("KNUMV=K9", "S4L-SD-KONV-ORPHAN"), ("KNUMV=K1", "S4L-FI-AFLE"),
+                   ("KAPPL=V1", "S4L-OUT-NAST-OPEN")}

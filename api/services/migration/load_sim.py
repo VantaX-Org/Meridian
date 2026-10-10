@@ -14,6 +14,7 @@ from checks.base import record_keys
 from checks.frames import TableFrames
 
 _FILE = Path(__file__).resolve().parents[3] / "sap" / "dictionaries" / "migration" / "s4_load_rules.yaml"
+_AFLE_EDGE = 0.95 * 10 ** 10  # CURR 13,2 holds 11 integer digits; detect values approaching 10B
 
 # Record-key columns per source table, plain (unprefixed) names — TableFrames in this
 # module holds flat per-table frames (e.g. MARA["MATNR"]), not "TABLE.FIELD" columns.
@@ -183,4 +184,26 @@ def check_material_ledger(frames: TableFrames, module: str) -> list[Gap]:
     no_class = stock & bklas.eq("")
     out = _gaps("S4L-ML-BKLAS", module, "MBEW", "BKLAS", no_class, mbew)
     out += _gaps("S4L-ML-PRICE", module, "MBEW", "VPRSV", stock & ~no_class & (vprsv.eq("") | price.le(0)), mbew)
+    return out
+
+
+def check_simplification(frames: TableFrames, module: str) -> list[Gap]:
+    """S/4 simplification load checks: KONV orphans, AFLE edge cases, NAST open output
+    determination records."""
+    out: list[Gap] = []
+    konv = _frame(frames, "KONV")
+    if konv is not None:
+        heads = set()
+        for t in ("VBAK", "EKKO"):
+            h = _frame(frames, t)
+            if h is not None and "KNUMV" in h.columns:
+                heads |= set(_norm(h["KNUMV"]))
+        if heads:  # only judge orphans when at least one header table was extracted
+            out += _gaps("S4L-SD-KONV-ORPHAN", module, "KONV", "KNUMV", ~_norm(konv["KNUMV"]).isin(heads), konv)
+        if "KWERT" in konv.columns:
+            kw = pd.to_numeric(konv["KWERT"], errors="coerce").abs()
+            out += _gaps("S4L-FI-AFLE", module, "KONV", "KWERT", kw.ge(_AFLE_EDGE).fillna(False), konv, kw)
+    nast = _frame(frames, "NAST")
+    if nast is not None and "VSTAT" in nast.columns:
+        out += _gaps("S4L-OUT-NAST-OPEN", module, "NAST", "VSTAT", _norm(nast["VSTAT"]).eq("0"), nast)
     return out
