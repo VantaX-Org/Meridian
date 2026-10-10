@@ -340,3 +340,34 @@ def test_a_failing_prefetch_does_not_abort_the_module(bundle: dict[str, bytes], 
     monkeypatch.setattr(fm.TableFrames, "prefetch", boom)
     eager = _dump(run_checks(MODULE, _frames(bundle, False), "t1", as_of="2026-01-01"))
     assert _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01")) == eager
+
+
+def _parquet(frame: pd.DataFrame) -> bytes:
+    buf = io.BytesIO()
+    frame.to_parquet(buf)
+    return buf.getvalue()
+
+
+def test_blank_applies_when_field_that_was_not_extracted_scores_the_same_lazy_and_eager() -> None:
+    from checks.runner import run_rule
+    but = pd.DataFrame({"BUT000.PARTNER": ["1", "2", "3"], "BUT000.TYPE": ["1", "1", "2"],
+                        "BUT000.NAME_ORG1": ["A", "", "B"]})  # BUT000.XDELE is not extracted
+    rule = {"id": "S1", "check_class": "null_check", "field": "BUT000.NAME_ORG1", "severity": "low",
+            "dimension": "completeness", "message": "m",
+            "applies_when": {"BUT000.TYPE": ["1"], "BUT000.XDELE": {"blank": True}}}
+    outcome = []
+    for frames in (TableFrames({"BUT000": but}, D, module="business_partner"),
+                   TableFrames({"BUT000": ParquetTable(_parquet(but))}, D, module="business_partner")):
+        result = run_rule(rule, frames)[1]
+        assert result is not None
+        outcome.append((result.affected_count, result.total_count, result.error))
+    assert outcome == [(1, 2, None)] * 2
+
+
+def test_string_column_estimate_covers_values_the_dictionary_encoding_hides() -> None:
+    rows = 10_000
+    text = pd.DataFrame({"T.ID": [f"{i:010d}" for i in range(rows)],
+                         "T.TEXT": [f"{i % 100:040d}" for i in range(rows)]})  # 100 distinct 40-char values
+    src = ParquetTable(_parquet(text))
+    assert src.nbytes("T.TEXT") >= 40 * rows
+    assert src.nbytes("T.ID") >= 10 * rows

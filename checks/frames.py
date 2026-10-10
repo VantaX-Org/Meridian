@@ -139,23 +139,40 @@ class ParquetTable:
         self.columns = self._stored
         self._rows = meta.metadata.num_rows
         self._sizes: dict[str, int] | None = None
+        self._widest: dict[str, int] = {}
         self._meta = meta.metadata
         self._strings = {f.name for f in meta.schema_arrow if pa.types.is_string(f.type) or pa.types.is_large_string(f.type)}
+        self._widths = {f.name: f.type.bit_width // 8 for f in meta.schema_arrow
+                        if pa.types.is_primitive(f.type) and f.type.bit_width >= 8}
 
     def nbytes(self, col: str) -> int:
         """Estimated decoded bytes of ``col``: the parquet metadata's uncompressed size, never less
-        than ``_STRING_BYTES`` a row for a string column (pandas 3 holds those as arrow strings)."""
+        than the decoded floor: a fixed-width type's width a row, a string's 8 B offset plus its
+        longest min/max statistic (``_STRING_BYTES`` when statistics are missing). A dictionary-encoded
+        column's metadata size is only its indexes, so the floor is what bounds it."""
         if col in self._added:
             return int(self._added[col].memory_usage(deep=True))
         if self._sizes is None:
             sizes: dict[str, int] = {}
+            widest: dict[str, int] = {}
+            missing: set[str] = set()
             for i in range(self._meta.num_row_groups):
                 rg = self._meta.row_group(i)
                 for j in range(rg.num_columns):
                     c = rg.column(j)
                     sizes[c.path_in_schema] = sizes.get(c.path_in_schema, 0) + c.total_uncompressed_size
+                    st = c.statistics if c.is_stats_set else None
+                    if st is not None and st.has_min_max and isinstance(st.min, (str, bytes)):
+                        widest[c.path_in_schema] = max(widest.get(c.path_in_schema, 0), len(st.min), len(st.max))
+                    else:
+                        missing.add(c.path_in_schema)
             self._sizes = sizes
-        return max(self._sizes.get(col, 0), _STRING_BYTES * self._rows if col in self._strings else 0)
+            self._widest = {k: v for k, v in widest.items() if k not in missing}
+        if col in self._strings:
+            floor = (8 + self._widest[col] if col in self._widest else _STRING_BYTES) * self._rows
+        else:
+            floor = self._widths.get(col, 0) * self._rows
+        return max(self._sizes.get(col, 0), floor)
 
     def with_column(self, name: str, values: pd.Series) -> "ParquetTable":
         """A copy with ``values`` appended as column ``name`` (held decoded; the rest stays compressed)."""
@@ -311,10 +328,10 @@ class TableFrames:
             out |= {c for edge, _ in self._path(g, t) or [] for c in _edge_columns(edge)}
         return out
 
-    def estimate_bytes(self, columns: set[str], grain: str, stripped: set[str] | None = None) -> int:
+    def estimate_bytes(self, columns: set[str], grain: str, stripped: dict[str, int] | None = None) -> int:
         """Decoded bytes of the joined frame ``frame_for`` builds at ``grain`` for ``columns``, from
-        parquet metadata. Every column is held once per grain row; ``stripped`` ones twice (the
-        normalised copy rules keep). Each decoded table, then the join, holds no more than this."""
+        parquet metadata. Every column is held once per grain row; ``stripped`` ones once more per
+        normalised copy rules keep (``{column: copies}``). Each decoded table, then the join, holds no more than this."""
         rows = len(self.frames[grain])
         wanted = self._wanted(columns, grain)
         total = 0
@@ -328,7 +345,7 @@ class TableFrames:
                 if wanted is not None and c not in wanted:
                     continue
                 size = src.nbytes(c) if isinstance(src, ParquetTable) else _STRING_BYTES * len(src)
-                total += size * rows // len(src) * (2 if stripped and c in stripped else 1)
+                total += size * rows // len(src) * (1 + (stripped.get(c, 0) if stripped else 0))
         return total
 
     def prefetch(self, columns: set[str], grain: str) -> None:
@@ -364,13 +381,18 @@ class TableFrames:
         if g not in self.frames:
             return None
         want = set(tables) | {g}
-        cache_key = (self.module, g, tuple(sorted(want)))
         avail = {c for c in read if c.partition(".")[0] in want and c in self.frames[c.partition(".")[0]].columns}
+        if lazy:  # a table none of whose requested columns exist adds nothing: leave it out of the key
+            want = {c.partition(".")[0] for c in avail} | {g}
+        cache_key = (self.module, g, tuple(sorted(want)))
         for key, hit in self._cache.items():
             if key == cache_key or (lazy and key[:2] == cache_key[:2] and want <= set(key[2])):
                 if not lazy or avail <= set(hit[0].columns):
                     return hit
-        paths = {t: self._path(g, t) for t in tables if t != g}
+        paths = {t: self._path(g, t) for t in tables if t != g and (not lazy or t in want)}
+        for t, path in paths.items():  # before anything is decoded
+            if path is None:
+                raise ValueError(f"No non-fan-out join path from {g} to {t} (sap/dictionaries/joins.yaml)")
         wanted: set[str] | None = None
         if lazy and any(f"{g}.{k}" in self.frames[g].columns for k in self.dictionary.keys(g)):
             # the rule's fields, the grain's key and every join's keys; without a key the
@@ -379,8 +401,6 @@ class TableFrames:
             wanted |= {c for path in paths.values() for edge, _ in path or [] for c in _edge_columns(edge)}
         frame = _decoded(self.frames[g], wanted)
         for t, path in paths.items():
-            if path is None:
-                raise ValueError(f"No non-fan-out join path from {g} to {t} (sap/dictionaries/joins.yaml)")
             for edge, direction in path:
                 other = edge.parent if direction == "up" else edge.child
                 if other not in self.frames:

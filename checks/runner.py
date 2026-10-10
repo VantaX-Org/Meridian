@@ -42,7 +42,9 @@ logger = logging.getLogger("meridian.checks")
 def _context_values(df: pd.DataFrame, field: str, norm: dict[str, pd.Series] | None) -> pd.Series:
     """``field`` as stripped strings. With ``norm``, the first call (on the unfiltered frame) stores
     the series and later calls on a filtered frame take their rows from it by label."""
-    if norm is None or field not in df.columns:
+    if field not in df.columns:  # not extracted: no value anywhere
+        return pd.Series(pd.NA, index=df.index, dtype="string")
+    if norm is None:
         return df[field].astype("string").str.strip()
     key = f"ctx|{field}"
     if key not in norm:
@@ -417,16 +419,19 @@ def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: Chec
 
 
 def _rule_columns(rule: dict, frames: TableFrames,
-                  suppressed: dict[str, tuple[list[str], set[str]]] | None) -> tuple[set[str], set[str]]:
-    """(every column the rule reads, those rules keep a stripped copy of); empty for a rule that skips."""
+                  suppressed: dict[str, tuple[list[str], set[str]]] | None) -> tuple[set[str], dict[str, int]]:
+    """(every column the rule reads, {column: stripped copies the rule keeps}); empty for a rule
+    that skips. ``exclude`` and ``apply_context`` each keep their own copy of a field."""
     try:
         if rule.get("check_class") not in REGISTRY or _missing_context_field(rule, frames):
-            return set(), set()
+            return set(), {}
         cols, _, excl, optional = _frame_inputs(rule, REGISTRY[rule["check_class"]], frames, suppressed)
-        stripped = {c for x in excl for c in (x.get("fields") or [x["field"]])} | set(rule.get("applies_when") or {})
+        stripped: dict[str, int] = {}
+        for c in [c for x in excl for c in (x.get("fields") or [x["field"]])] + list(rule.get("applies_when") or {}):
+            stripped[c] = stripped.get(c, 0) + 1
         return set(cols) | set(optional), stripped
     except Exception:  # run_rule reports it
-        return set(), set()
+        return set(), {}
 
 
 def _group_columns(rules: list[dict], frames: TableFrames,
@@ -442,7 +447,7 @@ def _prefetch_plan(order: list[int], rules: list[dict], grain: str, frames: Tabl
     set, so it builds its own frame as before."""
     plan: dict[int, set[str]] = {}
     cur: set[str] = set()
-    again: set[str] = set()
+    again: dict[str, int] = {}
     start: int | None = None
     for i in order:
         cols, stripped = _rule_columns(rules[i], frames, suppressed)
@@ -451,13 +456,14 @@ def _prefetch_plan(order: list[int], rules: list[dict], grain: str, frames: Tabl
         cols = {c for c in cols if (pt := frames.path_tables([c], grain)) is not None and pt <= set(frames.frames)
                 and c in frames.frames[c.partition(".")[0]].columns}
         if frames.estimate_bytes(cols, grain, stripped) > budget:
-            plan[i], cur, again, start = set(), set(), set(), None
-        elif start is not None and frames.estimate_bytes(cur | cols, grain, again | stripped) <= budget:
+            plan[i], cur, again, start = set(), set(), {}, None
+        elif start is not None and frames.estimate_bytes(cur | cols, grain, merged := {
+                c: max(again.get(c, 0), stripped.get(c, 0)) for c in again.keys() | stripped.keys()}) <= budget:
             cur |= cols
-            again |= stripped
+            again = merged
             plan[start] = cur
         else:
-            start, cur, again = i, set(cols), set(stripped)
+            start, cur, again = i, set(cols), dict(stripped)
             plan[i] = cur
     return plan
 
