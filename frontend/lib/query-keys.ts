@@ -76,6 +76,7 @@ export const queryKeys = {
   miningPatterns: (filters: Record<string, unknown>) =>
     ["mining-patterns", normalizeFilters(filters)] as const,
   systemVersions: (systemId: string) => ["system-versions", systemId] as const,
+  systemTrends: (systemId: string) => ["system-trends", systemId] as const,
   versionProfile: (systemId: string, versionId: string, object?: string) =>
     ["version-profile", systemId, versionId, object ?? ""] as const,
   pdReference: () => ["pd-reference"] as const,
