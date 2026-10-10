@@ -62,3 +62,7 @@ def compute_proven_cost(self, version_id: str, tenant_id: str, parquet_path: str
             session.rollback()
             logger.warning(f"compute_proven_cost {version_id}: time limit")
             return {}
+        except Exception:
+            session.rollback()
+            logger.exception(f"compute_proven_cost {version_id}: failed")
+            raise

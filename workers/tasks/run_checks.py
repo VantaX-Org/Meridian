@@ -865,6 +865,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         try:
             from workers.tasks.compute_proven_cost import compute_proven_cost
             compute_proven_cost.delay(version_id, tenant_id, parquet_path)
+            logger.info(f"Enqueued compute_proven_cost for version_id={version_id}")
         except Exception as e:
             logger.warning(f"Failed to enqueue compute_proven_cost (non-fatal): {e}")
 
