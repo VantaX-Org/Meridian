@@ -173,3 +173,19 @@ def test_duplicate_payment_reversed_payments_excluded() -> None:
                          "SHKZG": ["S"] * 2, "BLDAT": ["20260101", "20260101"], "GJAHR": ["2025", "2025"]})
     r = pc.duplicate_payments(_tf(BSAK=bsak), {})
     assert r.amount == 0 and r.items == []
+
+
+def test_attribute_matches_on_overlapping_fields():
+    items = [pc.CostItem(doc_key="EBELN=P1|EBELP=10", master_key="MATNR=M1|WERKS=W", amount=1, detail=""),
+             pc.CostItem(doc_key="BUKRS=1|BELNR=B1,B2", master_key="LIFNR=100,200", amount=1, detail="")]
+    failing = {"MM140": {"MATNR=M1|WERKS=W"}, "MM001": {"MATNR=M1"}, "MM002": {"MATNR=M2"},
+               "S4-CVI-LFA1": {"LIFNR=0000000200"}, "X": {"BUKRS=1"}}
+    out = pc.attribute(items, failing)
+    assert out["EBELN=P1|EBELP=10"] == ["MM001", "MM140"]
+    assert out["BUKRS=1|BELNR=B1,B2"] == ["S4-CVI-LFA1"]
+
+
+def test_compute_runs_all_four_metrics():
+    rows = pc.compute(_po_frames(), date(2026, 3, 1), {}, {"MM140": {"MATNR=M1|WERKS=W"}})
+    assert [r["metric"] for r in rows] == ["late_po", "grir_uom_variance", "blocked_sales", "duplicate_payment"]
+    assert rows[0]["check_ids"] == ["MM140"] and rows[0]["items"][0]["check_ids"] in (["MM140"], [])

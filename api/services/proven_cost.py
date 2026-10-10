@@ -9,6 +9,7 @@ from typing import TypedDict
 
 import pandas as pd
 
+from api.services.lineage import parse_record_key
 from checks.frames import TableFrames
 
 
@@ -262,3 +263,55 @@ def late_pos(frames: TableFrames, today: date) -> MetricResult:
                   + df["_e"].map({True: "; no EINE info record", False: ""}),
     })
     return _result("late_po", rows)
+
+
+def _master_variants(master_key: str) -> list[dict[str, str]]:
+    base = dict(p.split("=", 1) for p in master_key.split("|") if "=" in p)
+    multi = {k: v.split(",") for k, v in base.items() if "," in v}
+    if not multi:
+        return [base]
+    (k, vals), = multi.items()  # only LIFNR lists today
+    return [{**base, k: v} for v in vals]
+
+
+def _z(v: str) -> str:
+    return v.strip().lstrip("0") or "0"
+
+
+def attribute(items: list[CostItem], failing: dict[str, set[str]]) -> dict[str, list[str]]:
+    parsed = [(cid, p) for cid, keys in failing.items() for k in keys if (p := parse_record_key(k))]
+    out: dict[str, list[str]] = {}
+    for it in items:
+        hits: set[str] = set()
+        for mv in _master_variants(it["master_key"]):
+            for cid, fk in parsed:
+                shared = set(fk) & set(mv)
+                if shared and all(_z(fk[f]) == _z(mv[f]) for f in shared):
+                    hits.add(cid)
+        out[it["doc_key"]] = sorted(hits)
+    return out
+
+
+class MetricRow(TypedDict):
+    metric: str
+    amount: float
+    currency: str | None
+    by_currency: dict[str, float]
+    documents: int
+    check_ids: list[str]
+    items: list[dict[str, object]]
+
+
+def compute(frames: TableFrames, today: date, clusters: dict[str, str],
+            failing: dict[str, set[str]]) -> list[MetricRow]:
+    results = [late_pos(frames, today), grir_uom_variance(frames), blocked_sales(frames),
+               duplicate_payments(frames, clusters)]
+    rows: list[MetricRow] = []
+    for r in results:
+        items = r.items[:1000]
+        att = attribute(items, failing)
+        rows.append(MetricRow(metric=r.metric, amount=r.amount, currency=r.currency, by_currency=r.by_currency,
+                              documents=r.documents,
+                              check_ids=sorted({c for v in att.values() for c in v}),
+                              items=[{**i, "check_ids": att[i["doc_key"]]} for i in items]))
+    return rows
