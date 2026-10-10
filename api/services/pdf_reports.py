@@ -524,9 +524,9 @@ def module_deltas(summary1: dict, summary2: dict) -> dict:
     delta = {}
     for mod in sorted(set(summary1 or {}) | set(summary2 or {})):
         s1, s2 = (summary1 or {}).get(mod) or {}, (summary2 or {}).get(mod) or {}
-        if (s1 and s1.get("composite_score") is None) or (s2 and s2.get("composite_score") is None):
-            continue  # ran but not measured in one run: nothing to compare
-        score1, score2 = s1.get("composite_score", 0), s2.get("composite_score", 0)
+        score1, score2 = s1.get("composite_score"), s2.get("composite_score")
+        if score1 is None or score2 is None:
+            continue  # absent from a run, or ran but not measured: nothing to compare
         d1, d2 = s1.get("dimension_scores") or {}, s2.get("dimension_scores") or {}
         delta[mod] = {
             "dqs_change": round(score2 - score1, 2), "v1_score": score1, "v2_score": score2,

@@ -320,11 +320,11 @@ class CleanRecords:
             if parts.isna().to_numpy().any():
                 self.unattributed.append(check_id)  # failing records keyed without the driving object's key
                 return
-            parts = parts.drop_duplicates()
-            if len(self.failing) + len(parts) > CLEAN_KEY_CEILING:  # upper bound on the union
+            new = set(parts.itertuples(index=False, name=None)) - self.failing  # at most CLEAN_KEY_CHUNK tuples
+            if len(self.failing) + len(new) > CLEAN_KEY_CEILING:
                 self.failing, self.reason = None, f"more than {CLEAN_KEY_CEILING:,} failing {self.anchor} records"
                 return
-            self.failing.update(parts.itertuples(index=False, name=None))
+            self.failing.update(new)
 
     def result(self) -> dict:
         failing = len(self.failing) if self.failing is not None else None

@@ -171,3 +171,7 @@ def test_clean_records_ceiling_reports_null(monkeypatch):
     out = t.result()
     assert out["clean_record_pct"] is None and "more than 2" in out["clean_records"]["reason"]
     assert CleanRecords(None, [], 0).result()["clean_record_pct"] is None
+    overlap = CleanRecords("MARA", ["MATNR"], 10)  # rules failing the same records count once
+    overlap.add("T1", pd.Series(["MATNR=1", "MATNR=2"]))
+    overlap.add("T2", pd.Series(["MATNR=2", "MATNR=1"]))
+    assert overlap.result()["clean_records"]["failing_records"] == 2 and overlap.reason is None

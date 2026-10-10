@@ -72,7 +72,16 @@ def test_module_deltas():
     assert d["business_partner"]["dqs_change"] == round(83.9 - 74.2, 2)
     assert d["material_master"]["dqs_change"] == round(84.1 - 86.0, 2)
     assert d["business_partner"]["dimensions"]["completeness"]["change"] == 13.0
-    assert d["fi_gl"]["v1_score"] == 0  # same shape as /versions/compare for a module new in v2
+    assert "fi_gl" not in d  # new in v2: no delta, rather than a change measured from 0
+
+
+def test_module_deltas_skips_absent_and_unmeasured_modules():
+    v1 = {"a": {"composite_score": 70.0}, "b": {"composite_score": None}}
+    v2 = {"a": {"composite_score": 75.0}, "b": {"composite_score": 80.0}, "c": {"composite_score": 85.0}}
+    assert set(pr.module_deltas(v1, v2)) == {"a"}
+    c = pr.comparison_context({**fx.V1, "dqs_summary": v1}, {**fx.V2, "dqs_summary": v2}, [], [], record_diff=None,
+                              tenant_name=fx.TENANT, scoring={}, generated_at=fx.GENERATED)
+    assert {m["name"]: m["change"] for m in c["modules"]} == {"a": 5.0, "b": None, "c": None}
 
 
 def test_comparison_figures():

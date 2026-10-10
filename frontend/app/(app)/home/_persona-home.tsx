@@ -125,10 +125,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const trendPoints = trend(versions);
   const dqs = runDqs(latest);
 
-  const scoredObjects = objects
-    .filter((o) => latest.dqs_summary?.[o.module])
-    .slice()
-    .sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
+  const scoredObjects = worstObjectsFirst(objects.filter((o) => latest.dqs_summary?.[o.module]));
   const heatmapRows = scoredObjects.map((o) => o.label);
   const heatmapCols = DIMENSIONS.map((d) => formatModuleName(d));
 
