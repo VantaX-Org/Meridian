@@ -26,6 +26,11 @@ describe("ExportMenu", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("keeps a single-option button content-width, like the menu trigger", () => {
+    render(<ExportMenu options={[{ format: "xlsx", run: vi.fn() }]} />);
+    expect(screen.getByRole("button", { name: "Export" })).toHaveClass("self-start");
+  });
+
   it("renders a plain Export button for one option and toasts on resolve", async () => {
     const run = vi.fn().mockResolvedValue(undefined);
     render(<ExportMenu options={[{ format: "xlsx", run }]} />);

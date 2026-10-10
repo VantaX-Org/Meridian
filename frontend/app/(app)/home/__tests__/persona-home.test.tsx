@@ -1,5 +1,6 @@
 // frontend/app/(app)/home/__tests__/persona-home.test.tsx
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
@@ -54,6 +55,19 @@ beforeEach(() => {
   vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 0 });
   vi.spyOn(jobsHook, "useJobs").mockReturnValue({ active: [], jobs: [] } as unknown as ReturnType<typeof jobsHook.useJobs>);
   vi.spyOn(downloadApi, "downloadAuthenticated").mockResolvedValue(undefined);
+});
+
+describe("PersonaHomePage 404 handling", () => {
+  it("treats a 404 from the objects list as empty, not an error", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(objectsApi, "getObjects").mockRejectedValue(new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, { status: 404 } as AxiosResponse));
+
+    renderWithQuery(<LeadHomePage />);
+
+    await waitFor(() => expect(objectsApi.getObjects).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+  });
 });
 
 describe("PersonaHomePage header actions (T20)", () => {

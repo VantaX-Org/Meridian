@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Button, DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
@@ -36,7 +36,7 @@ export default function ReadinessPage() {
   let state: "loading" | "empty" | "error" | undefined;
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
-  } else if (isError) {
+  } else if (isListFailure({ isError, error })) {
     state = "error";
   } else if (data && data.cells.length === 0) {
     state = "empty";

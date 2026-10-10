@@ -56,8 +56,9 @@ function RunSelectorSlot() {
   if (isError && !isNotFound(error)) {
     return (
       <span className="inline-flex items-center gap-2">
-        <Pill tone="no-go">Runs unavailable</Pill>
-        <Button variant="ghost" onClick={() => refetch()}>Retry</Button>
+        {/* Below md the pill is dropped so the page title keeps the row; Retry stays and carries the meaning. */}
+        <span className="hidden md:inline-flex"><Pill tone="no-go">Runs unavailable</Pill></span>
+        <Button variant="ghost" aria-label="Runs unavailable, retry" onClick={() => refetch()}>Retry</Button>
       </span>
     );
   }

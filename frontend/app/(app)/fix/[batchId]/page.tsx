@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/cleaning";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCleaningReportUrl } from "@/lib/api/reports";
-import { apiErrorMessage } from "@/lib/error";
+import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -79,7 +79,7 @@ export default function BatchPage() {
 
   return (
     <ExplorerPage
-      state={isLoading ? "loading" : isError ? "error" : items.length === 0 ? "empty" : undefined}
+      state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
         title: "Batch not found.",
         action: <Button render={<Link href="/fix?tab=batches">All batches</Link>} />,

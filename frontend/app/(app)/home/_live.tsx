@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design"
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { getSystems } from "@/lib/api/connectivity";
+import { isListFailure } from "@/lib/error";
 import { labelOf, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -47,7 +48,7 @@ export function LiveSection() {
     <div className="flex flex-col gap-4">
       <Section title="Systems">
         {systemsQ.isLoading ? <Skeleton height={80} />
-          : systemsQ.isError ? (
+          : isListFailure(systemsQ) ? (
             <div className="p-3">
               <ErrorState message="Live system state could not be read." onRetry={() => void systemsQ.refetch()} />
             </div>
