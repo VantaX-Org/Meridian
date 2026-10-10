@@ -18,9 +18,11 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def seeded():
     """Tenant 1 gets two analysis versions: v_old (no proven_cost_results, older
-    run_at) and v_new (ZAR rows for late_po/grir_uom_variance/blocked_sales plus
-    one USD duplicate_payment row, newer run_at). Tenant 2 gets nothing, proving
-    isolation."""
+    run_at) and v_new (ZAR rows for late_po/grir_uom_variance/blocked_sales, plus
+    a mixed-currency duplicate_payment row — currency=None, by_currency split
+    between ZAR and USD, as api/services/proven_cost.py's _result produces for a
+    metric spanning more than one currency — newer run_at). Tenant 2 gets nothing,
+    proving isolation."""
     engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
     t1, t2 = str(uuid.uuid4()), str(uuid.uuid4())
     v_old, v_new = str(uuid.uuid4()), str(uuid.uuid4())
@@ -44,7 +46,7 @@ def seeded():
             ("late_po", 1000, "ZAR", {"ZAR": 1000}, 3, ["MM140"], []),
             ("grir_uom_variance", 500, "ZAR", {"ZAR": 500}, 2, ["MM200"], []),
             ("blocked_sales", 300, "ZAR", {"ZAR": 300}, 1, ["SD100"], []),
-            ("duplicate_payment", 200, "USD", {"USD": 200}, 1, ["FI050"], []),
+            ("duplicate_payment", 350, None, {"ZAR": 150, "USD": 200}, 1, ["FI050"], []),
         ]
         for metric, amount, currency, by_currency, documents, check_ids, items in rows:
             conn.execute(
@@ -98,14 +100,17 @@ async def test_proven_cost_excludes_other_currencies_and_orders_rows(seeded, mon
     body = r.json()
     assert body["version_id"] == v_new
     assert body["currency"] == "ZAR"
-    # USD duplicate_payment row (200) is excluded from the total.
-    assert body["total"] == 1800.0
+    # duplicate_payment is a mixed-currency row (currency=None, by_currency split
+    # ZAR/USD): only its ZAR share (150) counts toward the total, the USD share (200)
+    # is reported in by_currency but never converted or summed.
+    assert body["total"] == 1950.0
     assert [r["metric"] for r in body["rows"]] == [
         "late_po", "grir_uom_variance", "blocked_sales", "duplicate_payment",
     ]
     assert body["rows"][0]["label"] == "Late POs (lead-time / info-record defects)"
     assert body["rows"][0]["check_ids"] == ["MM140"]
-    assert body["rows"][3]["currency"] == "USD"
+    assert body["rows"][3]["currency"] is None
+    assert body["rows"][3]["by_currency"] == {"ZAR": 150, "USD": 200}
     assert body["value_at_risk_total"] == 0.0
 
 

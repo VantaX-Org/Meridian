@@ -178,9 +178,12 @@ async def get_proven_cost(
              "by_currency": r.by_currency, "documents": r.documents, "check_ids": list(r.check_ids),
              "items": r.items}
             for m, label in _METRIC_LABEL.items() if (r := by_metric.get(m))]
-    # total sums only rows already in the tenant's chosen currency; other currencies
-    # live in by_currency and are reported, never converted.
-    total = round(sum(r["amount"] for r in rows if r["currency"] == currency), 2)
+    # A metric spanning more than one currency (api/services/proven_cost.py's
+    # _result) carries currency=None with a by_currency breakdown instead; sum each
+    # row's by_currency share of the tenant's chosen currency, never converting the
+    # rest, rather than filtering on row.currency (which would drop the ZAR share of
+    # every mixed-currency metric).
+    total = round(sum(float((r["by_currency"] or {}).get(currency, 0.0)) for r in rows), 2)
 
     impact = await get_impact(version_id, db, tenant)
     value_at_risk_total = round(sum(r["value_at_risk"] for r in impact["rows"]), 2)
