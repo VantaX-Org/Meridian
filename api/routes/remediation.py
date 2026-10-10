@@ -329,7 +329,8 @@ async def export_batch(
     batch_id: uuid.UUID,
     request: Request,
     format: ExportFormat = Query("cockpit_xlsx"),
-    cr_type: str = Query("create", description="mdg_cr_json only: the change-request type"),
+    cr_type: Optional[str] = Query(None, max_length=40, pattern=r"^[A-Z0-9_]+$",
+                                   description="mdg_cr_json only: the change-request type"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _perm: str = Depends(require_permission("export")),
@@ -340,8 +341,7 @@ async def export_batch(
         raise HTTPException(status_code=409, detail="Approve the batch before exporting it.")
     uid = current_user_id(request)
     if b["created_by"] and uid and uid == b["created_by"]:
-        # defence in depth: approve_batch already blocks creator == approver, so this should be
-        # unreachable via the normal flow, but export re-checks the four-eyes split on its own.
+        # the batch creator may never export it either, even once someone else has approved it
         raise HTTPException(status_code=403, detail="The batch creator cannot export it.")
     items = await _items(db, batch_id)
     from api.services import sap_packages
@@ -351,7 +351,7 @@ async def export_batch(
         data, ext = sap_packages.mass_maintenance_zip(items), "zip"
     elif format == "mdg_cr_json":
         data, ext = sap_packages.mdg_change_request(
-            items, batch_id=str(batch_id), batch_name=b["name"], cr_type=cr_type), "json"
+            items, batch_id=str(batch_id), batch_name=b["name"], cr_type=cr_type or "create"), "json"
     else:
         from sap.ddic import get_dictionary
         d = get_dictionary("s4hana")

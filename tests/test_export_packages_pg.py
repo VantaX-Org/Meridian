@@ -125,6 +125,12 @@ def test_export_records_sha256_and_requires_checker(app_engine):
             assert (await maker.post(f"/api/v1/remediation/batches/{bid}/approve")).status_code == 403  # maker != checker
             assert (await checker.post(f"/api/v1/remediation/batches/{bid}/approve")).status_code == 200
 
+            bad = await checker.post(f"/api/v1/remediation/batches/{bid}/export?format=mdg_cr_json&cr_type=drop table")
+            assert bad.status_code == 422
+            bad = await checker.post(
+                f"/api/v1/remediation/batches/{bid}/export?format=mdg_cr_json&cr_type={'A' * 41}")
+            assert bad.status_code == 422
+
             r = await checker.post(f"/api/v1/remediation/batches/{bid}/export?format=mass_maintenance_zip")
             assert r.status_code == 200
             assert r.headers["x-content-sha256"] == hashlib.sha256(r.content).hexdigest()
