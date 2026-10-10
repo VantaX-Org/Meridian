@@ -137,7 +137,10 @@ async def test_proven_cost_is_tenant_isolated(seeded, monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get("/api/v1/insights/proven-cost", headers=headers)
         assert r.status_code == 200
-        assert r.json() == {"version_id": None, "currency": None, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
+        # currency is resolved from cost_model/defaults() before the version lookup,
+        # so an empty response still carries the real currency (ZAR, checks/cost_model.yaml's
+        # default — tenant 2 has no cost_model of its own), never None.
+        assert r.json() == {"version_id": None, "currency": "ZAR", "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
 
         r2 = await client.get(f"/api/v1/insights/proven-cost?version_id={v_new}", headers=headers)
         assert r2.status_code == 200

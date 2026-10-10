@@ -72,6 +72,10 @@ async def test_get_exec_returns_report_for_latest_version(tenant_a_version, monk
     assert isinstance(body["waterfall"], list)
     assert isinstance(body["impact_rows"], list)
     assert isinstance(body["owner_rows"], list)
+    # No proven_cost_results rows seeded for this tenant/version — the narrative must
+    # not claim a bogus "0.00 None proven lost or held", and proven_cost_total is 0.0.
+    assert "proven lost or held" not in body["narrative"]
+    assert body["proven_cost_total"] == 0.0
 
 
 @pytest.mark.anyio

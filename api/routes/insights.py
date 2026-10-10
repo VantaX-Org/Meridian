@@ -145,6 +145,16 @@ async def get_proven_cost(
 ):
     await _rls(db, tenant)
 
+    from checks.cost import defaults
+
+    # Resolved before the version lookup so the empty ("no rows yet") response still
+    # carries the tenant's real currency instead of None.
+    cost_model = (await db.execute(
+        text("SELECT cost_model FROM tenants WHERE id = :t"),
+        {"t": str(tenant.id)},
+    )).scalar() or {}
+    currency = cost_model.get("currency") or defaults().get("currency")
+
     # No explicit version — same "latest with rows" idea as get_impact/get_readiness.
     if version_id is None:
         version_id = (await db.execute(
@@ -159,15 +169,7 @@ async def get_proven_cost(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            return {"version_id": None, "currency": None, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
-
-    from checks.cost import defaults
-
-    cost_model = (await db.execute(
-        text("SELECT cost_model FROM tenants WHERE id = :t"),
-        {"t": str(tenant.id)},
-    )).scalar() or {}
-    currency = cost_model.get("currency") or defaults().get("currency")
+            return {"version_id": None, "currency": currency, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
 
     res = await db.execute(text("""
         SELECT metric, amount, currency, by_currency, documents, check_ids, items
@@ -319,9 +321,12 @@ async def get_exec(
     narrative = (
         f"{no_go} of {len(cells)} readiness cells are no-go. "
         f"{len(rows)} features carry {total_value_at_risk:,.2f} in value at risk. "
-        f"{len(owner_rows)} owners have open digests. "
-        f"{proven_cost_total:,.2f} {proven_cost['currency']} proven lost or held in transactions."
+        f"{len(owner_rows)} owners have open digests."
     )
+    # Only append the proven-cost sentence when there's something to report —
+    # otherwise an empty tenant would read "0.00 ZAR proven lost or held".
+    if proven_cost["rows"]:
+        narrative += f" {proven_cost_total:,.2f} {proven_cost['currency']} proven lost or held in transactions."
 
     return {
         "version_id": str(version_id),
