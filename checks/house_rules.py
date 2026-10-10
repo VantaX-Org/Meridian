@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from itertools import groupby
 from typing import Literal
 
+import numpy as np
 import pandas as pd
 
 from checks.base import is_blank
@@ -175,3 +176,55 @@ def format_rule(shapes: Counter[str], field: str) -> Proposal | None:
     body: dict[str, Json] = {"check_class": "regex_check", "field": field, "pattern": shape_regex(shape),
                              "dimension": "validity", "message": _message("format", field, None)}
     return Proposal("format", field, None, body, conf, filled, filled - n)
+
+
+def _numbers(s: pd.Series) -> pd.Series:
+    return pd.to_numeric(s.astype("string").str.strip(), errors="coerce")
+
+
+def fit_ranges(head: pd.DataFrame, group: str, num: str) -> dict[str, list[float]]:
+    """Per group with at least MIN_GROUP_ROWS numeric rows: nearest-rank p2.5/p97.5, padded by 10% of the span."""
+    g, x = norm(head[group]), _numbers(head[num])
+    ok = (g != "") & x.notna()
+    out: dict[str, list[float]] = {}
+    for key, vals in x[ok].groupby(g[ok], sort=True):
+        if len(vals) < MIN_GROUP_ROWS:
+            continue
+        lo, hi = (float(v) for v in np.quantile(vals.to_numpy(), RANGE_Q, method="nearest"))
+        span = hi - lo
+        if span > 0:
+            out[str(key)] = [lo - RANGE_PAD * span, hi + RANGE_PAD * span]
+    return out
+
+
+class RangeCounts:
+    """In-scope rows and violations per (group, numeric) pair with fitted ranges, summed over chunks."""
+
+    def __init__(self, fitted: dict[tuple[str, str], dict[str, list[float]]]) -> None:
+        self.fitted = fitted
+        self.scope: dict[tuple[str, str], int] = {k: 0 for k in fitted}
+        self.violations: dict[tuple[str, str], int] = {k: 0 for k in fitted}
+
+    def add(self, chunk: pd.DataFrame) -> None:
+        for (g, n), ranges in self.fitted.items():
+            if g not in chunk or n not in chunk:
+                continue
+            grp, x = norm(chunk[g]), _numbers(chunk[n])
+            lo = grp.map({k: v[0] for k, v in ranges.items()})
+            hi = grp.map({k: v[1] for k, v in ranges.items()})
+            scope = lo.notna() & x.notna()
+            self.scope[(g, n)] += int(scope.sum())
+            self.violations[(g, n)] += int((scope & ((x < lo) | (x > hi))).sum())
+
+
+def range_rule(group: str, num: str, ranges: dict[str, list[float]], scope: int, violations: int) -> Proposal | None:
+    if not ranges or scope == 0:
+        return None
+    conf = (scope - violations) / scope
+    if conf < MIN_CONFIDENCE or conf >= 1.0:
+        return None
+    body: dict[str, Json] = {"check_class": "group_range_check", "group_by": group, "field": num,
+                             "ranges": {k: [round(v[0], 6), round(v[1], 6)] for k, v in sorted(ranges.items())},
+                             "grain": num.split(".", 1)[0], "dimension": "validity",
+                             "message": _message("range", num, group)}
+    return Proposal("range", num, group, body, conf, scope, violations)

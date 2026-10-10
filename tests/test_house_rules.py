@@ -69,3 +69,32 @@ def test_format_rule_needs_rows_and_dominance():
     assert hr.format_rule(Counter({"AA": 990, "99": 9}), "T.F") is None             # < FORMAT_MIN_ROWS
     assert hr.format_rule(Counter({"AA": 900, "99": 200}), "T.F") is None           # < 95%
     assert hr.format_rule(Counter({"A" * 20: 2000, "9": 10}), "T.F") is None        # capped shape
+
+
+def _weights(n: int = 4000) -> pd.DataFrame:
+    i = np.arange(n)
+    mtart = np.where(i % 2 == 0, "ROH", "FERT")
+    w = np.where(mtart == "ROH", 1 + (i % 10), 100 + (i % 100)).astype(float)
+    w[::211] = 99999.0
+    return pd.DataFrame({"MARA.MTART": mtart, "MARA.BRGEW": w.astype(str)})
+
+
+def test_fit_ranges_nearest_quantiles_padded():
+    r = hr.fit_ranges(_weights(), "MARA.MTART", "MARA.BRGEW")
+    lo, hi = r["ROH"]
+    # ROH weights cycle 1..9 (odd only, since i is even); p97.5 nearest-rank lands on 9 before
+    # the 10% span pad, so lo/hi sit just outside [1, 9], nowhere near the 99999 outlier.
+    assert lo < 1.0 and 9.0 < hi < 99999.0
+    assert r == hr.fit_ranges(_weights(), "MARA.MTART", "MARA.BRGEW")   # deterministic
+
+
+def test_range_rule_counts_violations_over_chunks():
+    df = _weights()
+    fitted = {("MARA.MTART", "MARA.BRGEW"): hr.fit_ranges(df, "MARA.MTART", "MARA.BRGEW")}
+    rc = hr.RangeCounts(fitted)
+    for s in range(0, len(df), 900):
+        rc.add(df.iloc[s:s + 900])
+    key = ("MARA.MTART", "MARA.BRGEW")
+    assert rc.violations[key] == 19                                       # every 211th row
+    p = hr.range_rule(*key, fitted[key], rc.scope[key], rc.violations[key])
+    assert p is not None and p.kind == "range" and p.body["check_class"] == "group_range_check"
