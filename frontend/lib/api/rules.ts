@@ -283,3 +283,28 @@ export async function getRuleHistory(ruleId: string, params?: { limit?: number }
 export function exportRuleHistory(ruleId: string, format: "csv" | "xlsx", limit?: number): Promise<void> {
   return downloadBlob(`/api/v1/rules/${encodeURIComponent(ruleId)}/history/export`, { format, limit }, `rule_history.${format}`);
 }
+
+/** One run's entry in the batch rule-history response — same shape as RuleHistoryRun, minus `module` (the caller already knows it). */
+export interface RuleHistoryBatchRun {
+  version_id: string;
+  run_at: string;
+  severity: string;
+  affected_count: number;
+  total_count: number;
+  pass_rate: number | null;
+  suppressed: boolean;
+  hit_rate: number | null;
+}
+
+/** GET /api/v1/rules/history — pass-rate history for every rule in a module in one call, keyed by check_id. */
+export async function getRuleHistoryBatch(params: {
+  version_id: string;
+  module: string;
+  limit_runs?: number;
+}): Promise<{ version_id: string; module: string; history: Record<string, RuleHistoryBatchRun[]> }> {
+  const { data } = await apiClient.get<{ version_id: string; module: string; history: Record<string, RuleHistoryBatchRun[]> }>(
+    "/api/v1/rules/history",
+    { params },
+  );
+  return data;
+}

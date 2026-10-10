@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, SeverityDot,
@@ -15,15 +15,13 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
 import { exportFindingRecords } from "@/lib/api/findings";
 import { getFindingRecords, getVersion, type FindingRecord } from "@/lib/api/versions";
-import { getVersionProfile, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
+import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api/field-profile";
 import { apiErrorMessage } from "@/lib/error";
-import { getRuleHistory } from "@/lib/api/rules";
+import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
 
 const PAGE_SIZE = 25;
-// Per-row rule-history fan-out is capped at this many visible rows; there is no
-// batch endpoint for "pass rate over time for N rules at once" yet. G1.
-const RULE_HISTORY_CAP = 25;
+const RULE_HISTORY_RUNS = 8;
 
 const READINESS_TONE: Record<string, "go" | "at-risk" | "no-go"> = { pass: "go", warn: "at-risk", fail: "no-go" };
 
@@ -55,18 +53,14 @@ function RulesTab({ object, run }: { object: string; run: string }) {
         .filter((r) => !dimension || r.dimension === dimension)
         .sort((a, b) => b.affected_count - a.affected_count)
     : [];
-  const historyRows = rulesRanked.slice(0, RULE_HISTORY_CAP);
-  // G1: fan out one request per visible rule instead of one batch call, capped above.
-  const histories = useQueries({
-    queries: historyRows.map((r) => ({
-      queryKey: queryKeys.ruleHistory(r.check_id),
-      queryFn: () => getRuleHistory(r.check_id, { limit: 2 }),
-    })),
+  const batch = useQuery({
+    queryKey: queryKeys.ruleHistoryBatch(run, object),
+    queryFn: () => getRuleHistoryBatch({ version_id: run, module: object, limit_runs: RULE_HISTORY_RUNS }),
+    enabled: !!run,
   });
 
   const delta = (checkId: string): number | null => {
-    const idx = historyRows.findIndex((r) => r.check_id === checkId);
-    const runs = histories[idx]?.data?.runs;
+    const runs = batch.data?.history[checkId];
     if (!runs || runs.length < 2 || runs[0].pass_rate == null || runs[1].pass_rate == null) return null;
     return runs[0].pass_rate - runs[1].pass_rate;
   };
@@ -171,23 +165,13 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   );
 }
 
-function FieldsTab({ object, run, systemId }: { object: string; run: string; systemId: string | null }) {
+function FieldsTab({ object, run }: { object: string; run: string }) {
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: queryKeys.versionProfile(systemId ?? "", run, object),
-    queryFn: () => getVersionProfile(systemId ?? "", run, object),
-    enabled: !!systemId && !!run,
+    queryKey: queryKeys.versionProfileByVersion(run, object),
+    queryFn: () => getProfileByVersion(run, object),
+    enabled: !!run,
   });
 
-  if (!systemId) {
-    // G3: field profiles are only produced for runs extracted from a connected
-    // system; an upload-sourced run has no system_id to profile against.
-    return (
-      <EmptyState
-        title="No field profile for this run."
-        detail="This run came from an upload, not a connected system. Connect a system and run an extraction to see field shapes and dependencies."
-      />
-    );
-  }
   if (isLoading) return <Skeleton height={240} />;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data || data.tables.length === 0) {
@@ -203,12 +187,17 @@ function FieldsTab({ object, run, systemId }: { object: string; run: string; sys
           </h2>
           <DataTable
             columns={[
-              { accessorKey: "field", header: "Field" },
+              {
+                id: "field",
+                header: "Field",
+                cell: ({ row }) => <Mono>{table.table}.{row.original.field}</Mono>,
+              },
               { accessorKey: "ddic_type", header: "Type", cell: ({ row }) => row.original.stats.ddic_type ?? "—" },
               {
                 id: "blank_pct",
                 header: "Blank",
-                cell: ({ row }) => `${Math.round(row.original.stats.blank_pct * 100)}%`,
+                cell: ({ row }) =>
+                  `${row.original.stats.blank} (${Math.round(row.original.stats.blank_pct * 100)}%)`,
               },
               { id: "distinct", header: "Distinct", cell: ({ row }) => String(row.original.stats.distinct) },
               { id: "top_shape", header: "Top shape", cell: ({ row }) => <Mono>{topShape(row.original.stats.shapes)}</Mono> },
@@ -332,7 +321,6 @@ export default function ObjectDetailPage() {
     queryFn: () => getVersion(run),
     enabled: !!run,
   });
-  const systemId = version?.metadata?.system_id ?? null;
 
   if (!run) {
     return <EmptyState title="Select a run to see this object's data quality." />;
@@ -366,7 +354,7 @@ export default function ObjectDetailPage() {
         items={[
           { value: "overview", label: "Overview", content: <OverviewTab object={object} run={run} /> },
           { value: "rules", label: "Rules", content: <RulesTab object={object} run={run} /> },
-          { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} systemId={systemId} /> },
+          { value: "fields", label: "Fields", content: <FieldsTab object={object} run={run} /> },
           {
             value: "records",
             label: "Records",

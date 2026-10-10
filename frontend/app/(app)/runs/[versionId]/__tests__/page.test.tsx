@@ -55,7 +55,7 @@ beforeEach(() => {
   push.mockClear();
   vi.spyOn(runsApi, "getRunSteps").mockResolvedValue({ version_id: "v2", steps: [] });
   vi.spyOn(findingsApi, "getFindingsAggregate").mockResolvedValue(EMPTY_AGGREGATE);
-  vi.spyOn(findingsApi, "getScoreHistory").mockResolvedValue({ history: [] });
+  vi.spyOn(findingsApi, "getScoreHistory").mockResolvedValue({ history: [], modules: {} });
   vi.spyOn(findingsApi, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
   vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v2", objects: [] });
   vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
@@ -137,6 +137,29 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Material Master"));
     expect(push).toHaveBeenCalledWith("/objects/material_master?run=v2");
+  });
+
+  it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
+      run_id: "v2",
+      objects: [{ module: "material_master", label: "Material master", composite_score: 91.2, readiness: "pass", failing_checks: 2, affected_records: 10 }],
+    });
+    vi.spyOn(findingsApi, "getScoreHistory").mockResolvedValue({
+      history: [],
+      modules: {
+        material_master: [
+          { version_id: "v0", composite: 80 },
+          { version_id: "v1", composite: 85 },
+          { version_id: "v2", composite: 91.2 },
+        ],
+      },
+    });
+    renderWithQuery(<RunDetailPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Objects" }));
+    await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
+    expect(screen.getByRole("columnheader", { name: "Trend" })).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument());
   });
 
   it("downloads the narrative report from the Narrative report (PDF) export option, distinct from the Analysis report URL", async () => {

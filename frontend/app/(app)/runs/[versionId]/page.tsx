@@ -9,7 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
-  Select, SeverityDot, Skeleton, Stat, Tabs, isSeverity, type PillTone,
+  Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -66,11 +66,17 @@ const stepColumns: ColumnDef<RunStep>[] = [
   },
 ];
 
-function ObjectsTab({ versionId }: { versionId: string }) {
+function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
   const router = useRouter();
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
+  const history = useQuery({
+    queryKey: queryKeys.scoreHistory(systemId),
+    queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
+    enabled: systemId != null,
+  });
   const rows = objects.data?.objects ?? [];
+  const modules = history.data?.modules ?? {};
 
   const columns: ColumnDef<ObjectSummary>[] = [
     { id: "module", header: "Object", accessorFn: (o) => formatModuleName(o.module) },
@@ -87,8 +93,15 @@ function ObjectsTab({ versionId }: { versionId: string }) {
     },
     { accessorKey: "failing_checks", header: "Failing checks" },
     { accessorKey: "affected_records", header: "Affected records" },
-    // Per-module score trend omitted here: /api/v1/scores/history returns a snapshot of
-    // today's weights (under_current.modules), not a series over time for each module. G2.
+    {
+      id: "trend",
+      header: "Trend",
+      cell: ({ row }) => {
+        const series = modules[row.original.module];
+        if (!series || series.length < 2) return "—";
+        return <Sparkline data={series.map((s) => ({ x: s.version_id, y: s.composite }))} />;
+      },
+    },
   ];
 
   return (
@@ -360,7 +373,7 @@ export default function RunDetailPage() {
         onValueChange={setTab}
         items={[
           { value: "summary", label: "Summary", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
-          { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} /> },
+          { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} systemId={systemId} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} /> },
           {
             value: "steps",
