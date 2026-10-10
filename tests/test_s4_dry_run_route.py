@@ -41,6 +41,7 @@ def seeded():
     yield {"tid": tid, "sid": sid, "rid": rid, "vid": vid, "engine": engine}
     with engine.begin() as c:
         c.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :t"), {"t": tid})
+        c.execute(text("DELETE FROM transfer_field_mappings WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM analysis_versions WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM sap_systems WHERE tenant_id = :t"), {"t": tid})
