@@ -1,8 +1,10 @@
 // frontend/app/(app)/objects/[object]/__tests__/page.test.tsx
 import { screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
+import * as ownersApi from "@/lib/api/owners";
+import * as usersApi from "@/lib/api/users";
 import ObjectDetailPage from "../page";
 
 vi.mock("next/navigation", () => ({
@@ -12,6 +14,21 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("ObjectDetailPage", () => {
+  beforeEach(() => {
+    vi.spyOn(ownersApi, "getOwners").mockResolvedValue([]);
+    vi.spyOn(usersApi, "getAssignableUsers").mockRejectedValue(new Error("forbidden"));
+  });
+
+  it("shows the object's owner above the report", async () => {
+    vi.spyOn(objectsApi, "getObject").mockResolvedValue({
+      module: "material_master", label: "Material Master", composite_score: null, readiness: null,
+      failing_checks: 0, affected_records: 0, dimension_scores: {}, rules: [],
+    });
+    renderWithQuery(<ObjectDetailPage />);
+    await waitFor(() => expect(screen.getByText("No owner set.")).toBeInTheDocument());
+    expect(ownersApi.getOwners).toHaveBeenCalledWith("object");
+  });
+
   it("renders the narrative, dimension chart and rules table", async () => {
     vi.spyOn(objectsApi, "getObject").mockResolvedValue({
       module: "material_master",
