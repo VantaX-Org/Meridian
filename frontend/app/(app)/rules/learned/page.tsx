@@ -20,6 +20,7 @@ import {
   type LearnedStatus,
   type Severity,
 } from "@/lib/api/learnedRules";
+import { errorText } from "@/lib/api/remediation";
 import { queryKeys } from "@/lib/query-keys";
 
 const STATUS_OPTIONS = [
@@ -44,12 +45,12 @@ export default function LearnedRulesPage() {
   const approve = useMutation({
     mutationFn: (id: string) => approveLearnedRule(id, severity),
     onSuccess: (d) => { toast.success(`Rule ${d.rule_id} is active from the next run`); refresh(); },
-    onError: () => toast.error("Could not approve this rule"),
+    onError: (e) => toast.error(errorText(e)),
   });
   const reject = useMutation({
     mutationFn: rejectLearnedRule,
     onSuccess: () => { toast.success("Proposal rejected"); refresh(); },
-    onError: () => toast.error("Could not reject this rule"),
+    onError: (e) => toast.error(errorText(e)),
   });
 
   const columns = useMemo<ColumnDef<LearnedRule>[]>(() => [

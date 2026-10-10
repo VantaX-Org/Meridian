@@ -58,8 +58,12 @@ def _pending_proposal(s: Session, pid: str) -> tuple:
 
 def approve_sync(s: Session, tenant_id: str, pid: str, severity: str, note: Optional[str], me: str) -> dict:
     """Approve a proposal: insert its body as an active v1 rule under a fresh LR- id, and mark
-    the proposal decided. Raises LookupError if the proposal is missing or already decided."""
-    s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
+    the proposal decided. Raises LookupError if the proposal is missing or already decided.
+
+    Tenant RLS is set by the caller (via ``_rls``) before this runs inside ``db.run_sync`` —
+    ``SET ... = :t`` cannot be parametrised over asyncpg's server-side binding, so it must not
+    be issued here. See ``_rls`` in api/routes/record_issues.py.
+    """
     module, proposal_body = _pending_proposal(s, pid)
     rid = next_rule_id(s, tenant_id)
     body = {**proposal_body, "module": module, "severity": severity}
@@ -76,8 +80,10 @@ def approve_sync(s: Session, tenant_id: str, pid: str, severity: str, note: Opti
 
 
 def reject_sync(s: Session, tenant_id: str, pid: str, note: Optional[str], me: str) -> str:
-    """Reject a pending proposal. Raises LookupError if missing or already decided."""
-    s.execute(text("SET app.tenant_id = :t"), {"t": tenant_id})
+    """Reject a pending proposal. Raises LookupError if missing or already decided.
+
+    Tenant RLS is set by the caller (via ``_rls``) before this runs inside ``db.run_sync``.
+    """
     _pending_proposal(s, pid)
     s.execute(text("UPDATE learned_rule_proposals SET status = 'rejected', decided_by = :me, decided_at = now(), "
                    "updated_at = now() WHERE id = :id"), {"me": me, "id": pid})
@@ -110,6 +116,7 @@ async def mine(body: Mine, tenant: Tenant = Depends(get_tenant)) -> dict:
 async def approve(pid: uuid.UUID, body: Approve, db: AsyncSession = Depends(get_db),
                   tenant: Tenant = Depends(get_tenant)) -> dict:
     me = current_user_label()
+    await _rls(db, tenant)
     try:
         out = await db.run_sync(lambda s: approve_sync(s, str(tenant.id), str(pid), body.severity, body.note, me))
     except LookupError:
@@ -124,6 +131,7 @@ async def approve(pid: uuid.UUID, body: Approve, db: AsyncSession = Depends(get_
 async def reject(pid: uuid.UUID, body: Reject, db: AsyncSession = Depends(get_db),
                  tenant: Tenant = Depends(get_tenant)) -> dict:
     me = current_user_label()
+    await _rls(db, tenant)
     try:
         status = await db.run_sync(lambda s: reject_sync(s, str(tenant.id), str(pid), body.note, me))
     except LookupError:

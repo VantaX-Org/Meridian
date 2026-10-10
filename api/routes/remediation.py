@@ -350,8 +350,10 @@ async def export_batch(
     elif format == "mass_maintenance_zip":
         data, ext = sap_packages.mass_maintenance_zip(items), "zip"
     elif format == "mdg_cr_json":
+        if not cr_type:
+            raise HTTPException(status_code=422, detail="cr_type is required for mdg_cr_json")
         data, ext = sap_packages.mdg_change_request(
-            items, batch_id=str(batch_id), batch_name=b["name"], cr_type=cr_type or "create"), "json"
+            items, batch_id=str(batch_id), batch_name=b["name"], cr_type=cr_type), "json"
     else:
         from sap.ddic import get_dictionary
         d = get_dictionary("s4hana")
@@ -408,5 +410,6 @@ async def batch_packages(
     """Audit trail of every file exported for this batch: format, sha256, who, when."""
     await _batch(db, tenant, batch_id)
     rows = await db.execute(text(
-        "SELECT * FROM export_packages WHERE batch_id = :bid ORDER BY created_at DESC"), {"bid": batch_id})
+        "SELECT id, format, filename, sha256, size_bytes, item_count, created_by_label, approved_by_label, "
+        "created_at FROM export_packages WHERE batch_id = :bid ORDER BY created_at DESC"), {"bid": batch_id})
     return {"items": [_row(r) for r in rows.fetchall()]}

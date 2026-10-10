@@ -347,6 +347,12 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
     : !canApprove
       ? "Approving needs the approve permission."
       : undefined;
+  const exportTitle = isCreator
+    ? "The batch creator cannot export it. Ask a second person to export."
+    : !canExport
+      ? "Exporting needs the export permission."
+      : undefined;
+  const crTypeMissing = format === "mdg_cr_json" && crType.trim() === "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -389,7 +395,11 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
                 />
               </Field>
             ) : null}
-            <Button onClick={() => (ask === "approve" ? approve : doExport).mutate()} disabled={approve.isPending || doExport.isPending}>
+            <Button
+              onClick={() => (ask === "approve" ? approve : doExport).mutate()}
+              disabled={approve.isPending || doExport.isPending || (ask === "export" && crTypeMissing)}
+              title={ask === "export" && crTypeMissing ? "Enter a change request type to export." : undefined}
+            >
               {ask === "approve" ? (approve.isPending ? "Approving…" : "Approve") : doExport.isPending ? "Preparing…" : "Export"}
             </Button>
             <Button variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
@@ -408,7 +418,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "approved" ? (
-            <Button disabled={!canExport} title={!canExport ? "Exporting needs the export permission." : undefined} onClick={() => setAsk("export")}>
+            <Button disabled={!canExport || isCreator} title={exportTitle} onClick={() => setAsk("export")}>
               Export batch
             </Button>
           ) : null}
@@ -486,7 +496,7 @@ function PackagesSection({ items }: { items: ExportPackage[] | undefined }) {
       <h3 className="text-[13px] font-semibold">Exported files</h3>
       <ul className="flex flex-col gap-1">
         {items.map((p) => (
-          <li key={p.sha256} className="text-[13px] flex items-center gap-2">
+          <li key={p.id} className="text-[13px] flex items-center gap-2">
             <span>{FORMAT_LABEL[p.format]}</span>
             <Tooltip label={p.sha256}>
               <span style={{ color: "var(--m-ink-2)" }}><Mono>{p.sha256.slice(0, 12)}</Mono></span>

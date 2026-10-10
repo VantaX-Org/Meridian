@@ -130,6 +130,10 @@ def test_export_records_sha256_and_requires_checker(app_engine):
             bad = await checker.post(
                 f"/api/v1/remediation/batches/{bid}/export?format=mdg_cr_json&cr_type={'A' * 41}")
             assert bad.status_code == 422
+            # I1: an absent cr_type must 422, never silently default to a made-up CR type
+            missing = await checker.post(f"/api/v1/remediation/batches/{bid}/export?format=mdg_cr_json")
+            assert missing.status_code == 422
+            assert "cr_type" in missing.json()["detail"]
 
             r = await checker.post(f"/api/v1/remediation/batches/{bid}/export?format=mass_maintenance_zip")
             assert r.status_code == 200

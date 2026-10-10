@@ -131,6 +131,7 @@ export interface DiffRecord {
 }
 
 export interface ExportPackage {
+  id: string;
   format: ExportFormat;
   filename: string;
   sha256: string;

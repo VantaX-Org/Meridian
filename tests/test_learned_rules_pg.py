@@ -134,3 +134,75 @@ def test_reject_only_moves_pending_proposals(app_engine):
         with pytest.raises(LookupError):
             reject_sync(s, t, str(pid), None, "checker@example.test")
         s.commit()
+
+
+def test_approve_and_reject_routes_through_asyncpg(app_engine):
+    """C1 regression: approve/reject run inside ``db.run_sync`` on the request's asyncpg
+    AsyncSession. A bare ``SET app.tenant_id = :t`` fails there because asyncpg sends ``:t``
+    as a server-side bind parameter, and Postgres rejects a bind parameter inside SET. This
+    drives both routes end to end over a real asyncpg engine (not psycopg2) so it fails before
+    the fix in api/routes/learned_rules.py and passes after."""
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.learned_rules import router as learned_router
+
+    owner, app_eng = app_engine
+    tid = _tenant(owner)
+    body = json.dumps({"check_class": "dependency_check", "determinant": "MARA.MTART", "field": "MARC.BESKZ",
+                       "allowed": {"ROH": ["F"]}, "grain": "MARC", "dimension": "consistency",
+                       "message": "MARC.BESKZ does not follow MARA.MTART"})
+    with app_eng.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        pid_approve = c.execute(text(
+            "INSERT INTO learned_rule_proposals (tenant_id, module, kind, table_name, determinant, field, "
+            "fingerprint, body, confidence, support_rows, violations) VALUES (:t, 'material_master', "
+            "'dependency', 'MARC', 'MARA.MTART', 'MARC.BESKZ', 'fp-approve-http', CAST(:b AS jsonb), 0.99, "
+            "1000, 10) RETURNING id"), {"t": tid, "b": body}).scalar()
+        pid_reject = c.execute(text(
+            "INSERT INTO learned_rule_proposals (tenant_id, module, kind, table_name, determinant, field, "
+            "fingerprint, body, confidence, support_rows, violations) VALUES (:t, 'material_master', "
+            "'dependency', 'MARC', 'MARA.MTART', 'MARC.BESKZ', 'fp-reject-http', CAST(:b AS jsonb), 0.99, "
+            "1000, 10) RETURNING id"), {"t": tid, "b": body}).scalar()
+
+    url = app_eng.url.set(drivername="postgresql+asyncpg")
+    aeng = create_async_engine(url)
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    api = FastAPI()
+    api.include_router(learned_router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "T-LR", [])
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            steward = {"X-User-Role": "steward"}
+            r = await c.post(f"/api/v1/learned-rules/{pid_approve}/approve", headers=steward,
+                             json={"severity": "high"})
+            assert r.status_code == 200, r.text
+            assert r.json()["status"] == "approved"
+
+            r2 = await c.post(f"/api/v1/learned-rules/{pid_reject}/reject", headers=steward,
+                              json={"note": "not useful"})
+            assert r2.status_code == 200, r2.text
+            assert r2.json()["status"] == "rejected"
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        asyncio.run(main())
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)

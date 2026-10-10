@@ -54,6 +54,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_constraint("ck_remediation_items_source", "remediation_items", type_="check")
+    # Remap rows the pre-072 constraint can't represent before re-adding it, or the ALTER
+    # TABLE below fails outright whenever a 'cleaning' or 'simulation' item already exists.
+    op.execute("UPDATE remediation_items SET proposal_source = 'manual' "
+               "WHERE proposal_source IN ('cleaning', 'simulation')")
     op.create_check_constraint("ck_remediation_items_source", "remediation_items",
                                "proposal_source IN ('rule', 'steward', 'manual')")
     op.drop_table("export_packages")
