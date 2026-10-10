@@ -18,12 +18,13 @@ describe("ReadinessPage", () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({
       version_id: "v1",
       threshold: 70,
-      cells: [{ module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92 }],
+      cells: [{ module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 }],
     });
     renderWithQuery(<ReadinessPage />);
     expect(await screen.findByText("go")).toBeInTheDocument();
     expect(screen.getByText("material_master")).toBeInTheDocument();
     expect(screen.getByText("Wave 1")).toBeInTheDocument();
+    expect(screen.getByText("100.0%")).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while the request is in flight", () => {

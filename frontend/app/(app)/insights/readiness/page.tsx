@@ -1,6 +1,7 @@
 // frontend/app/(app)/insights/readiness/page.tsx
 "use client";
 
+import { Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
@@ -48,7 +49,11 @@ export default function ReadinessPage() {
             <tr>
               <th className="text-left p-2">Object</th>
               {waves.map((w) => (
-                <th key={w} className="text-left p-2">{w}</th>
+                <Fragment key={w}>
+                  <th className="text-left p-2">{w}</th>
+                  <th className="text-right p-2">Readiness</th>
+                  <th className="text-right p-2">Records blocked</th>
+                </Fragment>
               ))}
             </tr>
           </thead>
@@ -58,14 +63,26 @@ export default function ReadinessPage() {
                 <td className="p-2">{module}</td>
                 {waves.map((wave) => {
                   const cell = data?.cells.find((c) => c.module === module && c.wave === wave);
-                  if (!cell) return <td key={wave} className="p-2">—</td>;
+                  if (!cell) {
+                    return (
+                      <Fragment key={wave}>
+                        <td className="p-2">—</td>
+                        <td className="text-right tabular-nums">—</td>
+                        <td className="text-right tabular-nums">—</td>
+                      </Fragment>
+                    );
+                  }
                   return (
-                    <td key={wave} className="p-2">
-                      {/* DrillLink filters is Record<string, string>; stringify the boolean */}
-                      <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
-                        <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
-                      </DrillLink>
-                    </td>
+                    <Fragment key={wave}>
+                      <td className="p-2">
+                        {/* DrillLink filters is Record<string, string>; stringify the boolean */}
+                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>
+                          <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
+                        </DrillLink>
+                      </td>
+                      <td className="text-right tabular-nums">{cell.score === null ? "—" : `${cell.score.toFixed(1)}%`}</td>
+                      <td className="text-right tabular-nums">{cell.records_blocked.toLocaleString()}</td>
+                    </Fragment>
                   );
                 })}
               </tr>

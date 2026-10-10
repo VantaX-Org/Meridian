@@ -7,8 +7,12 @@ export interface ReadinessCell {
   module: string;
   wave: string;
   verdict: "go" | "at_risk" | "no_go";
+  /** Blocking gaps (every gap type except unmapped_field and target_config_unverified). */
   blocker_count: number;
   dqs: number | null;
+  /** Transfer readiness %, from the wave's latest migration run. */
+  score: number | null;
+  records_blocked: number;
 }
 
 export interface ReadinessResponse {

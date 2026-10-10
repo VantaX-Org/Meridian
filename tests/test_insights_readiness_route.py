@@ -23,6 +23,7 @@ def two_tenants():
             conn.execute(text("INSERT INTO tenants (id, name) VALUES (:id, :id)"), {"id": t})
     yield t1, t2
     with engine.begin() as conn:
+        conn.execute(text("DELETE FROM migration_waves WHERE tenant_id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
         conn.execute(text("DELETE FROM tenants WHERE id IN (:t1, :t2)"), {"t1": t1, "t2": t2})
 
 
@@ -44,39 +45,36 @@ def _patch_tenant(monkeypatch, tenant_id: str):
 
 
 @pytest.mark.anyio
-async def test_readiness_requires_waves_configured(two_tenants, monkeypatch):
+async def test_readiness_without_waves_is_an_empty_grid(two_tenants, monkeypatch):
     t1, _t2 = two_tenants
     _patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get("/api/v1/insights/readiness", headers=headers)
-    assert r.status_code == 409
+    assert r.status_code == 200
+    assert r.json()["cells"] == []
 
 
 @pytest.mark.anyio
-async def test_readiness_is_tenant_isolated(two_tenants, monkeypatch):
+async def test_readiness_reads_wave_rows_and_is_tenant_isolated(two_tenants, monkeypatch):
     t1, t2 = two_tenants
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO migration_waves (tenant_id, name, modules) VALUES (:t, 'Wave 1', '{material_master}')"),
+                     {"t": t1})
     headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
 
     _patch_tenant(monkeypatch, t1)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        r = await client.patch("/api/v1/settings/alert-thresholds", json={
-            "critical_threshold": 5, "high_threshold": 10, "dqs_drop_threshold": 10,
-            "module_floors": {}, "readiness_dqs_threshold": 70,
-            "readiness_waves": {"Wave 1": ["material_master"]},
-        }, headers=headers)
-        assert r.status_code == 200
         r = await client.get("/api/v1/insights/readiness", headers=headers)
     assert r.status_code == 200
-    body = r.json()
-    assert body["threshold"] == 70
-    assert body["cells"] == [{"module": "material_master", "wave": "Wave 1", "verdict": "no_go",
-                              "blocker_count": 0, "dqs": None}]
+    assert r.json()["cells"] == [{"module": "material_master", "wave": "Wave 1", "verdict": "no_go",
+                                  "blocker_count": 0, "dqs": None, "score": None, "records_blocked": 0}]
 
     _patch_tenant(monkeypatch, t2)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r2 = await client.get("/api/v1/insights/readiness", headers=headers)
-    assert r2.status_code == 409  # other tenant has no waves configured — proves no cross-tenant leak
+    assert r2.json()["cells"] == []
