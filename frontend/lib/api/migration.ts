@@ -8,6 +8,7 @@ import type {
   MigrationWave,
   TransferFieldMapping,
   TransferValueMapping,
+  WaveCockpit,
   WaveStage,
 } from "@/types/api";
 
@@ -184,5 +185,44 @@ export async function runWave(
   id: string,
 ): Promise<{ run_id: string; task_id: string; status: string; mode: MigrationMode; modules: string[] }> {
   const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/run`);
+  return data;
+}
+
+export async function getWaveCockpit(id: string): Promise<WaveCockpit> {
+  const { data } = await apiClient.get<WaveCockpit>(`/api/v1/migration/waves/${id}/cockpit`);
+  return data;
+}
+
+export async function signoffWave(id: string): Promise<MigrationWave> {
+  const { data } = await apiClient.post<MigrationWave>(`/api/v1/migration/waves/${id}/signoff`);
+  return data;
+}
+
+export async function createBlockerFixBatch(
+  id: string,
+  body: { module: string; gap_type: string; field: string | null },
+): Promise<{ id: string }> {
+  const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/blockers/fix-batch`, body);
+  return data;
+}
+
+/** `draft_batch` returns the new batch under `id` (api/services/remediation.py:97-148). */
+export function downloadWaveReport(id: string, fmt: "xlsx" | "pdf"): Promise<void> {
+  return downloadBlob(`/api/v1/migration/waves/${id}/report.${fmt}`, {}, `migration_readiness_${id}.${fmt}`);
+}
+
+export interface S4Area {
+  area: string;
+  label: string;
+  simplification_item: string | null;
+  rules: number;
+  failing: number;
+  failing_records: number;
+  blocking_failing: number;
+  status: string;
+}
+
+export async function getS4Readiness(versionId: string): Promise<{ status: string; areas: S4Area[] }> {
+  const { data } = await apiClient.get("/api/v1/findings/s4-readiness", { params: { version_id: versionId } });
   return data;
 }

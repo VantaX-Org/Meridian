@@ -18,5 +18,15 @@
     "name": "systems-extraction",
     "path": "/systems/s1/extractions/r1",
     "heading": "Systems"
+  },
+  {
+    "name": "migration",
+    "path": "/migration",
+    "heading": "Migration"
+  },
+  {
+    "name": "migration-wave",
+    "path": "/migration/w1",
+    "heading": "Migration"
   }
 ]
