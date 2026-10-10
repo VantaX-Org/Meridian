@@ -105,6 +105,7 @@ export const queryKeys = {
   configLandscape: () => ["config-landscape"] as const,
   versionsList: (filters: Record<string, unknown>) => ["versions-list", normalizeFilters(filters)] as const,
   rules: (filters: Record<string, unknown>) => ["rules", normalizeFilters(filters)] as const,
+  learnedRules: (filters: Record<string, unknown>) => ["learned-rules", normalizeFilters(filters)] as const,
   rulesSummary: () => ["rules", "summary"] as const,
   ruleDetail: (ruleId: string) => ["rule-detail", ruleId] as const,
   ruleApplicability: (module: string, checkId: string) => ["rule-applicability", module, checkId] as const,
