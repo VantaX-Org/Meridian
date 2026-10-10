@@ -197,6 +197,7 @@ describe("ObjectDetailPage", () => {
     });
     renderWithQuery(<ObjectDetailPage />);
     await waitFor(() => expect(screen.getByText("AAAA (90%)")).toBeInTheDocument());
+    expect(screen.getByText("AAAA (90%)")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
     expect(screen.getByText("FERT (90)")).toBeInTheDocument();
     expect(screen.getByText("masked: privacy")).toBeInTheDocument();
   });
