@@ -53,6 +53,7 @@ from api.routes.field_mappings import router as field_mappings_router
 from api.routes.licence import router as licence_router
 from api.routes.config_matches import router as config_matches_router
 from api.routes.config_intelligence import router as config_intelligence_router
+from api.routes.config_pairing import router as config_pairing_router
 from api.routes.z_object_intelligence import router as z_object_intelligence_router
 from api.routes.connectivity import router as connectivity_router
 from api.routes.spro_config import router as spro_config_router
@@ -317,6 +318,7 @@ app.include_router(field_mappings_router)
 app.include_router(licence_router)
 app.include_router(config_matches_router)
 app.include_router(config_intelligence_router)
+app.include_router(config_pairing_router)
 app.include_router(z_object_intelligence_router)
 app.include_router(connectivity_router)
 app.include_router(spro_config_router)

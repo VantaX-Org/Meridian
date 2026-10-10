@@ -839,3 +839,64 @@ def test_export_uses_scoped_maps_and_target_dict(app_engine, monkeypatch):
     assert resp.status_code == 200, resp.text
     with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
         assert z.read("LFA1.csv").decode().split() == ["SOURCE_RECORD,LIFNR,KTOKK", "LIFNR=1,1,KRED", "LIFNR=2,2,KRED"]
+
+
+@pg
+def test_config_pairing_routes(app_engine, monkeypatch):
+    from api.routes.config_pairing import router
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    src = _system(app, tid, "PRD", target=tgt)
+    _load(app, tid, src, [("T077K", "KTOKK=0001", {"KTOKK": "0001"})])
+    _load(app, tid, tgt, [("T077K", "KTOKK=1", {"KTOKK": "1"})])
+
+    async def calls(c):
+        cmp_ = await c.get(f"/api/v1/config-pairing/compare/{src}", params={"object": "T077K"})
+        missing = await c.get("/api/v1/config-pairing/compare/not-a-uuid")
+        prop = await c.post(f"/api/v1/config-pairing/propose/{src}")
+        ctx = await c.get("/api/v1/config-pairing/finding-context",
+                          params={"rule_id": "X-1", "module": "accounts_payable"})
+        return cmp_, missing, prop, ctx
+
+    cmp_, missing, prop, ctx = _client_run(app, tid, router, calls, monkeypatch)
+    assert cmp_.status_code == 200 and cmp_.json()["rows"][0]["status"] == "key_match"
+    assert missing.status_code == 404 and missing.json()["detail"] == "System not found"
+    assert prop.json() == {"proposed": 1, "skipped": 0, "target": "S4D"}
+    assert ctx.status_code == 200 and ctx.json()["source"] == []
+
+
+@pg
+def test_steward_approve_confirms_a_config_match(app_engine):
+    import asyncio
+    from types import SimpleNamespace
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.routes.stewardship import _apply_source_action
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    mid = str(uuid.uuid4())
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": tid})
+        c.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                       "target_value, status) VALUES (:i, :t, 'config', 'T077K.KTOKK', 'LIEF', 'KRED', 'proposed')"),
+                  {"i": mid, "t": tid})
+
+    async def main() -> str:
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        try:
+            async with async_sessionmaker(aeng, expire_on_commit=False)() as db:
+                await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+                item = SimpleNamespace(item_type="config_value_match", source_id=mid, tenant_id=tid)
+                await _apply_source_action(db, item, "approve", None, None)
+                await db.commit()
+                return (await db.execute(text("SELECT status FROM transfer_value_mappings WHERE id = :i"),
+                                         {"i": mid})).scalar()
+        finally:
+            await aeng.dispose()
+
+    assert asyncio.run(main()) == "confirmed"
