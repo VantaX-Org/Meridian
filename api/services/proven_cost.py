@@ -280,16 +280,16 @@ def _z(v: str) -> str:
 
 def attribute(items: list[CostItem], failing: dict[str, set[str]]) -> dict[str, list[str]]:
     parsed = [(cid, p) for cid, keys in failing.items() for k in keys if (p := parse_record_key(k))]
-    out: dict[str, list[str]] = {}
+    out: dict[str, set[str]] = {}
     for it in items:
         hits: set[str] = set()
         for mv in _master_variants(it["master_key"]):
             for cid, fk in parsed:
-                shared = set(fk) & set(mv)
+                shared = {f for f in set(fk) & set(mv) if fk[f].strip() and mv[f].strip()}
                 if shared and all(_z(fk[f]) == _z(mv[f]) for f in shared):
                     hits.add(cid)
-        out[it["doc_key"]] = sorted(hits)
-    return out
+        out.setdefault(it["doc_key"], set()).update(hits)
+    return {k: sorted(v) for k, v in out.items()}
 
 
 class MetricRow(TypedDict):

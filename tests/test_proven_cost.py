@@ -189,3 +189,18 @@ def test_compute_runs_all_four_metrics():
     rows = pc.compute(_po_frames(), date(2026, 3, 1), {}, {"MM140": {"MATNR=M1|WERKS=W"}})
     assert [r["metric"] for r in rows] == ["late_po", "grir_uom_variance", "blocked_sales", "duplicate_payment"]
     assert rows[0]["check_ids"] == ["MM140"] and rows[0]["items"][0]["check_ids"] in (["MM140"], [])
+
+
+def test_attribute_unions_hits_for_shared_doc_key():
+    items = [pc.CostItem(doc_key="DOC1", master_key="MATNR=M1", amount=1, detail=""),
+             pc.CostItem(doc_key="DOC1", master_key="LIFNR=200", amount=1, detail="")]
+    failing = {"CHK1": {"MATNR=M1"}, "CHK2": {"LIFNR=0000000200"}}
+    out = pc.attribute(items, failing)
+    assert out["DOC1"] == ["CHK1", "CHK2"]
+
+
+def test_attribute_ignores_blank_key_fields():
+    items = [pc.CostItem(doc_key="DOC1", master_key="MATNR=|WERKS=W", amount=1, detail="")]
+    failing = {"C": {"MATNR=0000000000"}}
+    out = pc.attribute(items, failing)
+    assert out["DOC1"] == []
