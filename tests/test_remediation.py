@@ -66,3 +66,18 @@ def test_items_from_simulation():
               "record_key": "LIFNR=0000100002", "current_value": None, "new_value": "DE"}]
     (i,) = remediation.items_from_simulation(fixes)
     assert (i["scope"], i["proposal_source"], i["proposed_value"], i["grain"]) == ("simulation", "simulation", "DE", "LFA1")
+
+
+def test_batch_diff_groups_changes_per_record():
+    items = [{"record_key": "MATNR=42", "field": "MARA.MATKL", "current_value": "misc", "proposed_value": "MG-1",
+              "check_id": "LR-000001"},
+             {"record_key": "MATNR=42", "field": "MARA.MTART", "current_value": "ROH", "proposed_value": None,
+              "check_id": "X"},
+             {"record_key": "MATNR=41", "field": "MARA.MATKL", "current_value": None, "proposed_value": "MG-2",
+              "check_id": "LR-000001"}]
+    assert remediation.batch_diff(items) == [
+        {"record_key": "MATNR=41", "table": "MARA",
+         "changes": [{"field": "MATKL", "before": None, "after": "MG-2", "rule": "LR-000001"}]},
+        {"record_key": "MATNR=42", "table": "MARA",
+         "changes": [{"field": "MATKL", "before": "misc", "after": "MG-1", "rule": "LR-000001"}]},
+    ]

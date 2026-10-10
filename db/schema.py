@@ -980,7 +980,7 @@ class RemediationItem(Base):
     field = Column(Text, nullable=True)
     current_value = Column(Text, nullable=True)
     proposed_value = Column(Text, nullable=True)
-    proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual
+    proposal_source = Column(Text, nullable=False, server_default="manual")  # rule|steward|manual|cleaning|simulation
     confidence = Column(Text, nullable=True)  # auto_fix confidence of a rule proposal: high|medium|low
     accepted = Column(Boolean, nullable=False, server_default=text("false"))  # proposal accepted by a second person
     recon_status = Column(Text, nullable=True)  # fixed|still_failing after the next extraction
@@ -1004,6 +1004,26 @@ class RemediationEvent(Base):
     to_value = Column(Text, nullable=True)
     version_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+
+class ExportPackage(Base):
+    """One row per downloaded correction package — see migration 072."""
+    __tablename__ = "export_packages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    batch_id = Column(UUID(as_uuid=True), ForeignKey("remediation_batches.id", ondelete="CASCADE"), nullable=False)
+    format = Column(Text, nullable=False)
+    filename = Column(Text, nullable=False)
+    sha256 = Column(Text, nullable=False)
+    size_bytes = Column(BigInteger, nullable=False)
+    item_count = Column(Integer, nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by_label = Column(Text, nullable=True)
+    approved_by_label = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (Index("ix_export_packages_batch", "tenant_id", "batch_id"),)
 
 
 class ProcessModel(Base):

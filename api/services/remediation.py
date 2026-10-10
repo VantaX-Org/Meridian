@@ -233,6 +233,17 @@ def cockpit_csv(items: list[dict], dictionary=None) -> pd.DataFrame:
                      ignore_index=True).fillna("") if sheets else pd.DataFrame(columns=["TABLE"])
 
 
+def batch_diff(items: list[dict]) -> list[dict]:
+    """Before/after per record: only fields with a value to load."""
+    recs: dict[tuple[str, str], list[dict]] = {}
+    for i in _exportable(items):
+        table, field = i["field"].split(".", 1)
+        recs.setdefault((i["record_key"], table), []).append(
+            {"field": field, "before": i.get("current_value"), "after": i["proposed_value"], "rule": i["check_id"]})
+    return [{"record_key": k, "table": t, "changes": sorted(c, key=lambda x: x["field"])}
+            for (k, t), c in sorted(recs.items())]
+
+
 def mass_change(items: list[dict]) -> pd.DataFrame:
     """Generic LSMW / mass-change file: one row per field change, old and new value."""
     from api.services.export_engine import TRANSACTION_CODES
