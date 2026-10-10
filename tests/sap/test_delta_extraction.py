@@ -101,3 +101,16 @@ def test_missing_baseline_table_is_read_in_full(monkeypatch):
     fake = FakeRFCConnector({"LFA1": _lfa1([("V1", "A-silent"), ("V2", "B2"), ("V4", "D")]), "CDHDR": _cdhdr()})
     frames, _ = _mgr(fake).extract("sys", ["accounts_payable"], delta=DeltaRequest("20261008", lambda t: None))
     assert _names(frames) == {"V1": "A-silent", "V2": "B2", "V4": "D"}
+
+
+def test_read_rows_reads_in_list_chunks_within_options_limits(monkeypatch):
+    from sap.extraction_plan import in_lists
+
+    monkeypatch.setattr("api.services.source_design.dictionary_for", lambda s, sid, st=None: get_dictionary("ecc6"))
+    names = [f"USER{i:08d}" for i in range(150)]
+    usr02 = pd.DataFrame({"MANDT": ["100"] * 150, "BNAME": names, "USTYP": ["A"] * 149 + ["B"]})
+    fake = FakeRFCConnector({"USR02": usr02})
+    out = _mgr(fake).read_rows("sys", "USR02", ["BNAME", "USTYP"], in_lists("BNAME", names))
+    assert len(out) == 150 and list(out.columns) == ["BNAME", "USTYP"]
+    assert out.set_index("BNAME")["USTYP"][names[-1]] == "B"
+    assert _mgr(fake).read_rows("sys", "USR02", ["BNAME"], []).empty

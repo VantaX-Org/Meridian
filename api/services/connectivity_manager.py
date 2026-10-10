@@ -438,6 +438,33 @@ class ConnectivityManager:
             return None, None
         return df, {"since": delta.since, "key": key, "changed": len(ids), "reread": len(fresh)}
 
+    def read_rows(self, system_id: str, table: str, fields: list[str], wheres: list[str]) -> pd.DataFrame:
+        """Rows of one ABAP table, one read-only RFC read per WHERE clause (for example, key IN-lists
+        from ``in_lists``). No clause means no read. Raises SAPConnectorError if the system or
+        table cannot be read."""
+        from api.services.source_design import dictionary_for
+        from sap.extraction_plan import ABAP_SYSTEM_TYPES
+
+        if not wheres:
+            return pd.DataFrame(columns=fields)
+        row = self._load_system(system_id)
+        if row.system_type not in ABAP_SYSTEM_TYPES:
+            raise SAPConnectorError(f"{row.system_type} systems have no change documents over RFC")
+        t = dictionary_for(self.session, system_id, row.system_type).table(table)
+        if t is None:
+            raise SAPConnectorError(f"{table} is not in this system")
+        params = self._build_connection_params(row)
+        try:
+            connector = self._get_connector(row.system_type, params)
+        finally:
+            for key in ("password", "client_secret", "api_key"):
+                params.pop(key, None)
+        try:
+            parts = [connector.read_table_full(table, fields, list(t.keys), where=w) for w in wheres]
+        finally:
+            connector.close()
+        return pd.concat(parts, ignore_index=True)[fields]
+
     @staticmethod
     def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:
         """ZMERIDIAN_PAYRT for the extracted payroll results, or why it is not available."""
