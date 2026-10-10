@@ -9,9 +9,10 @@ Deterministic throughout — no LLM. Values shown are the customer's own data
 inside the customer's deployment.
 """
 
+import datetime
 import io
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -76,6 +77,37 @@ class ValueMapUpsert(BaseModel):
     entries: list[ValueMapEntry]
 
 
+Stage = Literal["plan", "mock1", "mock2", "dress", "cutover"]
+
+
+class WaveCreate(BaseModel):
+    name: str
+    source_system_id: Optional[uuid.UUID] = None
+    target_system_id: Optional[uuid.UUID] = None
+    target_release: str = "s4hana"
+    modules: list[str] = []
+    target_date: Optional[datetime.date] = None
+    stage: Stage = "plan"
+    min_readiness: float = 95.0
+    min_dqs: Optional[float] = None
+
+
+class WaveUpdate(BaseModel):
+    name: Optional[str] = None
+    source_system_id: Optional[uuid.UUID] = None
+    target_system_id: Optional[uuid.UUID] = None
+    target_release: Optional[str] = None
+    modules: Optional[list[str]] = None
+    target_date: Optional[datetime.date] = None
+    stage: Optional[Stage] = None
+    min_readiness: Optional[float] = None
+    min_dqs: Optional[float] = None
+
+
+# Columns update_wave may write. Keep in step with WaveUpdate.
+_WAVE_EDITABLE = frozenset(WaveUpdate.model_fields)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -131,33 +163,31 @@ async def start_migration(
         if body.target_release not in ("s4hana", "ecc6") and body.target_release not in RELEASE_FOR_SYSTEM:
             raise HTTPException(status_code=400, detail=f"Unknown target release '{body.target_release}'.")
 
+    return await _enqueue_run(db, tenant.id, current_user_id(request), body.mode, body.source_system_id, dest_id,
+                              body.modules, body.source_version_id, body.target_release)
+
+
+async def _enqueue_run(db: AsyncSession, tenant_id: uuid.UUID, user_id: Optional[str], mode: str,
+                       src: Optional[str], dest: Optional[str], modules: list[str],
+                       source_version_id: Optional[str], target_release: str,
+                       wave_id: Optional[str] = None) -> dict:
     run_id = str(uuid.uuid4())
-    requested_by = current_user_id(request)
     await db.execute(
         text("""
             INSERT INTO migration_runs
-                (id, tenant_id, mode, source_system_id, dest_system_id, modules,
-                 status, requested_by)
-            VALUES (:id, :tid, :mode, :src, :dst, :mods, 'queued', :uid)
+                (id, tenant_id, mode, source_system_id, dest_system_id, modules, status, requested_by, wave_id)
+            VALUES (:id, :tid, :mode, :src, :dst, :mods, 'queued', :uid, :wid)
         """),
-        {"id": run_id, "tid": str(tenant.id), "mode": body.mode,
-         "src": body.source_system_id, "dst": dest_id, "mods": body.modules,
-         "uid": requested_by},
+        {"id": run_id, "tid": str(tenant_id), "mode": mode, "src": src, "dst": dest, "mods": modules,
+         "uid": user_id, "wid": wave_id},
     )
     await db.commit()
 
     from workers.tasks.run_migration import run_migration
-    task = run_migration.delay(
-        str(tenant.id), run_id, body.mode, body.source_system_id, dest_id, body.modules,
-        body.source_version_id, body.target_release)
-    await db.execute(
-        text("UPDATE migration_runs SET task_id = :tid WHERE id = :rid"),
-        {"tid": task.id, "rid": run_id},
-    )
+    task = run_migration.delay(str(tenant_id), run_id, mode, src, dest, modules, source_version_id, target_release)
+    await db.execute(text("UPDATE migration_runs SET task_id = :tid WHERE id = :rid"), {"tid": task.id, "rid": run_id})
     await db.commit()
-
-    return {"run_id": run_id, "task_id": task.id, "status": "queued",
-            "mode": body.mode, "modules": body.modules}
+    return {"run_id": run_id, "task_id": task.id, "status": "queued", "mode": mode, "modules": modules}
 
 
 # ── Runs ──────────────────────────────────────────────────────────────────────
@@ -219,6 +249,141 @@ async def get_run(
     breakdown = [_row(x) for x in agg.fetchall()]
     structural = (await db.execute(text(_STRUCTURAL_SQL), {"rid": run_id})).scalar()
     return {"run": _row(run), "gap_breakdown": breakdown, "structural_critical": int(structural or 0)}
+
+
+# ── Waves ─────────────────────────────────────────────────────────────────────
+
+
+_WAVE_COLS = ("id, name, source_system_id, target_system_id, target_release, modules, target_date, stage, "
+              "min_readiness, min_dqs, signed_off_by, signed_off_at, created_at, updated_at")
+
+
+async def _load_wave(db: AsyncSession, tenant_id: uuid.UUID, wave_id: uuid.UUID):
+    row = (await db.execute(text(f"SELECT {_WAVE_COLS} FROM migration_waves WHERE id = :w AND tenant_id = :t"),
+                            {"w": str(wave_id), "t": str(tenant_id)})).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Wave not found.")
+    return row
+
+
+async def _check_systems(db: AsyncSession, tenant_id: uuid.UUID, src: Optional[uuid.UUID],
+                         dst: Optional[uuid.UUID]) -> None:
+    if src and dst and src == dst:
+        raise HTTPException(status_code=400, detail="Target must differ from the source system.")
+    for sid in (src, dst):
+        if sid and not await _load_system(db, tenant_id, str(sid)):
+            raise HTTPException(status_code=404, detail="System not found.")
+
+
+@router.get("/waves")
+async def list_waves(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    await _set_rls(db, tenant.id)
+    rows = await db.execute(text(f"""
+        SELECT w.{_WAVE_COLS.replace(', ', ', w.')},
+               last.id AS last_run_id, last.readiness_verdict AS last_verdict,
+               last.readiness_score AS last_score, last.completed_at AS last_completed_at,
+               COALESCE(trend.scores, '{{}}') AS trend
+          FROM migration_waves w
+          LEFT JOIN LATERAL (
+                SELECT id, readiness_verdict, readiness_score, completed_at FROM migration_runs
+                 WHERE wave_id = w.id AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1) last ON true
+          LEFT JOIN LATERAL (
+                SELECT array_agg(readiness_score ORDER BY completed_at) AS scores FROM (
+                    SELECT readiness_score, completed_at FROM migration_runs
+                     WHERE wave_id = w.id AND status = 'analysed' AND readiness_score IS NOT NULL
+                     ORDER BY completed_at DESC LIMIT 12) t) trend ON true
+         WHERE w.tenant_id = :t
+         ORDER BY w.target_date NULLS LAST, w.name
+    """), {"t": str(tenant.id)})
+    return {"waves": [_row(r) for r in rows.fetchall()]}
+
+
+@router.post("/waves")
+async def create_wave(
+    body: WaveCreate,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse")),
+):
+    await _set_rls(db, tenant.id)
+    await _check_systems(db, tenant.id, body.source_system_id, body.target_system_id)
+    if (await db.execute(text("SELECT 1 FROM migration_waves WHERE tenant_id = :t AND name = :n"),
+                         {"t": str(tenant.id), "n": body.name})).scalar():
+        raise HTTPException(status_code=409, detail=f"A wave named '{body.name}' already exists.")
+    row = (await db.execute(text(f"""
+        INSERT INTO migration_waves (tenant_id, name, source_system_id, target_system_id, target_release, modules,
+                                     target_date, stage, min_readiness, min_dqs)
+        VALUES (:t, :name, :src, :dst, :rel, :mods, :date, :stage, :minr, :mind)
+        RETURNING {_WAVE_COLS}
+    """), {"t": str(tenant.id), "name": body.name,
+           "src": str(body.source_system_id) if body.source_system_id else None,
+           "dst": str(body.target_system_id) if body.target_system_id else None,
+           "rel": body.target_release, "mods": body.modules, "date": body.target_date, "stage": body.stage,
+           "minr": body.min_readiness, "mind": body.min_dqs})).fetchone()
+    await db.commit()
+    return _row(row)
+
+
+@router.patch("/waves/{wave_id}")
+async def update_wave(
+    wave_id: uuid.UUID,
+    body: WaveUpdate,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse")),
+):
+    await _set_rls(db, tenant.id)
+    current = await _load_wave(db, tenant.id, wave_id)
+    changes = body.model_dump(exclude_unset=True)
+    await _check_systems(db, tenant.id, changes.get("source_system_id", current.source_system_id),
+                         changes.get("target_system_id", current.target_system_id))
+    params = {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in changes.items()}
+    unknown = params.keys() - _WAVE_EDITABLE
+    if unknown:  # never interpolate a column name that is not on the allow-list
+        raise HTTPException(status_code=400, detail=f"Not editable: {', '.join(sorted(unknown))}")
+    sets = "".join(f"{k} = :{k}, " for k in params)
+    # any edit invalidates a sign-off: what was signed is no longer what is planned
+    row = (await db.execute(text(f"""
+        UPDATE migration_waves SET {sets}signed_off_by = NULL, signed_off_at = NULL, updated_at = now()
+         WHERE id = :w AND tenant_id = :t RETURNING {_WAVE_COLS}
+    """), {**params, "w": str(wave_id), "t": str(tenant.id)})).fetchone()
+    await db.commit()
+    return _row(row)
+
+
+@router.delete("/waves/{wave_id}", status_code=204)
+async def delete_wave(
+    wave_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse")),
+):
+    await _set_rls(db, tenant.id)
+    await _load_wave(db, tenant.id, wave_id)
+    await db.execute(text("DELETE FROM migration_waves WHERE id = :w AND tenant_id = :t"),
+                     {"w": str(wave_id), "t": str(tenant.id)})
+    await db.commit()
+
+
+@router.post("/waves/{wave_id}/run")
+async def run_wave(
+    wave_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("analyse")),
+):
+    await _set_rls(db, tenant.id)
+    w = await _load_wave(db, tenant.id, wave_id)
+    if not w.source_system_id or not w.modules:
+        raise HTTPException(status_code=400, detail="Set a source system and at least one module first.")
+    return await _enqueue_run(db, tenant.id, current_user_id(request), "source_to_destination",
+                              str(w.source_system_id), str(w.target_system_id) if w.target_system_id else None,
+                              list(w.modules), None, w.target_release, str(wave_id))
 
 
 # Critical gaps with no record key hit every record (missing/obsolete target field) → export gate.
