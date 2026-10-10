@@ -3,50 +3,40 @@
  * the header page titles. Both surfaces filter it with `visibleNav()`, so a
  * role or licence never sees a page in one place and not the other.
  *
- * Groups follow the user's job, in journey order: connect a system, review
- * quality, fix, govern master data, understand process impact, report, admin.
- * Routes never change here — only labels, grouping and gating.
+ * Ten sections, each href appearing exactly once (enforced by a Rail test).
+ * `children` collapse under their parent and only render expanded, or in
+ * the collapsed flyout and tooltip. Routes removed from the nav stay
+ * routable — their titles live in `OFF_NAV_TITLES` or come from the
+ * surviving entry for the same href.
  *
  * Gating (`anyOf`) uses the permission names from api/services/rbac.py; the
  * API enforces the same names, so hiding an item only removes a dead end.
- * Pages left out of the nav (/command-centre,
- * /notifications) stay routable and are linked from
- * the pages that own them.
  */
 import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRight,
   BarChart3,
-  Brain,
-  Copy,
+  Boxes,
+  ChevronRight,
   Eraser,
-  Key,
-  ListX,
-  Map as MapIcon,
-  Network,
-  Pickaxe,
-  Route,
+  History,
+  Home,
+  Inbox as InboxIcon,
+  ListChecks,
   ShieldAlert,
   Sliders,
-  Timer,
   UserCog,
 } from "lucide-react";
 import {
   BookIcon,
-  ClipboardIcon,
   ContractIcon,
   DatabaseIcon,
-  FileTextIcon,
-  GitCompareIcon,
-  LayoutDashIcon,
-  RefreshIcon,
   ServerIcon,
   SettingsIcon,
-  SparklesNavIcon,
   UploadIcon,
-  AlertIcon,
 } from "@/components/meridian/nav-icons";
+import type { Role } from "@/hooks/use-role";
 
 export type NavIcon =
   | LucideIcon
@@ -63,8 +53,9 @@ export interface NavItem {
   /** Extra words the command palette matches on. */
   keywords?: string;
   shortcut?: string;
-  badge?: number;
-  /** Sub-pages shown beneath the item (Settings). */
+  /** Key into the shell-counts response (`getShellCounts`) for this item's live badge count. */
+  badgeKey?: "fix" | "inbox";
+  /** Sub-pages collapsed under this item. */
   children?: readonly NavItem[];
 }
 
@@ -85,57 +76,104 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/admin/triage", label: "Triage", icon: Timer, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
-  { href: "/admin/mappings", label: "Field mapping", icon: MapIcon, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/admin/ai", label: "AI settings", icon: Brain, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
-  { href: "/admin/licence", label: "Licence", icon: Key, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  { href: "/admin/triage", label: "Triage", icon: ChevronRight, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
+  { href: "/admin/mappings", label: "Field mapping", icon: ChevronRight, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
+  { href: "/admin/ai", label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
+  { href: "/admin/licence", label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
+
+/** The home route for this role's persona. Steward gets its own page; every
+ * other role (including ones with no dedicated persona page) falls back to
+ * lead, not basis — there is no "basis" role. */
+export function homeHrefForRole(role: Role): string {
+  if (role === "steward") return "/home/steward";
+  return "/home/lead";
+}
+
+/**
+ * A nav item's href, with `/home/*` resolved to the viewer's own persona
+ * page. Every surface that renders a nav href (Rail, the command palette,
+ * sign-in's post-login redirect) must call this instead of re-deriving the
+ * `/home/` check itself — that duplication is how the three surfaces drifted.
+ */
+export function resolveNavHref(href: string, role: Role): string {
+  return href.startsWith("/home/") ? homeHrefForRole(role) : href;
+}
 
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
-    group: "Overview",
+    group: "Home",
     items: [
-      { href: "/home/lead", label: "Command Centre", icon: LayoutDashIcon, licenceKey: "dashboard", keywords: "overview home dqs verdict", shortcut: "⌘1" },
+      { href: "/home/lead", label: "Home", icon: Home, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
     ],
   },
   {
-    group: "Systems and data",
+    group: "Systems",
     items: [
-      { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
+      { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects health" },
       { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/systems", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
       { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
     ],
   },
   {
-    group: "Quality",
+    group: "Objects",
     items: [
-      { href: "/objects", label: "Findings", icon: AlertIcon, licenceKey: "findings", keywords: "checks critical severity" },
-      { href: "/inbox", label: "Failing records", icon: ListX, licenceKey: "findings", keywords: "issues records work list assign" },
-      { href: "/runs", label: "Runs", icon: GitCompareIcon, licenceKey: "versions", keywords: "compare history snapshots baseline" },
+      { href: "/objects", label: "Objects", icon: Boxes, licenceKey: "findings", keywords: "checks critical severity findings" },
+    ],
+  },
+  {
+    group: "Runs",
+    items: [
+      { href: "/runs", label: "Runs", icon: History, licenceKey: "versions", keywords: "compare history snapshots baseline" },
+    ],
+  },
+  {
+    group: "Fix",
+    anyOf: ["approve", "apply"],
+    items: [
+      { href: "/fix", label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches" },
+    ],
+  },
+  {
+    group: "Inbox",
+    anyOf: ["view"],
+    items: [
+      {
+        href: "/inbox",
+        label: "Inbox",
+        icon: InboxIcon,
+        licenceKey: "findings",
+        anyOf: ["view"],
+        badgeKey: "inbox",
+        keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
+        children: [
+          { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
+        ],
+      },
     ],
   },
   {
     group: "Insights",
     anyOf: ["view"],
     items: [
-      { href: "/insights", label: "Insights", icon: BarChart3, anyOf: ["view"], keywords: "readiness impact owners duplicates executive summary" },
-      { href: "/insights/readiness", label: "Readiness", icon: BarChart3, anyOf: ["view"], keywords: "waves go no-go blockers" },
-      { href: "/insights/impact", label: "Value at risk", icon: BarChart3, anyOf: ["view"], keywords: "impact features cost" },
-      { href: "/insights/owners", label: "Owner scorecards", icon: BarChart3, anyOf: ["view"], keywords: "digest score steward" },
-      { href: "/insights/duplicates", label: "Duplicate clusters", icon: BarChart3, anyOf: ["view"], keywords: "dedup merge graph cluster" },
-      { href: "/insights/exec", label: "Executive summary", icon: BarChart3, anyOf: ["view"], keywords: "exec report narrative pdf" },
-    ],
-  },
-  {
-    group: "Fix",
-    anyOf: ["approve", "apply", "assign", "mdm.write", "review_ai_rules"],
-    items: [
-      { href: "/inbox", label: "Steward inbox", icon: ClipboardIcon, licenceKey: "stewardship", anyOf: ["approve", "apply", "assign"], keywords: "workbench queue triage tasks stewardship steward team assign sla metrics" },
-      { href: "/fix", label: "Cleaning", icon: Eraser, anyOf: ["approve", "apply"], keywords: "corrections proposals apply" },
-      { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla" },
-      { href: "/insights/duplicates", label: "Duplicates", icon: Copy, anyOf: ["approve", "mdm.write"], keywords: "dedup merge match" },
-      { href: "/rules", label: "AI rule review", icon: SparklesNavIcon, anyOf: ["review_ai_rules"], keywords: "ai rules propose" },
+      {
+        href: "/insights",
+        label: "Insights",
+        icon: BarChart3,
+        keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
+        children: [
+          { href: "/insights/readiness", label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers" },
+          { href: "/insights/impact", label: "Value at risk", icon: BarChart3, keywords: "impact features cost" },
+          { href: "/insights/owners", label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
+          { href: "/insights/duplicates", label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
+          { href: "/insights/exec", label: "Executive summary", icon: BarChart3, keywords: "exec report narrative pdf" },
+          { href: "/insights/forecast", label: "Forecast", icon: BarChart3, keywords: "predictive dqs forecast" },
+          { href: "/insights/process", label: "Process readiness", icon: BarChart3, keywords: "l1 l5 business process ptp otc process map" },
+          { href: "/insights/process/designer", label: "Process designer", icon: BarChart3, keywords: "designer bpmn model edit l1 l5" },
+          { href: "/insights/lineage", label: "Lineage and impact", icon: BarChart3, keywords: "lineage downstream kpi blast radius guards" },
+          { href: "/insights/mining", label: "Pattern mining", icon: BarChart3, keywords: "patterns clustering relationships graph" },
+        ],
+      },
     ],
   },
   {
@@ -147,26 +185,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    group: "Process and impact",
-    items: [
-      { href: "/insights/process", label: "Process readiness", icon: Route, keywords: "l1 l5 business process ptp otc process map" },
-      { href: "/insights/process/designer", label: "Process designer", icon: Route, keywords: "designer bpmn model edit l1 l5" },
-      { href: "/insights/lineage", label: "Lineage and impact", icon: Network, keywords: "lineage downstream kpi blast radius guards" },
-      { href: "/insights/mining", label: "Pattern mining", icon: Pickaxe, keywords: "patterns clustering relationships graph" },
-    ],
-  },
-  {
     group: "Rules",
     items: [
-      { href: "/rules", label: "Rules", icon: Sliders, keywords: "rules checks catalogue yaml" },
-      { href: "/rules/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
-      { href: "/rules/scoring", label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
-    ],
-  },
-  {
-    group: "Reports",
-    items: [
-      { href: "/insights", label: "Reports", icon: FileTextIcon, licenceKey: "reports", keywords: "pdf export" },
+      {
+        href: "/rules",
+        label: "Rules",
+        icon: ListChecks,
+        keywords: "rules checks catalogue yaml contracts scoring alerts",
+        children: [
+          { href: "/rules/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
+          { href: "/rules/scoring", label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
+        ],
+      },
     ],
   },
   {
@@ -187,21 +217,22 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/workbench/record": "Record report",
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
+  "/search": "Search",
 };
 
-/** Items and their sub-pages (Settings tabs) as one flat list. */
+/** Items and their sub-pages (Settings tabs, Insights sections, Inbox exceptions) as one flat list. */
 export function flattenNav(items: readonly NavItem[]): NavItem[] {
   return items.flatMap((i) => [i, ...flattenNav(i.children ?? [])]);
 }
 
 /**
  * Route → title, from the nav labels so the header never drifts from them.
- * First-match-wins: some hrefs (e.g. "/systems") are shared by more than one
- * nav item, and the first one listed is the page's primary title.
+ * First-match-wins: hrefs are unique now, so this is just the labels as given.
  */
 export const PAGE_TITLES: Readonly<Record<string, string>> = {
   ...flattenNav(NAV_GROUPS.flatMap((g) => g.items)).reduce<Record<string, string>>((acc, i) => {
-    if (!(i.href in acc)) acc[i.href] = i.label;
+    const [path] = i.href.split("?");
+    if (path && !(path in acc)) acc[path] = i.label;
     return acc;
   }, {}),
   ...OFF_NAV_TITLES,
@@ -210,6 +241,7 @@ export const PAGE_TITLES: Readonly<Record<string, string>> = {
 /** Title for a pathname: exact match, else the longest matching parent route. */
 export function getPageTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  if (pathname.startsWith("/home/")) return "Home";
   const parent = Object.keys(PAGE_TITLES)
     .filter((p) => p !== "/" && pathname.startsWith(p + "/"))
     .sort((a, b) => b.length - a.length)[0];
@@ -242,4 +274,45 @@ export function visibleNav(gate: NavGate): NavGroup[] {
   return NAV_GROUPS.filter((g) => allowed(g.anyOf, gate.can))
     .map((g) => ({ ...g, items: filterItems(g.items, gate) }))
     .filter((g) => g.items.length > 0);
+}
+
+/**
+ * The single active item's href for a pathname + query string, from a flat
+ * (already-visible) item list. See brief section 2.3:
+ * 1. Flatten items and children (caller does this — `items` here is flat).
+ * 2. Candidates: path part equals pathname, or is a prefix followed by "/".
+ * 3. An item with a query wins only when every one of its query pairs is
+ *    present in `search`; otherwise it's dropped.
+ * 4. Among the rest, the longest path wins; ties favour the one with a query.
+ * 5. `/home/*` always resolves to the Home item, whichever persona page.
+ */
+export function activeHref(pathname: string, search: URLSearchParams, items: readonly NavItem[]): string | null {
+  if (pathname.startsWith("/home/")) {
+    const home = items.find((i) => i.href.startsWith("/home/"));
+    if (home) return home.href;
+  }
+
+  type Candidate = { href: string; path: string; queryLen: number };
+  const candidates: Candidate[] = [];
+
+  for (const item of items) {
+    const [path, query] = item.href.split("?");
+    if (!path) continue;
+    const pathMatches = pathname === path || pathname.startsWith(path + "/");
+    if (!pathMatches) continue;
+
+    if (query) {
+      const pairs = new URLSearchParams(query);
+      const allPresent = [...pairs.entries()].every(([k, v]) => search.get(k) === v);
+      if (!allPresent) continue;
+      candidates.push({ href: item.href, path, queryLen: [...pairs.entries()].length });
+    } else {
+      candidates.push({ href: item.href, path, queryLen: 0 });
+    }
+  }
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => b.path.length - a.path.length || b.queryLen - a.queryLen);
+  return candidates[0]!.href;
 }

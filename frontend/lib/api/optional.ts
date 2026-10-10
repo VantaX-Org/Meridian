@@ -11,18 +11,3 @@ export async function optional<T>(load: () => Promise<T>): Promise<T | null> {
     throw err;
   }
 }
-
-/** The server's own words for a failed request, else the transport error. */
-export function apiErrorMessage(err: unknown): string {
-  if (err instanceof AxiosError) {
-    const detail = (err.response?.data as { detail?: unknown } | undefined)?.detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      return detail.map((d) => (typeof d === "string" ? d : (d as { msg?: string })?.msg ?? JSON.stringify(d))).join("; ");
-    }
-    if (detail && typeof detail === "object" && Array.isArray((detail as { errors?: unknown }).errors)) {
-      return ((detail as { errors: unknown[] }).errors).map(String).join("; ");
-    }
-  }
-  return err instanceof Error ? err.message : String(err);
-}

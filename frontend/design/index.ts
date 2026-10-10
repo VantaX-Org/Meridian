@@ -12,9 +12,11 @@ export * from "./primitives/Tabs";
 export * from "./primitives/Drawer";
 export * from "./primitives/Dialog";
 export * from "./primitives/Menu";
+export * from "./primitives/ExportMenu";
 export * from "./primitives/Toast";
 export * from "./primitives/Tooltip";
 export * from "./primitives/Skeleton";
+export * from "./primitives/Counter";
 export * from "./primitives/EmptyState";
 export * from "./primitives/ErrorState";
 export * from "./primitives/Mono";
@@ -38,9 +40,12 @@ export * from "./charts/Sparkline";
 export * from "./charts/Graph";
 
 export * from "./templates/HomePage";
+export * from "./templates/JourneyStepper";
+export * from "./templates/GhostPanel";
 export * from "./templates/ExplorerPage";
 export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
+export * from "./templates/FindingDrawer";
 
 export * from "./shell/Rail";
 export * from "./shell/TopBar";

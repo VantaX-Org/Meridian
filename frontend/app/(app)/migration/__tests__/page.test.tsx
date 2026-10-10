@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as migrationApi from "@/lib/api/migration";
-import * as systemsApi from "@/lib/api/systems";
+import * as systemsApi from "@/lib/api/connectivity";
 import type { MigrationWave } from "@/types/api";
 import MigrationPage from "../page";
 
@@ -63,6 +63,6 @@ describe("MigrationPage", () => {
   it("shows the error with a retry", async () => {
     vi.spyOn(migrationApi, "getWaves").mockRejectedValue(new Error("network down"));
     renderWithQuery(<MigrationPage />);
-    expect(await screen.findByText(/network down/i)).toBeInTheDocument();
+    expect(await screen.findByText(/could not reach the server/i)).toBeInTheDocument();
   });
 });

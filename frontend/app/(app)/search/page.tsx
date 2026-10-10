@@ -5,13 +5,15 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Field, emptyExportOptions } from "@/design";
 import { getCleaningQueue } from "@/lib/api/cleaning";
 import { getGlossaryTerms } from "@/lib/api/glossary";
+import { exportFindings } from "@/lib/api/findings";
 import { getRules } from "@/lib/api/rules";
 import { getSystems } from "@/lib/api/connectivity";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
+import { apiErrorMessage } from "@/lib/error";
 import { rankResults, type SearchCandidate } from "@/lib/search";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -40,7 +42,7 @@ export default function SearchPage() {
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const batches = useQuery({
     queryKey: queryKeys.batch("list"),
-    queryFn: () => getCleaningQueue({ per_page: 500 }),
+    queryFn: () => getCleaningQueue({ per_page: 100 }),
   });
   const objects = useQuery({
     queryKey: queryKeys.objects(run),
@@ -77,6 +79,9 @@ export default function SearchPage() {
   }, [rules.data, glossary.data, systems.data, batches.data, objects.data, runs.data, run]);
 
   const results = rankResults(q, candidates);
+  const exportOptions = [
+    { format: "xlsx" as const, label: "Findings (.xlsx)", run: () => exportFindings("xlsx", { version_id: run || undefined }) },
+  ];
   const loading = rules.isLoading || glossary.isLoading || systems.isLoading || batches.isLoading || runs.isLoading
     || (!!run && objects.isLoading);
   const failedQuery = [rules, glossary, systems, batches, objects, runs].find((query) => query.isError);
@@ -91,6 +96,7 @@ export default function SearchPage() {
 
   return (
     <ExplorerPage
+      summary={<ExportMenu options={results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       filterBar={
         <form
           className="flex items-end gap-2"
@@ -119,9 +125,12 @@ export default function SearchPage() {
         />
       }
       state={loading ? "loading" : failedQuery ? "error" : q && results.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No matches. Try an object id, a rule id, a glossary term, a batch id or a run id." }}
+      emptyProps={{
+        title: `No results for "${q}"`,
+        detail: "Search matches object names, rule ids, glossary terms, batch ids, run ids and record keys.",
+      }}
       errorProps={{
-        message: failedQuery?.error instanceof Error ? failedQuery.error.message : "Could not load search results.",
+        message: apiErrorMessage(failedQuery?.error),
         onRetry: refetchAll,
       }}
     />

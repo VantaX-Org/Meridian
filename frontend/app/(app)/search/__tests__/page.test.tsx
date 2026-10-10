@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("q=business"),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("SearchPage", () => {
   beforeEach(() => {
@@ -45,7 +46,7 @@ describe("SearchPage", () => {
       offset: 0,
     });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
@@ -56,23 +57,23 @@ describe("SearchPage", () => {
   it("shows an empty state when nothing matches", async () => {
     vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [], total: 0, limit: 100, offset: 0 });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
-    await waitFor(() => expect(screen.getByText(/no matches/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no results for "business"/i)).toBeInTheDocument());
   });
 
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("rules service unavailable"));
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
-    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 500 });
+    vi.spyOn(cleaningApi, "getCleaningQueue").mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "", objects: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
 
     renderWithQuery(<SearchPage />);
-    await screen.findByText("rules service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((rulesApi.getRules as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));

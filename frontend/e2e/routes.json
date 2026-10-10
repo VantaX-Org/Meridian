@@ -2,17 +2,17 @@
   {
     "name": "fix",
     "path": "/fix",
-    "heading": "Cleaning"
+    "heading": "Fix"
   },
   {
     "name": "fix-batch",
     "path": "/fix/B1",
-    "heading": "Cleaning"
+    "heading": "Fix"
   },
   {
     "name": "inbox",
     "path": "/inbox",
-    "heading": "Failing records"
+    "heading": "Inbox"
   },
   {
     "name": "systems-extraction",

@@ -1,10 +1,23 @@
 import axios, { AxiosInstance } from "axios";
 
 const TOKEN_KEY = "mn_auth_token";
+const PER_PAGE_CAP = 100;
+let warnedPerPageCap = false;
 
 // Attach auth + error interceptors to an axios instance
 function instrument(client: AxiosInstance): AxiosInstance {
   client.interceptors.request.use((config) => {
+    // ponytail: clamp here so no caller can regress past the backend's own
+    // per_page cap (api/routes/*.py: le=100) instead of fixing it per call site.
+    const perPage = config.params?.per_page;
+    if (typeof perPage === "number" && perPage > PER_PAGE_CAP) {
+      config.params.per_page = PER_PAGE_CAP;
+      if (process.env.NODE_ENV !== "production" && !warnedPerPageCap) {
+        warnedPerPageCap = true;
+        // eslint-disable-next-line no-console
+        console.warn(`per_page ${perPage} clamped to ${PER_PAGE_CAP}`);
+      }
+    }
     if (typeof window === "undefined") return config;
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) config.headers.Authorization = `Bearer ${token}`;

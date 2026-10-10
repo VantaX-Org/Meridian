@@ -8,7 +8,7 @@ import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const th = "px-3 py-2 text-left font-medium";

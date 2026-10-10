@@ -1,11 +1,14 @@
 // frontend/app/(app)/objects/page.tsx
 "use client";
 
+import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Pill, ScoreRing, SeverityDot, type PillTone } from "@/design";
-import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone } from "@/design";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
@@ -60,29 +63,40 @@ const columns: ColumnDef<ObjectSummary>[] = [
 export default function ObjectsPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const run = search.get("run") ?? "";
+  const run = search.get("run") ?? "latest";
+  const dayOne = useDayOne();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.objects(run),
     queryFn: () => getObjects(run),
-    enabled: !!run,
   });
 
   let state: "loading" | "empty" | "error" | undefined;
-  let emptyProps = { title: "Select a run to see its objects." };
-  if (!run) {
-    state = "empty";
-  } else if (isLoading) {
+  let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = {
+    title: "No objects analysed yet.",
+    ghost: "table",
+  };
+  if (isLoading || dayOne.status === "loading") {
     state = "loading";
   } else if (isError) {
     state = "error";
   } else if (data && data.objects.length === 0) {
     state = "empty";
-    emptyProps = { title: "No objects for this run. This run has no analysed objects yet." };
+    emptyProps = data.run_id
+      ? { title: "No objects for this run. This run has no analysed objects yet.", ghost: "table" }
+      : {
+          title: "No objects analysed yet.",
+          detail: dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
+          action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
+          ghost: "table",
+        };
   }
+
+  const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
 
   return (
     <ExplorerPage
+      toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
         <DataTable
           columns={columns}
@@ -94,7 +108,7 @@ export default function ObjectsPage() {
       state={state}
       emptyProps={emptyProps}
       errorProps={{
-        message: `Couldn't load objects. ${error?.message ?? ""}`.trim(),
+        message: apiErrorMessage(error),
         onRetry: () => refetch(),
       }}
     />

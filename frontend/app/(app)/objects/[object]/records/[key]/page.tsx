@@ -2,12 +2,16 @@
 "use client";
 
 import { Fragment } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { EmptyState, ErrorState, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, EmptyState, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
+import { downloadAuthenticated } from "@/lib/api/download";
+import { apiErrorMessage } from "@/lib/error";
+import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
 
@@ -16,7 +20,7 @@ const sectionHeading = "text-[14px] font-semibold";
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
     <ErrorState
-      message={`Couldn't load ${what}. ${query.error?.message ?? ""}`.trim()}
+      message={`Could not load ${what}. ${apiErrorMessage(query.error)}`}
       onRetry={() => query.refetch()}
     />
   );
@@ -75,14 +79,20 @@ export default function RecordFixSheetPage() {
   if (recordQuery.isError) {
     return (
       <ErrorState
-        message={`Couldn't load this record. ${recordQuery.error.message}`}
+        message={apiErrorMessage(recordQuery.error)}
         onRetry={() => recordQuery.refetch()}
       />
     );
   }
   const material = recordQuery.data;
   if (!material) {
-    return <EmptyState title="This record was not found for this run." />;
+    return (
+      <EmptyState
+        title="Record not found in this run."
+        detail="The key may belong to another system or run."
+        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+      />
+    );
   }
 
   const hasMissing = material.views.some((view) => view.cells.some((cell) => cell.state === "missing"));
@@ -92,8 +102,20 @@ export default function RecordFixSheetPage() {
   const supersession = supersessionQuery.data;
   const duplicates = duplicatesQuery.data;
 
+  const exportOptions = [
+    {
+      format: "pdf" as const,
+      label: "Fix sheet (PDF)",
+      run: () =>
+        downloadAuthenticated(getRecordReportUrl(run, material.matnr), `meridian-fix-sheet-${material.matnr}.pdf`),
+    },
+  ];
+
   return (
     <RecordPage recordKey={material.matnr} object={object} status={status}>
+      <div className="flex justify-end">
+        <ExportMenu options={exportOptions} />
+      </div>
       <section className="flex flex-col gap-2">
         <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Identity</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
@@ -191,7 +213,7 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No duplicates found.</p>
+            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No duplicate candidates for this record.</p>
           )}
         </section>
       )}

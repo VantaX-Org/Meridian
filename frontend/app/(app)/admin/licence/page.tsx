@@ -6,7 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
 import { getUpdateStatus } from "@/lib/api/system-update";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 

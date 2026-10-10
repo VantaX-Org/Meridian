@@ -8,6 +8,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -19,6 +26,7 @@ describe("ReadinessPage", () => {
       version_id: "v1",
       threshold: 70,
       cells: [{ module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 }],
+      configured: true,
     });
     renderWithQuery(<ReadinessPage />);
     expect(await screen.findByText("go")).toBeInTheDocument();
@@ -35,6 +43,7 @@ describe("ReadinessPage", () => {
         { module: "material_master", wave: "Wave 1", verdict: "go", blocker_count: 0, dqs: 92, score: 100, records_blocked: 0 },
         { module: "material_master", wave: "Wave 2", verdict: "at_risk", blocker_count: 1, dqs: 80, score: 90, records_blocked: 3 },
       ],
+      configured: true,
     });
     renderWithQuery(<ReadinessPage />);
     await screen.findByText("go");
@@ -51,22 +60,29 @@ describe("ReadinessPage", () => {
   });
 
   it("shows an empty state when the run has no readiness cells", async () => {
-    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [] });
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 70, cells: [], configured: true });
     renderWithQuery(<ReadinessPage />);
     await waitFor(() => expect(screen.getByText(/no readiness data/i)).toBeInTheDocument());
+  });
+
+  it("shows a not-configured empty state when readiness waves aren't set", async () => {
+    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: null, threshold: 70, cells: [], configured: false });
+    renderWithQuery(<ReadinessPage />);
+    await waitFor(() => expect(screen.getByText(/readiness waves not set/i)).toBeInTheDocument());
+    expect(screen.getByText(/settings > alert thresholds/i)).toBeInTheDocument();
   });
 
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ReadinessPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the readiness request when the retry button is clicked", async () => {
     const getReadiness = vi
       .spyOn(insightsApi, "getReadiness")
       .mockRejectedValueOnce(new Error("network error"))
-      .mockResolvedValueOnce({ version_id: "v1", threshold: 70, cells: [] });
+      .mockResolvedValueOnce({ version_id: "v1", threshold: 70, cells: [], configured: true });
     renderWithQuery(<ReadinessPage />);
 
     const retry = await screen.findByRole("button", { name: /retry/i });

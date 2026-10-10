@@ -5,6 +5,13 @@ import * as lineageApi from "@/lib/api/lineage";
 import * as versionsApi from "@/lib/api/versions";
 import LineagePage from "../page";
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 const LATEST = {
   id: "v1", label: "Run 1", status: "complete", run_at: "2026-01-01T00:00:00Z",
   dqs_summary: { material_master: 90 },
@@ -45,7 +52,7 @@ describe("LineagePage", () => {
 
   it("shows the API error message for the lineage model and retries on click", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [LATEST as never] });
-    vi.spyOn(lineageApi, "getLineageModel").mockRejectedValue(new Error("lineage model service unavailable"));
+    vi.spyOn(lineageApi, "getLineageModel").mockRejectedValue({ isAxiosError: true, response: { data: { detail: "lineage model service unavailable" } } });
     renderWithQuery(<LineagePage />);
     await screen.findByText("lineage model service unavailable");
     const calls = (lineageApi.getLineageModel as ReturnType<typeof vi.fn>).mock.calls.length;

@@ -1,10 +1,16 @@
 """Smoke tests for the config match Excel export service."""
 
+import asyncio
 import io
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import openpyxl
 import pytest
 
+import api.routes.config_matches as config_matches_module
+from api.routes.config_matches import export_config_matches
+from api.services.branded_xlsx import ACCENT
 from api.services.config_match_export import generate_config_match_excel
 
 
@@ -86,6 +92,25 @@ def test_data_errors_sheet_row_count():
     assert ws.max_row == 6
 
 
+def test_workbook_has_cover_sheet_with_accent_header(ten_matches):
+    """I2: generate_config_match_excel routes through branded_xlsx —
+    a Cover sheet, formula-guarded tenant name, and the shared accent
+    fill on every data sheet's header row."""
+    summary = _make_summary(ten_matches)
+    result = generate_config_match_excel(
+        ten_matches, summary, "test-version-id", tenant_name="=cmd|' /c calc'!A1"
+    )
+    wb = openpyxl.load_workbook(io.BytesIO(result))
+    assert wb.sheetnames[0] == "Cover"
+    cover = wb["Cover"]
+    org_cell = cover.cell(row=6, column=2).value
+    assert org_cell.startswith("'=")  # tenant name is formula-guarded
+
+    ws = wb["Summary"]
+    header_cell = ws.cell(row=1, column=1)
+    assert header_cell.fill.fgColor.rgb[-6:] == ACCENT
+
+
 def test_module_sheets_created_only_for_matched_modules():
     matches = [
         _make_match("data_error", "business_partner"),
@@ -97,3 +122,31 @@ def test_module_sheets_created_only_for_matched_modules():
     assert "business_partner" in wb.sheetnames
     assert "fi_gl" in wb.sheetnames
     assert "material_master" not in wb.sheetnames
+
+
+def test_export_config_matches_route_builds_real_workbook(ten_matches, monkeypatch):
+    """I9: build a real workbook through the export_config_matches route
+    (not just generate_config_match_excel directly) and reload with
+    openpyxl — the shared "meridian-" filename stamp and the Cover sheet."""
+    tenant = SimpleNamespace(id="00000000-0000-0000-0000-000000000001", name="Acme Corp")
+
+    async def fake_get_matches_for_export(db, version_id, tenant_id):
+        return [SimpleNamespace(_mapping=m) for m in ten_matches]
+
+    async def fake_get_summary(db, version_id, tenant_id):
+        return _make_summary(ten_matches)
+
+    monkeypatch.setattr(config_matches_module, "get_config_matches_for_export", fake_get_matches_for_export)
+    monkeypatch.setattr(config_matches_module, "get_config_match_summary", fake_get_summary)
+
+    response = asyncio.run(
+        export_config_matches(version_id="11111111-1111-1111-1111-111111111111", db=AsyncMock(), tenant=tenant, _role="admin")
+    )
+
+    disposition = response.headers["content-disposition"]
+    filename = disposition.split("filename=", 1)[1].strip('"')
+    assert filename.startswith("meridian-")
+
+    wb = openpyxl.load_workbook(io.BytesIO(response.body))
+    assert wb.sheetnames[0] == "Cover"
+    assert "Summary" in wb.sheetnames

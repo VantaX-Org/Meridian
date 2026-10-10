@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button, Dialog } from "@/design";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { createWave } from "@/lib/api/migration";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveStage } from "@/types/api";
 

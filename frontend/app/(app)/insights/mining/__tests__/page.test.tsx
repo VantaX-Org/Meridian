@@ -11,6 +11,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/insights/mining",
 }));
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 describe("MiningPage", () => {
   it("renders the tally and the entity-links lens by default", async () => {
     vi.spyOn(relationshipsApi, "getRelationships").mockResolvedValue({
@@ -46,7 +53,7 @@ describe("MiningPage", () => {
       window_days: 30, total_patterns: 0, new_anomalies: 0, stable_patterns: 0,
       coverage_pct: 0, runs_total: 0, cost_usd: 0,
     });
-    vi.spyOn(relationshipsApi, "getRelationships").mockRejectedValue(new Error("relationships unavailable"));
+    vi.spyOn(relationshipsApi, "getRelationships").mockRejectedValue({ isAxiosError: true, response: { data: { detail: "relationships unavailable" } } });
     renderWithQuery(<MiningPage />);
     await screen.findByText("relationships unavailable");
     const calls = (relationshipsApi.getRelationships as ReturnType<typeof vi.fn>).mock.calls.length;

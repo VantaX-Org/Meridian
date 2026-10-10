@@ -42,13 +42,13 @@ describe("OwnersPage", () => {
   it("shows an empty state when there are no owners", async () => {
     vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
     renderWithQuery(<OwnersPage />);
-    await waitFor(() => expect(screen.getByText(/no owner digests/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no owners scored yet/i)).toBeInTheDocument());
   });
 
   it("shows an error state when the request fails", async () => {
     vi.spyOn(insightsApi, "getOwners").mockRejectedValue(new Error("network error"));
     renderWithQuery(<OwnersPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the owners request when the retry button is clicked", async () => {
@@ -61,7 +61,7 @@ describe("OwnersPage", () => {
     const retry = await screen.findByRole("button", { name: /retry/i });
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.getByText(/no owner digests/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no owners scored yet/i)).toBeInTheDocument());
     expect(getOwners).toHaveBeenCalledTimes(2);
   });
 });

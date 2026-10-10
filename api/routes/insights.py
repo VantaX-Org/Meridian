@@ -43,6 +43,8 @@ async def get_readiness(
     waves = (await db.execute(text(
         "SELECT id, name, modules, min_readiness, min_dqs FROM migration_waves "
         "WHERE tenant_id = :t ORDER BY target_date NULLS LAST, name"), {"t": str(tenant.id)})).fetchall()
+    if not waves:
+        return {"version_id": None, "threshold": dqs_threshold, "waves": [], "cells": [], "configured": False}
 
     # A wave reads its own latest analysed run; a wave without one falls back to the tenant's
     # latest analysed run (optionally pinned by version_id), so grids built from settings still show.
@@ -85,6 +87,7 @@ async def get_readiness(
         "version_id": str(resolved) if resolved else None,
         "threshold": dqs_threshold,
         "cells": [c.__dict__ for c in cells],
+        "configured": True,
     }
 
 
@@ -310,8 +313,20 @@ async def get_exec(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            raise HTTPException(404, "No analysis run found")
+            # No analysis run at all for this tenant — not an error, just a day-one
+            # tenant. 200 with empty fields so the page renders its empty state.
+            return {
+                "version_id": None,
+                "narrative": "",
+                "readiness_cells": [],
+                "waterfall": [],
+                "impact_rows": [],
+                "owner_rows": [],
+            }
 
+    # get_readiness no longer raises 409 for unconfigured waves (it returns
+    # {"cells": [], "configured": False} instead), so no HTTPException catch
+    # is needed here any more.
     readiness = await get_readiness(version_id, db, tenant)
     impact = await get_impact(version_id, db, tenant)
     owners = await get_owners(db, tenant)

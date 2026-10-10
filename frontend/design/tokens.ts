@@ -33,7 +33,12 @@ export const mSpace = {
 
 export const mRadius = { control: 4, sheet: 6 } as const;
 
-export const mMotion = { duration: 120, ease: "ease-out" as const };
+export const mMotion = { duration: 120, slow: 320, draw: 640, shimmer: 1400, ease: "ease-out" as const };
+
+/** True when the user has asked the OS for reduced motion; JS animations jump to the end state. */
+export function reducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 /** critical=square, high=triangle, medium=circle, low=ring, pass=check (spec 4.4). */
 export type Severity = "critical" | "high" | "medium" | "low" | "pass";

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 

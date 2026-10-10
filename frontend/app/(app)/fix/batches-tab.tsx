@@ -211,7 +211,11 @@ export function BatchesTab() {
       ) : q.isError ? (
         <ErrorState message={errorText(q.error)} onRetry={() => q.refetch()} />
       ) : batches.length === 0 ? (
-        <EmptyState title="No fix batches yet. A rule, a steward, or the monitor drafts one when records need a correction." />
+        <EmptyState
+          title="No batches."
+          detail="Approve proposals in the cleaning queue to create a batch."
+          action={<Button render={<Link href="/fix?tab=cleaning">Cleaning queue</Link>} />}
+        />
       ) : visible.length === 0 ? (
         <EmptyState title="Nothing in this view." action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
       ) : (

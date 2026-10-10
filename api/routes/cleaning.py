@@ -122,6 +122,7 @@ async def list_cleaning_queue(
     status: Optional[str] = None,
     rule_id: Optional[str] = None,
     assigned_to: Optional[str] = None,
+    batch_id: Optional[uuid.UUID] = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -144,6 +145,9 @@ async def list_cleaning_queue(
     if assigned_to:
         where_clauses.append("assigned_to = :ato")
         params["ato"] = assigned_to
+    if batch_id:
+        where_clauses.append("batch_id = :bid")
+        params["bid"] = str(batch_id)
 
     where = " AND ".join(where_clauses)
 
@@ -506,6 +510,9 @@ async def export_cleaning_data(
     object_type: Optional[str] = Query(
         None, description="Optional object type filter — omit to export across all object types"
     ),
+    batch_id: Optional[uuid.UUID] = Query(
+        None, description="Optional cleaning-queue batch filter — omit to export across all batches"
+    ),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("export")),
@@ -521,6 +528,9 @@ async def export_cleaning_data(
     if object_type:
         where += " AND object_type = :ot"
         params["ot"] = object_type
+    if batch_id:
+        where += " AND batch_id = :bid"
+        params["bid"] = str(batch_id)
 
     result = await db.execute(
         text(f"""
@@ -569,14 +579,11 @@ async def export_cleaning_data(
     # xlsx with multiple object types → one sheet per type. For a single type
     # this is still correct and produces one sheet named after that type.
     if export_format == "xlsx":
-        content_bytes = engine.export_xlsx_multi(records_by_type)
+        from api.services.branded_xlsx import xlsx_filename, xlsx_response
+
+        content_bytes = engine.export_xlsx_multi(records_by_type, tenant_name=tenant.name)
         filename_suffix = object_type if object_type else "all"
-        filename = f"cleaning_export_{status}_{filename_suffix}.xlsx"
-        return StreamingResponse(
-            io.BytesIO(content_bytes),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
+        return xlsx_response(content_bytes, xlsx_filename(f"cleaning-{status}", filename_suffix))
 
     format_dispatch = {
         "csv": engine.export_csv,

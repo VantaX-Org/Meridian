@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, signoffWave,
 } from "@/lib/api/migration";

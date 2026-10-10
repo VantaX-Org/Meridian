@@ -15,8 +15,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, DataTable, Drawer, EmptyState, ErrorState, Field, Line, Mono, Pill, Select, Skeleton, Stat, Tabs,
-  type PillTone,
+  Bar, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, Select, Skeleton, Stat, Tabs,
+  emptyExportOptions, type PillTone,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
 import { ConfigComparePanel } from "./config-compare-panel";
@@ -27,6 +27,7 @@ import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
 import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
+import { exportRuns } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -149,6 +150,13 @@ export default function SystemPage() {
               Analyse
             </Button>
           ) : null}
+          <ExportMenu
+            options={
+              versions.length === 0
+                ? emptyExportOptions([{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }])
+                : [{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }]
+            }
+          />
           {can("manage_systems") ? <Button onClick={() => setEditOpen(true)}>Edit</Button> : null}
         </div>
       </div>
@@ -196,7 +204,11 @@ export default function SystemPage() {
               />
             ),
           },
-          { value: "runs", label: "Runs", content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} /> },
+          {
+            value: "runs",
+            label: "Runs",
+            content: <Runs systemId={systemId} versions={versions} loading={versionsQ.isLoading} canSync={can("trigger_sync")} />,
+          },
           {
             value: "health",
             label: "Health",
@@ -361,11 +373,19 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
 
 /* ── Runs ──────────────────────────────────────────────────────────────── */
 
-function Runs({ systemId, versions, loading }: { systemId: string; versions: SystemVersion[]; loading: boolean }) {
+function Runs({ systemId, versions, loading, canSync }: { systemId: string; versions: SystemVersion[]; loading: boolean; canSync: boolean }) {
   const router = useRouter();
   const columns = useMemo(() => runColumns(), []);
   if (loading) return <Skeleton height={240} />;
-  if (!versions.length) return <EmptyState title="Nothing has been extracted from this system yet." />;
+  if (!versions.length) {
+    return (
+      <EmptyState
+        title="No runs for this system."
+        detail="Run an extraction to create the first run."
+        action={canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run extraction</Link>} /> : undefined}
+      />
+    );
+  }
   return (
     <DataTable
       columns={columns}

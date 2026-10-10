@@ -23,7 +23,7 @@ describe("admin field mappings page", () => {
   it("shows a retryable error when mappings fail to load", async () => {
     const spy = vi.spyOn(mappingsApi, "getFieldMappings").mockRejectedValue(new Error("network down"));
     renderWithQuery(<AdminMappingsPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue({ mappings: [MAPPING], total: 1, self_service_enabled: true });
     retry.click();

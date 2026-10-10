@@ -1,10 +1,10 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.branded_xlsx import xlsx_filename, xlsx_response
 from api.services.rbac import require_permission
 from db.queries.config_matches import (
     get_config_match_summary,
@@ -88,11 +88,6 @@ async def export_config_matches(
         "ambiguous": 0,
         "modules_with_deviations": [],
     }
-    stream = generate_config_match_excel(export_rows, summary, version_id)
-    return Response(
-        content=stream,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="meridian-config-{version_id[:8]}.xlsx"'
-        },
-    )
+    stream = generate_config_match_excel(export_rows, summary, version_id, tenant_name=tenant.name)
+    filename = xlsx_filename("config", version_id[:8])
+    return xlsx_response(stream, filename)

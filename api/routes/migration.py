@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
 from api.services.rbac import current_user_id, require_permission
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
@@ -785,17 +786,28 @@ async def export_findings(
     _role: str = Depends(require_permission("export")),
 ):
     """Every gap of a run (the remediation work list), as CSV or XLSX."""
-    import pandas as pd
-
     await _set_rls(db, tenant.id)
     where, params = _findings_where(run_id, module, gap_type, severity, None, None)
     rows = (await db.execute(text(f"SELECT {_FINDING_COLS} FROM migration_gap_findings WHERE {where}"), params)).fetchall()
-    df = pd.DataFrame([_row(x) for x in rows])
+    dicts = [_row(x) for x in rows]
+    keys = list(dicts[0].keys()) if dicts else [
+        "module", "source_table", "record_key", "source_field", "source_value", "dest_table",
+        "target_field", "target_value", "gap_type", "severity", "detail", "provenance", "grounded",
+    ]
+    columns = [
+        ColumnSpec(key=k, header=k, kind="mono" if k in ("record_key", "source_table", "dest_table") else "text")
+        for k in keys
+    ]
     if format == "csv":
-        return _stream(df.to_csv(index=False).encode(), "text/csv", f"migration_gaps_{run_id}.csv")
-    buf = io.BytesIO()
-    df.to_excel(buf, index=False, engine="openpyxl")
-    return _stream(buf.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        return csv_response(dicts, columns, "migration-gaps", str(run_id))
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=None,
+        run_id=str(run_id),
+        title="Migration gap findings export",
+        sheets=[SheetSpec(title="Gap findings", columns=columns, rows=dicts)],
+    )
+    return _stream(data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                    f"migration_gaps_{run_id}.xlsx")
 
 

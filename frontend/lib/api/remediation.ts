@@ -279,9 +279,10 @@ export async function exportBatch(id: string, format: ExportFormat, crType?: str
 }
 
 /** Error message for any remediation call: the API's `detail` sentence, else the client error. */
+/** The API's own detail message, or "Could not reach the server." — never the raw Error/AxiosError message (spec 5). */
 export function errorText(e: unknown): string {
   const detail = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-  return typeof detail === "string" ? detail : (e as Error)?.message || "Something went wrong.";
+  return typeof detail === "string" ? detail : "Could not reach the server.";
 }
 
 export interface BatchCreated {

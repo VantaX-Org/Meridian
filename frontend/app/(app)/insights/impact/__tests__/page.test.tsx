@@ -8,6 +8,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
+
 function renderWithQuery(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -79,7 +86,7 @@ describe("ImpactPage", () => {
     renderWithQuery(<ImpactPage />);
 
     await waitFor(() => expect(screen.getByText("MIGO")).toBeInTheDocument());
-    expect(screen.getByText(/proven-cost network error/i)).toBeInTheDocument();
+    expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument();
     expect(screen.getByText("MM-003").closest("a")?.getAttribute("href")).toBe("/rules/MM-003");
   });
 
@@ -94,14 +101,14 @@ describe("ImpactPage", () => {
     mockEmptyProvenCost();
     vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
     renderWithQuery(<ImpactPage />);
-    await waitFor(() => expect(screen.getByText(/no blocked or degraded features/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no impact results yet/i)).toBeInTheDocument());
   });
 
   it("shows an error state when the request fails", async () => {
     mockEmptyProvenCost();
     vi.spyOn(insightsApi, "getImpact").mockRejectedValue(new Error("network error"));
     renderWithQuery(<ImpactPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries the impact request when the retry button is clicked", async () => {
@@ -115,7 +122,7 @@ describe("ImpactPage", () => {
     const retry = await screen.findByRole("button", { name: /retry/i });
     fireEvent.click(retry);
 
-    await waitFor(() => expect(screen.getByText(/no blocked or degraded features/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no impact results yet/i)).toBeInTheDocument());
     expect(getImpact).toHaveBeenCalledTimes(2);
   });
 });

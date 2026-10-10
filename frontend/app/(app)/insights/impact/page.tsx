@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
+import { DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -15,7 +15,9 @@ import {
   type ProvenCostResponse,
   type ProvenCostRow,
 } from "@/lib/api/insights";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 /** Real route for a single check/rule, independent of any module context —
  * unlike `/objects/[object]`, this resolves from the check id alone. */
@@ -38,7 +40,15 @@ function CheckChips({ ids }: { ids: string[] }) {
 }
 
 const impactColumns: ColumnDef<ImpactRow>[] = [
-  { accessorKey: "feature", header: "Feature" },
+  {
+    accessorKey: "feature",
+    header: "Feature",
+    cell: ({ row }) => (
+      <DrillLink object={row.original.feature} filters={{ causing_rules: row.original.causing_rules.join(",") }}>
+        {row.original.feature}
+      </DrillLink>
+    ),
+  },
   { accessorKey: "status", header: "Status" },
   { accessorKey: "record_count", header: "Blocked records" },
   {
@@ -77,10 +87,6 @@ const provenCostColumns: ColumnDef<ProvenCostRow>[] = [
   },
 ];
 
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
-}
-
 /** Each insight query renders its own loading/error/empty state, so one query
  * failing or still loading never hides the other section's data. */
 function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, Error> }) {
@@ -88,7 +94,7 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   if (query.isError) {
     return (
       <ErrorState
-        message={errorMessage(query.error, "Couldn't load proven cost. Try again.")}
+        message={apiErrorMessage(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -121,12 +127,18 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
   );
 }
 
-function ImpactPanel({ query }: { query: UseQueryResult<ImpactResponse, Error> }) {
-  if (query.isLoading) return <Skeleton height={240} />;
+function ImpactPanel({
+  query,
+  dayOne,
+}: {
+  query: UseQueryResult<ImpactResponse, Error>;
+  dayOne: ReturnType<typeof useDayOne>;
+}) {
+  if (query.isLoading || dayOne.status === "loading") return <Skeleton height={240} />;
   if (query.isError) {
     return (
       <ErrorState
-        message={errorMessage(query.error, "Couldn't load feature impact. Try again.")}
+        message={apiErrorMessage(query.error)}
         onRetry={() => query.refetch()}
       />
     );
@@ -134,7 +146,13 @@ function ImpactPanel({ query }: { query: UseQueryResult<ImpactResponse, Error> }
 
   const rows = query.data?.rows ?? [];
   if (rows.length === 0) {
-    return <EmptyState title="No blocked or degraded features for this run yet." />;
+    return (
+      <EmptyState
+        title="No impact results yet."
+        detail={dayOne.step?.detail ?? "Impact builds up once a run has blocked or degraded features."}
+        action={<DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />}
+      />
+    );
   }
   return <DataTable columns={impactColumns} data={rows} getRowId={(row) => row.feature} />;
 }
@@ -142,6 +160,7 @@ function ImpactPanel({ query }: { query: UseQueryResult<ImpactResponse, Error> }
 export default function ImpactPage() {
   const search = useSearchParams();
   const run = search.get("run") ?? undefined;
+  const dayOne = useDayOne();
 
   const impactQuery = useQuery({
     queryKey: queryKeys.insights("impact", run),
@@ -159,7 +178,7 @@ export default function ImpactPage() {
       tables={
         <div className="flex flex-col gap-8">
           <ProvenCostPanel query={provenCostQuery} />
-          <ImpactPanel query={impactQuery} />
+          <ImpactPanel query={impactQuery} dayOne={dayOne} />
         </div>
       }
     />

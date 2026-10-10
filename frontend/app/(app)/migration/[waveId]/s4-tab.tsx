@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, ErrorState, Pill, type PillTone } from "@/design";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { getS4Readiness, type S4Area } from "@/lib/api/migration";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";

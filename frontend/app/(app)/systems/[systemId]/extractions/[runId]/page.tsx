@@ -1,10 +1,13 @@
 "use client";
 
+import { isAxiosError } from "axios";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
-import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Pill, ReportPage, type PillTone } from "@/design";
+import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -32,7 +35,7 @@ const columns: ColumnDef<RunStep>[] = [
 ];
 
 export default function ExtractionPage() {
-  const { runId } = useParams<{ systemId: string; runId: string }>();
+  const { systemId, runId } = useParams<{ systemId: string; runId: string }>();
 
   const steps = useQuery({
     queryKey: [...queryKeys.run(runId), "steps"],
@@ -40,12 +43,16 @@ export default function ExtractionPage() {
   });
 
   if (steps.isError) {
-    return (
-      <ErrorState
-        message={`Couldn't load this extraction. ${steps.error?.message ?? ""}`.trim()}
-        onRetry={() => steps.refetch()}
-      />
-    );
+    if (isAxiosError(steps.error) && steps.error.response?.status === 404) {
+      return (
+        <EmptyState
+          title="Extraction not found."
+          detail="This run id does not exist for this system."
+          action={<Button render={<Link href={`/systems/${systemId}`}>Back to system</Link>} />}
+        />
+      );
+    }
+    return <ErrorState message={apiErrorMessage(steps.error)} onRetry={() => steps.refetch()} />;
   }
 
   const stepRows = steps.data?.steps ?? [];
@@ -69,6 +76,7 @@ export default function ExtractionPage() {
   return (
     <ReportPage
       narrative={narrative}
+      exportMenu={stepRows.length > 0 ? <ExportMenu options={[{ format: "xlsx", run: () => exportRunSteps(runId, "xlsx") }]} /> : undefined}
       charts={null}
       tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
       state={steps.isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}

@@ -28,29 +28,29 @@ describe("GoldenRecordsPage", () => {
       ],
       total: 1,
       page: 1,
-      per_page: 200,
+      per_page: 100,
     });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(screen.getByText("MARA-1000")).toBeInTheDocument());
   });
 
   it("shows an empty state when no records match", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GoldenRecordsPage />);
-    await waitFor(() => expect(screen.getByText(/no master records/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no golden records/i)).toBeInTheDocument());
   });
 
   it("shows the API error message and retries on click", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecords").mockRejectedValue(new Error("master records service unavailable"));
     renderWithQuery(<GoldenRecordsPage />);
-    await screen.findByText("master records service unavailable");
+    await screen.findByText(/could not reach the server/i);
     const calls = (masterRecordsApi.getMasterRecords as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((masterRecordsApi.getMasterRecords as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
   });
 
   it("includes max_confidence in the request when set", async () => {
-    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 200 });
+    vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<GoldenRecordsPage />);
     await waitFor(() => expect(masterRecordsApi.getMasterRecords).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText("Max confidence %"), { target: { value: "80" } });

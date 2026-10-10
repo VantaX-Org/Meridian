@@ -8,6 +8,11 @@ export function getReportJsonExportUrl(versionId: string): string {
   return `/api/v1/reports/${versionId}/export.json`;
 }
 
+/** The home page's executive summary PDF for the latest run. */
+export function getExecutiveReportUrl(versionId: string): string {
+  return `/api/v1/reports/executive/${versionId}.pdf`;
+}
+
 /* Deterministic run reports (PDF, rendered on request). */
 export function getAnalysisReportUrl(versionId: string): string {
   return `/api/v1/reports/analysis/${versionId}.pdf`;
@@ -15,6 +20,16 @@ export function getAnalysisReportUrl(versionId: string): string {
 
 export function getExtractionReportUrl(versionId: string): string {
   return `/api/v1/reports/extraction/${versionId}.pdf`;
+}
+
+/** One object's rules and fields for one run, rendered on request. */
+export function getObjectReportUrl(versionId: string, module: string): string {
+  return `/api/v1/reports/object/${versionId}/${encodeURIComponent(module)}.pdf`;
+}
+
+/** One record's fix sheet for one run, rendered on request. */
+export function getRecordReportUrl(versionId: string, matnr: string): string {
+  return `/api/v1/reports/record/${versionId}/${encodeURIComponent(matnr)}.pdf`;
 }
 
 /** Without a version: cleaning and fixes across the whole organisation. */

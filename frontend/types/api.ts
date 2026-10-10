@@ -536,6 +536,8 @@ export interface UserListResponse {
 
 /* ─── SAP Systems / Sync ─── */
 
+export type SystemHealthStatus = "healthy" | "degraded" | "unreachable" | "auth_failed" | "unknown";
+
 export interface SAPSystem {
   id: string;
   name: string;
@@ -554,6 +556,8 @@ export interface SAPSystem {
   updated_at: string;
   last_sync_at: string | null;
   last_sync_status: string | null;
+  health_status: SystemHealthStatus;
+  health_message: string | null;
 }
 
 export interface SAPSystemListResponse {

@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, ErrorState, Mono, Skeleton } from "@/design";
 import { getMasterRecord } from "@/lib/api/master-records";
+import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
 export default function GoldenRecordMergePage() {
@@ -42,7 +43,7 @@ export default function GoldenRecordMergePage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={query.error instanceof Error ? query.error.message : "This master record could not be read."}
+          message={apiErrorMessage(query.error)}
           onRetry={() => void query.refetch()}
         />
       </div>
@@ -50,7 +51,12 @@ export default function GoldenRecordMergePage() {
   }
   const record = query.data;
   if (!record) {
-    return <EmptyState title="This master record no longer exists." />;
+    return (
+      <EmptyState
+        title="No merge candidates."
+        action={<Link href="/mdm/golden" style={{ color: "var(--m-accent)" }}>All golden records</Link>}
+      />
+    );
   }
 
   const fields = Object.entries(record.golden_fields);

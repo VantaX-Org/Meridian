@@ -19,6 +19,8 @@ export interface ReadinessResponse {
   version_id: string | null;
   threshold: number;
   cells: ReadinessCell[];
+  /** False when the tenant has not set readiness_waves under Settings > Alert Thresholds. */
+  configured: boolean;
 }
 
 export async function getReadiness(params?: { version_id?: string }): Promise<ReadinessResponse> {
@@ -138,7 +140,7 @@ export async function createMergeProposals(
 /* ─── Executive summary (spec 8.5) ─── */
 
 export interface ExecResponse {
-  version_id: string;
+  version_id: string | null;
   narrative: string;
   readiness_cells: ReadinessCell[];
   waterfall: ChartPoint[];

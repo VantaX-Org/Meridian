@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Mono, Pill, ReportPage, Stat } from "@/design";
 import { getDryRunRecords, getMigrationRun, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
 import { VERDICT_LABEL, VERDICT_TONE } from "@/app/(app)/migration/page";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MigrationStatus, TransferVerdict, WaveVerdict } from "@/types/api";

@@ -1,4 +1,6 @@
+import { isAxiosError } from "axios";
 import apiClient from "./client";
+import type { Finding } from "@/types/api";
 
 export interface DqsForecast {
   module_id: string;
@@ -108,6 +110,23 @@ export async function getImpactAnalytics(
     { params: versionId ? { version_id: versionId } : undefined }
   );
   return data;
+}
+
+export interface FindingImpact {
+  finding_id: string;
+  finding: Finding;
+  impacts: ImpactBucket[];
+}
+
+/** GET /api/v1/analytics/impact/{findingId} — one finding's cost-at-risk breakdown. Null when the finding has no impact model (404) or an empty breakdown. */
+export async function getFindingImpact(findingId: string): Promise<FindingImpact | null> {
+  try {
+    const { data } = await apiClient.get<FindingImpact>(`/api/v1/analytics/impact/${encodeURIComponent(findingId)}`);
+    return data.impacts.length ? data : null;
+  } catch (err) {
+    if (isAxiosError(err) && err.response?.status === 404) return null;
+    throw err;
+  }
 }
 
 export async function getPredictiveAnalytics(

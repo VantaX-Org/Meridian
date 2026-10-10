@@ -12,10 +12,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, Field, Pill, Select, Stat, toastManager, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, toastManager, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
+import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
 import { getUsers } from "@/lib/api/users";
@@ -30,9 +31,11 @@ import {
   updateExceptionRule,
 } from "@/lib/api/exceptions";
 import { getUnreadCount } from "@/lib/api/notifications";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
+import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
 const HOUR = 3_600_000;
@@ -87,6 +90,7 @@ export default function InboxPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { can } = useRole();
+  const dayOne = useDayOne();
   // Backend guards (api/routes/stewardship.py): resolve, assign and bulk approve need `approve`; escalate needs `view`.
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
@@ -118,8 +122,8 @@ export default function InboxPage() {
   const unreadQ = useQuery({ queryKey: queryKeys.unreadNotifications(), queryFn: getUnreadCount, refetchInterval: 30_000 });
 
   const excQ = useQuery({
-    queryKey: queryKeys.inbox({ kind: "exception", per_page: 200 }),
-    queryFn: () => getExceptions({ per_page: 200 }),
+    queryKey: queryKeys.inbox({ kind: "exception", per_page: 100 }),
+    queryFn: () => getExceptions({ per_page: 100 }),
     refetchInterval: 60_000,
     enabled: isExceptions,
   });
@@ -128,6 +132,7 @@ export default function InboxPage() {
 
   const isLoading = queues.some((q) => q.isLoading);
   const isError = queues.some((q) => q.isError);
+  const firstError = isExceptions ? excQ.error : queues.find((q) => q.isError)?.error;
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
@@ -340,9 +345,12 @@ export default function InboxPage() {
     },
   ], [excItems, focusedIndex, now, who, canApprove, canSeeTeam, busy, excEscalate, excAssign, user]);
 
+  // Hold "empty" for the all-tasks view until useDayOne() has resolved too —
+  // otherwise the generic "Inbox zero." copy flashes before the day-one step
+  // (which decides the real empty-state detail/action) is known.
   const state: "loading" | "empty" | "error" | undefined = isExceptions
     ? excQ.isLoading ? "loading" : excQ.isError ? "error" : excItems.length === 0 ? "empty" : undefined
-    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? "empty" : undefined;
+    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
     <div className="flex flex-wrap gap-2">
@@ -357,8 +365,24 @@ export default function InboxPage() {
   return (
     <ExplorerPage
       state={state}
-      emptyProps={{ title: isExceptions ? "No exceptions in this view." : all.length ? "No tasks in this view." : "Inbox zero." }}
-      errorProps={{ message: "The inbox could not be read.", onRetry: refresh }}
+      emptyProps={
+        isExceptions
+          ? (excQ.data?.exceptions.length ?? 0) === 0
+            ? {
+                title: "No exceptions.",
+                detail: "Exceptions are raised by exception rules on new findings.",
+                action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
+              }
+            : { title: "No exceptions in this view." }
+          : all.length === 0
+          ? {
+              title: "Inbox zero.",
+              detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
+              action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
+            }
+          : { title: "No tasks in this view." }
+      }
+      errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-6">
@@ -380,6 +404,15 @@ export default function InboxPage() {
             )}
           </div>
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
+          {!isExceptions && (
+            <ExportMenu
+              options={
+                items.length === 0
+                  ? emptyExportOptions([{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }])
+                  : [{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", { search: search || undefined, assigned_to: view === "mine" ? user?.id : undefined }) }]
+              }
+            />
+          )}
         </div>
       }
       filterBar={

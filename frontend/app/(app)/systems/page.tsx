@@ -6,13 +6,15 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { Button, DataTable, ExplorerPage, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
+import { exportRuns } from "@/lib/api/versions";
+import { apiErrorMessage } from "@/lib/error";
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
@@ -199,6 +201,8 @@ export default function SystemsPage() {
   else if (isError) state = "error";
   else if (systems.length === 0) state = "empty";
 
+  const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];
+
   return (
     <ExplorerPage
       filterBar={
@@ -210,8 +214,8 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        configQ.data ? (
-          <div className="flex gap-6">
+        <div className="flex items-center gap-6">
+          {configQ.data ? (
             <Stat
               label="Configuration loaded"
               value={
@@ -223,8 +227,9 @@ export default function SystemsPage() {
               }
               delta={<Pill tone={cfgVerdictTone}>{cfgVerdict}</Pill>}
             />
-          </div>
-        ) : undefined
+          ) : null}
+          <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+        </div>
       }
       table={
         <DataTable
@@ -235,8 +240,12 @@ export default function SystemsPage() {
         />
       }
       state={state}
-      emptyProps={{ title: "No systems connected. Connect a SAP system to start extracting data." }}
-      errorProps={{ message: `Couldn't load systems. ${error?.message ?? ""}`.trim(), onRetry: () => refetch() }}
+      emptyProps={{
+        title: "No systems connected.",
+        detail: "Connect a SAP system, or import a file if you have an export.",
+        ghost: "table",
+      }}
+      errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
     />
   );
 }

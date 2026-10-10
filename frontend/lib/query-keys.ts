@@ -133,6 +133,10 @@ export const queryKeys = {
   contractCompliance: (id: string) => ["contract-compliance", id] as const,
   scoringSettings: () => ["scoring-settings"] as const,
   findingsAggregate: (versionId: string) => ["findings-aggregate", versionId] as const,
+  scoreHistory: (systemId?: string) => ["score-history", systemId ?? ""] as const,
+  ruleHistory: (ruleId: string) => ["rule-history", ruleId] as const,
+  finding: (findingId: string, versionId?: string | null) => ["finding", findingId, versionId ?? ""] as const,
+  findingImpact: (findingId: string) => ["finding-impact", findingId] as const,
   exceptionBilling: (period: string) => ["exception-billing", period] as const,
   pilotScorecard: (systemId: string) => ["pilot-scorecard", systemId] as const,
   systemObjects: (systemId: string) => ["system-objects", systemId] as const,
@@ -189,6 +193,10 @@ export type TouchedEntity =
   | "contract-compliance"
   | "scoring-settings"
   | "findings-aggregate"
+  | "score-history"
+  | "rule-history"
+  | "finding"
+  | "finding-impact"
   | "exception-billing"
   | "pilot-scorecard"
   | "system-objects"

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";

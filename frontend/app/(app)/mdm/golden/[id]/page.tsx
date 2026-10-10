@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, toastManager, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
+import { apiErrorMessage } from "@/lib/error";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -42,13 +43,13 @@ export default function MasterRecordPage() {
     mutationFn: () => promoteMasterRecord(id, true),
     onSuccess: () => { invalidate(); setConfirmPromote(false); },
     onError: (error) => {
-      toastManager.add({ title: error instanceof Error ? error.message : "Promote failed." });
+      toastManager.add({ title: apiErrorMessage(error) });
     },
   });
   const writeback = useMutation({
     mutationFn: () => writebackMasterRecord(id),
     onError: (error) => {
-      toastManager.add({ title: error instanceof Error ? error.message : "Writeback failed." });
+      toastManager.add({ title: apiErrorMessage(error) });
     },
   });
 
@@ -64,14 +65,19 @@ export default function MasterRecordPage() {
     return (
       <div className="p-6">
         <ErrorState
-          message={recordQuery.error instanceof Error ? recordQuery.error.message : "This master record could not be read."}
+          message={apiErrorMessage(recordQuery.error)}
           onRetry={() => void recordQuery.refetch()}
         />
       </div>
     );
   }
   if (!record) {
-    return <EmptyState title="This master record no longer exists." />;
+    return (
+      <EmptyState
+        title="Record not found."
+        action={<Button render={<Link href="/mdm/golden">All golden records</Link>} />}
+      />
+    );
   }
 
   const status: RecordStatus = record.status === "golden"

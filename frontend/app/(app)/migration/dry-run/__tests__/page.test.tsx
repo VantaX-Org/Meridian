@@ -88,7 +88,7 @@ describe("DryRunPage", () => {
     vi.spyOn(migrationApi, "getMigrationRun").mockRejectedValue(new Error("network error"));
     vi.spyOn(migrationApi, "getDryRunRecords").mockResolvedValue({ total: 0, rows: [] });
     renderWithQuery(<DryRunPage />);
-    await waitFor(() => expect(screen.getByText(/network error/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
   });
 
   it("retries both requests when the retry button is clicked", async () => {

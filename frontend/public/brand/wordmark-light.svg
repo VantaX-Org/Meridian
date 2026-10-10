@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 164 32" width="164" height="32" role="img" aria-label="Meridian">
+  <rect width="32" height="32" rx="6" fill="#2D3A8C"/>
+  <path d="M 7.5 24 V 8.5 M 24.5 24 V 8.5 M 7.5 8.5 L 16 17 L 24.5 8.5 M 16 17 V 25.5" fill="none" stroke="#FFFFFF" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="44" y="22" font-family="Public Sans, system-ui, sans-serif" font-size="20" font-weight="600" fill="#101418" letter-spacing="-0.2">Meridian</text>
+</svg>

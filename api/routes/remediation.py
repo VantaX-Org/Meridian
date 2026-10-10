@@ -362,16 +362,32 @@ async def export_batch(
         elif format == "ltmc_xlsx":
             data, ext = sap_packages.ltmc_workbook(items, d), "xlsx"
         else:
-            buf = io.BytesIO()
-            import pandas as pd
-            with pd.ExcelWriter(buf, engine="openpyxl") as xw:
-                sheets = remediation.cockpit_sheets(items, d) or {"EMPTY": pd.DataFrame()}
-                for table, df in sheets.items():
-                    df.to_excel(xw, sheet_name=table[:31], index=False)
-                    sap_packages.no_formulas(xw.sheets[table[:31]])
-            data, ext = buf.getvalue(), "xlsx"
+            from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
+            sheets_by_table = remediation.cockpit_sheets(items, d)
+            sheet_specs = []
+            for table, df in (sheets_by_table or {}).items():
+                # kind="raw": narrowed formula guard (still blocks "=", "@", tab,
+                # CR) that leaves a leading "-"/"+" on a negative quantity or
+                # SAP code untouched, since this file is reimported into SAP
+                # rather than opened by a human. See N3 in the re-review.
+                columns = [ColumnSpec(col, col, kind="raw") for col in df.columns]
+                sheet_specs.append(SheetSpec(title=table[:31], columns=columns, rows=df.to_dict("records")))
+            if not sheet_specs:
+                sheet_specs = [SheetSpec(title="EMPTY", columns=[], rows=[])]
+            data = build_workbook(
+                tenant_name=tenant.name,
+                run_label=str(batch_id),
+                run_id=str(batch_id),
+                title="Remediation cockpit export",
+                sheets=sheet_specs,
+            )
+            ext = "xlsx"
     digest = hashlib.sha256(data).hexdigest()
-    filename = f"remediation_{batch_id}_{format}.{ext}"
+    if format == "cockpit_xlsx":
+        from api.services.branded_xlsx import xlsx_filename
+        filename = xlsx_filename(f"remediation-{format}", str(batch_id))
+    else:
+        filename = f"remediation_{batch_id}_{format}.{ext}"
     await db.execute(text("UPDATE remediation_batches SET status = 'exported', exported_at = now() WHERE id = :id"),
                      {"id": batch_id})
     await db.execute(text(

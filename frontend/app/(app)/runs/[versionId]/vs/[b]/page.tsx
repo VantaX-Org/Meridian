@@ -2,9 +2,11 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
   Bar,
@@ -13,6 +15,7 @@ import {
   Delta,
   EmptyState,
   ErrorState,
+  ExportMenu,
   Mono,
   Pager,
   Pill,
@@ -190,22 +193,34 @@ export default function CompareRunsPage() {
   const pageKeys = keysQ.data?.record_keys ?? [];
   const keyPageCount = keyPage + (pageKeys.length === KEYS_PAGE_SIZE ? 1 : 0);
 
+  const notFound =
+    (isAxiosError(cmpQ.error) && cmpQ.error.response?.status === 404) ||
+    (isAxiosError(diffQ.error) && diffQ.error.response?.status === 404);
+
+  if (notFound) {
+    return (
+      <EmptyState
+        title="No earlier run to compare with."
+        detail="Comparison needs two finished runs of the same system."
+        action={<Button render={<Link href="/runs">All runs</Link>} />}
+      />
+    );
+  }
+
   const loading = cmpQ.isLoading || diffQ.isLoading;
   const errored = cmpQ.isError || diffQ.isError;
   const empty = !!cmp && !!diff && Object.keys(cmp.delta).length === 0 && diff.checks.length === 0;
   const state: "loading" | "error" | "empty" | undefined = loading ? "loading" : errored ? "error" : empty ? "empty" : undefined;
 
-  const onDownload = () =>
-    downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf").catch((e: unknown) => toast.error(errorText(e)));
+  const exportOptions = [
+    { format: "pdf" as const, run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") },
+  ];
 
   const narrative = (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-semibold">{cmp ? `${runLabel(cmp.v2)} vs ${runLabel(cmp.v1)}` : "Comparing runs…"}</h2>
         {b === "baseline" ? <Pill tone="go">Baseline</Pill> : null}
-        <Button variant="secondary" onClick={onDownload}>
-          Download PDF
-        </Button>
         <label className="flex items-center gap-1 text-[13px]">
           <span>Module</span>
           <Select value={module} onValueChange={setModule} options={moduleOptions} placeholder="All modules" />
@@ -360,6 +375,7 @@ export default function CompareRunsPage() {
   return (
     <ReportPage
       narrative={narrative}
+      exportMenu={cmp ? <ExportMenu options={exportOptions} /> : undefined}
       charts={charts}
       tables={tables}
       state={state}

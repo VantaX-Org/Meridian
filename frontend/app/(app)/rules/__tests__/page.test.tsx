@@ -7,6 +7,12 @@ import type { Rule } from "@/lib/api/rules";
 import RulesPage from "../page";
 
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
+// useDayOne() needs LocalAuthProvider context, which this test does not set up;
+// mock it wholesale so the page renders without an auth provider.
+vi.mock("@/hooks/use-day-one", () => ({
+  useDayOne: () => ({ status: "ready", step: null }),
+  DayOneAction: () => null,
+}));
 // Stable instance across re-renders: useUrlState's sync effect depends on this
 // object's identity, so returning a fresh URLSearchParams on every call would
 // make it reset state back to the URL (which the replace() mock below never
@@ -37,7 +43,7 @@ describe("rules page", () => {
     const spy = vi.spyOn(rulesApi, "getRules").mockRejectedValue(new Error("network down"));
     vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
     renderWithQuery(<RulesPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
     retry.click();

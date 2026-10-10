@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "lint:tokens": "node scripts/lint-tokens.mjs",
+    "brand:rasterise": "node scripts/brand-rasterise.mjs",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
     "typecheck": "tsc --noEmit",
