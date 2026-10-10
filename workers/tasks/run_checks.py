@@ -42,6 +42,36 @@ DQS_HISTORY_UPSERT = text("""
 """)
 
 
+def enqueue_wave_reruns(session, tenant_id, system_id, version_id) -> int:
+    """Re-run the migration analysis of every open wave sourced from this system against
+    the version just analysed, so the cockpit trend follows the monitoring schedule.
+    Signed-off waves are frozen. Uploads have no system and re-run nothing."""
+    if not system_id:
+        return 0
+    import uuid as _uuid
+
+    from workers.tasks.run_migration import run_migration
+
+    waves = session.execute(text(
+        "SELECT id, modules, target_system_id, target_release FROM migration_waves "
+        "WHERE source_system_id = :s AND signed_off_at IS NULL AND cardinality(modules) > 0"),
+        {"s": str(system_id)}).fetchall()
+    for w in waves:
+        run_id = str(_uuid.uuid4())
+        dest = str(w.target_system_id) if w.target_system_id else None
+        session.execute(text(
+            "INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, dest_system_id, modules, status, wave_id) "
+            "VALUES (:id, :t, 'source_to_destination', :s, :d, :m, 'queued', :wid)"),
+            {"id": run_id, "t": str(tenant_id), "s": str(system_id), "d": dest, "m": list(w.modules),
+             "wid": str(w.id)})
+        session.commit()
+        task = run_migration.delay(str(tenant_id), run_id, "source_to_destination", str(system_id), dest,
+                                   list(w.modules), str(version_id), w.target_release)
+        session.execute(text("UPDATE migration_runs SET task_id = :tid WHERE id = :rid"), {"tid": task.id, "rid": run_id})
+        session.commit()
+    return len(waves)
+
+
 def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
     """``TABLE.FIELD`` → values from the source system's live config snapshots.
 
@@ -812,6 +842,16 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             send_notification.delay(version_id, tenant_id, "thresholds")
         except Exception as e:
             logger.warning(f"Failed to enqueue threshold alerts (non-fatal): {e}")
+
+        # Migration waves sourced from this system re-run against the fresh version
+        try:
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                n = enqueue_wave_reruns(session, tenant_id, metadata.get("system_id"), version_id)
+            if n:
+                logger.info(f"Enqueued {n} migration wave re-run(s) for version_id={version_id}")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue migration wave re-runs (non-fatal): {e}")
 
         # Enqueue exception scan (non-blocking — failure is non-fatal)
         try:
