@@ -40,7 +40,6 @@ const nextConfig: NextConfig = {
       { source: "/executive-report", destination: "/insights/exec", permanent: false },
       { source: "/connectivity", destination: "/systems", permanent: false },
       { source: "/run-sync", destination: "/systems", permanent: false },
-      { source: "/migration", destination: "/insights/readiness", permanent: false },
       { source: "/analytics", destination: "/insights/forecast", permanent: false },
       { source: "/systems/:id/pilot", destination: "/systems/:id?tab=pilot", permanent: false },
       {

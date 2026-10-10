@@ -185,7 +185,8 @@ async function mockInsightsReadiness(page: Page) {
   await page.route(/\/api\/v1\/insights\/readiness(\?.*)?$/, (r) => r.fulfill(json({
     version_id: VERSION_ID,
     threshold: 90,
-    cells: [{ module: OBJECT_SUMMARY.module, wave: "wave_1", verdict: "no_go", blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+    cells: [{ module: OBJECT_SUMMARY.module, wave: "wave_1", verdict: "no_go", blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score,
+      score: 40, records_blocked: OBJECT_SUMMARY.affected_records }],
   })));
 }
 

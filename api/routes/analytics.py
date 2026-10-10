@@ -15,6 +15,7 @@ from api.services.rbac import has_permission
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
+    DQS_HISTORY_DAILY_SQL,
     OperationalAnalytics,
     PredictiveAnalytics,
     PrescriptiveAnalytics,
@@ -24,7 +25,6 @@ from db.schema import (
     CleaningMetric,
     CleaningQueue,
     CostAvoidance,
-    DqsHistory,
     Exception_,
     Finding,
     ImpactRecord,
@@ -63,6 +63,29 @@ def _row_to_dict(row) -> dict:
     return d
 
 
+def _agg_row_to_dict(row) -> dict:
+    """Convert a mapping from an aggregate (GROUP BY) query to a plain dict."""
+    d = dict(row)
+    for k, val in d.items():
+        if isinstance(val, datetime):
+            d[k] = val.isoformat()
+        elif hasattr(val, "as_integer_ratio"):  # Decimal/numeric
+            d[k] = float(val)
+    return d
+
+
+async def _dqs_history_daily(db: AsyncSession, tenant_id, module_id: Optional[str] = None) -> list[dict]:
+    """One row per (module, day): the latest run of each system that day, averaged."""
+    params = {"tid": str(tenant_id)}
+    module_filter = ""
+    if module_id:
+        module_filter = "AND module_id = :module_id"
+        params["module_id"] = module_id
+    sql = DQS_HISTORY_DAILY_SQL.format(module_filter=module_filter)
+    result = await db.execute(text(sql), params)
+    return [_agg_row_to_dict(r) for r in result.mappings().all()]
+
+
 # ── 1. GET /analytics/predictive ─────────────────────────────────────────────
 
 
@@ -75,14 +98,7 @@ async def get_predictive_analytics(
     """DQS forecasting with early warnings."""
     await _set_tenant(db, tenant)
 
-    query = select(DqsHistory).where(DqsHistory.tenant_id == tenant.id)
-    if module_id:
-        query = query.where(DqsHistory.module_id == module_id)
-    query = query.order_by(DqsHistory.recorded_at.asc())
-
-    result = await db.execute(query)
-    rows = result.all()
-    history = [_row_to_dict(r) for r in rows]
+    history = await _dqs_history_daily(db, tenant.id, module_id)
 
     if not history:
         logger.warning("No DQS history for tenant %s — returning empty forecasts", tenant.id)
@@ -364,13 +380,7 @@ async def get_module_forecast(
     """Single-module DQS forecast with detailed contributing factors."""
     await _set_tenant(db, tenant)
 
-    result = await db.execute(
-        select(DqsHistory)
-        .where(DqsHistory.tenant_id == tenant.id, DqsHistory.module_id == module_id)
-        .order_by(DqsHistory.recorded_at.asc())
-    )
-    rows = result.all()
-    history = [_row_to_dict(r) for r in rows]
+    history = await _dqs_history_daily(db, tenant.id, module_id)
 
     if len(history) < 3:
         return {

@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { Button, DataTable, ExplorerPage, Pill, Skeleton, Stat, type PillTone } from "@/design";
-import { HEALTH_LABEL, latestDqs } from "./_health";
+import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
+import { getSyncProfiles } from "@/lib/api/systems";
 import { getConfigLandscape, type SystemConfigState } from "@/lib/api/config-load";
-import { relativeTime } from "@/lib/format";
+import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { HealthStatus, SAPSystemExtended } from "@/types/api";
 
@@ -70,7 +72,19 @@ export default function SystemsPage() {
     queries: systems.map((s) => ({ queryKey: queryKeys.systemVersions(s.id), queryFn: () => getSystemVersions(s.id) })),
   });
   const dqsById = new Map(
-    systems.map((s, i) => [s.id, versionsQ[i]?.data ? latestDqs(versionsQ[i]!.data!.versions).dqs : null]),
+    systems.map((s, i) => {
+      const vs = versionsQ[i]?.data?.versions;
+      return [s.id, vs ? { dqs: latestDqs(vs).dqs, trend: dqsTrend(vs) } : null];
+    }),
+  );
+  const profilesQ = useQueries({
+    queries: systems.map((s) => ({ queryKey: queryKeys.syncProfiles(s.id), queryFn: () => getSyncProfiles(s.id) })),
+  });
+  const nextRunById = new Map(
+    systems.map((s, i) => {
+      const p = profilesQ[i]?.data;
+      return [s.id, p ? nextRun(p) : null];
+    }),
   );
   const configQ = useQuery({
     queryKey: queryKeys.configLandscape(),
@@ -118,8 +132,32 @@ export default function SystemsPage() {
       id: "dqs",
       header: "Latest DQS",
       cell: ({ row }) => {
-        const dqs = dqsById.get(row.original.id);
-        return dqs == null ? "—" : dqs.toFixed(1);
+        const d = dqsById.get(row.original.id);
+        if (!d || d.dqs == null) return "—";
+        const t = d.trend;
+        return (
+          <span className="inline-flex items-center gap-1">
+            {d.dqs.toFixed(1)}
+            {t != null && Math.abs(t) >= 0.05 ? (
+              <span
+                className="inline-flex items-center text-[12px]"
+                style={{ color: t > 0 ? "var(--m-pass)" : "var(--m-critical)" }}
+                aria-label={`${t > 0 ? "Up" : "Down"} ${Math.abs(t).toFixed(1)} since the previous run`}
+              >
+                {t > 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                {Math.abs(t).toFixed(1)}
+              </span>
+            ) : null}
+          </span>
+        );
+      },
+    },
+    {
+      id: "next_run",
+      header: "Next run",
+      cell: ({ row }) => {
+        const n = nextRunById.get(row.original.id);
+        return n ? formatDate(n, "datetime", "SAST") : "Manual only";
       },
     },
     {

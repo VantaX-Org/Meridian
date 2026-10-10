@@ -3,6 +3,7 @@ import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as licenceApi from "@/lib/api/licence";
 import * as doctorApi from "@/lib/api/admin-doctor";
+import * as notificationsApi from "@/lib/api/notifications";
 import type { LicenceManifest } from "@/lib/api/licence";
 import type { DoctorItem } from "@/lib/api/admin-doctor";
 import AdminSettingsPage from "../page";
@@ -18,6 +19,7 @@ const ITEM: DoctorItem = { id: "llm", label: "Language model", status: "ok", det
 
 describe("admin settings page", () => {
   it("renders licence and health checks once loaded", async () => {
+    vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([]);
     vi.spyOn(licenceApi, "getLicenceManifest").mockResolvedValue(MANIFEST);
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);
@@ -25,6 +27,7 @@ describe("admin settings page", () => {
   });
 
   it("shows a retryable error when the licence fails to load", async () => {
+    vi.spyOn(notificationsApi, "getAlertChannels").mockResolvedValue([]);
     const spy = vi.spyOn(licenceApi, "getLicenceManifest").mockRejectedValue(new Error("network down"));
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);

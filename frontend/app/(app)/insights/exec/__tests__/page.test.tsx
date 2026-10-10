@@ -19,7 +19,7 @@ describe("ExecPage", () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({
       version_id: "v1",
       narrative: "Readiness improved three points since last run.",
-      readiness_cells: [{ module: "material_master", wave: "wave_1", verdict: "go", blocker_count: 0, dqs: 91 }],
+      readiness_cells: [{ module: "material_master", wave: "wave_1", verdict: "go", blocker_count: 0, dqs: 91, score: 100, records_blocked: 0 }],
       waterfall: [{ x: "baseline", y: 70 }, { x: "current", y: 20 }],
       impact_rows: [{ feature: "Invoice posting", status: "blocked", record_count: 12, value_per_record: 100, value_at_risk: 1200, causing_rules: [] }],
       owner_rows: [{ owner: "me", score: 91, delta: 3, open_by_severity: {}, fixed_since_baseline: 2, oldest_item_age_days: 1, digest: "ok", schedule: "weekly", last_sent: null }],
