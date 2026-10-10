@@ -129,3 +129,28 @@ def test_blocked_sales_cmgst_fallback_with_nondefault_index():
     # S1 fallback must work despite non-default index
     assert {i["doc_key"] for i in r.items} == {"VBELN=S1"}
     assert r.amount == 100.0
+
+
+def test_vendor_clusters_union_find() -> None:
+    c = pc.vendor_clusters([("LIFNR=0000000100", "200"), ("200", "300"), ("400", "500")])
+    assert c["100"] == c["200"] == c["300"] and c["400"] == c["500"] and c["100"] != c["400"]
+
+
+def test_duplicate_payment_across_cluster() -> None:
+    bsak = pd.DataFrame({"BUKRS": ["1"] * 4, "LIFNR": ["100", "200", "100", "300"],
+                         "BELNR": ["B1", "B2", "B3", "B4"], "XBLNR": ["INV-9", "inv 9", "INV-1", "INV-9"],
+                         "WRBTR": [5000.0, 5000.0, 10.0, 5000.0], "WAERS": ["ZAR"] * 4,
+                         "SHKZG": ["S"] * 4, "BLDAT": ["20260101"] * 4})
+    r = pc.duplicate_payments(_tf(BSAK=bsak), pc.vendor_clusters([("100", "200")]))
+    assert r.amount == 5000.0 and r.documents == 1
+    assert r.items[0]["master_key"] == "LIFNR=100,200"  # 300 is not in the cluster, so excluded
+
+
+def test_duplicate_payment_single_vendor_no_cluster() -> None:
+    bsak = pd.DataFrame({"BUKRS": ["1"] * 2, "LIFNR": ["700", "700"],
+                         "BELNR": ["B1", "B2"], "XBLNR": ["INV-X", "INV-X"],
+                         "WRBTR": [1200.0, 1200.0], "WAERS": ["ZAR"] * 2,
+                         "SHKZG": ["S"] * 2, "BLDAT": ["20260101"] * 2})
+    r = pc.duplicate_payments(_tf(BSAK=bsak), {})
+    assert r.amount == 1200.0 and r.documents == 1
+    assert r.items[0]["master_key"] == "LIFNR=700"

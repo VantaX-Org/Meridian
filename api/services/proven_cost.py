@@ -169,6 +169,49 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     return _result("blocked_sales", rows)
 
 
+def _lifnr(k: str) -> str:
+    return k.split("=", 1)[-1].strip().lstrip("0")
+
+
+def vendor_clusters(pairs: list[tuple[str, str]]) -> dict[str, str]:
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a, b in pairs:
+        ra, rb = find(_lifnr(a)), find(_lifnr(b))
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+    return {k: find(k) for k in parent}
+
+
+def duplicate_payments(frames: TableFrames, clusters: dict[str, str]) -> MetricResult:
+    got = _get(frames, "BSAK")
+    if got is None:
+        return MetricResult("duplicate_payment")
+    (bsak,) = got
+    p = bsak[_s(bsak, "SHKZG") == "S"]
+    p = p.assign(lif=_s(p, "LIFNR").str.lstrip("0"), BELNR=_s(p, "BELNR"), BUKRS=_s(p, "BUKRS"),
+                 currency=_s(p, "WAERS"), amt=_num(p, "WRBTR").abs(),
+                 ref=_s(p, "XBLNR").str.upper().str.replace(r"[^A-Z0-9]", "", regex=True))
+    p = p.assign(cluster=p["lif"].map(clusters).fillna(p["lif"]), ref=p["ref"].where(p["ref"] != "", "BLDAT:" + _s(p, "BLDAT")))
+    g = p.groupby(["cluster", "BUKRS", "currency", "amt", "ref"]).agg(
+        docs=("BELNR", "nunique"), lifs=("lif", lambda s: ",".join(sorted(set(s)))), belnr=("BELNR", lambda s: ",".join(sorted(set(s))))
+    ).reset_index()
+    g = g[g["docs"] > 1]
+    rows = pd.DataFrame({"doc_key": "BUKRS=" + g["BUKRS"] + "|BELNR=" + g["belnr"],
+                         "master_key": "LIFNR=" + g["lifs"], "amount": g["amt"] * (g["docs"] - 1),
+                         "currency": g["currency"],
+                         "detail": g["docs"].astype(str) + " payments of " + g["amt"].round(2).astype(str)
+                                   + " ref " + g["ref"]})
+    return _result("duplicate_payment", rows)
+
+
 def late_pos(frames: TableFrames, today: date) -> MetricResult:
     got = _get(frames, "EKKO", "EKPO", "EKET")
     if got is None:
