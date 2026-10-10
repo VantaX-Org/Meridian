@@ -1,7 +1,7 @@
 // frontend/lib/__tests__/nav.test.ts
 import { describe, expect, it } from "vitest";
 import nextConfig from "../../next.config";
-import { NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole } from "../nav";
+import { NAV_GROUPS, flattenNav, getPageTitle, activeHref, homeHrefForRole, isItemVisible, type NavItem } from "../nav";
 
 describe("nav vs legacy redirects", () => {
   it("never points a nav item at a path that redirects elsewhere", async () => {
@@ -37,11 +37,33 @@ describe("NAV_GROUPS", () => {
 });
 
 describe("homeHrefForRole", () => {
-  it("routes steward to the steward persona and admin/manager to lead", () => {
+  it("routes steward to the steward persona and every other role to lead", () => {
     expect(homeHrefForRole("steward")).toBe("/home/steward");
     expect(homeHrefForRole("admin")).toBe("/home/lead");
     expect(homeHrefForRole("manager")).toBe("/home/lead");
-    expect(homeHrefForRole("viewer")).toBe("/home/basis");
+    expect(homeHrefForRole("viewer")).toBe("/home/lead");
+    expect(homeHrefForRole("analyst")).toBe("/home/lead");
+    expect(homeHrefForRole("approver")).toBe("/home/lead");
+    expect(homeHrefForRole("auditor")).toBe("/home/lead");
+    expect(homeHrefForRole("ai_reviewer")).toBe("/home/lead");
+  });
+});
+
+describe("Inbox licence gating (I8)", () => {
+  const inbox = flattenNav(NAV_GROUPS.flatMap((g) => g.items)).find((i) => i.href === "/inbox") as NavItem;
+
+  it("is gated on the findings licence, not stewardship", () => {
+    expect(inbox.licenceKey).toBe("findings");
+  });
+
+  it("is visible to a view-permission user whose tenant only holds the findings licence", () => {
+    const gate = { can: (p: string) => p === "view", isMenuItemEnabled: (k: string) => k === "findings" };
+    expect(isItemVisible(inbox, gate)).toBe(true);
+  });
+
+  it("is hidden when the tenant lacks the findings licence", () => {
+    const gate = { can: (p: string) => p === "view", isMenuItemEnabled: () => false };
+    expect(isItemVisible(inbox, gate)).toBe(false);
   });
 });
 

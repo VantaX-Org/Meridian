@@ -344,9 +344,12 @@ export default function InboxPage() {
     },
   ], [excItems, focusedIndex, now, who, canApprove, canSeeTeam, busy, excEscalate, excAssign, user]);
 
+  // Hold "empty" for the all-tasks view until useDayOne() has resolved too —
+  // otherwise the generic "Inbox zero." copy flashes before the day-one step
+  // (which decides the real empty-state detail/action) is known.
   const state: "loading" | "empty" | "error" | undefined = isExceptions
     ? excQ.isLoading ? "loading" : excQ.isError ? "error" : excItems.length === 0 ? "empty" : undefined
-    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? "empty" : undefined;
+    : isLoading ? "loading" : isError ? "error" : items.length === 0 ? (dayOne.status === "loading" ? "loading" : "empty") : undefined;
 
   const kindToggle = (
     <div className="flex flex-wrap gap-2">

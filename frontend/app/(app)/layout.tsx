@@ -82,7 +82,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
       <div className="flex h-screen">
-        <Rail />
+        <Suspense fallback={<div style={{ width: 240 }} />}>
+          <Rail />
+        </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden">
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}

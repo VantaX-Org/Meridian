@@ -7,11 +7,6 @@ import type {
   TestConnectionResponse,
 } from "@/types/api";
 
-export async function getSystems(): Promise<SAPSystem[]> {
-  const { data } = await apiClient.get<SAPSystem[]>("/api/v1/systems");
-  return data;
-}
-
 export async function registerSystem(body: {
   name: string;
   system_type: SystemType;

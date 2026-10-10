@@ -45,7 +45,7 @@ export default function ReadinessPage() {
     ? "Readiness waves not set."
     : "No readiness data for this run yet.";
   const emptyDetail = data && !data.configured
-    ? "Set readiness waves under Settings > Alert Thresholds. Coverage is measured on a finished run."
+    ? "Set readiness waves under Settings > Alert Thresholds."
     : dayOne.step?.detail;
   const emptyAction = data && !data.configured
     ? <Button render={<Link href="/rules/scoring">Scoring and alerts</Link>} />

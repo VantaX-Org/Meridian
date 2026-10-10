@@ -14,7 +14,7 @@ import {
   type LLMConfigUpdate,
   type LLMProvider,
 } from "@/lib/api/llm-settings";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 

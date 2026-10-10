@@ -11,7 +11,7 @@ import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
 import { getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import { downloadBlob } from "@/lib/api/download";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";

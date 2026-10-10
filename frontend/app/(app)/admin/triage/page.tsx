@@ -11,7 +11,7 @@ import {
   type AssignmentRule, type RuleMatch, type SlaPolicy, type TeamStrategy, type TriageSettings, type TriageSeverity, type TriageTeam,
 } from "@/lib/api/triage";
 import { getAssignableUsers } from "@/lib/api/users";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 

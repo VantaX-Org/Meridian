@@ -265,7 +265,9 @@ export default function RulesPage() {
       {coverageRows.length ? (
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Coverage by object</p>
-          {hasFinishedRun ? (
+          {dayOne.status === "loading" ? (
+            <Skeleton height={160} />
+          ) : hasFinishedRun ? (
             <DataTable columns={coverageColumns} data={coverageRows} getRowId={(r) => r.module} />
           ) : (
             <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--m-ink-3)" }}>

@@ -98,9 +98,22 @@ describe("Rail", () => {
   it("clicking a parent row's own link navigates, without being hijacked to toggle its children", async () => {
     renderRail();
     const parent = await screen.findByRole("link", { name: "Insights" });
+    const chevron = screen.getByRole("button", { name: "Expand Insights" });
     // A navigating anchor — no preventDefault/toggle side-channel on the row itself.
     expect(parent).toHaveAttribute("href");
     expect(parent.tagName).toBe("A");
+
+    // Clicking the row's own link must not toggle the children open: the
+    // chevron is the only control wired to toggleParent.
+    fireEvent.click(parent);
+    expect(chevron).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Readiness" })).not.toBeInTheDocument();
+
+    // Clicking the chevron does toggle the children, and does not navigate
+    // (preventDefault + stopPropagation on the chevron's own handler).
+    fireEvent.click(chevron);
+    expect(chevron).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByRole("link", { name: "Readiness" })).toBeInTheDocument();
   });
 
   it("exposes a separate chevron button to expand/collapse a parent's children", async () => {

@@ -122,7 +122,7 @@ async def list_cleaning_queue(
     status: Optional[str] = None,
     rule_id: Optional[str] = None,
     assigned_to: Optional[str] = None,
-    batch_id: Optional[str] = None,
+    batch_id: Optional[uuid.UUID] = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -147,7 +147,7 @@ async def list_cleaning_queue(
         params["ato"] = assigned_to
     if batch_id:
         where_clauses.append("batch_id = :bid")
-        params["bid"] = batch_id
+        params["bid"] = str(batch_id)
 
     where = " AND ".join(where_clauses)
 

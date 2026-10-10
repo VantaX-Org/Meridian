@@ -81,11 +81,12 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/admin/licence", label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
-/** The home route for this role's persona (lead/steward/basis), same split as the three `/home/*` pages. */
+/** The home route for this role's persona. Steward gets its own page; every
+ * other role (including ones with no dedicated persona page) falls back to
+ * lead, not basis — there is no "basis" role. */
 export function homeHrefForRole(role: Role): string {
   if (role === "steward") return "/home/steward";
-  if (role === "admin" || role === "manager") return "/home/lead";
-  return "/home/basis";
+  return "/home/lead";
 }
 
 /**
@@ -139,7 +140,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/inbox",
         label: "Inbox",
         icon: InboxIcon,
-        licenceKey: "stewardship",
+        licenceKey: "findings",
         anyOf: ["view"],
         badgeKey: "inbox",
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",

@@ -6,7 +6,7 @@ import { Button, ErrorState, Pill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
-import { apiErrorMessage } from "@/lib/api/optional";
+import { apiErrorMessage } from "@/lib/error";
 import { formatDate, labelOf, humanizeIds } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 

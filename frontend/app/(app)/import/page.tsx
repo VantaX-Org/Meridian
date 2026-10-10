@@ -7,7 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, Mono, Pill, Stat, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
 import { getVersions } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime } from "@/lib/format";

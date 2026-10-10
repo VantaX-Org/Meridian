@@ -20,6 +20,11 @@ export const ROLES: readonly Role[] = [
   "admin", "manager", "steward", "analyst", "approver", "auditor", "ai_reviewer", "viewer",
 ];
 
+/** Type guard for an arbitrary string from the API/URL — never trust a bare cast to `Role`. */
+export function isRole(x: string): x is Role {
+  return (ROLES as readonly string[]).includes(x);
+}
+
 export function useRole() {
   const { user } = useAuth();
   const role = (user?.role ?? "viewer") as Role;

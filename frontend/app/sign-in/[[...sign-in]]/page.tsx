@@ -7,7 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
 import { Button, Field } from "@/design";
 import { resolveNavHref } from "@/lib/nav";
-import type { Role } from "@/hooks/use-role";
+import { isRole } from "@/hooks/use-role";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -31,8 +31,9 @@ export default function SignInPage() {
     try {
       const signedInUser = await login(email, password);
       const next = new URLSearchParams(window.location.search).get("next");
+      const role = isRole(signedInUser.role) ? signedInUser.role : "viewer";
       router.push(
-        next && next.startsWith("/") && !next.startsWith("//") ? next : resolveNavHref("/home/lead", signedInUser.role as Role),
+        next && next.startsWith("/") && !next.startsWith("//") ? next : resolveNavHref("/home/lead", role),
       );
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } } };

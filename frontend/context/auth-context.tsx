@@ -26,6 +26,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Structural check for the login/me response's `user` field — it comes off
+ *  an untyped axios body, so a bare `as AuthUser` would trust shape we never
+ *  verified. */
+function isAuthUser(x: unknown): x is AuthUser {
+  if (!x || typeof x !== "object") return false;
+  const u = x as Record<string, unknown>;
+  return (
+    typeof u.id === "string" &&
+    typeof u.email === "string" &&
+    typeof u.name === "string" &&
+    typeof u.role === "string" &&
+    Array.isArray(u.permissions) &&
+    u.permissions.every((p) => typeof p === "string")
+  );
+}
+
 const TOKEN_KEY = "mn_auth_token";
 
 /** Signed-in marker for middleware.ts (the token itself never leaves localStorage). */
@@ -63,12 +79,13 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await apiClient.post("/api/v1/auth/login", { email, password });
     const { token: newToken, user: newUser, must_change_password } = res.data;
+    if (!isAuthUser(newUser)) throw new Error("Login response did not include a valid user.");
     localStorage.setItem(TOKEN_KEY, newToken);
     setSessionCookie(true);
     setToken(newToken);
     setUser(newUser);
     setMustChangePassword(Boolean(must_change_password));
-    return newUser as AuthUser;
+    return newUser;
   }, []);
 
   const logout = useCallback(() => {

@@ -17,6 +17,7 @@ import { Badge } from "../primitives/Badge";
 import { Tooltip } from "../primitives/Tooltip";
 
 const RAIL_KEY = "meridian:rail:open";
+const FLYOUT_PANEL_ID = "rail-flyout-panel";
 const RAIL_WIDTH_EXPANDED = 240;
 const RAIL_WIDTH_COLLAPSED = 56;
 const ICON_SIZE = 20;
@@ -288,6 +289,8 @@ export function Rail() {
         href={withRun(linkHref)}
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
+        aria-expanded={!expanded && hasChildren ? flyoutHref === item.href : undefined}
+        aria-controls={!expanded && hasChildren ? FLYOUT_PANEL_ID : undefined}
         tabIndex={item.href === (focusedHref ?? order[0]) ? 0 : -1}
         onFocus={() => setFocusedHref(item.href)}
         onKeyDown={(e) => onItemKeyDown(item, e)}
@@ -362,7 +365,7 @@ export function Rail() {
       className="m-motion-width flex flex-col h-full overflow-y-auto shrink-0"
       style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-sheet)", borderRight: "1px solid var(--m-line)" }}
     >
-      <Link href={resolveNavHref("/home/lead", role)} className="flex items-center gap-2 h-12 px-3 font-semibold" style={{ color: "var(--m-ink)" }}>
+      <Link href={withRun(resolveNavHref("/home/lead", role))} className="flex items-center gap-2 h-12 px-3 font-semibold" style={{ color: "var(--m-ink)" }}>
         <span
           aria-hidden="true"
           className="flex items-center justify-center shrink-0"
@@ -411,6 +414,8 @@ export function Rail() {
         // opened it; focus (or a click) leaving the panel closes it too.
         <div
           ref={flyoutPanelRef}
+          id={FLYOUT_PANEL_ID}
+          role="group"
           aria-label={flyoutItem.label}
           onMouseEnter={() => flyoutTimer.current && clearTimeout(flyoutTimer.current)}
           onMouseLeave={() => closeFlyout()}

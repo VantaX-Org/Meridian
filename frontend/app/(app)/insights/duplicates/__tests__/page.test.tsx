@@ -34,12 +34,17 @@ function explainWithMembers(members: string[]): mergeExplainApi.ExplainResponse 
   };
 }
 
+// Base UI's Select does its first portal/positioning setup (ResizeObserver,
+// floating-ui measurement) lazily on the first open in a given test file; that
+// one-time warm-up can outrun the default 1000ms waitFor timeout when the
+// whole suite is running under CPU contention, even though it is instant once
+// warm. Give these two waits real headroom instead of racing them.
 async function pickObjectAndRecord() {
   fireEvent.click(screen.getByRole("combobox"));
-  const option = await screen.findByRole("option", { name: "Material master" });
-  await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"));
+  const option = await screen.findByRole("option", { name: "Material master" }, { timeout: 5000 });
+  await waitFor(() => expect(option.closest("[role=listbox]")).toHaveAttribute("data-open"), { timeout: 5000 });
   fireEvent.click(option);
-  await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"));
+  await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("Material master"), { timeout: 5000 });
   fireEvent.change(screen.getByLabelText("Record ID"), { target: { value: "000101" } });
 }
 
@@ -54,6 +59,11 @@ describe("DuplicatesPage", () => {
   });
 
   it("renders the cluster graph and lets the user pick a master record", async () => {
+    // Base UI's first Select open in this file does real portal/positioning
+    // warm-up work; under full-suite worker contention that can genuinely
+    // outrun Vitest's default 5000ms test timeout even though every inner
+    // wait below already has its own generous timeout. Give the whole test
+    // more wall-clock room rather than racing the default.
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",
       objects: [{ module: "material_master", label: "Material master", composite_score: 72, readiness: "fail", failing_checks: 3, affected_records: 2 }],
@@ -78,7 +88,7 @@ describe("DuplicatesPage", () => {
     fireEvent.click(masterRadio);
 
     expect(await screen.findByText(/3 documents would move/i)).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("creates a merge proposal for the edges touching the chosen master", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
@@ -113,7 +123,7 @@ describe("DuplicatesPage", () => {
 
     await waitFor(() => expect(createMergeProposals).toHaveBeenCalledWith([{ match_score_id: "ms-1", priority: 1 }]));
     expect(await screen.findByText(/created 1 merge proposal/i)).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("disables the create-merge-proposal button when no pair has a usable id", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
@@ -135,7 +145,7 @@ describe("DuplicatesPage", () => {
     fireEvent.click(await screen.findByRole("radio", { name: "000101" }));
 
     expect(await screen.findByRole("button", { name: /create merge proposal/i })).toBeDisabled();
-  });
+  }, 15000);
 
   it("shows an error state when the cluster request fails", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
@@ -146,7 +156,7 @@ describe("DuplicatesPage", () => {
     renderWithQuery(<DuplicatesPage />);
     await pickObjectAndRecord();
     await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
-  });
+  }, 15000);
 
   it("retries the cluster request when the retry button is clicked", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
@@ -169,5 +179,5 @@ describe("DuplicatesPage", () => {
 
     await waitFor(() => expect(screen.getByRole("radio", { name: "000101" })).toBeInTheDocument());
     expect(getDuplicateCluster).toHaveBeenCalledTimes(2);
-  });
+  }, 15000);
 });

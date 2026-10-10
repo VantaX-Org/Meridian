@@ -4,9 +4,9 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import { Button } from "@/design";
-import * as systemsApi from "@/lib/api/systems";
+import * as connectivityApi from "@/lib/api/connectivity";
 import * as versionsApi from "@/lib/api/versions";
-import type { DimensionScores, SAPSystem, Version } from "@/types/api";
+import type { DimensionScores, SAPSystemExtended, Version } from "@/types/api";
 import RunsPage from "../page";
 
 const push = vi.fn();
@@ -45,11 +45,12 @@ function version(over: Partial<Version> & { id: string }): Version {
   };
 }
 
-const system: SAPSystem = {
+const system: SAPSystemExtended = {
   id: "sys-1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
   base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true,
   created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", last_sync_at: null, last_sync_status: null,
-  health_status: "healthy", health_message: null,
+  health_status: "healthy", health_message: null, last_health_check: null, config_last_synced_at: null,
+  config_sync_status: null, discovery_status: null, discovered_at: null, sap_release: null, last_analysis_at: null,
 };
 
 const newer = version({ id: "v2", label: "Oct 8 upload", dqs_summary: { material_master: dqs(74.8) } });
@@ -58,7 +59,7 @@ const older = version({ id: "v1", label: "Oct 1 upload", run_at: "2026-10-01T00:
 describe("RunsPage", () => {
   it("shows the DQS column and a sparkline per system", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     expect(screen.getByText("74.8")).toBeInTheDocument();
@@ -67,7 +68,7 @@ describe("RunsPage", () => {
 
   it("compares the newer run against the older one when two rows are selected", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText("Select row v1"));
@@ -80,14 +81,14 @@ describe("RunsPage", () => {
 
   it("shows the empty state when there are no runs", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText(/no runs/i)).toBeInTheDocument());
   });
 
   it("links the per-row Compare button to the predecessor run, and disables it when there is none", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
 
@@ -104,7 +105,7 @@ describe("RunsPage", () => {
 
   it("shows an error state with Try again when runs fail to load, and retries on click", async () => {
     const getVersions = vi.spyOn(versionsApi, "getVersions").mockRejectedValueOnce(new Error("network down"));
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
 
@@ -115,7 +116,7 @@ describe("RunsPage", () => {
 
   it("filters the table to a system when its sparkline is clicked", async () => {
     const getVersions = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
-    vi.spyOn(systemsApi, "getSystems").mockResolvedValue([system]);
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
 

@@ -28,7 +28,7 @@ describe("admin settings page", () => {
     const spy = vi.spyOn(licenceApi, "getLicenceManifest").mockRejectedValue(new Error("network down"));
     vi.spyOn(doctorApi, "getDoctor").mockResolvedValue({ items: [ITEM], last_checked: "2026-01-01T00:00:00Z" });
     renderWithQuery(<AdminSettingsPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/could not reach the server/i)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(MANIFEST);
     retry.click();

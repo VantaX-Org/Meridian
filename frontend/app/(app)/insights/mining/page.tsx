@@ -41,7 +41,7 @@ import { getVersionProfile, type FieldDependency } from "@/lib/api/field-profile
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
-import { getSystems } from "@/lib/api/systems";
+import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -195,6 +195,7 @@ function Dependencies() {
   ], [profileHref]);
 
   if (systems.data && !systems.data.length) {
+    if (dayOne.status === "loading") return <Skeleton height={440} />;
     return (
       <EmptyState
         title="No SAP systems yet."
