@@ -58,6 +58,49 @@ def _result(metric: str, rows: pd.DataFrame) -> MetricResult:
                         int(rows["doc_key"].nunique()), items)
 
 
+def grir_uom_variance(frames: TableFrames) -> MetricResult:
+    got = _get(frames, "EKKO", "EKPO", "EKBE", "RSEG", "MARA")
+    if got is None:
+        return MetricResult("grir_uom_variance")
+    ekko, ekpo, ekbe, rseg, mara = got
+    k = ["EBELN", "EBELP"]
+    gr = ekbe[_s(ekbe, "VGABE") == "1"]
+    gr = gr.assign(EBELN=_s(gr, "EBELN"), EBELP=_s(gr, "EBELP"),
+                   v=_num(gr, "DMBTR") * _s(gr, "SHKZG").map({"H": -1.0}).fillna(1.0))
+    ir = rseg.assign(EBELN=_s(rseg, "EBELN"), EBELP=_s(rseg, "EBELP"), v=_num(rseg, "WRBTR"))
+    bal = (gr.groupby(k)["v"].sum().rename("gr").to_frame()
+           .join(ir.groupby(k)["v"].sum().rename("ir"), how="outer").fillna(0.0).reset_index())
+    bal["amount"] = (bal["gr"] - bal["ir"]).abs()
+    bal = bal[bal["amount"] > 0.01]
+    po = ekpo.assign(EBELN=_s(ekpo, "EBELN"), EBELP=_s(ekpo, "EBELP"), MATNR=_s(ekpo, "MATNR"),
+                     unit=_s(ekpo, "BPRME").where(_s(ekpo, "BPRME") != "", _s(ekpo, "MEINS")))
+    base = dict(zip(_s(mara, "MATNR"), _s(mara, "MEINS")))
+    marm = frames.frames.get("MARM")
+    conv: dict[str, tuple[float, float]] = {}
+    if marm is not None and not marm.empty:
+        conv = dict(zip(_s(marm, "MATNR") + "|" + _s(marm, "MEINH"), zip(_num(marm, "UMREZ"), _num(marm, "UMREN"))))
+    df = bal.merge(po[k + ["MATNR", "unit"]], on=k).merge(
+        ekko.assign(EBELN=_s(ekko, "EBELN"), currency=_s(ekko, "WAERS"))[["EBELN", "currency"]], on="EBELN")
+
+    def defect(r: pd.Series) -> str:
+        if r["unit"] == "" or r["unit"] == base.get(r["MATNR"], r["unit"]):
+            return ""
+        c = conv.get(f"{r['MATNR']}|{r['unit']}")
+        if c is None:
+            return f"no MARM {r['unit']}"
+        return "" if c[0] > 0 and c[1] > 0 else f"MARM {r['unit']} UMREZ/UMREN <= 0"
+
+    # ponytail: row-wise apply over variance lines only (already filtered); vectorise if >1e6 lines.
+    df["why"] = df.apply(defect, axis=1) if not df.empty else pd.Series(dtype="string")
+    df = df[df["why"] != ""]
+    rows = pd.DataFrame({
+        "doc_key": "EBELN=" + df["EBELN"] + "|EBELP=" + df["EBELP"], "master_key": "MATNR=" + df["MATNR"],
+        "amount": df["amount"], "currency": df["currency"],
+        "detail": "GR " + df["gr"].round(2).astype(str) + " vs IR " + df["ir"].round(2).astype(str) + "; " + df["why"],
+    })
+    return _result("grir_uom_variance", rows)
+
+
 def late_pos(frames: TableFrames, today: date) -> MetricResult:
     got = _get(frames, "EKKO", "EKPO", "EKET")
     if got is None:

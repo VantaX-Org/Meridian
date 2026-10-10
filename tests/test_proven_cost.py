@@ -40,3 +40,17 @@ def test_late_po_requires_master_defect():
 def test_late_po_missing_tables_returns_zero():
     r = pc.late_pos(_tf(), today=date(2026, 3, 1))
     assert r.amount == 0 and r.items == []
+
+
+def test_grir_variance_only_with_marm_defect():
+    ekko = pd.DataFrame({"EBELN": ["P1", "P2"], "WAERS": ["ZAR", "ZAR"], "LIFNR": ["V", "V"]})
+    ekpo = pd.DataFrame({"EBELN": ["P1", "P2"], "EBELP": ["10", "10"], "MATNR": ["M1", "M2"],
+                         "WERKS": ["W", "W"], "MEINS": ["BOX", "BOX"], "BPRME": ["BOX", "BOX"], "NETWR": [0, 0]})
+    mara = pd.DataFrame({"MATNR": ["M1", "M2"], "MEINS": ["EA", "EA"]})
+    marm = pd.DataFrame({"MATNR": ["M2"], "MEINH": ["BOX"], "UMREZ": [12], "UMREN": [1]})
+    ekbe = pd.DataFrame({"EBELN": ["P1", "P2"], "EBELP": ["10", "10"], "VGABE": ["1", "1"],
+                         "DMBTR": [100.0, 100.0], "SHKZG": ["S", "S"]})
+    rseg = pd.DataFrame({"EBELN": ["P1", "P2"], "EBELP": ["10", "10"], "WRBTR": [1200.0, 130.0]})
+    r = pc.grir_uom_variance(_tf(EKKO=ekko, EKPO=ekpo, MARA=mara, MARM=marm, EKBE=ekbe, RSEG=rseg))
+    assert [i["doc_key"] for i in r.items] == ["EBELN=P1|EBELP=10"]
+    assert r.amount == 1100.0 and "no MARM BOX" in r.items[0]["detail"]
