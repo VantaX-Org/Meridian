@@ -4605,35 +4605,9 @@ rules:
       Payroll result {PAYRESULT.USERID}: NET_PAY is negative. Review calculation via
       Payroll Control Center before release.
 
-  - id: PAY205
-    field: PAYRESULT.GROSS_PAY
-    check_class: cross_field_check
-    fail_when: "abs(`PAYRESULT.GROSS_PAY` - (`PAYRESULT.NET_PAY` + `PAYRESULT.TAX_AMOUNT` + `PAYRESULT.DEDUCTIONS`)) > 0.01"
-    require_populated: true
-    severity: medium
-    dimension: accuracy
-    message: Gross pay does not reconcile with net pay plus tax plus deductions
-    why_it_matters: >-
-      This check applies to the custom Employee Central Payroll results export
-      (payroll_export.*, not a standard SF OData entity) and assumes GROSS_PAY equals
-      NET_PAY + TAX_AMOUNT + DEDUCTIONS. That identity is this export's own convention,
-      not something SAP/SuccessFactors enforces structurally, so it has not been
-      verified against every customer's export layout (e.g. deductions reported net of
-      employer contributions). A mismatch means the payroll result is internally
-      inconsistent under this assumed identity, which corrupts GL posting splits and
-      payslip totals and usually points to a missed component in the payroll export.
-    rule_authority: customer_configured
-    sap_impact: >-
-      GL posting split between net pay, tax and deductions does not balance. Payslip
-      totals are inconsistent and reconciliation fails.
-    fix_map:
-      __other__: >-
-        Gross pay {actual_value} does not equal net pay + tax + deductions. Re-run the
-        payroll result export or correct the component breakdown via Payroll Control
-        Center.
-    record_fix_template: >-
-      Payroll result {PAYRESULT.USERID}: GROSS_PAY does not reconcile with NET_PAY + TAX_AMOUNT +
-      DEDUCTIONS. Re-run export via Payroll Control Center.
+  # PAY205 deleted (Round 3): exact duplicate of PAY027 — same gross/net/tax/deductions
+  # reconciliation identity, restated with commuted terms (A-B-C-D vs A-(D+B+C)), same
+  # 0.01 tolerance, same require_populated gate. No export layout distinguishes them.
 
   # PAY206 deleted (Round 2): freshness_check is per-row only — it has no "latest
   # record per group" mode — so a rule on PAYMENTINFO.EFFECTIVE_DATE flagged every

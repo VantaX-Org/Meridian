@@ -28,8 +28,9 @@ PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
 # PAY219: exists_check compared PAYRESULT.COMPANY (4-char ECC company code) against
 # FOCOMPANY.EXTERNAL_CODE (SF legal-entity external code, up to 128 chars) — a
 # code-space mismatch, not a referential pair, same class of bug as PAY157/158.
-DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213", "PAY214",
-                                    "PAY219"}}
+# PAY205: duplicate of PAY027
+DELETED = {"payroll_integration": {"PAY157", "PAY158", "PAY205", "PAY206", "PAY209", "PAY210", "PAY211", "PAY213",
+                                    "PAY214", "PAY219"}}
 MANDATORY = ["id", "field", "check_class", "severity", "dimension", "message", "why_it_matters", "rule_authority",
              "sap_impact", "fix_map", "record_fix_template"]
 OPS = {"strip": set(), "collapse_spaces": set(), "upper": set(), "lower": set(), "title": set(),
@@ -349,8 +350,7 @@ CASES = {
     "PAY191": ("payroll_integration", {"PERINFO": [c(FE, NATIONAL_ID_COUNTRY="NOR", NATIONAL_ID="ABC"),
                                                    c(FE, PERSON_ID="p2", NATIONAL_ID_COUNTRY="NOR", NATIONAL_ID="01129955131")]}),
     "PAY204": ("payroll_integration", {"PAYRESULT": [c(PR, NET_PAY="-50"), c(PR, NET_PAY="800")]}),
-    "PAY205": ("payroll_integration", {"PAYRESULT": [c(PR, GROSS_PAY="1000", NET_PAY="800", TAX_AMOUNT="150", DEDUCTIONS="100"),
-                                                      c(PR, GROSS_PAY="1000", NET_PAY="800", TAX_AMOUNT="150", DEDUCTIONS="50")]}),
+    # PAY205 deleted (duplicate of PAY027) — see DELETED set above.
     # Dirty: two non-split (PERCENT/AMOUNT blank) records for the same employee/pay
     # type/effective date. Clean: a legitimate split payment (both rows carry a
     # PERCENT share) for the same employee/pay type/effective date — the applies_when
