@@ -50,25 +50,34 @@ def parquet_name(table: str) -> str:
 
 def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,
                  extra: Optional[set[str]] = None, conversions: Optional[dict[str, dict[str, str]]] = None,
-                 lazy: bool = False) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
+                 lazy: bool = False, *, tables: Optional[set[str]] = None,
+                 ) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
     """(frames, flat_df_or_None, row_count, column_count) for a dataset path.
 
     ``lazy``: hold each bundle table as its compressed parquet bytes and decode only
     the columns a rule reads (checks/frames.ParquetTable). A full material bundle
-    decoded at once is larger than the worker's memory."""
+    decoded at once is larger than the worker's memory.
+
+    ``tables``, when given, restricts loading to those table names: bundle files by
+    name, flat columns by their ``TABLE.`` prefix — loading everything eagerly has
+    OOM'd workers that only need a handful (e.g. proven-cost metrics).
+    """
     client = _client()
     bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
     if path.endswith("/"):
-        tables: dict[str, pd.DataFrame | ParquetTable] = {}
+        loaded: dict[str, pd.DataFrame | ParquetTable] = {}
         for obj in client.list_objects(bucket, prefix=path):
             name = obj.object_name.rsplit("/", 1)[-1]
             if name.endswith(".parquet"):
+                table_name = unquote(name[: -len(".parquet")])
+                if tables is not None and table_name not in tables:
+                    continue
                 data = _read(client, bucket, obj.object_name)
-                tables[unquote(name[: -len(".parquet")])] = ParquetTable(data) if lazy else pd.read_parquet(io.BytesIO(data))
-        if not tables:
+                loaded[table_name] = ParquetTable(data) if lazy else pd.read_parquet(io.BytesIO(data))
+        if not loaded:
             raise ValueError(f"No table parquet files under {path}")
-        return (TableFrames(tables, dictionary), None, sum(len(t) for t in tables.values()),
-                sum(len(t.columns) for t in tables.values()))
+        return (TableFrames(loaded, dictionary), None, sum(len(t) for t in loaded.values()),
+                sum(len(t.columns) for t in loaded.values()))
 
     buf = io.BytesIO(_read(client, bucket, path))
     needed: set[str] = set()
@@ -94,6 +103,8 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
     all_cols = set(pq.read_schema(buf).names)
     buf.seek(0)
     project = [c for c in all_cols if c in needed] if needed else None
+    if tables is not None:
+        project = [c for c in (project or all_cols) if c.split(".", 1)[0] in tables]
     df = pd.read_parquet(buf, columns=project or None)
     return TableFrames.from_flat(df, dictionary, conversions=conversions), df, len(df), len(df.columns)
 

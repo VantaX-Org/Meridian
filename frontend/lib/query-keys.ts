@@ -36,11 +36,14 @@ export const queryKeys = {
   migrationCockpit: (waveId: string) => ["migration", "cockpit", waveId] as const,
   migrationGaps: (runId: string, filter: Record<string, unknown>) =>
     ["migration", "gaps", runId, normalizeFilters(filter)] as const,
+  migrationDryRun: (runId: string, filter: Record<string, unknown>) =>
+    ["migration", "dry-run", runId, normalizeFilters(filter)] as const,
+  migrationRun: (runId: string) => ["migration", "run", runId] as const,
   migrationFieldMap: (module: string, destType: string) => ["migration", "field-map", module, destType] as const,
   migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
-  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
+  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
   triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,

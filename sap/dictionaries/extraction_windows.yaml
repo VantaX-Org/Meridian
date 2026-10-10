@@ -9,6 +9,7 @@
 # Override per deployment with MERIDIAN_EXTRACT_MONTHS (default windows below).
 EKKO:  {where: "BEDAT >= '{months_ago:24}'"}
 EKPO:  {via: EKKO}
+EKET:  {via: EKPO}
 VBAK:  {where: "ERDAT >= '{months_ago:24}'"}
 VBAP:  {via: VBAK}
 VBUK:  {via: VBAK}
@@ -38,6 +39,7 @@ RSEG:  {via: RBKP}
 # condition records still valid today or later (expired prices cannot be used)
 KONH:  {where: "DATBI >= '{months_ago:0}'"}
 KONP:  {via: KONH}
+KONV:  {via: VBAK}
 A004:  {where: "DATBI >= '{months_ago:0}'"}
 A005:  {where: "DATBI >= '{months_ago:0}'"}
 A304:  {where: "DATBI >= '{months_ago:0}'"}

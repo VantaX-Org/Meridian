@@ -10,6 +10,8 @@ never assumed). Persists per-record gaps and a transfer verdict per module.
 
 import json
 import logging
+from collections import Counter
+from typing import TYPE_CHECKING
 
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
@@ -17,6 +19,9 @@ from sqlalchemy.orm import Session
 
 from workers.celery_app import celery_app
 from workers.db import get_sync_engine
+
+if TYPE_CHECKING:
+    from api.services.migration.engine import Gap
 
 logger = logging.getLogger("meridian.workers.migration")
 
@@ -105,10 +110,28 @@ def module_source_tables(module: str, frames) -> list[str]:
     return [t for t, p in plans.items() if p.purpose == "data" and t in frames.frames]
 
 
+def sim_owners(modules: list[str], frames) -> dict[str, str]:
+    """Source table -> the one module of the run that records its S/4 load findings: the first
+    module that reads the table natively, else the first that reads it at all (the load-sim
+    tables are added to every trigger module's plan, so without this each run module would
+    record every KNA1/NAST finding again)."""
+    from sap.extraction_plan import plan_modules
+
+    plans = {m: plan_modules([m], frames.dictionary) for m in modules}
+    owner: dict[str, str] = {}
+    for native in (True, False):
+        for m in modules:
+            for t, p in plans[m].items():
+                if p.purpose == "data" and t in frames.frames and (not native or m in p.modules):
+                    owner.setdefault(t, m)
+    return owner
+
+
 @celery_app.task(bind=True, name="workers.tasks.run_migration.run_migration",
                  soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
 def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_id, modules,
                   source_version_id=None, target_release="s4hana"):
+    dry_run = mode == "s4_dry_run"
     engine = get_sync_engine()
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
@@ -130,18 +153,27 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                                "No analysed source dataset — run an extraction or upload for the source first.", {})
             source_dict = dictionary_for(session, source_system_id or meta.get("system_id"))
             from checks.field_status_rules import conversions_for
-            frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules,
+
+            extra = None
+            if dry_run:
+                from sap.extraction_plan import S4_LOAD_CONFIG, S4_LOAD_DATA
+                # ponytail: dotted TABLE.FIELD strings, not bare table names — tables_of() in
+                # checks/frames.py only recognises the dotted form, and the flat-upload load_dataset
+                # path prunes columns by that set, so bare names would silently drop these tables.
+                extra = {f"{t}.{f}" for d in (S4_LOAD_DATA, S4_LOAD_CONFIG) for t, fs in d.items() for f in fs}
+            frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules, extra=extra,
                                            conversions=conversions_for(session, source_system_id or meta.get("system_id")))
 
-            if dest_system_id:
+            if dest_system_id and not dry_run:
                 target_dict = dictionary_for(session, dest_system_id)
                 target_type = session.execute(text("SELECT system_type FROM sap_systems WHERE id = :s"),
                                               {"s": dest_system_id}).scalar() or target_release
             else:
                 target_dict = get_dictionary(target_release)
                 target_type = target_release
-            target_config = load_target_config(session, dest_system_id)
+            target_config = load_target_config(session, None if dry_run else dest_system_id)
 
+            owners = sim_owners(modules, frames) if dry_run else {}
             summary, all_gaps, records, blocked = {}, 0, 0, 0
             verdicts, critical = [], 0
             for module in modules:
@@ -153,7 +185,14 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     session.commit()
                     mappings = seed
                 gaps, res = analyze(module, frames, tables, mappings, target_dict, load_value_maps(session, module),
-                                    target_config, None, bool(dest_system_id))
+                                    target_config, None, bool(dest_system_id) and not dry_run)
+                sim: list["Gap"] = []
+                if dry_run:
+                    from api.services.migration import load_sim
+                    grouping = {**load_sim.standard_grouping(), **load_value_maps(session, module).get("BU_GROUP", {})}
+                    sim = load_sim.simulate(frames, module, grouping, {t for t, m in owners.items() if m == module})
+                    res = load_sim.fold(res, sim)
+                    gaps = gaps + sim
                 rows = [{
                     "tid": tenant_id, "rid": run_id, "module": g.module, "object_type": g.source_table,
                     "record_key": g.record_key, "dest_table": g.target_table, "field": g.target_field,
@@ -162,6 +201,9 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     "source_value": g.source_value, "target_value": g.target_value,
                     "provenance": g.provenance, "grounded": g.grounded,
                 } for g in gaps]
+                # Idempotency: a retried run_id must not duplicate this module's findings.
+                session.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :tid AND run_id = :rid "
+                                     "AND module = :module"), {"tid": tenant_id, "rid": run_id, "module": module})
                 for i in range(0, len(rows), 2000):
                     session.execute(_INSERT, rows[i:i + 2000])
                 session.commit()
@@ -172,7 +214,8 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 verdicts.append(res.verdict)
                 summary[module] = {"records": res.records, "blocked_records": res.blocked_records,
                                    "score": res.score, "verdict": res.verdict, "gaps": res.counts,
-                                   "source_tables": tables}
+                                   "source_tables": tables,
+                                   **({"mode": "s4_dry_run", "s4_load": _count_rules(sim)} if dry_run else {})}
 
             verdict = "no-go" if "no-go" in verdicts else ("conditional" if "conditional" in verdicts else "go")
             score = round((records - blocked) / records * 100, 2) if records else 0.0
@@ -194,6 +237,10 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
             logger.exception("migration analysis failed")
             session.rollback()
             return _finish(session, run_id, "failed", str(e)[:500], {})
+
+
+def _count_rules(gaps: list["Gap"]) -> dict[str, int]:
+    return dict(Counter(g.detail.split(" ", 1)[0] for g in gaps))
 
 
 def _finish(session, run_id, status, error, summary) -> dict:

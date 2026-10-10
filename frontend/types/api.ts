@@ -1058,7 +1058,7 @@ export interface BusinessProcessL1 {
 
 // ── Migration mode ───────────────────────────────────────────────────────────
 
-export type MigrationMode = "source_to_source" | "source_to_destination";
+export type MigrationMode = "source_to_source" | "source_to_destination" | "s4_dry_run";
 export type MigrationStatus =
   | "queued"
   | "running"

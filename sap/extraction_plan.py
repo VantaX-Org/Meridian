@@ -59,6 +59,44 @@ DISCOVERY_DATA = {"VBAK": {"AUART", "ERDAT"}, "VBRK": {"FKART", "FKDAT"}, "LIKP"
 DISCOVERY_CONFIG = {"TVAK": {"AUART"}, "T156": {"BWART"}, "TVLK": {"LFART"}, "TVFK": {"FKART"}}
 _DISCOVERY_TRIGGER = {"sd_sales_orders", "mm_purchasing", "accounts_payable", "accounts_receivable", "fi_gl"}
 
+# S/4 load dry-run analysis (extraction_registry.py: s4_load_sim module):
+# Key transactional and config tables needed for transaction cost analysis
+S4_LOAD_MODULE = "s4_load_sim"
+S4_LOAD_DATA: dict[str, set[str]] = {
+    "KNVK": {"PARNR", "KUNNR", "LIFNR", "NAME1"},
+    "KNKK": {"KUNNR", "KKBER", "KLIMK", "CTLPC"},
+    "MARD": {"MATNR", "WERKS", "LGORT", "DISKZ"},
+    "KONV": {"KNUMV", "KPOSN", "STUNR", "ZAEHK", "KSCHL", "KWERT"},
+    "NAST": {"KAPPL", "OBJKY", "KSCHL", "PARNR", "PARVW", "VSTAT"},
+}
+S4_LOAD_CONFIG: dict[str, set[str]] = {"T001L": {"WERKS", "LGORT", "DISKZ"}}
+_S4_LOAD_TRIGGER = {"business_partner", "accounts_payable", "accounts_receivable",
+                    "sd_customer_master", "material_master", "sd_sales_orders"}
+
+# Transaction-proven cost (extraction_registry.py: proven_cost module): the
+# transactional tables later tasks read to prove cost from live transactions,
+# plus the fields those tasks add beyond what the rule-derived plan already reads.
+PROVEN_COST_MODULE = "proven_cost"
+PROVEN_COST_DATA: dict[str, set[str]] = {
+    "EKKO": {"EBELN", "LIFNR", "BUKRS", "BEDAT", "WAERS"},
+    "EKPO": {"EBELN", "EBELP", "MATNR", "WERKS", "MENGE", "MEINS", "BPRME",
+             "NETPR", "PEINH", "NETWR", "INFNR"},
+    "EKET": {"EBELN", "EBELP", "ETENR", "EINDT", "MENGE", "WEMNG"},
+    "EKBE": {"BUDAT", "DMBTR", "MENGE", "BPMNG", "LFBNR"},
+    "EINA": {"INFNR", "MATNR", "LIFNR", "MEINS"},
+    "EINE": {"INFNR", "EKORG", "WERKS", "APLFZ", "NETPR", "PEINH"},
+    "MARC": {"MATNR", "WERKS", "PLIFZ"},
+    "MARM": {"MATNR", "MEINH", "UMREZ", "UMREN"},
+    "RSEG": {"BELNR", "GJAHR", "BUZEI", "EBELN", "EBELP", "MENGE", "BSTME", "WRBTR"},
+    "VBAK": {"NETWR", "WAERK", "LIFSK", "FAKSK", "KUNNR", "VKORG", "VTWEG", "SPART", "ERDAT"},
+    "VBUK": {"VBELN", "CMGST", "LFSTK", "GBSTK"},
+    "KNVV": {"KUNNR", "VKORG", "VTWEG", "SPART", "AUFSD", "LIFSD"},
+    "BSAK": {"BUKRS", "LIFNR", "GJAHR", "BELNR", "BUZEI", "XBLNR", "WRBTR",
+              "WAERS", "BLDAT", "AUGDT", "SHKZG", "BLART"},
+}
+_PROVEN_COST_TRIGGER = {"mm_purchasing", "material_master", "sd_sales_orders",
+                        "sd_customer_master", "accounts_payable"}
+
 
 @dataclass
 class TablePlan:
@@ -238,6 +276,16 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
             add(t, set(cols), DISCOVERY_MODULE)
         for t, cols in DISCOVERY_CONFIG.items():
             add(t, set(cols), DISCOVERY_MODULE, purpose="config")
+
+    if _S4_LOAD_TRIGGER & set(modules):
+        for t, cols in S4_LOAD_DATA.items():
+            add(t, set(cols), S4_LOAD_MODULE)
+        for t, cols in S4_LOAD_CONFIG.items():
+            add(t, set(cols), S4_LOAD_MODULE, purpose="config")
+
+    if _PROVEN_COST_TRIGGER & set(modules):
+        for t, cols in PROVEN_COST_DATA.items():
+            add(t, set(cols), PROVEN_COST_MODULE)
 
     # config tables behind the derived process flows (full-table reads), per area module
     from sap.process_definitions import flow_config_tables

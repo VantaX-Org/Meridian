@@ -27,7 +27,7 @@ from api.services.rbac import current_user_id, require_permission
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
 
-_VALID_MODES = ("source_to_source", "source_to_destination")
+_VALID_MODES = ("source_to_source", "source_to_destination", "s4_dry_run")
 _LIST_TREND_POINTS = 12  # sparkline points shown per wave in the wave list
 
 
@@ -158,6 +158,8 @@ async def start_migration(
 ):
     if body.mode not in _VALID_MODES:
         raise HTTPException(status_code=400, detail=f"Unknown mode: {body.mode}")
+    if body.mode == "s4_dry_run" and body.dest_system_id:
+        raise HTTPException(status_code=400, detail="s4_dry_run does not take a destination system.")
     if not body.modules:
         raise HTTPException(status_code=400, detail="At least one module is required.")
 
@@ -266,6 +268,133 @@ async def get_run(
     breakdown = [_row(x) for x in agg.fetchall()]
     structural = (await db.execute(text(_STRUCTURAL_SQL), {"rid": run_id})).scalar()
     return {"run": _row(run), "gap_breakdown": breakdown, "structural_critical": int(structural or 0)}
+
+
+# Per-record load-ready/load-fail status, aggregated from migration_gap_findings. Only records
+# that carry at least one gap appear here — clean records are counted, not listed (see
+# gap_summary[module].records - blocked_records on the run row).
+_RECORDS_BASE_SQL = """
+    SELECT module, object_type AS source_table, record_key,
+           CASE WHEN bool_or(severity IN ('critical','high')) THEN 'load_fail' ELSE 'load_ready' END AS status,
+           array_agg(detail ORDER BY severity) FILTER (WHERE severity IN ('critical','high')) AS reasons
+    FROM migration_gap_findings
+    WHERE run_id = :rid AND tenant_id = :t AND record_key IS NOT NULL
+      AND (CAST(:module AS text) IS NULL OR module = :module)
+    GROUP BY module, object_type, record_key
+    HAVING (CAST(:status AS text) IS NULL
+            OR (CASE WHEN bool_or(severity IN ('critical','high')) THEN 'load_fail' ELSE 'load_ready' END) = :status)
+"""
+
+
+@router.get("/runs/{run_id}/records")
+async def run_records(
+    run_id: uuid.UUID,
+    status: Optional[str] = None,
+    module: Optional[str] = None,
+    limit: int = Query(200, le=1000),
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("view")),
+):
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(text("SELECT id FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": tenant.id})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    params = {"rid": run_id, "t": str(tenant.id), "module": module, "status": status}
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM ({_RECORDS_BASE_SQL}) s"), params)).scalar()
+    rows = await db.execute(
+        text(f"{_RECORDS_BASE_SQL} ORDER BY status, module, record_key LIMIT :limit OFFSET :offset"),
+        {**params, "limit": limit, "offset": offset},
+    )
+    return {"total": int(total or 0), "rows": [_row(x) for x in rows.fetchall()]}
+
+
+@router.get("/runs/{run_id}/dry-run/{fmt}")
+async def dry_run_report(
+    run_id: uuid.UUID,
+    fmt: str,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("export")),
+):
+    """Summary + per-rule + failing-record export for one s4_dry_run run."""
+    import asyncio
+    from collections import Counter
+
+    import pandas as pd
+
+    from api.services.migration import load_sim
+    from api.services.migration.export import to_xlsx
+    from api.services import pdf_reports
+
+    if fmt not in ("xlsx", "pdf"):
+        raise HTTPException(status_code=404, detail="Unknown report format.")
+    await _set_rls(db, tenant.id)
+    run = (await db.execute(text("SELECT * FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
+                            {"rid": run_id, "t": tenant.id})).fetchone()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    if run.mode != "s4_dry_run" or run.status != "analysed":
+        raise HTTPException(status_code=409, detail="This report is only available for an analysed s4_dry_run run.")
+
+    gap_summary = run.gap_summary or {}
+    summary_df = pd.DataFrame([
+        {"module": m, "records": d.get("records"), "blocked_records": d.get("blocked_records"),
+         "verdict": d.get("verdict"), "score": d.get("score")}
+        for m, d in gap_summary.items()
+    ])
+
+    rule_counts: Counter[str] = Counter()
+    for d in gap_summary.values():
+        for rid_, cnt in (d.get("s4_load") or {}).items():
+            rule_counts[rid_] += cnt
+    rules_meta = load_sim.rules()
+    rule_rows = [
+        {"rule_id": rid_, "area": rules_meta[rid_].area if rid_ in rules_meta else "",
+         "severity": rules_meta[rid_].severity if rid_ in rules_meta else "",
+         "reason": rules_meta[rid_].reason if rid_ in rules_meta else "", "records": cnt}
+        for rid_, cnt in sorted(rule_counts.items())
+    ]
+    rule_df = pd.DataFrame(rule_rows)
+
+    cap = 100_000  # the xlsx holds the whole list in memory; the PDF shows the first 500
+    fail_raw = (await db.execute(
+        text(f"{_RECORDS_BASE_SQL} ORDER BY module, record_key LIMIT :cap"),
+        {"rid": run_id, "t": str(tenant.id), "module": None, "status": "load_fail", "cap": cap + 1},
+    )).fetchall()
+    truncated = len(fail_raw) > cap
+    fail_raw = fail_raw[:cap]
+    fail_rows = [
+        {"module": r.module, "source_table": r.source_table, "record_key": r.record_key,
+         "reasons": "; ".join(r.reasons or [])}
+        for r in fail_raw
+    ]
+    fail_df = pd.DataFrame(fail_rows)
+
+    name = f"s4_dry_run_{run_id}"
+    if fmt == "xlsx":
+        sheets = {"Summary": summary_df, "Load fail": fail_df, "By rule": rule_df}
+        if truncated:
+            sheets["Note"] = pd.DataFrame([{"note": f"Load fail list truncated to the first {cap:,} records; "
+                                                    "use the records API for the rest."}])
+        content = to_xlsx(sheets, sanitize_formulas=True)
+        return _stream(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
+
+    ctx = {
+        "title": "S/4 load dry run", "eyebrow": "S/4 load dry run", "scope_label": tenant.name,
+        "generated_at": run.completed_at, "meta": [("Verdict", run.readiness_verdict or "—")],
+        "tenant": tenant.name,
+        "run": {"id": str(run_id), "completed_at": run.completed_at, "verdict": run.readiness_verdict,
+                "score": run.readiness_score},
+        "modules": [{"module": m, **{k: d.get(k) for k in ("records", "blocked_records", "verdict", "score")}}
+                    for m, d in gap_summary.items()],
+        "by_rule": rule_rows,
+        "fails": fail_rows[:500],
+    }
+    pdf = await asyncio.to_thread(pdf_reports.render, "s4_dry_run.html", ctx)
+    return _stream(pdf, "application/pdf", f"{name}.pdf")
 
 
 # ── Waves ─────────────────────────────────────────────────────────────────────
