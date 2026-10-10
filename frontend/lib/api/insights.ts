@@ -47,6 +47,42 @@ export async function getImpact(params?: { version_id?: string }): Promise<Impac
   return data;
 }
 
+/* ─── Proven cost (S4 load dry run + transaction cost) ─── */
+
+export type ProvenCostMetric = "late_po" | "grir_uom_variance" | "blocked_sales" | "duplicate_payment";
+
+export interface ProvenCostItem {
+  doc_key: string;
+  master_key: string;
+  amount: number;
+  detail: string;
+  check_ids: string[];
+}
+
+export interface ProvenCostRow {
+  metric: ProvenCostMetric;
+  label: string;
+  amount: number;
+  currency: string | null;
+  by_currency: Record<string, number>;
+  documents: number;
+  check_ids: string[];
+  items: ProvenCostItem[];
+}
+
+export interface ProvenCostResponse {
+  version_id: string | null;
+  currency: string | null;
+  total: number;
+  rows: ProvenCostRow[];
+  value_at_risk_total: number;
+}
+
+export async function getProvenCost(params?: { version_id?: string }): Promise<ProvenCostResponse> {
+  const { data } = await apiClient.get<ProvenCostResponse>("/api/v1/insights/proven-cost", { params });
+  return data;
+}
+
 /* ─── Owner digest cards (spec 8.3) ─── */
 
 export interface OwnerCardResponse {
@@ -108,6 +144,7 @@ export interface ExecResponse {
   waterfall: ChartPoint[];
   impact_rows: ImpactRow[];
   owner_rows: OwnerCardResponse[];
+  proven_cost_total?: number;
 }
 
 export async function getExec(params?: { version_id?: string }): Promise<ExecResponse> {

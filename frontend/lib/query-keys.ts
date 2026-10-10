@@ -43,7 +43,7 @@ export const queryKeys = {
   migrationValueMap: (module: string) => ["migration", "value-map", module] as const,
   s4Readiness: (versionId: string) => ["s4-readiness", versionId] as const,
   shellCounts: () => ["shell-counts"] as const,
-  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
+  insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec" | "proven-cost", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
   mergeExplain: (recordId: string) => ["merge-explain", recordId] as const,
   triageMetrics: (weeks: number) => ["inbox", "triage-metrics", weeks] as const,
