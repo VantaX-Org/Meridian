@@ -44,6 +44,7 @@ import workers.tasks.send_password_reset  # noqa: F401, E402
 import workers.tasks.run_cleaning  # noqa: F401
 import workers.tasks.evaluate_contracts  # noqa: F401
 import workers.tasks.run_exception_scan  # noqa: F401
+import workers.tasks.compute_proven_cost  # noqa: F401 — per-version proven-cost metrics
 import workers.tasks.run_sync  # noqa: F401
 import workers.tasks.rule_proposal_task  # noqa: F401
 import workers.tasks.ai_triage  # noqa: F401

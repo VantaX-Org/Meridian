@@ -861,6 +861,13 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
         except Exception as e:
             logger.warning(f"Failed to enqueue run_exception_scan (non-fatal): {e}")
 
+        # Enqueue proven-cost metrics (non-blocking — failure is non-fatal)
+        try:
+            from workers.tasks.compute_proven_cost import compute_proven_cost
+            compute_proven_cost.delay(version_id, tenant_id, parquet_path)
+        except Exception as e:
+            logger.warning(f"Failed to enqueue compute_proven_cost (non-fatal): {e}")
+
         # Enqueue mining — dedup / anomaly / relationship (non-blocking).
         # Mirrors the run_cleaning fan-out: each module's mining runs against
         # the same uploaded parquet and writes data_duplicates / data_anomalies
