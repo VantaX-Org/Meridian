@@ -20,6 +20,13 @@ from api.services.rbac import require_permission
 
 router = APIRouter(prefix="/api/v1/insights", tags=["insights"])
 
+_METRIC_LABEL = {
+    "late_po": "Late POs (lead-time / info-record defects)",
+    "grir_uom_variance": "GR/IR variance (UoM defects)",
+    "blocked_sales": "Sales orders blocked (customer master)",
+    "duplicate_payment": "Duplicate vendor payments",
+}
+
 
 @router.get("/readiness", dependencies=[Depends(require_permission("view"))])
 async def get_readiness(
@@ -128,6 +135,58 @@ async def get_impact(
             "causing_rules": r["blocking_findings"],
         })
     return {"version_id": str(version_id), "rows": rows}
+
+
+@router.get("/proven-cost", dependencies=[Depends(require_permission("view"))])
+async def get_proven_cost(
+    version_id: Optional[uuid.UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    await _rls(db, tenant)
+
+    # No explicit version — same "latest with rows" idea as get_impact/get_readiness.
+    if version_id is None:
+        version_id = (await db.execute(
+            text("""
+                SELECT av.id FROM analysis_versions av
+                WHERE av.tenant_id = :t AND EXISTS (
+                    SELECT 1 FROM proven_cost_results p
+                    WHERE p.version_id = av.id AND p.tenant_id = :t
+                )
+                ORDER BY av.run_at DESC LIMIT 1
+            """),
+            {"t": str(tenant.id)},
+        )).scalar()
+        if version_id is None:
+            return {"version_id": None, "currency": None, "total": 0.0, "rows": [], "value_at_risk_total": 0.0}
+
+    from checks.cost import defaults
+
+    cost_model = (await db.execute(
+        text("SELECT cost_model FROM tenants WHERE id = :t"),
+        {"t": str(tenant.id)},
+    )).scalar() or {}
+    currency = cost_model.get("currency") or defaults().get("currency")
+
+    res = await db.execute(text("""
+        SELECT metric, amount, currency, by_currency, documents, check_ids, items
+        FROM proven_cost_results WHERE version_id = :v AND tenant_id = :t"""),
+        {"v": str(version_id), "t": str(tenant.id)})
+    by_metric = {r.metric: r for r in res.fetchall()}
+    rows = [{"metric": m, "label": label, "amount": float(r.amount), "currency": r.currency,
+             "by_currency": r.by_currency, "documents": r.documents, "check_ids": list(r.check_ids),
+             "items": r.items}
+            for m, label in _METRIC_LABEL.items() if (r := by_metric.get(m))]
+    # total sums only rows already in the tenant's chosen currency; other currencies
+    # live in by_currency and are reported, never converted.
+    total = round(sum(r["amount"] for r in rows if r["currency"] == currency), 2)
+
+    impact = await get_impact(version_id, db, tenant)
+    value_at_risk_total = round(sum(r["value_at_risk"] for r in impact["rows"]), 2)
+
+    return {"version_id": str(version_id), "currency": currency, "total": total, "rows": rows,
+            "value_at_risk_total": value_at_risk_total}
 
 
 @router.get("/owners", dependencies=[Depends(require_permission("view"))])
@@ -244,6 +303,7 @@ async def get_exec(
     readiness = await get_readiness(version_id, db, tenant)
     impact = await get_impact(version_id, db, tenant)
     owners = await get_owners(db, tenant)
+    proven_cost = await get_proven_cost(version_id, db, tenant)
 
     cells = readiness["cells"]
     rows = impact["rows"]
@@ -251,11 +311,13 @@ async def get_exec(
     no_go = sum(1 for c in cells if c["verdict"] == "no_go")
     total_value_at_risk = sum(r["value_at_risk"] for r in rows)
     waterfall = [{"x": r["feature"], "y": r["value_at_risk"]} for r in rows]
+    proven_cost_total = proven_cost["total"]
 
     narrative = (
         f"{no_go} of {len(cells)} readiness cells are no-go. "
         f"{len(rows)} features carry {total_value_at_risk:,.2f} in value at risk. "
-        f"{len(owner_rows)} owners have open digests."
+        f"{len(owner_rows)} owners have open digests. "
+        f"{proven_cost_total:,.2f} {proven_cost['currency']} proven lost or held in transactions."
     )
 
     return {
@@ -265,4 +327,5 @@ async def get_exec(
         "waterfall": waterfall,
         "impact_rows": rows,
         "owner_rows": owner_rows,
+        "proven_cost_total": proven_cost_total,
     }
