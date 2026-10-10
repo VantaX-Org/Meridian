@@ -1384,7 +1384,7 @@ rules:
   - id: PAY048
     field: PAYMENTINFO.IBAN
     check_class: cross_field_check
-    fail_when: '`PAYMENTINFO.IBAN`.str.slice(0, 2) != `PAYMENTINFO.BANK_COUNTRY`'
+    fail_when: '`PAYMENTINFO.IBAN`.str.slice(0, 2).map(@iso_alpha3) != `PAYMENTINFO.BANK_COUNTRY`'
     require_populated: true
     severity: high
     dimension: consistency
@@ -1920,3 +1920,2932 @@ rules:
     fix_map:
       __other__: Correct the accounted-to date in PU03.
     record_fix_template: 'Employee {PA0003.PERNR}: accounted-to date is more than two months ahead. Correct in PU03.'
+  - id: PAY054
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^AD\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - AND
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid AD IBAN (expected 24 characters, country prefix AD)
+    why_it_matters: 'A AD IBAN must be exactly 24 characters: the AD country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid AD IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY055
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^AT\d{2}[A-Z0-9]{16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - AUT
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid AT IBAN (expected 20 characters, country prefix AT)
+    why_it_matters: 'A AT IBAN must be exactly 20 characters: the AT country code, two check digits, then 16 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid AT IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY056
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^BE\d{2}[A-Z0-9]{12}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - BEL
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid BE IBAN (expected 16 characters, country prefix BE)
+    why_it_matters: 'A BE IBAN must be exactly 16 characters: the BE country code, two check digits, then 12 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid BE IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY057
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^BG\d{2}[A-Z0-9]{18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - BGR
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid BG IBAN (expected 22 characters, country prefix BG)
+    why_it_matters: 'A BG IBAN must be exactly 22 characters: the BG country code, two check digits, then 18 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid BG IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY058
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^CH\d{2}[A-Z0-9]{17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CHE
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid CH IBAN (expected 21 characters, country prefix CH)
+    why_it_matters: 'A CH IBAN must be exactly 21 characters: the CH country code, two check digits, then 17 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid CH IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY059
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^CY\d{2}[A-Z0-9]{24}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CYP
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid CY IBAN (expected 28 characters, country prefix CY)
+    why_it_matters: 'A CY IBAN must be exactly 28 characters: the CY country code, two check digits, then 24 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid CY IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY060
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^CZ\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CZE
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid CZ IBAN (expected 24 characters, country prefix CZ)
+    why_it_matters: 'A CZ IBAN must be exactly 24 characters: the CZ country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid CZ IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY061
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^DE\d{2}[A-Z0-9]{18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - DEU
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid DE IBAN (expected 22 characters, country prefix DE)
+    why_it_matters: 'A DE IBAN must be exactly 22 characters: the DE country code, two check digits, then 18 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid DE IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY062
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^DK\d{2}[A-Z0-9]{14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - DNK
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid DK IBAN (expected 18 characters, country prefix DK)
+    why_it_matters: 'A DK IBAN must be exactly 18 characters: the DK country code, two check digits, then 14 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid DK IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY063
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^EE\d{2}[A-Z0-9]{16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - EST
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid EE IBAN (expected 20 characters, country prefix EE)
+    why_it_matters: 'A EE IBAN must be exactly 20 characters: the EE country code, two check digits, then 16 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid EE IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY064
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^ES\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ESP
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid ES IBAN (expected 24 characters, country prefix ES)
+    why_it_matters: 'A ES IBAN must be exactly 24 characters: the ES country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid ES IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY065
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^FI\d{2}[A-Z0-9]{14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - FIN
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid FI IBAN (expected 18 characters, country prefix FI)
+    why_it_matters: 'A FI IBAN must be exactly 18 characters: the FI country code, two check digits, then 14 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid FI IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY066
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^FR\d{2}[A-Z0-9]{23}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - FRA
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid FR IBAN (expected 27 characters, country prefix FR)
+    why_it_matters: 'A FR IBAN must be exactly 27 characters: the FR country code, two check digits, then 23 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid FR IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY067
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^GB\d{2}[A-Z0-9]{18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - GBR
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid GB IBAN (expected 22 characters, country prefix GB)
+    why_it_matters: 'A GB IBAN must be exactly 22 characters: the GB country code, two check digits, then 18 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid GB IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY068
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^GI\d{2}[A-Z0-9]{19}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - GIB
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid GI IBAN (expected 23 characters, country prefix GI)
+    why_it_matters: 'A GI IBAN must be exactly 23 characters: the GI country code, two check digits, then 19 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid GI IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY069
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^GR\d{2}[A-Z0-9]{23}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - GRC
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid GR IBAN (expected 27 characters, country prefix GR)
+    why_it_matters: 'A GR IBAN must be exactly 27 characters: the GR country code, two check digits, then 23 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid GR IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY070
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^HR\d{2}[A-Z0-9]{17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - HRV
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid HR IBAN (expected 21 characters, country prefix HR)
+    why_it_matters: 'A HR IBAN must be exactly 21 characters: the HR country code, two check digits, then 17 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid HR IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY071
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^HU\d{2}[A-Z0-9]{24}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - HUN
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid HU IBAN (expected 28 characters, country prefix HU)
+    why_it_matters: 'A HU IBAN must be exactly 28 characters: the HU country code, two check digits, then 24 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid HU IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY072
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^IE\d{2}[A-Z0-9]{18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - IRL
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid IE IBAN (expected 22 characters, country prefix IE)
+    why_it_matters: 'A IE IBAN must be exactly 22 characters: the IE country code, two check digits, then 18 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid IE IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY073
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^IS\d{2}[A-Z0-9]{22}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ISL
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid IS IBAN (expected 26 characters, country prefix IS)
+    why_it_matters: 'A IS IBAN must be exactly 26 characters: the IS country code, two check digits, then 22 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid IS IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY074
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^IT\d{2}[A-Z0-9]{23}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ITA
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid IT IBAN (expected 27 characters, country prefix IT)
+    why_it_matters: 'A IT IBAN must be exactly 27 characters: the IT country code, two check digits, then 23 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid IT IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY075
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^LI\d{2}[A-Z0-9]{17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - LIE
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid LI IBAN (expected 21 characters, country prefix LI)
+    why_it_matters: 'A LI IBAN must be exactly 21 characters: the LI country code, two check digits, then 17 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid LI IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY076
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^LT\d{2}[A-Z0-9]{16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - LTU
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid LT IBAN (expected 20 characters, country prefix LT)
+    why_it_matters: 'A LT IBAN must be exactly 20 characters: the LT country code, two check digits, then 16 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid LT IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY077
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^LU\d{2}[A-Z0-9]{16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - LUX
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid LU IBAN (expected 20 characters, country prefix LU)
+    why_it_matters: 'A LU IBAN must be exactly 20 characters: the LU country code, two check digits, then 16 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid LU IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY078
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^LV\d{2}[A-Z0-9]{17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - LVA
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid LV IBAN (expected 21 characters, country prefix LV)
+    why_it_matters: 'A LV IBAN must be exactly 21 characters: the LV country code, two check digits, then 17 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid LV IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY079
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^MC\d{2}[A-Z0-9]{23}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - MCO
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid MC IBAN (expected 27 characters, country prefix MC)
+    why_it_matters: 'A MC IBAN must be exactly 27 characters: the MC country code, two check digits, then 23 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid MC IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY080
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^MT\d{2}[A-Z0-9]{27}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - MLT
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid MT IBAN (expected 31 characters, country prefix MT)
+    why_it_matters: 'A MT IBAN must be exactly 31 characters: the MT country code, two check digits, then 27 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid MT IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY081
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^NL\d{2}[A-Z0-9]{14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - NLD
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid NL IBAN (expected 18 characters, country prefix NL)
+    why_it_matters: 'A NL IBAN must be exactly 18 characters: the NL country code, two check digits, then 14 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid NL IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY082
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^NO\d{2}[A-Z0-9]{11}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - NOR
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid NO IBAN (expected 15 characters, country prefix NO)
+    why_it_matters: 'A NO IBAN must be exactly 15 characters: the NO country code, two check digits, then 11 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid NO IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY083
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^PL\d{2}[A-Z0-9]{24}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - POL
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid PL IBAN (expected 28 characters, country prefix PL)
+    why_it_matters: 'A PL IBAN must be exactly 28 characters: the PL country code, two check digits, then 24 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid PL IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY084
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^PT\d{2}[A-Z0-9]{21}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - PRT
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid PT IBAN (expected 25 characters, country prefix PT)
+    why_it_matters: 'A PT IBAN must be exactly 25 characters: the PT country code, two check digits, then 21 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid PT IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY085
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^RO\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ROU
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid RO IBAN (expected 24 characters, country prefix RO)
+    why_it_matters: 'A RO IBAN must be exactly 24 characters: the RO country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid RO IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY086
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^SE\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SWE
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid SE IBAN (expected 24 characters, country prefix SE)
+    why_it_matters: 'A SE IBAN must be exactly 24 characters: the SE country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid SE IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY087
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^SI\d{2}[A-Z0-9]{15}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SVN
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid SI IBAN (expected 19 characters, country prefix SI)
+    why_it_matters: 'A SI IBAN must be exactly 19 characters: the SI country code, two check digits, then 15 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid SI IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY088
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^SK\d{2}[A-Z0-9]{20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SVK
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid SK IBAN (expected 24 characters, country prefix SK)
+    why_it_matters: 'A SK IBAN must be exactly 24 characters: the SK country code, two check digits, then 20 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid SK IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY089
+    field: PAYMENTINFO.IBAN
+    check_class: regex_check
+    pattern: ^SM\d{2}[A-Z0-9]{23}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SMR
+    severity: high
+    dimension: validity
+    message: IBAN is not a valid SM IBAN (expected 27 characters, country prefix SM)
+    why_it_matters: 'A SM IBAN must be exactly 27 characters: the SM country code, two check digits, then 23 characters of bank/branch/account (BBAN). An IBAN of the wrong shape for its stated bank country is rejected by the bank or, worse, routed to the wrong account.'
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank or the payment is misdirected.
+    fix_map:
+      __other__: Obtain the correct IBAN from the employee's bank details and correct infotype 0009 / the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: IBAN is not a valid SM IBAN.'
+    auto_fix:
+      steps:
+      - op: regex_replace
+        pattern: \s+
+        repl: ''
+      - op: upper
+      confidence: low
+  - id: PAY090
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{22}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ARG
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid AR account number (22 digits (CBU))
+    why_it_matters: AR domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (22 digits (CBU)). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected AR format.'
+  - id: PAY091
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{6,10}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - AUS
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid AU account number (6 to 10 digits)
+    why_it_matters: AU domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (6 to 10 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected AU format.'
+  - id: PAY092
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{5,13}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - BRA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid BR account number (5 to 13 digits)
+    why_it_matters: BR domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (5 to 13 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected BR format.'
+  - id: PAY093
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{7,12}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CAN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid CA account number (7 to 12 digits)
+    why_it_matters: CA domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (7 to 12 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CA format.'
+  - id: PAY094
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{8,12}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CHL
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid CL account number (8 to 12 digits)
+    why_it_matters: CL domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (8 to 12 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CL format.'
+  - id: PAY095
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{16,19}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CHN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid CN account number (16 to 19 digits)
+    why_it_matters: CN domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (16 to 19 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CN format.'
+  - id: PAY096
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - COL
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid CO account number (10 to 17 digits)
+    why_it_matters: CO domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 17 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected CO format.'
+  - id: PAY097
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - GHA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid GH account number (10 to 16 digits)
+    why_it_matters: GH domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 16 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected GH format.'
+  - id: PAY098
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{9,12}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - HKG
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid HK account number (9 to 12 digits)
+    why_it_matters: HK domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (9 to 12 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected HK format.'
+  - id: PAY099
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - IDN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid ID account number (10 to 16 digits)
+    why_it_matters: ID domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 16 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected ID format.'
+  - id: PAY100
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{9,18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - IND
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid IN account number (9 to 18 digits)
+    why_it_matters: IN domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (9 to 18 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected IN format.'
+  - id: PAY101
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{7}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - JPN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid JP account number (7 digits)
+    why_it_matters: JP domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (7 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected JP format.'
+  - id: PAY102
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - KEN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid KE account number (10 to 16 digits)
+    why_it_matters: KE domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 16 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected KE format.'
+  - id: PAY103
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - KOR
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid KR account number (10 to 14 digits)
+    why_it_matters: KR domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 14 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected KR format.'
+  - id: PAY104
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{18}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - MEX
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid MX account number (18 digits (CLABE))
+    why_it_matters: MX domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (18 digits (CLABE)). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected MX format.'
+  - id: PAY105
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,16}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - MYS
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid MY account number (10 to 16 digits)
+    why_it_matters: MY domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 16 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected MY format.'
+  - id: PAY106
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - NGA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid NG account number (10 digits (NUBAN))
+    why_it_matters: NG domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 digits (NUBAN)). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected NG format.'
+  - id: PAY107
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{15}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - NZL
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid NZ account number (15 digits (bank+branch+account+suffix))
+    why_it_matters: NZ domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (15 digits (bank+branch+account+suffix)). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected NZ format.'
+  - id: PAY108
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{18,20}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - PER
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid PE account number (18 to 20 digits (CCI))
+    why_it_matters: PE domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (18 to 20 digits (CCI)). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected PE format.'
+  - id: PAY109
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - PHL
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid PH account number (10 to 14 digits)
+    why_it_matters: PH domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 14 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected PH format.'
+  - id: PAY110
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{9,10}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SGP
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid SG account number (9 to 10 digits)
+    why_it_matters: SG domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (9 to 10 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected SG format.'
+  - id: PAY111
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{10,15}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - THA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid TH account number (10 to 15 digits)
+    why_it_matters: TH domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (10 to 15 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected TH format.'
+  - id: PAY112
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{4,17}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - USA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid US account number (4 to 17 digits)
+    why_it_matters: US domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (4 to 17 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected US format.'
+  - id: PAY113
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{8,14}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - VNM
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid VN account number (8 to 14 digits)
+    why_it_matters: VN domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (8 to 14 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected VN format.'
+  - id: PAY114
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: regex_check
+    pattern: ^\d{9,11}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ZAF
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Bank account number is not a valid ZA account number (9 to 11 digits)
+    why_it_matters: ZA domestic bank accounts (when no IBAN is used) follow a fixed numbering convention (9 to 11 digits). An account number outside that shape is a transcription error that the bank will reject.
+    rule_authority: best_practice
+    sap_impact: Bank transfer file is rejected by the bank.
+    fix_map:
+      __other__: Obtain the correct account number from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account number does not match the expected ZA format.'
+  - id: PAY115
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - AUS
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid AU routing/branch code (6-digit BSB)
+    why_it_matters: AU bank routing identifiers follow a fixed format (6-digit BSB). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid AU routing code.'
+  - id: PAY116
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{3}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - BRA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid BR routing/branch code (3-digit bank code)
+    why_it_matters: BR bank routing identifiers follow a fixed format (3-digit bank code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid BR routing code.'
+  - id: PAY117
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{8,9}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CAN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid CA routing/branch code (8 or 9-digit institution+transit number)
+    why_it_matters: CA bank routing identifiers follow a fixed format (8 or 9-digit institution+transit number). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid CA routing code.'
+  - id: PAY118
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{12}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - CHN
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid CN routing/branch code (12-digit CNAPS code)
+    why_it_matters: CN bank routing identifiers follow a fixed format (12-digit CNAPS code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid CN routing code.'
+  - id: PAY119
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - GBR
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid GB routing/branch code (6-digit sort code)
+    why_it_matters: GB bank routing identifiers follow a fixed format (6-digit sort code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid GB routing code.'
+  - id: PAY120
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{3,6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - HKG
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid HK routing/branch code (3 to 6-digit clearing/branch code)
+    why_it_matters: HK bank routing identifiers follow a fixed format (3 to 6-digit clearing/branch code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid HK routing code.'
+  - id: PAY121
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^[A-Z]{4}0[A-Z0-9]{6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - IND
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid IN routing/branch code (11-character IFSC code)
+    why_it_matters: IN bank routing identifiers follow a fixed format (11-character IFSC code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid IN routing code.'
+  - id: PAY122
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{2,3}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - MYS
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid MY routing/branch code (2 or 3-digit bank code)
+    why_it_matters: MY bank routing identifiers follow a fixed format (2 or 3-digit bank code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid MY routing code.'
+  - id: PAY123
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - NZL
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid NZ routing/branch code (6-digit bank-branch number)
+    why_it_matters: NZ bank routing identifiers follow a fixed format (6-digit bank-branch number). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid NZ routing code.'
+  - id: PAY124
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{7}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - SGP
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid SG routing/branch code (7-digit bank+branch code)
+    why_it_matters: SG bank routing identifiers follow a fixed format (7-digit bank+branch code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid SG routing code.'
+  - id: PAY125
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{9}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - USA
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid US routing/branch code (9-digit ABA routing number)
+    why_it_matters: US bank routing identifiers follow a fixed format (9-digit ABA routing number). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid US routing code.'
+  - id: PAY126
+    field: PAYMENTINFO.ROUTING_NUMBER
+    check_class: regex_check
+    pattern: ^\d{6}$
+    applies_when:
+      PAYMENTINFO.BANK_COUNTRY:
+      - ZAF
+      PAYMENTINFO.IBAN:
+        blank: true
+    severity: medium
+    dimension: validity
+    message: Routing number is not a valid ZA routing/branch code (6-digit branch code)
+    why_it_matters: ZA bank routing identifiers follow a fixed format (6-digit branch code). A routing number outside that shape points the payment at the wrong bank or branch, or is rejected outright.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is misrouted to the wrong branch or rejected by the clearing system.
+    fix_map:
+      __other__: Obtain the correct routing/branch code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: routing number ''{PAYMENTINFO.ROUTING_NUMBER}'' is not a valid ZA routing code.'
+  - id: PAY127
+    field: PAYMENTINFO.BIC
+    check_class: regex_check
+    pattern: ^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$
+    severity: high
+    dimension: validity
+    message: BIC/SWIFT code is not a valid 8 or 11-character BIC
+    why_it_matters: A BIC/SWIFT code is 8 or 11 characters — a 4-letter bank code, a 2-letter ISO country code, a 2-character location code and an optional 3-character branch code. A value of the wrong shape is rejected by the clearing network or routed to the wrong bank.
+    rule_authority: best_practice
+    sap_impact: Bank transfer is rejected by the clearing network or misrouted.
+    fix_map:
+      __other__: Obtain the correct BIC/SWIFT code from the employee's bank details and correct it.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: BIC ''{PAYMENTINFO.BIC}'' is not a valid BIC/SWIFT code.'
+    auto_fix:
+      steps:
+      - op: strip
+      - op: upper
+      confidence: low
+  - id: PAY128
+    field: PAYMENTINFO.ACCOUNT_OWNER
+    check_class: null_check
+    applies_when:
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: Payment record has an account number but no account owner name
+    why_it_matters: The bank validates the beneficiary name against the account. Without a recorded account owner, a mismatch between the employee and the actual account holder cannot be checked before the transfer is sent.
+    rule_authority: best_practice
+    sap_impact: Bank rejects the transfer under beneficiary-name matching, or pays an account the employee no longer controls.
+    fix_map:
+      __blank__: Enter the account owner name as held by the bank in the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: has a ACCOUNT_NUMBER but no account owner name.'
+  - id: PAY129
+    field: PAYMENTINFO.ACCOUNT_OWNER
+    check_class: null_check
+    applies_when:
+      PAYMENTINFO.IBAN:
+        populated: true
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        blank: true
+    severity: medium
+    dimension: completeness
+    message: Payment record has an IBAN but no account owner name
+    why_it_matters: The bank validates the beneficiary name against the account. Without a recorded account owner, a mismatch between the employee and the actual account holder cannot be checked before the transfer is sent.
+    rule_authority: best_practice
+    sap_impact: Bank rejects the transfer under beneficiary-name matching, or pays an account the employee no longer controls.
+    fix_map:
+      __blank__: Enter the account owner name as held by the bank in the SuccessFactors payment information.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: has a IBAN but no account owner name.'
+  - id: PAY130
+    field: PAYMENTINFO.EXTERNAL_CODE
+    check_class: null_check
+    severity: medium
+    dimension: completeness
+    message: Payment information record has no external code
+    why_it_matters: The external code is the key SuccessFactors and the payroll/banking interface use to match a payment record across systems. Without it, the record cannot be reconciled after extraction.
+    rule_authority: best_practice
+    sap_impact: Payment record cannot be matched back to its source during reconciliation.
+    fix_map:
+      __blank__: Investigate why the payment information record has no external code in SuccessFactors.
+    record_fix_template: Payment record for {PAYMENTINFO.USERID} has no external code.
+  - id: PAY131
+    field: PAYMENTINFO.EFFECTIVE_DATE
+    check_class: null_check
+    severity: high
+    dimension: completeness
+    message: Payment information record has no effective date
+    why_it_matters: The effective date determines which payment instruction applies to a given pay period. Without it, payroll cannot tell which bank details are current.
+    rule_authority: best_practice
+    sap_impact: Payroll cannot determine which payment instruction is current; pay may go to the wrong account.
+    fix_map:
+      __blank__: Enter the effective date for the payment information record in SuccessFactors.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information record has no effective date.'
+  - id: PAY132
+    field: PAYMENTINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYMENTINFO.EFFECTIVE_DATE` - @today).dt.days > 365
+    require_populated: true
+    severity: low
+    dimension: validity
+    message: Payment information effective date is more than a year in the future
+    why_it_matters: A payment instruction effective more than a year ahead is unusual and is often a keying error (wrong century, swapped day/month) rather than a planned future change.
+    rule_authority: best_practice
+    sap_impact: The current payment instruction may be misidentified as not yet effective, and pay is sent to stale bank details.
+    fix_map:
+      __other__: Confirm the intended effective date with the employee/HR and correct it in SuccessFactors.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment information effective date {PAYMENTINFO.EFFECTIVE_DATE} is more than a year in the future.'
+  - id: PAY133
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: uniqueness_check
+    fields:
+    - PAYMENTINFO.USERID
+    - PAYMENTINFO.EFFECTIVE_DATE
+    - PAYMENTINFO.ACCOUNT_NUMBER
+    applies_when:
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        populated: true
+    severity: medium
+    dimension: uniqueness
+    message: Employee has more than one payment instruction with the same effective date and account number
+    why_it_matters: The same employee, effective date and account number should appear once. A duplicate is usually a double load of the same payment instruction.
+    rule_authority: best_practice
+    sap_impact: Duplicate payment instructions confuse which record is authoritative and can cause a double transfer.
+    fix_map:
+      __other__: Identify and remove the duplicate payment information record in SuccessFactors.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: duplicate payment instruction for effective date {PAYMENTINFO.EFFECTIVE_DATE}.'
+  - id: PAY134
+    field: PAYMENTINFO.ACCOUNT_OWNER
+    check_class: regex_check
+    pattern: ^(?!\d+$).+$
+    severity: low
+    dimension: validity
+    message: Account owner name is purely numeric
+    why_it_matters: The account owner is a person or company name. A value made only of digits is almost always a different field (an account or ID number) copied into the wrong column.
+    rule_authority: best_practice
+    sap_impact: Beneficiary-name matching at the bank fails and the transfer is rejected.
+    fix_map:
+      __other__: Correct the account owner name in the SuccessFactors payment information record.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: account owner ''{PAYMENTINFO.ACCOUNT_OWNER}'' is purely numeric.'
+  - id: PAY135
+    field: PAYMENTINFO.EFFECTIVE_DATE
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: (`PAYMENTINFO.EFFECTIVE_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 90
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Payment instruction becomes effective more than 90 days after the employment ended
+    why_it_matters: A new payment instruction set up long after an employee left is unexpected; it usually means the employment end date is wrong or the record belongs to a rehire that was not linked correctly.
+    rule_authority: best_practice
+    sap_impact: Payments may be directed by a stale or incorrectly-linked payment record after termination.
+    fix_map:
+      __other__: Confirm the employment end date and the payment record's effective date with HR; correct the wrong one.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment instruction effective {PAYMENTINFO.EFFECTIVE_DATE}, employment ended {EMPEMPLOYMENT.END_DATE}.'
+  - id: PAY136
+    field: PAYMENTINFO.ACCOUNT_NUMBER
+    check_class: uniqueness_check
+    fields:
+    - PAYMENTINFO.ACCOUNT_NUMBER
+    unique_across: PAYMENTINFO.USERID
+    applies_when:
+      PAYMENTINFO.ACCOUNT_NUMBER:
+        populated: true
+    severity: high
+    dimension: uniqueness
+    message: The same account number is used by more than one employee
+    why_it_matters: A bank account normally belongs to one employee. The same account number used by two different employees is either a shared/household account that needs review, or a sign that pay is being redirected. An employee's own repeated effective-dated history for the same account is not a duplicate and is excluded.
+    rule_authority: best_practice
+    sap_impact: Pay for one employee may be deposited into another employee's account.
+    fix_map:
+      __other__: Confirm with both employees and HR whether the shared account is legitimate; correct the record that is wrong.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment account is shared by more than one employee.'
+  - id: PAY137
+    field: PAYMENTINFO.IBAN
+    check_class: uniqueness_check
+    fields:
+    - PAYMENTINFO.IBAN
+    unique_across: PAYMENTINFO.USERID
+    applies_when:
+      PAYMENTINFO.IBAN:
+        populated: true
+    severity: high
+    dimension: uniqueness
+    message: The same iban is used by more than one employee
+    why_it_matters: A bank account normally belongs to one employee. The same account number used by two different employees is either a shared/household account that needs review, or a sign that pay is being redirected. An employee's own repeated effective-dated history for the same IBAN is not a duplicate and is excluded.
+    rule_authority: best_practice
+    sap_impact: Pay for one employee may be deposited into another employee's account.
+    fix_map:
+      __other__: Confirm with both employees and HR whether the shared account is legitimate; correct the record that is wrong.
+    record_fix_template: Payment account held by employee {PAYMENTINFO.USERID} is shared by more than one employee.
+  - id: PAY138
+    field: PERINFO.NATIONAL_ID
+    check_class: null_check
+    grain: PAYRESULT
+    severity: high
+    dimension: completeness
+    message: Employee with a payroll result has no national ID on file
+    why_it_matters: Statutory payroll reporting (tax, social insurance) requires the employee's national ID. Without it, filings for this employee cannot be produced.
+    rule_authority: best_practice
+    sap_impact: Statutory tax/social-insurance filings for the employee are blocked or rejected by the authority.
+    fix_map:
+      __blank__: Obtain and enter the employee's national ID in SuccessFactors Personal Information.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: no national ID on file despite having a payroll result.'
+  - id: PAY139
+    field: PERINFO.NATIONAL_ID_COUNTRY
+    check_class: null_check
+    applies_when:
+      PERINFO.NATIONAL_ID:
+        populated: true
+    severity: medium
+    dimension: completeness
+    message: National ID is recorded but its issuing country is blank
+    why_it_matters: A national ID is only meaningful together with the country that issued it; the same digits mean different things in different countries.
+    rule_authority: best_practice
+    sap_impact: Tax/social-insurance filings cannot determine which country's authority the ID belongs to.
+    fix_map:
+      __blank__: Enter the issuing country for the national ID in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID but no issuing country recorded.
+  - id: PAY140
+    field: PERINFO.DATE_OF_DEATH
+    check_class: cross_field_check
+    grain: PAYRESULT
+    fail_when: '`PERINFO.DATE_OF_DEATH`.notna() & (`PAYRESULT.PAY_DATE` > `PERINFO.DATE_OF_DEATH`)'
+    severity: critical
+    dimension: consistency
+    message: Employee was paid after their recorded date of death
+    why_it_matters: A payroll result dated after the recorded date of death is either a data error in the date of death or a fraudulent/erroneous payment that must stop immediately.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment is made to a deceased employee's account; recovery and compliance exposure.
+    fix_map:
+      __other__: Stop payment immediately and verify the date of death and the payroll result with HR/payroll.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid on {PAYRESULT.PAY_DATE}, after recorded date of death {PERINFO.DATE_OF_DEATH}.'
+  - id: PAY141
+    field: PERINFO.DATE_OF_DEATH
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: '`PERINFO.DATE_OF_DEATH`.notna() & (`PAYMENTINFO.EFFECTIVE_DATE` > `PERINFO.DATE_OF_DEATH`)'
+    severity: critical
+    dimension: consistency
+    message: Payment instruction becomes effective after the employee's recorded date of death
+    why_it_matters: A payment instruction set up to take effect after the recorded date of death points to either a wrong date of death or an attempt to redirect pay after the employee has died.
+    rule_authority: sap_hard_constraint
+    sap_impact: Payment is made to a deceased employee's account; recovery and compliance exposure.
+    fix_map:
+      __other__: Stop payment immediately and verify the date of death and the payment instruction with HR/payroll.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment instruction effective {PAYMENTINFO.EFFECTIVE_DATE}, after recorded date of death {PERINFO.DATE_OF_DEATH}.'
+  - id: PAY142
+    field: PERINFO.NATIONAL_ID_COUNTRY
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: '`PERINFO.NATIONAL_ID_COUNTRY` != `PAYMENTINFO.BANK_COUNTRY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: National ID issuing country differs from the bank country used for payment
+    why_it_matters: This is not necessarily wrong (expatriates and cross-border workers exist), but it is unusual enough to be worth a tax-residency / banking review.
+    rule_authority: best_practice
+    sap_impact: Potential tax-residency or withholding mismatch that only surfaces at year-end reporting.
+    fix_map:
+      __other__: Confirm the employee's tax residency and banking arrangement with HR/payroll; no automatic correction.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: national ID country {PERINFO.NATIONAL_ID_COUNTRY} differs from bank country {PAYMENTINFO.BANK_COUNTRY}.'
+  - id: PAY143
+    field: PAYMENTINFO.BANK_COUNTRY
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: '`PAYMENTINFO.BANK_COUNTRY` != `FOCOMPANY.COUNTRY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Bank country differs from the employee's legal entity country
+    why_it_matters: Most employees bank in the same country as their employing legal entity. A different bank country is not always wrong (cross-border payroll exists) but is worth confirming.
+    rule_authority: best_practice
+    sap_impact: Cross-border payment may incur extra bank fees or be blocked by foreign-exchange controls.
+    fix_map:
+      __other__: Confirm the cross-border payment arrangement with payroll; no automatic correction.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: bank country {PAYMENTINFO.BANK_COUNTRY} differs from legal entity country {FOCOMPANY.COUNTRY}.'
+  - id: PAY144
+    field: PAYMENTINFO.CURRENCY
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: '`PAYMENTINFO.CURRENCY` != `FOCOMPANY.CURRENCY`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: Payment instruction currency differs from the legal entity's default currency
+    why_it_matters: A payment instruction normally pays out in the legal entity's currency. A different currency often means the employee's legal entity or the payment mapping is wrong.
+    rule_authority: best_practice
+    sap_impact: Payment is converted at an unplanned exchange rate, or the bank transfer fails currency validation.
+    fix_map:
+      __other__: Confirm the employee's legal entity and the payment currency mapping; correct the wrong one.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: payment currency {PAYMENTINFO.CURRENCY}, legal entity uses {FOCOMPANY.CURRENCY}.'
+  - id: PAY145
+    field: PERINFO.DATE_OF_BIRTH
+    check_class: cross_field_check
+    grain: PAYRESULT
+    fail_when: (`PAYRESULT.PAY_DATE` - `PERINFO.DATE_OF_BIRTH`).dt.days < (16 * 365.25)
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Employee was under 16 years old on the payroll result's pay date
+    why_it_matters: Paying an employee who was under the statutory minimum working age at the time of payment is either a date-of-birth data error or a compliance breach.
+    rule_authority: best_practice
+    sap_impact: Minimum-working-age compliance exposure, or a wrong date of birth flows into statutory reporting.
+    fix_map:
+      __other__: Verify the employee's date of birth with HR and correct it, or escalate as a compliance issue.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: under 16 years old on pay date {PAYRESULT.PAY_DATE}.'
+  - id: PAY146
+    field: PERINFO.DATE_OF_BIRTH
+    check_class: null_check
+    grain: PAYRESULT
+    severity: high
+    dimension: completeness
+    message: Employee with a payroll result has no date of birth on file
+    why_it_matters: Date of birth drives statutory age-related payroll rules (minimum wage bands, pension auto-enrolment, retirement) in most countries.
+    rule_authority: best_practice
+    sap_impact: Age-related statutory payroll rules cannot be evaluated for this employee.
+    fix_map:
+      __blank__: Obtain and enter the employee's date of birth in SuccessFactors Personal Information.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: no date of birth on file despite having a payroll result.'
+  - id: PAY147
+    field: PERINFO.NATIONALITY
+    check_class: null_check
+    grain: PAYRESULT
+    severity: medium
+    dimension: completeness
+    message: Employee with a payroll result has no nationality on file
+    why_it_matters: Nationality is used for work-permit, tax-treaty and statutory reporting checks alongside payroll.
+    rule_authority: best_practice
+    sap_impact: Work-permit and tax-treaty checks for the employee cannot be evaluated.
+    fix_map:
+      __blank__: Obtain and enter the employee's nationality in SuccessFactors Personal Information.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: no nationality on file despite having a payroll result.'
+  - id: PAY148
+    field: PERINFO.NATIONAL_ID_CARD_TYPE
+    check_class: null_check
+    applies_when:
+      PERINFO.NATIONAL_ID:
+        populated: true
+    severity: low
+    dimension: completeness
+    message: National ID is recorded but its card/document type is blank
+    why_it_matters: The same ID value can be a passport, a national ID card or a tax number depending on the document type; without it the ID cannot be validated or classified correctly.
+    rule_authority: best_practice
+    sap_impact: The national ID cannot be validated or routed to the correct statutory filing.
+    fix_map:
+      __blank__: Enter the national ID document type in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID but no document type recorded.
+  - id: PAY149
+    field: PERINFO.NATIONAL_ID
+    check_class: uniqueness_check
+    grain: PERINFO
+    fields:
+    - PERINFO.NATIONAL_ID
+    - PERINFO.NATIONAL_ID_COUNTRY
+    applies_when:
+      PERINFO.NATIONAL_ID:
+        populated: true
+    severity: high
+    dimension: uniqueness
+    message: The same national ID and country is recorded for more than one person
+    why_it_matters: A national ID is unique to one person within its issuing country. The same value on more than one person record is a data-entry error or an identity-fraud indicator.
+    rule_authority: best_practice
+    sap_impact: Statutory filings and payroll tax calculations may be merged or misattributed between two different employees.
+    fix_map:
+      __other__: Investigate which person record has the correct national ID and correct the other.
+    record_fix_template: National ID held by person {PERINFO.PERSON_ID} ({PERINFO.NATIONAL_ID_COUNTRY}) is recorded for more than one person.
+  - id: PAY150
+    field: USERACCOUNT.STATUS
+    check_class: cross_field_check
+    grain: PAYRESULT
+    fail_when: (`USERACCOUNT.STATUS` == 'I') & (`PAYRESULT.GROSS_PAY` > 0) & (`EMPEMPLOYMENT.END_DATE`.isna() | ((`PAYRESULT.PAY_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 30))
+    severity: high
+    dimension: consistency
+    message: Employee has a payroll result with gross pay although their user account is inactive
+    why_it_matters: An inactive SuccessFactors user account normally means the employee has left or is suspended. A positive gross pay more than 30 days after their recorded employment end date (or with no end date recorded at all) suggests the account was deactivated without stopping pay, or pay continued after it should have stopped. A final pay run within 30 days of termination is excluded as expected final-pay processing.
+    rule_authority: best_practice
+    sap_impact: Overpayment to a leaver/suspended employee that must be recovered.
+    fix_map:
+      __other__: Confirm the employee's status with HR/payroll and stop pay if the account is correctly inactive.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: user account is inactive but has a nonzero gross pay.'
+  - id: PAY151
+    field: USERACCOUNT.STATUS
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: (`USERACCOUNT.STATUS` == 'I') & (`PAYMENTINFO.ACCOUNT_NUMBER`.notna() | `PAYMENTINFO.IBAN`.notna())
+    severity: medium
+    dimension: consistency
+    message: Employee has a payment instruction on file although their user account is inactive
+    why_it_matters: A payment instruction left on file for an inactive user account is a leaver whose bank details were never removed, creating risk of a payment being sent in error. (This check does not filter to the latest effective-dated record; it flags any payment instruction on file, current or historic.)
+    rule_authority: best_practice
+    sap_impact: Risk of a payment being sent to a leaver's account in error.
+    fix_map:
+      __other__: Confirm with HR whether the account should be inactive; if so, remove or delimit the payment instruction.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: user account is inactive but has a payment instruction on file.'
+  - id: PAY152
+    field: USERACCOUNT.HIRE_DATE
+    check_class: cross_field_check
+    grain: EMPEMPLOYMENT
+    fail_when: '`USERACCOUNT.HIRE_DATE` > `EMPEMPLOYMENT.START_DATE`'
+    require_populated: true
+    severity: low
+    dimension: consistency
+    message: User account hire date is later than the employment start date
+    why_it_matters: HIRE_DATE records the employee's original hire, while each EMPEMPLOYMENT record has its own START_DATE — a rehire legitimately opens a new, later EMPEMPLOYMENT segment without changing the original HIRE_DATE, so HIRE_DATE before (or equal to) START_DATE is expected and not an error. HIRE_DATE after a segment's START_DATE is impossible for a genuine original hire and means one of the two dates was mis-entered.
+    rule_authority: best_practice
+    sap_impact: Service-date-dependent calculations (seniority pay, leave accrual) may use the wrong start date.
+    fix_map:
+      __other__: Confirm the correct hire/start date with HR and align the two records.
+    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: user account hire date {USERACCOUNT.HIRE_DATE} is later than employment start date {EMPEMPLOYMENT.START_DATE}.'
+  - id: PAY153
+    field: USERACCOUNT.EMAIL
+    check_class: null_check
+    grain: PAYMENTINFO
+    severity: low
+    dimension: completeness
+    message: Employee with a payment instruction has no email address on their user account
+    why_it_matters: Payment and payslip notifications are sent to the employee's email address; without one, the employee cannot be notified of a payment or a problem with it.
+    rule_authority: best_practice
+    sap_impact: Payment/payslip notifications cannot be delivered to the employee.
+    fix_map:
+      __blank__: Obtain and enter the employee's email address in SuccessFactors.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: no email address on the user account.'
+  - id: PAY154
+    field: USERACCOUNT.STATUS
+    check_class: cross_field_check
+    grain: EMPEMPLOYMENT
+    fail_when: (`USERACCOUNT.STATUS` == 'A') & (`EMPEMPLOYMENT.END_DATE`.notna()) & (`EMPEMPLOYMENT.END_DATE` < @today)
+    severity: medium
+    dimension: consistency
+    message: User account is still active although the employment end date has passed
+    why_it_matters: Once the employment end date has passed, the SuccessFactors user account should normally be deactivated. An account left active is a security and payroll-continuity risk.
+    rule_authority: best_practice
+    sap_impact: A former employee may retain system access, and pay may continue past the intended leave date.
+    fix_map:
+      __other__: Confirm the termination with HR and deactivate the user account.
+    record_fix_template: 'Employee {EMPEMPLOYMENT.USERID}: user account is still active, employment ended {EMPEMPLOYMENT.END_DATE}.'
+  - id: PAY155
+    field: POSITION.VACANT
+    check_class: cross_field_check
+    grain: PAYRESULT
+    fail_when: (`POSITION.VACANT`.str.lower() == 'true') & (`PAYRESULT.GROSS_PAY` > 0) & ((@today - `PAYRESULT.PAY_DATE`).dt.days <= 45)
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: Recent payroll result has gross pay for a position marked vacant
+    why_it_matters: A position marked vacant should have no incumbent being paid against it. Gross pay against a vacant position in the last 45 days means either the position was not updated after the employee moved/left, or the pay is against the wrong position. Scoped to recent pay results because ``POSITION.VACANT`` reflects current status, not the status as of the pay date, so older results are not reliably comparable.
+    rule_authority: best_practice
+    sap_impact: Headcount and vacancy reporting disagree with payroll cost; budget vs actual is wrong.
+    fix_map:
+      __other__: Confirm the position assignment with HR and correct the vacant flag or the payroll assignment.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid against position {POSITION.CODE}, which is marked vacant.'
+  - id: PAY156
+    field: POSITION.EFFECTIVE_STATUS
+    check_class: cross_field_check
+    grain: PAYRESULT
+    fail_when: (`POSITION.EFFECTIVE_STATUS` == 'I') & (`PAYRESULT.GROSS_PAY` > 0) & ((@today - `PAYRESULT.PAY_DATE`).dt.days <= 45)
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Recent payroll result has gross pay for a position that is inactive
+    why_it_matters: An inactive position should not be carrying an active, paid incumbent. This usually means the position was deactivated without reassigning the employee. Scoped to recent pay results because ``POSITION.EFFECTIVE_STATUS`` reflects current status, not the status as of the pay date, so older results are not reliably comparable.
+    rule_authority: best_practice
+    sap_impact: Organizational structure reporting is inconsistent with actual payroll cost.
+    fix_map:
+      __other__: Confirm the position status with HR and either reactivate the position or reassign the employee.
+    record_fix_template: 'Employee {PAYRESULT.USERID}: paid against position {POSITION.CODE}, which is inactive.'
+  - id: PAY159
+    field: POSITION.VACANT
+    check_class: cross_field_check
+    grain: PAYMENTINFO
+    fail_when: (`POSITION.VACANT`.str.lower() == 'true') & (`PAYMENTINFO.ACCOUNT_NUMBER`.notna() | `PAYMENTINFO.IBAN`.notna())
+    severity: high
+    dimension: consistency
+    message: A payment instruction is on file for a position marked vacant
+    why_it_matters: A vacant position should have no bank payment instruction on file tied to it. This is usually a leaver whose position was vacated but whose payment instruction was never removed. (This check does not filter to the latest effective-dated record; it flags any payment instruction on file, current or historic.)
+    rule_authority: best_practice
+    sap_impact: Risk of a payment being sent in error against a vacant position.
+    fix_map:
+      __other__: Confirm the position assignment with HR and remove or reassign the payment instruction.
+    record_fix_template: 'Employee {PAYMENTINFO.USERID}: has a payment instruction on file against position {POSITION.CODE}, which is marked vacant.'
+  - id: PAY160
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - ARG
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid AR identifier (11-digit CUIL)
+    why_it_matters: AR national identifiers follow a fixed format (11-digit CUIL). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in AR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in AR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid AR identifier.
+  - id: PAY161
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{10}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - AUT
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid AT identifier (10-digit Sozialversicherungsnummer)
+    why_it_matters: AT national identifiers follow a fixed format (10-digit Sozialversicherungsnummer). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in AT and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in AT that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid AT identifier.
+  - id: PAY162
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{8,9}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - AUS
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid AU identifier (8 or 9-digit Tax File Number)
+    why_it_matters: AU national identifiers follow a fixed format (8 or 9-digit Tax File Number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in AU and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in AU that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid AU identifier.
+  - id: PAY163
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - BEL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid BE identifier (11-digit INSZ/BIS number)
+    why_it_matters: BE national identifiers follow a fixed format (11-digit INSZ/BIS number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in BE and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in BE that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid BE identifier.
+  - id: PAY164
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{10}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - BGR
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid BG identifier (10-digit EGN)
+    why_it_matters: BG national identifiers follow a fixed format (10-digit EGN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in BG and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in BG that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid BG identifier.
+  - id: PAY165
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - BRA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid BR identifier (11-digit CPF)
+    why_it_matters: BR national identifiers follow a fixed format (11-digit CPF). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in BR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in BR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid BR identifier.
+  - id: PAY166
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - CAN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid CA identifier (9-digit Social Insurance Number)
+    why_it_matters: CA national identifiers follow a fixed format (9-digit Social Insurance Number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in CA and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in CA that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid CA identifier.
+  - id: PAY167
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^756\.?\d{4}\.?\d{4}\.?\d{2}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - CHE
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid CH identifier (13-digit AHV number (756.####.####.##))
+    why_it_matters: CH national identifiers follow a fixed format (13-digit AHV number (756.####.####.##)). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in CH and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in CH that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid CH identifier.
+  - id: PAY168
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{7,8}[\dKk]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - CHL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid CL identifier (7 or 8 digits plus RUT check digit)
+    why_it_matters: CL national identifiers follow a fixed format (7 or 8 digits plus RUT check digit). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in CL and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in CL that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid CL identifier.
+  - id: PAY169
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{17}[\dX]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - CHN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid CN identifier (18-character resident ID number)
+    why_it_matters: CN national identifiers follow a fixed format (18-character resident ID number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in CN and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in CN that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid CN identifier.
+  - id: PAY170
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9,10}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - CZE
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid CZ identifier (9 or 10-digit birth number)
+    why_it_matters: CZ national identifiers follow a fixed format (9 or 10-digit birth number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in CZ and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in CZ that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid CZ identifier.
+  - id: PAY171
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - DEU
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid DE identifier (11-digit Steuer-ID)
+    why_it_matters: DE national identifiers follow a fixed format (11-digit Steuer-ID). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in DE and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in DE that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid DE identifier.
+  - id: PAY172
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{10}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - DNK
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid DK identifier (10-digit CPR)
+    why_it_matters: DK national identifiers follow a fixed format (10-digit CPR). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in DK and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in DK that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid DK identifier.
+  - id: PAY173
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{8}[A-Z]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - ESP
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid ES identifier (8-digit DNI/NIF plus check letter)
+    why_it_matters: ES national identifiers follow a fixed format (8-digit DNI/NIF plus check letter). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in ES and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in ES that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid ES identifier.
+  - id: PAY174
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{6}[A-Z+-]\d{3}[A-Z0-9]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - FIN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid FI identifier (11-character HETU)
+    why_it_matters: FI national identifiers follow a fixed format (11-character HETU). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in FI and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in FI that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid FI identifier.
+  - id: PAY175
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{13,15}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - FRA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid FR identifier (13 to 15-digit INSEE number)
+    why_it_matters: FR national identifiers follow a fixed format (13 to 15-digit INSEE number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in FR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in FR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid FR identifier.
+  - id: PAY176
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^[A-Z]{2}\d{6}[A-Z]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - GBR
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid GB identifier (National Insurance number)
+    why_it_matters: GB national identifiers follow a fixed format (National Insurance number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in GB and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in GB that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid GB identifier.
+  - id: PAY177
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - GRC
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid GR identifier (11-digit AMKA)
+    why_it_matters: GR national identifiers follow a fixed format (11-digit AMKA). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in GR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in GR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid GR identifier.
+  - id: PAY178
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - HRV
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid HR identifier (11-digit OIB)
+    why_it_matters: HR national identifiers follow a fixed format (11-digit OIB). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in HR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in HR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid HR identifier.
+  - id: PAY179
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - HUN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid HU identifier (11-digit personal ID number)
+    why_it_matters: HU national identifiers follow a fixed format (11-digit personal ID number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in HU and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in HU that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid HU identifier.
+  - id: PAY180
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{16}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - IDN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid ID identifier (16-digit NIK)
+    why_it_matters: ID national identifiers follow a fixed format (16-digit NIK). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in ID and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in ID that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid ID identifier.
+  - id: PAY181
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{7}[A-Z]{1,2}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - IRL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid IE identifier (7 digits plus 1-2 letters PPS number)
+    why_it_matters: IE national identifiers follow a fixed format (7 digits plus 1-2 letters PPS number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in IE and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in IE that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid IE identifier.
+  - id: PAY182
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^[A-Z]{5}\d{4}[A-Z]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - IND
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid IN identifier (10-character PAN)
+    why_it_matters: IN national identifiers follow a fixed format (10-character PAN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in IN and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in IN that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid IN identifier.
+  - id: PAY183
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^[A-Z0-9]{16}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - ITA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid IT identifier (16-character Codice Fiscale)
+    why_it_matters: IT national identifiers follow a fixed format (16-character Codice Fiscale). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in IT and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in IT that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid IT identifier.
+  - id: PAY184
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{12}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - JPN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid JP identifier (12-digit My Number)
+    why_it_matters: JP national identifiers follow a fixed format (12-digit My Number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in JP and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in JP that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid JP identifier.
+  - id: PAY185
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{7,8}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - KEN
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid KE identifier (7 or 8-digit national ID)
+    why_it_matters: KE national identifiers follow a fixed format (7 or 8-digit national ID). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in KE and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in KE that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid KE identifier.
+  - id: PAY186
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{13}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - KOR
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid KR identifier (13-digit resident registration number)
+    why_it_matters: KR national identifiers follow a fixed format (13-digit resident registration number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in KR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in KR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid KR identifier.
+  - id: PAY187
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^[A-Z0-9]{18}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - MEX
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid MX identifier (18-character CURP)
+    why_it_matters: MX national identifiers follow a fixed format (18-character CURP). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in MX and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in MX that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid MX identifier.
+  - id: PAY188
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{12}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - MYS
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid MY identifier (12-digit NRIC number)
+    why_it_matters: MY national identifiers follow a fixed format (12-digit NRIC number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in MY and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in MY that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid MY identifier.
+  - id: PAY189
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - NGA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid NG identifier (11-digit NIN)
+    why_it_matters: NG national identifiers follow a fixed format (11-digit NIN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in NG and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in NG that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid NG identifier.
+  - id: PAY190
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - NLD
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid NL identifier (9-digit BSN)
+    why_it_matters: NL national identifiers follow a fixed format (9-digit BSN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in NL and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in NL that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid NL identifier.
+  - id: PAY191
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - NOR
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid NO identifier (11-digit Fødselsnummer)
+    why_it_matters: NO national identifiers follow a fixed format (11-digit Fødselsnummer). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in NO and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in NO that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid NO identifier.
+  - id: PAY192
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{8,9}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - NZL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid NZ identifier (8 or 9-digit IRD number)
+    why_it_matters: NZ national identifiers follow a fixed format (8 or 9-digit IRD number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in NZ and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in NZ that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid NZ identifier.
+  - id: PAY193
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9,12}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - PHL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid PH identifier (9 to 12-digit TIN)
+    why_it_matters: PH national identifiers follow a fixed format (9 to 12-digit TIN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in PH and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in PH that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid PH identifier.
+  - id: PAY194
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - POL
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid PL identifier (11-digit PESEL)
+    why_it_matters: PL national identifiers follow a fixed format (11-digit PESEL). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in PL and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in PL that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid PL identifier.
+  - id: PAY195
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - PRT
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid PT identifier (9-digit NIF)
+    why_it_matters: PT national identifiers follow a fixed format (9-digit NIF). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in PT and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in PT that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid PT identifier.
+  - id: PAY196
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{13}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - ROU
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid RO identifier (13-digit CNP)
+    why_it_matters: RO national identifiers follow a fixed format (13-digit CNP). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in RO and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in RO that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid RO identifier.
+  - id: PAY197
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{10,12}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - SWE
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid SE identifier (10 or 12-digit Personnummer)
+    why_it_matters: SE national identifiers follow a fixed format (10 or 12-digit Personnummer). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in SE and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in SE that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid SE identifier.
+  - id: PAY198
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^[A-Z]\d{7}[A-Z]$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - SGP
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid SG identifier (NRIC/FIN number)
+    why_it_matters: SG national identifiers follow a fixed format (NRIC/FIN number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in SG and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in SG that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid SG identifier.
+  - id: PAY199
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{13}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - THA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid TH identifier (13-digit national ID)
+    why_it_matters: TH national identifiers follow a fixed format (13-digit national ID). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in TH and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in TH that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid TH identifier.
+  - id: PAY200
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{11}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - TUR
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid TR identifier (11-digit TC Kimlik number)
+    why_it_matters: TR national identifiers follow a fixed format (11-digit TC Kimlik number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in TR and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in TR that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid TR identifier.
+  - id: PAY201
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{3}-?\d{2}-?\d{4}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - USA
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid US identifier (9-digit SSN)
+    why_it_matters: US national identifiers follow a fixed format (9-digit SSN). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in US and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in US that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid US identifier.
+  - id: PAY202
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{9}$|^\d{12}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - VNM
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid VN identifier (9 or 12-digit national ID)
+    why_it_matters: VN national identifiers follow a fixed format (9 or 12-digit national ID). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in VN and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in VN that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid VN identifier.
+  - id: PAY203
+    field: PERINFO.NATIONAL_ID
+    check_class: regex_check
+    pattern: ^\d{13}$
+    applies_when:
+      PERINFO.NATIONAL_ID_COUNTRY:
+      - ZAF
+    severity: medium
+    dimension: validity
+    message: National ID is not a valid ZA identifier (13-digit ID number)
+    why_it_matters: ZA national identifiers follow a fixed format (13-digit ID number). An ID outside that shape cannot be used for statutory tax/social-insurance reporting in ZA and usually indicates a transcription error.
+    rule_authority: best_practice
+    sap_impact: Statutory filings in ZA that rely on this identifier are rejected or mismatched.
+    fix_map:
+      __other__: Confirm the correct national ID with the employee and correct it in SuccessFactors Personal Information.
+    record_fix_template: Employee has a national ID that is not a valid ZA identifier.
+
+  - id: PAY204
+    field: PAYRESULT.NET_PAY
+    check_class: cross_field_check
+    fail_when: "`PAYRESULT.NET_PAY` < 0"
+    require_populated: true
+    severity: high
+    dimension: accuracy
+    message: Net pay is negative — payroll result cannot be paid out as-is
+    why_it_matters: >-
+      NET_PAY is the amount actually disbursed to the employee. A negative value means
+      deductions and tax exceeded gross pay, which is either a genuine over-deduction
+      situation needing manual handling or a calculation error upstream. Either way it
+      must not reach the bank payment file unchanged.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file cannot process a negative disbursement. GL posting for this
+      payroll result is suspended pending manual review.
+    fix_map:
+      __other__: >-
+        Net pay of {actual_value} is negative. Review the payroll calculation (gross pay,
+        tax, deductions) via Payroll Control Center before releasing this result.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: NET_PAY is negative. Review calculation via
+      Payroll Control Center before release.
+
+  # PAY205 deleted (Round 3): exact duplicate of PAY027 — same gross/net/tax/deductions
+  # reconciliation identity, restated with commuted terms (A-B-C-D vs A-(D+B+C)), same
+  # 0.01 tolerance, same require_populated gate. No export layout distinguishes them.
+
+  # PAY206 deleted (Round 2): freshness_check is per-row only — it has no "latest
+  # record per group" mode — so a rule on PAYMENTINFO.EFFECTIVE_DATE flagged every
+  # historical (superseded) PAYMENTINFO record older than 3 years, not just stale
+  # current bank details, which is a different and much larger population than
+  # intended. The check type cannot express "current record per employee only", so
+  # per the fix-round-2 ruling this rule is deleted rather than shipped with that
+  # false-finding behaviour.
+
+  - id: PAY207
+    field: PAYMENTINFO.EFFECTIVE_DATE
+    check_class: uniqueness_check
+    fields:
+    - PAYMENTINFO.USERID
+    - PAYMENTINFO.PAY_TYPE
+    - PAYMENTINFO.EFFECTIVE_DATE
+    applies_when:
+      PAYMENTINFO.PERCENT:
+        blank: true
+      PAYMENTINFO.AMOUNT:
+        blank: true
+    severity: high
+    dimension: consistency
+    message: More than one full (non-split) payment information record for the same employee, pay type and effective date
+    why_it_matters: >-
+      PAYMENTINFO has no end date — each record is effective from its EFFECTIVE_DATE
+      until superseded. A legitimate split payment has multiple PAYMENTINFO records
+      for the same employee/pay type/effective date, each carrying its own PERCENT or
+      AMOUNT share of net pay — that is by design (PaymentInformationDetailV3 supports
+      splitting pay across accounts) and must not be flagged. This check is scoped to
+      records with no PERCENT and no AMOUNT (i.e. not part of a split): two of those
+      for the same employee, pay type and effective date create a genuinely ambiguous
+      split that the payroll engine cannot resolve to a single authoritative record.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file may use the wrong account for this pay type, or the payment
+      split percentage/amount calculation becomes indeterminate.
+    fix_map:
+      __other__: >-
+        Duplicate effective-dated payment record for this employee and pay type. Correct
+        or remove the superseded record via Employee Central Payment Information.
+    record_fix_template: >-
+      Payment record {PAYMENTINFO.USERID}: duplicate EFFECTIVE_DATE for pay type
+      {PAYMENTINFO.PAY_TYPE}. Correct or remove the superseded record.
+
+  - id: PAY208
+    field: PAYMENTINFO.PERCENT
+    check_class: cross_field_check
+    fail_when: "(`PAYMENTINFO.PERCENT` < 0) | (`PAYMENTINFO.PERCENT` > 100)"
+    require_populated: true
+    severity: critical
+    dimension: validity
+    message: Payment split percent must be between 0 and 100
+    why_it_matters: >-
+      PERCENT expresses the share of net pay routed to this account. A value outside
+      0-100 is not a valid proportion and causes the bank payment split calculation to
+      produce a nonsensical disbursement amount.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file split calculation fails or produces an incorrect disbursement
+      amount for this account.
+    fix_map:
+      __other__: >-
+        Payment split percent {actual_value} is outside the valid 0-100 range. Correct
+        via Employee Central Payment Information.
+    record_fix_template: >-
+      Payment record {PAYMENTINFO.USERID}: PERCENT {actual_value} is outside 0-100.
+      Correct via Employee Central Payment Information.
+
+  # PAY209 deleted (Round 2): exact duplicate of PAY127 (same field, same BIC format
+  # regex) — every malformed BIC was reported twice. See PAY216 for the restored
+  # BIC-country cross-check.
+  # PAY210 deleted (Round 2): hard-coded 30-code "ISO 4217" allowlist omitted dozens
+  # of real active currencies (CZK, HUF, RON, TRY, ILS, QAR, KWD, BHD, OMR, PKR, BDT,
+  # TWD, CLP, COP, PEN, ARS, GHS, ZMW, BWP, NAD, MUR, ...), producing false findings on
+  # every valid currency outside the subset. No ISO 4217 code list exists elsewhere in
+  # this repo and pycountry is not an installed dependency, so per the fix-round-2
+  # ruling this rule is deleted rather than kept as a subset that falsely claims to be
+  # the full ISO 4217 standard.
+  # PAY211 deleted (Round 2): compared PAYMENTINFO.PAYMENT_METHOD against the English
+  # label 'bank transfer', but PAYMENT_METHOD is a picklist/foundation-object external
+  # code (PaymentInformationDetailV3.paymentMethod) on real data, not free text, so the
+  # comparison never fires. No rule or dictionary in this repo records the real picklist
+  # code, so the value could not be verified — deleted per the fix-round-2 ruling rather
+  # than shipped with an unverifiable literal.
+
+  - id: PAY212
+    field: PAYRESULT.USERID
+    check_class: exists_check
+    target_table: EMPJOBHIST
+    target_fields: [USERID]
+    severity: high
+    dimension: consistency
+    message: Payroll result exists for an employee with no job history record
+    why_it_matters: >-
+      Every payroll result must correspond to an employee with a job history record in
+      SuccessFactors Employee Central. A payroll result with no matching EMPJOBHIST
+      record usually means the employee record was deleted or never synced, leaving an
+      orphaned payroll result that cannot be reconciled to org assignment.
+    rule_authority: best_practice
+    sap_impact: >-
+      Orphaned payroll result cannot be reconciled to cost centre, department or
+      position for GL allocation and management reporting.
+    fix_map:
+      __other__: >-
+        No EMPJOBHIST record exists for USERID {actual_value}. Confirm the employee
+        exists in Employee Central and re-run the Employee Central to ECC sync.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: no matching EMPJOBHIST record. Confirm employee
+      exists in Employee Central and re-sync.
+
+  # PAY213 deleted (Round 2): exact duplicate of EC202/EC378 in employee_central.yaml
+  # (overlapping EMPJOBHIST periods per employee) — the same overlap was reported three
+  # times under three different ids.
+  # PAY214 deleted (Round 2): exact duplicate of PAY125 (same field, same 9-digit ABA
+  # routing-number regex, same BANK_COUNTRY=USA scope) — every malformed US routing
+  # number was reported twice.
+
+  - id: PAY215
+    field: PAYRESULT.DELTA_FLAG
+    check_class: cross_field_check
+    fail_when: "(`PAYRESULT.DELTA_FLAG` == 'X') & (`PAYRESULT.PAY_DATE` > @today)"
+    require_populated: true
+    severity: medium
+    dimension: accuracy
+    message: Retroactive correction flagged with a future pay date
+    why_it_matters: >-
+      DELTA_FLAG = X marks a retroactive correction to an already-paid period. A delta
+      result with a future PAY_DATE is contradictory — a correction cannot retroactively
+      apply to a payment that has not happened yet, and usually indicates a data entry
+      or export timing error.
+    rule_authority: customer_configured
+    sap_impact: >-
+      GL posting misclassifies a future-dated payment as a retroactive correction,
+      causing reconciliation discrepancies between payroll and GL.
+    fix_map:
+      __other__: >-
+        DELTA_FLAG is X but PAY_DATE {actual_value} is in the future. Confirm whether
+        this is genuinely a retroactive correction or correct the DELTA_FLAG/PAY_DATE via
+        Payroll Control Center.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: DELTA_FLAG is X with future PAY_DATE. Confirm
+      correction validity via Payroll Control Center.
+
+  - id: PAY216
+    field: PAYMENTINFO.BIC
+    check_class: cross_field_check
+    fail_when: "`PAYMENTINFO.BIC`.str.slice(4, 6).map(@iso_alpha3) != `PAYMENTINFO.BANK_COUNTRY`"
+    require_populated: true
+    severity: high
+    dimension: consistency
+    message: BIC/SWIFT code's country does not match the bank country
+    why_it_matters: >-
+      Characters 5-6 of a BIC/SWIFT code are always the ISO 3166-1 alpha-2 country code
+      of the receiving bank's location. PAY127 only validates the BIC's format (an
+      11/8-character regex) and cannot catch a well-formed BIC issued for the wrong
+      country — e.g. a correctly shaped BIC with a German branch code on an account
+      recorded as BANK_COUNTRY=FRA. This rule restores that cross-check, dropped when
+      PAY209 (now deleted) silently duplicated PAY127's format check instead of keeping
+      the original country comparison.
+    rule_authority: best_practice
+    sap_impact: >-
+      Bank payment file routes funds through a correspondent bank in the wrong country,
+      causing payment rejection or delay and incorrect cross-border payment fees.
+    fix_map:
+      __other__: >-
+        BIC '{PAYMENTINFO.BIC}' country code does not match bank country
+        '{PAYMENTINFO.BANK_COUNTRY}'. Correct the BIC via Employee Central Payment
+        Information.
+    record_fix_template: >-
+      Payment record {PAYMENTINFO.USERID}: BIC country does not match
+      PAYMENTINFO.BANK_COUNTRY. Correct via Employee Central Payment Information.
+
+  - id: PAY217
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    # ponytail: EMPEMPLOYMENT.ORIGINAL_START_DATE is the first-hire date and survives a
+    # rehire, while START_DATE moves to the rehire date on the same employment record.
+    # Comparing against START_DATE alone would flag every payroll result from the
+    # employee's earlier stint. Fall back to START_DATE when ORIGINAL_START_DATE is
+    # null (not every tenant populates it) via .fillna() rather than require_populated,
+    # since require_populated would blanket-exclude the common non-rehire case where
+    # ORIGINAL_START_DATE is legitimately null.
+    fail_when: >-
+      `PAYRESULT.PAY_DATE`.notna() & `EMPEMPLOYMENT.START_DATE`.notna() &
+      (`PAYRESULT.PAY_DATE` < `EMPEMPLOYMENT.ORIGINAL_START_DATE`.fillna(`EMPEMPLOYMENT.START_DATE`))
+    severity: high
+    dimension: consistency
+    message: Payroll result is dated before the employee's employment start
+    why_it_matters: >-
+      A payroll result for a pay date before the employee's EMPEMPLOYMENT.START_DATE
+      falls in a period when the employee was not yet employed, so it cannot be a
+      genuine payroll run for this employment record. Compares against
+      ORIGINAL_START_DATE (falling back to START_DATE when null) rather than
+      START_DATE alone, because a rehire reuses the EmpEmployment record and moves
+      START_DATE to the rehire date — comparing against START_DATE alone would flag
+      every payroll result from the employee's earlier stint.
+    rule_authority: best_practice
+    sap_impact: >-
+      GL posting books a payroll cost against a period with no active employment,
+      and the payroll result cannot be reconciled to EMPJOBHIST for cost allocation.
+    fix_map:
+      __other__: >-
+        PAY_DATE {actual_value} is before the employment start {EMPEMPLOYMENT.START_DATE}.
+        Confirm the correct employment record or correct the pay date.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE is before employment start
+      {EMPEMPLOYMENT.START_DATE}. Confirm the correct employment record.
+
+  - id: PAY218
+    field: PAYRESULT.PAY_DATE
+    check_class: cross_field_check
+    fail_when: (`PAYRESULT.PAY_DATE` - `EMPEMPLOYMENT.END_DATE`).dt.days > 90
+    require_populated: true
+    severity: medium
+    dimension: consistency
+    message: Payroll result is dated more than 90 days after employment ended
+    why_it_matters: >-
+      Final pay runs are normally processed within the termination period. A payroll
+      result dated months after EMPEMPLOYMENT.END_DATE is usually a misdated entry or a
+      payment that should go through a separate after-leaving payroll process.
+    rule_authority: best_practice
+    sap_impact: >-
+      Payroll needs a reactivated payroll status to process a result this far after
+      termination, and GL allocation for the period is likely wrong.
+    fix_map:
+      __other__: >-
+        PAY_DATE {actual_value} is more than 90 days after employment ended
+        ({EMPEMPLOYMENT.END_DATE}). Confirm the payroll result is genuinely an
+        after-termination payment.
+    record_fix_template: >-
+      Payroll result {PAYRESULT.USERID}: PAY_DATE is more than 90 days after employment
+      ended {EMPEMPLOYMENT.END_DATE}. Confirm after-termination payment validity.
+
+  # PAY219 deleted (Round 3): exists_check compared PAYRESULT.COMPANY against
+  # FOCOMPANY.EXTERNAL_CODE, but the two are different code-spaces, not a referential
+  # pair. PAYRESULT.COMPANY is sourced from payroll_export.company_code, a 4-character
+  # ECC company code. FOCOMPANY.EXTERNAL_CODE is the SF legal-entity external code (up
+  # to 128 characters, e.g. ACE_USA). On real tenants every payroll result would raise a
+  # false high finding — the same code-space mismatch that got PAY157/158 deleted in an
+  # earlier round. Deleted rather than kept, per the fix-round-3 ruling.
