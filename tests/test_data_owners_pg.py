@@ -112,3 +112,70 @@ def test_migration_074_downgrades_cleanly(engines):
         assert c.execute(text("SELECT relforcerowsecurity FROM pg_class WHERE relname = 'data_owners'")).scalar()
         # the table was recreated by the owner: give the app role access again for later tests
         c.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {ROLE}"))
+
+
+def test_owner_routes(engines):
+    import asyncio
+
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.glossary import router
+
+    owner, app_eng = engines
+    tid, u = _tenant(owner, ["ann", "bob", "gone"], inactive=("gone",))
+    other, ou = _tenant(owner, ["xen"])
+
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as s:
+            yield s
+
+    current = {"tid": tid}
+    api = FastAPI()
+    api.include_router(router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(current["tid"]), "Owners", [])
+    steward, analyst = {"X-User-Role": "steward"}, {"X-User-Role": "analyst"}
+    url = "/api/v1/owners"
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as c:
+            body = {"kind": "rule", "ref": "AP001", "owner_user_id": u["ann"], "steward_user_id": u["bob"]}
+            assert (await c.put(url, json=body, headers=analyst)).status_code == 403
+
+            r = await c.put(url, json=body, headers=steward)
+            assert r.status_code == 200, r.text
+            assert (r.json()["owner_name"], r.json()["steward_name"]) == ("ann", "bob")
+
+            # a second PUT replaces the row
+            r = await c.put(url, json={**body, "owner_user_id": u["bob"], "steward_user_id": None}, headers=steward)
+            assert (r.json()["owner_name"], r.json()["steward_name"]) == ("bob", None)
+            rows = (await c.get(url, params={"kind": "rule"}, headers=analyst)).json()["owners"]
+            assert [(o["ref"], o["owner_user_id"], o["steward_user_id"]) for o in rows] == [("AP001", u["bob"], None)]
+            assert (await c.get(url, params={"kind": "object"}, headers=analyst)).json()["owners"] == []
+
+            assert (await c.get(url, params={"kind": "field"}, headers=analyst)).status_code == 422
+            for bad in ({**body, "owner_user_id": "x"},            # not a uuid
+                        {**body, "owner_user_id": u["gone"]},      # inactive
+                        {**body, "owner_user_id": ou["xen"]}):     # another tenant's user
+                assert (await c.put(url, json=bad, headers=steward)).status_code == 422
+
+            current["tid"] = other
+            assert (await c.get(url, headers=analyst)).json()["owners"] == []
+
+    async def main():
+        try:
+            await scenario()
+        finally:
+            await aeng.dispose()
+
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        asyncio.run(main())
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
