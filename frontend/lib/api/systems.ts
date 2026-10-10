@@ -121,6 +121,7 @@ export async function createSyncProfile(
     tables: string[];
     schedule_cron?: string;
     active?: boolean;
+    extraction_mode?: "full" | "delta";
   }
 ): Promise<SyncProfile> {
   const { data } = await apiClient.post<SyncProfile>(
@@ -133,7 +134,7 @@ export async function createSyncProfile(
 export async function updateSyncProfile(
   systemId: string,
   profileId: string,
-  body: { schedule_cron?: string; active?: boolean }
+  body: { schedule_cron?: string; active?: boolean; extraction_mode?: "full" | "delta" }
 ): Promise<SyncProfile> {
   const { data } = await apiClient.patch<SyncProfile>(
     `/api/v1/systems/${systemId}/profiles/${profileId}`,

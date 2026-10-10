@@ -6,7 +6,8 @@ All endpoints apply require_permission checks.
 
 import logging
 import re
-from typing import Optional
+from datetime import date
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -90,6 +91,8 @@ class UpdateSystemRequest(BaseModel):
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
+    # migration cut-over: records created before it and never changed are migration-era (root cause)
+    go_live: Optional[date] = None
     credentials: dict[str, str] = Field(default_factory=dict)
 
 
@@ -104,12 +107,15 @@ class CreateSyncProfileRequest(BaseModel):
     tables: list[str]
     schedule_cron: Optional[str] = None
     active: bool = True
+    # delta: re-read only what SAP's change documents say changed since the last download
+    extraction_mode: Literal["full", "delta"] = "full"
 
 
 class UpdateSyncProfileRequest(BaseModel):
     # "" clears the schedule (manual sync only)
     schedule_cron: Optional[str] = None
     active: Optional[bool] = None
+    extraction_mode: Optional[Literal["full", "delta"]] = None
 
 
 class SyncProfileResponse(BaseModel):
@@ -121,6 +127,7 @@ class SyncProfileResponse(BaseModel):
     active: bool
     last_run_at: Optional[str]
     next_run_at: Optional[str]
+    extraction_mode: str = "full"
 
 
 class SyncRunResponse(BaseModel):
@@ -351,6 +358,9 @@ async def update_system(
     if body.is_active is not None:
         set_parts.append("is_active = :is_active")
         updates["is_active"] = body.is_active
+    if body.go_live is not None:
+        set_parts.append("go_live = :go_live")
+        updates["go_live"] = body.go_live
 
     if set_parts:
         set_parts.append("updated_at = now()")
@@ -638,10 +648,10 @@ async def create_sync_profile(
 
     result = await db.execute(
         text("""
-            INSERT INTO sync_profiles (id, tenant_id, system_id, domain, tables, schedule_cron, active)
-            VALUES (gen_random_uuid(), :tid, :sid, :domain, :tables, :cron, :active)
+            INSERT INTO sync_profiles (id, tenant_id, system_id, domain, tables, schedule_cron, active, extraction_mode)
+            VALUES (gen_random_uuid(), :tid, :sid, :domain, :tables, :cron, :active, :mode)
             RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text
+                      last_run_at::text, next_run_at::text, extraction_mode
         """),
         {
             "tid": str(tenant.id),
@@ -650,6 +660,7 @@ async def create_sync_profile(
             "tables": body.tables,
             "cron": body.schedule_cron,
             "active": body.active,
+            "mode": body.extraction_mode,
         },
     )
     row = result.fetchone()
@@ -658,7 +669,7 @@ async def create_sync_profile(
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
         tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7],
+        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
     )
 
 
@@ -675,7 +686,7 @@ async def list_sync_profiles(
     result = await db.execute(
         text("""
             SELECT id, system_id, domain, tables, schedule_cron, active,
-                   last_run_at::text, next_run_at::text
+                   last_run_at::text, next_run_at::text, extraction_mode
             FROM sync_profiles
             WHERE system_id = :sid AND tenant_id = :tid
             ORDER BY domain
@@ -687,7 +698,7 @@ async def list_sync_profiles(
         SyncProfileResponse(
             id=str(r[0]), system_id=str(r[1]), domain=r[2],
             tables=r[3], schedule_cron=r[4], active=r[5],
-            last_run_at=r[6], next_run_at=r[7],
+            last_run_at=r[6], next_run_at=r[7], extraction_mode=r[8] or "full",
         )
         for r in rows
     ]
@@ -718,6 +729,9 @@ async def update_sync_profile(
     if body.active is not None:
         sets.append("active = :active")
         params["active"] = body.active
+    if body.extraction_mode is not None:
+        sets.append("extraction_mode = :mode")
+        params["mode"] = body.extraction_mode
     if not sets:
         raise HTTPException(status_code=422, detail="Nothing to update")
 
@@ -726,7 +740,7 @@ async def update_sync_profile(
             UPDATE sync_profiles SET {", ".join(sets)}
             WHERE id = :pid AND system_id = :sid AND tenant_id = :tid
             RETURNING id, system_id, domain, tables, schedule_cron, active,
-                      last_run_at::text, next_run_at::text
+                      last_run_at::text, next_run_at::text, extraction_mode
         """),
         params,
     )).fetchone()
@@ -736,7 +750,7 @@ async def update_sync_profile(
     return SyncProfileResponse(
         id=str(row[0]), system_id=str(row[1]), domain=row[2],
         tables=row[3], schedule_cron=row[4], active=row[5],
-        last_run_at=row[6], next_run_at=row[7],
+        last_run_at=row[6], next_run_at=row[7], extraction_mode=row[8] or "full",
     )
 
 

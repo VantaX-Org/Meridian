@@ -12,6 +12,7 @@ import json
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Callable, Optional
 
 import pandas as pd
@@ -122,6 +123,15 @@ def connect_sap_system(system_type: str, params: dict):
     raise SAPConnectorError(f"No connector for system_type: {system_type}")
 
 
+@dataclass(frozen=True)
+class DeltaRequest:
+    """Re-read only what SAP's change documents say changed since ``since`` (YYYYMMDD), over
+    the baseline version's tables. ``load_baseline(table)`` returns the baseline's frame with
+    plain field names, or None when it has none."""
+    since: str
+    load_baseline: Callable[[str], Optional[pd.DataFrame]]
+
+
 class ConnectivityManager:
     """Manages all SAP system connections for a tenant."""
 
@@ -190,7 +200,8 @@ class ConnectivityManager:
     def extract(self, system_id: str, modules: list[str], max_rows: int = 0,
                 scope: Optional[dict] = None,
                 progress: Optional[Callable[[dict], None]] = None,
-                sink: Optional[Callable[[str, pd.DataFrame, dict], None]] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+                sink: Optional[Callable[[str, pd.DataFrame, dict], None]] = None,
+                delta: Optional[DeltaRequest] = None) -> tuple[dict[str, pd.DataFrame], list[dict]]:
         """Extract everything the rules of ``modules`` need from one system.
 
         Returns ``({TABLE: frame with TABLE.FIELD columns}, coverage)``. The
@@ -207,6 +218,11 @@ class ConnectivityManager:
         returned in ``frames``: the caller stores one table at a time and the
         process never holds the whole system (18M-row MARC and MBEW together
         killed a 30 GiB worker). Configuration tables are always returned.
+
+        ``delta`` reads CDHDR for the mapped change-document classes and re-reads only the
+        changed keys of the tables those classes log, merged over the baseline. Every other
+        table, and every table whose baseline is unusable or whose merged row count disagrees
+        with SAP's, is read in full. An unreadable CDHDR reads everything in full.
         """
         import os
 
@@ -247,6 +263,8 @@ class ConnectivityManager:
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
                 order = list(read_order(plans))
+                delta_keys, delta_map = self._delta_keys(connector, dictionary, plans, delta, coverage) \
+                    if delta else ({}, {})
                 # ponytail: tables without a SAP row count (filtered reads) weigh 1000 rows
                 weight = {tb: counts.get(tb) or 1000 for tb in order}
                 total_weight, done_weight = sum(weight.values()) or 1, 0
@@ -291,15 +309,20 @@ class ConnectivityManager:
                     logger.info(f"extract {system_id}: reading {table} ({len(cols)} fields)")
                     t0 = time.monotonic()
                     where = plan.where
+                    delta_info: Optional[dict] = None
                     try:
-                        if plan.via:
+                        df, delta_info = self._delta_read(
+                            connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
+                            raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
+                        ) if delta is not None and table in delta_map else (None, None)
+                        if df is None and plan.via:
                             wheres = via_filters(table, plan.via, raw.get(plan.via))
                             parts = [connector.read_table_full(table, cols, list(t.keys),
                                      where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows,
                                      on_progress=lambda g, n, rows: report(table, g, n, rows))
                                      for w in wheres]
                             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
-                        else:
+                        elif df is None:
                             df = connector.read_table_full(table, cols, list(t.keys), where=where,
                                                            max_rows=max_rows,
                                                            on_progress=lambda g, n, rows: report(table, g, n, rows))
@@ -332,6 +355,8 @@ class ConnectivityManager:
                         (table not in counts or counts[table] == len(df))
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
+                    if delta_info:
+                        entry["delta"] = delta_info
                     coverage.append(entry)
                     logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
                     framed = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
@@ -357,6 +382,88 @@ class ConnectivityManager:
         finally:
             connector.close()
         return frames, coverage
+
+    @staticmethod
+    def _delta_keys(connector, dictionary, plans: dict, delta: DeltaRequest,
+                    coverage: list[dict]) -> tuple[dict[str, set[str]], dict[str, tuple[str, str]]]:
+        """Changed object ids per class since ``delta.since`` (from CDHDR), and the planned tables
+        those classes cover. If CDHDR is missing or cannot be read (for example, not authorised),
+        returns nothing, so every table is read in full."""
+        from sap.change_documents import cdhdr_where, changed_keys, delta_tables
+
+        covered = delta_tables(plans, dictionary)
+        t = dictionary.table("CDHDR")
+        if not covered or t is None:
+            coverage.append({"table": "CDHDR:delta", "purpose": "delta", "status": "delta_fallback",
+                             "detail": "CDHDR not in this system" if t is None else "no planned table has change documents"})
+            return {}, {}
+        classes = sorted({c for c, _ in covered.values()})
+        try:
+            read = [connector.read_table_full("CDHDR", ["OBJECTCLAS", "OBJECTID", "CHANGENR"], list(t.keys),
+                                              where=cdhdr_where(c, delta.since)) for c in classes]
+        except SAPConnectorError as e:
+            coverage.append({"table": "CDHDR:delta", "purpose": "delta", "status": "delta_fallback",
+                             "detail": str(e)[:300]})
+            return {}, {}
+        changed = changed_keys(pd.concat(read, ignore_index=True))
+        coverage.append({"table": "CDHDR:delta", "purpose": "delta", "status": "delta", "since": delta.since,
+                         "changed": {c: len(changed[c]) for c in classes}})
+        return changed, covered
+
+    @staticmethod
+    def _delta_read(connector, table: str, cols: list[str], keys: list[str], where: Optional[str],
+                    delta: DeltaRequest, changed: dict[str, set[str]], covered: dict[str, tuple[str, str]],
+                    parent: Optional[pd.DataFrame], expected: Optional[int],
+                    max_rows: int) -> tuple[Optional[pd.DataFrame], Optional[dict]]:
+        """``table`` as the baseline plus its re-read changed keys, or (None, None) when it must be
+        read in full: there is no usable baseline (missing, other columns), or the merged rows
+        disagree with SAP's row count (records archived or deleted without a change document)."""
+        from sap.change_documents import merge_delta
+        from sap.extraction_plan import in_lists
+
+        cls, key = covered[table]
+        baseline = delta.load_baseline(table)
+        if baseline is None or not set(cols) <= set(baseline.columns):
+            return None, None
+        ids = changed.get(cls, set())
+        if parent is not None and key in parent.columns:  # a child read via its parent: only parents still read
+            ids = ids & set(parent[key].astype(str).str.strip())
+        parts = [connector.read_table_full(table, cols, keys, where=" AND ".join(x for x in (w, where) if x),
+                                           max_rows=max_rows) for w in in_lists(key, ids)]
+        fresh = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
+        df = merge_delta(baseline[cols], fresh[cols], key, changed.get(cls, set()))
+        if parent is not None and key in parent.columns:  # children of parents that are gone
+            df = df[df[key].astype(str).str.strip().isin(set(parent[key].astype(str).str.strip()))]
+        if expected is not None and expected != len(df):
+            return None, None
+        return df, {"since": delta.since, "key": key, "changed": len(ids), "reread": len(fresh)}
+
+    def read_rows(self, system_id: str, table: str, fields: list[str], wheres: list[str]) -> pd.DataFrame:
+        """Rows of one ABAP table, one read-only RFC read per WHERE clause (for example, key IN-lists
+        from ``in_lists``). No clause means no read. Raises SAPConnectorError if the system or
+        table cannot be read."""
+        from api.services.source_design import dictionary_for
+        from sap.extraction_plan import ABAP_SYSTEM_TYPES
+
+        if not wheres:
+            return pd.DataFrame(columns=fields)
+        row = self._load_system(system_id)
+        if row.system_type not in ABAP_SYSTEM_TYPES:
+            raise SAPConnectorError(f"{row.system_type} systems have no change documents over RFC")
+        t = dictionary_for(self.session, system_id, row.system_type).table(table)
+        if t is None:
+            raise SAPConnectorError(f"{table} is not in this system")
+        params = self._build_connection_params(row)
+        try:
+            connector = self._get_connector(row.system_type, params)
+        finally:
+            for key in ("password", "client_secret", "api_key"):
+                params.pop(key, None)
+        try:
+            parts = [connector.read_table_full(table, fields, list(t.keys), where=w) for w in wheres]
+        finally:
+            connector.close()
+        return pd.concat(parts, ignore_index=True)[fields]
 
     @staticmethod
     def _payroll_totals(connector, rgdir: Optional[pd.DataFrame]) -> tuple[Optional[pd.DataFrame], dict]:

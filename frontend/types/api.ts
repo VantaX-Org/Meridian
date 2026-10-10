@@ -594,6 +594,8 @@ export interface SyncProfile {
   active: boolean;
   last_run_at: string | null;
   next_run_at: string | null;
+  /** "delta" re-reads only what SAP's change documents say changed since the last download. */
+  extraction_mode: "full" | "delta";
 }
 
 /* ─── Golden Records / MDM ─── */

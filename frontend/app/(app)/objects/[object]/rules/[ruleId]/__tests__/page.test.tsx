@@ -1,6 +1,6 @@
 // frontend/app/(app)/objects/[object]/rules/[ruleId]/__tests__/page.test.tsx
 import { screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as versionsApi from "@/lib/api/versions";
 import RuleDetailPage from "../page";
@@ -11,6 +11,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("RuleDetailPage", () => {
+  beforeEach(() => {
+    vi.spyOn(versionsApi, "getFindingRootCause").mockResolvedValue({
+      version_id: "v1", check_id: "mm_missing_desc", status: "not_computed", field: null,
+      analysed: 0, total: 0, origins: [], summary: "", detail: "",
+    });
+  });
+
   it("renders failing records with a link into each record's fix sheet", async () => {
     vi.spyOn(versionsApi, "getFindingRecords").mockResolvedValue({
       version_id: "v1",

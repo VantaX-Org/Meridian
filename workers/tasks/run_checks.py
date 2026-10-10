@@ -980,6 +980,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         except Exception as e:
             logger.warning(f"Failed to enqueue build_golden_records (non-fatal): {e}")
 
+        # Root cause by origin from SAP change documents (non-blocking, non-fatal; skips uploads)
+        try:
+            from workers.tasks.root_cause import root_cause_findings
+            root_cause_findings.delay(version_id, tenant_id)
+        except Exception as e:
+            logger.warning(f"Failed to enqueue root_cause_findings (non-fatal): {e}")
+
         return {"version_id": version_id, "status": "complete", "findings_count": len(all_results)}
 
     except Exception as e:
