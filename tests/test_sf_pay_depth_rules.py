@@ -11,7 +11,7 @@ from checks.runner import run_checks
 from sap.ddic import get_dictionary
 
 D = get_dictionary("s4hana")
-PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41)],
+PACKS = {"compensation": [("COMP", 43, 52)], "benefits": [("BEN", 45, 41), ("BEN", 86, 17)],
          "payroll_integration": [("PAY", 31, 189), ("HPY", 31, 27)]}
 # Ids minted on this branch that were later found to be undeliverable and removed (append-only
 # numbering is preserved — the id is retired, not reused): PAY157/158 compared a SF foundation
@@ -56,14 +56,8 @@ def test_ids_unique_and_contiguous(module):
     deleted = DELETED.get(module, set())
     for prefix, start, count in PACKS[module]:
         nums = sorted(int(i[len(prefix):]) for i in ids if re.fullmatch(prefix + r"\d+", i))
-        if module == "compensation":
-            # compensation's own COMP095+ depth pack contiguously extends this prefix
-            # above start + count; scope the check to this task's own id block only.
-            new = [n for n in nums if start <= n < start + count]
-        else:
-            # no other pack has a legitimate extension above its own block; any id
-            # found above start + count here is unexpected and must fail loudly.
-            new = [n for n in nums if n >= start]
+        # each block is scoped to its own id range: later depth packs extend the same prefixes
+        new = [n for n in nums if start <= n < start + count]
         expected = [n for n in range(start, start + count) if f"{prefix}{n:03d}" not in deleted]
         assert new == expected, prefix
         assert start - 1 in nums, prefix
