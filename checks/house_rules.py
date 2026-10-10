@@ -18,14 +18,15 @@ import hashlib
 import re
 from collections import Counter
 from dataclasses import dataclass
-from itertools import groupby
-from typing import Literal
+from itertools import chain, groupby
+from typing import Iterable, Literal
 
 import numpy as np
 import pandas as pd
 
-from checks.base import is_blank
-from checks.profiling import SHAPE_CAP, _shapes
+from checks.base import is_blank, record_keys
+from checks.profiling import MAX_PROFILE_ROWS, SHAPE_CAP, _is_code, _shapes, is_sensitive
+from sap.ddic import Dictionary
 
 MIN_CONFIDENCE = 0.95
 MIN_GROUP_ROWS = 200
@@ -228,3 +229,84 @@ def range_rule(group: str, num: str, ranges: dict[str, list[float]], scope: int,
                              "grain": num.split(".", 1)[0], "dimension": "validity",
                              "message": _message("range", num, group)}
     return Proposal("range", num, group, body, conf, scope, violations)
+
+
+FIT_ROWS = MAX_PROFILE_ROWS
+NUMERIC_TYPES = {"CURR", "QUAN", "DEC", "FLTP", "INT1", "INT2", "INT4", "INT8"}
+
+
+def _ddic(dictionary: Dictionary | None, col: str) -> tuple[str | None, bool]:
+    """(DDIC type, sensitive) of a TABLE.FIELD column."""
+    table, _, name = col.partition(".")
+    f = dictionary.field(table, name) if dictionary is not None else None
+    return (f.type if f else None), is_sensitive(table, name, f.data_element if f else None)
+
+
+def candidates(head: pd.DataFrame, dictionary: Dictionary | None) -> tuple[list[str], list[str], list[str]]:
+    """(code, numeric, text) columns, each sorted by name and capped."""
+    codes, nums, texts = [], [], []
+    for col in sorted(c for c in head.columns if "." in c):
+        typ, sensitive = _ddic(dictionary, col)
+        if sensitive:
+            continue
+        if typ in NUMERIC_TYPES:
+            nums.append(col)
+            continue
+        if typ == "CHAR":
+            texts.append(col)
+        if _is_code(dictionary, col):
+            s = norm(head[col])
+            filled = s[s != ""]
+            k = filled.nunique()
+            if CARD_MIN <= k <= CARD_MAX and k <= MAX_DISTINCT_SHARE * len(filled):
+                codes.append(col)
+    return codes[:MAX_CANDIDATES], nums[:MAX_CANDIDATES], texts
+
+
+def _rank(props: list[Proposal]) -> list[Proposal]:
+    out: list[Proposal] = []
+    for kind in ("dependency", "value_set", "format", "range"):
+        mine = sorted((p for p in props if p.kind == kind),
+                      key=lambda p: (-p.support_rows, -p.confidence, p.determinant or "", p.field))
+        out += mine[:MAX_PER_KIND]
+    return out
+
+
+def _with_samples(p: Proposal, head: pd.DataFrame, key_cols: list[str]) -> Proposal:
+    from dataclasses import replace
+
+    from checks.runner import REGISTRY
+
+    ev = REGISTRY[str(p.body["check_class"])]({**p.body, "id": "LR-PREVIEW"}).evaluate(head)
+    keys = record_keys(head, [k for k in key_cols if k in head])[ev.failing.to_numpy(dtype=bool)]
+    return replace(p, sample_keys=tuple(keys.head(SAMPLE_KEYS).tolist()))
+
+
+def mine_frame(chunks: Iterable[pd.DataFrame], dictionary: Dictionary | None, key_cols: list[str]) -> list[Proposal]:
+    """Every learned rule of one frame (a flat upload, or one bundle table with its parent's codes).
+    Candidates and ranges come from the first FIT_ROWS rows; counts from every row."""
+    it = iter(chunks)
+    buffered: list[pd.DataFrame] = []
+    seen = 0
+    for chunk in it:
+        buffered.append(chunk)
+        seen += len(chunk)
+        if seen >= FIT_ROWS:
+            break
+    if not buffered:
+        return []
+    head = pd.concat(buffered, ignore_index=True).iloc[:FIT_ROWS]
+    codes, nums, texts = candidates(head, dictionary)
+    pairs = PairCounts([(a, b) for a in codes for b in codes if a != b])
+    shapes = ShapeCounts(texts)
+    fitted = {(g, n): r for g in codes for n in nums if (r := fit_ranges(head, g, n))}
+    ranges = RangeCounts(fitted)
+    for chunk in chain(buffered, it):
+        pairs.add(chunk)
+        shapes.add(chunk)
+        ranges.add(chunk)
+    props = [p for (a, b), c in sorted(pairs.counts.items()) if (p := value_set_rule(c, pairs.rows, a, b))]
+    props += [p for col, c in sorted(shapes.counts.items()) if (p := format_rule(c, col))]
+    props += [p for (g, n), r in sorted(fitted.items())
+              if (p := range_rule(g, n, r, ranges.scope[(g, n)], ranges.violations[(g, n)]))]
+    return [_with_samples(p, head, key_cols) for p in _rank(props)]
