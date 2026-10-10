@@ -53,6 +53,15 @@ class RecordStatus(TypedDict):
     reasons: list[str]
 
 
+def standard_grouping() -> dict[str, str]:
+    """KTOKK/KTOKD -> BU_GROUP values SAP ships standard. ecc_to_s4hana.yaml marks both
+    mappings value_map: true (CVI grouping, V_TB001/V_TB002) with no shipped source->target
+    values — every value is steward-maintained in transfer_value_mappings. Nothing to merge
+    in yet, so this returns {}; kept as a named accessor so callers don't re-derive that from
+    the YAML themselves."""
+    return {}
+
+
 def simulate(frames: TableFrames, module: str, grouping_map: dict[str, str]) -> list[Gap]:
     """Run checks relevant to the module's tables."""
     return (check_matnr(frames, module) + check_cvi(frames, module, grouping_map) + check_credit(frames, module)
