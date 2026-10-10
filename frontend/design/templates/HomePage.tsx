@@ -62,6 +62,7 @@ export function HomePage({
   panel,
   tiles,
   lists,
+  headerActions,
 }: {
   persona: string;
   state: "loading" | "no-data" | "data" | "error";
@@ -72,6 +73,8 @@ export function HomePage({
   panel?: ReactNode;
   tiles?: ReactNode;
   lists?: ReactNode;
+  /** Right-aligned header content (e.g. an `ExportMenu`) shown next to the run label when `state === "data"`. */
+  headerActions?: ReactNode;
 }) {
   if (state === "error") {
     return (
@@ -99,9 +102,10 @@ export function HomePage({
           )}
         </div>
         {state === "data" && run && (
-          <div className="flex items-center gap-2 text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
+          <div className="flex items-center gap-3 text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
             <span>{run.label ?? run.id} · {formatDate(run.runAt)}</span>
             {verdict?.cappedReason && <Pill tone="at-risk">Capped: {verdict.cappedReason}</Pill>}
+            {headerActions}
           </div>
         )}
       </div>

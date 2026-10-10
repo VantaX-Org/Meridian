@@ -9,6 +9,7 @@ export interface ChartPoint {
   object?: string;
   dimension?: string;
   ruleId?: string;
+  runId?: string;
 }
 
 export const chartTheme = {

@@ -15,7 +15,7 @@ import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { exportFindings, getFindings, getFindingsAggregate, getScoreHistory } from "@/lib/api/findings";
 import { errorText } from "@/lib/api/remediation";
-import { getAnalysisReportUrl } from "@/lib/api/reports";
+import { getAnalysisReportUrl, getReportDownloadUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
@@ -173,10 +173,9 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
             data={historyRows.map((h) => ({
               x: formatDate(h.run_at, "date"),
               y: h.at_the_time.composite ?? 0,
-              // ChartPoint has no run field; reuse `dimension` to carry the version id for the click handler below.
-              dimension: h.version_id,
+              runId: h.version_id,
             }))}
-            onPointClick={(p) => p.dimension && router.push(`/runs/${p.dimension}`)}
+            onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)}
           />
         )}
       </section>
@@ -322,7 +321,7 @@ export default function RunDetailPage() {
           {
             format: "pdf" as const,
             label: "Narrative report (PDF)",
-            run: () => downloadAuthenticated(getAnalysisReportUrl(versionId), `meridian-narrative-${v?.label ?? versionId}.pdf`),
+            run: () => downloadAuthenticated(getReportDownloadUrl(versionId), `meridian-narrative-${v?.label ?? versionId}.pdf`),
           },
         ]
       : []),

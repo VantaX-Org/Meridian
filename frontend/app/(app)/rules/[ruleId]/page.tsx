@@ -163,10 +163,9 @@ export default function RulePage() {
               y: r.pass_rate != null ? r.pass_rate * (r.pass_rate <= 1 ? 100 : 1) : 0,
               object: r.module,
               ruleId: data.id,
-              // ChartPoint has no run field; reuse `dimension` to carry the version id for the click handler below.
-              dimension: r.version_id,
+              runId: r.version_id,
             }))}
-            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: data.id, run: p.dimension ?? "" }))}
+            onPointClick={(p) => router.push(buildDrillHref({ object: p.object ?? data.module, ruleId: data.id, run: p.runId ?? "" }))}
           />
         )}
       </section>
