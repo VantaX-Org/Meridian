@@ -1,13 +1,12 @@
-"""Deduplication mining task — finds duplicate records across SAP entities.
+"""Deduplication mining task — near-duplicate pairs for the Dedup page (data_duplicates).
 
-Uses configurable blocking keys (e.g., email + name) and scoring to
-detect potential duplicates that should be consolidated.
-
-For WS13 from Meridian v3.0 spec §6.
+Pairs come from the match pipeline's blocking (workers/tasks/run_match.py): the same
+block keys and name comparison as the similarity rules, so the Dedup page and the
+steward merge queue show the same pairs. Modules the match pipeline does not cover
+produce no pairs. Exact primary-key duplicates are cleaning_engine's exact_pk.
 """
 
 import logging
-import hashlib
 from typing import Optional
 
 import pandas as pd
@@ -19,97 +18,35 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.worker.mining.dedup")
 
-# Blocking key field combinations per module
-BLOCKING_KEYS = {
-    "business_partner": ["BUT000.PARTNER", "BUT000.BU_TYPE"],
-    "material_master": ["MARA.MATNR", "MARA.MTART"],
-    "employee_central": ["empemployment.userId", "empemployment.startDate"],
-}
-
-
-def _compute_record_hash(df: pd.DataFrame, key_fields: list[str]) -> pd.Series:
-    """Compute a hash of key field values for blocking."""
-    hash_input = df[key_fields].astype(str).apply(lambda row: "|".join(row), axis=1)
-    return hash_input.apply(lambda x: hashlib.md5(x.encode()).hexdigest())
-
 
 def _find_potential_duplicates(df: pd.DataFrame, module: str) -> list[dict]:
-    """Find potential duplicates using blocking keys.
-    
-    Returns list of {record_a, record_b, match_score, blocking_key} dicts.
+    """Near-duplicate pairs within each block.
+
+    Returns list of {record_a, record_b, match_score, blocking_key, module, id_field, matched_fields}.
     """
-    blocking_fields = BLOCKING_KEYS.get(module, [])
-    
-    if not blocking_fields:
-        # No blocking keys configured — try to use first available column
-        if len(df.columns) > 0:
-            blocking_fields = [df.columns[0]]
-        else:
-            return []
-    
-    # Filter to available columns
-    available = [f for f in blocking_fields if f in df.columns]
-    if not available:
+    from workers.tasks.run_match import MATCH_KEYS, candidate_pairs
+
+    if module not in MATCH_KEYS:
         return []
-    
-    # Compute blocking hash
-    blocking_hash = _compute_record_hash(df, available)
-    df = df.copy()
-    df["_blocking_hash"] = blocking_hash
-    
-    # Find groups with multiple records (potential duplicates); groupby().filter()
-    # calls Python once per group, which on 300k+ unique keys outlasts the task limit.
-    duplicate_groups = df[df["_blocking_hash"].duplicated(keep=False)]
-    
-    if len(duplicate_groups) == 0:
+    id_col, name_col, block_by = MATCH_KEYS[module]
+    if any(c not in df.columns for c in (id_col, name_col, *block_by)):
         return []
-    
-    # Generate pairs within each blocking group
-    duplicates = []
-    for block_hash, group in duplicate_groups.groupby("_blocking_hash"):
-        if len(group) < 2:
+    pairs, _ = candidate_pairs(df, module)
+    out = []
+    for a, b, score in pairs:
+        ra, rb = df.loc[a].to_dict(), df.loc[b].to_dict()
+        if str(ra[id_col]) == str(rb[id_col]):
             continue
-        
-        # Get identifier columns for records
-        id_col = _get_id_column(group)
-        
-        records = group.to_dict("records")
-        for i in range(len(records)):
-            for j in range(i + 1, len(records)):
-                dup = {
-                    "record_a": str(records[i].get(id_col, records[i])),
-                    "record_b": str(records[j].get(id_col, records[j])),
-                    "match_score": _compute_match_score(records[i], records[j]),
-                    "blocking_key": block_hash,
-                    "module": module,
-                    "id_field": id_col,
-                    "matched_fields": _get_matched_fields(records[i], records[j]),
-                }
-                duplicates.append(dup)
-    
-    return duplicates
-
-
-def _get_id_column(df: pd.DataFrame) -> str:
-    """Get the best identifier column from the dataframe."""
-    candidates = ["PARTNER", "MATNR", "USERID", "LIFNR", "KUNNR", "id"]
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return df.columns[0] if len(df.columns) > 0 else "id"
-
-
-def _compute_match_score(record_a: dict, record_b: dict) -> float:
-    """Compute a simple match score (0-1) based on field similarity."""
-    if record_a == record_b:
-        return 1.0
-    
-    common_keys = set(record_a.keys()) & set(record_b.keys())
-    if not common_keys:
-        return 0.0
-    
-    matches = sum(1 for k in common_keys if str(record_a.get(k, "")) == str(record_b.get(k, "")))
-    return round(matches / len(common_keys), 2)
+        out.append({
+            "record_a": str(ra[id_col]),
+            "record_b": str(rb[id_col]),
+            "match_score": round(score, 2),
+            "blocking_key": "|".join(str(ra[c]).strip().upper() for c in block_by),
+            "module": module,
+            "id_field": id_col,
+            "matched_fields": _get_matched_fields(ra, rb),
+        })
+    return out
 
 
 def _get_matched_fields(record_a: dict, record_b: dict) -> list[str]:
