@@ -184,7 +184,13 @@ export async function deleteWave(id: string): Promise<void> {
 export async function runWave(
   id: string,
 ): Promise<{ run_id: string; task_id: string; status: string; mode: MigrationMode; modules: string[] }> {
-  const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/run`);
+  const { data } = await apiClient.post<{
+    run_id: string;
+    task_id: string;
+    status: string;
+    mode: MigrationMode;
+    modules: string[];
+  }>(`/api/v1/migration/waves/${id}/run`);
   return data;
 }
 
@@ -202,7 +208,7 @@ export async function createBlockerFixBatch(
   id: string,
   body: { module: string; gap_type: string; field: string | null },
 ): Promise<{ id: string }> {
-  const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/blockers/fix-batch`, body);
+  const { data } = await apiClient.post<{ id: string }>(`/api/v1/migration/waves/${id}/blockers/fix-batch`, body);
   return data;
 }
 
@@ -223,6 +229,8 @@ export interface S4Area {
 }
 
 export async function getS4Readiness(versionId: string): Promise<{ status: string; areas: S4Area[] }> {
-  const { data } = await apiClient.get("/api/v1/findings/s4-readiness", { params: { version_id: versionId } });
+  const { data } = await apiClient.get<{ status: string; areas: S4Area[] }>("/api/v1/findings/s4-readiness", {
+    params: { version_id: versionId },
+  });
   return data;
 }

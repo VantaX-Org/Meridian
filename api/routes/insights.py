@@ -66,6 +66,8 @@ async def get_readiness(
                                   w.min_dqs if w.min_dqs is not None else dqs_threshold)
     resolved = fallback[1] if fallback else version_id
     return {
+        # Not a single source-of-truth version: each cell may read its own wave's latest run.
+        # This is the tenant's latest analysed version (or the requested one), for drill links only.
         "version_id": str(resolved) if resolved else None,
         "threshold": dqs_threshold,
         "cells": [c.__dict__ for c in cells],

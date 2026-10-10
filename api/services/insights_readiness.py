@@ -10,8 +10,8 @@ from dataclasses import dataclass
 
 _ENGINE = {"go": "go", "conditional": "at_risk", "no-go": "no_go"}
 _RANK = {"go": 0, "at_risk": 1, "no_go": 2}
-# gap types that never block a record on their own (engine.py)
-_INFORMATIONAL = frozenset({"unmapped_field", "target_config_unverified"})
+# gap types that never block a record on their own (engine.py rates them informational/low)
+_INFORMATIONAL = frozenset({"unmapped_field", "target_config_unverified", "case_change"})
 
 
 @dataclass

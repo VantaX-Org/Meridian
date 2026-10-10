@@ -24,6 +24,7 @@ def test_go_drops_to_at_risk_below_a_threshold():
 def test_blocking_gaps_ignore_informational_types():
     assert blocking_gaps({"unmapped_field": 9, "target_config_unverified": 2, "value_unmapped": 3,
                           "key_missing": 1}) == 4
+    assert blocking_gaps({"case_change": 5}) == 0
     assert blocking_gaps({}) == 0
 
 

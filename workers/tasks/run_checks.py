@@ -54,8 +54,8 @@ def enqueue_wave_reruns(session, tenant_id, system_id, version_id) -> int:
 
     waves = session.execute(text(
         "SELECT id, modules, target_system_id, target_release FROM migration_waves "
-        "WHERE source_system_id = :s AND signed_off_at IS NULL AND cardinality(modules) > 0"),
-        {"s": str(system_id)}).fetchall()
+        "WHERE tenant_id = :t AND source_system_id = :s AND signed_off_at IS NULL AND cardinality(modules) > 0"),
+        {"t": str(tenant_id), "s": str(system_id)}).fetchall()
     for w in waves:
         run_id = str(_uuid.uuid4())
         dest = str(w.target_system_id) if w.target_system_id else None

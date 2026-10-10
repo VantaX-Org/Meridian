@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from api.routes.migration import _stream
 from api.services import pdf_reports as pr
 from api.services.migration.cockpit import readiness_report_context, readiness_report_sheets
 
@@ -48,6 +49,17 @@ def test_empty_wave_renders():
     empty = {**COCKPIT, "run_id": None, "score": None, "verdict": "no_go", "objects": [], "trend": [], "blockers": []}
     pdf = pr.render("migration_readiness_report.html", readiness_report_context(empty, "Demo", None))
     assert pdf.startswith(b"%PDF")
+
+
+def test_stream_sanitises_filename():
+    """A wave name with an em dash and a semicolon must not break Content-Disposition or
+    require non-latin-1 encoding (final review I2)."""
+    name = f"migration_readiness_Cutover—Wave; 1".replace(" ", "_")
+    resp = _stream(b"data", "application/pdf", f"{name}.pdf")
+    disposition = resp.headers["content-disposition"]
+    disposition.encode("latin-1")  # must not raise
+    assert ";" not in disposition.split("filename=", 1)[1]
+    assert disposition == "attachment; filename=migration_readiness_Cutover_Wave__1.pdf"
 
 
 def test_no_go_verdict_renders_bad_class():

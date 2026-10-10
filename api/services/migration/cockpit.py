@@ -9,6 +9,7 @@ from api.services.insights_readiness import build_wave_cells, wave_verdict
 from api.services.migration import object_label
 
 TOP_BLOCKERS = 20
+TREND_POINTS = 30  # readiness-score history points shown on the cockpit trend chart
 
 
 async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
@@ -16,14 +17,16 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         SELECT id, gap_summary, readiness_score, records_total, records_blocked, source_version_id
           FROM migration_runs WHERE tenant_id = :t AND wave_id = :w AND status = 'analysed'
          ORDER BY completed_at DESC LIMIT 1"""), {"t": tenant_id, "w": str(wave.id)})).fetchone()
+    # dest_type: the target S/4 system's own type when a live target is connected; otherwise
+    # target_release names the S/4 standard target type the wave is planned against.
     dest_type = wave.target_release
     if wave.target_system_id:
-        dest_type = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = :s"),
-                                      {"s": str(wave.target_system_id)})).scalar() or dest_type
+        dest_type = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = :s AND tenant_id = :t"),
+                                      {"s": str(wave.target_system_id), "t": tenant_id})).scalar() or dest_type
     dqs: dict[str, float | None] = {}
     if run and run.source_version_id:
-        summary = (await db.execute(text("SELECT dqs_summary FROM analysis_versions WHERE id = :v"),
-                                    {"v": str(run.source_version_id)})).scalar() or {}
+        summary = (await db.execute(text("SELECT dqs_summary FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                                    {"v": str(run.source_version_id), "t": tenant_id})).scalar() or {}
         dqs = {m: (d or {}).get("composite_score") for m, d in summary.items()}
     gap_summary = (run.gap_summary if run else None) or {}
     min_dqs = wave.min_dqs
@@ -37,13 +40,14 @@ async def load_cockpit(db: AsyncSession, tenant_id: str, wave) -> dict:
         SELECT id AS run_id, completed_at, readiness_score AS score FROM (
             SELECT id, completed_at, readiness_score FROM migration_runs
              WHERE tenant_id = :t AND wave_id = :w AND status = 'analysed' AND readiness_score IS NOT NULL
-             ORDER BY completed_at DESC LIMIT 30) t
-         ORDER BY completed_at"""), {"t": tenant_id, "w": str(wave.id)})).fetchall()
+             ORDER BY completed_at DESC LIMIT :n) t
+         ORDER BY completed_at"""), {"t": tenant_id, "w": str(wave.id), "n": TREND_POINTS})).fetchall()
 
     blockers = []
     if run:
         blockers = (await db.execute(text("""
-            SELECT module, gap_type, field, MIN(severity) AS severity,
+            SELECT module, gap_type, field,
+                   (ARRAY_AGG(severity ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END))[1] AS severity,
                    COUNT(DISTINCT record_key) AS records, COUNT(*) AS gaps
               FROM migration_gap_findings
              WHERE run_id = :r AND severity IN ('critical', 'high')

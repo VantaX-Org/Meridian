@@ -11,13 +11,15 @@ inside the customer's deployment.
 
 import datetime
 import io
+import re
 import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -26,6 +28,7 @@ from api.services.rbac import current_user_id, require_permission
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
 
 _VALID_MODES = ("source_to_source", "source_to_destination")
+_LIST_TREND_POINTS = 12  # sparkline points shown per wave in the wave list
 
 
 # ── Pydantic ──────────────────────────────────────────────────────────────────
@@ -92,6 +95,11 @@ class WaveCreate(BaseModel):
     min_dqs: Optional[float] = None
 
 
+#  migration_waves columns that are NOT NULL (db/migrations/versions/068_migration_waves.py).
+# An explicit null for one of these is a client error (422), not a DB constraint violation (500).
+_WAVE_NON_NULLABLE = frozenset({"name", "target_release", "modules", "stage", "min_readiness"})
+
+
 class WaveUpdate(BaseModel):
     name: Optional[str] = None
     source_system_id: Optional[uuid.UUID] = None
@@ -102,6 +110,15 @@ class WaveUpdate(BaseModel):
     stage: Optional[Stage] = None
     min_readiness: Optional[float] = None
     min_dqs: Optional[float] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_null_for_non_nullable(cls, data):
+        if isinstance(data, dict):
+            nulled = [k for k in _WAVE_NON_NULLABLE if k in data and data[k] is None]
+            if nulled:
+                raise ValueError(f"Cannot be null: {', '.join(sorted(nulled))}")
+        return data
 
 
 # Columns update_wave may write. Keep in step with WaveUpdate.
@@ -295,7 +312,7 @@ async def list_waves(
                 SELECT array_agg(readiness_score ORDER BY completed_at) AS scores FROM (
                     SELECT readiness_score, completed_at FROM migration_runs
                      WHERE wave_id = w.id AND status = 'analysed' AND readiness_score IS NOT NULL
-                     ORDER BY completed_at DESC LIMIT 12) t) trend ON true
+                     ORDER BY completed_at DESC LIMIT {_LIST_TREND_POINTS}) t) trend ON true
          WHERE w.tenant_id = :t
          ORDER BY w.target_date NULLS LAST, w.name
     """), {"t": str(tenant.id)})
@@ -347,10 +364,14 @@ async def update_wave(
         raise HTTPException(status_code=400, detail=f"Not editable: {', '.join(sorted(unknown))}")
     sets = "".join(f"{k} = :{k}, " for k in params)
     # any edit invalidates a sign-off: what was signed is no longer what is planned
-    row = (await db.execute(text(f"""
-        UPDATE migration_waves SET {sets}signed_off_by = NULL, signed_off_at = NULL, updated_at = now()
-         WHERE id = :w AND tenant_id = :t RETURNING {_WAVE_COLS}
-    """), {**params, "w": str(wave_id), "t": str(tenant.id)})).fetchone()
+    try:
+        row = (await db.execute(text(f"""
+            UPDATE migration_waves SET {sets}signed_off_by = NULL, signed_off_at = NULL, updated_at = now()
+             WHERE id = :w AND tenant_id = :t RETURNING {_WAVE_COLS}
+        """), {**params, "w": str(wave_id), "t": str(tenant.id)})).fetchone()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=f"A wave named '{params.get('name')}' already exists.")
     await db.commit()
     return _row(row)
 
@@ -496,24 +517,30 @@ async def blocker_fix_batch(
 
     await _set_rls(db, tenant.id)
     w = await _load_wave(db, tenant.id, wave_id)
+    if not w.source_system_id:
+        raise HTTPException(status_code=400, detail="This wave has no source system.")
     run_id = (await db.execute(text("SELECT id FROM migration_runs WHERE tenant_id = :t AND wave_id = :w "
                                     "AND status = 'analysed' ORDER BY completed_at DESC LIMIT 1"),
                                {"t": str(tenant.id), "w": str(wave_id)})).scalar()
     if run_id is None:
         raise HTTPException(status_code=404, detail="This wave has not been analysed yet.")
+    # record_issues.scope is the source system id (or 'upload') — without this filter, a tenant
+    # with another scope holding the same record key would leak those issues into this batch.
+    scope = str(w.source_system_id)
     rows = (await db.execute(text("""
         SELECT ri.id AS issue_id, ri.scope, ri.module, ri.check_id, ri.record_key, ri.grain,
                ri.last_seen_version, f.details->>'field_checked' AS field
           FROM record_issues ri
           LEFT JOIN findings f ON f.version_id = ri.last_seen_version AND f.check_id = ri.check_id
-         WHERE ri.tenant_id = :t AND ri.module = :m AND ri.status IN ('open', 'in_progress')
+         WHERE ri.tenant_id = :t AND ri.scope = :scope AND ri.module = :m AND ri.status IN ('open', 'in_progress')
            AND ri.record_key IN (
                 SELECT DISTINCT record_key FROM migration_gap_findings
                  WHERE run_id = :r AND module = :m AND gap_type = :g
                    AND field IS NOT DISTINCT FROM :fld AND record_key IS NOT NULL)
          ORDER BY ri.record_key
          LIMIT 50001"""),
-        {"t": str(tenant.id), "m": body.module, "r": str(run_id), "g": body.gap_type, "fld": body.field})).fetchall()
+        {"t": str(tenant.id), "scope": scope, "m": body.module, "r": str(run_id), "g": body.gap_type,
+         "fld": body.field})).fetchall()
     if not rows:
         raise HTTPException(status_code=400, detail="No open data quality issues match these records. "
                                                     "Fix the mapping in the Mapping tab.")
@@ -700,9 +727,12 @@ async def export_migration(
 
 
 def _stream(data: bytes, media_type: str, filename: str) -> StreamingResponse:
+    # filename is often built from free user text (e.g. a wave name); outside this allow-list a
+    # character can break the header (';', '"') or fail latin-1 encoding (em dash, accents) -> 500.
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", filename)
     return StreamingResponse(
         io.BytesIO(data), media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f"attachment; filename={safe_name}"},
     )
 
 

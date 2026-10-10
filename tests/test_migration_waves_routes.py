@@ -89,6 +89,25 @@ async def test_wave_crud_is_tenant_isolated(tenants, monkeypatch):
 
 @pg
 @pytest.mark.anyio
+async def test_update_wave_rejects_null_and_duplicate_name(tenants, monkeypatch):
+    """final review: update_wave must return 422 for an explicit null on a non-nullable
+    column, and 409 for a rename onto an existing wave's name — never a bare 500."""
+    t1, _t2, prd, _s4d = tenants
+    async with await _as(monkeypatch, t1) as c:
+        w1 = (await c.post("/api/v1/migration/waves", headers=H, json={"name": "Wave A"})).json()["id"]
+        (await c.post("/api/v1/migration/waves", headers=H, json={"name": "Wave B"}))
+        assert (await c.patch(f"/api/v1/migration/waves/{w1}", headers=H, json={"name": None})).status_code == 422
+        assert (await c.patch(f"/api/v1/migration/waves/{w1}", headers=H,
+                              json={"stage": None})).status_code == 422
+        r = await c.patch(f"/api/v1/migration/waves/{w1}", headers=H, json={"name": "Wave B"})
+        assert r.status_code == 409, r.text
+        # the failed rename must not have stuck, and the wave must remain usable afterwards
+        r = await c.patch(f"/api/v1/migration/waves/{w1}", headers=H, json={"source_system_id": prd})
+        assert r.status_code == 200 and r.json()["name"] == "Wave A", r.text
+
+
+@pg
+@pytest.mark.anyio
 async def test_run_now_enqueues_a_wave_run(tenants, monkeypatch):
     t1, _t2, prd, s4d = tenants
     calls = []

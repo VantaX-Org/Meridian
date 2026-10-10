@@ -60,7 +60,7 @@ def seeded():
         c.execute(text("INSERT INTO migration_gap_findings (tenant_id, run_id, module, field, gap_type, severity) "
                        "VALUES (:t, :r, 'accounts_payable', 'LFA1.ZZOLD', 'unmapped_field', 'medium')"),
                   {"t": tid, "r": r2})
-    yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine}
+    yield {"tid": tid, "wid": wid, "vid": vid, "r2": r2, "engine": engine, "prd": prd}
     with engine.begin() as c:
         c.execute(text("DELETE FROM audit_log WHERE tenant_id = :t"), {"t": tid})
         c.execute(text("DELETE FROM record_issues WHERE tenant_id = :t"), {"t": tid})
@@ -138,10 +138,38 @@ async def test_blocker_fix_batch(seeded, monkeypatch):
     async with await _client(monkeypatch, seeded["tid"]) as c:
         assert (await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})).status_code == 400
         with seeded["engine"].begin() as conn:
+            # scope = the wave's own source system (PRD), matching record_issues.scope convention.
             conn.execute(text("INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, severity, "
-                              "status, first_seen_version, last_seen_version) VALUES (:t, 'upload', "
-                              "'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v)"), {"t": seeded["tid"], "v": seeded["vid"]})
+                              "status, first_seen_version, last_seen_version) VALUES (:t, :scope, "
+                              "'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v)"),
+                        {"t": seeded["tid"], "scope": seeded["prd"], "v": seeded["vid"]})
         r = await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})
     assert r.status_code == 200, r.text
     assert [i["record_key"] for i in captured["issues"]] == ["LIFNR=2"]
     assert captured["name"] == "Wave 1: BP supplier value_unmapped BUT000.BU_GROUP"
+
+
+@pytest.mark.anyio
+async def test_blocker_fix_batch_excludes_other_scopes(seeded, monkeypatch):
+    """Two scopes (the wave's own source system and another, with the same record key) must not
+    mix: only the wave's scope goes into the batch (final review I1)."""
+    captured = {}
+
+    def fake_draft(session, tenant_id, name, filter_json, issues, uid, label):
+        captured.update(issues=issues)
+        return {"id": "b1", "items": len(issues)}
+
+    monkeypatch.setattr("api.services.remediation.draft_batch", fake_draft)
+    other_scope = str(uuid.uuid4())
+    with seeded["engine"].begin() as conn:
+        conn.execute(text("INSERT INTO record_issues (tenant_id, scope, module, check_id, record_key, severity, "
+                          "status, first_seen_version, last_seen_version) VALUES "
+                          "(:t, :scope1, 'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v), "
+                          "(:t, :scope2, 'accounts_payable', 'AP-001', 'LIFNR=2', 'critical', 'open', :v, :v)"),
+                    {"t": seeded["tid"], "scope1": seeded["prd"], "scope2": other_scope, "v": seeded["vid"]})
+    body = {"module": "accounts_payable", "gap_type": "value_unmapped", "field": "BUT000.BU_GROUP"}
+    url = f"/api/v1/migration/waves/{seeded['wid']}/blockers/fix-batch"
+    async with await _client(monkeypatch, seeded["tid"]) as c:
+        r = await c.post(url, json=body, headers={**H, "X-User-Role": "admin"})
+    assert r.status_code == 200, r.text
+    assert [i["scope"] for i in captured["issues"]] == [seeded["prd"]]
