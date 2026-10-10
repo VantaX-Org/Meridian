@@ -17,6 +17,8 @@ import os
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from api.services.analytics_engine import DQS_HISTORY_DAILY_SQL
+
 logger = logging.getLogger("meridian.report_pdf")
 
 # Template directory — resolve from project root
@@ -116,14 +118,11 @@ def _load_supplementary(session: Session, version_id: str, tenant_id: str) -> di
 
     # Averaged per (module, day): a tenant with several systems scores each module once
     # per system per day, and the trend is one line per module, not one per system.
-    dqs_trend_rows = session.execute(text("""
-        SELECT MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score, module_id
-        FROM dqs_history
-        WHERE tenant_id = :tid
-        GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date
-        ORDER BY recorded_at DESC
-        LIMIT 10
-    """), {"tid": tenant_id}).fetchall()
+    dqs_trend_rows = session.execute(text(
+        f"SELECT recorded_at, dqs_score, module_id FROM "
+        f"({DQS_HISTORY_DAILY_SQL.format(module_filter='')}) daily "
+        f"ORDER BY recorded_at DESC LIMIT 10"
+    ), {"tid": tenant_id}).fetchall()
 
     glossary_rows = session.execute(text("""
         SELECT gt.sap_table, gt.sap_field, gt.business_name, gt.business_definition,

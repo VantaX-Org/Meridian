@@ -559,24 +559,19 @@ def daily_digest():
                 # 2. Predictive early warnings if enough history
                 early_warnings: list[dict] = []
                 history_count_result = session.execute(
-                    text("SELECT COUNT(DISTINCT recorded_at::date) FROM dqs_history WHERE tenant_id = :tid"),
+                    text("SELECT COUNT(DISTINCT (recorded_at AT TIME ZONE 'UTC')::date) "
+                         "FROM dqs_history WHERE tenant_id = :tid"),
                     {"tid": tid},
                 )
                 history_points = history_count_result.scalar() or 0
 
                 if history_points >= 3:
                     try:
-                        from api.services.analytics_engine import PredictiveAnalytics
+                        from api.services.analytics_engine import DQS_HISTORY_DAILY_SQL, PredictiveAnalytics
                         # Averaged per (module, day): several systems scoring the same module
                         # on the same day must collapse into one data point, not one per system.
                         rows = session.execute(
-                            text("SELECT module_id, MAX(recorded_at) AS recorded_at, "
-                                 "AVG(dqs_score) AS dqs_score, AVG(completeness) AS completeness, "
-                                 "AVG(accuracy) AS accuracy, AVG(consistency) AS consistency, "
-                                 "AVG(timeliness) AS timeliness, AVG(uniqueness) AS uniqueness, "
-                                 "AVG(validity) AS validity FROM dqs_history WHERE tenant_id = :tid "
-                                 "GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date "
-                                 "ORDER BY recorded_at"),
+                            text(DQS_HISTORY_DAILY_SQL.format(module_filter="")),
                             {"tid": tid},
                         ).mappings().all()
                         pa = PredictiveAnalytics()

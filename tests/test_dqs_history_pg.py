@@ -50,14 +50,17 @@ def test_upsert_per_system_latest_of_day_wins():
         engine.dispose()
 
 
-def test_predictive_reader_averages_two_systems_same_day():
+def test_reader_aggregates_three_days_two_systems():
     """Controller ruling: readers must aggregate to one value per (module, day) unless
-    explicitly per-system. Two systems scoring the same module on the same day must
-    average into a single forecast data point, not two."""
+    explicitly per-system. Exercises the real shared aggregation SQL
+    (api.services.analytics_engine.DQS_HISTORY_DAILY_SQL) used by analytics.py,
+    report_pdf.py and scheduler.py directly, not a copy of it — if that query is reverted
+    to an un-aggregated per-row SELECT, this test fails. Two systems scoring the same
+    module on each of three different UTC days must collapse into exactly three points."""
     from sqlalchemy import create_engine, text
 
     from workers.tasks.run_checks import DQS_HISTORY_UPSERT
-    from api.services.analytics_engine import PredictiveAnalytics
+    from api.services.analytics_engine import DQS_HISTORY_DAILY_SQL, PredictiveAnalytics
 
     url = os.environ["MERIDIAN_TEST_DB_URL"]
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,31 +69,34 @@ def test_predictive_reader_averages_two_systems_same_day():
     assert r.returncode == 0, r.stderr
     engine = create_engine(url)
     tid, prd, qas = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    # 3 UTC days x 2 systems; each day's two systems must average into one data point.
+    days = [(-2, 60.0, 80.0), (-1, 70.0, 90.0), (0, 80.0, 100.0)]
     try:
         with engine.begin() as c:
-            c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'D-history-2')"), {"t": tid})
-            # two systems, same module, same day: 80 and 90 should average to 85 for that day
-            for row in (_row(tid, prd, 80.0), _row(tid, qas, 90.0)):
-                c.execute(DQS_HISTORY_UPSERT, row)
-            rows = c.execute(text(
-                "SELECT module_id, MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score, "
-                "AVG(completeness) AS completeness, AVG(accuracy) AS accuracy, "
-                "AVG(consistency) AS consistency, AVG(timeliness) AS timeliness, "
-                "AVG(uniqueness) AS uniqueness, AVG(validity) AS validity, "
-                "SUM(finding_count) AS finding_count "
-                "FROM dqs_history WHERE tenant_id = :tid "
-                "GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date "
-                "ORDER BY recorded_at ASC"
-            ), {"tid": tid}).mappings().all()
-        assert len(rows) == 1
-        history = [dict(row) for row in rows]
-        assert float(history[0]["dqs_score"]) == 85.0
-        assert int(history[0]["finding_count"]) == 2
+            c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, 'D-history-3')"), {"t": tid})
+            for offset, prd_score, qas_score in days:
+                c.execute(DQS_HISTORY_UPSERT, _row(tid, prd, prd_score))
+                c.execute(DQS_HISTORY_UPSERT, _row(tid, qas, qas_score))
+                if offset != 0:
+                    # move today's pair back by `offset` days so the next pair (inserted at
+                    # "now") doesn't collide with it on the per-day upsert conflict target
+                    c.execute(text(
+                        "UPDATE dqs_history SET recorded_at = recorded_at + make_interval(days => :off) "
+                        "WHERE tenant_id = :t AND system_id IN (:prd, :qas) "
+                        "AND (recorded_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date"
+                    ), {"off": offset, "t": tid, "prd": prd, "qas": qas})
 
-        # with only one data point, forecast_dqs still correctly skips (needs >= 3); the
-        # point of this test is the aggregation query itself collapses the two systems.
+            rows = c.execute(text(DQS_HISTORY_DAILY_SQL.format(module_filter="")),
+                              {"tid": tid}).mappings().all()
+        history = [dict(row) for row in rows]
+        assert len(history) == 3
+        assert [round(float(h["dqs_score"]), 1) for h in history] == [70.0, 80.0, 90.0]
+        assert all(int(h["finding_count"]) == 2 for h in history)
+
         forecasts = PredictiveAnalytics().forecast_dqs(history)
-        assert forecasts == []
+        assert len(forecasts) == 1
+        assert forecasts[0]["module_id"] == "accounts_payable"
+        assert forecasts[0]["points"] == 3
     finally:
         with engine.begin() as c:
             c.execute(text("DELETE FROM dqs_history WHERE tenant_id = :t"), {"t": tid})

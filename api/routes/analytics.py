@@ -15,6 +15,7 @@ from api.services.rbac import has_permission
 from api.services.analytics_engine import (
     planner_config,
     BusinessImpactAnalytics,
+    DQS_HISTORY_DAILY_SQL,
     OperationalAnalytics,
     PredictiveAnalytics,
     PrescriptiveAnalytics,
@@ -29,22 +30,6 @@ from db.schema import (
     ImpactRecord,
     StewardMetric,
 )
-
-# dqs_history holds one row per tenant, system (NULL = upload), module and UTC day
-# (migration 067). Forecasting is per module, not per system, so every reader here
-# averages the systems scoring a module on the same day into a single data point.
-_DQS_HISTORY_DAILY_SQL = """
-    SELECT module_id, MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score,
-           AVG(completeness) AS completeness, AVG(accuracy) AS accuracy,
-           AVG(consistency) AS consistency, AVG(timeliness) AS timeliness,
-           AVG(uniqueness) AS uniqueness, AVG(validity) AS validity,
-           SUM(finding_count) AS finding_count
-    FROM dqs_history
-    WHERE tenant_id = :tid
-    {module_filter}
-    GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date
-    ORDER BY recorded_at ASC
-"""
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 logger = logging.getLogger("meridian.analytics")
@@ -96,7 +81,7 @@ async def _dqs_history_daily(db: AsyncSession, tenant_id, module_id: Optional[st
     if module_id:
         module_filter = "AND module_id = :module_id"
         params["module_id"] = module_id
-    sql = _DQS_HISTORY_DAILY_SQL.format(module_filter=module_filter)
+    sql = DQS_HISTORY_DAILY_SQL.format(module_filter=module_filter)
     result = await db.execute(text(sql), params)
     return [_agg_row_to_dict(r) for r in result.mappings().all()]
 

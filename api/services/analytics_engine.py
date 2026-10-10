@@ -12,6 +12,24 @@ from sklearn.linear_model import LinearRegression
 
 logger = logging.getLogger("meridian.analytics")
 
+# dqs_history holds one row per tenant, system (NULL = upload), module and UTC day
+# (migration 067). Forecasting is per module, not per system, so every reader
+# averages the systems scoring a module on the same day into a single data point.
+# Shared by api/routes/analytics.py, api/services/report_pdf.py and
+# workers/scheduler.py — adapt with WHERE/params or an outer wrapping query, not copies.
+DQS_HISTORY_DAILY_SQL = """
+    SELECT module_id, MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score,
+           AVG(completeness) AS completeness, AVG(accuracy) AS accuracy,
+           AVG(consistency) AS consistency, AVG(timeliness) AS timeliness,
+           AVG(uniqueness) AS uniqueness, AVG(validity) AS validity,
+           SUM(finding_count) AS finding_count
+    FROM dqs_history
+    WHERE tenant_id = :tid
+    {module_filter}
+    GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date
+    ORDER BY recorded_at ASC
+"""
+
 
 def _days_since_first(stamps: list) -> list[float]:
     """Calendar days from the first point; falls back to the run index when the
