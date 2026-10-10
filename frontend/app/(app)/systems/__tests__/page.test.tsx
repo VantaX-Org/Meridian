@@ -4,6 +4,7 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import * as configLoadApi from "@/lib/api/config-load";
+import * as systemsApi from "@/lib/api/systems";
 import type { SAPSystemExtended } from "@/types/api";
 import SystemsPage from "../page";
 
@@ -26,12 +27,15 @@ describe("systems list page", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Manual only")).toBeInTheDocument());
   });
 
   it("shows a retryable error when systems fail to load", async () => {
     const spy = vi.spyOn(connectivityApi, "getSystems").mockRejectedValue(new Error("network down"));
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
     await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
