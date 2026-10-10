@@ -2,14 +2,15 @@
 Emits engine.Gap rows (gap_type 's4_load') whose detail starts with the S4L rule id."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal, TypedDict
 
 import pandas as pd
 import yaml
 
-from api.services.migration.engine import Gap
+from api.services.migration.engine import Gap, ModuleResult, _BLOCKING, verdict_for
 from checks.base import record_keys
 from checks.frames import TableFrames
 
@@ -43,6 +44,48 @@ def rules() -> dict[str, S4LRule]:
     doc = yaml.safe_load(_FILE.read_text())
     return {r["id"]: S4LRule(r["id"], r["area"], r["severity"], r["reason"], r["target"],
                              tuple(r.get("related") or ())) for r in doc["rules"]}
+
+
+class RecordStatus(TypedDict):
+    record_key: str
+    source_table: str
+    status: Literal["load_ready", "load_fail"]
+    reasons: list[str]
+
+
+def simulate(frames: TableFrames, module: str, grouping_map: dict[str, str]) -> list[Gap]:
+    """Run checks relevant to the module's tables."""
+    return (check_matnr(frames, module) + check_cvi(frames, module, grouping_map) + check_credit(frames, module)
+            + check_mrp_area(frames, module) + check_material_ledger(frames, module)
+            + check_simplification(frames, module))
+
+
+def fold(res: ModuleResult, sim: list[Gap]) -> ModuleResult:
+    """Update ModuleResult with simulation gaps."""
+    blocked: dict[str, set[str]] = {}
+    for g in sim:
+        if g.severity in _BLOCKING and g.record_key and g.source_table:
+            blocked.setdefault(g.source_table, set()).add(g.record_key)
+    ready = {t: [k for k in ks if k not in blocked.get(t, set())] for t, ks in res.ready_keys.items()}
+    n_blocked = res.records - sum(len(v) for v in ready.values())
+    score, verdict = verdict_for(res.records, n_blocked, res.verdict == "no-go" and res.blocked_records == 0)
+    counts = {**res.counts, "s4_load": res.counts.get("s4_load", 0) + len(sim)}
+    return replace(res, blocked_records=n_blocked, score=score, verdict=verdict, counts=counts, ready_keys=ready)
+
+
+def record_status(gaps: list[Gap]) -> list[RecordStatus]:
+    """Convert gaps to record status entries."""
+    out: dict[tuple[str, str], RecordStatus] = {}
+    for g in gaps:
+        if not g.record_key:
+            continue
+        r = out.setdefault((g.source_table or "", g.record_key),
+                           RecordStatus(record_key=g.record_key, source_table=g.source_table or "",
+                                        status="load_ready", reasons=[]))
+        if g.severity in _BLOCKING:
+            r["status"] = "load_fail"
+            r["reasons"].append(g.detail)
+    return sorted(out.values(), key=lambda r: (r["status"] != "load_fail", r["source_table"], r["record_key"]))
 
 
 def _frame(frames: TableFrames, table: str) -> pd.DataFrame | None:

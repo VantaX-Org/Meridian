@@ -108,3 +108,13 @@ def test_load_files_exclude_blocked_records_and_apply_value_maps():
     with zipfile.ZipFile(io.BytesIO(to_csv_zip(tables))) as z:
         assert z.namelist() == ["BUT000.csv"]
     assert to_xlsx(tables)[:2] == b"PK"
+
+
+def test_verdict_for_matches_engine_rules():
+    from api.services.migration.engine import verdict_for
+
+    assert verdict_for(10, 0, False) == (100.0, "go")
+    assert verdict_for(100, 5, False) == (95.0, "conditional")
+    assert verdict_for(10, 5, False) == (50.0, "no-go")
+    assert verdict_for(10, 0, True)[1] == "no-go"
+    assert verdict_for(10_000, 1, False) == (99.99, "conditional")

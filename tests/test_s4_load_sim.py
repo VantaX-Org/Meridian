@@ -125,3 +125,23 @@ def test_konv_without_knumv_no_crash():
     # Should not crash; KONV without KNUMV means no orphan check, no KWERT check (below threshold),
     # no NAST means no open records. Result should be empty.
     assert gaps == []
+
+
+def test_fold_moves_blocked_keys_and_recomputes():
+    from api.services.migration.engine import ModuleResult
+
+    res = ModuleResult("material_master", 3, 0, 100.0, "go", {"field_mapping": 0},
+                       {"MARA": ["MATNR=A", "MATNR=B", "MATNR=C"]})
+    sim = [load_sim.Gap("material_master", "s4_load", "critical", "S4L-MM-MATNR-LEN x", "MATNR=A", "MARA"),
+           load_sim.Gap("material_master", "s4_load", "low", "S4L-FI-AFLE x", "MATNR=B", "MARA")]
+    out = load_sim.fold(res, sim)
+    assert out.blocked_records == 1 and out.ready_keys["MARA"] == ["MATNR=B", "MATNR=C"]
+    assert out.verdict == "no-go" and out.counts["s4_load"] == 2
+
+
+def test_record_status_reasons():
+    g = [load_sim.Gap("m", "s4_load", "critical", "S4L-MM-MATNR-LEN too long", "MATNR=A", "MARA"),
+         load_sim.Gap("m", "s4_load", "low", "S4L-FI-AFLE edge", "MATNR=B", "MARA")]
+    st = {r["record_key"]: r for r in load_sim.record_status(g)}
+    assert st["MATNR=A"]["status"] == "load_fail" and st["MATNR=A"]["reasons"] == ["S4L-MM-MATNR-LEN too long"]
+    assert st["MATNR=B"]["status"] == "load_ready"

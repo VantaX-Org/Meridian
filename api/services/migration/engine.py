@@ -36,6 +36,17 @@ _BLOCKING = ("critical", "high")
 MAX_FINDINGS_PER_GAP = 50_000
 
 
+def verdict_for(records: int, n_blocked: int, structural_critical: bool) -> tuple[float, str]:
+    """Calculate score and verdict from record counts and structural criticality."""
+    score = round((records - n_blocked) / records * 100, 2) if records else 0.0
+    if n_blocked and score == 100.0:
+        score = 99.99
+    verdict = ("go" if records and n_blocked == 0 and not structural_critical
+               else "conditional" if records and not structural_critical and score >= 90.0
+               else "no-go")
+    return score, verdict
+
+
 @dataclass(frozen=True)
 class Mapping:
     source: str                    # TABLE.FIELD in the source
@@ -214,12 +225,7 @@ def analyze(
     records = sum(len(k) for k in all_keys.values())
     n_blocked = sum(len(b) for b in blocked.values())
     structural_critical = any(g.severity == "critical" and g.record_key is None for g in gaps)
-    score = round((records - n_blocked) / records * 100, 2) if records else 0.0
-    if n_blocked and score == 100.0:
-        score = 99.99
-    verdict = ("go" if records and n_blocked == 0 and not structural_critical
-               else "conditional" if records and not structural_critical and score >= 90.0
-               else "no-go")
+    score, verdict = verdict_for(records, n_blocked, structural_critical)
     counts: dict[str, int] = {}
     for g in gaps:
         counts[g.gap_type] = counts.get(g.gap_type, 0) + 1
