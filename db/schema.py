@@ -15,6 +15,7 @@ import uuid
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -726,6 +727,32 @@ class SyncProfile(Base):
     )
 
 
+class MigrationWave(Base):
+    __tablename__ = "migration_waves"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    name = Column(Text, nullable=False)
+    source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    target_release = Column(Text, nullable=False, server_default="s4hana")
+    modules = Column(ARRAY(Text), nullable=False, server_default="{}")
+    target_date = Column(Date, nullable=True)
+    stage = Column(Text, nullable=False, server_default="plan")  # plan|mock1|mock2|dress|cutover
+    min_readiness = Column(Float, nullable=False, server_default="95")
+    min_dqs = Column(Float, nullable=True)
+    signed_off_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    signed_off_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("stage IN ('plan', 'mock1', 'mock2', 'dress', 'cutover')", name="ck_migration_waves_stage"),
+        UniqueConstraint("tenant_id", "name", name="uq_migration_waves_tenant_name"),
+        Index("ix_migration_waves_source", "tenant_id", "source_system_id"),
+    )
+
+
 class MigrationRun(Base):
     __tablename__ = "migration_runs"
 
@@ -734,6 +761,7 @@ class MigrationRun(Base):
     mode = Column(Text, nullable=False)  # source_to_source | source_to_destination
     source_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
     dest_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id"), nullable=True)
+    wave_id = Column(UUID(as_uuid=True), ForeignKey("migration_waves.id", ondelete="SET NULL"), nullable=True)
     source_version_id = Column(UUID(as_uuid=True), ForeignKey("analysis_versions.id"), nullable=True)
     target_release = Column(Text, nullable=True)  # s4hana (standard) when no target system is connected
     target_connected = Column(Boolean, server_default="false")
@@ -756,6 +784,7 @@ class MigrationRun(Base):
 
     __table_args__ = (
         Index("ix_migration_runs_tenant_status", "tenant_id", "status"),
+        Index("ix_migration_runs_wave", "wave_id", "completed_at"),
     )
 
 
