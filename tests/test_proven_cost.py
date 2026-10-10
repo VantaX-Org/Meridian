@@ -70,3 +70,16 @@ def test_grir_variance_with_bprme_and_meins_units():
     r = pc.grir_uom_variance(_tf(EKKO=ekko, EKPO=ekpo, MARA=mara, MARM=marm, EKBE=ekbe, RSEG=rseg))
     assert [i["doc_key"] for i in r.items] == ["EBELN=P1|EBELP=10"]
     assert "no MARM BOX" in r.items[0]["detail"]
+
+
+def test_blocked_sales_needs_customer_defect():
+    vbak = pd.DataFrame({"VBELN": ["S1", "S2", "S3"], "KUNNR": ["C1", "C2", "C3"], "VKORG": ["O"] * 3,
+                         "VTWEG": ["D"] * 3, "SPART": ["X"] * 3, "NETWR": [900.0, 50.0, 10.0],
+                         "WAERK": ["ZAR"] * 3, "LIFSK": ["01", "", "01"], "FAKSK": ["", "", ""]})
+    vbuk = pd.DataFrame({"VBELN": ["S1", "S2", "S3"], "CMGST": ["", "B", ""]})
+    knvv = pd.DataFrame({"KUNNR": ["C1", "C3"], "VKORG": ["O", "O"], "VTWEG": ["D", "D"], "SPART": ["X", "X"],
+                         "AUFSD": ["", ""], "LIFSD": ["01", ""]})
+    kna1 = pd.DataFrame({"KUNNR": ["C1", "C2", "C3"], "AUFSD": ["", "", ""], "LIFSD": ["", "", ""]})
+    r = pc.blocked_sales(_tf(VBAK=vbak, VBUK=vbuk, KNVV=knvv, KNA1=kna1))
+    assert {i["doc_key"] for i in r.items} == {"VBELN=S1", "VBELN=S2"}  # S2: no KNVV; S3: master clean
+    assert r.amount == 950.0

@@ -111,6 +111,45 @@ def grir_uom_variance(frames: TableFrames) -> MetricResult:
     return _result("grir_uom_variance", rows)
 
 
+def blocked_sales(frames: TableFrames) -> MetricResult:
+    got = _get(frames, "VBAK")
+    if got is None:
+        return MetricResult("blocked_sales")
+    (vbak,) = got
+    area = ["KUNNR", "VKORG", "VTWEG", "SPART"]
+    so = vbak.assign(**{c: _s(vbak, c) for c in ["VBELN", *area, "LIFSK", "FAKSK", "CMGST"]},
+                     amount=_num(vbak, "NETWR"), currency=_s(vbak, "WAERK"))
+    vbuk = frames.frames.get("VBUK")
+    if vbuk is not None and not vbuk.empty:
+        so = so.drop(columns="CMGST").merge(vbuk.assign(VBELN=_s(vbuk, "VBELN"), CMGST=_s(vbuk, "CMGST"))[["VBELN", "CMGST"]],
+                                            on="VBELN", how="left")
+        so["CMGST"] = so["CMGST"].fillna("")
+    credit, deliv, bill = so["CMGST"].isin(["B", "C"]), so["LIFSK"] != "", so["FAKSK"] != ""
+    so = so[credit | deliv | bill].assign(_c=credit, _d=deliv, _b=bill)
+    knvv = frames.frames.get("KNVV")
+    kv = (knvv.assign(**{c: _s(knvv, c) for c in [*area, "AUFSD", "LIFSD"]})[[*area, "AUFSD", "LIFSD"]]
+          if knvv is not None and not knvv.empty else pd.DataFrame(columns=[*area, "AUFSD", "LIFSD"]))
+    so = so.merge(kv, on=area, how="left", indicator=True)
+    kna1 = frames.frames.get("KNA1")
+    central: set[str] = set()
+    if kna1 is not None and not kna1.empty:
+        central = set(_s(kna1, "KUNNR")[(_s(kna1, "AUFSD") != "") | (_s(kna1, "LIFSD") != "")])
+    no_area = so["_merge"] == "left_only"
+    area_block = (so["AUFSD"].fillna("") != "") | (so["LIFSD"].fillna("") != "")
+    cen = so["KUNNR"].isin(central)
+    so = so[no_area | area_block | cen]
+    why = (so["_c"].map({True: "credit block; ", False: ""}) + so["_d"].map({True: "delivery block; ", False: ""})
+           + so["_b"].map({True: "billing block; ", False: ""})
+           + no_area[so.index].map({True: "no KNVV for sales area", False: ""})
+           + area_block[so.index].map({True: "KNVV order/delivery block", False: ""})
+           + cen[so.index].map({True: " KNA1 central block", False: ""}))
+    rows = pd.DataFrame({"doc_key": "VBELN=" + so["VBELN"],
+                         "master_key": "KUNNR=" + so["KUNNR"] + "|VKORG=" + so["VKORG"] + "|VTWEG=" + so["VTWEG"]
+                                       + "|SPART=" + so["SPART"],
+                         "amount": so["amount"], "currency": so["currency"], "detail": why.str.strip()})
+    return _result("blocked_sales", rows)
+
+
 def late_pos(frames: TableFrames, today: date) -> MetricResult:
     got = _get(frames, "EKKO", "EKPO", "EKET")
     if got is None:
