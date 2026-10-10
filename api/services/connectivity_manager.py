@@ -817,7 +817,8 @@ class ConnectivityManager:
     def load_config(self, system_id: str, load_id: str,
                     progress: Optional[Callable[[int, int, str], None]] = None) -> dict:
         """Read the system's configuration through ``connector.load_config()``, store it as a ``config_loads``
-        snapshot (role source, origin connection), read the change history (ABAP) and derive the process flows.
+        snapshot (role from the system; origin connection, or best_practice for a type with no config API),
+        read the change history (ABAP) and derive the process flows.
         Read only; never writes to SAP. Returns the stored summary."""
         from sap.config_loader import ABAP_TYPES, not_available_history, read_history
 
@@ -837,6 +838,10 @@ class ConnectivityManager:
         finally:
             connector.close()
 
+        from api.services.config_pairing import with_baseline, write_drift
+
+        snap, origin = with_baseline(snap, system_type)  # no config API: store the SAP standard baseline
+
         derivation = None
         if system_type in ("ecc", "s4hana_onprem") and snap.items:
             try:
@@ -849,20 +854,25 @@ class ConnectivityManager:
 
         objects = [o.as_dict() for o in snap.objects.values()]
         self.session.execute(
-            text("UPDATE config_loads SET status = 'completed', objects = CAST(:o AS jsonb), "
+            text("UPDATE config_loads SET status = 'completed', origin = :origin, objects = CAST(:o AS jsonb), "
                  "history = CAST(:h AS jsonb), derivation = CAST(:d AS jsonb), finished_at = now() "
                  "WHERE id = :lid AND tenant_id = :tid"),
-            {"o": json.dumps(objects), "h": json.dumps(history), "d": json.dumps(derivation) if derivation else None,
-             "lid": load_id, "tid": self.tenant_id})
+            {"origin": origin, "o": json.dumps(objects), "h": json.dumps(history),
+             "d": json.dumps(derivation) if derivation else None, "lid": load_id, "tid": self.tenant_id})
+        # a retried task reruns this load: replace its items instead of doubling them
+        self.session.execute(text("DELETE FROM config_items WHERE load_id = :lid AND tenant_id = :tid"),
+                             {"lid": load_id, "tid": self.tenant_id})
         rows = [{"tid": self.tenant_id, "lid": load_id, "obj": i.object, "key": i.key,
                  "vals": json.dumps(i.values, default=str)} for i in snap.items]
         for n in range(0, len(rows), 2000):
             self.session.execute(
                 text("INSERT INTO config_items (tenant_id, load_id, object, key, \"values\") "
                      "VALUES (:tid, :lid, :obj, :key, CAST(:vals AS jsonb))"), rows[n:n + 2000])
+        write_drift(self.session, str(self.tenant_id), system_id, load_id)
         self.session.commit()
         return {"load_id": load_id, "system_type": system_type, "objects": snap.summary(), "items": len(rows),
-                "flows_derived": derivation is not None, "table_logging_off": bool(history.get("table_logging_off"))}
+                "origin": origin, "flows_derived": derivation is not None,
+                "table_logging_off": bool(history.get("table_logging_off"))}
 
     # -- Config Sync -----------------------------------------------------------
 

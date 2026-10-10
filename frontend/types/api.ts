@@ -803,7 +803,8 @@ export type StewardshipItemType =
   | "exception"
   | "writeback_approval"
   | "contract_breach"
-  | "glossary_review";
+  | "glossary_review"
+  | "config_value_match";
 
 export type StewardshipStatus = "open" | "in_progress" | "resolved" | "escalated";
 
@@ -945,6 +946,8 @@ export interface SAPSystemExtended {
   discovered_at: string | null;
   sap_release: string | null;
   last_analysis_at: string | null;
+  role: "source" | "target";
+  target_system_id: string | null;
 }
 
 export interface SystemModule {

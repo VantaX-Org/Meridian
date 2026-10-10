@@ -33,7 +33,7 @@ const system: SAPSystemExtended = {
   discovery_status: null,
   discovered_at: null,
   sap_release: null,
-  last_analysis_at: null,
+  last_analysis_at: null, role: "source", target_system_id: null,
 };
 
 describe("LiveSection", () => {

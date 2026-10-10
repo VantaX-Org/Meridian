@@ -78,29 +78,57 @@ def save_seed(session, tenant_id, module, target_type, mappings) -> None:
         )
 
 
-def load_value_maps(session, module: str) -> dict[str, dict[str, str]]:
+def load_value_maps(session: Session, module: str, source_system_id: str | None = None,
+                    target_system_id: str | None = None) -> dict[str, dict[str, str]]:
+    """Confirmed maps of ``module`` plus the 'config' module's (a config map applies to every module).
+    Global first, then (source, no target), then (source, target) — later wins; within a scope the module's own rows beat config rows."""
+    from api.services.config_pairing import SCOPE_SQL
+
     out: dict[str, dict[str, str]] = {}
     for tf, sv, tv in session.execute(
-        text("SELECT target_field, source_value, target_value FROM transfer_value_mappings WHERE module = :m"),
-        {"m": module},
+        text(f"""
+            SELECT target_field, source_value, target_value FROM transfer_value_mappings
+            WHERE module IN (:m, 'config') AND status = 'confirmed' AND {SCOPE_SQL}
+              AND tenant_id = CAST(current_setting('app.tenant_id') AS uuid)
+            ORDER BY (source_system_id IS NOT NULL), (target_system_id IS NOT NULL), (module = 'config') DESC
+        """),
+        {"m": module, "src": str(source_system_id) if source_system_id else None,
+         "tgt": str(target_system_id) if target_system_id else None},
     ).fetchall():
         out.setdefault(tf, {})[sv] = tv
     return out
 
 
-def load_target_config(session, dest_system_id) -> dict[str, set[str]]:
-    if not dest_system_id:
-        return {}
+def _add_items(out: dict[str, set[str]], obj: str, values: dict[str, object]) -> None:
+    for col, val in (values or {}).items():
+        if val not in (None, ""):
+            out.setdefault(f"{obj}.{col}", set()).add(str(val).strip())
+
+
+def load_target_config(session: Session, dest_system_id: str | None) -> tuple[dict[str, set[str]], str]:
+    """(allowed values by CHECKTABLE.FIELD, basis): the destination's latest config load, else its live
+    config snapshots, else the S/4 standard baseline. The basis is 'baseline' for a best-practice source."""
+    from api.services.config_pairing import BASELINE_TYPE, baseline_snapshot, latest_completed_load, load_items
+
     out: dict[str, set[str]] = {}
-    for table, data in session.execute(
-        text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live'"),
-        {"sid": str(dest_system_id)},
-    ).fetchall():
-        for rec in data or []:
-            for col, val in rec.items():
-                if val not in (None, ""):
-                    out.setdefault(f"{table}.{col}", set()).add(str(val).strip())
-    return out
+    if dest_system_id:
+        load = latest_completed_load(session, str(dest_system_id))
+        if load:
+            for it in load_items(session, load[0]):
+                _add_items(out, it.object, it.values)
+            return out, "baseline" if load[1] == "best_practice" else "live"
+        for table, data in session.execute(
+            text("SELECT config_table, config_data FROM config_snapshots WHERE system_id = :sid AND source = 'live' "
+                 "AND tenant_id = CAST(current_setting('app.tenant_id') AS uuid)"),
+            {"sid": str(dest_system_id)},
+        ).fetchall():
+            for rec in data or []:
+                _add_items(out, table, rec)
+        if out:
+            return out, "live"
+    for it in baseline_snapshot(BASELINE_TYPE).items:
+        _add_items(out, it.object, it.values)
+    return out, "baseline"
 
 
 def module_source_tables(module: str, frames) -> list[str]:
@@ -171,7 +199,7 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
             else:
                 target_dict = get_dictionary(target_release)
                 target_type = target_release
-            target_config = load_target_config(session, None if dry_run else dest_system_id)
+            target_config, config_basis = load_target_config(session, None if dry_run else dest_system_id)
 
             owners = sim_owners(modules, frames) if dry_run else {}
             summary, all_gaps, records, blocked = {}, 0, 0, 0
@@ -184,12 +212,13 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     save_seed(session, tenant_id, module, target_type, seed)
                     session.commit()
                     mappings = seed
-                gaps, res = analyze(module, frames, tables, mappings, target_dict, load_value_maps(session, module),
-                                    target_config, None, bool(dest_system_id) and not dry_run)
+                value_maps = load_value_maps(session, module, source_system_id, dest_system_id)
+                gaps, res = analyze(module, frames, tables, mappings, target_dict, value_maps,
+                                    target_config, None, bool(dest_system_id) and not dry_run, config_basis=config_basis)
                 sim: list["Gap"] = []
                 if dry_run:
                     from api.services.migration import load_sim
-                    grouping = {**load_sim.standard_grouping(), **load_value_maps(session, module).get("BU_GROUP", {})}
+                    grouping = {**load_sim.standard_grouping(), **value_maps.get("BU_GROUP", {})}
                     sim = load_sim.simulate(frames, module, grouping, {t for t, m in owners.items() if m == module})
                     res = load_sim.fold(res, sim)
                     gaps = gaps + sim

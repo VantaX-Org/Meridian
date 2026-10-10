@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, ErrorState, Mono, Pager, Skeleton } from "@/design";
 import { getFindingRecords, type FindingRecord } from "@/lib/api/versions";
+import { FindingContextPanel } from "./finding-context-panel";
 import { queryKeys } from "@/lib/query-keys";
 import { RootCauseSection } from "./root-cause";
 
@@ -78,6 +79,12 @@ export default function RuleDetailPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6">
+      <FindingContextPanel
+        ruleId={ruleId}
+        run={run}
+        moduleId={data.records[0]?.module ?? ""}
+        fields={Object.keys(data.records[0]?.field_values ?? {})}
+      />
       <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>
         {data.total} record{data.total === 1 ? "" : "s"} fail {ruleId}.
       </p>

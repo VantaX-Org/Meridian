@@ -1,0 +1,35 @@
+{% extends "_base.html" %}
+{% block body %}
+<h2>Unmapped values</h2>
+{% if unmapped %}
+<table class="data">
+<thead><tr><th>Object</th><th>Field</th><th>Gap</th><th>Severity</th><th>Source value</th><th>Basis</th><th class="r">Records</th></tr></thead>
+<tbody>
+{% for u in unmapped %}
+<tr><td>{{ u.module | module }}</td><td class="mono">{{ u.field or "—" }}</td><td>{{ u.gap_type | module }}</td>
+    <td><span class="st {{ u.severity | st }}">{{ u.severity | capitalize }}</span></td>
+    <td class="mono">{{ u.source_value or "—" }}</td>
+    <td>{{ "SAP standard baseline" if u.provenance == "target_baseline_config" else "Target configuration" }}</td>
+    <td class="r">{{ u.records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">Every source value maps to a value configured in the target.</div>
+{% endif %}
+
+<h2>Applied mappings</h2>
+{% if applied %}
+<table class="data">
+<thead><tr><th>Object</th><th>Target field</th><th>Source value</th><th>Target value</th><th>Scope</th></tr></thead>
+<tbody>
+{% for a in applied %}
+<tr><td>{{ a.module | module }}</td><td class="mono">{{ a.target_field }}</td><td class="mono">{{ a.source_value }}</td>
+    <td class="mono">{{ a.target_value }}</td><td>{{ "This source and target" if a.scope == "pair" else "This source" if a.scope == "source" else "All systems" }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No confirmed value mappings apply to this run.</div>
+{% endif %}
+{% endblock %}

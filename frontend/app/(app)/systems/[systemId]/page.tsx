@@ -19,6 +19,7 @@ import {
   type PillTone,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
+import { ConfigComparePanel } from "./config-compare-panel";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
@@ -137,6 +138,7 @@ export default function SystemPage() {
         <div>
           <p className="text-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>{system.name}</p>
           <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            <Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>{" "}
             {labelOf(system.system_type)}, {system.environment}.{" "}
             {system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}
           </p>
@@ -209,6 +211,7 @@ export default function SystemPage() {
       <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
         <EditForm
           system={system}
+          targets={(systemsQ.data ?? []).filter((s) => s.role === "target" && s.id !== system.id)}
           onDone={() => { setEditOpen(false); refresh(); }}
           onDeleted={() => { setEditOpen(false); refresh(); router.push("/systems"); }}
         />
@@ -447,6 +450,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
       </div>
 
       <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
+      <ConfigComparePanel systemId={id} canPropose={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 
@@ -473,8 +477,9 @@ function Health({ id, system, canSync, canManage, onChanged }: {
 
 /* ── Edit ──────────────────────────────────────────────────────────────── */
 
-function EditForm({ system, onDone, onDeleted }: {
-  system: { id: string; name: string; environment: "PRD" | "QAS" | "DEV"; description: string | null; is_active: boolean };
+function EditForm({ system, targets, onDone, onDeleted }: {
+  system: { id: string; name: string; environment: "PRD" | "QAS" | "DEV"; description: string | null; is_active: boolean; role: "source" | "target"; target_system_id: string | null };
+  targets: { id: string; name: string }[];
   onDone: () => void;
   onDeleted: () => void;
 }) {
@@ -482,9 +487,14 @@ function EditForm({ system, onDone, onDeleted }: {
   const [environment, setEnvironment] = useState<string>(system.environment);
   const [description, setDescription] = useState(system.description ?? "");
   const [active, setActive] = useState(system.is_active);
+  const [role, setRole] = useState<"source" | "target">(system.role);
+  const [target, setTarget] = useState<string>(system.target_system_id ?? "none");
   const [confirming, setConfirming] = useState(false);
   const save = useMutation({
-    mutationFn: () => updateSystem(system.id, { name: name.trim(), environment, description, is_active: active }),
+    mutationFn: () => updateSystem(system.id, {
+      name: name.trim(), environment, description, is_active: active, role,
+      ...(role === "source" ? { target_system_id: target === "none" ? "" : target } : {}),
+    }),
     onSuccess: () => { toast.success("System saved"); onDone(); },
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
@@ -513,6 +523,22 @@ function EditForm({ system, onDone, onDeleted }: {
           options={["DEV", "QAS", "PRD"].map((v) => ({ value: v, label: v }))}
         />
       </Field>
+      <Field label="Role">
+        <Select
+          value={role}
+          onValueChange={(v) => setRole(v === "target" ? "target" : "source")}
+          options={[{ value: "source", label: "Source" }, { value: "target", label: "Target" }]}
+        />
+      </Field>
+      {role === "source" ? (
+        <Field label="Target">
+          <Select
+            value={target}
+            onValueChange={setTarget}
+            options={[{ value: "none", label: "None (SAP standard baseline)" }, ...targets.map((t) => ({ value: t.id, label: t.name }))]}
+          />
+        </Field>
+      ) : null}
       <Field label="Description">
         <input
           className="w-full rounded border px-3 py-1.5 text-[13px]"
