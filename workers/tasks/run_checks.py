@@ -22,6 +22,25 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.worker")
 
+# One row per tenant, system (NULL = file upload), module and UTC day; the latest run of the
+# day wins. Conflict target = uq_dqs_history_tenant_system_module_day (migration 067).
+DQS_HISTORY_UPSERT = text("""
+    INSERT INTO dqs_history (
+        id, tenant_id, system_id, module_id, dqs_score,
+        completeness, accuracy, consistency, timeliness, uniqueness, validity, finding_count
+    ) VALUES (
+        gen_random_uuid(), :tenant_id, CAST(:system_id AS uuid), :module_id, :dqs_score,
+        :completeness, :accuracy, :consistency, :timeliness, :uniqueness, :validity, :finding_count
+    )
+    ON CONFLICT (tenant_id, (COALESCE(system_id::text, 'upload')), module_id,
+                 ((recorded_at AT TIME ZONE 'UTC')::date))
+    DO UPDATE SET dqs_score = EXCLUDED.dqs_score, completeness = EXCLUDED.completeness,
+                  accuracy = EXCLUDED.accuracy, consistency = EXCLUDED.consistency,
+                  timeliness = EXCLUDED.timeliness, uniqueness = EXCLUDED.uniqueness,
+                  validity = EXCLUDED.validity, finding_count = EXCLUDED.finding_count,
+                  recorded_at = EXCLUDED.recorded_at
+""")
+
 
 def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
     """``TABLE.FIELD`` → values from the source system's live config snapshots.
@@ -653,43 +672,27 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             )
             session.commit()
 
-        # Insert dqs_history records for analytics tracking
+        # dqs_history: one row per system, module and day (latest run wins)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             for module_name in modules:
                 mod_summary = dqs_summary.get(module_name, {})
                 dims = mod_summary.get("dimension_scores", {})
-                mod_findings = [r for r in all_results if r.module == module_name]
-                session.execute(
-                    text("""
-                        INSERT INTO dqs_history (
-                            id, tenant_id, module_id, dqs_score,
-                            completeness, accuracy, consistency,
-                            timeliness, uniqueness, validity,
-                            finding_count
-                        ) VALUES (
-                            gen_random_uuid(), :tenant_id, :module_id, :dqs_score,
-                            :completeness, :accuracy, :consistency,
-                            :timeliness, :uniqueness, :validity,
-                            :finding_count
-                        )
-                        ON CONFLICT (tenant_id, module_id, ((recorded_at AT TIME ZONE 'UTC')::date)) DO NOTHING
-                    """),
-                    {
-                        "tenant_id": tenant_id,
-                        "module_id": module_name,
-                        "dqs_score": mod_summary.get("composite_score", 0),
-                        "completeness": dims.get("completeness", 0),
-                        "accuracy": dims.get("accuracy", 0),
-                        "consistency": dims.get("consistency", 0),
-                        "timeliness": dims.get("timeliness", 0),
-                        "uniqueness": dims.get("uniqueness", 0),
-                        "validity": dims.get("validity", 0),
-                        "finding_count": len(mod_findings),
-                    },
-                )
+                session.execute(DQS_HISTORY_UPSERT, {
+                    "tenant_id": tenant_id,
+                    "system_id": metadata.get("system_id"),
+                    "module_id": module_name,
+                    "dqs_score": mod_summary.get("composite_score", 0),
+                    "completeness": dims.get("completeness", 0),
+                    "accuracy": dims.get("accuracy", 0),
+                    "consistency": dims.get("consistency", 0),
+                    "timeliness": dims.get("timeliness", 0),
+                    "uniqueness": dims.get("uniqueness", 0),
+                    "validity": dims.get("validity", 0),
+                    "finding_count": sum(1 for r in all_results if r.module == module_name),
+                })
             session.commit()
-        logger.info(f"Inserted dqs_history records for {len(modules)} modules")
+        logger.info(f"Upserted dqs_history for {len(modules)} modules")
 
         # Generate deterministic report immediately (no LLM, <1 second)
         try:

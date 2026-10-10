@@ -114,10 +114,13 @@ def _load_supplementary(session: Session, version_id: str, tenant_id: str) -> di
         WHERE tenant_id = :tid
     """), {"tid": tenant_id}).fetchone()
 
+    # Averaged per (module, day): a tenant with several systems scores each module once
+    # per system per day, and the trend is one line per module, not one per system.
     dqs_trend_rows = session.execute(text("""
-        SELECT recorded_at, dqs_score, module_id
+        SELECT MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score, module_id
         FROM dqs_history
         WHERE tenant_id = :tid
+        GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date
         ORDER BY recorded_at DESC
         LIMIT 10
     """), {"tid": tenant_id}).fetchall()

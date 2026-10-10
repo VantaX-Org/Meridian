@@ -458,6 +458,7 @@ class DqsHistory(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), nullable=True)  # NULL = file upload (migration 067)
     module_id = Column(Text, nullable=False)
     dqs_score = Column(Numeric, nullable=False)
     completeness = Column(Numeric, nullable=True)

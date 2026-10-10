@@ -24,12 +24,27 @@ from db.schema import (
     CleaningMetric,
     CleaningQueue,
     CostAvoidance,
-    DqsHistory,
     Exception_,
     Finding,
     ImpactRecord,
     StewardMetric,
 )
+
+# dqs_history holds one row per tenant, system (NULL = upload), module and UTC day
+# (migration 067). Forecasting is per module, not per system, so every reader here
+# averages the systems scoring a module on the same day into a single data point.
+_DQS_HISTORY_DAILY_SQL = """
+    SELECT module_id, MAX(recorded_at) AS recorded_at, AVG(dqs_score) AS dqs_score,
+           AVG(completeness) AS completeness, AVG(accuracy) AS accuracy,
+           AVG(consistency) AS consistency, AVG(timeliness) AS timeliness,
+           AVG(uniqueness) AS uniqueness, AVG(validity) AS validity,
+           SUM(finding_count) AS finding_count
+    FROM dqs_history
+    WHERE tenant_id = :tid
+    {module_filter}
+    GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date
+    ORDER BY recorded_at ASC
+"""
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 logger = logging.getLogger("meridian.analytics")
@@ -63,6 +78,29 @@ def _row_to_dict(row) -> dict:
     return d
 
 
+def _agg_row_to_dict(row) -> dict:
+    """Convert a mapping from an aggregate (GROUP BY) query to a plain dict."""
+    d = dict(row)
+    for k, val in d.items():
+        if isinstance(val, datetime):
+            d[k] = val.isoformat()
+        elif hasattr(val, "as_integer_ratio"):  # Decimal/numeric
+            d[k] = float(val)
+    return d
+
+
+async def _dqs_history_daily(db: AsyncSession, tenant_id, module_id: Optional[str] = None) -> list[dict]:
+    """One row per (module, day): the latest run of each system that day, averaged."""
+    params = {"tid": str(tenant_id)}
+    module_filter = ""
+    if module_id:
+        module_filter = "AND module_id = :module_id"
+        params["module_id"] = module_id
+    sql = _DQS_HISTORY_DAILY_SQL.format(module_filter=module_filter)
+    result = await db.execute(text(sql), params)
+    return [_agg_row_to_dict(r) for r in result.mappings().all()]
+
+
 # ── 1. GET /analytics/predictive ─────────────────────────────────────────────
 
 
@@ -75,14 +113,7 @@ async def get_predictive_analytics(
     """DQS forecasting with early warnings."""
     await _set_tenant(db, tenant)
 
-    query = select(DqsHistory).where(DqsHistory.tenant_id == tenant.id)
-    if module_id:
-        query = query.where(DqsHistory.module_id == module_id)
-    query = query.order_by(DqsHistory.recorded_at.asc())
-
-    result = await db.execute(query)
-    rows = result.all()
-    history = [_row_to_dict(r) for r in rows]
+    history = await _dqs_history_daily(db, tenant.id, module_id)
 
     if not history:
         logger.warning("No DQS history for tenant %s — returning empty forecasts", tenant.id)
@@ -364,13 +395,7 @@ async def get_module_forecast(
     """Single-module DQS forecast with detailed contributing factors."""
     await _set_tenant(db, tenant)
 
-    result = await db.execute(
-        select(DqsHistory)
-        .where(DqsHistory.tenant_id == tenant.id, DqsHistory.module_id == module_id)
-        .order_by(DqsHistory.recorded_at.asc())
-    )
-    rows = result.all()
-    history = [_row_to_dict(r) for r in rows]
+    history = await _dqs_history_daily(db, tenant.id, module_id)
 
     if len(history) < 3:
         return {

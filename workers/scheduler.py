@@ -567,9 +567,15 @@ def daily_digest():
                 if history_points >= 3:
                     try:
                         from api.services.analytics_engine import PredictiveAnalytics
+                        # Averaged per (module, day): several systems scoring the same module
+                        # on the same day must collapse into one data point, not one per system.
                         rows = session.execute(
-                            text("SELECT module_id, dqs_score, recorded_at, completeness, accuracy, consistency, "
-                                 "timeliness, uniqueness, validity FROM dqs_history WHERE tenant_id = :tid "
+                            text("SELECT module_id, MAX(recorded_at) AS recorded_at, "
+                                 "AVG(dqs_score) AS dqs_score, AVG(completeness) AS completeness, "
+                                 "AVG(accuracy) AS accuracy, AVG(consistency) AS consistency, "
+                                 "AVG(timeliness) AS timeliness, AVG(uniqueness) AS uniqueness, "
+                                 "AVG(validity) AS validity FROM dqs_history WHERE tenant_id = :tid "
+                                 "GROUP BY module_id, (recorded_at AT TIME ZONE 'UTC')::date "
                                  "ORDER BY recorded_at"),
                             {"tid": tid},
                         ).mappings().all()
@@ -949,7 +955,7 @@ celery_app.conf.beat_schedule = {
     },
     "daily-mdm-snapshot-03am": {
         "task": "workers.tasks.snapshot_mdm_metrics.snapshot_mdm_metrics",
-        "schedule": crontab(hour=1, minute=30),  # 01:30 UTC = 03:30 SAST — after daily_analysis
+        "schedule": crontab(hour=1, minute=30),  # 01:30 UTC = 03:30 SAST
     },
     "weekly-ai-health-narrative-monday-06am": {
         "task": "workers.tasks.ai_health_narrative.generate_health_narrative",
@@ -987,6 +993,6 @@ celery_app.conf.beat_schedule = {
     },
     "nightly-mining-all-tenants-0230": {
         "task": "workers.tasks.mining.orchestrator.nightly_mining_all_tenants",
-        "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST (30 min after daily_analysis)
+        "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST
     },
 }
