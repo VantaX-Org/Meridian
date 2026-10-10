@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/api/optional";
-import { getWaves, runWave } from "@/lib/api/migration";
+import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
@@ -29,6 +29,20 @@ export default function MigrationPage() {
     onSuccess: () => {
       toast.success("Run queued. Readiness updates when it completes.");
       void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
+    },
+    onError: (e) => toast.error(apiErrorMessage(e)),
+  });
+  const dryRun = useMutation({
+    mutationFn: (wave: MigrationWave) =>
+      startMigration({
+        mode: "s4_dry_run",
+        source_system_id: wave.source_system_id as string,
+        modules: wave.modules,
+      }),
+    onSuccess: (data) => {
+      toast.success("Dry run queued.");
+      void qc.invalidateQueries({ queryKey: queryKeys.migrationWaves() });
+      router.push(`/migration/dry-run?run=${data.run_id}`);
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -59,10 +73,20 @@ export default function MigrationPage() {
       id: "actions", header: "",
       cell: ({ row }) =>
         can("analyse") ? (
-          <Button variant="secondary" disabled={run.isPending}
-                  onClick={(e) => { e.stopPropagation(); run.mutate(row.original.id); }}>
-            Run now
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" disabled={run.isPending}
+                    onClick={(e) => { e.stopPropagation(); run.mutate(row.original.id); }}>
+              Run now
+            </Button>
+            <Button variant="secondary" disabled={dryRun.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (row.original.source_system_id) dryRun.mutate(row.original);
+                      else toast.error("Set a source system for this wave first.");
+                    }}>
+              Dry run (S/4 load)
+            </Button>
+          </div>
         ) : null,
     },
   ];

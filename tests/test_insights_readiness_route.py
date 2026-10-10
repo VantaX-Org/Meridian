@@ -159,6 +159,42 @@ async def test_readiness_wave_without_own_run_falls_back_to_tenant_latest(two_te
 
 
 @pytest.mark.anyio
+async def test_readiness_prefers_dry_run_over_newer_non_dry_run(two_tenants, monkeypatch):
+    """When a dry run and a newer non-dry-run run both exist for the version, the dry run
+    drives the cell verdict — a dry run outranks recency."""
+    t1, _t2 = two_tenants
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    wave_id = str(uuid.uuid4())
+    with engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO migration_waves (id, tenant_id, name, modules) "
+            "VALUES (:id, :t, 'Wave Dry Run', '{material_master}')"), {"id": wave_id, "t": t1})
+        # Older run: s4_dry_run, no-go.
+        conn.execute(text(
+            "INSERT INTO migration_runs (tenant_id, mode, wave_id, status, completed_at, gap_summary) "
+            "VALUES (:t, 's4_dry_run', NULL, 'analysed', now() - interval '1 hour', CAST(:g AS jsonb))"), {
+            "t": t1,
+            "g": '{"material_master": {"verdict": "no-go", "score": 40.0, "blocked_records": 60, "gaps": {}}}',
+        })
+        # Newer run: source_to_destination, go.
+        conn.execute(text(
+            "INSERT INTO migration_runs (tenant_id, mode, wave_id, status, completed_at, gap_summary) "
+            "VALUES (:t, 'source_to_destination', NULL, 'analysed', now(), CAST(:g AS jsonb))"), {
+            "t": t1,
+            "g": '{"material_master": {"verdict": "go", "score": 100.0, "blocked_records": 0, "gaps": {}}}',
+        })
+
+    _patch_tenant(monkeypatch, t1)
+    await api_deps.engine.dispose()
+    headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/api/v1/insights/readiness", headers=headers)
+    assert r.status_code == 200
+    cells = {c["wave"]: c for c in r.json()["cells"]}
+    assert cells["Wave Dry Run"]["verdict"] == "no_go"
+
+
+@pytest.mark.anyio
 async def test_readiness_wave_min_dqs_override_changes_verdict(two_tenants, monkeypatch):
     """A wave's min_dqs override produces a different verdict than the tenant default
     threshold would, proving the override is actually applied."""

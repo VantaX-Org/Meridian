@@ -44,7 +44,7 @@ async def get_readiness(
         WHERE tenant_id = :t AND status = 'analysed'
           AND (CAST(:wid AS uuid) IS NULL OR wave_id = CAST(:wid AS uuid))
           AND (CAST(:vid AS uuid) IS NULL OR source_version_id = CAST(:vid AS uuid))
-        ORDER BY completed_at DESC LIMIT 1
+        ORDER BY (mode = 's4_dry_run') DESC, completed_at DESC LIMIT 1
     """
     vid = str(version_id) if version_id else None
     fallback = (await db.execute(text(run_sql), {"t": str(tenant.id), "wid": None, "vid": vid})).fetchone()

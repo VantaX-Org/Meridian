@@ -234,3 +234,31 @@ export async function getS4Readiness(versionId: string): Promise<{ status: strin
   });
   return data;
 }
+
+// ── S/4 load dry run ─────────────────────────────────────────────────────────
+
+export interface DryRunRecord {
+  module: string;
+  source_table: string;
+  record_key: string;
+  status: "load_ready" | "load_fail";
+  reasons: string[];
+}
+
+export interface DryRunRecordsResponse {
+  total: number;
+  rows: DryRunRecord[];
+}
+
+export async function getDryRunRecords(
+  runId: string,
+  params?: { status?: DryRunRecord["status"]; module?: string; limit?: number; offset?: number }
+): Promise<DryRunRecordsResponse> {
+  const { data } = await apiClient.get<DryRunRecordsResponse>(`/api/v1/migration/runs/${runId}/records`, { params });
+  return data;
+}
+
+/** The dry-run summary + per-rule + failing-record export (409 unless the run is an analysed s4_dry_run). */
+export function dryRunExportUrl(runId: string, fmt: "xlsx" | "pdf"): string {
+  return `/api/v1/migration/runs/${runId}/dry-run/${fmt}`;
+}
