@@ -104,7 +104,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects" },
       { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
       { href: "/systems", label: "Download history", icon: RefreshIcon, anyOf: ["trigger_sync"], keywords: "sync jobs monitor schedule" },
-      { href: "/insights/readiness", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer" },
+      { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
     ],
   },
   {

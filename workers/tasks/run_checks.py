@@ -22,6 +22,55 @@ from workers.db import get_sync_engine
 
 logger = logging.getLogger("meridian.worker")
 
+# One row per tenant, system (NULL = file upload), module and UTC day; the latest run of the
+# day wins. Conflict target = uq_dqs_history_tenant_system_module_day (migration 067).
+DQS_HISTORY_UPSERT = text("""
+    INSERT INTO dqs_history (
+        id, tenant_id, system_id, module_id, dqs_score,
+        completeness, accuracy, consistency, timeliness, uniqueness, validity, finding_count
+    ) VALUES (
+        gen_random_uuid(), :tenant_id, CAST(:system_id AS uuid), :module_id, :dqs_score,
+        :completeness, :accuracy, :consistency, :timeliness, :uniqueness, :validity, :finding_count
+    )
+    ON CONFLICT (tenant_id, (COALESCE(system_id::text, 'upload')), module_id,
+                 ((recorded_at AT TIME ZONE 'UTC')::date))
+    DO UPDATE SET dqs_score = EXCLUDED.dqs_score, completeness = EXCLUDED.completeness,
+                  accuracy = EXCLUDED.accuracy, consistency = EXCLUDED.consistency,
+                  timeliness = EXCLUDED.timeliness, uniqueness = EXCLUDED.uniqueness,
+                  validity = EXCLUDED.validity, finding_count = EXCLUDED.finding_count,
+                  recorded_at = EXCLUDED.recorded_at
+""")
+
+
+def enqueue_wave_reruns(session, tenant_id, system_id, version_id) -> int:
+    """Re-run the migration analysis of every open wave sourced from this system against
+    the version just analysed, so the cockpit trend follows the monitoring schedule.
+    Signed-off waves are frozen. Uploads have no system and re-run nothing."""
+    if not system_id:
+        return 0
+    import uuid as _uuid
+
+    from workers.tasks.run_migration import run_migration
+
+    waves = session.execute(text(
+        "SELECT id, modules, target_system_id, target_release FROM migration_waves "
+        "WHERE tenant_id = :t AND source_system_id = :s AND signed_off_at IS NULL AND cardinality(modules) > 0"),
+        {"t": str(tenant_id), "s": str(system_id)}).fetchall()
+    for w in waves:
+        run_id = str(_uuid.uuid4())
+        dest = str(w.target_system_id) if w.target_system_id else None
+        session.execute(text(
+            "INSERT INTO migration_runs (id, tenant_id, mode, source_system_id, dest_system_id, modules, status, wave_id) "
+            "VALUES (:id, :t, 'source_to_destination', :s, :d, :m, 'queued', :wid)"),
+            {"id": run_id, "t": str(tenant_id), "s": str(system_id), "d": dest, "m": list(w.modules),
+             "wid": str(w.id)})
+        session.commit()
+        task = run_migration.delay(str(tenant_id), run_id, "source_to_destination", str(system_id), dest,
+                                   list(w.modules), str(version_id), w.target_release)
+        session.execute(text("UPDATE migration_runs SET task_id = :tid WHERE id = :rid"), {"tid": task.id, "rid": run_id})
+        session.commit()
+    return len(waves)
+
 
 def _live_reference_values(engine, tenant_id: str, metadata: dict) -> dict[str, set[str]]:
     """``TABLE.FIELD`` → values from the source system's live config snapshots.
@@ -653,43 +702,27 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             )
             session.commit()
 
-        # Insert dqs_history records for analytics tracking
+        # dqs_history: one row per system, module and day (latest run wins)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             for module_name in modules:
                 mod_summary = dqs_summary.get(module_name, {})
                 dims = mod_summary.get("dimension_scores", {})
-                mod_findings = [r for r in all_results if r.module == module_name]
-                session.execute(
-                    text("""
-                        INSERT INTO dqs_history (
-                            id, tenant_id, module_id, dqs_score,
-                            completeness, accuracy, consistency,
-                            timeliness, uniqueness, validity,
-                            finding_count
-                        ) VALUES (
-                            gen_random_uuid(), :tenant_id, :module_id, :dqs_score,
-                            :completeness, :accuracy, :consistency,
-                            :timeliness, :uniqueness, :validity,
-                            :finding_count
-                        )
-                        ON CONFLICT (tenant_id, module_id, ((recorded_at AT TIME ZONE 'UTC')::date)) DO NOTHING
-                    """),
-                    {
-                        "tenant_id": tenant_id,
-                        "module_id": module_name,
-                        "dqs_score": mod_summary.get("composite_score", 0),
-                        "completeness": dims.get("completeness", 0),
-                        "accuracy": dims.get("accuracy", 0),
-                        "consistency": dims.get("consistency", 0),
-                        "timeliness": dims.get("timeliness", 0),
-                        "uniqueness": dims.get("uniqueness", 0),
-                        "validity": dims.get("validity", 0),
-                        "finding_count": len(mod_findings),
-                    },
-                )
+                session.execute(DQS_HISTORY_UPSERT, {
+                    "tenant_id": tenant_id,
+                    "system_id": metadata.get("system_id"),
+                    "module_id": module_name,
+                    "dqs_score": mod_summary.get("composite_score", 0),
+                    "completeness": dims.get("completeness", 0),
+                    "accuracy": dims.get("accuracy", 0),
+                    "consistency": dims.get("consistency", 0),
+                    "timeliness": dims.get("timeliness", 0),
+                    "uniqueness": dims.get("uniqueness", 0),
+                    "validity": dims.get("validity", 0),
+                    "finding_count": sum(1 for r in all_results if r.module == module_name),
+                })
             session.commit()
-        logger.info(f"Inserted dqs_history records for {len(modules)} modules")
+        logger.info(f"Upserted dqs_history for {len(modules)} modules")
 
         # Generate deterministic report immediately (no LLM, <1 second)
         try:
@@ -809,6 +842,16 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             send_notification.delay(version_id, tenant_id, "thresholds")
         except Exception as e:
             logger.warning(f"Failed to enqueue threshold alerts (non-fatal): {e}")
+
+        # Migration waves sourced from this system re-run against the fresh version
+        try:
+            with Session(engine) as session:
+                session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+                n = enqueue_wave_reruns(session, tenant_id, metadata.get("system_id"), version_id)
+            if n:
+                logger.info(f"Enqueued {n} migration wave re-run(s) for version_id={version_id}")
+        except Exception as e:
+            logger.warning(f"Failed to enqueue migration wave re-runs (non-fatal): {e}")
 
         # Enqueue exception scan (non-blocking — failure is non-fatal)
         try:

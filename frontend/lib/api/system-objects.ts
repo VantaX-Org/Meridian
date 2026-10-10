@@ -44,7 +44,7 @@ export interface SystemVersion {
   outliers: Record<string, { label: string; outliers: number; checked: number }>;
 }
 
-export type TrendFlag = "scope_changed" | "rules_changed" | "volume_shift";
+export type TrendFlag = "scope_changed" | "rules_changed" | "volume_shift" | "incomplete_extract";
 
 export interface TrendPoint {
   version_id: string;
@@ -64,6 +64,8 @@ export interface TrendPoint {
   rule_set: string | null;
   comparable: boolean;
   flags: TrendFlag[];
+  /** The extraction behind this point did not finish (metadata.extraction_complete === false). */
+  incomplete?: boolean;
 }
 
 export interface TrendSummary {

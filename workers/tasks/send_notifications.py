@@ -14,6 +14,7 @@ import logging
 import os
 import time
 import traceback
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -290,8 +291,8 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
     return subject, body
 
 
-def _send_email_smtp(recipient: str, subject: str, body: str):
-    """Send email via local SMTP relay (air-gapped deployments)."""
+def _send_email_smtp(recipient: str, subject: str, body: str) -> bool:
+    """Send email via local SMTP relay (air-gapped deployments). True only on a confirmed send."""
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -309,16 +310,18 @@ def _send_email_smtp(recipient: str, subject: str, body: str):
                 smtp.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD", ""))
             smtp.sendmail(msg["From"], recipient, msg.as_string())
         logger.info(f"Email sent via SMTP to {recipient}")
+        return True
     except Exception as e:
         logger.error(f"SMTP send failed: {e}")
+        return False
 
 
-def _send_email_resend(recipient: str, subject: str, body: str):
-    """Send email via Resend API (standard mode)."""
+def _send_email_resend(recipient: str, subject: str, body: str) -> bool:
+    """Send email via Resend API (standard mode). True only on a confirmed send."""
     api_key = os.getenv("RESEND_API_KEY", "")
     if not api_key:
         logger.info("Skipping email — no RESEND_API_KEY configured")
-        return
+        return False
 
     try:
         resp = requests.post(
@@ -336,35 +339,37 @@ def _send_email_resend(recipient: str, subject: str, body: str):
             timeout=10,
         )
         logger.info(f"Email sent via Resend: status={resp.status_code}")
+        return resp.ok
     except Exception as e:
         logger.error(f"Resend email send failed: {e}")
+        return False
 
 
-def _send_email(config: dict, version_data: dict, trigger: str):
+def _send_email(config: dict, version_data: dict, trigger: str) -> bool:
     """Send notification email via Microsoft Graph, SMTP relay, or Resend API."""
     recipient = config.get("email")
     if not recipient:
         logger.info("Skipping email — no email configured")
-        return
+        return False
 
     subject, body = _build_email_content(config, version_data, trigger)
-    _deliver_email(recipient, subject, body)
+    return _deliver_email(recipient, subject, body)
 
 
-def _deliver_email(recipient: str, subject: str, body: str):
-    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend."""
+def _deliver_email(recipient: str, subject: str, body: str) -> bool:
+    """Microsoft Graph, else the SMTP relay (SMTP_HOST), else Resend. False when no backend is
+    configured or every attempt fails — the single source of truth every caller relies on."""
     # Try Microsoft Graph first
     graph_client = create_graph_client()
     if graph_client:
         if graph_client.send_email(recipient, subject, body, sender_name="Meridian Data Quality"):
-            return
+            return True
         logger.warning("Microsoft Graph email send failed, falling back to SMTP/Resend")
 
     # Fall back to SMTP or Resend
     if os.getenv("SMTP_HOST"):
-        _send_email_smtp(recipient, subject, body)
-    else:
-        _send_email_resend(recipient, subject, body)
+        return _send_email_smtp(recipient, subject, body)
+    return _send_email_resend(recipient, subject, body)
 
 
 def _send_teams_card(config: dict, version_data: dict):
@@ -478,7 +483,7 @@ def send_notification(self, version_id: str, tenant_id: str, trigger: str):
         # Never raise — notification failures must not affect analysis
 
 
-# ── Alert channels (alert_channels, migration 054) ───────────────────────────
+# ── Alert channels (alert_channels, migration 057) ───────────────────────────
 # Payloads carry counts, rule ids and links only — never finding messages,
 # record keys or values. Digest (daily/weekly) is the default; a channel may
 # opt into immediate delivery of new critical findings only.
@@ -526,7 +531,8 @@ def alert_text(alert: dict) -> str:
     if alert.get("regressed_records"):
         parts.append(f"{alert['regressed_records']} record(s) failing again since the post-cleanup baseline "
                      f"({alert['links']['batches']})")
-    return f"Meridian {alert['mode']} alert — " + "; ".join(parts) + f". {alert['links']['findings']}"
+    where = f" for {alert['system_name']}" if alert.get("system_name") else ""
+    return f"Meridian {alert['mode']} alert{where} — " + "; ".join(parts) + f". {alert['links']['findings']}"
 
 
 def render(kind: str, alert: dict) -> dict:
@@ -548,9 +554,8 @@ def deliver(channel: dict, alert: dict) -> bool:
     """Send one alert. Never logs the target (webhook URLs embed tokens) or the secret."""
     kind = channel["kind"]
     if kind == "email":
-        _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
-                       f"<p>{html.escape(alert_text(alert))}</p>")
-        return True
+        return _deliver_email(channel["target"], f"Meridian DQ {alert['mode']} alert",
+                              f"<p>{html.escape(alert_text(alert))}</p>")
     body = json.dumps(render(kind, alert), sort_keys=True, default=str).encode()
     headers = {"Content-Type": "application/json", "X-Meridian-Event": alert["event"]}
     if channel.get("secret"):
@@ -565,11 +570,22 @@ def deliver(channel: dict, alert: dict) -> bool:
         return False
 
 
+def _deliver_safe(channel: dict, alert: dict) -> bool:
+    """`deliver`, but a raise (e.g. an expired Graph token) is caught so one bad channel never
+    stops the rest of a tenant's digest or immediate alert. Logs only the exception type and the
+    channel id — never the target URL/address."""
+    try:
+        return deliver(channel, alert)
+    except Exception as e:
+        logger.error(f"alert channel {channel.get('id')} ({channel.get('kind')}) raised: {type(e).__name__}")
+        return False
+
+
 def _channels(session: Session, where: str, params: dict | None = None) -> list[dict]:
     try:
         rows = session.execute(text(f"SELECT id, kind, target, secret FROM alert_channels WHERE enabled AND {where}"),
                                params or {}).mappings().all()
-    except Exception:  # table absent before migration 054
+    except Exception:  # table absent before migration 057
         session.rollback()
         return []
     return [dict(r) for r in rows]
@@ -589,15 +605,30 @@ def _critical_rules(session: Session, version_id) -> set[str]:
     """), {"v": str(version_id)}).fetchall()}
 
 
-def _completed(session: Session, before: datetime | None = None, skip: str | None = None):
-    """Latest completed analysis version (id, run_at, dqs_summary) — optionally before a time / not `skip`."""
-    return session.execute(text("""
+_SCOPE = "COALESCE(metadata->>'system_id', 'upload')"
+
+
+def _completed(session: Session, scope: str, before: datetime | None = None, skip: str | None = None):
+    """Latest completed analysis version (id, run_at, dqs_summary) of one source — a system id,
+    or 'upload' — optionally before a time / not `skip`. Runs of other systems never compare."""
+    return session.execute(text(f"""
         SELECT id, run_at, dqs_summary FROM analysis_versions
-         WHERE status IN ('complete', 'agents_complete')
+         WHERE status IN ('complete', 'agents_complete') AND {_SCOPE} = :scope
            AND (CAST(:before AS timestamptz) IS NULL OR run_at < :before)
            AND (CAST(:skip AS uuid) IS NULL OR id <> CAST(:skip AS uuid))
          ORDER BY run_at DESC LIMIT 1
-    """), {"before": before, "skip": skip}).fetchone()
+    """), {"scope": scope, "before": before, "skip": skip}).fetchone()
+
+
+def _system_name(session: Session, scope: str) -> str:
+    if scope == "upload":
+        return "File uploads"
+    try:
+        uuid.UUID(scope)
+    except ValueError:
+        return scope  # malformed metadata.system_id — never cast, never raise
+    row = session.execute(text("SELECT name FROM sap_systems WHERE id = CAST(:s AS uuid)"), {"s": scope}).fetchone()
+    return row[0] if row else scope
 
 
 def _drop_threshold(session: Session, tenant_id: str) -> float:
@@ -610,18 +641,27 @@ def _send_immediate_critical(session: Session, tenant_id: str, version_id: str) 
     if not channels:
         return
     from workers.tasks.send_user_invitation import _resolve_app_base_url
-    prev = _completed(session, skip=version_id)
+    run = session.execute(text(f"SELECT run_at, {_SCOPE} FROM analysis_versions WHERE id = :v"),
+                          {"v": str(version_id)}).fetchone()
+    if not run:
+        return
+    prev = _completed(session, run[1], before=run[0], skip=version_id)
     new = _critical_rules(session, version_id) - (_critical_rules(session, prev[0]) if prev else set())
     alert = build_alert("immediate", version_id, None, None, new, 0, 0, _resolve_app_base_url())
+    if alert:
+        alert["system_name"] = _system_name(session, run[1])
     for ch in channels if alert else []:
-        deliver(ch, alert)
+        _deliver_safe(ch, alert)
 
 
 @celery_app.task(name="workers.tasks.send_notifications.send_alert_digest",
                  soft_time_limit=600, time_limit=660)
 def send_alert_digest(period: str) -> dict:
-    """Daily / weekly digest per tenant: score drop beyond the tenant's threshold, critical
-    rules newly failing, exception SLAs breached in the window. Silent when nothing fired."""
+    """Daily / weekly digest per tenant: one alert per system (or file uploads) analysed in the
+    window — score drop beyond the tenant's threshold against that system's last run before the
+    window, critical rules newly failing, records regressed since its baseline — plus one
+    tenant-level alert for exception SLAs breached (exceptions carry no system). Silent when
+    nothing fired."""
     from workers.tasks.send_user_invitation import _resolve_app_base_url
 
     since = datetime.now(timezone.utc) - DIGEST_WINDOW[period]
@@ -637,29 +677,33 @@ def send_alert_digest(period: str) -> dict:
                 channels = _channels(session, "digest = :p", {"p": period})
                 if not channels:
                     continue
-                cur = _completed(session)
-                base = _completed(session, before=since)
-                fresh = cur is not None and cur[1] >= since
-                new = (_critical_rules(session, cur[0]) - (_critical_rules(session, base[0]) if base else set())
-                       if fresh and base else set())
+                drop_limit = _drop_threshold(session, tid)
+                scopes = [r[0] for r in session.execute(text(f"""
+                    SELECT DISTINCT {_SCOPE} FROM analysis_versions
+                     WHERE status IN ('complete', 'agents_complete') AND run_at >= :since
+                """), {"since": since}).fetchall()]
+                alerts = []
+                for scope in sorted(scopes):
+                    cur = _completed(session, scope)
+                    base = _completed(session, scope, before=since)
+                    new = (_critical_rules(session, cur[0]) - _critical_rules(session, base[0])) if base else set()
+                    # records failing again since this system's post-cleanup baseline (api/services/monitor.py)
+                    regressed = session.execute(text(
+                        "SELECT COALESCE((metadata->'monitor'->>'new_records')::int, 0) FROM analysis_versions "
+                        "WHERE id = :v"), {"v": str(cur[0])}).scalar() or 0
+                    alert = build_alert(period, str(cur[0]), _overall(cur[2]), _overall(base[2]) if base else None,
+                                        new, 0, drop_limit, base_url, regressed_records=int(regressed))
+                    if alert:
+                        alerts.append({**alert, "system_name": _system_name(session, scope)})
                 sla = session.execute(text("""
                     SELECT count(*) FROM exceptions WHERE status NOT IN ('resolved', 'closed')
                        AND sla_deadline > :since AND sla_deadline <= now()
                 """), {"since": since}).scalar() or 0
-                # newest run per system in the window, compared with its post-cleanup baseline
-                regressed = session.execute(text("""
-                    SELECT COALESCE(SUM((m->>'new_records')::int), 0) FROM (
-                        SELECT DISTINCT ON (COALESCE(metadata->>'system_id', 'upload')) metadata->'monitor' AS m
-                          FROM analysis_versions WHERE status IN ('complete', 'agents_complete') AND run_at >= :since
-                         ORDER BY COALESCE(metadata->>'system_id', 'upload'), run_at DESC) x
-                """), {"since": since}).scalar() or 0
-                alert = build_alert(period, str(cur[0]) if fresh else None,
-                                    _overall(cur[2]) if fresh else None,
-                                    _overall(base[2]) if fresh and base else None,
-                                    new, int(sla), _drop_threshold(session, tid), base_url,
-                                    regressed_records=int(regressed))
-                for ch in channels if alert else []:
-                    sent += deliver(ch, alert)
+                tenant_alert = build_alert(period, None, None, None, set(), int(sla), drop_limit, base_url)
+                alerts += [tenant_alert] if tenant_alert else []
+                for alert in alerts:
+                    for ch in channels:
+                        sent += _deliver_safe(ch, alert)
         except Exception as e:
-            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}: {e}")
+            logger.error(f"alert digest failed for tenant {tid}: {type(e).__name__}")
     return {"period": period, "sent": sent}

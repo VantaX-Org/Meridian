@@ -29,6 +29,7 @@ function mockHappyPath() {
   vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
   vi.spyOn(connectivityApi, "getSystemModules").mockResolvedValue([]);
   vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+  vi.spyOn(systemObjectsApi, "getTrends").mockResolvedValue({ summary: [], series: {} });
   vi.spyOn(sourceDesignApi, "getDesign").mockResolvedValue({
     system_type: "ecc", discovery_status: null, discovered_at: null, sap_release: null, sap_product: null,
     config_sync_status: null, config_synced_at: null, snapshot: null, configuration: [],

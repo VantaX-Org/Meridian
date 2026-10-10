@@ -1,0 +1,50 @@
+{% extends "_base.html" %}
+{% block body %}
+<h2>Verdict</h2>
+<p><span class="st {{ verdict | st }}">{{ verdict_label }}</span> {{ verdict_sentence }}</p>
+
+<h2>Objects</h2>
+{% if objects %}
+<table class="data">
+<thead><tr><th>Object</th><th>Verdict</th><th class="r">Readiness</th><th class="r">Records</th><th class="r">Blocked</th><th class="r">Blocking gaps</th><th class="r">DQS</th></tr></thead>
+<tbody>
+{% for o in objects %}
+<tr><td>{{ o.label }}<span class="sub mono">{{ o.module }}</span></td><td>{{ o.verdict | module }}</td>
+    <td class="r">{{ o.score | pct }}</td><td class="r">{{ o.records | n }}</td><td class="r">{{ o.records_blocked | n }}</td>
+    <td class="r">{{ o.blocker_count | n }}</td><td class="r">{{ o.dqs | n(1) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">This wave has no objects in scope.</div>
+{% endif %}
+
+<h2>Top blockers</h2>
+{% if blockers %}
+<table class="data">
+<thead><tr><th>Object</th><th>Gap</th><th>Field</th><th>Severity</th><th class="r">Records</th></tr></thead>
+<tbody>
+{% for b in blockers %}
+<tr><td>{{ b.label }}</td><td>{{ b.gap_type | module }}</td><td class="mono">{{ b.field or "—" }}</td>
+    <td><span class="st {{ b.severity | st }}">{{ b.severity | capitalize }}</span></td><td class="r">{{ b.records | n }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% elif has_run %}
+<div class="empty">The latest run found no critical or high gaps.</div>
+{% else %}
+<div class="empty">This wave has not been analysed yet.</div>
+{% endif %}
+
+<h2>Readiness over time</h2>
+{% if trend %}
+<table class="data">
+<thead><tr><th>Run completed</th><th class="r">Readiness</th></tr></thead>
+<tbody>
+{% for t in trend %}<tr><td>{{ t.completed_at | sast }}</td><td class="r">{{ t.score | pct }}</td></tr>{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="empty">No completed runs yet.</div>
+{% endif %}
+{% endblock %}

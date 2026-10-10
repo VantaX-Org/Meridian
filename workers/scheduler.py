@@ -46,7 +46,11 @@ def _set_rls(session: Session, tenant_id: str) -> None:
 @celery_app.task(name="workers.scheduler.daily_analysis",
                  soft_time_limit=1800, time_limit=1860)
 def daily_analysis():
-    """Re-run checks on latest data for each tenant, update DQS history and cache."""
+    """AI quality score and dashboard cache for each tenant's latest analysed run.
+
+    Does not re-run checks: fresh data arrives through sync_profiles
+    (sync_profile_scheduler -> run_sync -> run_checks), and run_checks writes dqs_history.
+    Re-scoring the last parquet here only re-measured old data under today's date."""
     logger.info("Trigger 1: daily_analysis starting")
     engine = get_sync_engine()
 
@@ -60,26 +64,22 @@ def daily_analysis():
                 _set_rls(session, tid)
 
                 # Get latest complete version
-                result = session.execute(
+                row = session.execute(
                     text("""
-                        SELECT id, run_at, dqs_summary, metadata->>'parquet_path' AS parquet_path
+                        SELECT id, run_at, dqs_summary
                         FROM analysis_versions
                         WHERE tenant_id = :tid AND status IN ('complete', 'agents_complete')
                         ORDER BY run_at DESC LIMIT 1
                     """),
                     {"tid": tid},
-                )
-                row = result.fetchone()
+                ).fetchone()
                 if not row:
                     logger.info(f"  tenant={tid}: no complete version, skipping")
                     continue
 
                 version = dict(row._mapping)
                 version_id = str(version["id"])
-                parquet_path = version.get("parquet_path")
-                if not parquet_path:
-                    logger.warning(f"  tenant={tid}: latest version {version_id} has no parquet_path, skipping re-run")
-                    continue
+                dqs_summary = version.get("dqs_summary")
                 today = datetime.now(SAST).date()
 
                 run_date = version["run_at"]
@@ -133,40 +133,6 @@ def daily_analysis():
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: ai_sync_quality scoring failed: {e} — continuing")
                     session.rollback()
-
-                # Enqueue run_checks
-                from workers.tasks.run_checks import run_checks
-                run_checks.delay(version_id, tid, parquet_path)
-                logger.info(f"  tenant={tid}: enqueued run_checks for version={version_id}")
-
-                # Insert dqs_history record from latest dqs_summary
-                dqs_summary = version.get("dqs_summary")
-                if dqs_summary and isinstance(dqs_summary, dict):
-                    for module, scores in dqs_summary.items():
-                        if not isinstance(scores, dict):
-                            continue
-                        dim = scores.get("dimension_scores", scores)
-                        session.execute(
-                            text("""
-                                INSERT INTO dqs_history (id, tenant_id, module_id,
-                                    dqs_score, completeness, accuracy, consistency,
-                                    timeliness, uniqueness, validity, recorded_at)
-                                VALUES (gen_random_uuid(), :tid, :mod,
-                                    :comp, :compl, :acc, :cons, :tim, :uniq, :val, now())
-                                ON CONFLICT DO NOTHING
-                            """),
-                            {
-                                "tid": tid, "mod": module,
-                                "comp": scores.get("composite_score", 0),
-                                "compl": dim.get("completeness", 0),
-                                "acc": dim.get("accuracy", 0),
-                                "cons": dim.get("consistency", 0),
-                                "tim": dim.get("timeliness", 0),
-                                "uniq": dim.get("uniqueness", 0),
-                                "val": dim.get("validity", 0),
-                            },
-                        )
-                    session.commit()
 
                 # Cache dashboard summary in Redis
                 try:
@@ -593,18 +559,19 @@ def daily_digest():
                 # 2. Predictive early warnings if enough history
                 early_warnings: list[dict] = []
                 history_count_result = session.execute(
-                    text("SELECT COUNT(DISTINCT recorded_at::date) FROM dqs_history WHERE tenant_id = :tid"),
+                    text("SELECT COUNT(DISTINCT (recorded_at AT TIME ZONE 'UTC')::date) "
+                         "FROM dqs_history WHERE tenant_id = :tid"),
                     {"tid": tid},
                 )
                 history_points = history_count_result.scalar() or 0
 
                 if history_points >= 3:
                     try:
-                        from api.services.analytics_engine import PredictiveAnalytics
+                        from api.services.analytics_engine import DQS_HISTORY_DAILY_SQL, PredictiveAnalytics
+                        # Averaged per (module, day): several systems scoring the same module
+                        # on the same day must collapse into one data point, not one per system.
                         rows = session.execute(
-                            text("SELECT module_id, dqs_score, recorded_at, completeness, accuracy, consistency, "
-                                 "timeliness, uniqueness, validity FROM dqs_history WHERE tenant_id = :tid "
-                                 "ORDER BY recorded_at"),
+                            text(DQS_HISTORY_DAILY_SQL.format(module_filter="")),
                             {"tid": tid},
                         ).mappings().all()
                         pa = PredictiveAnalytics()
@@ -643,37 +610,43 @@ def daily_digest():
                 next_actions: list[dict] = []
                 try:
                     from api.services.analytics_engine import PrescriptiveAnalytics
-                    presc = PrescriptiveAnalytics(session, tid)
-                    actions = presc.get_next_best_actions()
-                    next_actions = actions[:5] if actions else []
+                    # Same inputs as GET /analytics/prescriptive: latest complete version's
+                    # findings, open cleaning items and exceptions, the tenant's planner config.
+                    def rows(sql: str) -> list[dict]:
+                        return [dict(r) for r in session.execute(text(sql), {"tid": tid}).mappings()]
+                    findings = rows("""
+                        SELECT * FROM findings WHERE tenant_id = :tid AND version_id = (
+                            SELECT id FROM analysis_versions WHERE tenant_id = :tid AND status = 'complete'
+                            ORDER BY run_at DESC LIMIT 1)""")
+                    queue = rows("SELECT * FROM cleaning_queue WHERE tenant_id = :tid "
+                                 "AND status IN ('detected', 'recommended') LIMIT 100")
+                    excs = rows("SELECT * FROM exceptions WHERE tenant_id = :tid "
+                                "AND status IN ('open', 'investigating') LIMIT 100")
+                    thresholds = session.execute(text("SELECT alert_thresholds FROM tenants WHERE id = :tid"),
+                                                 {"tid": tid}).scalar() or {}
+                    presc = PrescriptiveAnalytics(thresholds.get("planner") or {})
+                    next_actions = presc.generate_next_best_actions(findings, queue, excs, limit=5)
                 except Exception as e:
                     logger.warning(f"  tenant={tid}: prescriptive analytics failed: {e}")
 
-                # 4. Create notification records (skip if table doesn't exist)
+                # 4. Inbox notification. notifications has no metadata column: the warnings and
+                # top actions go into the body text.
+                lines = [f"{new_findings} new findings, {new_cleaning} cleaning items, {new_exceptions} exceptions"]
+                lines += [f"Next: {a['title']} ({a['severity']}, {a['affected_count']} records)" for a in next_actions]
+                if early_warnings:
+                    lines.append(f"{len(early_warnings)} early warning(s) on DQS forecasts")
+                if anomaly_warning:
+                    lines.append(anomaly_warning)
                 try:
                     session.execute(
-                        text("""
-                            INSERT INTO notifications (id, tenant_id, type, title, body, metadata, created_at)
-                            VALUES (gen_random_uuid(), :tid, 'daily_digest', 'Daily Digest',
-                                :body, :meta, now())
-                        """),
-                        {
-                            "tid": tid,
-                            "body": f"{new_findings} new findings, {new_cleaning} cleaning items, {new_exceptions} exceptions",
-                            "meta": json.dumps({
-                                "findings": new_findings,
-                                "cleaning": new_cleaning,
-                                "exceptions": new_exceptions,
-                                "early_warnings": early_warnings,
-                                "next_actions": next_actions,
-                                "anomaly_warning": anomaly_warning,
-                            }),
-                        },
+                        text("INSERT INTO notifications (tenant_id, type, title, body) "
+                             "VALUES (:tid, 'daily_digest', 'Daily digest', :body)"),
+                        {"tid": tid, "body": "\n".join(lines)},
                     )
                     session.commit()
-                except Exception:
+                except Exception as e:
                     session.rollback()
-                    logger.debug(f"  tenant={tid}: notifications table not yet available")
+                    logger.warning(f"  tenant={tid}: digest notification not stored: {type(e).__name__}")
 
                 # 5. Send email if configured
                 resend_key = os.getenv("RESEND_API_KEY")
@@ -983,7 +956,7 @@ celery_app.conf.beat_schedule = {
     },
     "daily-mdm-snapshot-03am": {
         "task": "workers.tasks.snapshot_mdm_metrics.snapshot_mdm_metrics",
-        "schedule": crontab(hour=1, minute=30),  # 01:30 UTC = 03:30 SAST — after daily_analysis
+        "schedule": crontab(hour=1, minute=30),  # 01:30 UTC = 03:30 SAST
     },
     "weekly-ai-health-narrative-monday-06am": {
         "task": "workers.tasks.ai_health_narrative.generate_health_narrative",
@@ -1021,6 +994,6 @@ celery_app.conf.beat_schedule = {
     },
     "nightly-mining-all-tenants-0230": {
         "task": "workers.tasks.mining.orchestrator.nightly_mining_all_tenants",
-        "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST (30 min after daily_analysis)
+        "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST
     },
 }

@@ -20,6 +20,7 @@ import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any, Iterable, Optional
+from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, FileSystemLoader, Undefined, select_autoescape
 from markupsafe import Markup, escape
@@ -80,6 +81,14 @@ def fmt_dt(v: Any) -> str:
     return "—" if d is None else d.astimezone(timezone.utc).strftime("%-d %b %Y, %H:%M UTC")
 
 
+_SAST = ZoneInfo("Africa/Johannesburg")
+
+
+def fmt_sast(v: object) -> str:
+    d = _to_dt(v)
+    return "—" if d is None else d.astimezone(_SAST).strftime("%-d %b %Y, %H:%M SAST")
+
+
 def fmt_dur(seconds: Any) -> str:
     if _missing(seconds):
         return "—"
@@ -115,7 +124,8 @@ def css_str(v: Any) -> Markup:
 def status_class(status: Optional[str]) -> str:
     return {"go": "ok", "conditional": "warn", "no-go": "bad", "live": "ok", "complete": "ok",
             "fixed": "ok", "failed": "bad", "still_failing": "bad", "critical": "bad",
-            "high": "bad", "medium": "warn", "low": "na"}.get(str(status or ""), "na")
+            "high": "bad", "medium": "warn", "low": "na",
+            "at_risk": "warn", "no_go": "bad"}.get(str(status or ""), "na")
 
 
 def redact(v: Any) -> str:
@@ -129,7 +139,7 @@ def _env() -> Environment:
                       trim_blocks=True, lstrip_blocks=True)
     env.filters.update(n=fmt_n, pct=fmt_pct, signed=fmt_signed, dt=fmt_dt, dur=fmt_dur,
                        module=fmt_module, st=status_class, redact=redact,
-                       css_str=css_str)
+                       css_str=css_str, sast=fmt_sast)
     return env
 
 

@@ -1,5 +1,6 @@
 """Notification centre API routes."""
 
+import asyncio
 import re
 import uuid
 from typing import Literal, Optional
@@ -199,3 +200,25 @@ async def delete_alert_channel(channel_id: uuid.UUID, db: AsyncSession = Depends
     if not res.rowcount:
         raise HTTPException(status_code=404, detail="Alert channel not found")
     await db.commit()
+
+
+@router.post("/alert-channels/{channel_id}/test", dependencies=[Depends(require_permission("manage_settings"))])
+async def send_test_alert(channel_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                          tenant: Tenant = Depends(get_tenant)):
+    """Send a sample alert through the channel so an admin can confirm the target and secret.
+    The payload has the real shape; the rule id is a placeholder, never a real finding."""
+    from workers.tasks import send_notifications as sn
+    from workers.tasks.send_user_invitation import _resolve_app_base_url
+
+    await _set_rls(db, tenant.id)
+    row = (await db.execute(text("SELECT id, kind, target, secret FROM alert_channels WHERE id = :id"),
+                            {"id": str(channel_id)})).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Alert channel not found")
+    alert = sn.build_alert("test", None, None, None, {"SAMPLE-001"}, 0, 0, _resolve_app_base_url())
+    alert["system_name"] = "Sample system"
+    try:
+        delivered = await asyncio.to_thread(sn.deliver, dict(row), alert)
+    except Exception:  # deliver() itself reports false on a backend-not-configured or send failure;
+        delivered = False  # this only catches an unexpected raise. Never logs the target or secret.
+    return {"delivered": bool(delivered)}

@@ -1088,6 +1088,74 @@ export interface MigrationRun {
   completed_at: string | null;
 }
 
+export type WaveStage = "plan" | "mock1" | "mock2" | "dress" | "cutover";
+/** Grid verdict (engine "conditional" is shown as at_risk). */
+export type WaveVerdict = "go" | "at_risk" | "no_go";
+
+export interface MigrationWave {
+  id: string;
+  name: string;
+  source_system_id: string | null;
+  target_system_id: string | null;
+  target_release: string;
+  modules: string[];
+  target_date: string | null;
+  stage: WaveStage;
+  min_readiness: number;
+  min_dqs: number | null;
+  signed_off_by: string | null;
+  signed_off_at: string | null;
+  created_at: string;
+  updated_at: string;
+  /** List view only: the latest analysed run (engine verdict) and its recent scores. */
+  last_run_id?: string | null;
+  last_verdict?: TransferVerdict | null;
+  last_score?: number | null;
+  last_completed_at?: string | null;
+  trend?: number[];
+}
+
+export interface WaveObject {
+  module: string;
+  label: string;
+  verdict: WaveVerdict;
+  score: number | null;
+  records: number;
+  records_blocked: number;
+  blocker_count: number;
+  dqs: number | null;
+}
+
+export interface WaveBlocker {
+  module: string;
+  label: string;
+  gap_type: MigrationGapType;
+  field: string | null;
+  severity: Severity;
+  records: number;
+  gaps: number;
+}
+
+export interface WaveTrendPoint {
+  run_id: string;
+  completed_at: string;
+  score: number;
+}
+
+export interface WaveCockpit {
+  wave: MigrationWave;
+  run_id: string | null;
+  source_version_id: string | null;
+  dest_system_type: string;
+  verdict: WaveVerdict;
+  score: number | null;
+  records_total: number;
+  records_blocked: number;
+  objects: WaveObject[];
+  trend: WaveTrendPoint[];
+  blockers: WaveBlocker[];
+}
+
 export type MigrationGapType =
   | "unmapped_field"
   | "target_field_missing"
