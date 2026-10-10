@@ -10,6 +10,8 @@ export interface DownloadScope {
   /** YYYY-MM-DD — replaces the default window of transactional tables. */
   date_from?: string;
   date_to?: string;
+  /** Skip rows already flagged for deletion in plant/org-level child tables. */
+  exclude_deleted?: boolean;
 }
 
 export interface SystemObject {
