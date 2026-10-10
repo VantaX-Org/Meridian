@@ -20,11 +20,8 @@ const KIND_LABEL: Record<AlertChannelKind, string> = {
   slack: "Slack", teams: "Microsoft Teams", webhook: "Webhook (signed)", email: "Email",
 };
 const DIGEST_LABEL: Record<AlertDigest, string> = { daily: "Daily digest", weekly: "Weekly digest", off: "No digest" };
-// Shorter labels for the picker so a selected value never duplicates a listed channel's
-// own cell text (e.g. the picker defaulting to "daily" alongside an existing daily channel).
-const DIGEST_PICKER_LABEL: Record<AlertDigest, string> = { daily: "Daily", weekly: "Weekly", off: "Off" };
 const KIND_OPTIONS = Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }));
-const DIGEST_OPTIONS = Object.entries(DIGEST_PICKER_LABEL).map(([value, label]) => ({ value, label }));
+const DIGEST_OPTIONS = Object.entries(DIGEST_LABEL).map(([value, label]) => ({ value, label }));
 const isKind = (v: string): v is AlertChannelKind => v in KIND_LABEL;
 const isDigest = (v: string): v is AlertDigest => v in DIGEST_LABEL;
 
@@ -37,6 +34,7 @@ export function AlertChannelsPanel() {
   const [secret, setSecret] = useState("");
   const [digest, setDigest] = useState<AlertDigest>("daily");
   const [immediate, setImmediate] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.alertChannels() });
   const fail = (fallback: string) => (e: unknown) => toast.error(apiErrorMessage(e) || fallback);
 
@@ -50,8 +48,8 @@ export function AlertChannelsPanel() {
   });
   const remove = useMutation({
     mutationFn: (id: string) => deleteAlertChannel(id),
-    onSuccess: refresh,
-    onError: fail("The channel could not be removed."),
+    onSuccess: () => { setConfirmId(null); refresh(); },
+    onError: (e: unknown) => { setConfirmId(null); fail("The channel could not be removed.")(e); },
   });
   const test = useMutation({
     mutationFn: (id: string) => testAlertChannel(id),
@@ -96,7 +94,16 @@ export function AlertChannelsPanel() {
                 <td className={td} style={tdStyle}>
                   <span className="flex gap-2 justify-end">
                     <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate(c.id)}>Send test</Button>
-                    <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(c.id)}>Remove</Button>
+                    {confirmId === c.id ? (
+                      <>
+                        <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(c.id)}>
+                          Confirm remove
+                        </Button>
+                        <Button variant="ghost" onClick={() => setConfirmId(null)}>Keep channel</Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" disabled={remove.isPending} onClick={() => setConfirmId(c.id)}>Remove</Button>
+                    )}
                   </span>
                 </td>
               </tr>

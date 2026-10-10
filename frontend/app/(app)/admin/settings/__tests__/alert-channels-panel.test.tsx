@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, describe, it, expect } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as notificationsApi from "@/lib/api/notifications";
@@ -16,7 +16,7 @@ describe("AlertChannelsPanel", () => {
     const test = vi.spyOn(notificationsApi, "testAlertChannel").mockResolvedValue({ delivered: true });
     renderWithQuery(<AlertChannelsPanel />);
     await waitFor(() => expect(screen.getByText("hooks.example")).toBeInTheDocument());
-    expect(screen.getByText("Daily digest")).toBeInTheDocument();
+    expect(within(screen.getByRole("table")).getByText("Daily digest")).toBeInTheDocument();
     expect(screen.getByText("Immediate")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Send test" }));
     await waitFor(() => expect(test.mock.calls[0]?.[0]).toBe("c1"));
@@ -42,6 +42,14 @@ describe("AlertChannelsPanel", () => {
     renderWithQuery(<AlertChannelsPanel />);
     await waitFor(() => expect(screen.getByText("hooks.example")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Keep channel" }));
+    expect(screen.queryByRole("button", { name: "Confirm remove" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
     await waitFor(() => expect(del.mock.calls[0]?.[0]).toBe("c1"));
+    expect(del).toHaveBeenCalledTimes(1);
   });
 });
