@@ -151,11 +151,12 @@ def pair_error(source_role: str, target_role: str, same: bool) -> Optional[str]:
     return None
 
 
-# Scope predicate for transfer_value_mappings: global rows OR rows for this source/target pair.
+# Scope predicate for transfer_value_mappings: global rows (both ids NULL) OR exactly this source/target pair.
 # Binds: :src (source system uuid text), :tgt (target system uuid text, may be NULL).
 SCOPE_SQL = (
-    "(source_system_id IS NOT DISTINCT FROM CAST(:src AS uuid) OR source_system_id IS NULL) "
-    "AND (target_system_id IS NOT DISTINCT FROM CAST(:tgt AS uuid) OR target_system_id IS NULL)"
+    "((source_system_id IS NULL AND target_system_id IS NULL) "
+    "OR (source_system_id IS NOT DISTINCT FROM CAST(:src AS uuid) "
+    "AND target_system_id IS NOT DISTINCT FROM CAST(:tgt AS uuid)))"
 )
 
 
@@ -228,6 +229,7 @@ def _by_object(items: list[ConfigItem]) -> dict[str, list[ConfigItem]]:
 
 
 def _compare_all(s: Session, source_id: str) -> tuple[Target, Optional[str], dict[str, list[MatchRow]]]:
+    # ponytail: load_items caps at ITEM_CAP, so larger loads are truncated on both sides; compare per object if needed.
     t = resolve_target(s, source_id)
     src = latest_completed_load(s, source_id)
     if src is None:
@@ -270,8 +272,20 @@ WHERE EXISTS (SELECT 1 FROM prev) AND (a.key IS NULL OR b.key IS NULL OR a."valu
 def write_drift(s: Session, tid: str, sid: str, lid: str) -> int:
     """Diff load ``lid`` against the system's previous completed load into config_drift_log (run_id = lid)."""
     # ponytail: duplicate keys inside one load multiply drift rows; config_items has no unique key.
-    s.execute(text("DELETE FROM config_drift_log WHERE run_id = CAST(:lid AS uuid)"), {"lid": lid})
+    s.execute(text("DELETE FROM config_drift_log WHERE run_id = CAST(:lid AS uuid) AND tenant_id = CAST(:tid AS uuid)"),
+              {"lid": lid, "tid": tid})
     return s.execute(text(_DRIFT_SQL), {"tid": tid, "sid": sid, "lid": lid}).rowcount
+
+
+def _queue_proposal(s: Session, tid: str, mapping_id: str, conf: float, rec: str) -> None:
+    """One open steward item per mapping; the partial unique index makes a repeat a no-op."""
+    s.execute(text("""
+        INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority, due_at, sla_hours,
+                                       ai_recommendation, ai_confidence)
+        VALUES (CAST(:tid AS uuid), 'config_value_match', CAST(:mid AS uuid), 'config', 3,
+                now() + interval '72 hours', 72, :rec, :conf)
+        ON CONFLICT (source_id, item_type) WHERE status != 'resolved' DO NOTHING
+    """), {"tid": tid, "mid": mapping_id, "conf": conf, "rec": rec})
 
 
 def propose(s: Session, tid: str, source_id: str) -> dict[str, object]:
@@ -296,14 +310,8 @@ def propose(s: Session, tid: str, source_id: str) -> dict[str, object]:
                 skipped += 1
                 continue
             proposed += 1
-            s.execute(text("""
-                INSERT INTO stewardship_queue (tenant_id, item_type, source_id, domain, priority, due_at, sla_hours,
-                                               ai_recommendation, ai_confidence)
-                VALUES (CAST(:tid AS uuid), 'config_value_match', CAST(:sid AS uuid), 'config', 3,
-                        now() + interval '72 hours', 72, :rec, :conf)
-                ON CONFLICT (source_id, item_type) WHERE status != 'resolved' DO NOTHING
-            """), {"tid": tid, "sid": new_id, "conf": r.score,
-                   "rec": f"{o}.{r.field}: {r.source_value} → {r.target_value} ({r.status.replace('_', ' ')})"})
+            _queue_proposal(s, tid, new_id, r.score,
+                            f"{o}.{r.field}: {r.source_value} → {r.target_value} ({r.status.replace('_', ' ')})")
     return {"proposed": proposed, "skipped": skipped, "target": t.label}
 
 
@@ -316,7 +324,7 @@ def finding_context(s: Session, rule_id: str, module: str, version_id: Optional[
     sid = s.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = CAST(:v AS uuid)"),
                     {"v": version_id}).scalar() if version_id else None
     cond = condition(module, rule_id)
-    obj: Optional[str] = cond["requires"]["object"] if cond else None
+    obj: Optional[str] = (cond.get("requires") or {}).get("object") if cond else None
     if obj is None and sid:
         ddic = dictionary_for(s, sid)
         for f in fields:

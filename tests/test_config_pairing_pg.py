@@ -323,20 +323,44 @@ def test_finding_context_uses_the_rule_condition_object(app_engine, monkeypatch)
 
 
 @pg
-def test_propose_twice_leaves_one_open_queue_item(app_engine):
+def test_scope_sql_matches_only_global_and_exact_pair(app_engine):
     from sqlalchemy import text
 
-    from api.services.config_pairing import propose
+    from api.services.config_pairing import SCOPE_SQL
 
     owner, app = app_engine
     tid = _tenant(owner)
     tgt = _system(app, tid, "S4D", "s4hana_onprem", "target")
     src = _system(app, tid, "PRD", target=tgt)
-    _load(app, tid, src, [("T077K", "KTOKK=0001", {"KTOKK": "0001"})])
-    _load(app, tid, tgt, [("T077K", "KTOKK=1", {"KTOKK": "1"})])
+    rows = {"global": (None, None), "pair": (src, tgt), "src_only": (src, None), "tgt_only": (None, tgt)}
     with _session(app, tid) as s:
-        propose(s, tid, src)
-        s.commit()
-        propose(s, tid, src)
-        s.commit()
-        assert s.execute(text("SELECT count(*) FROM stewardship_queue WHERE status != 'resolved'")).scalar() == 1
+        for name, (a, b) in rows.items():
+            s.execute(text("INSERT INTO transfer_value_mappings (id, tenant_id, module, target_field, source_value, "
+                           "target_value, note, source_system_id, target_system_id, status) VALUES "
+                           "(gen_random_uuid(), CAST(:t AS uuid), 'config', 'T.F', 'a', 'b', :n, "
+                           "CAST(:a AS uuid), CAST(:b AS uuid), 'confirmed')"), {"t": tid, "n": name, "a": a, "b": b})
+        q = f"SELECT note FROM transfer_value_mappings WHERE {SCOPE_SQL} ORDER BY note"
+        assert [r[0] for r in s.execute(text(q), {"src": src, "tgt": tgt})] == ["global", "pair"]
+        assert [r[0] for r in s.execute(text(q), {"src": src, "tgt": None})] == ["global", "src_only"]
+
+
+@pg
+def test_queue_proposal_conflict_ignores_open_dupes_but_not_resolved(app_engine):
+    from sqlalchemy import text
+
+    from api.services.config_pairing import _queue_proposal
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    mid = str(uuid.uuid4())
+    count = "SELECT count(*) FROM stewardship_queue WHERE source_id = CAST(:m AS uuid) AND status != 'resolved'"
+    with _session(app, tid) as s:
+        _queue_proposal(s, tid, mid, 1.0, "first")
+        _queue_proposal(s, tid, mid, 1.0, "again")  # hits the ON CONFLICT clause
+        assert s.execute(text(count), {"m": mid}).scalar() == 1
+        s.execute(text("UPDATE stewardship_queue SET status = 'resolved' WHERE source_id = CAST(:m AS uuid)"),
+                  {"m": mid})
+        _queue_proposal(s, tid, mid, 1.0, "reopened")  # a resolved row does not block a new open one
+        assert s.execute(text(count), {"m": mid}).scalar() == 1
+        assert s.execute(text("SELECT count(*) FROM stewardship_queue WHERE source_id = CAST(:m AS uuid)"),
+                         {"m": mid}).scalar() == 2
