@@ -53,15 +53,20 @@ def latest_activity(frames: dict) -> str | None:
 DELTA_FULL_DAYS = int(os.getenv("MERIDIAN_DELTA_FULL_DAYS", "7"))
 
 
-def delta_baseline(session, tenant_id: str, system_id: str, modules: list[str]) -> Optional[dict[str, object]]:
-    """The latest stored version of the same system and objects (id plus metadata) a delta can build on."""
+def delta_baseline(session, tenant_id: str, system_id: str, modules: list[str],
+                   scope: Optional[dict[str, object]] = None) -> Optional[dict[str, object]]:
+    """The latest stored version of the same system, objects and scope (id plus metadata) a
+    delta can build on. A scoped manual baseline must never be picked for an unscoped (or
+    differently scoped) extraction — the stored tables wouldn't cover the right rows."""
     row = session.execute(text("""
         SELECT id::text, metadata FROM analysis_versions
          WHERE tenant_id = :tid AND metadata->>'system_id' = :sid
            AND metadata->'modules' = CAST(:mods AS jsonb)
+           AND metadata->'scope' = CAST(:scope AS jsonb)
            AND metadata->>'dataset_path' IS NOT NULL AND status <> 'failed'
          ORDER BY run_at DESC LIMIT 1
-    """), {"tid": tenant_id, "sid": system_id, "mods": json.dumps(modules)}).fetchone()
+    """), {"tid": tenant_id, "sid": system_id, "mods": json.dumps(modules),
+           "scope": json.dumps(scope or {})}).fetchone()
     return {**(row[1] or {}), "id": row[0]} if row else None
 
 
@@ -183,7 +188,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
 
             from api.services.connectivity_manager import DeltaRequest
 
-            baseline = delta_baseline(session, tenant_id, system_id, modules) if delta else None
+            baseline = delta_baseline(session, tenant_id, system_id, modules, scope) if delta else None
             dplan = delta_plan(baseline, datetime.now(timezone.utc), DELTA_FULL_DAYS) if delta else None
             request = DeltaRequest(dplan[0], baseline_loader(str(baseline["dataset_path"]))) \
                 if dplan and baseline else None

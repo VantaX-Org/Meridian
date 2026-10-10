@@ -102,3 +102,31 @@ def test_rule_field_reads_the_shipped_yaml():
     from api.services.tenant_seed import raw_rules
     module, r = next((m, r) for _, _, m, r in raw_rules() if isinstance(r.get("field"), str))
     assert rc._rule_fields()[(module, str(r["id"]))] == r["field"]
+
+
+def test_fnames_beyond_the_first_100_are_still_read_from_cdpos(monkeypatch):
+    """With 101+ distinct FNAMEs across the plans sharing one OBJECTCLAS, a field past the
+    first IN-list chunk must still be matched in CDPOS, not silently dropped to creation."""
+    n = 101
+    fields = {f"C{i:03d}": f"F{i:03d}" for i in range(n)}
+    monkeypatch.setattr(rc, "rule_field", lambda module, check_id: f"MARC.{fields[check_id]}")
+    records = {("material_master", cid): [f"MATNR=M{cid[1:]}|WERKS=1000"] for cid in fields}
+
+    last_id, last_fname = "C100", fields["C100"]
+    cdpos = pd.DataFrame([
+        ["MATERIAL", f"M{last_id[1:]}", "0000000001", "MARC", _tk(f"M{last_id[1:]}", "1000"), "KEY", "I"],
+        ["MATERIAL", f"M{last_id[1:]}", "0000000002", "MARC", _tk(f"M{last_id[1:]}", "1000"), last_fname, "U"],
+    ], columns=["OBJECTCLAS", "OBJECTID", "CHANGENR", "TABNAME", "TABKEY", "FNAME", "CHNGIND"])
+    cdhdr = pd.DataFrame([
+        ["MATERIAL", f"M{last_id[1:]}", "0000000001", "JDOE", "20100101", "MM01", "I"],
+        ["MATERIAL", f"M{last_id[1:]}", "0000000002", "BATCH_IF01", "20240301", "MM02", "U"],
+    ], columns=["OBJECTCLAS", "OBJECTID", "CHANGENR", "USERNAME", "UDATE", "TCODE", "CHANGE_IND"])
+    usr02 = pd.DataFrame({"BNAME": ["BATCH_IF01", "JDOE"], "USTYP": ["B", "A"]})
+    sap = {"CDPOS": cdpos, "CDHDR": cdhdr, "USR02": usr02}
+
+    out = {o.check_id: o for o in rc.root_causes(_reader(sap), records, "20160101", D)}
+    last = out[last_id]
+    # Fixed: the 101st FNAME's own change is read, attributing it to the interface user who
+    # made it, not to the creator (which would wrongly classify it as "migration").
+    assert last.origins == [{"origin": "interface", "username": "BATCH_IF01", "tcode": "MM02",
+                             "records": 1, "share": 100.0}]

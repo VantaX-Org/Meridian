@@ -152,8 +152,11 @@ def _read_docs(read: Reader, plans: list[tuple[str, tuple[str, str], list[dict[s
     cdhdr: dict[str, pd.DataFrame] = {}
     for cls, (ids, tabs, fnames) in sorted(want.items()):
         head = f"OBJECTCLAS = '{cls}'"
-        narrow = f"{in_lists('TABNAME', tabs, 100)[0]} AND {in_lists('FNAME', fnames, 100)[0]}"
-        cdpos[cls] = _clean(read("CDPOS", CDPOS_FIELDS, [f"{head} AND {w} AND {narrow}" for w in in_lists("OBJECTID", ids)]))
+        tab_clauses = in_lists("TABNAME", tabs, 100)
+        fname_clauses = in_lists("FNAME", fnames, 100)
+        cdpos_wheres = [f"{head} AND {idw} AND {tabw} AND {fnw}"
+                        for idw in in_lists("OBJECTID", ids) for tabw in tab_clauses for fnw in fname_clauses]
+        cdpos[cls] = _clean(read("CDPOS", CDPOS_FIELDS, cdpos_wheres))
         cdhdr[cls] = _clean(read("CDHDR", CDHDR_FIELDS, [f"{head} AND {w}" for w in in_lists("OBJECTID", ids)]))
     users = set().union(*(set(h["USERNAME"]) for h in cdhdr.values())) - {""}
     try:
