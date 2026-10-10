@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _rls
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 from api.services.rbac import require_permission
 from api.services.scoring import scoring_config, tier
 
@@ -108,6 +109,46 @@ async def list_objects(run: str = Query(..., alias="run"),
     return {"run_id": run_id, "objects": objects}
 
 
+_OBJECTS_EXPORT_COLUMNS = [
+    ColumnSpec("module", "Module"),
+    ColumnSpec("label", "Label"),
+    ColumnSpec("composite_score", "Composite score"),
+    ColumnSpec("readiness", "Readiness"),
+    ColumnSpec("failing_checks", "Failing checks", kind="int"),
+    ColumnSpec("affected_records", "Affected records", kind="int"),
+]
+
+
+@router.get("/export", dependencies=[Depends(require_permission("export"))])
+async def export_objects(run: str = Query(..., alias="run"),
+                         format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every object (module) summary for one run, as CSV or XLSX — same rows as GET /objects."""
+    body = await list_objects(run=run, db=db, tenant=tenant)
+    rows = body["objects"]
+    if format == "csv":
+        import csv
+        import io as io_mod
+
+        from fastapi.responses import StreamingResponse
+
+        buf = io_mod.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _OBJECTS_EXPORT_COLUMNS])
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                                 headers={"Content-Disposition": "attachment; filename=objects.csv"})
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=body["run_id"],
+        run_id=body["run_id"],
+        title="Objects export",
+        sheets=[SheetSpec(title="Objects", columns=_OBJECTS_EXPORT_COLUMNS, rows=rows)],
+    )
+    return xlsx_response(data, xlsx_filename("objects", body["run_id"]))
+
+
 class ObjectRuleOut(BaseModel):
     check_id: str
     severity: str
@@ -153,3 +194,43 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
             for r in rows
         ],
     }
+
+
+_OBJECT_RULES_EXPORT_COLUMNS = [
+    ColumnSpec("check_id", "Check ID", kind="mono"),
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("dimension", "Dimension"),
+    ColumnSpec("affected_count", "Affected", kind="int"),
+    ColumnSpec("total_count", "Total", kind="int"),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=100.0),
+]
+
+
+@router.get("/{module}/export", dependencies=[Depends(require_permission("export"))])
+async def export_object(module: str, run: uuid.UUID = Query(..., alias="run"),
+                        format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
+    """Every rule result for one object (module) in one run, as CSV or XLSX."""
+    body = await get_object(module=module, run=run, db=db, tenant=tenant)
+    rows = body["rules"]
+    if format == "csv":
+        import csv
+        import io as io_mod
+
+        from fastapi.responses import StreamingResponse
+
+        buf = io_mod.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _OBJECT_RULES_EXPORT_COLUMNS])
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                                 headers={"Content-Disposition": f"attachment; filename={module}_rules.csv"})
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=str(run),
+        run_id=str(run),
+        title=f"{body['label']} rules export",
+        sheets=[SheetSpec(title="Rules", columns=_OBJECT_RULES_EXPORT_COLUMNS, rows=rows)],
+    )
+    return xlsx_response(data, xlsx_filename(f"object-{module}", str(run)))

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.models.config_score import ConfigAwareScore, RuleApplicability
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, guard_formula_cell, xlsx_filename, xlsx_response
 from api.services.rbac import current_user_id, require_permission
 from api.services.tenant_seed import rule_catalogue
 from db.schema import Finding, Report
@@ -414,6 +415,130 @@ async def list_findings(
         "total": total,
         "filters_applied": filters_applied,
     }
+
+
+_EXPORT_COLUMNS = [
+    ColumnSpec("id", "ID", kind="mono"),
+    ColumnSpec("module", "Module"),
+    ColumnSpec("check_id", "Check ID", kind="mono"),
+    ColumnSpec("finding_type", "Type"),
+    ColumnSpec("severity", "Severity"),
+    ColumnSpec("dimension", "Dimension"),
+    ColumnSpec("affected_count", "Affected", kind="int"),
+    ColumnSpec("total_count", "Total", kind="int"),
+    ColumnSpec("pass_rate", "Pass rate", kind="pct", scale=100.0),
+    ColumnSpec("cost_at_risk", "Cost at risk", kind="money"),
+    ColumnSpec("impact_score", "Impact score"),
+    ColumnSpec("baseline", "Baseline"),
+    ColumnSpec("remediation_text", "Remediation"),
+    ColumnSpec("created_at", "Created"),
+]
+
+# export caps at this many findings per request — narrow filters to get the rest.
+# ponytail: same fixed cap pattern as the other re-routed exports; a cursor-based
+# streaming export would scale further but no producer needs that yet.
+_EXPORT_ROW_CAP = 50_000
+
+
+@router.get("/findings/export")
+async def export_findings(
+    version_id: Optional[str] = Query(None),
+    module: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    dimension: Optional[str] = Query(None),
+    check_id: Optional[str] = Query(None),
+    baseline: Optional[str] = Query(None, pattern="^(live_config|sap_standard|s4_target)$"),
+    sort: Literal["severity", "impact"] = Query("severity"),
+    finding_type: Optional[str] = Query(None, alias="type"),
+    format: Literal["csv", "xlsx"] = Query("xlsx"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("export")),
+):
+    """Every finding matching the same filters as GET /findings, as CSV or XLSX.
+
+    ponytail: reuses /findings' filter-building logic inline (no pagination,
+    no glossary enrichment — the export is a flat worklist, not the UI table).
+    """
+    await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
+
+    base = select(Finding).where(Finding.tenant_id == tenant.id)
+    if version_id:
+        base = base.where(Finding.version_id == uuid.UUID(version_id))
+    else:
+        base = base.where(Finding.version_id.in_(await _latest_version_ids(db, tenant)))
+    if check_id:
+        base = base.where(Finding.check_id == check_id)
+    if finding_type:
+        base = base.where(Finding.finding_type == finding_type)
+    if module:
+        base = base.where(Finding.module == module)
+    if severity:
+        base = base.where(Finding.severity == severity)
+    if dimension:
+        base = base.where(Finding.dimension == dimension)
+    if baseline:
+        tag = Finding.details["baseline"].astext
+        base = base.where(or_(tag == baseline, tag.is_(None)) if baseline == "live_config" else tag == baseline)
+
+    severity_order = case(
+        (Finding.severity == "critical", 1),
+        (Finding.severity == "high", 2),
+        (Finding.severity == "medium", 3),
+        (Finding.severity == "low", 4),
+        else_=5,
+    )
+    order = [severity_order, Finding.pass_rate.asc()]
+    if sort == "impact":
+        order.insert(0, Finding.impact_score.desc().nulls_last())
+    stmt = base.order_by(*order).limit(_EXPORT_ROW_CAP)
+    findings = (await db.execute(stmt)).scalars().all()
+
+    rows = [
+        {
+            "id": str(f.id),
+            "module": f.module,
+            "check_id": f.check_id,
+            "finding_type": f.finding_type,
+            "severity": f.severity,
+            "dimension": f.dimension,
+            "affected_count": f.affected_count,
+            "total_count": f.total_count,
+            "pass_rate": float(f.pass_rate) if f.pass_rate is not None else None,
+            "cost_at_risk": float(f.cost_at_risk) if f.cost_at_risk is not None else None,
+            "impact_score": float(f.impact_score) if f.impact_score is not None else None,
+            "baseline": (f.details or {}).get("baseline", "live_config"),
+            "remediation_text": f.remediation_text,
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+        }
+        for f in findings
+    ]
+
+    if format == "csv":
+        import csv as csv_mod
+        import io as io_mod
+
+        from fastapi.responses import StreamingResponse
+
+        buf = io_mod.StringIO()
+        writer = csv_mod.DictWriter(buf, fieldnames=[c.key for c in _EXPORT_COLUMNS])
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({c.key: guard_formula_cell(row.get(c.key)) for c in _EXPORT_COLUMNS})
+        return StreamingResponse(
+            iter([buf.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=findings.csv"},
+        )
+
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=version_id,
+        run_id=version_id,
+        title="Findings export",
+        sheets=[SheetSpec(title="Findings", columns=_EXPORT_COLUMNS, rows=rows)],
+    )
+    return xlsx_response(data, xlsx_filename("findings", version_id))
 
 
 class S4Check(BaseModel):

@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from typing import Optional
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services import jobs
+from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, xlsx_filename, xlsx_response
 from db.schema import AnalysisVersion
 
 router = APIRouter(prefix="/api/v1", tags=["versions"])
@@ -276,6 +278,66 @@ async def finding_records(
     """), {**p, "limit": limit, "offset": offset})
     return {"version_id": str(version_id), "check_id": check_id, "total": int(total or 0),
             "records": [dict(r._mapping) for r in rows.fetchall()]}
+
+
+_FINDING_RECORDS_EXPORT_COLUMNS = [
+    ColumnSpec("record_key", "Record key", kind="mono"),
+    ColumnSpec("grain", "Grain"),
+    ColumnSpec("module", "Module"),
+    # ponytail: field_values' keys vary by check/module; one JSON column avoids
+    # per-check schema inference. Split into real columns if a report needs that.
+    ColumnSpec("field_values", "Field values"),
+]
+
+
+@router.get("/versions/{version_id}/findings/{check_id}/records/export",
+           dependencies=[Depends(require_permission("export"))])
+async def export_finding_records(
+    version_id: uuid.UUID,
+    check_id: str,
+    format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Every SAP record this check found failing in this version, as CSV or XLSX."""
+    await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
+    if await _scope_of(db, version_id) is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    rows = await db.execute(text("""
+        SELECT record_key, grain, module, field_values FROM finding_records
+         WHERE version_id = :v AND check_id = :cid
+         ORDER BY record_key LIMIT 50000
+    """), {"v": version_id, "cid": check_id})
+    dicts = [
+        {
+            "record_key": r.record_key,
+            "grain": r.grain,
+            "module": r.module,
+            "field_values": json.dumps(r.field_values) if r.field_values is not None else "",
+        }
+        for r in rows.fetchall()
+    ]
+    if format == "csv":
+        import csv
+        import io as io_mod
+
+        from fastapi.responses import StreamingResponse
+
+        buf = io_mod.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=[c.key for c in _FINDING_RECORDS_EXPORT_COLUMNS])
+        writer.writeheader()
+        for row in dicts:
+            writer.writerow(row)
+        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                                 headers={"Content-Disposition": f"attachment; filename={check_id}_records.csv"})
+    data = build_workbook(
+        tenant_name=tenant.name,
+        run_label=str(version_id),
+        run_id=str(version_id),
+        title=f"{check_id} failing records export",
+        sheets=[SheetSpec(title="Records", columns=_FINDING_RECORDS_EXPORT_COLUMNS, rows=dicts)],
+    )
+    return xlsx_response(data, xlsx_filename(f"records-{check_id}", str(version_id)))
 
 
 @router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse"))])
