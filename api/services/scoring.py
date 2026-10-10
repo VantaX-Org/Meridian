@@ -28,11 +28,12 @@ LOW_CONFIDENCE_COVERAGE = 0.70
 # ponytail: clean-record key sets are held in memory; past this many failing driving-object
 # keys the figure is reported as null. Spill to disk / a bitmap if large tenants need it.
 CLEAN_KEY_CEILING = 5_000_000
+CLEAN_KEY_CHUNK = 1_000_000  # failing keys projected per slice in CleanRecords.add
 
 
 class DQSResult(BaseModel):
     module: str
-    composite_score: float  # 0.0 to 100.0
+    composite_score: Optional[float]  # 0.0 to 100.0; None when no rule executed (not measured)
     dimension_scores: dict  # {dimension: score} for all 6 dimensions
     dimension_coverage: dict = {}  # {dimension: n_checks backing the score}
     critical_count: int
@@ -72,14 +73,17 @@ def effective_weights(tenant_weights: dict | None) -> dict:
     return {d: v / total for d, v in w.items()} if total > 0 else dict(DEFAULT_WEIGHTS)
 
 
-def _numbers(defaults: dict, raw: object) -> dict:
-    """``defaults`` with the non-negative numeric overrides of ``raw`` for known keys."""
+def _numbers(defaults: dict, raw: object, low: float = 0.0, *, strict: bool = False) -> dict:
+    """``defaults`` with the numeric overrides of ``raw`` for known keys that are >= ``low``
+    (> ``low`` when ``strict``); anything else keeps the default."""
     over = raw if isinstance(raw, dict) else {}
     return {**defaults, **{k: float(v) for k, v in over.items()
-                           if k in defaults and isinstance(v, (int, float)) and v >= 0}}
+                           if k in defaults and isinstance(v, (int, float)) and not isinstance(v, bool)
+                           and (v > low if strict else v >= low)}}
 
 
-def _thresholds(raw: object) -> dict:
+def thresholds_of(raw: object) -> dict:
+    """The target / warning / critical bands from a stored thresholds dict (legacy keys mapped)."""
     over = raw if isinstance(raw, dict) else {}
     return _numbers(DEFAULT_THRESHOLDS, {_LEGACY_THRESHOLD_KEYS.get(k, k): v for k, v in over.items()})
 
@@ -93,15 +97,17 @@ def scoring_config(raw: dict | None) -> dict:
     return {
         "dimension_weights": {d: round(w, 4) for d, w in effective_weights(raw).items()},
         "module_weights": {m: float(w) for m, w in mw.items() if isinstance(w, (int, float)) and w >= 0},
-        "thresholds": _thresholds(raw.get("thresholds")),
-        "severity_weights": _numbers(DEFAULT_SEVERITY_WEIGHTS, raw.get("severity_weights")),
-        "severity_multipliers": _numbers(DEFAULT_SEVERITY_MULTIPLIERS, raw.get("severity_multipliers")),
+        "thresholds": thresholds_of(raw.get("thresholds")),
+        # a weight of 0 would leave a measured dimension with no denominator (a phantom 100)
+        "severity_weights": _numbers(DEFAULT_SEVERITY_WEIGHTS, raw.get("severity_weights"), strict=True),
+        # a multiplier below 1 would shrink a failing share and inflate the score
+        "severity_multipliers": _numbers(DEFAULT_SEVERITY_MULTIPLIERS, raw.get("severity_multipliers"), 1.0),
         "critical_tolerance": _numbers(DEFAULT_CRITICAL_TOLERANCE, raw.get("critical_tolerance")),
     }
 
 
 def tier(score: float | None, thresholds: dict | None = None) -> str | None:
-    t = _thresholds(thresholds)
+    t = thresholds_of(thresholds)
     if score is None:
         return None
     return "pass" if score >= t["target"] else "warn" if score >= t["warning"] else "fail"
@@ -114,9 +120,12 @@ def critical_over_tolerance(summary: dict) -> int:
     return len(breaches) if breaches is not None else int(summary.get("critical_count") or 0)
 
 
-def readiness_status(score: float, criticals_over_tolerance: int, thresholds: dict | None = None) -> str:
-    """go = score >= target and no critical over tolerance; conditional = score >= warning; else no-go."""
-    t = _thresholds(thresholds)
+def readiness_status(score: float | None, criticals_over_tolerance: int, thresholds: dict | None = None) -> str:
+    """go = score >= target and no critical over tolerance; conditional = score >= warning; else no-go.
+    No score (no rule executed) is conditional: not measured is neither a pass nor a fail."""
+    if score is None:
+        return "conditional"
+    t = thresholds_of(thresholds)
     if score >= t["target"] and not criticals_over_tolerance:
         return "go"
     return "conditional" if score >= t["warning"] else "no-go"
@@ -131,16 +140,17 @@ def _cap(composite: float, breaches: list[str]) -> tuple[float, bool, str | None
 
 
 def _composite(dimension_scores: dict, dimension_coverage: dict, breaches: list[str],
-               weights: dict) -> tuple[float, bool, str | None, dict]:
+               weights: dict) -> tuple[float | None, bool, str | None, dict]:
     """(composite, capped, cap_reason, measured weights) — weighted over measured
-    dimensions, then the critical caps (one cap-triggering rule per ``breaches`` entry)."""
+    dimensions, then the critical caps (one cap-triggering rule per ``breaches`` entry).
+    No measured (weighted) dimension: composite None — not measured, never a pass."""
     measured = {d: w for d, w in weights.items() if dimension_coverage.get(d)}
     total_w = sum(measured.values())
-    composite = (
-        sum(dimension_scores[d] * w for d, w in measured.items()) / total_w if total_w else 100.0
-    )
+    if not total_w:
+        return None, False, None, {}
+    composite = sum(dimension_scores[d] * w for d, w in measured.items()) / total_w
     composite, capped, cap_reason = _cap(composite, breaches)
-    return composite, capped, cap_reason, ({d: round(w / total_w, 4) for d, w in measured.items()} if total_w else {})
+    return composite, capped, cap_reason, {d: round(w / total_w, 4) for d, w in measured.items()}
 
 
 def rescore(summary: dict, raw_config: dict | None) -> dict:
@@ -151,8 +161,12 @@ def rescore(summary: dict, raw_config: dict | None) -> dict:
     composite, capped, cap_reason, w = _composite(
         summary.get("dimension_scores") or {}, summary.get("dimension_coverage") or {},
         breaches, effective_weights(raw_config))
-    return {**summary, "composite_score": round(composite, 2), "capped": capped, "cap_reason": cap_reason,
+    return {**summary, "composite_score": _round(composite), "capped": capped, "cap_reason": cap_reason,
             "weights": w, "tier": tier(composite, scoring_config(raw_config)["thresholds"])}
+
+
+def _round(score: float | None) -> float | None:
+    return None if score is None else round(score, 2)
 
 
 def _severity(f: CheckResult) -> str:
@@ -160,8 +174,9 @@ def _severity(f: CheckResult) -> str:
 
 
 def scaled_rate(f: CheckResult, multipliers: dict) -> float:
-    """C2: r' = max(0, 100 - k_sev * (100 - r))."""
-    return max(0.0, 100.0 - multipliers[_severity(f)] * (100.0 - f.pass_rate))
+    """C2: r' = max(0, 100 - k_sev * (100 - r)); DDIC conformance takes k = 1 (flat, like its weight)."""
+    k = 1.0 if f.check_id.startswith("DDIC-") else multipliers[_severity(f)]
+    return max(0.0, 100.0 - k * (100.0 - f.pass_rate))
 
 
 def rule_weight(f: CheckResult, weights: dict) -> float:
@@ -190,6 +205,7 @@ def _legacy(findings: list[CheckResult], weights: dict, thresholds: dict, critic
         dims[dim] = (sum(f.pass_rate * f.total_count for f in rows) / n if n
                      else sum(f.pass_rate for f in rows) / len(rows) if rows else 100.0)
     composite, capped, cap_reason, _ = _composite(dims, coverage, ["critical failure"] * critical, weights)
+    composite = 100.0 if composite is None else composite  # the old formula scored "nothing measured" as 100
     return {"composite_score": round(composite, 2), "dimension_scores": {k: round(v, 2) for k, v in dims.items()},
             "capped": capped, "cap_reason": cap_reason, "tier": tier(composite, thresholds)}
 
@@ -240,7 +256,7 @@ def score_module(findings: list[CheckResult], tenant_config: dict, *, module: st
 
     return DQSResult(
         module=module,
-        composite_score=round(composite, 2),
+        composite_score=_round(composite),
         dimension_scores={k: round(v, 2) for k, v in dimension_scores.items()},
         dimension_coverage=dimension_coverage,
         critical_count=severity_counts["critical"],
@@ -295,14 +311,20 @@ class CleanRecords:
         """Fold one rule's failing record keys (a string Series from checks.base.record_keys)."""
         if self.failing is None or self.reason or not len(keys):
             return
-        keys = keys.astype("string")
-        parts = [keys.str.extract(rf"(?:^|\|){re.escape(k)}=([^|]*)", expand=False) for k in self.fields]
-        if any(p.isna().any() for p in parts):
-            self.unattributed.append(check_id)  # failing records keyed without the driving object's key
-            return
-        self.failing.update(zip(*parts))
-        if len(self.failing) > CLEAN_KEY_CEILING:
-            self.failing, self.reason = None, f"more than {CLEAN_KEY_CEILING:,} failing {self.anchor} records"
+        # In slices, so the transient copies (string cast, one extract per key field) stay bounded
+        # by CLEAN_KEY_CHUNK rows, and the ceiling is checked before the set grows past it.
+        for start in range(0, len(keys), CLEAN_KEY_CHUNK):
+            chunk = keys.iloc[start:start + CLEAN_KEY_CHUNK].astype("string")
+            parts = pd.DataFrame({k: chunk.str.extract(rf"(?:^|\|){re.escape(k)}=([^|]*)", expand=False)
+                                  for k in self.fields})
+            if parts.isna().to_numpy().any():
+                self.unattributed.append(check_id)  # failing records keyed without the driving object's key
+                return
+            parts = parts.drop_duplicates()
+            if len(self.failing) + len(parts) > CLEAN_KEY_CEILING:  # upper bound on the union
+                self.failing, self.reason = None, f"more than {CLEAN_KEY_CEILING:,} failing {self.anchor} records"
+                return
+            self.failing.update(parts.itertuples(index=False, name=None))
 
     def result(self) -> dict:
         failing = len(self.failing) if self.failing is not None else None

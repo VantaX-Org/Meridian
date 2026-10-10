@@ -70,8 +70,9 @@ export async function getFindingsAggregate(filter?: string | FindingsFilter): Pr
 }
 
 /** Same weighting as the backend composite: module scores weighted by their check count. */
-export function compositeDqs(summary: Record<string, { composite_score: number; total_checks?: number }> | null | undefined): number | null {
-  const mods = Object.values(summary ?? {}).filter((m) => typeof m?.composite_score === "number");
+export function compositeDqs(summary: Record<string, { composite_score: number | null; total_checks?: number }> | null | undefined): number | null {
+  const mods = Object.values(summary ?? {}).filter(
+    (m): m is { composite_score: number; total_checks?: number } => typeof m?.composite_score === "number");
   if (!mods.length) return null;
   const w = mods.map((m) => Math.max(1, m.total_checks ?? 1));
   const total = w.reduce((a, b) => a + b, 0);

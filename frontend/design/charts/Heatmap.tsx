@@ -53,7 +53,7 @@ export function Heatmap({
                     type="button"
                     onClick={() => cell && onPointClick?.(cell)}
                     disabled={!cell}
-                    aria-label={cell ? `${r} ${c}: ${cell.value}` : `${r} ${c}: no data`}
+                    aria-label={cell ? `${r} ${c}: ${cell.value}` : `${r} ${c}: not measured`}
                     className={`block border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
                     style={{
                       width: cellSize,

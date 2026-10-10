@@ -53,9 +53,10 @@ async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUI
     """), {"tid": str(tenant.id)})).scalars().all())
 
 
-def composite_dqs(summaries: list[dict], scoring: dict | None = None) -> dict:
+def composite_dqs(summaries: list[dict], *, scoring: dict | None) -> dict:
     """One DQS over several modules/versions: module scores weighted by the tenant's
-    module weight (default 1); a dimension averages only the modules that measured it
+    module weight (default 1); a module with no executed rule (composite None) is not measured
+    and does not weigh in; a dimension averages only the modules that measured it
     (``scoring`` = the raw ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}).
     ``legacy`` is the pre-calibration roll-up (check-count weights, every module's
     dimension). Pure — tested directly."""
@@ -167,7 +168,7 @@ async def config_aware_score(
     result = score(findings, config, system_type)
     return {"version_id": vid, "system_type": system_type,
             "config_load": {"load_id": load[0], "system_type": load[2], "loaded_at": load[4]} if load else None,
-            "existing_dqs": composite_dqs(summaries, await _scoring_raw(db, tenant)), **result}
+            "existing_dqs": composite_dqs(summaries, scoring=await _scoring_raw(db, tenant)), **result}
 
 
 @router.get("/findings/rules/{check_id}/applicability", response_model=RuleApplicability)
@@ -219,7 +220,7 @@ async def aggregate_findings(
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
                 "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
-                "dqs": composite_dqs([]), "previous_dqs": None}
+                "dqs": composite_dqs([], scoring=await _scoring_raw(db, tenant)), "previous_dqs": None}
     p = {"ids": [str(i) for i in ids]}
     narrow = {k: v for k, v in (("module", module), ("severity", severity), ("dimension", dimension),
                                 ("check_id", check_id)) if v}
@@ -267,7 +268,7 @@ async def aggregate_findings(
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
     scoring = await _scoring_raw(db, tenant)
-    prev = composite_dqs(list(previous), scoring)
+    prev = composite_dqs(list(previous), scoring=scoring)
     overall = _avg({"_pass": [pair for d in by_dim.values() for pair in d["_pass"]]})
     return {
         "version_ids": p["ids"],
@@ -279,7 +280,7 @@ async def aggregate_findings(
         "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
         "cost_at_risk": round(sum(m["cost_at_risk"] for m in by_module.values()), 2),
         "avg_pass_rate": overall["avg_pass_rate"],
-        "dqs": composite_dqs(list(summaries), scoring),
+        "dqs": composite_dqs(list(summaries), scoring=scoring),
         "previous_dqs": prev["composite"],
     }
 
@@ -304,8 +305,8 @@ async def score_history(
     out = []
     for r in rows:
         summary = r["dqs_summary"] or {}
-        then = composite_dqs([summary], r["scoring"])
-        now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], current)
+        then = composite_dqs([summary], scoring=r["scoring"])
+        now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], scoring=current)
         out.append({"version_id": str(r["id"]), "run_at": r["run_at"].isoformat() if r["run_at"] else None,
                     "system_id": r["system_id"], "scoring_recorded": r["scoring"] is not None,
                     "at_the_time": {"composite": then["composite"], "tier": then.get("tier"), "scoring": r["scoring"]},

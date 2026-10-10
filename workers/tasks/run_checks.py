@@ -501,13 +501,18 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     for m, n in module_rows.items()}
 
         def feed(r: CheckResult) -> None:
+            """Best effort: a failure here voids the module's clean-record figure, never the run."""
             keys = r._all_failing_keys
             tracker = trackers.get(r.module)
             if tracker is None or keys is None or r.check_id in sup_rules:
                 return
-            if sup_records.get(r.check_id):
-                keys = keys[~keys.isin(sup_records[r.check_id])]
-            tracker.add(r.check_id, keys)
+            try:
+                if sup_records.get(r.check_id):
+                    keys = keys[~keys.isin(sup_records[r.check_id])]
+                tracker.add(r.check_id, keys)
+            except Exception as e:
+                logger.warning(f"Clean-record tracking failed on {r.check_id}: {e}", exc_info=True)
+                tracker.failing, tracker.reason = None, f"clean-record tracking failed on {r.check_id}"
         for idx, module_name in enumerate(modules):
             logger.info(f"Running checks for module: {module_name}")
             self.update_state(state='PROGRESS', meta={
@@ -845,6 +850,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
             for module_name in modules:
                 mod_summary = dqs_summary.get(module_name, {})
+                if mod_summary.get("composite_score") is None:
+                    continue  # no rule executed: no score to chart
                 dims = mod_summary.get("dimension_scores", {})
                 session.execute(DQS_HISTORY_UPSERT, {
                     "tenant_id": tenant_id,

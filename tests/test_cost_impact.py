@@ -80,6 +80,6 @@ def test_scoring_tier_rescore_and_module_weights():
 
     a = {"composite_score": 90.0, "total_checks": 10, "dimension_scores": {}}
     b = {"composite_score": 60.0, "total_checks": 10, "dimension_scores": {}}
-    assert composite_dqs([{"fi_gl": a, "mm": b}])["composite"] == 75.0
-    out = composite_dqs([{"fi_gl": a, "mm": b}], {"module_weights": {"fi_gl": 3}})
+    assert composite_dqs([{"fi_gl": a, "mm": b}], scoring={})["composite"] == 75.0
+    out = composite_dqs([{"fi_gl": a, "mm": b}], scoring={"module_weights": {"fi_gl": 3}})
     assert out["composite"] == 82.5 and out["tier"] == "warn"

@@ -185,7 +185,8 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
         "label": _label(module),
         "composite_score": score,
         "readiness": tier(score, thresholds) if score is not None else None,
-        "dimension_scores": mod_summary.get("dimension_scores") or {},
+        "dimension_scores": {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
+                             if (mod_summary.get("dimension_coverage") or {}).get(d) != 0},  # coverage 0: not measured
         "rules": [
             {"check_id": r[0], "severity": r[1], "dimension": r[2], "affected_count": r[3],
              "total_count": r[4], "pass_rate": float(r[5]) if r[5] is not None else None}

@@ -210,7 +210,7 @@ class ScoringConfig(BaseModel):
     thresholds: ScoringThresholds = ScoringThresholds()
     # per-severity rule weight and failure-rate multiplier, and the critical-cap tolerance;
     # unset keys keep the defaults in api/services/scoring.py
-    severity_weights: dict[str, Annotated[float, Field(ge=0)]] = {}
+    severity_weights: dict[str, Annotated[float, Field(gt=0)]] = {}  # 0 would leave a dimension with no denominator
     severity_multipliers: dict[str, Annotated[float, Field(ge=1)]] = {}
     critical_tolerance: dict[str, Annotated[float, Field(ge=0)]] = {}
 

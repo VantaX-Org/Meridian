@@ -11,7 +11,7 @@ from jinja2 import Template
 
 from agents.prompts import READINESS_SYSTEM, READINESS_USER_TEMPLATE
 from agents.state import AgentState
-from api.services.scoring import _thresholds, critical_over_tolerance, readiness_status
+from api.services.scoring import critical_over_tolerance, readiness_status, thresholds_of
 from llm.provider import get_llm_safe, safe_invoke
 
 logger = logging.getLogger("meridian.agents.readiness")
@@ -68,7 +68,7 @@ def readiness_node(state: AgentState) -> dict:
 
     for module in module_names:
         module_dqs = dqs_scores.get(module, {})
-        composite = module_dqs.get("composite_score", 0.0)
+        composite = module_dqs.get("composite_score")  # None = no rule executed (not measured)
         status = compute_readiness_status(composite, critical_over_tolerance(module_dqs), state.get("thresholds"))
 
         # Filter root causes and remediations for this module
@@ -99,9 +99,11 @@ def readiness_node(state: AgentState) -> dict:
                 logger.warning(f"Readiness LLM call failed for {module}: {e}")
 
         # Deterministic fallbacks when LLM produced nothing
-        bands = _thresholds(state.get("thresholds"))
+        bands = thresholds_of(state.get("thresholds"))
         if status == "no-go" and not blockers:
             blockers.append(f"DQS score ({composite}%) is below the {bands['warning']:g}% warning threshold")
+        if status == "conditional" and not conditions and composite is None:
+            conditions.append("No rule executed for this module — data quality not measured")
         if status == "conditional" and not conditions:
             breaches = critical_over_tolerance(module_dqs)
             conditions.append(f"{breaches} critical finding(s) over tolerance must be resolved" if breaches

@@ -580,9 +580,11 @@ def run_checks(
                 logger.warning(f"Slow rule {rule.get('id')} in module '{module}': {took:.0f}s")
             if result is not None:
                 # failing keys are fed and dropped as each result lands, not held until the end
-                if on_result is not None:
-                    on_result(result)
-                result._all_failing_keys = None
+                try:
+                    if on_result is not None:
+                        on_result(result)
+                finally:
+                    result._all_failing_keys = None  # release the full key Series even if on_result raises
             done_by_rule[i] = (rule, result)
     finally:
         frames.clear_cache()

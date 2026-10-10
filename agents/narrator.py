@@ -355,6 +355,12 @@ def _build_recommendations(findings: list[dict], root_causes: list[dict]) -> lis
     return recommendations[:4]
 
 
+def _measured_mean(scores: list[Optional[float]]) -> Optional[float]:
+    """Mean of the measured module scores (None = no rule executed); None when nothing was measured."""
+    measured = [s for s in scores if s is not None]
+    return round(sum(measured) / len(measured), 1) if measured else None
+
+
 def _compute_key_metrics(findings: list[dict], dqs_scores: dict) -> dict:
     """Compute key metrics for the narrative."""
     total_affected = sum(f.get("affected_count", 0) for f in findings)
@@ -371,11 +377,7 @@ def _compute_key_metrics(findings: list[dict], dqs_scores: dict) -> dict:
         "modules_affected": modules_affected,
         "critical_count": sum(1 for f in findings if f.get("severity") == "critical"),
         "high_count": sum(1 for f in findings if f.get("severity") == "high"),
-        "dqs_composite_avg": round(
-            sum(scores.get("composite_score", 0) for scores in dqs_scores.values()) / len(dqs_scores) 
-            if dqs_scores else 0,
-            1
-        ),
+        "dqs_composite_avg": _measured_mean([s.get("composite_score") for s in dqs_scores.values()]),
     }
 
 

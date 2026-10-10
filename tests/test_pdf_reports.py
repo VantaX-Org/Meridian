@@ -24,7 +24,7 @@ def test_empty_inputs_render():
     """A run with no findings, coverage or cleaning activity still renders, with reasons."""
     v = {"id": "6f1c2a10-0000-4000-8000-0000000000ff", "label": None, "status": "complete",
          "run_at": fx.GENERATED, "dqs_summary": {}, "metadata": {}}
-    kw = {"tenant_name": fx.TENANT, "generated_at": fx.GENERATED}
+    kw = {"tenant_name": fx.TENANT, "scoring": {}, "generated_at": fx.GENERATED}
     assert pr.render("analysis_report.html", pr.analysis_context(v, [], **kw)).startswith(b"%PDF")
     assert pr.render("extraction_report.html", pr.extraction_context(v, **kw)).startswith(b"%PDF")
     assert pr.render("cleaning_report.html", pr.cleaning_context({}, **kw)).startswith(b"%PDF")
@@ -37,7 +37,7 @@ def test_summary_body_empty_states():
     shared Summary sections, not blank space."""
     v = {"id": "6f1c2a10-0000-4000-8000-0000000000ff", "label": None, "status": "complete",
          "run_at": fx.GENERATED, "dqs_summary": {}, "metadata": {}}
-    kw = {"tenant_name": fx.TENANT, "generated_at": fx.GENERATED}
+    kw = {"tenant_name": fx.TENANT, "scoring": {}, "generated_at": fx.GENERATED}
     html = pr._env().get_template("analysis_report.html").render(**pr.analysis_context(v, [], **kw))
     assert "This run has no data quality score to summarise." in html
     assert "No dimension was measured in this run." in html
@@ -45,7 +45,7 @@ def test_summary_body_empty_states():
 
 
 def test_summary_body_shows_score_and_findings_when_present():
-    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM,
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, scoring={}, system=fx.SYSTEM,
                               generated_at=fx.GENERATED, previous_dqs=50.0)
     html = pr._env().get_template("analysis_report.html").render(**ctx)
     assert "Change since previous run" in html
@@ -77,7 +77,7 @@ def test_module_deltas():
 
 def test_comparison_figures():
     c = pr.comparison_context(fx.V1, fx.V2, fx.FINDINGS1, fx.FINDINGS2, record_diff=fx.RECORD_DIFF,
-                              tenant_name=fx.TENANT, generated_at=fx.GENERATED)
+                              tenant_name=fx.TENANT, scoring={}, generated_at=fx.GENERATED)
     assert c["change"] == round(c["o2"]["composite"] - c["o1"]["composite"], 1)
     # Record totals only count checks that ran cleanly in both runs (MM020 is excluded).
     assert c["rec"]["totals"] == {"new": 112 + 40 + 1_900 + 85, "resolved": 2_187 + 3_250 + 280,
@@ -94,13 +94,13 @@ def test_unmeasured_dimension_is_not_100():
 
 def test_server_addresses_are_redacted():
     assert pr.redact("failed at host 192.0.2.10:3300") == "failed at host [server]"
-    ctx = pr.extraction_context(fx.V2, tenant_name=fx.TENANT, generated_at=fx.GENERATED)
+    ctx = pr.extraction_context(fx.V2, tenant_name=fx.TENANT, scoring={}, generated_at=fx.GENERATED)
     html = pr._env().get_template("extraction_report.html").render(**ctx)
     assert "192.0.2.10" not in html and "[server]" in html
 
 
 def test_cover_has_mark():
-    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, scoring={}, system=fx.SYSTEM, generated_at=fx.GENERATED)
     html = pr._env().get_template("analysis_report.html").render(**ctx)
     assert "<svg" in html or "mark-light.svg" in html
     assert "Meridian" in html
@@ -109,7 +109,7 @@ def test_cover_has_mark():
 def test_timestamps_are_sast():
     # GENERATED is 09:30 UTC -> 11:30 SAST (UTC+2, no DST).
     assert pr.fmt_dt(fx.GENERATED) == "4 Oct 2026, 11:30 SAST"
-    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+    ctx = pr.analysis_context(fx.V2, fx.FINDINGS2, tenant_name=fx.TENANT, scoring={}, system=fx.SYSTEM, generated_at=fx.GENERATED)
     assert ctx["generated_sast"] == "4 Oct 2026, 11:30 SAST"
     html = pr._env().get_template("analysis_report.html").render(**ctx)
     assert "11:30 SAST" in html
@@ -127,14 +127,14 @@ def test_object_context_unknown_module_is_not_in_modules():
 def test_object_report_shows_field_values_columns():
     ctx = pr.object_context("material_master", fx.V2["dqs_summary"]["material_master"],
                             [f for f in fx.FINDINGS2 if f["module"] == "material_master"], fx.SAMPLES,
-                            tenant_name=fx.TENANT, system=fx.SYSTEM, generated_at=fx.GENERATED)
+                            tenant_name=fx.TENANT, scoring={}, system=fx.SYSTEM, generated_at=fx.GENERATED)
     assert ctx["sample_cols"] == ["MARA.MTART", "MARA.MATNR", "MARA.ERSDA"]
     html = pr._env().get_template("object_report.html").render(**ctx)
     assert "MARA.MTART" in html and "MARA.MATNR" in html
 
 
 def test_object_report_zero_findings_module_renders():
-    ctx = pr.object_context("fi_gl", {}, [], [], tenant_name=fx.TENANT, generated_at=fx.GENERATED)
+    ctx = pr.object_context("fi_gl", {}, [], [], tenant_name=fx.TENANT, scoring={}, generated_at=fx.GENERATED)
     pdf = pr.render("object_report.html", ctx)
     assert pdf.startswith(b"%PDF")
     html = pr._env().get_template("object_report.html").render(**ctx)

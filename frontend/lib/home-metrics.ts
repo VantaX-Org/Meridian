@@ -14,22 +14,29 @@ export function readinessOf(score: number, bands: ScoreBands = DEFAULT_SCORE_BAN
   return score >= bands.target ? "go" : score >= bands.warning ? "at-risk" : "no-go";
 }
 
-/** Mean `composite_score` across every module scored in this run, or null if none are. */
+/** Mean `composite_score` across every module measured in this run, or null if none are. */
 export function runDqs(v: Version): number | null {
-  const scores = Object.values(v.dqs_summary ?? {}).map((m) => m.composite_score);
+  const scores = Object.values(v.dqs_summary ?? {}).flatMap((m) => (m.composite_score == null ? [] : [m.composite_score]));
   if (scores.length === 0) return null;
   return round1(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
-/** Mean of each of the six dimensions across every module scored in this run, or null if none are. */
-export function runDimensions(v: Version): Record<DimensionKey, number> | null {
+/** Mean of each dimension across the modules that measured it in this run (null: not measured), or null with no modules. */
+export function runDimensions(v: Version): Record<DimensionKey, number | null> | null {
   const modules = Object.values(v.dqs_summary ?? {});
   if (modules.length === 0) return null;
-  const out = {} as Record<DimensionKey, number>;
+  const out = {} as Record<DimensionKey, number | null>;
   for (const dim of DIMENSIONS) {
-    out[dim] = round1(modules.reduce((sum, m) => sum + m.dimension_scores[dim], 0) / modules.length);
+    const scores = modules.filter((m) => m.dimension_coverage?.[dim] !== 0).map((m) => m.dimension_scores[dim]);
+    out[dim] = scores.length ? round1(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   }
   return out;
+}
+
+/** The dimensions no module measured in this run, as display names. */
+export function unmeasuredDimensions(v: Version): string[] {
+  const dims = runDimensions(v);
+  return dims ? DIMENSIONS.filter((d) => dims[d] == null).map(formatModuleName) : [];
 }
 
 export interface TrendPoint {
@@ -38,13 +45,13 @@ export interface TrendPoint {
   runId: string;
 }
 
-/** Finished runs (those with at least one scored module), oldest first, as chart points. */
+/** Finished runs (those with at least one measured module), oldest first, as chart points. */
 export function trend(versions: Version[]): TrendPoint[] {
   return versions
-    .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
+    .filter((v) => runDqs(v) != null)
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
-    .map((v) => ({ x: formatDate(v.run_at, "date"), y: runDqs(v) ?? 0, runId: v.id }));
+    .map((v) => ({ x: formatDate(v.run_at, "date"), y: runDqs(v)!, runId: v.id }));
 }
 
 /** Change from the previous finished run to the latest one, or null with fewer than two finished runs. */
@@ -91,7 +98,10 @@ export interface DimensionBarPoint {
 export function dimensionBarPoints(v: Version): DimensionBarPoint[] {
   const dims = runDimensions(v);
   if (!dims) return [];
-  return DIMENSIONS.map((d) => ({ x: formatModuleName(d), y: dims[d], dimension: d }));
+  return DIMENSIONS.flatMap((d) => {
+    const y = dims[d];
+    return y == null ? [] : [{ x: formatModuleName(d), y, dimension: d }];
+  });
 }
 
 export interface HeatmapCell {
@@ -107,6 +117,7 @@ export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version, band
     const summary = v.dqs_summary?.[obj.module];
     if (!summary) continue;
     for (const dim of DIMENSIONS) {
+      if (summary.dimension_coverage?.[dim] === 0) continue; // not measured: the grid shows an empty cell
       cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim], bands) });
     }
   }
@@ -124,8 +135,8 @@ export function worstObjectsFirst(objects: ObjectSummary[]): ObjectSummary[] {
 /** One object's `composite_score` across every finished run it appears in, oldest first. */
 export function objectTrend(versions: Version[], module: string): { x: string; y: number }[] {
   return versions
-    .filter((v) => v.dqs_summary?.[module])
+    .filter((v) => v.dqs_summary?.[module]?.composite_score != null)
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
-    .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score }));
+    .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score! }));
 }

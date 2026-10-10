@@ -19,7 +19,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  cappedReason, dimensionBarPoints, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
+  cappedReason, dimensionBarPoints, unmeasuredDimensions, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
@@ -146,6 +146,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       )}
       trendPoints={trendPoints}
       dimensionPoints={dimensionBarPoints(latest)}
+      unmeasured={unmeasuredDimensions(latest)}
       heatmapCells={dimensionHeatmapCells(scoredObjects, latest, objectsQ.data?.thresholds)}
       heatmapRows={heatmapRows}
       heatmapCols={heatmapCols}

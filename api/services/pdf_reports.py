@@ -328,12 +328,12 @@ def _now(generated_at: Optional[datetime]) -> datetime:
 # ── analysis run ─────────────────────────────────────────────────────────────
 
 
-def analysis_context(version: dict, findings: list[dict], *, tenant_name: str,
+def analysis_context(version: dict, findings: list[dict], *, tenant_name: str, scoring: dict,
                      system: Optional[dict] = None, generated_at: Optional[datetime] = None,
                      previous_dqs: Optional[float] = None) -> dict:
     summary = version.get("dqs_summary") or {}
     meta = version.get("metadata") or {}
-    overall = composite_dqs([summary])
+    overall = composite_dqs([summary], scoring=scoring)
     dims = dimension_scores(summary)
     checked = _rows_checked(findings)
 
@@ -426,7 +426,7 @@ def _extraction_issues(coverage: list[dict]) -> list[dict]:
     return out
 
 
-def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict] = None,
+def extraction_context(version: dict, *, tenant_name: str, scoring: dict, system: Optional[dict] = None,
                        sync_run: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
     meta = version.get("metadata") or {}
     now = _now(generated_at)
@@ -454,7 +454,7 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
                  ("Run", version.get("label") or str(version["id"])), ("Run ID", str(version["id"])),
                  ("Downloaded", fmt_dt(finished)), ("Status", version.get("status") or "—"),
                  ("Generated", fmt_dt(now))],
-        "overall": composite_dqs([version.get("dqs_summary") or {}]),
+        "overall": composite_dqs([version.get("dqs_summary") or {}], scoring=scoring),
         "quality_chart": _quality_chart(summary_dims), "previous_dqs": None, "top_findings": [],
         "modules": [{"name": m, "records": object_rows.get(m)} for m in (meta.get("modules") or [])],
         "coverage": coverage, "live": len(live),
@@ -477,7 +477,7 @@ def extraction_context(version: dict, *, tenant_name: str, system: Optional[dict
 # ── cleaning and fixes ───────────────────────────────────────────────────────
 
 
-def cleaning_context(data: dict, *, tenant_name: str, version: Optional[dict] = None,
+def cleaning_context(data: dict, *, tenant_name: str, scoring: dict, version: Optional[dict] = None,
                      generated_at: Optional[datetime] = None) -> dict:
     queue = data.get("queue") or []
     by_status: dict[str, int] = {}
@@ -496,7 +496,7 @@ def cleaning_context(data: dict, *, tenant_name: str, version: Optional[dict] = 
     now = _now(generated_at)
     cleaning_dims = dimension_scores((version or {}).get("dqs_summary") or {})
     return {
-        "overall": composite_dqs([(version or {}).get("dqs_summary") or {}]),
+        "overall": composite_dqs([(version or {}).get("dqs_summary") or {}], scoring=scoring),
         "quality_chart": _quality_chart(cleaning_dims), "previous_dqs": None, "top_findings": [],
         "title": "Cleaning and fixes report", "eyebrow": "Data cleaning and remediation", "cover": True,
         "scope_label": f"{tenant_name} · {'Run ' + (version.get('label') or str(version['id'])) if version else 'All runs'}",
@@ -524,6 +524,8 @@ def module_deltas(summary1: dict, summary2: dict) -> dict:
     delta = {}
     for mod in sorted(set(summary1 or {}) | set(summary2 or {})):
         s1, s2 = (summary1 or {}).get(mod) or {}, (summary2 or {}).get(mod) or {}
+        if (s1 and s1.get("composite_score") is None) or (s2 and s2.get("composite_score") is None):
+            continue  # ran but not measured in one run: nothing to compare
         score1, score2 = s1.get("composite_score", 0), s2.get("composite_score", 0)
         d1, d2 = s1.get("dimension_scores") or {}, s2.get("dimension_scores") or {}
         delta[mod] = {
@@ -567,17 +569,18 @@ def check_changes(findings1: list[dict], findings2: list[dict]) -> dict:
 
 
 def comparison_context(v1: dict, v2: dict, findings1: list[dict], findings2: list[dict], *,
-                       record_diff: Optional[list[dict]], tenant_name: str, system: Optional[dict] = None,
-                       generated_at: Optional[datetime] = None) -> dict:
+                       record_diff: Optional[list[dict]], tenant_name: str, scoring: dict,
+                       system: Optional[dict] = None, generated_at: Optional[datetime] = None) -> dict:
     s1, s2 = v1.get("dqs_summary") or {}, v2.get("dqs_summary") or {}
-    o1, o2 = composite_dqs([s1]), composite_dqs([s2])
+    o1, o2 = composite_dqs([s1], scoring=scoring), composite_dqs([s2], scoring=scoring)
     d1, d2 = dimension_scores(s1), dimension_scores(s2)
     dims = [{"name": d, "v1": d1[d], "v2": d2[d],
              "change": None if d1[d] is None or d2[d] is None else round(d2[d] - d1[d], 1)} for d in DIMENSIONS]
     deltas = module_deltas(s1, s2)
-    modules = [{"name": m, "v1": s1[m]["composite_score"] if m in s1 else None,
-                "v2": s2[m]["composite_score"] if m in s2 else None,
-                "change": r["dqs_change"] if m in s1 and m in s2 else None} for m, r in deltas.items()]
+    modules = [{"name": m, "v1": (s1.get(m) or {}).get("composite_score"),
+                "v2": (s2.get(m) or {}).get("composite_score"),
+                "change": deltas[m]["dqs_change"] if m in deltas else None}
+               for m in sorted(set(s1) | set(s2))]
     changes = check_changes(findings1, findings2)
     comparable = [m for m in modules if m["change"] is not None]
 
@@ -639,9 +642,9 @@ _CANNED = "Data quality assessment complete. Review the detailed findings below 
 
 
 def executive_context(report_json: dict, supplementary: dict, version: dict, findings: list[dict], *,
-                      tenant_name: str, system: Optional[dict] = None,
+                      tenant_name: str, scoring: dict, system: Optional[dict] = None,
                       generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None) -> dict:
-    ctx = analysis_context(version, findings, tenant_name=tenant_name, system=system,
+    ctx = analysis_context(version, findings, tenant_name=tenant_name, scoring=scoring, system=system,
                            generated_at=generated_at, previous_dqs=previous_dqs)
     ai = report_json.get("ai_executive_summary")
     if not ai and "ai_executive_summary" not in report_json:  # agent-written report: summary is LLM text
@@ -655,14 +658,14 @@ def executive_context(report_json: dict, supplementary: dict, version: dict, fin
 
 
 def object_context(module: str, module_dqs: dict, findings: list[dict], samples: list[dict], *,
-                   tenant_name: str, system: Optional[dict] = None,
+                   tenant_name: str, scoring: dict, system: Optional[dict] = None,
                    generated_at: Optional[datetime] = None) -> dict:
     """T18: every rule, finding and failing-record sample for one module in one run.
     ``module_dqs`` is ``version['dqs_summary'][module]`` (or ``{}`` if the module scored
     nothing); passing it through ``composite_dqs``/``dimension_scores`` as a single-module
     slice gets the module's own composite/tier/capped flag and dimension scores for free."""
     summary = {module: module_dqs or {}}
-    overall = composite_dqs([summary])
+    overall = composite_dqs([summary], scoring=scoring)
     dims = dimension_scores(summary)
     ran = [f for f in findings if not errored(f)]
     errs = [_check_row(f) for f in findings if errored(f)]
@@ -756,7 +759,12 @@ def load_findings(s: Session, tid: str, vid: str) -> list[dict]:
                    "FROM findings WHERE version_id = :v AND tenant_id = :t", v=str(vid), t=tid)
 
 
-def load_previous_dqs(s: Session, tid: str, version: dict) -> Optional[float]:
+def load_scoring(s: Session, tid: str) -> dict:
+    """The tenant's raw scoring config (``tenants.dqs_weights``), loaded once per report."""
+    return s.execute(text("SELECT dqs_weights FROM tenants WHERE id = :t"), {"t": tid}).scalar() or {}
+
+
+def load_previous_dqs(s: Session, tid: str, version: dict, scoring: dict) -> Optional[float]:
     """Composite DQS of the prior run in the same lineage (same system, or the
     'upload' lineage for uploads without a system_id), for the Summary section's
     change-since-previous-run figure. None when there is no prior scored run."""
@@ -769,7 +777,7 @@ def load_previous_dqs(s: Session, tid: str, version: dict) -> Optional[float]:
         t=tid, lineage=lineage, run_at=version["run_at"])
     if not row:
         return None
-    return composite_dqs([row["dqs_summary"]])["composite"]
+    return composite_dqs([row["dqs_summary"]], scoring=scoring)["composite"]
 
 
 def load_analysis(s: Session, tid: str, vid: str) -> Optional[dict]:
@@ -941,34 +949,35 @@ def build(s: Session, tid: str, kind: str, vid: Optional[str] = None, vid1: Opti
     (or, for an extraction report, the run was not extracted from SAP)."""
     tenant_name = s.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tid}).scalar() or ""
     kw: dict[str, Any] = {"tenant_name": tenant_name}
+    scoring = load_scoring(s, tid)
     if kind == "analysis":
         d = load_analysis(s, tid, vid)
         return d and render("analysis_report.html", analysis_context(
-            d["version"], d["findings"], system=d["system"],
-            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
+            d["version"], d["findings"], system=d["system"], scoring=scoring,
+            previous_dqs=load_previous_dqs(s, tid, d["version"], scoring), **kw))
     if kind == "extraction":
         d = load_extraction(s, tid, vid)
         if not d:
             return None
-        ctx = extraction_context(d["version"], system=d["system"], sync_run=d["sync_run"], **kw)
+        ctx = extraction_context(d["version"], system=d["system"], sync_run=d["sync_run"], scoring=scoring, **kw)
         return render("extraction_report.html", ctx) if ctx["is_extraction"] else None
     if kind == "cleaning":
         d = load_cleaning(s, tid, vid)
-        return d and render("cleaning_report.html", cleaning_context(d["data"], version=d["version"], **kw))
+        return d and render("cleaning_report.html", cleaning_context(d["data"], version=d["version"], scoring=scoring, **kw))
     if kind == "comparison":
         d = load_comparison(s, tid, vid1, vid)
         return d and render("comparison_report.html", comparison_context(
             d["v1"], d["v2"], d["findings1"], d["findings2"], record_diff=d["record_diff"],
-            system=d["system"], **kw))
+            system=d["system"], scoring=scoring, **kw))
     if kind == "executive":
         d = gather_executive_data(s, tid, vid)
         return d and render("executive_report.html", executive_context(
             d["report_json"], d["supplementary"], d["version"], d["findings"], system=d["system"],
-            previous_dqs=load_previous_dqs(s, tid, d["version"]), **kw))
+            scoring=scoring, previous_dqs=load_previous_dqs(s, tid, d["version"], scoring), **kw))
     if kind == "object":
         d = load_object(s, tid, vid, module)
         return d and render("object_report.html", object_context(
-            module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], **kw))
+            module, d["module_dqs"], d["findings"], d["samples"], system=d["system"], scoring=scoring, **kw))
     if kind == "record":
         d = load_record(s, tid, vid, matnr)
         return d and render("record_report.html", record_context(

@@ -10,8 +10,11 @@ export interface DimensionScores {
 
 /* ─── Per-module DQS summary ─── */
 export interface DQSSummary {
-  composite_score: number;
+  /** Null when no rule executed for the module: not measured. */
+  composite_score: number | null;
   dimension_scores: DimensionScores;
+  /** Executed share per dimension; 0 means the dimension was not measured. Absent on older runs. */
+  dimension_coverage?: Partial<Record<keyof DimensionScores, number>>;
   critical_count: number;
   high_count: number;
   medium_count: number;

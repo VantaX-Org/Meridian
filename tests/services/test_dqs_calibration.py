@@ -33,12 +33,23 @@ def test_small_failing_critical_outweighs_large_passing_low_rule():
 def test_ddic_result_weighs_one_and_tenant_overrides_apply():
     r = score_module([res("DDIC-T-type", "critical", 100, 0), res("C", "critical", 100, 10)], {})
     assert r.dimension_scores["completeness"] == round((100 + 4 * 50) / 5, 2)
+    # DDIC takes k = 1 too: a high-severity DDIC result failing 10% scores 90, not 80
+    assert score_module([res("DDIC-T-type", "high", 100, 10)], {}).dimension_scores["completeness"] == 90.0
     flat = {"severity_weights": {"critical": 1}, "severity_multipliers": {"critical": 1}}
     assert score_module([res("A", "low", 100, 0), res("C", "critical", 100, 10)], flat).dimension_scores[
         "completeness"] == 95.0
 
 
 # ---- C3 ------------------------------------------------------------------------------------------------
+
+def test_invalid_severity_overrides_keep_defaults():
+    from api.services.scoring import scoring_config
+    cfg = scoring_config({"severity_weights": {"critical": 0, "low": -1, "high": 2},
+                          "severity_multipliers": {"critical": 0.5, "high": 3}})
+    assert cfg["severity_weights"]["critical"] == 4 and cfg["severity_weights"]["low"] == 1
+    assert cfg["severity_weights"]["high"] == 2
+    assert cfg["severity_multipliers"]["critical"] == 5 and cfg["severity_multipliers"]["high"] == 3
+
 
 def test_one_row_in_a_million_does_not_cap():
     r = score_module([res("CRIT", "critical", 1_000_000, 1)], {})
@@ -63,7 +74,7 @@ def test_unmeasured_dimension_is_not_averaged_in_at_100():
          "dimension_coverage": {"completeness": 1, "accuracy": 0}, "total_checks": 1}
     b = {"composite_score": 90.0, "dimension_scores": {"completeness": 100.0, "accuracy": 90.0},
          "dimension_coverage": {"completeness": 1, "accuracy": 1}, "total_checks": 9}
-    c = composite_dqs([{"a": a, "b": b}], {"module_weights": {"b": 1}})
+    c = composite_dqs([{"a": a, "b": b}], scoring={"module_weights": {"b": 1}})
     assert c["dimension_scores"]["accuracy"] == 90.0  # module a's unmeasured 100 is skipped
     assert c["composite"] == 85.0  # module weight only, not check count
 
@@ -76,8 +87,18 @@ def test_coverage_counts_skipped_and_errored_not_not_applicable():
     m = out["m"]
     assert m.coverage == 0.25 and m.low_confidence and m.skipped_checks == 2 and m.not_applicable_checks == 5
     assert m.composite_score == 100.0  # coverage is reported, never folded into the score
-    c = composite_dqs([{"m": m.model_dump()}])
+    c = composite_dqs([{"m": m.model_dump()}], scoring={})
     assert c["coverage"] == 0.25 and c["low_confidence"]
+
+
+def test_module_with_no_executed_rule_is_not_measured():
+    assert score_module([], {}).composite_score is None
+    out = score_all_modules([res("A", "medium", 100, 20)], {}, {"m": {}, "idle": {"not_evaluable": 3}})
+    assert out["idle"].composite_score is None and out["idle"].coverage == 0
+    assert readiness_status(None, 0) == "conditional"  # not measured: neither a pass nor a fail
+    alone = composite_dqs([{"m": out["m"].model_dump()}], scoring={})
+    both = composite_dqs([{m: r.model_dump() for m, r in out.items()}], scoring={})
+    assert both["composite"] == alone["composite"] == 80.0 and "idle" not in both["modules"]
 
 
 def test_runner_marks_empty_population_not_applicable():
@@ -137,7 +158,16 @@ def test_clean_records_ceiling_reports_null(monkeypatch):
     import api.services.scoring as scoring
     monkeypatch.setattr(scoring, "CLEAN_KEY_CEILING", 2)
     t = CleanRecords("MARA", ["MATNR"], 10)
-    t.add("T1", pd.Series(["MATNR=1", "MATNR=2", "MATNR=3"]))
+    seen: list[int] = []
+
+    class Spy(set):
+        def update(self, *xs: object) -> None:
+            super().update(*xs)
+            seen.append(len(self))
+    t.failing = Spy()
+    t.add("T1", pd.Series(["MATNR=1|WERKS=A", "MATNR=1|WERKS=B"]))  # projects to one MARA key
+    t.add("T2", pd.Series(["MATNR=2", "MATNR=3", "MATNR=4"]))
+    assert seen == [1]  # the second rule tripped the ceiling before any tuple reached the set
     out = t.result()
     assert out["clean_record_pct"] is None and "more than 2" in out["clean_records"]["reason"]
     assert CleanRecords(None, [], 0).result()["clean_record_pct"] is None

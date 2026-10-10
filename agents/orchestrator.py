@@ -136,7 +136,7 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
     for mod, scores in dqs_summary.items():
         if isinstance(scores, dict):
             dqs_scores[mod] = {
-                "composite_score": scores.get("composite_score", 0.0),
+                "composite_score": scores.get("composite_score"),  # None = no rule executed
                 "dimension_scores": scores.get("dimension_scores", {}),
                 "critical_count": scores.get("critical_count", 0),
                 "critical_breaches": scores.get("critical_breaches"),
