@@ -6,6 +6,7 @@ All endpoints apply require_permission checks.
 
 import logging
 import re
+from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -90,6 +91,8 @@ class UpdateSystemRequest(BaseModel):
     description: Optional[str] = None
     environment: Optional[str] = None
     is_active: Optional[bool] = None
+    # migration cut-over: records created before it and never changed are migration-era (root cause)
+    go_live: Optional[date] = None
     credentials: dict[str, str] = Field(default_factory=dict)
 
 
@@ -355,6 +358,9 @@ async def update_system(
     if body.is_active is not None:
         set_parts.append("is_active = :is_active")
         updates["is_active"] = body.is_active
+    if body.go_live is not None:
+        set_parts.append("go_live = :go_live")
+        updates["go_live"] = body.go_live
 
     if set_parts:
         set_parts.append("updated_at = now()")
