@@ -4,10 +4,13 @@ import pandas as pd
 
 from api.services import proven_cost as pc
 from checks.frames import TableFrames
+from sap.ddic import get_dictionary
 
 
-def _tf(**t: pd.DataFrame) -> TableFrames:
-    return TableFrames(dict(t))
+def _tf(**tables: pd.DataFrame) -> TableFrames:
+    """Production shape: an extraction bundle's per-table frames carry ``TABLE.FIELD`` columns
+    (workers/dataset.py), so a regression to bare-name reads fails here."""
+    return TableFrames({t: df.add_prefix(f"{t}.") for t, df in tables.items()}, get_dictionary("s4hana"))
 
 
 def _po_frames() -> TableFrames:
@@ -204,3 +207,34 @@ def test_attribute_ignores_blank_key_fields():
     failing = {"C": {"MATNR=0000000000"}}
     out = pc.attribute(items, failing)
     assert out["DOC1"] == []
+
+
+def test_flat_upload_frames_are_read():
+    """Flat uploads go through TableFrames.from_flat: dotted columns, LIFNR ALPHA-padded."""
+    flat = pd.DataFrame({"BSAK.LIFNR": ["100", "100"], "BSAK.BUKRS": ["1", "1"], "BSAK.GJAHR": ["2026", "2026"],
+                         "BSAK.BELNR": ["B1", "B2"], "BSAK.BUZEI": ["1", "1"], "BSAK.SHKZG": ["S", "S"],
+                         "BSAK.WAERS": ["ZAR", "ZAR"], "BSAK.WRBTR": [50.0, 50.0], "BSAK.XBLNR": ["INV-1", "INV1"],
+                         **{f"BSAK.{k}": ["", ""] for k in ("UMSKS", "UMSKZ", "AUGDT", "AUGBL", "ZUONR")}})
+    r = pc.duplicate_payments(TableFrames.from_flat(flat, get_dictionary("s4hana")), {})
+    assert r.amount == 50.0 and r.documents == 1
+
+
+def test_attribute_needs_the_whole_record_key():
+    """A WERKS-only or plant-level record must not attach to every document sharing one field."""
+    items = [pc.CostItem(doc_key="D1", master_key="MATNR=M1|WERKS=W", amount=1, detail=""),
+             pc.CostItem(doc_key="D2", master_key="MATNR=M2", amount=1, detail="")]
+    failing = {"PLANT": {"WERKS=W"}, "MARC": {"MATNR=M2|WERKS=W"}, "MARA": {"MATNR=0M2"},
+               "OTHER": {"MATNR=M1|WERKS=X"}}
+    out = pc.attribute(items, failing)
+    assert out == {"D1": ["PLANT"], "D2": ["MARA"]}
+
+
+def test_attribute_scales_with_records_not_items_times_records():
+    import time
+
+    failing = {f"C{i % 50}": {f"MATNR=M{j}|WERKS=W" for j in range(i * 4000, (i + 1) * 4000)} for i in range(50)}
+    items = [pc.CostItem(doc_key=f"D{i}", master_key=f"MATNR=M{i}|WERKS=W", amount=1, detail="") for i in range(4000)]
+    t0 = time.monotonic()
+    out = pc.attribute(items, failing)
+    assert time.monotonic() - t0 < 10
+    assert out["D5"] == ["C0"]

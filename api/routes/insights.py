@@ -46,12 +46,19 @@ async def get_readiness(
 
     # A wave reads its own latest analysed run; a wave without one falls back to the tenant's
     # latest analysed run (optionally pinned by version_id), so grids built from settings still show.
+    # A dry run outranks a newer regular run only on the same source version as the newest
+    # run; a dry run of older data never beats a run of newer data.
     run_sql = """
-        SELECT gap_summary, source_version_id FROM migration_runs
-        WHERE tenant_id = :t AND status = 'analysed'
-          AND (CAST(:wid AS uuid) IS NULL OR wave_id = CAST(:wid AS uuid))
-          AND (CAST(:vid AS uuid) IS NULL OR source_version_id = CAST(:vid AS uuid))
-        ORDER BY (mode = 's4_dry_run') DESC, completed_at DESC LIMIT 1
+        WITH c AS (
+            SELECT gap_summary, source_version_id, mode, completed_at,
+                   first_value(source_version_id) OVER (ORDER BY completed_at DESC NULLS LAST) AS latest_v
+            FROM migration_runs
+            WHERE tenant_id = :t AND status = 'analysed'
+              AND (CAST(:wid AS uuid) IS NULL OR wave_id = CAST(:wid AS uuid))
+              AND (CAST(:vid AS uuid) IS NULL OR source_version_id = CAST(:vid AS uuid)))
+        SELECT gap_summary, source_version_id FROM c
+        ORDER BY (mode = 's4_dry_run' AND source_version_id IS NOT DISTINCT FROM latest_v) DESC,
+                 completed_at DESC NULLS LAST LIMIT 1
     """
     vid = str(version_id) if version_id else None
     fallback = (await db.execute(text(run_sql), {"t": str(tenant.id), "wid": None, "vid": vid})).fetchone()

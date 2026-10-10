@@ -54,15 +54,34 @@ def test_s4_dry_run_folds_load_sim_into_verdict(seeded, monkeypatch):
     from sap.ddic import get_dictionary
     from workers.tasks import run_migration as mod
 
+    from api.services.migration import load_sim
+
     # Two MARA rows that collide after ALPHA conversion: "123" and "0000123" both
-    # resolve to the same internal material key.
-    mara = pd.DataFrame({"MATNR": ["123", "0000123"], "MTART": ["ROH", "ROH"]})
+    # resolve to the same internal material key. Production shape: TABLE.FIELD columns,
+    # so the engine keys records MATNR=.. exactly as the sim does and fold() can match them.
+    mara = pd.DataFrame({"MARA.MATNR": ["123", "0000123", "OK-1"], "MARA.MTART": ["ROH"] * 3,
+                         "MARA.MBRSH": ["M"] * 3, "MARA.MEINS": ["EA"] * 3})
     frames = TableFrames({"MARA": mara}, get_dictionary("s4hana"))
 
     monkeypatch.setattr(mod, "resolve_source_version",
                         lambda session, source_system_id, source_version_id: (seeded["vid"], {"dataset_path": "x/"}))
     monkeypatch.setattr("workers.dataset.load_dataset",
                         lambda *a, **k: (frames, None, len(mara), len(mara.columns)))
+
+    # The test DB role bypasses RLS, so load_mappings would see other tenants' stored mappings;
+    # seed fresh from this frame instead.
+    monkeypatch.setattr(mod, "load_mappings", lambda session, module, target_type: [])
+
+    # The engine alone: no load-sim findings. These records pass it.
+    real_simulate = load_sim.simulate
+    monkeypatch.setattr(load_sim, "simulate", lambda *a, **k: [])
+    out = mod.run_migration.run(seeded["tid"], seeded["rid"], "s4_dry_run", None, None, ["material_master"])
+    assert out["status"] == "analysed", out
+    with seeded["engine"].begin() as c:
+        engine_only = c.execute(text("SELECT gap_summary FROM migration_runs WHERE id = :r"),
+                                {"r": seeded["rid"]}).scalar()["material_master"]
+    assert engine_only["records"] == 3 and engine_only["blocked_records"] == 0, engine_only
+    monkeypatch.setattr(load_sim, "simulate", real_simulate)
 
     out = mod.run_migration.run(seeded["tid"], seeded["rid"], "s4_dry_run", None, None,
                                 ["material_master"])
@@ -77,6 +96,8 @@ def test_s4_dry_run_folds_load_sim_into_verdict(seeded, monkeypatch):
 
     assert len(rows) == 2
     assert all(d.startswith("S4L-MM-MATNR-ALPHA") for _, d in rows)
+    # the fold: the two sim-only keys are now blocked, the clean OK-1 is not
+    assert gap_summary["material_master"]["blocked_records"] == 2
     assert gap_summary["material_master"]["verdict"] == "no-go"
     assert gap_summary["material_master"]["mode"] == "s4_dry_run"
     assert gap_summary["material_master"]["s4_load"]["S4L-MM-MATNR-ALPHA"] == 2
@@ -132,7 +153,7 @@ def analysed_dry_run():
             (:t, :r, 'material_master', 'MARA', 'MATNR1', 's4_load', 'high', 'S4L-MM-MATNR-ALPHA collision 2'),
             (:t, :r, 'material_master', 'MARA', 'MATNR2', 's4_load', 'medium', 'S4L-MM-OTHER minor note')
         """), {"t": t1, "r": rid})
-    yield {"t1": t1, "t2": t2, "rid": rid}
+    yield {"t1": t1, "t2": t2, "rid": rid, "sid": sid, "vid": vid}
     with engine.begin() as c:
         c.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :t"), {"t": t1})
         c.execute(text("DELETE FROM migration_runs WHERE tenant_id = :t"), {"t": t1})
@@ -285,3 +306,40 @@ async def test_analyze_s4_dry_run_rejects_dest_system_id(analysed_dry_run, monke
             headers=_HEADERS,
         )
     assert r.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_analyze_s4_dry_run_queues_run_migration(analysed_dry_run, monkeypatch):
+    from workers.tasks import run_migration as mod
+
+    calls: list[tuple[object, ...]] = []
+
+    class _Task:
+        id = "task-1"
+
+    def _delay(*args: object) -> _Task:
+        calls.append(args)
+        return _Task()
+
+    monkeypatch.setattr(mod.run_migration, "delay", _delay)
+    monkeypatch.setattr("api.routes.migration.current_user_id", lambda request: None)
+    _patch_tenant(monkeypatch, analysed_dry_run["t1"])
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.post(
+            "/api/v1/migration/analyze",
+            json={"mode": "s4_dry_run", "source_system_id": analysed_dry_run["sid"],
+                  "source_version_id": analysed_dry_run["vid"], "modules": ["material_master"]},
+            headers=_HEADERS,
+        )
+    assert r.status_code in (200, 202), r.text
+    body = r.json()
+    assert body["status"] == "queued" and body["mode"] == "s4_dry_run" and body["task_id"] == "task-1"
+    assert calls == [(analysed_dry_run["t1"], body["run_id"], "s4_dry_run", analysed_dry_run["sid"], None,
+                      ["material_master"], analysed_dry_run["vid"], "s4hana")]
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    with engine.begin() as c:
+        row = c.execute(text("SELECT mode, status, task_id FROM migration_runs WHERE id = :r"),
+                        {"r": body["run_id"]}).fetchone()
+    engine.dispose()
+    assert tuple(row) == ("s4_dry_run", "queued", "task-1")

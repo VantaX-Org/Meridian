@@ -110,6 +110,23 @@ def module_source_tables(module: str, frames) -> list[str]:
     return [t for t, p in plans.items() if p.purpose == "data" and t in frames.frames]
 
 
+def sim_owners(modules: list[str], frames) -> dict[str, str]:
+    """Source table -> the one module of the run that records its S/4 load findings: the first
+    module that reads the table natively, else the first that reads it at all (the load-sim
+    tables are added to every trigger module's plan, so without this each run module would
+    record every KNA1/NAST finding again)."""
+    from sap.extraction_plan import plan_modules
+
+    plans = {m: plan_modules([m], frames.dictionary) for m in modules}
+    owner: dict[str, str] = {}
+    for native in (True, False):
+        for m in modules:
+            for t, p in plans[m].items():
+                if p.purpose == "data" and t in frames.frames and (not native or m in p.modules):
+                    owner.setdefault(t, m)
+    return owner
+
+
 @celery_app.task(bind=True, name="workers.tasks.run_migration.run_migration",
                  soft_time_limit=1800, time_limit=1860, acks_late=True, reject_on_worker_lost=True)
 def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_id, modules,
@@ -156,6 +173,7 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 target_type = target_release
             target_config = load_target_config(session, None if dry_run else dest_system_id)
 
+            owners = sim_owners(modules, frames) if dry_run else {}
             summary, all_gaps, records, blocked = {}, 0, 0, 0
             verdicts, critical = [], 0
             for module in modules:
@@ -172,7 +190,7 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                 if dry_run:
                     from api.services.migration import load_sim
                     grouping = {**load_sim.standard_grouping(), **load_value_maps(session, module).get("BU_GROUP", {})}
-                    sim = load_sim.simulate(frames, module, grouping)
+                    sim = load_sim.simulate(frames, module, grouping, {t for t, m in owners.items() if m == module})
                     res = load_sim.fold(res, sim)
                     gaps = gaps + sim
                 rows = [{

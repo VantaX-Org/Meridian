@@ -53,9 +53,9 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
                  *, tables: Optional[set[str]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
     """(frames, flat_df_or_None, row_count, column_count) for a dataset path.
 
-    ``tables``, when given, restricts the per-table (extraction bundle) branch to
-    those table names — loading every table in a bundle eagerly has OOM'd workers
-    that only need a handful (e.g. proven-cost metrics).
+    ``tables``, when given, restricts loading to those table names: bundle files by
+    name, flat columns by their ``TABLE.`` prefix — loading everything eagerly has
+    OOM'd workers that only need a handful (e.g. proven-cost metrics).
     """
     client = _client()
     bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
@@ -97,6 +97,8 @@ def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]]
     all_cols = set(pq.read_schema(buf).names)
     buf.seek(0)
     project = [c for c in all_cols if c in needed] if needed else None
+    if tables is not None:
+        project = [c for c in (project or all_cols) if c.split(".", 1)[0] in tables]
     df = pd.read_parquet(buf, columns=project or None)
     return TableFrames.from_flat(df, dictionary, conversions=conversions), df, len(df), len(df.columns)
 

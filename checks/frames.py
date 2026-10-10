@@ -29,6 +29,7 @@ from typing import Optional
 import pandas as pd
 import yaml
 
+from checks.base import record_keys
 from sap.ddic import Dictionary, get_dictionary
 
 logger = logging.getLogger("meridian.checks.frames")
@@ -77,6 +78,12 @@ _MOVED = _moved_fields()
 
 def tables_of(columns: list[str] | set[str]) -> list[str]:
     return list(dict.fromkeys(c.split(".", 1)[0] for c in columns if "." in c))
+
+
+def unprefix(table: str, df: pd.DataFrame) -> pd.DataFrame:
+    """Frames hold ``TABLE.FIELD`` columns; this gives the bare field names (MATNR) a
+    one-table service reads. Columns of other tables or already bare stay as they are."""
+    return df.rename(columns=lambda c: c.split(".", 1)[1] if str(c).startswith(f"{table}.") else c)
 
 
 def internal_format(df: pd.DataFrame, dictionary: Dictionary,
@@ -160,6 +167,16 @@ class TableFrames:
             edge = next((e for e in _graph()[0] if e.parent == s4_table and e.child == origin_table), None)
             if edge:
                 self.frames[s4_table] = _join(host, src, edge, [origin]).rename(columns={origin: s4})
+
+    def plain(self, table: str) -> pd.DataFrame | None:
+        """``table``'s frame with bare field names plus ``__key__``, the record key exactly as
+        the migration engine and finding_records build it (DDIC key, ``MATNR=..|WERKS=..``).
+        None when the table was not extracted or is empty."""
+        df = self.frames.get(table)
+        if df is None or df.empty:
+            return None
+        keys = [f"{table}.{k}" for k in self.dictionary.keys(table) if f"{table}.{k}" in df.columns]
+        return unprefix(table, df).assign(__key__=record_keys(df, keys))
 
     # ── per-rule frame ───────────────────────────────────────────────────
 

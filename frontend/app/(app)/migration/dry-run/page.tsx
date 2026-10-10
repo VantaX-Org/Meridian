@@ -10,11 +10,13 @@ import { VERDICT_LABEL, VERDICT_TONE } from "@/app/(app)/migration/page";
 import { apiErrorMessage } from "@/lib/api/optional";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { TransferVerdict, WaveVerdict } from "@/types/api";
+import type { MigrationStatus, TransferVerdict, WaveVerdict } from "@/types/api";
 
 const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
-const STATUS_TONE = { load_ready: "go", load_fail: "no-go" } as const;
+const inFlight = (status: MigrationStatus | undefined) => status === "queued" || status === "running";
+
+const STATUS_TONE ={ load_ready: "go", load_fail: "no-go" } as const;
 const STATUS_LABEL = { load_ready: "Load ready", load_fail: "Load fail" } as const;
 
 const columns: ColumnDef<DryRunRecord>[] = [
@@ -41,12 +43,15 @@ export default function DryRunPage() {
     queryKey: queryKeys.migrationRun(runId ?? ""),
     queryFn: () => getMigrationRun(runId as string),
     enabled: !!runId,
+    refetchInterval: (q) => (inFlight(q.state.data?.run.status) ? 3000 : false),
   });
+  const running = inFlight(runQuery.data?.run.status);
 
   const recordsQuery = useQuery({
     queryKey: queryKeys.migrationDryRun(runId ?? "", { status: "load_fail" }),
     queryFn: () => getDryRunRecords(runId as string, { status: "load_fail" }),
     enabled: !!runId,
+    refetchInterval: running ? 3000 : false,
   });
 
   const refetch = () => {

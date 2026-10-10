@@ -3,14 +3,19 @@ every amount is a document value already in the extract. Each costed document is
 anchored to a master-data key so attribution (finding_records) can name the check_ids."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
+from itertools import combinations
 from typing import TypedDict
 
 import pandas as pd
 
 from api.services.lineage import parse_record_key
 from checks.frames import TableFrames
+
+logger = logging.getLogger("meridian.proven_cost")
 
 
 class CostItem(TypedDict):
@@ -30,12 +35,25 @@ class MetricResult:
     items: list[CostItem] = field(default_factory=list)
 
 
+@lru_cache(maxsize=256)
+def _missing(col: str) -> None:
+    """Logged once per field: an absent column reads as blank/0, which silently zeroes a metric
+    if the frame shape is wrong (bare-name reads over TABLE.FIELD frames did exactly that)."""
+    logger.warning(f"proven_cost: column {col} absent from the extract; read as blank")
+
+
 def _s(df: pd.DataFrame, col: str) -> pd.Series:
-    return (df[col] if col in df.columns else pd.Series("", index=df.index)).astype("string").fillna("").str.strip()
+    if col not in df.columns:
+        _missing(col)
+        return pd.Series("", index=df.index, dtype="string")
+    return df[col].astype("string").fillna("").str.strip()
 
 
 def _num(df: pd.DataFrame, col: str) -> pd.Series:
-    return pd.to_numeric(df[col], errors="coerce").fillna(0.0) if col in df.columns else pd.Series(0.0, index=df.index)
+    if col not in df.columns:
+        _missing(col)
+        return pd.Series(0.0, index=df.index)
+    return pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
 
 def _date(df: pd.DataFrame, col: str) -> pd.Series:
@@ -43,7 +61,7 @@ def _date(df: pd.DataFrame, col: str) -> pd.Series:
 
 
 def _get(frames: TableFrames, *names: str) -> list[pd.DataFrame] | None:
-    out = [frames.frames.get(n) for n in names]
+    out = [frames.plain(n) for n in names]
     return None if any(d is None or d.empty for d in out) else out
 
 
@@ -76,7 +94,7 @@ def grir_uom_variance(frames: TableFrames) -> MetricResult:
     po = ekpo.assign(EBELN=_s(ekpo, "EBELN"), EBELP=_s(ekpo, "EBELP"), MATNR=_s(ekpo, "MATNR"),
                      meins=_s(ekpo, "MEINS"), bprme=_s(ekpo, "BPRME"))
     base = dict(zip(_s(mara, "MATNR"), _s(mara, "MEINS")))
-    marm = frames.frames.get("MARM")
+    marm = frames.plain("MARM")
     conv: dict[str, tuple[float, float]] = {}
     if marm is not None and not marm.empty:
         conv = dict(zip(_s(marm, "MATNR") + "|" + _s(marm, "MEINH"), zip(_num(marm, "UMREZ"), _num(marm, "UMREN"))))
@@ -121,14 +139,14 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     so = vbak.assign(**{c: _s(vbak, c) for c in ["VBELN", *area, "LIFSK", "FAKSK", "CMGST"]},
                      amount=_num(vbak, "NETWR"), currency=_s(vbak, "WAERK"))
     vbak_cmgst_values = so["CMGST"].to_numpy()
-    vbuk = frames.frames.get("VBUK")
+    vbuk = frames.plain("VBUK")
     if vbuk is not None and not vbuk.empty:
         so = so.drop(columns="CMGST").merge(vbuk.assign(VBELN=_s(vbuk, "VBELN"), CMGST=_s(vbuk, "CMGST"))[["VBELN", "CMGST"]],
                                             on="VBELN", how="left")
         so["CMGST"] = so["CMGST"].fillna(pd.Series(vbak_cmgst_values, index=so.index))
     credit, deliv, bill = so["CMGST"].isin(["B", "C"]), so["LIFSK"] != "", so["FAKSK"] != ""
     so = so[credit | deliv | bill].assign(_c=credit[so.index], _d=deliv[so.index], _b=bill[so.index])
-    knvv = frames.frames.get("KNVV")
+    knvv = frames.plain("KNVV")
     if knvv is not None and not knvv.empty:
         kv = knvv.assign(**{c: _s(knvv, c) for c in [*area, "AUFSD", "LIFSD"]})
         kv = kv.groupby(area, as_index=False).agg({
@@ -138,7 +156,7 @@ def blocked_sales(frames: TableFrames) -> MetricResult:
     else:
         kv = pd.DataFrame(columns=[*area, "AUFSD", "LIFSD"])
     so = so.merge(kv, on=area, how="left", indicator=True)
-    kna1 = frames.frames.get("KNA1")
+    kna1 = frames.plain("KNA1")
     central: set[str] = set()
     if kna1 is not None and not kna1.empty:
         central = set(_s(kna1, "KUNNR")[(_s(kna1, "AUFSD") != "") | (_s(kna1, "LIFSD") != "")])
@@ -224,7 +242,7 @@ def late_pos(frames: TableFrames, today: date) -> MetricResult:
     ekko, ekpo, eket = got
     sched = eket.assign(EBELN=_s(eket, "EBELN"), EBELP=_s(eket, "EBELP"), eindt=_date(eket, "EINDT"))
     due = sched.groupby(["EBELN", "EBELP"], as_index=False)["eindt"].min()
-    ekbe = frames.frames.get("EKBE")
+    ekbe = frames.plain("EKBE")
     if ekbe is not None and not ekbe.empty:
         gr = ekbe[_s(ekbe, "VGABE") == "1"].assign(EBELN=lambda d: _s(d, "EBELN"), EBELP=lambda d: _s(d, "EBELP"),
                                                    budat=lambda d: _date(d, "BUDAT"))
@@ -240,13 +258,13 @@ def late_pos(frames: TableFrames, today: date) -> MetricResult:
     hdr = ekko.assign(EBELN=_s(ekko, "EBELN"), LIFNR=_s(ekko, "LIFNR"), currency=_s(ekko, "WAERS"))
     df = late.merge(po, on=["EBELN", "EBELP"]).merge(hdr[["EBELN", "LIFNR", "currency"]], on="EBELN")
     df = df[df["MATNR"] != ""]
-    marc = frames.frames.get("MARC")
+    marc = frames.plain("MARC")
     plifz_bad = pd.Series(True, index=df.index)
     if marc is not None and not marc.empty:
         m = marc.assign(MATNR=_s(marc, "MATNR"), WERKS=_s(marc, "WERKS"), plifz=_num(marc, "PLIFZ"))
         ok = set((m.loc[m["plifz"] > 0, "MATNR"] + "|" + m.loc[m["plifz"] > 0, "WERKS"]))
         plifz_bad = ~(df["MATNR"] + "|" + df["WERKS"]).isin(ok)
-    eina, eine = frames.frames.get("EINA"), frames.frames.get("EINE")
+    eina, eine = frames.plain("EINA"), frames.plain("EINE")
     has_info = set()
     if eina is not None and eine is not None and not eina.empty:
         a = eina.assign(INFNR=_s(eina, "INFNR"), MATNR=_s(eina, "MATNR"), LIFNR=_s(eina, "LIFNR"))
@@ -278,17 +296,28 @@ def _z(v: str) -> str:
     return v.strip().lstrip("0") or "0"
 
 
+def _norm(fields: dict[str, str]) -> frozenset[tuple[str, str]]:
+    return frozenset((f, _z(v)) for f, v in fields.items() if v.strip())
+
+
 def attribute(items: list[CostItem], failing: dict[str, set[str]]) -> dict[str, list[str]]:
-    parsed = [(cid, p) for cid, keys in failing.items() for k in keys if (p := parse_record_key(k))]
+    """A finding attaches to a document when the finding record's whole key sits inside the
+    document's master key (MARA MATNR=1 attaches to MATNR=1|WERKS=1000; a WERKS-only record
+    does not attach to every PO at that plant). One pass over the records builds the index;
+    each item then looks up the <=15 subsets of its own (<=4-field) master key."""
+    index: dict[frozenset[tuple[str, str]], set[str]] = {}
+    for cid, keys in failing.items():
+        for k in keys:
+            if (p := parse_record_key(k)) and (fk := _norm(p)):
+                index.setdefault(fk, set()).add(cid)
     out: dict[str, set[str]] = {}
     for it in items:
-        hits: set[str] = set()
+        hits = out.setdefault(it["doc_key"], set())
         for mv in _master_variants(it["master_key"]):
-            for cid, fk in parsed:
-                shared = {f for f in set(fk) & set(mv) if fk[f].strip() and mv[f].strip()}
-                if shared and all(_z(fk[f]) == _z(mv[f]) for f in shared):
-                    hits.add(cid)
-        out.setdefault(it["doc_key"], set()).update(hits)
+            pairs = sorted(_norm(mv))
+            for n in range(1, len(pairs) + 1):
+                for sub in combinations(pairs, n):
+                    hits.update(index.get(frozenset(sub), ()))
     return {k: sorted(v) for k, v in out.items()}
 
 

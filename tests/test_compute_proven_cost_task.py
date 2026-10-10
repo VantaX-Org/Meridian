@@ -132,3 +132,81 @@ def test_load_dataset_tables_filter_skips_unlisted_tables(monkeypatch):
     assert flat is None
     assert set(frames.frames) == {"EKKO"}
     assert row_count == 1
+
+
+@pytest.mark.anyio
+async def test_dotted_frames_reach_the_proven_cost_panel(seeded, monkeypatch):
+    """End to end over production-shaped (TABLE.FIELD) frames: the task writes rows and
+    GET /insights/proven-cost reads a non-zero total back."""
+    from httpx import ASGITransport, AsyncClient
+
+    from api import deps as api_deps
+    from api.main import app
+    from tests.test_proven_cost import _po_frames
+    from tests.test_proven_cost_route import _patch_tenant
+    from workers.tasks.compute_proven_cost import compute_proven_cost
+
+    with seeded["engine"].begin() as c:
+        c.execute(text("UPDATE tenants SET cost_model = CAST(:cm AS jsonb) WHERE id = :t"),
+                  {"cm": json.dumps({"currency": "ZAR"}), "t": seeded["t1"]})
+    frames = _po_frames()
+    assert all("." in c for df in frames.frames.values() for c in df.columns)
+    monkeypatch.setattr("workers.dataset.load_dataset", lambda *a, **k: (frames, None, 4, 4))
+    compute_proven_cost.run(seeded["vid"], seeded["t1"], "x/")
+
+    _patch_tenant(monkeypatch, seeded["t1"])
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        r = await client.get("/api/v1/insights/proven-cost",
+                             headers={"X-User-Role": "admin", "Authorization": "Bearer test-token"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["version_id"] == seeded["vid"] and body["total"] == 1070.0
+    late = next(row for row in body["rows"] if row["metric"] == "late_po")
+    assert late["check_ids"] == ["MM140"]
+
+
+def test_soft_time_limit_fails_the_task(seeded, monkeypatch):
+    """A timeout must surface as a task failure, never as a silent empty result."""
+    from celery.exceptions import SoftTimeLimitExceeded
+
+    from api.services import proven_cost as pc
+    from tests.test_proven_cost import _po_frames
+    from workers.tasks.compute_proven_cost import compute_proven_cost
+
+    monkeypatch.setattr("workers.dataset.load_dataset", lambda *a, **k: (_po_frames(), None, 4, 4))
+
+    def _slow(*a: object, **k: object) -> list[pc.MetricRow]:
+        raise SoftTimeLimitExceeded()
+
+    monkeypatch.setattr(pc, "compute", _slow)
+    with pytest.raises(SoftTimeLimitExceeded):
+        compute_proven_cost.run(seeded["vid"], seeded["t1"], "x/")
+
+
+def test_bundle_without_transaction_tables_is_a_no_op(seeded, monkeypatch):
+    from workers.tasks.compute_proven_cost import compute_proven_cost
+
+    def _empty(*a: object, **k: object) -> None:
+        raise ValueError("No table parquet files under x/")
+
+    monkeypatch.setattr("workers.dataset.load_dataset", _empty)
+    assert compute_proven_cost.run(seeded["vid"], seeded["t1"], "x/") == {}
+
+
+def test_load_dataset_tables_filter_prunes_flat_columns(monkeypatch, tmp_path):
+    from sap.ddic import get_dictionary
+    from workers import dataset as dataset_mod
+
+    flat = pd.DataFrame({"EKKO.EBELN": ["P1"], "EKKO.WAERS": ["ZAR"], "LFA1.LIFNR": ["V1"], "LFA1.NAME1": ["N"]})
+    buf = io.BytesIO()
+    flat.to_parquet(buf)
+
+    class _Client:
+        def get_object(self, bucket: str, name: str) -> _FakeResponse:
+            return _FakeResponse(buf.getvalue())
+
+    monkeypatch.setattr(dataset_mod, "_client", lambda: _Client())
+    frames, df, _, cols = dataset_mod.load_dataset("x.parquet", get_dictionary("s4hana"), None, tables={"EKKO"})
+    assert set(df.columns) == {"EKKO.EBELN", "EKKO.WAERS"} and cols == 2
+    assert set(frames.frames) == {"EKKO"}

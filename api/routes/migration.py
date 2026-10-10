@@ -346,7 +346,7 @@ async def dry_run_report(
         for m, d in gap_summary.items()
     ])
 
-    rule_counts: Counter = Counter()
+    rule_counts: Counter[str] = Counter()
     for d in gap_summary.values():
         for rid_, cnt in (d.get("s4_load") or {}).items():
             rule_counts[rid_] += cnt
@@ -359,10 +359,13 @@ async def dry_run_report(
     ]
     rule_df = pd.DataFrame(rule_rows)
 
+    cap = 100_000  # the xlsx holds the whole list in memory; the PDF shows the first 500
     fail_raw = (await db.execute(
-        text(f"{_RECORDS_BASE_SQL} ORDER BY module, record_key"),
-        {"rid": run_id, "t": str(tenant.id), "module": None, "status": "load_fail"},
+        text(f"{_RECORDS_BASE_SQL} ORDER BY module, record_key LIMIT :cap"),
+        {"rid": run_id, "t": str(tenant.id), "module": None, "status": "load_fail", "cap": cap + 1},
     )).fetchall()
+    truncated = len(fail_raw) > cap
+    fail_raw = fail_raw[:cap]
     fail_rows = [
         {"module": r.module, "source_table": r.source_table, "record_key": r.record_key,
          "reasons": "; ".join(r.reasons or [])}
@@ -372,8 +375,11 @@ async def dry_run_report(
 
     name = f"s4_dry_run_{run_id}"
     if fmt == "xlsx":
-        content = to_xlsx({"Summary": summary_df, "Load fail": fail_df, "By rule": rule_df},
-                          sanitize_formulas=True)
+        sheets = {"Summary": summary_df, "Load fail": fail_df, "By rule": rule_df}
+        if truncated:
+            sheets["Note"] = pd.DataFrame([{"note": f"Load fail list truncated to the first {cap:,} records; "
+                                                    "use the records API for the rest."}])
+        content = to_xlsx(sheets, sanitize_formulas=True)
         return _stream(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{name}.xlsx")
 
     ctx = {

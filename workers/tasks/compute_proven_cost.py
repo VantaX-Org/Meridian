@@ -33,16 +33,24 @@ def compute_proven_cost(self, version_id: str, tenant_id: str, parquet_path: str
     from workers.dataset import load_dataset
 
     with Session(get_sync_engine()) as session:
-        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(text("SELECT set_config('app.tenant_id', :t, false)"), {"t": str(tenant_id)})
         try:
             metadata = session.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v"),
                                        {"v": version_id}).scalar() or {}
             system_id = metadata.get("system_id")
-            frames, _, _, _ = load_dataset(parquet_path, dictionary_for(session, system_id), None,
-                                           tables=set(PROVEN_COST_DATA))
+            try:
+                frames, _, _, _ = load_dataset(parquet_path, dictionary_for(session, system_id), None,
+                                               tables=set(PROVEN_COST_DATA))
+            except ValueError as e:
+                if not str(e).startswith("No table parquet files"):
+                    raise
+                logger.info(f"compute_proven_cost {version_id}: bundle has no transaction tables; nothing to cost")
+                return {}
             failing: dict[str, set[str]] = {}
+            # positional row:N keys can never be attributed; leave them in the DB
             for cid, key in session.execute(text(
-                    "SELECT check_id, record_key FROM finding_records WHERE version_id = :v AND tenant_id = :t"),
+                    "SELECT check_id, record_key FROM finding_records WHERE version_id = :v AND tenant_id = :t"
+                    " AND record_key NOT LIKE 'row:%'"),
                     {"v": version_id, "t": tenant_id}):
                 failing.setdefault(cid, set()).add(key)
             pairs = [(a, b) for a, b in session.execute(text("""
@@ -59,9 +67,10 @@ def compute_proven_cost(self, version_id: str, tenant_id: str, parquet_path: str
             session.commit()
             return {r["metric"]: r["documents"] for r in rows}
         except SoftTimeLimitExceeded:
+            # a timeout is a failure, not an empty panel: log it and let Celery record FAILURE
             session.rollback()
-            logger.warning(f"compute_proven_cost {version_id}: time limit")
-            return {}
+            logger.error(f"compute_proven_cost {version_id}: soft time limit hit; no proven cost written")
+            raise
         except Exception:
             session.rollback()
             logger.exception(f"compute_proven_cost {version_id}: failed")

@@ -11,19 +11,11 @@ import pandas as pd
 import yaml
 
 from api.services.migration.engine import Gap, ModuleResult, _BLOCKING, verdict_for
-from checks.base import record_keys
 from checks.frames import TableFrames
 
 _FILE = Path(__file__).resolve().parents[3] / "sap" / "dictionaries" / "migration" / "s4_load_rules.yaml"
 _AFLE_EDGE = 0.95 * 10 ** 11  # flag amounts at or above 95% of the 11-digit CURR 13,2 limit
 
-# Record-key columns per source table, plain (unprefixed) names — TableFrames in this
-# module holds flat per-table frames (e.g. MARA["MATNR"]), not "TABLE.FIELD" columns.
-_KEYS: dict[str, list[str]] = {
-    "MARA": ["MATNR"], "MBEW": ["MATNR", "BWKEY", "BWTAR"], "MARD": ["MATNR", "WERKS", "LGORT"],
-    "LFA1": ["LIFNR"], "KNA1": ["KUNNR"], "KNVK": ["PARNR"], "KNKK": ["KUNNR", "KKBER"],
-    "KONV": ["KNUMV", "KPOSN", "STUNR", "ZAEHK"], "NAST": ["KAPPL", "OBJKY", "KSCHL", "PARNR"],
-}
 # Characters the MATN1 conversion exit accepts unchanged: upper-case letters, digits,
 # and the common separators. Anything else (including lower-case) is rejected.
 _ALLOWED = r"^[A-Z0-9\-_/\.\s]*$"
@@ -62,11 +54,14 @@ def standard_grouping() -> dict[str, str]:
     return {}
 
 
-def simulate(frames: TableFrames, module: str, grouping_map: dict[str, str]) -> list[Gap]:
-    """Run checks relevant to the module's tables."""
-    return (check_matnr(frames, module) + check_cvi(frames, module, grouping_map) + check_credit(frames, module)
+def simulate(frames: TableFrames, module: str, grouping_map: dict[str, str],
+             tables: set[str] | None = None) -> list[Gap]:
+    """Every S4L check over ``frames``, keeping only findings on ``tables`` (the source tables
+    this module owns in the run) so a multi-module run records each finding once."""
+    gaps = (check_matnr(frames, module) + check_cvi(frames, module, grouping_map) + check_credit(frames, module)
             + check_mrp_area(frames, module) + check_material_ledger(frames, module)
             + check_simplification(frames, module))
+    return gaps if tables is None else [g for g in gaps if g.source_table in tables]
 
 
 def fold(res: ModuleResult, sim: list[Gap]) -> ModuleResult:
@@ -98,8 +93,8 @@ def record_status(gaps: list[Gap]) -> list[RecordStatus]:
 
 
 def _frame(frames: TableFrames, table: str) -> pd.DataFrame | None:
-    df = frames.frames.get(table)
-    return df if df is not None and not df.empty else None
+    """Bare field names plus ``__key__``: frames hold ``TABLE.FIELD`` columns."""
+    return frames.plain(table)
 
 
 def _gaps(rule_id: str, module: str, table: str, field: str | None, mask: pd.Series,
@@ -108,7 +103,7 @@ def _gaps(rule_id: str, module: str, table: str, field: str | None, mask: pd.Ser
     rule = rules()[rule_id]
     if not mask.any():
         return []
-    keys = record_keys(df, [k for k in _KEYS[table] if k in df.columns])[mask]
+    keys = df["__key__"][mask]
     vals = (values if values is not None else pd.Series([None] * len(df), index=df.index))[mask]
     t_table, _, t_field = rule.target.partition(".")
     return [Gap(module=module, gap_type="s4_load", severity=rule.severity,

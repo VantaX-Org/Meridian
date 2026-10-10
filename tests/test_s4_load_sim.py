@@ -3,10 +3,13 @@ import pandas as pd
 from api.services.migration import load_sim
 from api.services.s4_readiness import membership
 from checks.frames import TableFrames
+from sap.ddic import get_dictionary
 
 
 def _tf(**tables: pd.DataFrame) -> TableFrames:
-    return TableFrames(dict(tables))
+    """Production shape: an extraction bundle's per-table frames carry ``TABLE.FIELD`` columns
+    (workers/dataset.py), so a regression to bare-name reads fails here."""
+    return TableFrames({t: df.add_prefix(f"{t}.") for t, df in tables.items()}, get_dictionary("s4hana"))
 
 
 def _ids(gaps):
@@ -194,3 +197,35 @@ def test_record_status_reasons():
     st = {r["record_key"]: r for r in load_sim.record_status(g)}
     assert st["MATNR=A"]["status"] == "load_fail" and st["MATNR=A"]["reasons"] == ["S4L-MM-MATNR-LEN too long"]
     assert st["MATNR=B"]["status"] == "load_ready"
+
+
+def test_flat_upload_frames_are_read():
+    """Flat uploads go through TableFrames.from_flat (dotted columns, ALPHA-padded keys). The sim
+    must read that shape too, and key records exactly as the engine does."""
+    from sap.ddic import get_dictionary
+
+    flat = pd.DataFrame({"KNA1.KUNNR": ["1", "1"], "KNKK.KUNNR": ["1", "2"], "KNKK.KKBER": ["1000", "1000"]})
+    f = TableFrames.from_flat(flat, get_dictionary("s4hana"))
+    keys = {g.record_key for g in load_sim.check_credit(f, "sd_customer_master")}
+    assert keys == {"KUNNR=0000000002|KKBER=1000"}
+
+
+def test_two_module_run_records_each_table_once():
+    """The load-sim tables sit in every trigger module's plan; a two-module dry run must still
+    record each table's findings under exactly one module."""
+    from sap.ddic import get_dictionary
+    from workers.tasks.run_migration import sim_owners
+
+    mara = pd.DataFrame({"MATNR": ["A" * 41]})
+    lfa1 = pd.DataFrame({"LIFNR": ["200"], "NAME1": [""], "LAND1": ["ZA"], "KTOKK": ["ZXXX"]})
+    knkk = pd.DataFrame({"KUNNR": ["2"], "KKBER": ["1000"]})
+    f = TableFrames({t: df.add_prefix(f"{t}.") for t, df in {"MARA": mara, "LFA1": lfa1, "KNKK": knkk}.items()},
+                    get_dictionary("s4hana"))
+    modules = ["material_master", "business_partner"]
+    owners = sim_owners(modules, f)
+    assert owners["MARA"] == "material_master"
+    gaps = [g for m in modules
+            for g in load_sim.simulate(f, m, load_sim.standard_grouping(), {t for t, o in owners.items() if o == m})]
+    seen = [(g.source_table, g.record_key, g.detail.split(" ", 1)[0]) for g in gaps]
+    assert seen and len(seen) == len(set(seen)), seen
+    assert {g.source_table for g in gaps} >= {"MARA", "LFA1"}
