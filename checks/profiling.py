@@ -203,7 +203,7 @@ def _fields_of(df: pd.DataFrame, table: str) -> list[str]:
 
 def sample(df: pd.DataFrame, max_rows: int = MAX_PROFILE_ROWS) -> tuple[pd.DataFrame, bool]:
     """Deterministic bound: the first ``max_rows`` rows."""
-    return (df.head(max_rows), True) if len(df) > max_rows else (df, False)
+    return df.head(max_rows), len(df) > max_rows
 
 
 def profile_frames(frames: TableFrames, dictionary: Any, tables: list[str],

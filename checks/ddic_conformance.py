@@ -82,9 +82,10 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
         return []
     reference_values = reference_values or {}
     keys = [k for k in key_cols if k in df.columns]
-    row_keys = record_keys(df, keys) if reported else None
+    kdf = df[keys]  # a lazily held table (checks/frames.ParquetTable) decodes each column once
+    row_keys = record_keys(kdf, keys) if reported else None
     cells = {k: 0 for k in _KINDS}
-    failing_rows = {k: pd.Series(False, index=df.index) for k in _KINDS}
+    failing_rows = {k: pd.Series(False, index=kdf.index) for k in _KINDS}
     per_field: dict[str, dict[str, int]] = {k: {} for k in _KINDS}
     check_tables: dict[str, str] = {}  # field → live check table its values were judged against
     for col in df.columns:
@@ -92,7 +93,8 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
         f = t.fields.get(name)
         if f is None or name in ("MANDT", "CLIENT"):
             continue
-        populated = ~is_blank(df[col])
+        s = df[col]
+        populated = ~is_blank(s)
         if not populated.any():
             continue
         check_values = reference_values.get(f.check_ref) if f.check_ref else None
@@ -100,7 +102,7 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             check_tables[f.name] = f.check_ref
         if check_values is not None and name in _ALSO_VALID:
             check_values = check_values | _ALSO_VALID[name]
-        for kind, bad in _violations(df[col], f, check_values).items():
+        for kind, bad in _violations(s, f, check_values).items():
             if kind in ("fixed_value", "check_table") and col in (value_checked or ()):
                 continue
             bad = bad.fillna(True).astype(bool) & populated
@@ -121,7 +123,9 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             continue
         affected_cells = sum(per_field[kind].values())
         rows = failing_rows[kind]
-        fk = record_keys(df[rows], keys) if rows.any() else pd.Series(dtype="string")
+        fk = record_keys(kdf[rows], keys) if rows.any() else pd.Series(dtype="string")
+        shown = [f"{table}.{fld}" for fld in per_field[kind] if f"{table}.{fld}" in df.columns]
+        sample = df[list(dict.fromkeys(keys + shown))].loc[kdf[rows].head(10).index]
         results.append(CheckResult(
             check_id=f"DDIC-{table}-{kind.upper()}",
             module=module,
@@ -144,11 +148,10 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
                 **({"check_tables": {fld: check_tables[fld] for fld in per_field[kind]},
                     "check_values_source": "live_config"} if kind == "check_table" else {}),
                 "sample_failing_records": [
-                    {**{c: str(df.at[i, c]) for c in keys},
-                     **{f"{table}.{fld}": str(df.at[i, f"{table}.{fld}"]) for fld in per_field[kind]
-                        if f"{table}.{fld}" in df.columns},
+                    {**{c: str(sample.at[i, c]) for c in keys},
+                     **{c: str(sample.at[i, c]) for c in shown},
                      "record_key": str(fk.at[i])}
-                    for i in df[rows].head(10).index
+                    for i in sample.index
                 ],
             }),
             failing_record_keys=[str(k) for k in fk.head(MAX_FAILING_KEYS)],

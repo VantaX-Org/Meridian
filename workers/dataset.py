@@ -17,7 +17,7 @@ from urllib.parse import quote, unquote
 
 import pandas as pd
 
-from checks.frames import TableFrames, tables_of
+from checks.frames import ParquetTable, TableFrames, tables_of
 from sap.ddic import Dictionary
 
 logger = logging.getLogger("meridian.workers.dataset")
@@ -49,16 +49,22 @@ def parquet_name(table: str) -> str:
 
 
 def load_dataset(path: str, dictionary: Dictionary, modules: Optional[list[str]] = None,
-                 extra: Optional[set[str]] = None, conversions: Optional[dict[str, dict[str, str]]] = None) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
-    """(frames, flat_df_or_None, row_count, column_count) for a dataset path."""
+                 extra: Optional[set[str]] = None, conversions: Optional[dict[str, dict[str, str]]] = None,
+                 lazy: bool = False) -> tuple[TableFrames, Optional[pd.DataFrame], int, int]:
+    """(frames, flat_df_or_None, row_count, column_count) for a dataset path.
+
+    ``lazy``: hold each bundle table as its compressed parquet bytes and decode only
+    the columns a rule reads (checks/frames.ParquetTable). A full material bundle
+    decoded at once is larger than the worker's memory."""
     client = _client()
     bucket = os.getenv("MINIO_BUCKET_UPLOADS", "meridian-uploads")
     if path.endswith("/"):
-        tables = {}
+        tables: dict[str, pd.DataFrame | ParquetTable] = {}
         for obj in client.list_objects(bucket, prefix=path):
             name = obj.object_name.rsplit("/", 1)[-1]
             if name.endswith(".parquet"):
-                tables[unquote(name[: -len(".parquet")])] = pd.read_parquet(io.BytesIO(_read(client, bucket, obj.object_name)))
+                data = _read(client, bucket, obj.object_name)
+                tables[unquote(name[: -len(".parquet")])] = ParquetTable(data) if lazy else pd.read_parquet(io.BytesIO(data))
         if not tables:
             raise ValueError(f"No table parquet files under {path}")
         return (TableFrames(tables, dictionary), None, sum(len(t) for t in tables.values()),

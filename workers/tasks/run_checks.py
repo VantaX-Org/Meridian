@@ -7,7 +7,8 @@ import traceback
 import pandas as pd
 import yaml
 
-from sqlalchemy import text
+from celery import Task
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from api.services.run_steps import record_step
@@ -15,6 +16,7 @@ from api.services.task_progress import (
     STEP_FINALISE,
     STEP_RUN_CHECKS,
     TOTAL_STEPS,
+    _redis_client,
     update_task_progress,
 )
 from workers.celery_app import celery_app
@@ -183,11 +185,73 @@ def rule_set_fingerprint(modules: list[str], overrides: dict, generated: list[di
 _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 
 
+# A worker the kernel OOM-kills never acknowledges its task, so with acks_late and
+# reject_on_worker_lost the broker redelivers it, and the next worker dies the same
+# way, without end. Every delivery increments a per-task-id counter in Redis that
+# only a finished run (complete or failed) clears, so the counter holds the number of
+# deliveries that died. The broker's ``redelivered`` flag cannot do this: it is a
+# boolean, not a count, and the Redis transport does not set it reliably.
+_MAX_LOST = 2
+_LOST_ERROR = "checks worker ran out of memory twice; aborted"
+_DELIVERY_TTL = 2 * 24 * 3600
+
+
+def _delivery_key(task_id: str) -> str:
+    return f"meridian:run_checks:deliveries:{task_id}"
+
+
+def _count_delivery(task_id: str | None) -> int:
+    """This delivery's number (1 = first); 0 when it cannot be counted (no task id, no Redis)."""
+    client = _redis_client() if task_id else None
+    if client is None:
+        return 0
+    try:
+        n = int(client.incr(_delivery_key(task_id)))
+        client.expire(_delivery_key(task_id), _DELIVERY_TTL)
+        return n
+    except Exception as e:  # never fail an analysis over its delivery counter
+        logger.warning(f"run_checks delivery counter unavailable: {e}")
+        return 0
+
+
+def _clear_deliveries(task_id: str | None) -> None:
+    client = _redis_client() if task_id else None
+    if client is None:
+        return
+    try:
+        client.delete(_delivery_key(task_id))
+    except Exception as e:
+        logger.warning(f"run_checks delivery counter not cleared: {e}")
+
+
+def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) -> None:
+    """Record a failed check run on the version, its run step and its live progress."""
+    check_step_num, check_step_name = STEP_RUN_CHECKS
+    with Session(engine) as session:
+        session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
+        session.execute(
+            text("UPDATE analysis_versions SET status = 'failed' WHERE id = :vid AND tenant_id = :tid"),
+            {"vid": version_id, "tid": tenant_id},
+        )
+        session.commit()
+    record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
+                error_detail=error)
+    update_task_progress(
+        version_id,
+        status="failed",
+        current_step="Data quality checks failed",
+        step_number=check_step_num,
+        total_steps=TOTAL_STEPS,
+        error=error,
+    )
+
+
 @celery_app.task(bind=True, name="workers.tasks.run_checks.run_checks",
                  soft_time_limit=_CHECKS_LIMIT, time_limit=_CHECKS_LIMIT + 60,
                  # Redelivered after a worker restart; every write below upserts, so a rerun is safe.
                  acks_late=True, reject_on_worker_lost=True)
-def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool = False):
+def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
+               reanalyse: bool = False) -> dict[str, str | int]:
     """Execute the full check suite against a dataset (``reanalyse``: again, on the same version)."""
     engine = get_sync_engine()
     # One run per version: concurrent runs each load the full dataset and exhaust memory.
@@ -198,14 +262,23 @@ def run_checks(self, version_id: str, tenant_id: str, parquet_path: str, reanaly
             logger.warning(f"run_checks already running for version_id={version_id}, skipping")
             return {"version_id": version_id, "status": "already_running"}
         try:
-            return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+            task_id = self.request.id
+            try:  # only a killed worker skips the clearing and leaves its delivery counted
+                if _count_delivery(task_id) > _MAX_LOST:
+                    logger.error(f"run_checks {task_id} for version_id={version_id}: {_LOST_ERROR}")
+                    _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
+                    return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
+                return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+            finally:
+                _clear_deliveries(task_id)
         finally:
             lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
     finally:
         lock.close()
 
 
-def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str, reanalyse: bool):
+def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, parquet_path: str,
+                reanalyse: bool) -> dict[str, str | int]:
     logger.info(f"run_checks started: version_id={version_id}, tenant_id={tenant_id}")
 
     with Session(engine) as session:
@@ -284,7 +357,7 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
             fs_extra[t] = fs_extra.get(t, set()) | fs
         frames, df, row_count, col_count = load_dataset(
             parquet_path, dictionary, modules, extra={f"{t}.{f}" for t, fs in fs_extra.items() for f in fs},
-            conversions=conversion_maps(fs_config))
+            conversions=conversion_maps(fs_config), lazy=True)
 
         logger.info(f"Loaded DataFrame: {row_count} rows, {col_count} columns")
         frames.incomplete = {c["table"] for c in metadata.get("coverage") or []
@@ -408,11 +481,11 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                                      sap_utc_offset_seconds=metadata.get("sap_utc_offset_seconds"))
             all_results.extend(results)
             # joined frames are cached per pass; at millions of rows holding them all runs out of memory
-            frames._cache.clear()
+            frames.clear_cache()
             if module_name in data_modules:
                 from checks.outliers import find as find_outliers
                 outliers.update(find_outliers(module_name, frames))  # reported, never scored
-                frames._cache.clear()
+                frames.clear_cache()
                 # Field profile + candidate hidden rules of the module's tables
                 # (checks/profiling.py, ≤ 200k rows per table). Best-effort: a
                 # profiling failure is logged and never fails the analysis.
@@ -454,7 +527,8 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
                         continue
                     try:
                         from checks.runner import rule_columns
-                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"))
+                        built = frames.frame_for(rule_columns(rule), grain=rule.get("grain"),
+                                                 optional=check_cls(rule).optional_columns())
                         res = check_cls(rule).run(built[0], key_cols=built[2], grain=built[1]) if built else None
                         if res is not None:
                             all_results.append(res)
@@ -903,21 +977,5 @@ def _run_checks(self, engine, version_id: str, tenant_id: str, parquet_path: str
     except Exception as e:
         # Step 12: On failure, update status
         logger.error(f"run_checks failed: {traceback.format_exc()}")
-        with Session(engine) as session:
-            session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            session.execute(
-                text("UPDATE analysis_versions SET status = 'failed' WHERE id = :vid AND tenant_id = :tid"),
-                {"vid": version_id, "tid": tenant_id},
-            )
-            session.commit()
-        record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="failed",
-                    error_detail=str(e) or e.__class__.__name__)
-        update_task_progress(
-            version_id,
-            status="failed",
-            current_step="Data quality checks failed",
-            step_number=check_step_num,
-            total_steps=TOTAL_STEPS,
-            error=str(e) or e.__class__.__name__,
-        )
+        _mark_failed(engine, tenant_id, version_id, str(e) or e.__class__.__name__)
         raise

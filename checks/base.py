@@ -224,6 +224,10 @@ class BaseCheck(ABC):
         cols = [self.rule["field"]] if self.rule.get("field") else []
         return cols + [c for c in (self.rule.get("fields") or []) if c not in cols]
 
+    def optional_columns(self) -> list[str]:
+        """Columns read when present, never required: ``columns()`` decides whether the rule runs."""
+        return list(self.rule.get("dedupe_on") or [])
+
     @abstractmethod
     def evaluate(self, df: pd.DataFrame) -> Evaluation | None:
         """Return scope + failing masks, or None to skip the rule."""
