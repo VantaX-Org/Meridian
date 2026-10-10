@@ -15,13 +15,16 @@ docs/superpowers/plans/2026-10-10-learned-rules-and-fix-back.md "Algorithms".
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import Counter
 from dataclasses import dataclass
+from itertools import groupby
 from typing import Literal
 
 import pandas as pd
 
 from checks.base import is_blank
+from checks.profiling import SHAPE_CAP, _shapes
 
 MIN_CONFIDENCE = 0.95
 MIN_GROUP_ROWS = 200
@@ -134,3 +137,41 @@ def value_set_rule(counts: Counter[tuple[str, str]], rows: int, det: str, dep: s
                              "grain": dep.split(".", 1)[0], "dimension": "consistency",
                              "message": _message(kind, dep, det)}
     return Proposal(kind, dep, det, body, conf, total, total - inside)
+
+
+_TOKEN = {"A": r"[^\W\d_]", "9": r"\d"}
+
+
+def shape_regex(shape: str) -> str:
+    """'AA-9999' → '^[^\\W\\d_]{2}\\-\\d{4}$' (letters, digits, literal rest)."""
+    out = []
+    for ch, run in ((k, len(list(g))) for k, g in groupby(shape)):
+        tok = _TOKEN.get(ch, re.escape(ch))
+        out.append(tok if run == 1 else f"{tok}{{{run}}}")
+    return "^" + "".join(out) + "$"
+
+
+class ShapeCounts:
+    """Shape -> filled rows per text column, summed over chunks."""
+
+    def __init__(self, cols: list[str]) -> None:
+        self.counts: dict[str, Counter[str]] = {c: Counter() for c in cols}
+
+    def add(self, chunk: pd.DataFrame) -> None:
+        for c, ctr in self.counts.items():
+            if c in chunk:
+                v = norm(chunk[c])
+                ctr.update({str(k): int(n) for k, n in _shapes(v[v != ""]).value_counts(sort=False).items()})
+
+
+def format_rule(shapes: Counter[str], field: str) -> Proposal | None:
+    filled = sum(shapes.values())
+    if filled < FORMAT_MIN_ROWS:
+        return None
+    shape, n = min(shapes.items(), key=lambda x: (-x[1], x[0]))
+    conf = n / filled
+    if conf < MIN_CONFIDENCE or conf >= 1.0 or len(shape) >= SHAPE_CAP:
+        return None
+    body: dict[str, Json] = {"check_class": "regex_check", "field": field, "pattern": shape_regex(shape),
+                             "dimension": "validity", "message": _message("format", field, None)}
+    return Proposal("format", field, None, body, conf, filled, filled - n)

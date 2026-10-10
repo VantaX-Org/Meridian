@@ -44,3 +44,28 @@ def test_pair_counts_are_chunk_invariant_and_cap_cardinality():
         parts.add(df.iloc[s:s + 700])
     assert whole.counts == parts.counts and whole.rows == parts.rows == 3000
     assert ("T.ID", "T.B") not in whole.counts  # 3000 distinct determinants > CARD_MAX
+
+
+def test_shape_regex_is_anchored_and_run_length_encoded():
+    import re
+    rx = hr.shape_regex("AA-9999")
+    assert rx == r"^[^\W\d_]{2}\-\d{4}$"
+    assert re.match(rx, "MG-0042") and not re.match(rx, "MG-42") and not re.match(rx, "MG-00421")
+
+
+def test_format_rule_from_chunks():
+    vals = pd.Series([f"MG-{i % 50:04d}" for i in range(2000)])
+    vals[::50] = "misc"                                  # 2% off-format
+    sc = hr.ShapeCounts(["MARA.MATKL"])
+    for s in range(0, 2000, 300):
+        sc.add(pd.DataFrame({"MARA.MATKL": vals.iloc[s:s + 300]}))
+    p = hr.format_rule(sc.counts["MARA.MATKL"], "MARA.MATKL")
+    assert p is not None and p.kind == "format" and p.violations == 40
+    assert p.body == {"check_class": "regex_check", "field": "MARA.MATKL", "pattern": r"^[^\W\d_]{2}\-\d{4}$",
+                      "dimension": "validity", "message": p.body["message"]}
+
+
+def test_format_rule_needs_rows_and_dominance():
+    assert hr.format_rule(Counter({"AA": 990, "99": 9}), "T.F") is None             # < FORMAT_MIN_ROWS
+    assert hr.format_rule(Counter({"AA": 900, "99": 200}), "T.F") is None           # < 95%
+    assert hr.format_rule(Counter({"A" * 20: 2000, "9": 10}), "T.F") is None        # capped shape
