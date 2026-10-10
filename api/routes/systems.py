@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.services.config_pairing import enqueue_config_load
 from api.services.rbac import require_permission
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
@@ -231,6 +232,7 @@ async def register_system(
         )
 
     await db.commit()
+    await enqueue_config_load(db, str(tenant.id), system_id)  # config on connect; never fails the register
     # Learn the source system's design straight away (DDIC, Z-objects,
     # configuration). A connection failure is recorded on the snapshot.
     enqueue_discovery(str(tenant.id), system_id)
@@ -570,6 +572,8 @@ async def test_connection(
     result = _run_connection_test(system_type, params, [password, client_secret, api_key])
     if result.connected and not discovery_status:
         enqueue_discovery(str(tenant.id), system_id)  # first successful connect → learn the design
+    if result.connected:
+        await enqueue_config_load(db, str(tenant.id), system_id)  # no-op once a load exists
     return result
 
 

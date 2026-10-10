@@ -467,3 +467,41 @@ def test_run_load_config_keeps_redelivery_safety_and_limits():
     # the load is idempotent (items replaced, load row upserted), so late ack stays on (controller ruling L7)
     assert run_load_config.acks_late and run_load_config.reject_on_worker_lost
     assert run_load_config.soft_time_limit == 1500 and run_load_config.time_limit == 1560
+
+
+@pg
+def test_enqueue_config_load_once_unless_forced(app_engine, monkeypatch):
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.services import config_pairing, jobs
+    from workers.tasks import run_load_config as task_mod
+
+    owner, app = app_engine
+    tid = _tenant(owner)
+    sid = _system(app, tid, "S4D", "s4hana_onprem", "target")
+    sent: list[str] = []
+    monkeypatch.setattr(jobs, "start_job", lambda *a, **k: None)
+    monkeypatch.setattr(task_mod.run_load_config, "apply_async", lambda args, task_id: sent.append(task_id))
+
+    async def main() -> tuple:
+        aeng = create_async_engine(app.url.set(drivername="postgresql+asyncpg"))
+        try:
+            async with async_sessionmaker(aeng, expire_on_commit=False)() as db:
+                await db.execute(text(f"SET app.tenant_id = '{tid}'"))
+                first = await config_pairing.enqueue_config_load(db, tid, sid)
+                second = await config_pairing.enqueue_config_load(db, tid, sid)
+                forced = await config_pairing.enqueue_config_load(db, tid, sid, force=True)
+                role = (await db.execute(text("SELECT role FROM config_loads WHERE id = :l"),
+                                         {"l": first["load_id"]})).scalar()
+                return first, second, forced, role
+        finally:
+            await aeng.dispose()
+
+    first, second, forced, role = asyncio.run(main())
+    assert first["status"] == "queued" and first["system_type"] == "s4hana_onprem"
+    assert second is None  # a fresh running load exists
+    assert forced is not None and sent == [first["load_id"], forced["load_id"]]
+    assert role == "target"

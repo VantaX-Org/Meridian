@@ -7,15 +7,20 @@ Read only towards SAP: this module reads stored config_items and writes Meridian
 from __future__ import annotations
 
 import difflib
+import logging
+import uuid
 from collections import Counter
 from dataclasses import asdict, dataclass
 from typing import Optional
 
 import pandas as pd
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from sap.config_snapshot import NOT_AVAILABLE, ConfigItem, ConfigSnapshot
+
+logger = logging.getLogger(__name__)
 
 DESC_FIELDS = ("TXT30", "TEXT1", "TXTMD", "BUTXT", "NAME1", "MTBEZ", "TEXT", "LTEXT", "MSEHT", "MSEHL",
                "LGOBE", "DESCRIPTION")
@@ -345,3 +350,39 @@ def finding_context(s: Session, rule_id: str, module: str, version_id: Optional[
     return {"object": obj, "system_id": sid, "target_label": t.label, "baseline": t.baseline,
             "source": [i.key for i in source[:50]], "target": [i.key for i in target[:50]],
             "missing": missing[:50], "missing_total": len(missing)}
+
+
+async def enqueue_config_load(db: AsyncSession, tid: str, sid: str, force: bool = False) -> Optional[dict[str, str]]:
+    """Queue run_load_config for ``sid``. The caller has set app.tenant_id.
+
+    Without ``force`` it runs only when the system has no completed or fresh load, and never raises
+    (register and test connection must not fail on it). With ``force`` it always queues and raises on failure.
+    """
+    from api.services import jobs
+    from workers.tasks.run_load_config import run_load_config
+
+    try:
+        st = (await db.execute(text("SELECT system_type FROM sap_systems WHERE id = CAST(:sid AS uuid)"),
+                               {"sid": sid})).scalar()
+        if st is None:
+            return None
+        if not force and await db.run_sync(lambda s: config_basis(s, sid)) != "none":
+            return None
+        load_id = str(uuid.uuid4())
+        job_id = f"cfgload-{load_id}"
+        # commit the running row first so the worker always finds it; the task upserts it
+        await db.execute(text(
+            "INSERT INTO config_loads (id, tenant_id, system_id, system_type, role, origin, status) "
+            "SELECT CAST(:lid AS uuid), CAST(:tid AS uuid), id, system_type, role, 'connection', 'running' "
+            "FROM sap_systems WHERE id = CAST(:sid AS uuid) ON CONFLICT (id) DO NOTHING"),
+            {"lid": load_id, "tid": tid, "sid": sid})
+        await db.commit()
+        jobs.start_job(tid, job_id, "config_load", f"Configuration load: {st}", status="queued",
+                       system_id=sid, load_id=load_id)
+        run_load_config.apply_async(args=(tid, sid, load_id, job_id), task_id=load_id)
+        return {"job_id": job_id, "load_id": load_id, "status": "queued", "system_type": st}
+    except Exception:
+        if force:
+            raise
+        logger.exception("Config load could not be queued for system %s", sid)
+        return None
