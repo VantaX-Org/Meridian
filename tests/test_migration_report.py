@@ -48,3 +48,10 @@ def test_empty_wave_renders():
     empty = {**COCKPIT, "run_id": None, "score": None, "verdict": "no_go", "objects": [], "trend": [], "blockers": []}
     pdf = pr.render("migration_readiness_report.html", readiness_report_context(empty, "Demo", None))
     assert pdf.startswith(b"%PDF")
+
+
+def test_no_go_verdict_renders_bad_class():
+    empty = {**COCKPIT, "run_id": None, "score": None, "verdict": "no_go", "objects": [], "trend": [], "blockers": []}
+    ctx = readiness_report_context(empty, "Demo", None)
+    html = pr._env().get_template("migration_readiness_report.html").render(**ctx)
+    assert 'class="st bad"' in html

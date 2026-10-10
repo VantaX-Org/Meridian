@@ -84,7 +84,7 @@ def fmt_dt(v: Any) -> str:
 _SAST = ZoneInfo("Africa/Johannesburg")
 
 
-def fmt_sast(v: Any) -> str:
+def fmt_sast(v: object) -> str:
     d = _to_dt(v)
     return "—" if d is None else d.astimezone(_SAST).strftime("%-d %b %Y, %H:%M SAST")
 
@@ -124,7 +124,8 @@ def css_str(v: Any) -> Markup:
 def status_class(status: Optional[str]) -> str:
     return {"go": "ok", "conditional": "warn", "no-go": "bad", "live": "ok", "complete": "ok",
             "fixed": "ok", "failed": "bad", "still_failing": "bad", "critical": "bad",
-            "high": "bad", "medium": "warn", "low": "na"}.get(str(status or ""), "na")
+            "high": "bad", "medium": "warn", "low": "na",
+            "at_risk": "warn", "no_go": "bad"}.get(str(status or ""), "na")
 
 
 def redact(v: Any) -> str:
