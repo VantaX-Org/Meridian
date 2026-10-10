@@ -16,7 +16,7 @@ try:  # Python ≥ 3.11 moved the regex parser
 except ImportError:  # pragma: no cover
     import sre_constants
     import sre_parse
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -24,7 +24,10 @@ from checks.frames import TableFrames, _graph, internal_format, tables_of
 from checks.runner import rule_columns, run_rule
 
 TODAY = date.today().strftime("%Y%m%d")
-NOW = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+# Local time, not UTC: must land on the same calendar day as TODAY (date.today(), also
+# local), or a timestamp-typed "now" probe near local midnight falls on the wrong side of
+# the UTC/local day boundary and looks like a past value, flaking never_passes proofs.
+NOW = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 CUR_YEAR = date.today().strftime("%Y")
 _PROBES = {
     "date": ["", "20000101", TODAY, "20991231", "99991231", NOW],

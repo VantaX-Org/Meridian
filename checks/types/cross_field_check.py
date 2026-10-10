@@ -2,7 +2,7 @@ import re
 
 import pandas as pd
 
-from checks.base import BaseCheck, Evaluation, is_blank, sap_number
+from checks.base import BaseCheck, Evaluation, as_of_time, is_blank, sap_number
 
 _BACKTICKED = re.compile(r"`([^`]+)`")
 _NUMERIC = {"DEC", "CURR", "QUAN", "INT1", "INT2", "INT4", "INT8", "FLTP", "DF16_DEC",
@@ -72,8 +72,12 @@ class CrossFieldCheck(BaseCheck):
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
         t = typed(df, cols)
+        # UTC, not wall-clock local time: matches as_of_time()'s freshness convention
+        # (checks/base.py) so `@today` lands on the same calendar day the rest of the
+        # engine's date-relative rules (e.g. older_than_days) judge against.
+        today = as_of_time().normalize()
         result = t.eval(self._expr(), engine="python",
-                        local_dict={"today": pd.Series(pd.Timestamp.today().normalize(), index=t.index)})
+                        local_dict={"today": pd.Series(today, index=t.index)})
         if not isinstance(result, pd.Series):
             result = pd.Series(result, index=df.index)
         result = result.astype("boolean")
