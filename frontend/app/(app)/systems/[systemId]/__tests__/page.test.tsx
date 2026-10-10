@@ -5,6 +5,7 @@ import * as connectivityApi from "@/lib/api/connectivity";
 import * as systemObjectsApi from "@/lib/api/system-objects";
 import * as sourceDesignApi from "@/lib/api/source-design";
 import * as configLoadApi from "@/lib/api/config-load";
+import * as configPairingApi from "@/lib/api/config-pairing";
 import * as pilotApi from "@/lib/api/pilot";
 import type { SAPSystemExtended } from "@/types/api";
 import SystemPage from "../page";
@@ -19,7 +20,7 @@ vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const SYSTEM: SAPSystemExtended = {
   id: "s1", name: "ECC Prod", system_type: "ecc", host: null, client: null, sysnr: null, username: null,
-  base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true,
+  base_url: null, company_id: null, auth_type: null, description: null, environment: "PRD", is_active: true, role: "source", target_system_id: null,
   health_status: "healthy", health_message: null, last_health_check: null, config_last_synced_at: null,
   config_sync_status: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
   last_sync_at: null, last_sync_status: null, discovery_status: null, discovered_at: null, sap_release: null,
@@ -35,6 +36,9 @@ function mockHappyPath() {
     config_sync_status: null, config_synced_at: null, snapshot: null, configuration: [],
   });
   vi.spyOn(configLoadApi, "getConfigLoad").mockResolvedValue(null);
+  vi.spyOn(configPairingApi, "getConfigCompare").mockResolvedValue({
+    source_load_id: null, target: { system_id: null, label: "baseline target", baseline: true }, objects: [], rows: [],
+  });
   vi.spyOn(pilotApi, "getScorecard").mockResolvedValue({
     precision: { reviewed: 0, false_positives: 0, precision: null, min_reviewed_per_rule: 10, target: 0.9 },
     rules: [],
@@ -49,6 +53,12 @@ describe("system detail page", () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+  });
+
+  it("shows the system role in the header", async () => {
+    mockHappyPath();
+    renderWithQuery(<SystemPage />);
+    expect(await screen.findByText("Source system")).toBeInTheDocument();
   });
 
   it("shows a retryable error when the systems list fails to load", async () => {

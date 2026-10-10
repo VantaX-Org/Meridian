@@ -10,6 +10,7 @@ import { apiErrorMessage } from "@/lib/api/optional";
 import {
   downloadMigrationExport, downloadMigrationGaps, downloadWaveReport, getWaveCockpit, signoffWave,
 } from "@/lib/api/migration";
+import { downloadRealignment } from "@/lib/api/config-pairing";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
@@ -62,6 +63,8 @@ export default function WaveCockpitPage() {
       {c.run_id ? (
         <>
           <Button variant="secondary" onClick={() => void downloadMigrationGaps(c.run_id ?? "", "xlsx")}>Gap list (Excel)</Button>
+          <Button variant="secondary" onClick={() => void downloadRealignment(c.run_id ?? "", "xlsx")}>Realignment (Excel)</Button>
+          <Button variant="secondary" onClick={() => void downloadRealignment(c.run_id ?? "", "pdf")}>Realignment (PDF)</Button>
           <Button variant="secondary" onClick={() => void downloadMigrationExport(c.run_id ?? "", "xlsx")}>Load files (Excel)</Button>
           <Button variant="secondary" onClick={() => void downloadMigrationExport(c.run_id ?? "", "csv")}>Load files (CSV)</Button>
         </>

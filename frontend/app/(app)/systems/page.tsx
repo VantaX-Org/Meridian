@@ -121,6 +121,7 @@ export default function SystemsPage() {
   const columns: ColumnDef<SAPSystemExtended>[] = [
     { accessorKey: "name", header: "System" },
     { accessorKey: "system_type", header: "Type" },
+    { accessorKey: "role", header: "Role", cell: ({ row }) => <Pill tone="neutral">{row.original.role === "target" ? "Target" : "Source"}</Pill> },
     {
       accessorKey: "health_status",
       header: "Health",

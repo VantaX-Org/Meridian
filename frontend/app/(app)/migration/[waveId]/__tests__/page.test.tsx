@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
+import * as pairingApi from "@/lib/api/config-pairing";
 import * as migrationApi from "@/lib/api/migration";
 import type { WaveCockpit } from "@/types/api";
 import WaveCockpitPage from "../page";
@@ -72,5 +73,16 @@ describe("WaveCockpitPage", () => {
     renderWithQuery(<WaveCockpitPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Readiness report (PDF)" }));
     expect(dl).toHaveBeenCalledWith("w1", "pdf");
+  });
+
+  it("downloads the realignment report", async () => {
+    search = new URLSearchParams("tab=downloads");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    const dl = vi.spyOn(pairingApi, "downloadRealignment").mockResolvedValue();
+    renderWithQuery(<WaveCockpitPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Realignment (Excel)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Realignment (PDF)" }));
+    expect(dl).toHaveBeenCalledWith("r2", "xlsx");
+    expect(dl).toHaveBeenCalledWith("r2", "pdf");
   });
 });
