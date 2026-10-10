@@ -41,9 +41,12 @@ function CleaningQueueTab() {
   });
   const batches = useMemo(() => groupIntoBatches(data?.items ?? []), [data]);
   const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / 100));
+  // N2: these call downloadCleaningExport, a plain cleaning-queue export — not the
+  // remediation cockpit workbook or a real mass-change CSV. Labelling them "Cockpit"
+  // / "Mass change CSV" was misleading on files meant for direct SAP reimport.
   const exportOptions = [
-    { format: "xlsx" as const, label: "Cockpit (.xlsx)", run: () => downloadCleaningExport("xlsx", "approved") },
-    { format: "csv" as const, label: "Mass change CSV", run: () => downloadCleaningExport("csv", "approved") },
+    { format: "xlsx" as const, label: "Approved fixes (.xlsx)", run: () => downloadCleaningExport("xlsx", "approved") },
+    { format: "csv" as const, label: "Approved fixes (.csv)", run: () => downloadCleaningExport("csv", "approved") },
   ];
 
   return (

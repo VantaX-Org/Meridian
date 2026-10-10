@@ -51,6 +51,11 @@ def test_export_runs_builds_real_workbook() -> None:
     finally:
         runs_module.list_versions = original
 
+    # I9: filename must carry the shared "meridian-" export stamp.
+    disposition = response.headers["content-disposition"]
+    filename = disposition.split("filename=", 1)[1].strip('"')
+    assert filename.startswith("meridian-")
+
     wb = openpyxl.load_workbook(io.BytesIO(response.body))
     assert wb.sheetnames == ["Cover", "Runs"]
     ws = wb["Runs"]

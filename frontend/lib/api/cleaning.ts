@@ -242,6 +242,7 @@ export async function downloadCleaningExport(
   format: ExportFormat,
   status: string,
   objectType?: string,
+  batchId?: string,
 ): Promise<void> {
   if (!status) {
     throw new Error("status is required for cleaning export");
@@ -249,6 +250,7 @@ export async function downloadCleaningExport(
 
   const params = new URLSearchParams({ status });
   if (objectType) params.set("object_type", objectType);
+  if (batchId) params.set("batch_id", batchId);
 
   let response: AxiosResponse<Blob>;
   try {
@@ -270,7 +272,7 @@ export async function downloadCleaningExport(
   const filenameMatch = disposition.match(/filename=(.+)/);
   const filename =
     filenameMatch?.[1] ??
-    `cleaning_export_${status}_${objectType ?? "all"}.${defaultExtensionFor(format)}`;
+    `cleaning_export_${status}_${objectType ?? "all"}${batchId ? `_${batchId}` : ""}.${defaultExtensionFor(format)}`;
 
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const a = document.createElement("a");

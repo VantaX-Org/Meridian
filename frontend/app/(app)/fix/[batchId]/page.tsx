@@ -15,7 +15,6 @@ import {
   type CleaningQueueItem,
 } from "@/lib/api/cleaning";
 import { downloadAuthenticated } from "@/lib/api/download";
-import { exportBatch } from "@/lib/api/remediation";
 import { getCleaningReportUrl } from "@/lib/api/reports";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
@@ -98,13 +97,29 @@ export default function BatchPage() {
           <ExportMenu
             disabled={items.length === 0}
             options={[
-              { format: "xlsx", label: "Cockpit (.xlsx)", run: () => exportBatch(batchId, "cockpit_xlsx") },
+              {
+                format: "xlsx",
+                label: "Approved fixes, this batch (.xlsx)",
+                // N1: exportBatch() posts to /remediation/batches/{id}/export, which expects a
+                // remediation_batches.id — batchId here is an unrelated cleaning_queue.batch_id
+                // (no FK between the two tables), so that call 404ed on every click and would
+                // also mutate the batch's status as a side effect of a read-only export menu.
+                // downloadCleaningExport is a read-only GET scoped by batch_id instead.
+                run: () => downloadCleaningExport("xlsx", "approved", items[0]?.object_type, batchId),
+              },
               { format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) },
-              { format: "csv", label: "Mass change CSV", run: () => exportBatch(batchId, "mass_change_csv") },
+              {
+                format: "csv",
+                label: "Approved fixes, this batch (.csv)",
+                run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type, batchId),
+              },
               {
                 format: "pdf",
-                label: "PDF cleaning report",
-                run: () => downloadAuthenticated(getCleaningReportUrl(), `cleaning_${batchId}.pdf`),
+                label: "PDF cleaning report (all batches)",
+                // N4: getCleaningReportUrl() has no batch/version scope — the report is
+                // tenant-wide, not batch-specific — so neither the label nor the downloaded
+                // filename should imply it covers only this batch.
+                run: () => downloadAuthenticated(getCleaningReportUrl(), "cleaning-report.pdf"),
               },
             ]}
           />

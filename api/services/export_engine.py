@@ -364,4 +364,3 @@ class ExportEngine:
             title="Cleaning export",
             sheets=sheets,
         )
-        return buf.getvalue()

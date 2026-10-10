@@ -38,7 +38,7 @@ ROW_CAP = 100_000
 
 _MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-light.png"
 
-ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono"]
+ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono", "raw"]
 
 
 def guard_formula_cell(value: object) -> object:
@@ -50,6 +50,31 @@ def guard_formula_cell(value: object) -> object:
     if not isinstance(value, str):
         return value
     if value.startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
+# Prefixes that actually trigger formula evaluation when a cell is opened in
+# Excel/Sheets. "-" and "+" are excluded here on top of FORMULA_PREFIXES:
+# unlike "=", "@", tab and CR, a leading "-"/"+" alone does not evaluate as a
+# formula in modern Excel/Sheets without a following operator, and SAP load
+# files routinely carry literal negative quantities and "-"-prefixed codes
+# that a reimport must receive byte-for-byte.
+_SAP_REIMPORT_FORMULA_PREFIXES = ("=", "@", "\t", "\r")
+
+
+def guard_sap_reimport_cell(value: object) -> object:
+    """Same guard as :func:`guard_formula_cell`, narrowed for files that are
+    reimported into SAP rather than opened by a human in a spreadsheet.
+
+    Still blocks the prefixes that evaluate as a formula ("=", "@", tab, CR)
+    but leaves a leading "-"/"+" untouched, so a negative quantity or a
+    "-"-prefixed SAP code round-trips unchanged. See N3 in the UI batch 2
+    re-review: the plain guard was corrupting reimport data.
+    """
+    if not isinstance(value, str):
+        return value
+    if value.startswith(_SAP_REIMPORT_FORMULA_PREFIXES):
         return "'" + value
     return value
 
@@ -128,6 +153,11 @@ def _cell_value_and_format(raw: object, kind: ColumnKind, scale: float) -> tuple
         return (raw, "yyyy-mm-dd hh:mm")
     if kind == "mono":
         return (guard_formula_cell(raw), None)
+    if kind == "raw":
+        # Narrowed guard for SAP-reimport files (see guard_sap_reimport_cell):
+        # still blocks "=" / "@" / tab / CR, but leaves a leading "-"/"+" on a
+        # negative quantity or SAP code untouched.
+        return (guard_sap_reimport_cell(raw), None)
     return (guard_formula_cell(raw), None)
 
 
@@ -152,7 +182,7 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         cell.font = header_font
         cell.fill = header_fill
         cell.border = header_border
-        if col.kind == "mono":
+        if col.kind in ("mono", "raw"):
             cell.font = Font(color=_WHITE, bold=True, size=11, name="Consolas")
     ws.row_dimensions[1].height = 18
 
@@ -171,7 +201,7 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             if number_format:
                 cell.number_format = number_format
-            if col.kind == "mono":
+            if col.kind in ("mono", "raw"):
                 cell.font = Font(name="Consolas", size=10)
             if col.fill_by_value and raw in col.fill_by_value:
                 cell.fill = PatternFill(fill_type="solid", fgColor=col.fill_by_value[raw])
@@ -239,7 +269,13 @@ def _write_cover_sheet(
     for sheet_title, count, note in sheet_meta:
         text = f"{sheet_title} — {count:,} row{'s' if count != 1 else ''}"
         if note:
-            text += f". {guard_formula_cell(note)}"
+            # Don't guard `note` here on its own: it's being appended mid-string
+            # after the sheet_title/count prefix, not placed at the start of the
+            # cell. Guarding it here would leave a literal, visible apostrophe
+            # in the middle of the sentence. The whole concatenated `text` is
+            # guarded once below, which is what matters for the cell's actual
+            # leading character.
+            text += f". {note}"
         ws.cell(row=row_idx, column=1, value=guard_formula_cell(sheet_title)).font = Font(bold=False)
         ws.cell(row=row_idx, column=2, value=guard_formula_cell(text))
         row_idx += 1

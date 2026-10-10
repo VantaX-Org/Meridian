@@ -284,9 +284,11 @@ async def export_batch(
             sheets_by_table = remediation.cockpit_sheets(items, d)
             sheet_specs = []
             for table, df in (sheets_by_table or {}).items():
-                # kind="mono" keeps SAP values like "=A" as guarded text, never a formula,
-                # and preserves the literal SAP field code as the header for reimport.
-                columns = [ColumnSpec(col, col, kind="mono") for col in df.columns]
+                # kind="raw": narrowed formula guard (still blocks "=", "@", tab,
+                # CR) that leaves a leading "-"/"+" on a negative quantity or
+                # SAP code untouched, since this file is reimported into SAP
+                # rather than opened by a human. See N3 in the re-review.
+                columns = [ColumnSpec(col, col, kind="raw") for col in df.columns]
                 sheet_specs.append(SheetSpec(title=table[:31], columns=columns, rows=df.to_dict("records")))
             if not sheet_specs:
                 sheet_specs = [SheetSpec(title="EMPTY", columns=[], rows=[])]

@@ -510,6 +510,9 @@ async def export_cleaning_data(
     object_type: Optional[str] = Query(
         None, description="Optional object type filter — omit to export across all object types"
     ),
+    batch_id: Optional[uuid.UUID] = Query(
+        None, description="Optional cleaning-queue batch filter — omit to export across all batches"
+    ),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("export")),
@@ -525,6 +528,9 @@ async def export_cleaning_data(
     if object_type:
         where += " AND object_type = :ot"
         params["ot"] = object_type
+    if batch_id:
+        where += " AND batch_id = :bid"
+        params["bid"] = str(batch_id)
 
     result = await db.execute(
         text(f"""
