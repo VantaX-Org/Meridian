@@ -50,7 +50,7 @@ describe("systems list page", () => {
     // instant, so a test that silently stayed in UTC would show the wrong day too.
     const PROFILE: SyncProfile = {
       id: "p1", system_id: "s1", domain: "material_master", tables: [], schedule_cron: "0 0 * * *",
-      active: true, last_run_at: null, next_run_at: "2026-01-02T22:00:00Z",
+      active: true, last_run_at: null, next_run_at: "2026-01-02T22:00:00Z", extraction_mode: "full",
     };
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });

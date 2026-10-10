@@ -10,7 +10,7 @@ const version = (run_at: string, dqs: Record<string, number | null>, analysed = 
 });
 const profile = (next_run_at: string | null, active = true): SyncProfile => ({
   id: next_run_at ?? "none", system_id: "s1", domain: "fi_gl", tables: [], schedule_cron: "0 2 * * *",
-  active, last_run_at: null, next_run_at,
+  active, last_run_at: null, next_run_at, extraction_mode: "full",
 });
 
 describe("systems list helpers", () => {
