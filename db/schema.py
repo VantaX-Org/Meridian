@@ -1677,6 +1677,26 @@ class GlossaryTermRule(Base):
     )
 
 
+class DataOwner(Base):
+    """Owner and steward of an object (module id), a rule (check id) or a system.
+    Field ownership stays on GlossaryTerm.data_steward_id."""
+    __tablename__ = "data_owners"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    kind = Column(Text, nullable=False)
+    ref = Column(Text, nullable=False)
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    steward_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('object', 'rule', 'system')", name="ck_data_owners_kind"),
+        UniqueConstraint("tenant_id", "kind", "ref", name="uq_data_owners_kind_ref"),
+    )
+
+
 class StewardshipQueueItem(Base):
     __tablename__ = "stewardship_queue"
 
