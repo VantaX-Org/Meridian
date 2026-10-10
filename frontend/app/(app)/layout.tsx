@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
       <div className="flex h-screen">
-        <Suspense fallback={<div style={{ width: 56 }} />}>
+        <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden">

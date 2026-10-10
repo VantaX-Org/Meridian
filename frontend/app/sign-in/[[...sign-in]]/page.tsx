@@ -88,7 +88,9 @@ export default function SignInPage() {
         {error ? (
           <div ref={noticeRef} tabIndex={-1}>
             <AuthNotice tone="danger" title={error.title}>
-              {error.detail ?? "Check your email and password and try again."}
+              {error.title === "Email or password is wrong."
+                ? error.detail ?? "Check your email and password and try again."
+                : null}
             </AuthNotice>
           </div>
         ) : null}
@@ -102,8 +104,8 @@ export default function SignInPage() {
         <div className={authActionsClass}>
           <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password</Link>
         </div>
-        <Button type="submit" aria-busy={loading} disabled={loading || (attempted && invalid)}
-          style={loading || (attempted && invalid) ? { background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" } : undefined}
+        <Button type="submit" aria-busy={loading} disabled={loading || invalid}
+          style={loading || invalid ? { background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" } : undefined}
           className="h-9 w-full">
           {loading ? "Signing in" : "Sign in"}
         </Button>
