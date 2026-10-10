@@ -5,8 +5,10 @@ import type {
   MigrationMode,
   MigrationRun,
   MigrationRunDetail,
+  MigrationWave,
   TransferFieldMapping,
   TransferValueMapping,
+  WaveStage,
 } from "@/types/api";
 
 /** Load files: one sheet per target table (xlsx) or one CSV per table (zip). */
@@ -143,4 +145,44 @@ export function downloadMigrationExport(runId: string, format: ExportFormat): Pr
 /** The run's gap list (remediation work list). */
 export function downloadMigrationGaps(runId: string, format: ExportFormat, filter: GapFilter = {}): Promise<void> {
   return downloadBlob(`/api/v1/migration/runs/${runId}/findings/export`, { format, ...filter }, `migration_gaps_${runId}.${format}`);
+}
+
+// ── Migration waves ──────────────────────────────────────────────────────────
+
+export interface WaveInput {
+  name: string;
+  source_system_id?: string | null;
+  target_system_id?: string | null;
+  target_release?: string;
+  modules: string[];
+  target_date?: string | null;
+  stage: WaveStage;
+  min_readiness: number;
+  min_dqs?: number | null;
+}
+
+export async function getWaves(): Promise<MigrationWave[]> {
+  const { data } = await apiClient.get<{ waves: MigrationWave[] }>("/api/v1/migration/waves");
+  return data.waves;
+}
+
+export async function createWave(body: WaveInput): Promise<MigrationWave> {
+  const { data } = await apiClient.post<MigrationWave>("/api/v1/migration/waves", body);
+  return data;
+}
+
+export async function updateWave(id: string, body: Partial<WaveInput>): Promise<MigrationWave> {
+  const { data } = await apiClient.patch<MigrationWave>(`/api/v1/migration/waves/${id}`, body);
+  return data;
+}
+
+export async function deleteWave(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/migration/waves/${id}`);
+}
+
+export async function runWave(
+  id: string,
+): Promise<{ run_id: string; task_id: string; status: string; mode: MigrationMode; modules: string[] }> {
+  const { data } = await apiClient.post(`/api/v1/migration/waves/${id}/run`);
+  return data;
 }

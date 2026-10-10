@@ -24,7 +24,6 @@ const EXPECTED: Record<string, string> = {
   "/settings/scoring": "/rules/scoring",
   "/settings/exception-billing": "/admin/billing",
   "/run-sync": "/systems",
-  "/migration": "/insights/readiness",
   "/analytics": "/insights/forecast",
   "/systems/:id/pilot": "/systems/:id?tab=pilot",
   "/systems/:id/versions/:versionId/profile": "/runs/:versionId",

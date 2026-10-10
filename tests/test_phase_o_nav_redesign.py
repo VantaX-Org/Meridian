@@ -71,11 +71,12 @@ def test_sidebar_systems_and_data_items():
 
 
 def test_sidebar_quality_items():
-    """Quality has Findings (/objects), Failing records (/inbox) and Compare versions (/runs)."""
+    """Quality has Findings (/objects), Failing records (/inbox) and Runs (/runs, relabelled from
+    'Compare versions' — see commit "Relabel the compare page as Runs")."""
     block = _group_block(_nav(), "Quality")
     assert 'href: "/objects", label: "Findings"' in block
     assert 'href: "/inbox", label: "Failing records"' in block
-    assert 'href: "/runs", label: "Compare versions"' in block
+    assert 'href: "/runs", label: "Runs"' in block
 
 
 def test_sidebar_fix_items():

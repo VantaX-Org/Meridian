@@ -32,6 +32,8 @@ export const queryKeys = {
   remediationMonitor: () => ["remediation", "monitor"] as const,
   inbox: (filters: Record<string, unknown>) => ["inbox", normalizeFilters(filters)] as const,
   systems: () => ["systems"] as const,
+  migrationWaves: () => ["migration", "waves"] as const,
+  migrationCockpit: (waveId: string) => ["migration", "cockpit", waveId] as const,
   shellCounts: () => ["shell-counts"] as const,
   insights: (kind: "readiness" | "impact" | "owners" | "duplicates" | "exec", run?: string) =>
     run === undefined ? (["insights", kind] as const) : (["insights", kind, run] as const),
