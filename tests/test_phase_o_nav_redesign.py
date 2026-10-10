@@ -64,9 +64,10 @@ def test_overview_items():
 
 
 def test_sidebar_systems_and_data_items():
-    """Systems and data (second group) has Systems, Import file, Download history, Migration."""
+    """Systems and data (second group) has Systems, Import file, Download history, Migration
+    (at /migration, its own wave cockpit page — not /insights/readiness)."""
     block = _group_block(_nav(), "Systems and data")
-    for href in ("/systems", "/import", "/insights/readiness"):
+    for href in ("/systems", "/import", "/migration"):
         assert f'"{href}"' in block, f"{href} missing from Systems and data"
 
 
