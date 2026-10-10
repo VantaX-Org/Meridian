@@ -5,9 +5,9 @@ import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Pill, ScoreRing, SeverityDot, type PillTone } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
+import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -92,8 +92,11 @@ export default function ObjectsPage() {
         };
   }
 
+  const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
+
   return (
     <ExplorerPage
+      toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
         <DataTable
           columns={columns}

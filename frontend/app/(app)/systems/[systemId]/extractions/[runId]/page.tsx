@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
-import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Pill, ReportPage, type PillTone } from "@/design";
+import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -76,6 +76,7 @@ export default function ExtractionPage() {
   return (
     <ReportPage
       narrative={narrative}
+      exportMenu={stepRows.length > 0 ? <ExportMenu options={[{ format: "xlsx", run: () => exportRunSteps(runId, "xlsx") }]} /> : undefined}
       charts={null}
       tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
       state={steps.isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}

@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Pill, Sparkline, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
 import { getSystems } from "@/lib/api/connectivity";
+import { exportRuns } from "@/lib/api/v1/runs";
 import { getVersions } from "@/lib/api/versions";
 import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -121,8 +122,11 @@ export default function RunsPage() {
     </div>
   );
 
+  const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
+
   return (
     <ExplorerPage
+      toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={summary}
       table={
         <DataTable

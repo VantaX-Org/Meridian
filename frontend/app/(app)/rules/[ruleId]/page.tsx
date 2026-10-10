@@ -6,8 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, DrillLink, EmptyState, ErrorState, Mono, Pill, Skeleton } from "@/design";
-import { getRule, updateRule } from "@/lib/api/rules";
+import { Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pill, Skeleton } from "@/design";
+import { exportRuleHistory, getRule, updateRule } from "@/lib/api/rules";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { apiErrorMessage } from "@/lib/error";
 import { checkClassLabel, formatModuleName, labelOf } from "@/lib/format";
@@ -116,11 +116,14 @@ export default function RulePage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header className="flex items-center gap-3">
-        <Mono>{ruleId}</Mono>
-        <strong>{data.name}</strong>
-        <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
-        <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Mono>{ruleId}</Mono>
+          <strong>{data.name}</strong>
+          <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
+          <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
+        </div>
+        <ExportMenu options={[{ format: "xlsx", run: () => exportRuleHistory(ruleId, "xlsx") }]} />
       </header>
       {data.description ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
 

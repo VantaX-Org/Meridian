@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ ruleId: "r1" }),
   useRouter: () => ({ push: vi.fn() }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 const RULE: Rule = {
   id: "r1", name: "AP001: Vendor number is mandatory", description: null, module: "business_partner",

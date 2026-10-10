@@ -34,10 +34,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  DataTable, EmptyState, ErrorState, Graph, Pill, Select, Skeleton, Stat, Tabs,
+  DataTable, EmptyState, ErrorState, ExportMenu, Graph, Pill, Select, Skeleton, Stat, Tabs,
   type GraphEdge, type GraphNode, type PillTone,
 } from "@/design";
-import { getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
+import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@/lib/api/field-profile";
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
@@ -214,6 +214,9 @@ function Dependencies() {
         <Select value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
+        {sid && vid ? (
+          <ExportMenu options={[{ format: "xlsx", run: () => exportVersionProfile(sid, vid, "xlsx", obj || undefined) }]} />
+        ) : null}
       </div>
       {profile.error ? (
         <ErrorState

@@ -4,7 +4,8 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { DataTable, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -58,29 +59,19 @@ export default function ExecPage() {
         ? "empty"
         : undefined;
 
-  // ReportPage's onExport is a callback with no href, so it cannot render a
-  // link whose href the test can assert against. Rendering a plain anchor
-  // here (in the charts slot) is a documented deviation from the brief's
-  // exportAction={{label, href}} prop, which does not exist on ReportPage.
   const exportHref = data?.version_id ? `/api/v1/reports/executive/${data.version_id}.pdf` : undefined;
 
   return (
     <ReportPage
       narrative={data?.narrative ?? ""}
-      charts={
-        <div className="flex flex-col gap-3">
-          {exportHref && (
-            <a
-              href={exportHref}
-              className="self-end text-[13px] underline"
-              style={{ color: "var(--m-accent)" }}
-            >
-              Export PDF
-            </a>
-          )}
-          <Waterfall data={data?.waterfall ?? []} />
-        </div>
+      exportMenu={
+        exportHref ? (
+          <ExportMenu
+            options={[{ format: "pdf", run: () => downloadAuthenticated(exportHref, `executive_${data?.version_id}.pdf`) }]}
+          />
+        ) : undefined
       }
+      charts={<Waterfall data={data?.waterfall ?? []} />}
       tables={
         <div className="flex flex-col gap-6">
           <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} />

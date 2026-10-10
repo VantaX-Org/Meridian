@@ -6,8 +6,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Bar, Button, DataTable, ReportPage, SeverityDot, isSeverity } from "@/design";
-import { getObject, type ObjectRule } from "@/lib/api/v1/objects";
+import { Bar, Button, DataTable, ExportMenu, ReportPage, SeverityDot, emptyExportOptions, isSeverity } from "@/design";
+import { exportObject, getObject, type ObjectRule } from "@/lib/api/v1/objects";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -72,9 +72,12 @@ export default function ObjectDetailPage() {
     ? Object.entries(data.dimension_scores).map(([dimension, score]) => ({ x: dimension, y: score }))
     : [];
 
+  const exportOptions = [{ format: "xlsx" as const, run: () => exportObject(object, run) }];
+
   return (
     <ReportPage
       narrative={narrative}
+      exportMenu={run ? <ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} /> : undefined}
       charts={<Bar data={dimensionPoints} />}
       tables={
         <DataTable

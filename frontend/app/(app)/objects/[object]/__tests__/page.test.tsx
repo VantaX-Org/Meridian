@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("ObjectDetailPage", () => {
   it("renders the narrative, dimension chart and rules table", async () => {

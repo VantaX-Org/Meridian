@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/runs",
   useSearchParams: () => searchParams,
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 // useDayOne() shares the systems/versions query keys with this page's own queries;
 // mocking it outright avoids a real-vs-mocked getSystems collision on queryKeys.systems().
 vi.mock("@/hooks/use-day-one", () => ({

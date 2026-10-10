@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Mono, Pill, toastManager } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill, toastManager } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -47,10 +47,6 @@ export default function BatchPage() {
     mutationFn: () => bulkApprove({ max_count: confident.length }),
     onSuccess: (r) => { toastManager.add({ title: `Approved ${r.approved_count}` }); invalidate(); },
   });
-  const exportBatch = useMutation({
-    mutationFn: () => downloadCleaningExport("csv", "approved", items[0]?.object_type),
-  });
-
   const columns: ColumnDef<CleaningQueueItem>[] = [
     { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
     { accessorKey: "rule_id", header: "Rule", cell: ({ row }) => row.original.rule_id ?? "—" },
@@ -96,9 +92,10 @@ export default function BatchPage() {
           >
             Accept {confident.length} at 85% or higher
           </Button>
-          <Button variant="secondary" disabled={items.length === 0} onClick={() => exportBatch.mutate()}>
-            Export
-          </Button>
+          <ExportMenu
+            disabled={items.length === 0}
+            options={[{ format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) }]}
+          />
         </div>
       }
       table={<DataTable columns={columns} data={items} getRowId={(row) => row.id} />}

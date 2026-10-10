@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ object: "material_master", ruleId: "mm_missing_desc" }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("RuleDetailPage", () => {
   it("renders failing records with a link into each record's fix sheet", async () => {

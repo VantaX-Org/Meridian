@@ -7,10 +7,12 @@ import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, ErrorState, Pill, ReportPage, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Pill, ReportPage, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
+import { downloadAuthenticated } from "@/lib/api/download";
 import { errorText } from "@/lib/api/remediation";
-import { getRunSteps, type RunStep } from "@/lib/api/v1/runs";
+import { getAnalysisReportUrl } from "@/lib/api/reports";
+import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -114,9 +116,15 @@ export default function RunDetailPage() {
     <p>Loading run…</p>
   );
 
+  const exportOptions = [
+    { format: "xlsx" as const, run: () => exportRunSteps(versionId, "xlsx") },
+    { format: "pdf" as const, label: "PDF analysis", run: () => downloadAuthenticated(getAnalysisReportUrl(versionId), `analysis_${versionId}.pdf`) },
+  ];
+
   return (
     <ReportPage
       narrative={narrative}
+      exportMenu={v ? <ExportMenu options={exportOptions} /> : undefined}
       charts={null}
       tables={<DataTable columns={stepColumns} data={stepRows} getRowId={(s) => String(s.step_number)} />}
       state={state}

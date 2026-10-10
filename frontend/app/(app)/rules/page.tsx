@@ -21,10 +21,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, Field, Mono, Pill, Select, Skeleton, Stat, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
-import { createCustomRule, dryRunRule, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
+import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
@@ -212,8 +212,20 @@ export default function RulesPage() {
       </Field>
     ) : null;
 
+  const exportOptions = [{
+    format: "xlsx" as const,
+    run: () => exportRules("xlsx", {
+      category: category === "all" ? undefined : category,
+      module: module || undefined,
+      severity: severity || undefined,
+      source: source || undefined,
+      search: search || undefined,
+    }),
+  }];
+
   const filterBar = (
     <div className="flex flex-wrap items-end gap-3">
+      <ExportMenu options={visible.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
       <Field label="Search">
         <input
           type="text"

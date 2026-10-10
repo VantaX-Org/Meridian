@@ -6,6 +6,7 @@ import BatchPage from "../page";
 import { approveCleaning, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ batchId: "B1" }) }));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
   return { ...actual, getCleaningQueue: vi.fn(), approveCleaning: vi.fn(), rejectCleaning: vi.fn(), bulkApprove: vi.fn(), downloadCleaningExport: vi.fn() };
