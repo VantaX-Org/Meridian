@@ -171,7 +171,9 @@ def check_material_ledger(frames: TableFrames, module: str) -> list[Gap]:
     mbew = _frame(frames, "MBEW")
     if mbew is None:
         return []
-    stock = pd.to_numeric(mbew.get("LBKUM", 0), errors="coerce").fillna(0) > 0
+    # Handle missing LBKUM column by returning zero Series
+    lbkum = pd.to_numeric(mbew["LBKUM"], errors="coerce").fillna(0) if "LBKUM" in mbew.columns else pd.Series(0, index=mbew.index)
+    stock = lbkum > 0
     bklas = _norm(mbew["BKLAS"]) if "BKLAS" in mbew.columns else pd.Series("", index=mbew.index)
     vprsv = _norm(mbew["VPRSV"]) if "VPRSV" in mbew.columns else pd.Series("", index=mbew.index)
     # Handle missing STPRS/VERPR columns by returning zero Series

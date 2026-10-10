@@ -94,3 +94,12 @@ def test_material_ledger_without_price_columns():
     # M1 has stock but no BKLAS, so should flag with S4L-ML-BKLAS
     assert any(g.record_key == "MATNR=M1|BWKEY=P1|BWTAR=" and "S4L-ML-BKLAS" in g.detail for g in gaps)
     assert not any(g.record_key == "MATNR=M2" for g in gaps)
+
+
+def test_material_ledger_without_lbkum_column():
+    """Test that check_material_ledger does not crash when LBKUM column is absent."""
+    mbew = pd.DataFrame({"MATNR": ["M1", "M2"], "BWKEY": ["P1", "P1"], "BWTAR": ["", ""],
+                         "BKLAS": ["3000", ""], "STPRS": [1, 0]})
+    # Should not crash; with no LBKUM (treated as all zeros), stock = False for all rows, so no gaps
+    gaps = load_sim.check_material_ledger(_tf(MBEW=mbew), "material_master")
+    assert gaps == []
