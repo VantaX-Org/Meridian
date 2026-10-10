@@ -10,6 +10,7 @@ export function ReportPage({
   charts,
   tables,
   onExport,
+  exportMenu,
   state,
   emptyProps,
   errorProps,
@@ -17,7 +18,10 @@ export function ReportPage({
   narrative: ReactNode;
   charts: ReactNode;
   tables?: ReactNode;
+  /** @deprecated use `exportMenu`; ignored once `exportMenu` is set. */
   onExport?: () => void;
+  /** Rendered in the page header row, right-aligned. Suppresses the legacy bottom `onExport` button. */
+  exportMenu?: ReactNode;
   /** Swaps the charts/tables region for a skeleton, empty or error state. */
   state?: "loading" | "empty" | "error";
   emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost };
@@ -51,9 +55,12 @@ export function ReportPage({
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</p>
+        {exportMenu}
+      </div>
       {body}
-      {onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}
+      {!exportMenu && onExport && <Button variant="secondary" onClick={onExport}>Export</Button>}
     </div>
   );
 }
