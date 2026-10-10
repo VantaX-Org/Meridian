@@ -140,7 +140,10 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
             extra = None
             if dry_run:
                 from sap.extraction_plan import S4_LOAD_CONFIG, S4_LOAD_DATA
-                extra = set(S4_LOAD_DATA) | set(S4_LOAD_CONFIG)
+                # ponytail: dotted TABLE.FIELD strings, not bare table names — tables_of() in
+                # checks/frames.py only recognises the dotted form, and the flat-upload load_dataset
+                # path prunes columns by that set, so bare names would silently drop these tables.
+                extra = {f"{t}.{f}" for d in (S4_LOAD_DATA, S4_LOAD_CONFIG) for t, fs in d.items() for f in fs}
             frames, _, _, _ = load_dataset(meta["dataset_path"], source_dict, modules, extra=extra,
                                            conversions=conversions_for(session, source_system_id or meta.get("system_id")))
 
@@ -180,6 +183,9 @@ def run_migration(self, tenant_id, run_id, mode, source_system_id, dest_system_i
                     "source_value": g.source_value, "target_value": g.target_value,
                     "provenance": g.provenance, "grounded": g.grounded,
                 } for g in gaps]
+                # Idempotency: a retried run_id must not duplicate this module's findings.
+                session.execute(text("DELETE FROM migration_gap_findings WHERE tenant_id = :tid AND run_id = :rid "
+                                     "AND module = :module"), {"tid": tenant_id, "rid": run_id, "module": module})
                 for i in range(0, len(rows), 2000):
                     session.execute(_INSERT, rows[i:i + 2000])
                 session.commit()

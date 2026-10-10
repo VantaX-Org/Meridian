@@ -13,6 +13,55 @@ def _ids(gaps):
     return sorted({g.detail.split(" ", 1)[0] for g in gaps})
 
 
+def test_s4_dry_run_extra_must_be_dotted_for_flat_upload(tmp_path, monkeypatch):
+    """run_migration builds `extra` for load_dataset's flat-upload (.parquet) path. That path
+    prunes columns via checks/frames.py:tables_of(), which only recognises dotted "TABLE.FIELD"
+    strings — bare table names ("KNKK") are silently dropped, pruning the whole table away and
+    making the s4_load sim checks no-op. Exercise the real load_dataset flat-upload branch with
+    a dotted `extra` set (the fixed construction) and assert the extra table survives."""
+    from sap.ddic import get_dictionary
+    from workers import dataset as ds
+
+    df = pd.DataFrame({
+        "MARA.MATNR": ["123"],
+        "MARA.MTART": ["ROH"],
+        "KNKK.KUNNR": ["C1"],
+        "KNKK.KKBER": ["1000"],
+    })
+    path = tmp_path / "flat.parquet"
+    df.to_parquet(path)
+
+    class _Resp:
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+
+        def read(self) -> bytes:
+            return self._data
+
+        def close(self) -> None:
+            pass
+
+        def release_conn(self) -> None:
+            pass
+
+    class _Client:
+        def get_object(self, bucket: str, name: str) -> "_Resp":
+            return _Resp(path.read_bytes())
+
+    monkeypatch.setattr(ds, "_client", lambda: _Client())
+
+    extra = {"KNKK.KUNNR", "KNKK.KKBER"}  # dotted, matching run_migration.py's fixed construction
+    frames, _, _, _ = ds.load_dataset("flat.parquet", get_dictionary("s4hana"), ["material_master"], extra=extra)
+    assert "KNKK" in frames.frames
+
+    # The bare-table-name construction the brief's literal pseudocode produced is the regression:
+    # it must NOT survive column pruning.
+    bare_extra = {"KNKK", "MARD"}
+    frames_bare, _, _, _ = ds.load_dataset("flat.parquet", get_dictionary("s4hana"), ["material_master"],
+                                           extra=bare_extra)
+    assert "KNKK" not in frames_bare.frames
+
+
 def test_matnr_alpha_collision_and_length():
     mara = pd.DataFrame({"MATNR": ["000000000000012345", "12345", "A" * 41, "OK-1", "lower"]})
     gaps = load_sim.check_matnr(_tf(MARA=mara), "material_master")

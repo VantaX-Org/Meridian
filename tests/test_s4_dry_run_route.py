@@ -72,3 +72,19 @@ def test_s4_dry_run_folds_load_sim_into_verdict(seeded, monkeypatch):
     assert gap_summary["material_master"]["verdict"] == "no-go"
     assert gap_summary["material_master"]["mode"] == "s4_dry_run"
     assert gap_summary["material_master"]["s4_load"]["S4L-MM-MATNR-ALPHA"] == 2
+
+    with engine.begin() as c:
+        total_before = c.execute(text("SELECT count(*) FROM migration_gap_findings WHERE run_id = :r"),
+                                 {"r": seeded["rid"]}).scalar()
+
+    # Idempotency: retrying the same run_id must not duplicate gap rows.
+    out2 = mod.run_migration.run(seeded["tid"], seeded["rid"], "s4_dry_run", None, None,
+                                 ["material_master"])
+    assert out2["status"] == "analysed", out2
+    with engine.begin() as c:
+        total_after = c.execute(text("SELECT count(*) FROM migration_gap_findings WHERE run_id = :r"),
+                                {"r": seeded["rid"]}).scalar()
+        rows_after = c.execute(text("SELECT gap_type, detail FROM migration_gap_findings WHERE run_id = :r "
+                                    "AND gap_type = 's4_load'"), {"r": seeded["rid"]}).fetchall()
+    assert total_after == total_before
+    assert len(rows_after) == len(rows)
