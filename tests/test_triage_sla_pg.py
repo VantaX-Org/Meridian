@@ -243,6 +243,57 @@ def test_assign_sla_escalate_pause(engines):
     assert _rows(app, other, "SELECT COUNT(*) FROM notifications")[0][0] == 0
 
 
+def test_auto_assign_owner_order(engines):
+    from sqlalchemy import text
+
+    from api.services import triage
+
+    owner, app = engines
+    tid, u, vid = _tenant(owner, ["rule_owner", "obj_steward", "gloss", "fb", "gone"], inactive=("gone",))
+    with _session(app, tid) as s:
+        for kind, ref, own, stw in (("rule", "AP-9", u["rule_owner"], None),
+                                    ("object", "accounts_payable", None, u["obj_steward"]),
+                                    ("object", "material_master", u["gone"], None)):
+            s.execute(text("INSERT INTO data_owners (tenant_id, kind, ref, owner_user_id, steward_user_id) "
+                           "VALUES (:t, :k, :r, :o, :s)"), {"t": tid, "k": kind, "r": ref, "o": own, "s": stw})
+        term = s.execute(text(
+            "INSERT INTO glossary_terms (tenant_id, domain, sap_table, sap_field, technical_name, business_name, "
+            "data_steward_id) VALUES (:t, 'fi_gl', 'SKA1', 'SAKNR', 'SKA1.SAKNR', 'G/L account', :g) RETURNING id"),
+            {"t": tid, "g": u["gloss"]}).scalar()
+        s.execute(text("INSERT INTO glossary_term_rules (tenant_id, term_id, rule_id, domain) "
+                       "VALUES (:t, :term, 'GL-1', 'fi_gl')"), {"t": tid, "term": term})
+        s.execute(text("INSERT INTO triage_settings (tenant_id, fallback_user_id) VALUES (:t, :f)"),
+                  {"t": tid, "f": u["fb"]})
+        for check, module in (("AP-9", "accounts_payable"), ("AP-8", "accounts_payable"),
+                              ("GL-1", "fi_gl"), ("MM-1", "material_master")):
+            _issue(s, tid, vid, check, f"KEY={check}", module=module)
+        s.commit()
+
+    with _session(app, tid) as s:
+        assert triage.auto_assign(s, tid)["issue"] == 4
+        s.commit()
+    got = dict(_rows(app, tid, "SELECT check_id, assigned_to::text FROM record_issues "
+                               "WHERE tenant_id = CAST(:t AS uuid)", t=tid))
+    assert got == {"AP-9": u["rule_owner"],   # rule owner beats the object steward
+                   "AP-8": u["obj_steward"],  # object steward
+                   "GL-1": u["gloss"],        # glossary steward of the rule's term
+                   "MM-1": u["fb"]}           # object owner inactive → fallback
+    notes = sorted(r[0] for r in _rows(app, tid, "SELECT note FROM record_issue_events "
+                                                 "WHERE tenant_id = CAST(:t AS uuid) AND action = 'assign'", t=tid))
+    assert notes == ["auto-assigned to data owner"] * 3 + ["auto-assigned to fallback owner"]
+
+    # A tenant with owners but no rules and no fallback is still routed.
+    t2, u2, v2 = _tenant(owner, ["own"])
+    with _session(app, t2) as s:
+        s.execute(text("INSERT INTO data_owners (tenant_id, kind, ref, owner_user_id) "
+                       "VALUES (:t, 'object', 'accounts_payable', :o)"), {"t": t2, "o": u2["own"]})
+        _issue(s, t2, v2, "AP-2", "LIFNR=1")
+        s.commit()
+    with _session(app, t2) as s:
+        assert triage.auto_assign(s, t2)["issue"] == 1
+        s.commit()
+
+
 def test_routes(engines):
     import asyncio
 

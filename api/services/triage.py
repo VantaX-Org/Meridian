@@ -10,7 +10,9 @@ Lifecycle
   1. auto_assign      unassigned, never-assigned items go through the ordered assignment
                       rules (first match wins) to a user or a team (round_robin or
                       least_loaded inside the team); no match / inactive target goes to the
-                      tenant's fallback owner. Idempotent: only rows with assigned_at NULL.
+                      rule owner, the object owner, the glossary steward, then the tenant's
+                      fallback owner (data_owners: steward before owner within each kind).
+                      Idempotent: only rows with assigned_at NULL.
   2. apply_sla        assigned items without a running clock get the policy's deadlines
                       (ack + resolve, with at-risk points), from the assignment time.
   3. sync_pause       waiting_sap / waiting_requester freeze the clock; leaving the
@@ -210,7 +212,10 @@ def plan(items: list[dict], rules: list[dict], teams: dict[str, Team], active: s
                 team_id = rule["assign_team_id"]
                 uid = choose(teams[team_id], active, load)
         if uid is None:
-            uid, team_id = (fallback if fallback in active else None), None
+            team_id = None
+            uid = next((o for o in it.get("owners") or () if o in active), None)
+        if uid is None:
+            uid = fallback if fallback in active else None
         if uid is None:
             continue
         load[uid] = load.get(uid, 0) + 1
@@ -247,9 +252,22 @@ def _ids(rows) -> list[str]:
 # 5-minute sweep drains the rest (most severe first). Raise it or loop in batches if that is too slow.
 BATCH = 20000
 
+# Owner candidates, best first: rule before object, steward (1) before owner (2) within a kind.
+_OWNERS = """ARRAY(SELECT v.u::text FROM data_owners d
+                  CROSS JOIN LATERAL (VALUES (1, d.steward_user_id), (2, d.owner_user_id)) v(o, u)
+                 WHERE d.tenant_id = {t}.tenant_id AND v.u IS NOT NULL AND ({match})
+                 ORDER BY d.kind = 'rule' DESC, v.o)"""
+
 _CANDIDATES = {
     "issue": f"""
-        SELECT ri.id::text AS id, ri.module, ri.check_id, ri.severity, f.dimension, ri.record_key
+        SELECT ri.id::text AS id, ri.module, ri.check_id, ri.severity, f.dimension, ri.record_key,
+               {_OWNERS.format(t="ri", match="(d.kind = 'rule' AND d.ref = ri.check_id) "
+                                             "OR (d.kind = 'object' AND d.ref = ri.module)")} AS owners,
+               (SELECT gt.data_steward_id::text FROM glossary_term_rules gtr
+                  JOIN glossary_terms gt ON gt.id = gtr.term_id
+                 WHERE gtr.tenant_id = ri.tenant_id AND gtr.rule_id = ri.check_id
+                   AND gt.data_steward_id IS NOT NULL
+                 ORDER BY gt.business_name LIMIT 1) AS glossary_steward
           FROM record_issues ri
           LEFT JOIN LATERAL (SELECT f.dimension, f.affected_count FROM findings f WHERE f.version_id = ri.last_seen_version
                              AND f.check_id = ri.check_id AND f.tenant_id = ri.tenant_id LIMIT 1) f ON true
@@ -258,12 +276,19 @@ _CANDIDATES = {
          ORDER BY ri.severity = 'critical' DESC, ri.severity = 'high' DESC, ri.first_seen_at LIMIT :cap""",
     "queue": f"""
         SELECT sq.id::text AS id, sq.domain AS module, sq.item_type AS check_id, {_QUEUE_SEV} AS severity,
-               NULL AS dimension, NULL AS record_key
+               NULL AS dimension, NULL AS record_key,
+               {_OWNERS.format(t="sq", match="d.kind = 'object' AND d.ref = sq.domain")} AS owners,
+               NULL AS glossary_steward
           FROM stewardship_queue sq
          WHERE sq.tenant_id = CAST(:tid AS uuid) AND sq.status NOT IN {_TERM_SQL}
            AND sq.assigned_at IS NULL AND sq.assigned_to IS NULL
          ORDER BY sq.priority, sq.created_at LIMIT :cap""",
 }
+
+_HAS_OWNERS = """
+    SELECT EXISTS (SELECT 1 FROM data_owners WHERE tenant_id = CAST(:tid AS uuid))
+        OR EXISTS (SELECT 1 FROM glossary_terms WHERE tenant_id = CAST(:tid AS uuid)
+                    AND data_steward_id IS NOT NULL)"""
 
 _LOAD_SQL = f"""
     SELECT assigned_to::text, COUNT(*) FROM (
@@ -293,7 +318,8 @@ def active_users(session, tid: str) -> set[str]:
 
 
 def write_assignments(session, tid: str, kind: str, rows: list[tuple], label: str = "system",
-                      actor: Optional[str] = None, note: Optional[str] = None, only_unassigned: bool = True) -> int:
+                      actor: Optional[str] = None, note: Optional[str] = None, only_unassigned: bool = True,
+                      fallback: Optional[str] = None) -> int:
     """Set owner (+team, +rule) on items. Issues get an 'assign' event per changed row."""
     if not rows:
         return 0
@@ -316,12 +342,14 @@ def write_assignments(session, tid: str, kind: str, rows: list[tuple], label: st
                                              to_value, note)
             SELECT CAST(:tid AS uuid), upd.id, CAST(:actor AS uuid), :label, 'assign', upd.prev::text,
                    upd.uid::text, COALESCE(:note, CASE WHEN r.name IS NOT NULL THEN 'auto-assigned by rule: ' || r.name
-                                                      ELSE 'auto-assigned to fallback owner' END)
+                                                      WHEN upd.uid = CAST(:fallback AS uuid)
+                                                      THEN 'auto-assigned to fallback owner'
+                                                      ELSE 'auto-assigned to data owner' END)
               FROM upd LEFT JOIN assignment_rules r ON r.id = upd.rule"""
     else:
         sql = upd + " SELECT COUNT(*) FROM upd"
     p = {"tid": tid, "ids": [r[0] for r in rows], "users": [r[1] for r in rows], "teams": [r[2] for r in rows],
-         "rules": [r[3] for r in rows], "label": label, "actor": actor, "note": note}
+         "rules": [r[3] for r in rows], "label": label, "actor": actor, "note": note, "fallback": fallback}
     res = session.execute(text(sql), p)
     return res.rowcount if kind == "issue" else int(res.scalar() or 0)
 
@@ -336,7 +364,7 @@ def auto_assign(session, tid: str) -> dict[str, int]:
                  "SELECT id, name, match, assign_user_id, assign_team_id FROM assignment_rules "
                  "WHERE tenant_id = CAST(:tid AS uuid) AND enabled ORDER BY position, created_at"), {"tid": tid})]
     settings = load_settings(session, tid)
-    if not rules and not settings["fallback"]:
+    if not rules and not settings["fallback"] and not session.execute(text(_HAS_OWNERS), {"tid": tid}).scalar():
         return {"issue": 0, "queue": 0}
     teams, active = load_teams(session, tid), active_users(session, tid)
     load = {u: int(n) for u, n in session.execute(text(_LOAD_SQL), {"tid": tid})}
@@ -346,9 +374,11 @@ def auto_assign(session, tid: str) -> dict[str, int]:
         for r in session.execute(text(_CANDIDATES[kind]), {"tid": tid, "cap": BATCH}):
             it = dict(r._mapping)
             it.update(org_values(it.pop("record_key")))
+            it["owners"] = [o for o in (*(it.pop("owners") or ()), it.pop("glossary_steward")) if o]
             items.append(it)
         out[kind] = write_assignments(session, tid, kind, plan(items, rules, teams, active, load,
-                                                               settings["fallback"]))
+                                                               settings["fallback"]),
+                                      fallback=settings["fallback"])
     for t in teams.values():
         session.execute(text("UPDATE triage_teams SET rr_cursor = :c WHERE id = CAST(:id AS uuid) "
                              "AND rr_cursor <> :c"), {"c": t.cursor, "id": t.id})
