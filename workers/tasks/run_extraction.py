@@ -8,10 +8,12 @@ coverage (rows, window, truncation, failures) is stored on the version.
 """
 
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import logging
+import os
 import uuid
+from typing import Callable, Optional
 
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import text
@@ -48,6 +50,56 @@ def latest_activity(frames: dict) -> str | None:
     return latest.date().isoformat() if latest is not None else None
 
 
+DELTA_FULL_DAYS = int(os.getenv("MERIDIAN_DELTA_FULL_DAYS", "7"))
+
+
+def delta_baseline(session, tenant_id: str, system_id: str, modules: list[str]) -> Optional[dict[str, object]]:
+    """The latest stored version of the same system and objects (id plus metadata) a delta can build on."""
+    row = session.execute(text("""
+        SELECT id::text, metadata FROM analysis_versions
+         WHERE tenant_id = :tid AND metadata->>'system_id' = :sid
+           AND metadata->'modules' = CAST(:mods AS jsonb)
+           AND metadata->>'dataset_path' IS NOT NULL AND status <> 'failed'
+         ORDER BY run_at DESC LIMIT 1
+    """), {"tid": tenant_id, "sid": system_id, "mods": json.dumps(modules)}).fetchone()
+    return {**(row[1] or {}), "id": row[0]} if row else None
+
+
+def delta_plan(baseline: Optional[dict[str, object]], now: datetime, full_days: int) -> Optional[tuple[str, str]]:
+    """(since YYYYMMDD, full_at) when a delta may run, else None (read in full). A delta needs a
+    baseline whose last full read is at most ``full_days`` old. The periodic full read catches
+    records archived or deleted without a change document from tables SAP cannot count."""
+    from sap.change_documents import since_date
+
+    started = baseline.get("started_at") if baseline else None
+    if not isinstance(started, str):
+        return None
+    prior = baseline.get("delta") if isinstance(baseline.get("delta"), dict) else {}
+    full_at = str(prior.get("full_at") or started)
+    if now - datetime.fromisoformat(full_at) > timedelta(days=full_days):
+        return None
+    return since_date(started), full_at
+
+
+def baseline_loader(prefix: str) -> Callable[[str], "Optional[pd.DataFrame]"]:
+    """``load(table)``: the baseline bundle's table with plain field names, or None if it has none."""
+    import pandas as pd
+
+    from api.config import settings
+    from api.services.storage import download_file
+    from workers.dataset import parquet_name
+
+    def load(table: str) -> Optional[pd.DataFrame]:
+        try:
+            data = download_file(settings.minio_bucket_uploads, f"{prefix}{parquet_name(table)}")
+        except Exception:  # ponytail: any storage miss reads the table in full; narrow once storage errors are typed
+            return None
+        df = pd.read_parquet(io.BytesIO(data))
+        return df.fillna("").astype(str).rename(columns=lambda c: c.split(".", 1)[-1])
+
+    return load
+
+
 @celery_app.task(
     bind=True,
     name="workers.tasks.run_extraction.run_extraction",
@@ -57,7 +109,7 @@ def latest_activity(frames: dict) -> str | None:
     reject_on_worker_lost=True,
 )
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
-                   scope=None, analyse=True, label=None, version_id=None):
+                   scope=None, analyse=True, label=None, version_id=None, delta=False):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
     The version is stored as ``extracted`` with its objects, scope and per-object
@@ -65,6 +117,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     (POST /api/v1/versions/{id}/analyse). Every download is a new version.
     Progress is reported to the job registry as job ``dl-<version_id>``
     (api/services/jobs.py); the caller may pre-register it as queued.
+    ``delta`` re-reads only what SAP's change documents say changed since the previous version.
     """
     from api.services.task_progress import publish_progress
 
@@ -127,7 +180,18 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 jobs.update_job(tenant_id, job_id, stage="read", rows_done=sum(stored_rows.values()),
                                 message=f"Stored {table}")
 
-            frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress, sink=store)
+            from api.services.connectivity_manager import DeltaRequest
+
+            baseline = delta_baseline(session, tenant_id, system_id, modules) if delta else None
+            dplan = delta_plan(baseline, datetime.now(timezone.utc), DELTA_FULL_DAYS) if delta else None
+            request = DeltaRequest(dplan[0], baseline_loader(str(baseline["dataset_path"]))) \
+                if dplan and baseline else None
+            frames, coverage = manager.extract(system_id, modules, scope=scope, progress=_progress, sink=store,
+                                               delta=request)
+            fell_back = request is None or any(c["table"] == "CDHDR:delta" and c["status"] == "delta_fallback"
+                                               for c in coverage)
+            delta_meta = {"full_at": started["started_at"]} if fell_back or not dplan or not baseline else \
+                {"baseline_version_id": baseline["id"], "since": dplan[0], "full_at": dplan[1]}
             progress({"step": "saving", "percent": 99})
             jobs.update_job(tenant_id, job_id, stage="store", message="Storing data")
             # refresh the live configuration the value rules compare against
@@ -170,6 +234,7 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                     "sap_utc_offset_seconds": getattr(manager, "sap_utc_offset_seconds", None),
                     "dataset_path": prefix, "object_rows": object_rows,
                     "coverage": coverage, "row_count": total_rows,
+                    "delta": delta_meta,
                     # every data table read completely (row count reconciled, no truncation, no paging drift)
                     "extraction_complete": all(c.get("complete", True) for c in coverage if c["status"] == "live")
                                            and not any(c["status"] == "failed" for c in coverage),
