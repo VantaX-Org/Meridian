@@ -16,6 +16,7 @@ from api.services.bpmn_validate import BPMN, validate_package
 from api.services.process_discovery.generate import generate
 from api.services.process_discovery.mining import Edge, MiningResult
 from sap.process_definitions import reference_document
+from api.services.process_discovery.builders.r2r import MAPPING as R2R_MAPPING
 from tests.process_discovery.test_generate import HAPPY, MAP, ODD, REWORK, _result
 from tests.test_bpmn_export import _files, _manifest, _xsd_validate
 
@@ -157,10 +158,33 @@ def test_bytes_are_stable_across_exports_and_edge_order(doc: ProcessModelDocumen
     assert export_zip(shuffled, None, META) == data
 
 
-def test_no_event_resources_in_export(files: Files) -> None:
-    text = b"".join(files.values()).decode()
-    for needle in (*LEAKY, "@", "case_id", "user_id"):
-        assert needle not in text, needle
+def test_no_event_resources_in_export(doc: ProcessModelDocument) -> None:
+    """case_type is the exported free-text field fed from event data (README). Seed leaky values into it."""
+    dirty = doc.model_copy(deep=True)
+    seeded = 0
+    for n in _walk(dirty):
+        if n.discovery is not None:
+            n.discovery.case_type = " ".join(LEAKY)
+            seeded += 1
+    assert seeded
+    for name, blob in _files(export_zip(dirty, None, META)).items():
+        text = blob.decode()
+        for needle in (*LEAKY, "@", "case_id", "user_id"):
+            assert needle not in text, (name, needle)
+
+
+def test_shared_activity_is_never_summed_across_l1s(doc: ProcessModelDocument) -> None:
+    """RMRP invoice posting sits under PTP and R2R; each L1 keeps its own count, no total exists anywhere."""
+    n = 4321
+    ptp = generate(reference_document(), MiningResult("PTP", "po_item", {
+        "po_item": _result("po_item", [(("INVOICE_RECEIPT",), n)])}), MAP, system_type="ecc").document
+    r2r = generate(reference_document(), MiningResult("R2R", "fi_doc", {
+        "fi_doc": _result("fi_doc", [(("POST_GL_DOC",), n)], mapping=R2R_MAPPING)}), R2R_MAPPING,
+        system_type="ecc").document
+    both = ProcessModelDocument(**{**ptp.model_dump(), "l1": [ptp.l1[0], r2r.l1[0]]})
+    text = b"".join(_files(export_zip(both, None, META)).values()).decode()
+    assert str(2 * n) not in text
+    assert "event_count" not in text and "eventCount" not in text
 
 
 def test_export_never_sums_event_counts_across_l1s(doc: ProcessModelDocument) -> None:

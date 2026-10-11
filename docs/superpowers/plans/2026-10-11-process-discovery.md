@@ -6156,7 +6156,8 @@ def _discovery_readme(document: ProcessModelDocument, disc: dict[str, Any]) -> s
         "1. Open the target folder.\n"
         "2. Choose Import, then BPMN 2.0 (.bpmn), and upload the files from the zip. Start with L1_<L1>.bpmn,\n"
         "   then the remaining files.\n"
-        "3. Signavio links each callActivity to the imported model whose process id equals its calledElement.\n")
+        "3. Each callActivity's calledElement is the process id of the exported file it refers to. Signavio may\n"
+        "   not link them on import: confirm the links after import and set any missing ones by hand.\n")
 
 
 def export_node(document: ProcessModelDocument, node_id: str, overlay: Optional[dict[str, Any]],
@@ -10488,7 +10489,7 @@ export function ExportDialog({ open, onOpenChange, runId, l1, node, nodeName, fi
           <ol className="grid list-decimal gap-1 pl-5">
             <li>Open the target folder in Signavio Process Manager.</li>
             <li>Choose Import, then BPMN 2.0 (.bpmn), and upload the files from the zip. Start with <Mono>{`L1_${l1}.bpmn`}</Mono>, then the rest.</li>
-            <li>Signavio links each call activity to the imported model whose process id equals its called element.</li>
+            <li>Each call activity's called element is the process id of the exported file it refers to. Signavio may not link them on import: confirm the links after import and set any missing ones by hand.</li>
           </ol>
         </section>
         {run.isError && <Notice tone="danger" title="Could not export">{apiErrorMessage(run.error)}</Notice>}

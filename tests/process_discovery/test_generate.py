@@ -21,9 +21,9 @@ REWORK = ("CREATE_PO_ITEM", "CHANGE_PO_QTY", "CHANGE_PO_QTY", *HAPPY[1:])
 ODD = ("CREATE_PO_ITEM", "ZZ_NEW", "INVOICE_RECEIPT")
 
 
-def _result(case_type: str, variants: list[tuple[tuple[str, ...], int]], edges=()) -> CaseTypeResult:
+def _result(case_type: str, variants: list[tuple[tuple[str, ...], int]], edges=(), mapping=MAP) -> CaseTypeResult:
     """A CaseTypeResult whose activity stats are counted from the variants, as the SQL would."""
-    rows = {m.key: m for m in MAP if m.case_type == case_type}
+    rows = {m.key: m for m in mapping if m.case_type == case_type}
     total = sum(n for _, n in variants)
     vs = [Variant(f"{i:032x}", acts, n, n / total, 100.0 * (i + 1), 200.0 * (i + 1), ("c",))
           for i, (acts, n) in enumerate(variants)]

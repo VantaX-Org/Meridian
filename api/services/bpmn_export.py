@@ -11,7 +11,9 @@ import json
 import re
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import Any, Callable, Optional, Sequence, TypedDict, Union
+from typing import Callable, Optional, Sequence, TypedDict, Union
+
+from pydantic import BaseModel
 
 from api.models.process_model import (L1, L2, L3, L4, L5, Diagram, FieldRef, Flow, Node, ProcessModelDocument,
                                       VariantRef)
@@ -28,6 +30,7 @@ for _p, _u in (("bpmn", BPMN), ("bpmndi", BPMNDI), ("dc", DC), ("di", DI), ("mer
     ET.register_namespace(_p, _u)
 
 _STATUS_WORD = {"red": "blocked", "amber": "at risk", "green": "ready"}
+_CASE_TYPE = re.compile(r"[a-z][a-z0-9_]*")  # case notions are identifiers; anything else is not written to the export
 _CASES = re.compile(r"^([0-9,]+) cases$")  # flow label written by process discovery (generate._diagram)
 _Parent = Union[L1, L2, L3]
 _Child = Union[L2, L3, L4]
@@ -47,12 +50,60 @@ class DiscoveryMeta(TypedDict, total=False):
 
 class ExportMeta(TypedDict, total=False):
     """The ``meta`` argument of ``export_zip``; ``name``, ``version_no`` and ``exported_at`` are always given."""
-    model_id: Optional[str]
+    model_id: str | None
     name: str
     version_no: int
     exported_at: str
     app_version: str
     discovery: DiscoveryMeta
+
+
+class _LevelRow(TypedDict):
+    level: int
+    id: str
+    name: str
+    file: str
+    parent: str | None
+    order: int
+
+
+class _FieldRow(TypedDict):
+    field: str
+    check_id: str | None
+    mandatory: bool
+
+
+class _ActivityRow(TypedDict):
+    id: str
+    l4_id: str
+    name: str
+    tcode: str | None
+    fields: list[_FieldRow]
+    check_ids: list[str]
+    dq_status: str | None
+
+
+class _ModelRow(TypedDict):
+    id: str | None
+    name: str
+    version_no: int
+    exported_at: str
+
+
+class _Manifest(TypedDict, total=False):
+    """manifest.json; ``discovery`` is optional and ignored by ``import_zip``."""
+    schema_version: int
+    model: _ModelRow
+    overlay_version_id: Optional[str]
+    levels: list[_LevelRow]
+    activities: list[_ActivityRow]
+    discovery: DiscoveryMeta
+
+
+class _Head(TypedDict):
+    proc: ET.Element
+    lv: ET.Element
+    kw: dict[str, object]
 
 
 class _BuildMeta(ExportMeta):
@@ -94,14 +145,14 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "model"
 
 
-def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[dict[str, Any]] = None, text: Optional[str] = None):
+def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[dict[str, object]] = None, text: Optional[str] = None):
     el = ET.SubElement(parent, _q(ns, tag), {k: str(v) for k, v in (attrs or {}).items() if v is not None})
     if text is not None:
         el.text = text
     return el
 
 
-def _extras(obj: Any, prefix: str = "") -> dict[str, str]:
+def _extras(obj: BaseModel, prefix: str = "") -> dict[str, str]:
     """Optional ``source`` / ``evidence`` fields (added by the config-derived flows batch), exported when present."""
     out: dict[str, str] = {}
     for f in ("source", "evidence"):
@@ -117,8 +168,8 @@ def _extras(obj: Any, prefix: str = "") -> dict[str, str]:
     return out
 
 
-def _read_extras(cls: Any, attrs: dict[str, str], prefix: str = "") -> dict[str, Any]:
-    out: dict[str, Any] = {}
+def _read_extras(cls: type[BaseModel], attrs: dict[str, str], prefix: str = "") -> dict[str, object]:
+    out: dict[str, object] = {}
     for f in ("source", "evidence"):
         key = prefix + (f if not prefix else f.capitalize())
         if f in cls.model_fields and key in attrs:
@@ -149,7 +200,7 @@ def _diagram(defs: ET.Element, pid: str, elems: list[tuple[str, str, ET.Element]
     plane = _sub(d, BPMNDI, "BPMNPlane", {"id": f"P_{pid}", "bpmnElement": pid})
     for key, eid, _ in elems:
         b = lay.shapes[key]
-        attrs: dict[str, Any] = {"id": f"S_{eid}", "bpmnElement": eid}
+        attrs: dict[str, object] = {"id": f"S_{eid}", "bpmnElement": eid}
         if gateways.get(key) == "exclusiveGateway":
             attrs["isMarkerVisible"] = "true"
         shape = _sub(plane, BPMNDI, "BPMNShape", attrs)
@@ -438,8 +489,8 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta:
     """
     root = f"{slug(meta['name'])}-v{meta['version_no']}"
     files: dict[str, bytes] = {}
-    levels: list[dict[str, Any]] = []
-    activities: list[dict[str, Any]] = []
+    levels: list[_LevelRow] = []
+    activities: list[_ActivityRow] = []
 
     for level, node, parent, pos, data_fn in _file_plan(document, overlay):
         name = f"L{level}_{node.id}.bpmn"
@@ -457,7 +508,7 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta:
                             "fields": [{"field": f.field, "check_id": f.check_id, "mandatory": f.mandatory}
                                        for f in a.fields],
                             "check_ids": a.check_ids, "dq_status": dq.get("dq_status")})
-    manifest = {
+    manifest: _Manifest = {
         "schema_version": 1,
         "model": {"id": meta.get("model_id"), "name": meta["name"], "version_no": meta["version_no"],
                   "exported_at": meta["exported_at"]},
@@ -499,7 +550,8 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta:
 
 def _discovery_readme(document: ProcessModelDocument, disc: DiscoveryMeta) -> str:
     window = disc.get("window") or {}
-    notions = sorted({l1.discovery.case_type for l1 in document.l1 if l1.discovery and l1.discovery.case_type})
+    notions = sorted({l1.discovery.case_type for l1 in document.l1 if l1.discovery and l1.discovery.case_type
+                     and _CASE_TYPE.fullmatch(l1.discovery.case_type)})
     threshold = disc.get("edge_threshold", EDGE_THRESHOLD)
     return (
         f"\nThis is an as-is model discovered from the SAP event log, {window.get('from') or 'start'} to "
@@ -547,7 +599,7 @@ def import_zip(data: bytes) -> ProcessModelDocument:
         kids = [c.get("calledElement").split("_", 1)[1] for c in proc.findall(_q(BPMN, "callActivity"))]
         return sorted(((int(_ext(proc_of(level + 1, k), "level").get("pos")), k) for k in kids))
 
-    def head(level: int, id_: str, cls: Any) -> dict[str, Any]:
+    def head(level: int, id_: str, cls: type[BaseModel]) -> _Head:
         proc = proc_of(level, id_)
         lv = _ext(proc, "level")
         return {"proc": proc, "lv": lv, "kw": {"id": id_, "name": proc.get("name") or "",

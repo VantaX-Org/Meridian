@@ -931,7 +931,7 @@ In Signavio Process Manager:
 
 1. Open the target folder.
 2. Choose Import, then BPMN 2.0 (`.bpmn`), and upload the files from the zip. Start with `L1_<L1>.bpmn`, then the remaining files.
-3. Signavio links each `callActivity` to the imported model whose process id equals its `calledElement`.
+3. Each callActivity's calledElement is the process id of the exported file it refers to. Signavio may not link them on import: confirm the links after import and set any missing ones by hand. (Unverified: Signavio's import behaviour is not confirmed, so the links are checked and set manually.)
 
 The per-process `.bpmn` download is for a single-diagram import. The README in the zip states these steps verbatim.
 

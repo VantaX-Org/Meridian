@@ -89,7 +89,7 @@ Legend: V view · C create · E edit · A approve · R run · X export · ★ ad
 | audit | V | | | | | V X | |
 | process | V X | V | V | V | V | V | V |
 
-Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`. `process_analyst` and `platform_admin` hold V R X on `process`; nobody reaches (`process`, `export`) through the legacy `export` action, so case-level data leaves only with `export_process`.
+Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`. `process_analyst` and `platform_admin` hold V R X on `process`; nobody reaches (`process`, `export`) through the legacy `export` action, so the BPMN export package (`export_process`) is the only path for the exported model. Case-level samples are not gated that tightly: `GET /runs/{id}/variants` returns `sample_case_ids` under plain `view`, and the export strips event-derived text (case notions that are not identifiers) rather than relying on the permission.
 
 ### 2.3 Scope dimensions
 
@@ -196,7 +196,7 @@ def require_permission(action: str, *, resource: str | None = None,
 
 Resolution order inside the dependency: `dev_role_override` → JWT → `grants_for` (empty → `[(users.role, Scope())]`) → `has_permission_scoped`. On failure of a scoped check: 403 whose body is nested by FastAPI, `{"detail": {"detail": "forbidden", "resource": …, "action": …, "request_access": true}}`, so the UI reads `body.detail.request_access` to offer the request-access flow. Tenant-wide (unscoped) checks keep the legacy string detail.
 
-Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `findings`, `versions`, `migration`, `cleaning`, `remediation`, `master_records`, `stewardship` get `scope=scope_from_path` in wave 14; everything else stays tenant-wide. Nothing becomes more permissive at any step.
+Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `findings`, `versions`, `migration`, `cleaning`, `remediation`, `master_records`, `stewardship`, `process_discovery` get `scope=scope_from_path` in wave 14 (the run-scoped `process_discovery` routes resolve `run_id` to `system_id` first and check the system scope against that); everything else stays tenant-wide. Nothing becomes more permissive at any step.
 
 ### 3.3 Endpoints
 
