@@ -35,7 +35,7 @@ def _compute_overall_status(readiness_scores: dict) -> str:
 
 def _compute_overall_score(readiness_scores: dict) -> float:
     """Average of module readiness scores."""
-    scores = [m.get("score", 0.0) for m in readiness_scores.values()]
+    scores = [m["score"] for m in readiness_scores.values() if m.get("score") is not None]
     if not scores:
         return 0.0
     return round(sum(scores) / len(scores), 2)
