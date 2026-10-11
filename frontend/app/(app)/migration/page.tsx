@@ -6,17 +6,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, ExplorerPage, Pill, Sparkline, Stat, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, Pill, Sparkline, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
 import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import type { MigrationWave, TransferVerdict, WaveVerdict } from "@/types/api";
 import { CreateWaveDialog, STAGE_LABEL } from "./create-wave-dialog";
 
-export const VERDICT_TONE: Record<WaveVerdict, PillTone> = { go: "go", at_risk: "at-risk", no_go: "no-go" };
-export const VERDICT_LABEL: Record<WaveVerdict, string> = { go: "Go", at_risk: "At risk", no_go: "No-go" };
 const FROM_ENGINE: Record<TransferVerdict, WaveVerdict> = { go: "go", conditional: "at_risk", "no-go": "no_go" };
 
 export default function MigrationPage() {
