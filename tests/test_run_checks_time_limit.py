@@ -37,3 +37,112 @@ def test_soft_time_limit_marks_the_version_failed() -> None:
     failed.assert_called_once()
     assert failed.call_args.args[1:3] == ("t1", "v1")
     assert "time limit" in failed.call_args.args[3]
+
+
+# ── no broad handler on the run_checks path may swallow the soft limit ─────────
+
+def _lazy_frames():
+    from tests.checks.test_lazy_frames import MODULE, _bundle, _frames
+    return MODULE, _frames(_bundle(rows=10), True)
+
+
+def test_soft_limit_in_prefetch_ends_the_run() -> None:
+    from checks.frames import TableFrames
+
+    module, frames = _lazy_frames()
+    with patch.object(TableFrames, "prefetch", side_effect=SoftTimeLimitExceeded()), \
+            pytest.raises(SoftTimeLimitExceeded):
+        engine_run_checks(module, frames, "t1", as_of="2026-01-01")
+
+
+def test_soft_limit_in_on_progress_ends_the_run() -> None:
+    def progress(done: int, total: int, rule_id: str) -> None:
+        raise SoftTimeLimitExceeded()
+
+    with pytest.raises(SoftTimeLimitExceeded):
+        engine_run_checks("business_partner", _make_bp_dataframe(20), "t1", on_progress=progress)
+
+
+def test_soft_limit_in_run_rule_outside_the_check_ends_the_run() -> None:
+    import checks.runner as runner
+
+    with patch.object(runner, "apply_context", side_effect=SoftTimeLimitExceeded()), \
+            pytest.raises(SoftTimeLimitExceeded):
+        engine_run_checks("business_partner", _make_bp_dataframe(20), "t1")
+
+
+def test_soft_limit_in_grain_grouping_ends_the_run() -> None:
+    from checks.frames import TableFrames
+
+    orig, calls = TableFrames.grain_for, []
+
+    def first_call_hits_the_limit(self: TableFrames, *a: object, **kw: object) -> str | None:
+        calls.append(1)
+        if len(calls) == 1:
+            raise SoftTimeLimitExceeded()
+        return orig(self, *a, **kw)
+
+    with patch.object(TableFrames, "grain_for", first_call_hits_the_limit), pytest.raises(SoftTimeLimitExceeded):
+        engine_run_checks("business_partner", _make_bp_dataframe(20), "t1")
+
+
+def test_soft_limit_in_prefetch_planning_is_not_swallowed() -> None:
+    import checks.runner as runner
+    from checks.runner import _rule_columns
+
+    module, frames = _lazy_frames()
+    with patch.object(runner, "_frame_inputs", side_effect=SoftTimeLimitExceeded()), \
+            pytest.raises(SoftTimeLimitExceeded):
+        _rule_columns({"check_class": "null_check", "field": "MARA.MATNR"}, frames, None)
+
+
+def test_soft_limit_in_fix_enrichment_ends_the_run() -> None:
+    from checks.base import CheckResult
+
+    with patch.object(CheckResult, "model_copy", side_effect=SoftTimeLimitExceeded()), \
+            pytest.raises(SoftTimeLimitExceeded):
+        engine_run_checks("business_partner", _make_bp_dataframe(20), "t1")
+
+
+def test_soft_limit_in_regex_vectorising_ends_the_run() -> None:
+    import pandas as pd
+    from checks.types.regex_check import RegexCheck
+
+    df = pd.DataFrame({"T.F": ["a", "b"]})
+    with patch("pandas.core.strings.accessor.StringMethods.match", side_effect=SoftTimeLimitExceeded()), \
+            pytest.raises(SoftTimeLimitExceeded):
+        RegexCheck({"id": "R1", "field": "T.F", "pattern": "a"}).evaluate(df)
+
+
+def test_soft_limit_in_auto_fix_verification_is_not_swallowed() -> None:
+    import pandas as pd
+    from checks import auto_fix
+
+    def evaluate(df: pd.DataFrame) -> None:
+        raise SoftTimeLimitExceeded()
+
+    df = pd.DataFrame({"T.F": ["a "]})
+    with patch.object(auto_fix, "_spec", return_value={"steps": []}), \
+            patch.object(auto_fix, "_steps", return_value=("a", "high")), pytest.raises(SoftTimeLimitExceeded):
+        auto_fix.proposals({"field": "T.F"}, df, pd.Series([True]), evaluate=evaluate)
+
+
+def test_every_broad_handler_in_the_task_reraises_the_soft_limit() -> None:
+    """Every ``except Exception`` in the run_checks task (bar the progress heartbeat thread, which
+    the soft limit never reaches) first lets SoftTimeLimitExceeded through."""
+    import ast
+    import inspect
+
+    from workers.tasks import run_checks as mod
+
+    tree = ast.parse(inspect.getsource(mod))
+    beat = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "beat")
+    in_beat = {id(n) for n in ast.walk(beat)}
+    handlers = [h for h in ast.walk(tree) if isinstance(h, ast.ExceptHandler) and id(h) not in in_beat
+                and isinstance(h.type, ast.Name) and h.type.id == "Exception"]
+    assert len(handlers) > 20
+    bad = [h.lineno for h in handlers if not (
+        isinstance(h.body[0], ast.Expr) and isinstance(h.body[0].value, ast.Call)
+        and getattr(h.body[0].value.func, "id", "") == "reraise_soft_limit")]
+    # the task's own outer handler already has an ``except SoftTimeLimitExceeded: raise`` before it
+    assert bad == [max(h.lineno for h in handlers)]

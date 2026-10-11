@@ -16,6 +16,8 @@ from typing import Any, Callable, Optional
 import numpy as np
 import pandas as pd
 
+from checks.base import reraise_soft_limit
+
 CONFIDENCE = ("high", "medium", "low")
 LEGACY_CONFIDENCE = "medium"  # fix_value is a steward-authored default, never bulk auto-approved
 BLANK, OTHER = "__blank__", "__other__"
@@ -316,7 +318,8 @@ def proposals(rule: dict, df: pd.DataFrame, rows: pd.Series, refs: dict | None =
         fixed[p] = v
     try:
         ev = evaluate(df.assign(**{field: fixed}))
-    except Exception:
+    except Exception as e:
+        reraise_soft_limit(e)
         return {}  # cannot verify: never propose blind
     if ev is None:
         return {}

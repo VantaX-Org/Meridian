@@ -5,6 +5,15 @@ import pandas as pd
 from celery.exceptions import SoftTimeLimitExceeded
 from pydantic import BaseModel, PrivateAttr
 
+
+def reraise_soft_limit(exc: BaseException) -> None:
+    """Re-raise the task's soft time limit from a broad ``except Exception``.
+
+    SoftTimeLimitExceeded subclasses Exception, so a handler that swallows it leaves the version
+    'running' until the hard kill. Call this first in every broad handler on the run path."""
+    if isinstance(exc, SoftTimeLimitExceeded):
+        raise exc
+
 # Exact SAP primary key fields — highest priority.
 SAP_PRIMARY_KEYS = [
     "BUT000.PARTNER", "MARA.MATNR", "SKA1.SAKNR", "KNA1.KUNNR",

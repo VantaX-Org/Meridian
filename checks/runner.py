@@ -11,7 +11,7 @@ import yaml
 from celery.exceptions import SoftTimeLimitExceeded
 
 from checks import auto_fix, cost
-from checks.base import BaseCheck, CheckResult, as_of_time, failing_values, record_keys, sap_number
+from checks.base import BaseCheck, CheckResult, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.profiling import is_sensitive
@@ -437,7 +437,8 @@ def _rule_columns(rule: dict, frames: TableFrames,
         for c in [c for x in excl for c in (x.get("fields") or [x["field"]])] + list(rule.get("applies_when") or {}):
             stripped[c] = stripped.get(c, 0) + 1
         return set(cols) | set(optional), stripped
-    except Exception:  # run_rule reports it
+    except Exception as e:  # run_rule reports it
+        reraise_soft_limit(e)
         return set(), {}
 
 
@@ -532,7 +533,8 @@ def run_checks(
         try:
             cols = rule_columns(rule) if rule.get("check_class") in REGISTRY else []
             return frames.grain_for(cols, rule.get("grain")) or "", tuple(sorted(tables_of(cols)))
-        except Exception:
+        except Exception as e:
+            reraise_soft_limit(e)
             return "", ()
     groups = [group_of(r) for r in rules]
     done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
@@ -667,6 +669,7 @@ def run_checks(
                 "record_fixes": record_fixes or None,
             })
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Fix enrichment failed for {result.check_id}: {e}")
 
     return results
