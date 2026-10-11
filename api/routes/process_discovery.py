@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 from celery import chain
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, BeforeValidator, Field, JsonValue, field_validator
+from pydantic import BaseModel, BeforeValidator, JsonValue, field_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,9 +123,16 @@ class ConformanceStat(BaseModel):
     fitness: Optional[float] = None
 
 
+class ThroughputStat(BaseModel):
+    median_seconds: Optional[float] = None
+
+
 class RunStats(BaseModel):
     """The part of ``process_discovery_runs.stats`` the catalogue reads (spec §3.6)."""
     case_types: dict[str, int] = {}
+    variants: Optional[int] = None
+    throughput: ThroughputStat = ThroughputStat()
+    automation_rate: Optional[float] = None
     conformance: ConformanceStat = ConformanceStat()
     tables: dict[str, TableStat] = {}
 
@@ -137,10 +144,16 @@ class SourceTable(BaseModel):
 
 
 class LastRun(BaseModel):
+    """The latest completed run of an L1: the card's data. Newer runs are ``in_progress`` / ``failed``."""
     id: str
     status: str
+    job_id: Optional[str] = None
     finished_at: Optional[datetime]
+    error: Optional[str] = None
     cases: Optional[int]
+    variants: Optional[int] = None
+    median_seconds: Optional[float] = None
+    automation_rate: Optional[float] = None
     fitness: Optional[float]
 
 
@@ -360,8 +373,9 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
             coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
             last_run=None if r is None else LastRun(
-                id=r.id, status=r.status, finished_at=r.finished_at,
-                cases=stats.case_types.get(primary_case_type(l1, system_type)),
+                id=r.id, status=r.status, job_id=r.job_id, finished_at=r.finished_at, error=r.error,
+                cases=stats.case_types.get(primary_case_type(l1, system_type)), variants=stats.variants,
+                median_seconds=stats.throughput.median_seconds, automation_rate=stats.automation_rate,
                 fitness=stats.conformance.fitness),
             in_progress=ref if ref and ref.status != "failed" else None,
             failed=ref if ref and ref.status == "failed" else None,

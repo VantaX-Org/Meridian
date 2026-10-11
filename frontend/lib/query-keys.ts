@@ -154,6 +154,10 @@ export const queryKeys = {
   owners: (kind: string) => ["owners", kind] as const,
   ruleLineage: (checkId: string) => ["rule-lineage", checkId] as const,
   alertChannels: () => ["alert-channels"] as const,
+  // Process discovery: first element "process" so a process_discovery job's touches (jobs.py) refreshes them.
+  processCatalogue: (systemId: string) => ["process", "catalogue", systemId] as const,
+  processRuns: (systemId: string) => ["process", "runs", systemId] as const,
+  processRun: (runId: string) => ["process", "run", runId] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */
@@ -210,4 +214,5 @@ export type TouchedEntity =
   | "design-config-deviation"
   | "design-coverage"
   | "design-snapshots"
-  | "design-diff";
+  | "design-diff"
+  | "process";

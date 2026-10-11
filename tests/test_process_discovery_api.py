@@ -112,6 +112,10 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             by = {r["l1"]: r for r in cat}
             assert by["PTP"]["coverage"] == "partial" and by["PTP"]["reason"] is None
             assert by["PTP"]["last_run"]["id"] == rid and by["PTP"]["last_run"]["cases"] == 2
+            last = by["PTP"]["last_run"]
+            assert last["variants"] >= 1 and last["error"] is None and "job_id" in last
+            assert "median_seconds" in last and "automation_rate" in last
+            assert by["PTP"]["in_progress"] is None and by["PTP"]["failed"] is None
             assert {"table": "EKKO", "rows": 1, "partial": False} in by["PTP"]["sources"]
             assert by["SFX"]["coverage"] == "reference" and by["SFX"]["last_run"] is None
             assert by["SFX"]["reason"].startswith("Connect the SuccessFactors")

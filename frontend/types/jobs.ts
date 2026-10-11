@@ -1,6 +1,6 @@
 /** Shape of api/services/jobs.py — one record per long-running task. */
 
-export type JobKind = "extraction" | "config_sync" | "config_load" | "analysis" | "upload" | "simulation";
+export type JobKind = "extraction" | "config_sync" | "config_load" | "analysis" | "upload" | "simulation" | "process_discovery";
 export type JobStatus = "queued" | "running" | "completed" | "failed";
 export type JobStageStatus = "queued" | "running" | "done" | "failed" | "skipped";
 
@@ -42,6 +42,8 @@ export interface Job {
   version_id?: string;
   modules?: string[];
   /** Entity-prefix list this job changed, e.g. ["object", "rule", "run"]. Absent means unknown — do not invalidate. */
+  /** process_discovery: the queued process_discovery_runs ids this job drives. */
+  run_ids?: string[];
   touches?: string[];
 }
 

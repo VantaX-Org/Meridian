@@ -186,7 +186,7 @@ function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string
         <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with no rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.empty ?? 0).toLocaleString()}</DrillLink></dd></div>
         <div>
           <dt style={{ color: "var(--m-ink-2)" }}>Processes derived</dt>
-          <dd>{load.flows_derived ? <Link href="/process?tab=readiness" className="underline">View in Process</Link> : "None"}</dd>
+          <dd>{load.flows_derived ? <Link href="/insights/process?tab=readiness" className="underline">View in Process</Link> : "None"}</dd>
         </div>
         {load.areas.length ? (
           <div><dt style={{ color: "var(--m-ink-2)" }}>Areas loaded</dt><dd>{load.areas_loaded} of {load.areas_total}</dd></div>

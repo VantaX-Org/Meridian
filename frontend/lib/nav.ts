@@ -32,6 +32,7 @@ import {
   ShieldAlert,
   Sliders,
   UserCog,
+  Workflow,
 } from "lucide-react";
 import {
   BookIcon,
@@ -199,6 +200,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/insights/mining", requires: req("reports", "view"), label: "Pattern mining", icon: BarChart3, keywords: "patterns clustering relationships graph" },
         ],
       },
+    ],
+  },
+  {
+    group: "Process",
+    anyOf: ["view"],
+    items: [
+      { href: "/process", requires: req("process", "view"), label: "As-is processes", icon: Workflow, keywords: "process discovery mining as-is l1 l5 variants conformance signavio bpmn" },
+      { href: "/process/runs", requires: req("process", "view"), label: "Discovery runs", icon: History, keywords: "process discovery run incremental extraction" },
     ],
   },
   {

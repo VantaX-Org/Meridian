@@ -36,7 +36,6 @@ const EXPECTED: Record<string, string> = {
   "/match-rules/constraints": "/mdm/match-rules",
   "/match-rules/tuning": "/mdm/match-rules",
   "/business-process": "/insights/process",
-  "/process": "/insights/process",
   "/process/designer": "/insights/process/designer",
   "/lineage": "/insights/lineage",
   "/mining": "/insights/mining",

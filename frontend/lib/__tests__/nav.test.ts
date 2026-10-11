@@ -105,3 +105,18 @@ describe("wave 18b gap routes", () => {
     expect(items.find((i) => i.href === "/admin/audit")?.anyOf).toEqual(["view_audit", "manage_users"]);
   });
 });
+describe("Process group", () => {
+  const flat = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
+
+  it("lists the catalogue and the runs, both gated on process/view", () => {
+    const group = NAV_GROUPS.find((g) => g.group === "Process");
+    expect(group?.items.map((i) => i.href)).toEqual(["/process", "/process/runs"]);
+    for (const item of group!.items) expect(item.requires).toEqual({ resource: "process", action: "view" });
+  });
+
+  it("highlights the runs entry on a run detail and the catalogue on an L1 drill", () => {
+    expect(activeHref("/process/runs/abc", new URLSearchParams(), flat)).toBe("/process/runs");
+    expect(activeHref("/process/PTP", new URLSearchParams(), flat)).toBe("/process");
+    expect(activeHref("/insights/process", new URLSearchParams(), flat)).toBe("/insights/process");
+  });
+});
