@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, ExplorerPage, Field, Mono, Pill, Select } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, Field, Mono, Pill, Select } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   approveLearnedRule,
@@ -59,7 +59,9 @@ export default function LearnedRulesPage() {
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
     { id: "det", header: "Decided by", cell: ({ row }) => (row.original.determinant ? <Mono>{row.original.determinant}</Mono> : "—") },
     { id: "conf", header: "Holds for", cell: ({ row }) => pct(row.original.confidence) },
-    { id: "viol", header: "Breaks it", cell: ({ row }) => row.original.violations.toLocaleString() },
+    { id: "viol", header: "Breaks it", cell: ({ row }) => (
+      <DrillLink object={row.original.module} run={row.original.version_id ?? undefined}>{row.original.violations.toLocaleString()}</DrillLink>
+    ) },
     { id: "keys", header: "Examples", cell: ({ row }) => <Mono>{row.original.sample_keys.slice(0, 2).join(", ") || "—"}</Mono> },
     {
       id: "act",
@@ -83,7 +85,7 @@ export default function LearnedRulesPage() {
         </div>
       }
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No learned rules here yet. They appear after the next analysis." }}
+      emptyProps={{ title: "No learned rules yet. Mining runs after the second analysis." }}
       errorProps={{
         message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),

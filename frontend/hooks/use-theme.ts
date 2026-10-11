@@ -6,7 +6,8 @@ export type DensityTier = "compact" | "default" | "comfortable";
 const DENSITY_STORAGE_KEY = "aurora:density";
 const DEFAULT_DENSITY: DensityTier = "default";
 
-export type Theme = "dark" | "light";
+/** "system" clears data-theme so the tokens follow prefers-color-scheme. */
+export type Theme = "dark" | "light" | "system";
 const THEME_KEY = "aurora:theme";
 const EVENT = "aurora:prefs";
 
@@ -36,7 +37,8 @@ export function useAuroraPrefs() {
     () => DEFAULT_DENSITY,
   );
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    if (theme === "system") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.density = density;
   }, [theme, density]);
   const set = useCallback((key: string, value: string) => {

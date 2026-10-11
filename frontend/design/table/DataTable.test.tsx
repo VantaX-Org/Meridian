@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DataTable } from "./DataTable";
-import { textColumn } from "./columns";
+import { textColumn, numberColumn, idColumn } from "./columns";
+import { Pager } from "./Pager";
+import { Drawer } from "../primitives/Drawer";
 
 interface Row {
   id: string;
@@ -120,5 +122,82 @@ describe("DataTable", () => {
       expect.objectContaining({ id: "1" }),
     ]));
     expect(onAction.mock.calls[0][0]).toHaveLength(2);
+  });
+
+  it("right-aligns numeric cells, renders identifiers in Mono, and honours dense row height", () => {
+    const cols = [idColumn<Row>("id", "ID"), numberColumn<Row & { n: number }>("n", "N") as never];
+    render(<DataTable columns={cols} data={[{ id: "A1", name: "x", n: 1234 }] as never} getRowId={(r: Row) => r.id} dense />);
+    expect(screen.getByText("A1")).toHaveClass("m-mono");
+    expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "var(--m-row-h-dense)" });
+  });
+
+  it("marks selected rows and shows the floating bulk bar", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={(s) => <button>Act {s.length}</button>} />);
+    fireEvent.click(screen.getByLabelText("Select row 1"));
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByText("Act 1")).toBeInTheDocument();
+    expect(screen.getAllByRole("row")[2]).toHaveClass("bg-[var(--m-accent-soft)]");
+  });
+});
+
+describe("Pager", () => {
+  it("shows the range and disables Previous on page 1", () => {
+    const onPageChange = vi.fn();
+    render(<Pager page={1} pageCount={47} pageSize={50} total={2310} onPageChange={onPageChange} />);
+    expect(screen.getByText(/^1\u201350 of 2\D?310$/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Previous")).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Next"));
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+});
+
+describe("Drawer", () => {
+  it("renders subtitle and footer slots", () => {
+    render(<Drawer open onOpenChange={() => {}} title="T" subtitle="sub-id" footer={<button>Save</button>}>body</Drawer>);
+    expect(screen.getByText("sub-id")).toBeInTheDocument();
+    expect(screen.getByText("Save")).toBeInTheDocument();
+  });
+});
+
+describe("DataTable toolbar", () => {
+  const two = [textColumn<Row>("id", "Id"), textColumn<Row>("name", "Name")];
+
+  it("hides a column from the chooser", () => {
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-cols" />);
+    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByLabelText("Name"));
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("toggles density", () => {
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" />);
+    const btn = screen.getByRole("button", { name: "Compact rows" });
+    fireEvent.click(btn);
+    expect(screen.getByRole("button", { name: "Comfortable rows" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("saves and re-applies a view, keyed by table id", () => {
+    window.localStorage.clear();
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-views" />);
+    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByText("Views"));
+    fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save view" }));
+    expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
+    fireEvent.click(screen.getByText(/^Columns/));
+    fireEvent.click(screen.getByLabelText("Name")); // show again
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Views/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ids only" }));
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("offers CSV export and can hide the toolbar", () => {
+    const { rerender } = render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} />);
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    rerender(<DataTable columns={two} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
   });
 });

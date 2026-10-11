@@ -29,8 +29,8 @@ describe("ReadinessPage", () => {
       configured: true,
     });
     renderWithQuery(<ReadinessPage />);
-    expect(await screen.findByText("go")).toBeInTheDocument();
-    expect(screen.getByText("material_master")).toBeInTheDocument();
+    expect(await screen.findByText("Go")).toBeInTheDocument();
+    expect(screen.getByText("Material Master")).toBeInTheDocument();
     expect(screen.getByText("Wave 1")).toBeInTheDocument();
     expect(screen.getByText("100.0%")).toBeInTheDocument();
   });
@@ -46,7 +46,7 @@ describe("ReadinessPage", () => {
       configured: true,
     });
     renderWithQuery(<ReadinessPage />);
-    await screen.findByText("go");
+    await screen.findByText("Go");
     for (const wave of ["Wave 1", "Wave 2"]) {
       expect(screen.getByRole("columnheader", { name: `${wave} readiness` })).toBeInTheDocument();
       expect(screen.getByRole("columnheader", { name: `${wave} records blocked` })).toBeInTheDocument();

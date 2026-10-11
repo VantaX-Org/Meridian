@@ -18,6 +18,7 @@ export async function inviteUser(body: {
   email: string;
   name?: string;
   role?: UserRole;
+  grants?: { role_key: string; system_id?: string | null; module?: string | null }[];
 }): Promise<{ id: string; email: string; role: string; status: string }> {
   const { data } = await apiClient.post("/api/v1/users/invite", body);
   return data;

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" role="img" aria-label="Meridian">
+  <title>Meridian mark: a gauge arc and a meridian line</title>
+  <!-- gauge: open at the top, like an instrument dial -->
+  <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="#141519" stroke-width="3" stroke-linecap="round"/>
+  <!-- meridian: the reference line every reading is measured against -->
+  <path d="M16 3V29" stroke="#2B4BE0" stroke-width="3" stroke-linecap="round"/>
+</svg>

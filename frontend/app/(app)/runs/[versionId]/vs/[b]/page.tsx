@@ -54,7 +54,7 @@ function severityTone(severity: string): PillTone {
 const diffColumns: ColumnDef<RecordDiffCheck>[] = [
   { accessorKey: "check_id", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
   { accessorKey: "severity", header: "Severity" },
-  { accessorKey: "new", header: "New" },
+  { accessorKey: "new", header: "Added" },
   { accessorKey: "resolved", header: "Resolved" },
   { accessorKey: "persisting", header: "Persisting" },
   {
@@ -211,6 +211,23 @@ export default function CompareRunsPage() {
   const errored = cmpQ.isError || diffQ.isError;
   const empty = !!cmp && !!diff && Object.keys(cmp.delta).length === 0 && diff.checks.length === 0;
   const state: "loading" | "error" | "empty" | undefined = loading ? "loading" : errored ? "error" : empty ? "empty" : undefined;
+  const deltas = cmp ? Object.values(cmp.delta) : [];
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
+  const overallBefore = mean(deltas.map((d) => d.v1_score));
+  const overallAfter = mean(deltas.map((d) => d.v2_score));
+
+  if (loading) {
+    return (
+      <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }} aria-busy="true">
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton height={88} />
+          <Skeleton height={88} />
+          <Skeleton height={88} />
+        </div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
 
   const exportOptions = [
     { format: "pdf" as const, run: () => downloadAuthenticated(getComparisonReportUrl(versionId, v1Param), "comparison.pdf") },
@@ -234,6 +251,13 @@ export default function CompareRunsPage() {
 
   const charts = cmp ? (
     <div className="flex flex-col gap-4">
+      {deltas.length > 0 ? (
+        <div className="flex flex-wrap gap-6">
+          <Stat label="Before" href={`/runs/${versionId}`} value={<span className="tabular-nums">{overallBefore.toFixed(1)}</span>} />
+          <Stat label="After" href={`/runs/${versionId}`} value={<span className="tabular-nums">{overallAfter.toFixed(1)}</span>} />
+          <Stat label="Change" href={`/runs/${versionId}`} value={<Delta value={roundedDelta(overallBefore, overallAfter)} />} />
+        </div>
+      ) : null}
       {Object.entries(cmp.delta).map(([name, d]) => {
         const failing = cmp.checks.newly_failing.filter((c) => c.module === name);
         const fixed = cmp.checks.fixed.filter((c) => c.module === name);
@@ -250,9 +274,9 @@ export default function CompareRunsPage() {
           >
             <h2 className="text-[15px] font-semibold">{formatModuleName(name)}</h2>
             <div className="flex gap-6">
-              <Stat label="Before" value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
-              <Stat label="After" value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
-              <Stat label="Change" value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
+              <Stat label="Before" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
+              <Stat label="After" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
+              <Stat label="Change" href={`/objects/${name}?run=${versionId}`} value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
             </div>
             <Bar data={barData} />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -316,7 +340,7 @@ export default function CompareRunsPage() {
   const waterfallData: ChartPoint[] = diff
     ? [
         { x: "Resolved", y: -diff.totals.resolved },
-        { x: "New", y: diff.totals.new },
+        { x: "Added", y: diff.totals.new },
         { x: "Persisting", y: diff.totals.persisting },
       ]
     : [];

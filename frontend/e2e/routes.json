@@ -28,5 +28,290 @@
     "name": "migration-wave",
     "path": "/migration/w1",
     "heading": "Migration"
+  },
+  {
+    "name": "admin-ai",
+    "path": "/admin/ai",
+    "heading": "AI settings"
+  },
+  {
+    "name": "admin-audit",
+    "path": "/admin/audit",
+    "heading": "Audit log"
+  },
+  {
+    "name": "admin-billing",
+    "path": "/admin/billing",
+    "heading": "Exception billing"
+  },
+  {
+    "name": "admin-jobs",
+    "path": "/admin/jobs",
+    "heading": "Jobs"
+  },
+  {
+    "name": "admin-licence",
+    "path": "/admin/licence",
+    "heading": "Licence"
+  },
+  {
+    "name": "admin-mappings",
+    "path": "/admin/mappings",
+    "heading": "Field mapping"
+  },
+  {
+    "name": "admin-notifications",
+    "path": "/admin/notifications",
+    "heading": "Notifications"
+  },
+  {
+    "name": "admin-reference",
+    "path": "/admin/reference",
+    "heading": "Reference data"
+  },
+  {
+    "name": "admin-roles",
+    "path": "/admin/roles",
+    "heading": "Roles and access"
+  },
+  {
+    "name": "admin-settings",
+    "path": "/admin/settings",
+    "heading": "Settings"
+  },
+  {
+    "name": "admin-triage",
+    "path": "/admin/triage",
+    "heading": "Triage"
+  },
+  {
+    "name": "admin-users",
+    "path": "/admin/users",
+    "heading": "Users and audit"
+  },
+  {
+    "name": "design",
+    "path": "/design",
+    "heading": "Design library"
+  },
+  {
+    "name": "fix-what-if",
+    "path": "/fix/what-if",
+    "heading": "What-if"
+  },
+  {
+    "name": "home-basis",
+    "path": "/home/basis",
+    "heading": "Home"
+  },
+  {
+    "name": "home-lead",
+    "path": "/home/lead",
+    "heading": "Home"
+  },
+  {
+    "name": "home-steward",
+    "path": "/home/steward",
+    "heading": "Home"
+  },
+  {
+    "name": "import",
+    "path": "/import",
+    "heading": "Import file"
+  },
+  {
+    "name": "insights",
+    "path": "/insights",
+    "heading": "Insights"
+  },
+  {
+    "name": "insights-duplicates",
+    "path": "/insights/duplicates",
+    "heading": "Duplicate clusters"
+  },
+  {
+    "name": "insights-exec",
+    "path": "/insights/exec",
+    "heading": "Executive summary"
+  },
+  {
+    "name": "insights-forecast",
+    "path": "/insights/forecast",
+    "heading": "Forecast"
+  },
+  {
+    "name": "insights-impact",
+    "path": "/insights/impact",
+    "heading": "Value at risk"
+  },
+  {
+    "name": "insights-lineage",
+    "path": "/insights/lineage",
+    "heading": "Lineage and impact"
+  },
+  {
+    "name": "insights-mining",
+    "path": "/insights/mining",
+    "heading": "Pattern mining"
+  },
+  {
+    "name": "insights-operations",
+    "path": "/insights/operations",
+    "heading": "Operations"
+  },
+  {
+    "name": "insights-owners",
+    "path": "/insights/owners",
+    "heading": "Owner scorecards"
+  },
+  {
+    "name": "insights-process",
+    "path": "/insights/process",
+    "heading": "Process readiness"
+  },
+  {
+    "name": "insights-process-designer",
+    "path": "/insights/process/designer",
+    "heading": "Process designer"
+  },
+  {
+    "name": "insights-readiness",
+    "path": "/insights/readiness",
+    "heading": "Readiness"
+  },
+  {
+    "name": "insights-reports",
+    "path": "/insights/reports",
+    "heading": "Report library"
+  },
+  {
+    "name": "mdm",
+    "path": "/mdm",
+    "heading": "Overview"
+  },
+  {
+    "name": "mdm-glossary",
+    "path": "/mdm/glossary",
+    "heading": "Glossary"
+  },
+  {
+    "name": "mdm-glossary-g1",
+    "path": "/mdm/glossary/g1",
+    "heading": "Glossary"
+  },
+  {
+    "name": "mdm-golden",
+    "path": "/mdm/golden",
+    "heading": "Golden records"
+  },
+  {
+    "name": "mdm-golden-v7",
+    "path": "/mdm/golden/4e620a34-6601-43b1-9ed4-5cf8b8a7e999",
+    "heading": "Golden records"
+  },
+  {
+    "name": "mdm-golden-merge",
+    "path": "/mdm/golden/merge",
+    "heading": "Golden records"
+  },
+  {
+    "name": "mdm-match-rules",
+    "path": "/mdm/match-rules",
+    "heading": "Match rules"
+  },
+  {
+    "name": "mdm-survivorship",
+    "path": "/mdm/survivorship",
+    "heading": "Survivorship"
+  },
+  {
+    "name": "migration-dry-run",
+    "path": "/migration/dry-run",
+    "heading": "Migration"
+  },
+  {
+    "name": "objects",
+    "path": "/objects",
+    "heading": "Objects"
+  },
+  {
+    "name": "objects-material-master",
+    "path": "/objects/material_master",
+    "heading": "Material Master"
+  },
+  {
+    "name": "objects-material-master-record",
+    "path": "/objects/material_master/records/MATNR%3D000000000000000101%7CWERKS%3D3000",
+    "heading": "MATNR=000000000000000101|WERKS=3000"
+  },
+  {
+    "name": "objects-material-master-rules-mm551",
+    "path": "/objects/material_master/rules/MM551",
+    "heading": "Material Master"
+  },
+  {
+    "name": "rules",
+    "path": "/rules",
+    "heading": "Rules"
+  },
+  {
+    "name": "rules-xrec001",
+    "path": "/rules/XREC001",
+    "heading": "Rules"
+  },
+  {
+    "name": "rules-contracts",
+    "path": "/rules/contracts",
+    "heading": "Contracts"
+  },
+  {
+    "name": "rules-dictionary",
+    "path": "/rules/dictionary",
+    "heading": "Data dictionary"
+  },
+  {
+    "name": "rules-drafts",
+    "path": "/rules/drafts",
+    "heading": "Drafts"
+  },
+  {
+    "name": "rules-learned",
+    "path": "/rules/learned",
+    "heading": "Rules"
+  },
+  {
+    "name": "rules-scoring",
+    "path": "/rules/scoring",
+    "heading": "Scoring and alerts"
+  },
+  {
+    "name": "runs",
+    "path": "/runs",
+    "heading": "Runs"
+  },
+  {
+    "name": "runs-r1",
+    "path": "/runs/65988d5a-0243-4f9b-bdff-52779e71c6ed",
+    "heading": "Runs"
+  },
+  {
+    "name": "runs-r1-vs-r0",
+    "path": "/runs/65988d5a-0243-4f9b-bdff-52779e71c6ed/vs/6d1fefcc-cc7f-49ad-bd7b-3631fd3f4e03",
+    "heading": "Runs"
+  },
+  {
+    "name": "search",
+    "path": "/search",
+    "heading": "Search"
+  },
+  {
+    "name": "systems",
+    "path": "/systems",
+    "heading": "Systems"
+  },
+  {
+    "name": "systems-s1",
+    "path": "/systems/s1",
+    "heading": "Systems"
   }
 ]

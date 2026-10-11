@@ -14,12 +14,8 @@
  * - `Tally`'s per-figure href/verdict/tone is replaced by plain @/design
  *   `Stat` cells (label/value only); the "click to view" affordance and the
  *   loading/error-retry wiring on each figure are dropped.
- * - The lens switch (legacy `Tabs` controlled by `useUrlState("lens", ...)`)
- *   is replaced by @/design's `Tabs`, which is uncontrolled (`defaultValue`
- *   only, no onValueChange) — matching the Task 22 precedent in
- *   insights/process/page.tsx. The initial lens still reads `?lens=` from
- *   the URL (so the /mining and /relationships redirects land on the right
- *   tab), but switching tabs after that no longer updates the URL.
+ * - The lens switch is now `?tab=` (controlled Tabs, whitelisted). A legacy
+ *   `?lens=` is honoured only when `?tab=` is absent.
  * - The "domain" filter under Entity links, and the system/version/object
  *   selection under Mined dependencies, use plain `useState` instead of
  *   `useUrlState` for the same reason (no controlled-Tabs URL round trip to
@@ -28,6 +24,7 @@
  *   real legacy component never calls either, so this port doesn't either.
  */
 
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,6 +38,7 @@ import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
+import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
@@ -157,7 +155,8 @@ function Dependencies() {
   const [versionId, setVersionId] = useState("");
   const [object, setObject] = useState("");
 
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const systemScope = useSystemScope();
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const sid = systemId || systems.data?.[0]?.id || "";
   const versions = useQuery({
     queryKey: queryKeys.systemVersions(sid), queryFn: () => getSystemVersions(sid), enabled: !!sid,
@@ -207,11 +206,11 @@ function Dependencies() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-row gap-3 items-center flex-wrap">
-        <Select value={sid} options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+        <Select label="System" value={sid} options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
           onValueChange={(v) => { setSystemId(v); setVersionId(""); setObject(""); }} />
-        <Select value={vid} options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
+        <Select label="Analysis run" value={vid} options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
           onValueChange={(v) => { setVersionId(v); setObject(""); }} />
-        <Select value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
+        <Select label="Object" value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
         {sid && vid ? (
@@ -270,7 +269,9 @@ function Patterns() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <Select placeholder="All types" value={type} onValueChange={setType}
+      <Select
+        label="Pattern type"
+        placeholder="All types" value={type} onValueChange={setType}
         options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
       <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." />
     </div>
@@ -289,8 +290,11 @@ function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty }:
 }
 
 export default function MiningPage() {
-  const sp = useSearchParams();
-  const initialLens = sp.get("lens") === "patterns" ? "patterns" : sp.get("lens") === "dependencies" ? "dependencies" : "links";
+  const [tabRaw, setTab] = useUrlState("tab", "");
+  const TABS = ["links", "dependencies", "patterns"] as const;
+  // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
+  const lens = useSearchParams().get("lens") ?? "";
+  const tab = oneOf(tabRaw, TABS, oneOf(lens, TABS, "links"));
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>
@@ -298,7 +302,7 @@ export default function MiningPage() {
         <p style={{ color: "var(--m-ink-2)" }}>What links the master data together: entity relationships, mined field dependencies and mined patterns.</p>
       </div>
       <GraphTally />
-      <Tabs defaultValue={initialLens} items={[
+      <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
         { value: "patterns", label: "Patterns", content: <Patterns /> },

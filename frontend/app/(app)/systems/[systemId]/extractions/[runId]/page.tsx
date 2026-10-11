@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pill, ReportPage, type PillTone } from "@/design";
+import { Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pill, ReportPage, type PillTone } from "@/design";
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { apiErrorMessage } from "@/lib/error";
 import { labelOf } from "@/lib/format";
@@ -77,7 +77,15 @@ export default function ExtractionPage() {
     <ReportPage
       narrative={narrative}
       exportMenu={stepRows.length > 0 ? <ExportMenu options={[{ format: "xlsx", run: () => exportRunSteps(runId, "xlsx") }]} /> : undefined}
-      charts={null}
+      charts={
+        stepRows.some((st) => st.duration_ms != null) ? (
+          <Bar
+            label="Step durations in seconds"
+            height={Math.max(120, stepRows.length * 36)}
+            data={stepRows.flatMap((st) => (st.duration_ms == null ? [] : [{ x: st.step_name, y: Number((st.duration_ms / 1000).toFixed(1)) }]))}
+          />
+        ) : null
+      }
       tables={<DataTable columns={columns} data={stepRows} getRowId={(row) => String(row.step_number)} />}
       state={steps.isLoading ? "loading" : stepRows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No step history for this extraction yet." }}

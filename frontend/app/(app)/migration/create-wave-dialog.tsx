@@ -7,6 +7,7 @@ import { Button, Dialog } from "@/design";
 import { apiErrorMessage } from "@/lib/error";
 import { createWave } from "@/lib/api/migration";
 import { getSystems } from "@/lib/api/connectivity";
+import { useSystemScope } from "@/lib/permissions";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveStage } from "@/types/api";
 
@@ -18,12 +19,13 @@ const field = "w-full rounded-md border px-2 py-1 text-[13px]";
 const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };
 
 function isWaveStage(v: string): v is WaveStage {
-  return v in STAGE_LABEL;
+  return Object.hasOwn(STAGE_LABEL, v);
 }
 
 export function CreateWaveDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: open });
+  const systemScope = useSystemScope();
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: open, select: systemScope });
   const [name, setName] = useState("");
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");

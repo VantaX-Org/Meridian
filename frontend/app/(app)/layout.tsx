@@ -6,24 +6,44 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, type RunOption } from "@/design";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
+import { useJobs } from "@/hooks/use-jobs";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/connectivity";
+import { getObjects } from "@/lib/api/v1/objects";
 import { isNotFound } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne } from "@/hooks/use-day-one";
+import { PermissionsProvider, usePermissions } from "@/lib/permissions";
+import { ScopedPill } from "@/components/scoped-pill";
+import { RouteInsight } from "@/components/insight/route-insight";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
-  const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: resolveNavHref(item.href, role) })));
-  return <CommandPalette items={items} />;
+  const items = groups.flatMap((g) =>
+    flattenNav(g.items).map((item) => ({
+      label: item.label,
+      href: resolveNavHref(item.href, role),
+      group: g.group,
+      icon: <item.icon size={16} aria-hidden />,
+      shortcut: item.shortcut,
+    })),
+  );
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
+  const grammar = {
+    objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),
+    systems: [...new Set((systemsQ.data ?? []).map((s) => s.environment))],
+  };
+  return <CommandPalette items={items} grammar={grammar} />;
 }
 
 function RunSelectorSlot() {
@@ -35,9 +55,14 @@ function RunSelectorSlot() {
     queryFn: () => getVersions(),
   });
   const dayOne = useDayOne();
+  const { scopeFilter } = usePermissions();
 
   const versions = data?.versions ?? [];
-  const defaultId = versions.find((v) => FINISHED.has(v.status))?.id ?? versions[0]?.id;
+  // A scoped user's default run is one from a system in scope (ruling 7).
+  const pickable = scopeFilter.systems
+    ? versions.filter((v) => v.metadata?.system_id !== undefined && scopeFilter.systems?.has(v.metadata.system_id))
+    : versions;
+  const defaultId = pickable.find((v) => FINISHED.has(v.status))?.id ?? pickable[0]?.id;
   const hasRunParam = searchParams.has("run");
 
   // Write the default run onto the URL once, so every page under this
@@ -79,29 +104,40 @@ function RunSelectorSlot() {
 
   const runs: RunOption[] = versions.map((v) => ({
     id: v.id,
+    systemId: v.metadata?.system_id,
     label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
   }));
-  return <RunSelector runs={runs} />;
+  return <RunSelector runs={runs} systems={scopeFilter.systems} />;
+}
+
+/** The brand hairline at the top of the content column; animates only while a job runs. */
+function MeridianLine() {
+  const { active } = useJobs();
+  return <div aria-hidden="true" className={active.length > 0 ? "m-meridian-live shrink-0" : "m-meridian-line shrink-0"} style={{ height: 1 }} />;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
+      <PermissionsProvider>
       <div className="flex h-screen">
         <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden">
+          <MeridianLine />
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
-            userMenu={<ThemeToggle />}
+            userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><UserMenu /></span>}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
+            <Suspense fallback={null}><RouteInsight /></Suspense>
             {children}
           </main>
         </div>
       </div>
+      </PermissionsProvider>
     </AuthGuard>
   );
 }

@@ -68,13 +68,26 @@ export default function InsightsIndexPage() {
     { key: "owners", href: "/insights/owners", title: "Owners", metric: ownersBelowThreshold === undefined ? "—" : `${ownersBelowThreshold} below threshold`, query: owners },
     { key: "duplicates", href: "/insights/duplicates", title: "Duplicates", metric: "Review clusters" },
     { key: "exec", href: "/insights/exec", title: "Executive summary", metric: exec.data?.version_id ? `Run ${exec.data.version_id}` : "—", query: exec },
+    { key: "forecast", href: "/insights/forecast", title: "Forecast", metric: "Score outlook by module" },
+    { key: "lineage", href: "/insights/lineage", title: "Lineage", metric: "Field dependencies and guards" },
+    { key: "mining", href: "/insights/mining", title: "Mining", metric: "Relationships, patterns, anomalies" },
+    { key: "process", href: "/insights/process", title: "Process", metric: "Business process coverage" },
   ];
+
+  if (dayOne.status === "loading" || [readiness, impact, owners, exec].every((q) => q.isLoading)) {
+    return (
+      <div className="m-motion-stagger grid gap-4 p-6" aria-busy="true" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={96} />)}
+      </div>
+    );
+  }
 
   if (allEmpty) {
     return (
       <EmptyState
-        title="No insights yet."
+        title="No insights yet. Insights appear after the first analysis."
         detail={dayOne.step?.detail ?? "Insights build up once a run has finished analysing."}
+        ghost="grid"
         action={<DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />}
       />
     );
@@ -86,8 +99,8 @@ export default function InsightsIndexPage() {
         <Link
           key={tile.key}
           href={tile.href}
-          className="flex flex-col gap-2 p-4 rounded border"
-          style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+          className="m-card m-motion-colors flex flex-col gap-2"
+          style={{ color: "var(--m-ink)" }}
         >
           <span className="text-[14px] font-semibold">{tile.title}</span>
           <TileMetric query={tile.query} metric={tile.metric} />

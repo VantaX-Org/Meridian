@@ -1,16 +1,14 @@
-import { notFound } from "next/navigation";
 import {
   Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
 } from "@/design";
 
 import { ExportDemo } from "./export-demo";
+import { GalleryMore } from "./gallery-more";
 
 export const dynamic = "force-dynamic";
 
-/** Storybook-free visual check (spec section 13). Dev only — 404s in production. */
+/** Storybook-free visual check (spec section 13). Static, no data, behind sign-in; served in production so the Aurora specs can cover it. */
 export default function DesignGalleryPage() {
-  if (process.env.NODE_ENV === "production") notFound();
-
   return (
     <div className="flex flex-col gap-8 p-6">
       {(["light", "dark"] as const).map((theme) => (
@@ -53,6 +51,7 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <ExportDemo />
           </div>
+          <GalleryMore />
         </section>
       ))}
     </div>

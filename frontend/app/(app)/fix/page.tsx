@@ -10,8 +10,9 @@ import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type Cleani
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
+import { DedupTab, MonitorTab } from "./monitor-dedup-tabs";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
   { accessorKey: "batch_id", header: "Batch", cell: ({ row }) => <Mono>{row.original.batch_id}</Mono> },
@@ -67,7 +68,7 @@ function CleaningQueueTab() {
             getRowId={(row) => row.batch_id}
             onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
           />
-          {pageCount > 1 && <Pager page={page} pageCount={pageCount} onPageChange={setPage} />}
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={100} total={data?.total ?? 0} onPageChange={setPage} />}
         </div>
       }
     />
@@ -75,7 +76,8 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  const [tab, setTab] = useUrlState("tab", "cleaning");
+  const [tabRaw, setTab] = useUrlState("tab", "cleaning");
+  const tab = oneOf(tabRaw, ["cleaning", "batches", "monitor", "dedup"], "cleaning");
 
   return (
     <Tabs
@@ -84,6 +86,8 @@ export default function FixPage() {
       items={[
         { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
         { value: "batches", label: "Batches", content: <BatchesTab /> },
+        { value: "monitor", label: "Monitor", content: <MonitorTab /> },
+        { value: "dedup", label: "Dedup", content: <DedupTab /> },
       ]}
     />
   );

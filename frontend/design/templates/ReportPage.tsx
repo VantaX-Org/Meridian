@@ -35,7 +35,7 @@ export function ReportPage({
   );
   if (state === "loading") {
     body = (
-      <div className="flex flex-col gap-2">
+      <div className="m-motion-stagger flex flex-col gap-2" data-state="loading">
         <Skeleton height={240} />
         <Skeleton height={120} />
       </div>
@@ -54,7 +54,7 @@ export function ReportPage({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <div className="flex items-start justify-between gap-4">
         <div className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{narrative}</div>
         {exportMenu}

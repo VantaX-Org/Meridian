@@ -37,13 +37,13 @@ describe("NAV_GROUPS", () => {
 });
 
 describe("homeHrefForRole", () => {
-  it("routes steward to the steward persona and every other role to lead", () => {
+  it("routes steward and approver to the steward persona and every other role to lead", () => {
     expect(homeHrefForRole("steward")).toBe("/home/steward");
     expect(homeHrefForRole("admin")).toBe("/home/lead");
     expect(homeHrefForRole("manager")).toBe("/home/lead");
     expect(homeHrefForRole("viewer")).toBe("/home/lead");
     expect(homeHrefForRole("analyst")).toBe("/home/lead");
-    expect(homeHrefForRole("approver")).toBe("/home/lead");
+    expect(homeHrefForRole("approver")).toBe("/home/steward"); // rbac.md 1.1: data_owner -> steward home
     expect(homeHrefForRole("auditor")).toBe("/home/lead");
     expect(homeHrefForRole("ai_reviewer")).toBe("/home/lead");
   });
@@ -86,5 +86,22 @@ describe("activeHref", () => {
 
   it("returns null when nothing matches", () => {
     expect(activeHref("/not-a-route", new URLSearchParams(), flat)).toBeNull();
+  });
+});
+
+describe("wave 18b gap routes", () => {
+  const items = flattenNav(NAV_GROUPS.flatMap((g) => g.items));
+  const hrefs = ["/insights/operations", "/insights/reports", "/mdm", "/mdm/survivorship", "/admin/audit", "/admin/notifications", "/admin/jobs", "/admin/reference", "/fix/what-if", "/rules/drafts", "/rules/dictionary"];
+
+  it("lists every new route once, with a requires", () => {
+    for (const h of hrefs) {
+      const found = items.filter((i) => i.href === h);
+      expect(found, h).toHaveLength(1);
+      expect(found[0].requires, h).toBeDefined();
+    }
+  });
+
+  it("gates the audit log on view_audit or manage_users", () => {
+    expect(items.find((i) => i.href === "/admin/audit")?.anyOf).toEqual(["view_audit", "manage_users"]);
   });
 });

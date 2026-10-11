@@ -16,6 +16,8 @@ import path from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
 import routes from "./routes.json";
 import depth from "./fixtures/depth.json";
+import { mockRoutes18c } from "./fixtures/mocks-18c";
+import { permissionsPayload } from "./fixtures/legacy-permissions";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har");
 /** The instant the HAR was recorded; Date.now() in the page returns this. */
@@ -27,7 +29,10 @@ function harFor(origin: string): string {
   const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
   if (!fs.existsSync(out)) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, fs.readFileSync(HAR, "utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    // write then rename: a parallel worker must never read a half-written copy
+    const tmp = `${out}.${process.pid}`;
+    fs.writeFileSync(tmp, fs.readFileSync(HAR, "utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    fs.renameSync(tmp, out);
   }
   return out;
 }
@@ -53,6 +58,11 @@ export const test = base.extend<{ app: Page }>({
     await mockInsightsReadiness(page);
     await mockFix(page);
     await mockExtraction(page);
+    await mockUnrecorded(page);
+    await mockGapRoutes(page);
+    await mockRoutes18c(page);
+    // Not in the recording (wave 16); the recorded user is an admin. Specs override it per role.
+    await page.route(/\/api\/v1\/me\/permissions/, (r) => r.fulfill(json(permissionsPayload("admin"))));
     await provide(page);
   },
 });
@@ -140,7 +150,8 @@ const MATERIAL = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "ma
 async function mockMaterial(page: Page) {
   await page.route(/\/api\/v1\/materials\/(\d+)(?:\/(findings|supersession|duplicates))?(?:\?|$)/, (r) => {
     const [, id, sub] = /\/materials\/(\d+)(?:\/(\w+))?/.exec(new URL(r.request().url()).pathname) ?? [];
-    const body = MATERIAL[id]?.[sub ?? "material"];
+    // SAP pads MATNR with leading zeros; the fixture is keyed by the bare number
+    const body = MATERIAL[String(Number(id))]?.[sub ?? "material"];
     return body ? r.fulfill(json(body)) : r.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"Not found"}' });
   });
 }
@@ -240,6 +251,53 @@ async function mockExtraction(page: Page) {
       { step_number: 2, step_name: "extract_MARA", status: "failed", started_at: "2026-10-02T10:00:01Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 400, error_detail: "RFC_COMMUNICATION_FAILURE: connection reset" },
     ],
   })));
+}
+
+/**
+ * Endpoints that the routes call but the recording does not hold. Without
+ * these, the page falls into its ErrorState (with a Retry button) once the
+ * query retries run out, and specs then test the error state, not the page.
+ */
+const WAVE_W1 = {
+  id: "w1", name: "Wave 1", source_system_id: "s1", target_system_id: null, target_release: "S/4HANA 2023",
+  modules: [OBJECT_SUMMARY.module], target_date: null, stage: "mock1" as const, min_readiness: 90, min_dqs: null,
+  signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
+};
+async function mockUnrecorded(page: Page) {
+  await page.route(/\/api\/v1\/insights\/impact(\?.*)?$/, (r) => r.fulfill(json({ version_id: VERSION_ID, rows: [] })));
+  await page.route(/\/api\/v1\/insights\/owners(\?.*)?$/, (r) => r.fulfill(json({ owners: [] })));
+  await page.route(/\/api\/v1\/insights\/exec(\?.*)?$/, (r) => r.fulfill(json({
+    version_id: VERSION_ID, narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+  })));
+  await page.route(/\/api\/v1\/triage\/(teams|rules|sla-policies)(\?.*)?$/, (r) => r.fulfill(json([])));
+  await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => r.fulfill(json({ waves: [WAVE_W1] })));
+  await page.route("**/api/v1/migration/waves/w1/cockpit", (r) => r.fulfill(json({
+    wave: WAVE_W1, run_id: VERSION_ID, source_version_id: VERSION_ID, dest_system_type: "s4hana", verdict: "no_go",
+    score: OBJECT_SUMMARY.composite_score, records_total: 10, records_blocked: OBJECT_SUMMARY.affected_records,
+    objects: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, verdict: "no_go", score: OBJECT_SUMMARY.composite_score,
+      records: 10, records_blocked: OBJECT_SUMMARY.affected_records, blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+    trend: [],
+    blockers: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, gap_type: "target_mandatory", field: "MARA.MTART",
+      severity: "critical", records: OBJECT_SUMMARY.affected_records, gaps: 1 }],
+  })));
+}
+
+/** Wave 18b gap-route endpoints that are not in the recording: empty but well-formed bodies. */
+async function mockGapRoutes(page: Page) {
+  const get = (re: RegExp, body: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(body)) : r.fallback()));
+  await get(/\/api\/v1\/analytics\/operational(\?.*)?$/, {
+    kpis: { throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0, items_in_flight: 0, avg_queue_age_hours: 0 },
+    bottlenecks: [], capacity: { needed: 0, current: 0, surplus_deficit: 0, recommendation: "" },
+  });
+  await get(/\/api\/v1\/analytics\/(sprints|bottlenecks)(\?.*)?$/, { sprints: [], bottlenecks: [] });
+  await get(/\/api\/v1\/analytics\/roi(\?.*)?$/, { roi: { subscription_annual: 0, risk_mitigated: 0, roi_multiple: 0, payback_months: 0 }, cost_avoidance_history: [] });
+  await get(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, { data: [], days: 56 });
+  await get(/\/api\/v1\/audit\/llm(\?.*)?$/, { entries: [], total: 0, limit: 50, offset: 0, cache: [] });
+  await get(/\/api\/v1\/survivorship-rules(\?.*)?$/, { rules: [], total: 0 });
+  await get(/\/api\/v1\/alert-channels(\?.*)?$/, { channels: [] });
+  await get(/\/api\/v1\/settings\/cost-model(\?.*)?$/, { currency: "ZAR", severity: { critical: 100 }, modules: {}, rules: {}, features: {} });
+  await get(/\/api\/v1\/rule-authoring\/drafts(\?.*)?$/, { items: [] });
+  await get(/\/api\/v1\/jobs(\?.*)?$/, { jobs: [] });
 }
 
 export { expect };

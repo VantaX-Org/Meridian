@@ -70,9 +70,7 @@ def test_header_fill_is_brand_accent():
     wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="1", title="X", sheets=[_basic_sheet()]))
     ws = wb["Findings"]
     header_cell = ws.cell(row=1, column=1)
-    assert header_cell.fill.fgColor.rgb in ("002D3A8C", "2D3A8C", "00000000FF2D3A8C") or "2D3A8C" in str(
-        header_cell.fill.fgColor.rgb
-    )
+    assert "2B4BE0" in str(header_cell.fill.fgColor.rgb)
 
 
 def test_number_formats_per_kind():
@@ -217,3 +215,45 @@ def test_guard_frame_is_the_shared_export_guard():
     assert out["MENGE"].tolist() == ["-5", "+5", "'=1+1", "'@SUM(A1)", " -1", "10"]
     assert out["qty"].tolist() == [1, -2, 3, 4, 5, 6]
     assert df["note"][0] == "=1+1"  # input untouched
+
+
+def test_cover_band_mark_meta_hyperlinks_and_tabs():
+    wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="rid-1", title="Findings export",
+                              sheets=[_basic_sheet()]))
+    ws = wb["Cover"]
+    assert ws.column_dimensions["A"].width == 4
+    assert all("0F1430" in str(ws.cell(row=r, column=1).fill.fgColor.rgb) for r in (1, 20, 40))
+    assert len(ws._images) == 1 and ws._images[0].anchor._from.row == 1  # B2
+    assert ws["B5"].value == "Findings export" and ws["B5"].font.size == 20 and ws["B5"].font.bold
+    labels = {ws.cell(row=r, column=2).value: ws.cell(row=r, column=3) for r in range(8, 12)}
+    assert labels["Run ID"].value == "rid-1" and labels["Run ID"].font.name == "Consolas"
+    links = [c.hyperlink.location or c.hyperlink.target for row in ws.iter_rows() for c in row if c.hyperlink]
+    assert any("Findings" in str(link) for link in links)
+    assert "stays inside your network" in " ".join(str(c.value) for row in ws.iter_rows() for c in row if c.value)
+    assert "0F1430" in str(ws.sheet_properties.tabColor.rgb)
+    assert "2B4BE0" in str(wb["Findings"].sheet_properties.tabColor.rgb)
+
+
+def test_data_sheet_wash_alternation_and_status_tint():
+    sheet = SheetSpec(
+        title="S",
+        columns=[ColumnSpec("v", "V", fill_by_value={"bad": "FCEBE9"})],
+        rows=[{"v": "a"}, {"v": "b"}, {"v": "c"}, {"v": "bad"}],
+    )
+    ws = _load(build_workbook(tenant_name="T", run_label="R", run_id="1", title="X", sheets=[sheet]))["S"]
+    assert ws.freeze_panes == "A2" and ws.auto_filter.ref
+    assert "FAF9F6" not in str(ws["A2"].fill.fgColor.rgb) and "FAF9F6" in str(ws["A3"].fill.fgColor.rgb)
+    assert "FCEBE9" in str(ws["A5"].fill.fgColor.rgb) and "8E1B12" in str(ws["A5"].font.color.rgb)
+
+
+def test_cover_sheet_list_guards_formula_titles_and_escapes_apostrophes():
+    from api.services import branded_xlsx as bx
+
+    wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="r", title="X",
+                              sheets=[SheetSpec(title="=SUM(1)", columns=[ColumnSpec("v", "V")], rows=[]),
+                                      SheetSpec(title="It's", columns=[ColumnSpec("v", "V")], rows=[])]))
+    cells = [c for row in wb["Cover"].iter_rows() for c in row if c.hyperlink]
+    assert cells and all(c.data_type != "f" for c in cells)
+    assert any(c.value == "'=SUM(1)" for c in cells)
+    assert any(c.hyperlink.target == "#'It''s'!A1" for c in cells)
+    assert bx._MARK_PATH.name == "mark-light.png"  # anchored on the white B2 cell

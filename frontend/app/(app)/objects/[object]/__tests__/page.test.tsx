@@ -256,4 +256,28 @@ describe("ObjectDetailPage", () => {
     expect(screen.getByText("MARA.MTART")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
   });
+
+  it("shows a loading skeleton while the object loads", async () => {
+    vi.spyOn(objectsApi, "getObject").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<ObjectDetailPage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+  });
+
+  describe("?blocking= filter on the rules tab", () => {
+    it("blocking=true keeps only critical and high rules and shows a Showing banner with Show all", async () => {
+      searchParams = new URLSearchParams("run=v1&tab=rules&blocking=true");
+      renderWithQuery(<ObjectDetailPage />);
+      await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
+      expect(screen.queryByText("mm_bad_uom")).toBeNull();
+      expect(screen.getByText("Showing blocking rules only.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Show all" })).toBeInTheDocument();
+    });
+    it.each(["constructor", "__proto__", "false", "1", "TRUE"])("blocking=%s applies no filter and shows no banner", async (g) => {
+      searchParams = new URLSearchParams(`run=v1&tab=rules&blocking=${g}`);
+      renderWithQuery(<ObjectDetailPage />);
+      await waitFor(() => expect(screen.getByText("mm_bad_uom")).toBeInTheDocument());
+      expect(screen.getByText("mm_missing_desc")).toBeInTheDocument();
+      expect(screen.queryByText(/^Showing/)).toBeNull();
+    });
+  });
 });

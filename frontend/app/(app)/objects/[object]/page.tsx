@@ -7,12 +7,14 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, SeverityDot,
+  Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pager, Pill, SeverityDot,
   Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
+  entityTabs,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
+import { useRole } from "@/hooks/use-role";
 import { exportObject, getObject, type ObjectRule } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
@@ -22,6 +24,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorMessage } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
+import { formatModuleName } from "@/lib/format";
 
 const PAGE_SIZE = 25;
 const RULE_HISTORY_RUNS = 8;
@@ -45,6 +48,13 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dimension = searchParams.get("dimension");
+  // Blocking = critical or high severity (the same rule the migration export uses). Only "true" filters.
+  const blocking = searchParams.get("blocking") === "true";
+  const showAll = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("blocking");
+    router.replace(`/objects/${object}?${next.toString()}`, { scroll: false });
+  };
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.object(object, run),
     queryFn: () => getObject(object, run),
@@ -54,6 +64,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const rulesRanked = data
     ? [...data.rules]
         .filter((r) => !dimension || r.dimension === dimension)
+        .filter((r) => !blocking || r.severity === "critical" || r.severity === "high")
         .sort((a, b) => b.affected_count - a.affected_count)
     : [];
   const batch = useQuery({
@@ -77,11 +88,23 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     },
     { accessorKey: "check_id", header: "Check" },
     { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => row.original.dimension ?? "—" },
-    { accessorKey: "affected_count", header: "Affected" },
+    {
+      accessorKey: "affected_count",
+      header: "Affected",
+      cell: ({ row }) => (
+        <DrillLink href={`/objects/${object}?run=${run}&tab=records&check_id=${row.original.check_id}`}>
+          {row.original.affected_count}
+        </DrillLink>
+      ),
+    },
     {
       accessorKey: "pass_rate",
       header: "Pass rate",
-      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${Math.round(row.original.pass_rate * 100)}%`),
+      cell: ({ row }) => (row.original.pass_rate == null ? "—" : (
+        <DrillLink href={`/objects/${object}?run=${run}&tab=rules&check_id=${row.original.check_id}`}>
+          {Math.round(row.original.pass_rate * 100)}%
+        </DrillLink>
+      )),
     },
     {
       id: "trend",
@@ -100,18 +123,25 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     },
   ];
 
-  if (isLoading) return <Skeleton height={320} />;
+  if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data || data.rules.length === 0) {
     return (
       <EmptyState
         title="No results for this object in this run."
+        ghost="ring"
         detail="The run did not include this object's module."
         action={<Button render={<Link href={`/objects?run=${run}`}>All objects</Link>} />}
       />
     );
   }
+  const banner = blocking ? (
+    <Notice action={<Button variant="ghost" onClick={showAll}>Show all</Button>}>Showing blocking rules only.</Notice>
+  ) : null;
   if (rulesRanked.length === 0) {
+    if (blocking && !dimension) {
+      return <div className="flex flex-col gap-3">{banner}<EmptyState title="No blocking rules for this object." detail="No critical or high severity check is failing here." /></div>;
+    }
     return (
       <EmptyState
         title={`No ${dimension} checks for this object.`}
@@ -123,12 +153,15 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
 
   return (
-    <DataTable
-      columns={columns}
-      data={rulesRanked}
-      getRowId={(row) => row.check_id}
-      onRowClick={(row) => router.push(`/objects/${object}?run=${run}&tab=records&check_id=${row.check_id}`)}
-    />
+    <div className="flex flex-col gap-3">
+      {banner}
+      <DataTable
+        columns={columns}
+        data={rulesRanked}
+        getRowId={(row) => row.check_id}
+        onRowClick={(row) => router.push(`/objects/${object}?run=${run}&tab=records&check_id=${row.check_id}`)}
+      />
+    </div>
   );
 }
 
@@ -140,7 +173,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
     enabled: !!run,
   });
 
-  if (isLoading) return <Skeleton height={240} />;
+  if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data) return null;
 
@@ -153,9 +186,9 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-6">
-        <Stat label="Composite score" value={data.composite_score != null ? String(data.composite_score) : "—"} />
-        <Stat label="Failing checks" value={String(data.failing_checks)} />
-        <Stat label="Affected records" value={String(data.affected_records)} />
+        <Stat label="Composite score" value={data.composite_score != null ? String(data.composite_score) : "—"} href={`/objects/${object}?run=${run}&tab=rules`} />
+        <Stat label="Failing checks" value={String(data.failing_checks)} href={`/objects/${object}?run=${run}&tab=rules`} />
+        <Stat label="Affected records" value={String(data.affected_records)} href={`/objects/${object}?run=${run}&tab=records`} />
       </div>
       {dimensionPoints.length === 0 ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No dimension scores for this object in this run.</p>
@@ -246,7 +279,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
     () => [
       { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
       { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-      { accessorKey: "module", header: "Module" },
+      { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
       ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
         id: `field_values.${key}`,
         header: key,
@@ -301,7 +334,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         <ExportMenu options={exportOptions} />
       </div>
       <DataTable columns={columns} data={data.records} getRowId={(row) => row.record_key} />
-      <Pager page={page} pageCount={pageCount} onPageChange={setPage} />
+      <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
       <RootCauseSection run={run} ruleId={checkId} />
     </div>
   );
@@ -311,6 +344,7 @@ export default function ObjectDetailPage() {
   const params = useParams<{ object: string }>();
   const search = useSearchParams();
   const router = useRouter();
+  const { can } = useRole();
   const object = params.object;
   const run = search.get("run") ?? "";
   const tab = search.get("tab") ?? "overview";
@@ -376,6 +410,7 @@ export default function ObjectDetailPage() {
               <EmptyState title="Open the rules tab and choose a rule to see its failing records." />
             ),
           },
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined, canExport: can("export") }),
         ]}
       />
     </div>

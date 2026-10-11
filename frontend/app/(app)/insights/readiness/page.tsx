@@ -9,6 +9,7 @@ import { Button, DrillLink, ExplorerPage, Pill, type PillTone } from "@/design";
 import { getReadiness, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { formatModuleName } from "@/lib/format";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 
 const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
@@ -18,9 +19,9 @@ const VERDICT_TONE: Record<ReadinessCell["verdict"], PillTone> = {
 };
 
 const VERDICT_LABEL: Record<ReadinessCell["verdict"], string> = {
-  go: "go",
-  at_risk: "at_risk",
-  no_go: "no_go",
+  go: "Go",
+  at_risk: "At risk",
+  no_go: "No-go",
 };
 
 export default function ReadinessPage() {
@@ -76,7 +77,7 @@ export default function ReadinessPage() {
           <tbody>
             {modules.map((module) => (
               <tr key={module}>
-                <td className="p-2">{module}</td>
+                <td className="p-2">{formatModuleName(module)}</td>
                 {waves.map((wave) => {
                   const cell = data?.cells.find((c) => c.module === module && c.wave === wave);
                   if (!cell) {
@@ -96,8 +97,12 @@ export default function ReadinessPage() {
                           <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
                         </DrillLink>
                       </td>
-                      <td className="text-right tabular-nums">{cell.score === null ? "—" : `${cell.score.toFixed(1)}%`}</td>
-                      <td className="text-right tabular-nums">{cell.records_blocked.toLocaleString()}</td>
+                      <td className="text-right tabular-nums">
+                        {cell.score === null ? "—" : <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{`${cell.score.toFixed(1)}%`}</DrillLink>}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{cell.records_blocked.toLocaleString()}</DrillLink>
+                      </td>
                     </Fragment>
                   );
                 })}

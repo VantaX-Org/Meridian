@@ -94,13 +94,20 @@ export interface DimensionBarPoint {
   dimension: DimensionKey;
 }
 
+/** Backend defaults (api/services/scoring.py DEFAULT_WEIGHTS), used until the tenant's own weights load. */
+export const DEFAULT_DIMENSION_WEIGHTS: Readonly<Record<DimensionKey, number>> = {
+  completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1,
+};
+
 /** The six-dimension bar chart's points for this run (spec 7.1 "Six dimensions"). */
-export function dimensionBarPoints(v: Version): DimensionBarPoint[] {
+export function dimensionBarPoints(v: Version, weights: Readonly<Record<DimensionKey, number>> = DEFAULT_DIMENSION_WEIGHTS): DimensionBarPoint[] {
   const dims = runDimensions(v);
   if (!dims) return [];
+  const total = DIMENSIONS.reduce((n, d) => n + weights[d], 0);
+  const label = (d: DimensionKey) => (total > 0 ? `${formatModuleName(d)} · ${Math.round((weights[d] / total) * 100)}%` : formatModuleName(d));
   return DIMENSIONS.flatMap((d) => {
     const y = dims[d];
-    return y == null ? [] : [{ x: formatModuleName(d), y, dimension: d }];
+    return y == null ? [] : [{ x: label(d), y, dimension: d }];
   });
 }
 
@@ -139,4 +146,19 @@ export function objectTrend(versions: Version[], module: string): { x: string; y
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
     .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score! }));
+}
+
+/**
+ * The cap on the run-wide DQS, or null. `runDqs` is a mean of per-module scores that are already capped, so a single
+ * cap is only valid for the mean when EVERY scored module is capped, EVERY reason names its cap, and all caps are equal.
+ * Anything else (mixed or unparsable caps) returns null and the cap_reason Pill alone signals the cap. `criticals` sums
+ * the modules' critical counts (all of them are capped here). The number is read from the reason text
+ * ("... capped at 70"); the API has no field for it.
+ */
+export function runCap(v: Version): { cap: number; criticals: number } | null {
+  const mods = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null); // as runDqs: measured modules only
+  if (mods.length === 0 || !mods.every((m) => m.capped)) return null;
+  const caps = mods.map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1]));
+  if (!caps.every((n) => Number.isFinite(n) && n === caps[0])) return null;
+  return { cap: caps[0], criticals: mods.reduce((n, m) => n + m.critical_count, 0) };
 }

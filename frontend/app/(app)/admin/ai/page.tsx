@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Select } from "@/design";
+import { Button, ErrorState, Field, Notice, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -19,12 +19,7 @@ import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
 function note(children: ReactNode, tone: "info" | "success" | "danger" = "info") {
-  const color = tone === "danger" ? "var(--m-critical)" : tone === "success" ? "var(--m-pass)" : "var(--m-ink-3)";
-  return (
-    <div role={tone === "danger" ? "alert" : undefined} className="text-[13px] rounded border p-3" style={{ borderColor: color, color }}>
-      {children}
-    </div>
-  );
+  return <Notice tone={tone}>{children}</Notice>;
 }
 
 export default function AdminAIPage() {
@@ -53,6 +48,7 @@ export default function AdminAIPage() {
 
   const c = config.data;
   const loading = config.isLoading;
+  if (loading) return <div aria-busy="true" className="flex flex-col gap-6 p-6"><Skeleton height={240} /></div>;
   const provider = c ? providers.data?.[c.provider]?.label || c.provider || null : null;
 
   return (

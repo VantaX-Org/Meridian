@@ -130,4 +130,10 @@ describe("rule detail page", () => {
     renderWithQuery(<RulePage />);
     await waitFor(() => expect(screen.getByText("This rule has not run yet.")).toBeInTheDocument());
   });
+
+  it("shows a loading skeleton while the rule loads", async () => {
+    vi.spyOn(rulesApi, "getRule").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<RulePage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+  });
 });

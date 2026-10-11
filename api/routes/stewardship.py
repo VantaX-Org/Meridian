@@ -19,7 +19,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission
+from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission, scope_from_path
+
+
+def sees_steward_breakdown(role: str) -> bool:
+    """Per-steward stats: manage_rules holders (admin, steward and their personas), never ai_reviewer."""
+    return has_permission(role, "manage_rules")
 
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
 
@@ -167,7 +172,7 @@ async def list_queue_items(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """List stewardship queue items with optional filters."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -233,7 +238,7 @@ async def get_stewardship_metrics(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Steward productivity dashboard metrics.
 
@@ -315,7 +320,7 @@ async def get_stewardship_metrics(
 
     # Steward breakdown — NOT visible to ai_reviewer
     steward_breakdown = None
-    if role in ("admin", "steward") and role != "ai_reviewer":
+    if sees_steward_breakdown(role):
         result = await db.execute(
             text("""
                 SELECT
@@ -363,7 +368,7 @@ async def get_queue_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
@@ -396,7 +401,7 @@ async def assign_queue_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
@@ -424,7 +429,7 @@ async def resolve_queue_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     """Resolve a queue item — approve or reject.
 
@@ -595,7 +600,7 @@ async def escalate_queue_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
@@ -622,7 +627,7 @@ async def bulk_approve(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     """Bulk approve items above a confidence threshold.
 

@@ -1,5 +1,6 @@
 // frontend/app/(app)/mdm/match-rules/page.tsx
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,6 +53,8 @@ type Draft = { domain: string; field: string; match_type: MatchType; weight: num
 const emptyDraft = (domain: string): Draft => ({ domain, field: "", match_type: "fuzzy", weight: 1, threshold: 0.85, active: true });
 
 export default function MatchRulesPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "rules");
+  const tab = (["rules", "tuning", "constraints"] as string[]).includes(tabRaw) ? tabRaw : "rules";
   return (
     <div className="flex flex-col gap-4 p-6">
       <h2 className="text-[16px] font-semibold" style={{ color: "var(--m-ink)" }}>Match rules</h2>
@@ -59,6 +62,8 @@ export default function MatchRulesPage() {
         How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned.
       </p>
       <Tabs
+        value={tab}
+        onValueChange={setTab}
         items={[
           { value: "rules", label: "Rules", content: <RulesTab /> },
           { value: "tuning", label: "Tuning", content: <TuningTab /> },
@@ -113,7 +118,7 @@ function RulesTab() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Select placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
+        <Select label="Domain" placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
         {write ? (
           <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>New rule</Button>
         ) : null}
@@ -235,7 +240,7 @@ function TuningTab() {
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
-      <Select placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
+      <Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
       {!domain ? (
         <EmptyState title="Pick a domain to tune." />
       ) : rulesQuery.isLoading ? (
@@ -343,8 +348,8 @@ function ConstraintsTab() {
         Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
       </p>
       <div className="flex items-center gap-2">
-        <Select placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
-        <Select placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
+        <Select label="Domain" placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
+        <Select label="Constraint kind" placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
         <input
           placeholder="Record key"
           className="rounded border px-3 py-1.5 text-[13px]"

@@ -44,7 +44,7 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
     accessorKey: "feature",
     header: "Feature",
     cell: ({ row }) => (
-      <DrillLink object={row.original.feature} filters={{ causing_rules: row.original.causing_rules.join(",") }}>
+      <DrillLink object={row.original.feature}>
         {row.original.feature}
       </DrillLink>
     ),
@@ -173,7 +173,7 @@ export default function ImpactPage() {
 
   return (
     <ReportPage
-      narrative="value_at_risk = record_count × value_per_record"
+      narrative="Value at risk is the record count times the value per record."
       charts={null}
       tables={
         <div className="flex flex-col gap-8">

@@ -1,6 +1,5 @@
 // frontend/design/charts/Heatmap.tsx
 import Link from "next/link";
-import { chartTheme } from "./theme";
 
 export interface HeatmapCell {
   row: string;
@@ -8,11 +7,7 @@ export interface HeatmapCell {
   value: "go" | "at-risk" | "no-go";
 }
 
-const CELL_COLOR: Record<HeatmapCell["value"], string> = {
-  go: chartTheme.pass,
-  "at-risk": chartTheme.medium,
-  "no-go": chartTheme.critical,
-};
+// Cells are the tone's soft fill with a 6px dot of the full tone centred.
 
 /** Grid heatmap for the readiness cockpit (spec 8.1) — not a recharts chart, a styled table. */
 export function Heatmap({
@@ -29,7 +24,7 @@ export function Heatmap({
   const byKey = new Map(cells.map((c) => [`${c.row}:${c.col}`, c]));
   let cellIndex = 0;
   return (
-    <table className="text-[12px] border-collapse">
+    <table className="text-[12px] leading-4" style={{ borderCollapse: "separate", borderSpacing: 2 }}>
       <thead>
         <tr>
           <th />
@@ -54,20 +49,18 @@ export function Heatmap({
                     onClick={() => cell && onPointClick?.(cell)}
                     disabled={!cell}
                     aria-label={cell ? `${r} ${c}: ${cell.value}` : `${r} ${c}: not measured`}
-                    className={`block border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
+                    className={`m-heat-cell flex items-center justify-center border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
                     style={{
                       width: cellSize,
                       height: cellSize,
-                      background: cell ? CELL_COLOR[cell.value] : "var(--m-line)",
+                      borderRadius: 3,
+                      background: cell ? `var(--m-${cell.value}-soft)` : "var(--m-sheet-sunken)",
                       cursor: cell ? "pointer" : "default",
-                      outlineOffset: 2,
                       animationDelay: draw ? `calc(var(--m-motion-duration) * ${index / 10})` : undefined,
                     }}
-                    onFocus={(e) => { e.currentTarget.style.outline = "2px solid var(--m-accent)"; }}
-                    onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
-                    onMouseEnter={(e) => { e.currentTarget.style.outline = "2px solid var(--m-accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.outline = "none"; }}
-                  />
+                  >
+                    {cell && <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: `var(--m-${cell.value})` }} />}
+                  </button>
                 </td>
               );
             })}

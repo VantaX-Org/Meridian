@@ -10,13 +10,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Select, Skeleton } from "@/design";
+import { Button, ErrorState, Field, Radar, ScoreRing, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { AlertThresholds, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import type { AlertThresholds, CostModel, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
@@ -122,13 +122,21 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       </header>
       {!write ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Read only. Changing these settings needs the manage_settings permission.</p> : null}
 
+      {!agg.isError && !agg.isLoading && current === null ? (
+        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
+      ) : null}
+
       {agg.isError ? (
         <ErrorState message={(agg.error as Error).message || "The latest findings could not be read."} onRetry={() => agg.refetch()} />
       ) : (
       <section className="flex gap-6">
         <div className="flex flex-col gap-1">
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Score now</span>
-          <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : current === null ? "—" : current.toFixed(1)}</span>
+          {current === null ? (
+            <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : "—"}</span>
+          ) : (
+            <ScoreRing score={current} size={96} />
+          )}
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run."}</span>
         </div>
         <div className="flex flex-col gap-1">
@@ -147,6 +155,10 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         </div>
       </section>
       )}
+
+      {Object.keys(scores).length > 0 ? (
+        <Radar label="Latest score per dimension" data={DIMS.filter((d) => scores[d] != null).map((d) => ({ x: d[0].toUpperCase() + d.slice(1), y: scores[d] }))} />
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[13px] font-semibold">Dimension weights</h2>
@@ -221,7 +233,9 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             </table>
             {write && unfloored.length ? (
               <div className="mt-2" style={{ maxWidth: 260 }}>
-                <Select value="" placeholder="Add a floor for"
+                <Select
+                  label="Add a floor for"
+                  value="" placeholder="Add a floor for"
                   options={unfloored.map((m) => ({ value: m, label: formatModuleName(m) }))}
                   onValueChange={(m) => m && setFloor(m, 80)} />
               </div>
@@ -293,6 +307,38 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           {write ? <div><Button type="submit" disabled={saveNotify.isPending}>Save notifications</Button></div> : null}
         </form>
       </section>
+      <CostModelCard write={write} />
     </div>
+  );
+}
+
+const COST_LABELS: Record<string, string> = { critical: "Critical finding cost", high: "High finding cost", medium: "Medium finding cost", low: "Low finding cost", info: "Info finding cost" };
+
+/** Cost per blocked record by severity. Feeds value-at-risk on the insight pages. */
+function CostModelCard({ write }: { write: boolean }) {
+  const q = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
+  const [draft, setDraft] = useState<Record<string, number>>({});
+  const m = useMutation({
+    mutationFn: (base: CostModel) => updateCostModel({ ...base, severity: { ...base.severity, ...draft } }),
+    onSuccess: () => { toast.success("Cost model saved"); setDraft({}); void q.refetch(); },
+    onError: (e) => toast.error((e as Error).message || "Cost model not saved"),
+  });
+  if (q.isError) return <ErrorState message="The cost model could not be read." onRetry={() => void q.refetch()} />;
+  if (!q.data) return <Skeleton height={64} />;
+  const sev = { ...q.data.severity, ...draft };
+  return (
+    <section className="flex flex-col gap-3">
+      <strong className="text-[15px]">Cost model ({q.data.currency})</strong>
+      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
+      {Object.keys(sev).length === 0 && <p className="text-[13px]">No severity costs set yet.</p>}
+      <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
+        {Object.entries(sev).map(([k, v]) => (
+          <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
+            <input className="m-input" type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
+          </Field>
+        ))}
+        {write && Object.keys(sev).length > 0 && <Button type="submit" disabled={m.isPending}>Save cost model</Button>}
+      </form>
+    </section>
   );
 }

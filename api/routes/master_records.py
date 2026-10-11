@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission, has_permission, _get_user_role
+from api.services.rbac import require_permission, scope_from_path, has_permission, _get_user_role
 
 router = APIRouter(prefix="/api/v1", tags=["master-records"])
 logger = logging.getLogger("meridian.master_records")
@@ -99,7 +99,7 @@ async def list_master_records(
     max_confidence: Optional[float] = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -189,7 +189,7 @@ async def list_master_records(
 @router.get("/master-records/{record_id}", response_model=MasterRecordDetail)
 async def get_master_record(
     record_id: str,
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -241,7 +241,7 @@ async def promote_master_record(
     record_id: str,
     request: Request,
     body: PromoteRequest = PromoteRequest(),
-    role: str = Depends(require_permission("approve")),
+    role: str = Depends(require_permission("approve", scope=scope_from_path)),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -392,7 +392,7 @@ async def promote_master_record(
 @router.post("/master-records/{record_id}/writeback")
 async def writeback_master_record(
     record_id: str,
-    role: str = Depends(require_permission("apply")),
+    role: str = Depends(require_permission("apply", scope=scope_from_path)),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
@@ -444,7 +444,7 @@ async def writeback_master_record(
 @router.get("/master-records/{record_id}/history", response_model=list[HistoryEntry])
 async def get_master_record_history(
     record_id: str,
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):

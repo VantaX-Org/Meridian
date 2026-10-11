@@ -21,11 +21,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
+import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { apiErrorMessage } from "@/lib/error";
@@ -33,6 +34,7 @@ import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } fr
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -72,7 +74,7 @@ async function getAllRules(category?: string): Promise<Rule[]> {
   }
 }
 
-export default function RulesPage() {
+function RulesAll() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
   const dayOne = useDayOne();
@@ -86,12 +88,15 @@ export default function RulesPage() {
   const [source, setSource] = useUrlState("source", "");
   const [table, setTable] = useUrlState("table", "");
   const [view, setView] = useUrlState("view", "");
+  const [rawState, setState] = useUrlState("state", "");
+  const state = rawState === "enabled" || rawState === "disabled" ? rawState : "";
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
-  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const systemScope = useSystemScope();
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
   const awareQ = useQuery({
     queryKey: queryKeys.configAwareScore(undefined, cfgSystem),
     queryFn: () => getConfigAwareScore({ system_id: cfgSystem || undefined }),
@@ -123,11 +128,12 @@ export default function RulesPage() {
     source: (r) => !source || r.source === source,
     table: (r) => !table || tableOf(r) === table,
     view: (r) => !view || inView(r, module, view),
+    state: (r) => !state || r.enabled === (state === "enabled"),
   };
   const passing = (r: Rule) => matches(r, search) && Object.values(tests).every((t) => t(r));
   const visible = rules.filter(passing);
-  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || category !== "all");
-  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setCategory("all"); };
+  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || state || category !== "all");
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setState(""); setCategory("all"); };
 
   const selected = selectedId ? rules.find((r) => r.id === selectedId) ?? null : null;
   const totals = useMemo(() => {
@@ -183,9 +189,9 @@ export default function RulesPage() {
   );
   const coverageColumns = useMemo<ColumnDef<(typeof coverageRows)[number]>[]>(() => [
     { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "total", header: "Total", cell: ({ row }) => row.original.total.toLocaleString() },
-    { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? (row.original.aware.applicable - row.original.aware.by_default).toLocaleString() : "—" },
-    { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? row.original.aware.by_default.toLocaleString() : "—" },
+    { id: "total", header: "Total", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.total.toLocaleString()}</DrillLink> },
+    { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{(row.original.aware.applicable - row.original.aware.by_default).toLocaleString()}</DrillLink> : "—" },
+    { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.aware.by_default.toLocaleString()}</DrillLink> : "—" },
     {
       id: "na", header: "Does not apply",
       cell: ({ row }) => {
@@ -193,14 +199,14 @@ export default function RulesPage() {
         if (!a) return "—";
         if (a.not_applicable === 0) return "–";
         const reason = a.not_applicable_reasons[0]?.reason;
-        return reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString();
+        return <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString()}</DrillLink>;
       },
     },
     {
       id: "pass", header: "Passing applicable",
       cell: ({ row }) => {
         const a = row.original.aware;
-        return !a || a.applicable === 0 ? "—" : `${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`;
+        return !a || a.applicable === 0 ? "—" : <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{`${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`}</DrillLink>;
       },
     },
   ], []);
@@ -247,6 +253,7 @@ export default function RulesPage() {
         <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
           options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
       </Field>
+      {facetSelect("State", state, setState, ["enabled", "disabled"], labelOf, "All states")}
       {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
       {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
       {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
@@ -263,9 +270,9 @@ export default function RulesPage() {
   const summaryRow = (
     <div className="flex flex-col gap-2">
       <div className="flex gap-6">
-        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} />
-        <Stat label="Enabled" value={totals.enabled.toLocaleString()} />
-        <Stat label="Disabled" value={totals.disabled.toLocaleString()} delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
+        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} href="/rules" />
+        <Stat label="Enabled" value={totals.enabled.toLocaleString()} href="/rules?state=enabled" />
+        <Stat label="Disabled" value={totals.disabled.toLocaleString()} href="/rules?state=disabled" delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
       </div>
       {!canManage ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</p> : null}
     </div>
@@ -304,6 +311,7 @@ export default function RulesPage() {
       ) : (
         <EmptyState
           title="No rules loaded."
+          detail="Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
           action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
         />
       )}
@@ -483,5 +491,21 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         </div>
       </div>
     </Drawer>
+  );
+}
+
+export default function RulesPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "all");
+  const tab = oneOf(tabRaw, ["all", "suppressions", "feedback"], "all");
+  return (
+    <Tabs
+      value={tab}
+      onValueChange={setTab}
+      items={[
+        { value: "all", label: "All", content: <RulesAll /> },
+        { value: "suppressions", label: "Suppressions", content: <SuppressionsPanel /> },
+        { value: "feedback", label: "Feedback", content: <FeedbackPanel /> },
+      ]}
+    />
   );
 }

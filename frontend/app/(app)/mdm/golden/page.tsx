@@ -103,7 +103,7 @@ export default function GoldenRecordsPage() {
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`/mdm/golden/${r.id}`)}
           />
-          {pageCount > 1 && <Pager page={page} pageCount={pageCount} onPageChange={setPage} />}
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={100} total={query.data?.total ?? 0} onPageChange={setPage} />}
         </div>
       }
       state={state}

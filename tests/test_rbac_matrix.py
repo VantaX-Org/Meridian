@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Public or self-service endpoints that intentionally carry no role guard.
 _UNGUARDED_OK = {
     ("auth.py", "/login"), ("auth.py", "/change-password"), ("auth.py", "/accept-invite"),
-    ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"),
+    ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
 }
@@ -55,3 +55,125 @@ def test_every_mutating_route_is_guarded():
                 if (path.name, route) not in _UNGUARDED_OK:
                     unguarded.append(f"{path.name} {d.func.attr.upper()} {route}")
     assert unguarded == []
+
+
+def test_audit_reads_accept_view_audit_or_manage_users():
+    src = (ROOT / "api" / "routes" / "audit.py").read_text()
+    assert src.count('require_any_permission("view_audit", "manage_users")') == 4
+    assert 'require_permission("manage_users")' not in src
+    assert has_permission("auditor", "view_audit") and not has_permission("auditor", "manage_users")
+
+
+class _EmptyResult:
+    def scalar(self):
+        return 0
+
+    def fetchall(self):
+        return []
+
+
+class _EmptyDB:
+    async def execute(self, *_a, **_k):
+        return _EmptyResult()
+
+
+def _audit_client(monkeypatch):
+    import uuid
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.audit import router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    app = FastAPI()
+    app.include_router(router)
+
+    async def _db():
+        yield _EmptyDB()
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "T", [])
+    return TestClient(app)
+
+
+def test_audit_endpoints_gate_by_role_over_http(monkeypatch):
+    client = _audit_client(monkeypatch)
+    for path in ("/api/v1/audit", "/api/v1/audit/llm"):
+        for role, status in (("auditor", 200), ("admin", 200), ("viewer", 403)):
+            r = client.get(path, headers={"X-User-Role": role})
+            assert r.status_code == status, (path, role, r.text)
+
+
+def test_require_any_permission_raises_only_when_every_action_fails():
+    import asyncio
+    import uuid
+
+    from fastapi import HTTPException, Request
+
+    from api.deps import Tenant
+    from api.services.rbac import require_any_permission
+
+    req = Request({"type": "http", "headers": [(b"x-user-role", b"viewer")], "query_string": b""})
+    t = Tenant(uuid.uuid4(), "T", [])
+
+    async def call(*actions):
+        return await require_any_permission(*actions)(req, t, _EmptyDB())
+
+    import os
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        assert asyncio.run(call("manage_users", "view_audit_x", "view")) == "viewer"
+        try:
+            asyncio.run(call("manage_users", "view_audit"))
+        except HTTPException as exc:
+            assert exc.status_code == 403
+        else:
+            raise AssertionError("expected 403")
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def _reports_client(monkeypatch):
+    import uuid
+
+    from fastapi import FastAPI
+    from fastapi.responses import Response
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import reports
+
+    async def _pdf(*_a, **_k):
+        return Response(b"%PDF-1.4", media_type="application/pdf")
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    monkeypatch.setattr(reports, "_pdf", _pdf)
+    app = FastAPI()
+    app.include_router(reports.router)
+
+    async def _db():
+        yield _EmptyDB()
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "T", [])
+    return app, TestClient(app)
+
+
+def test_report_downloads_need_export(monkeypatch):
+    import uuid
+
+    from api.routes import reports
+
+    _, client = _reports_client(monkeypatch)
+    vid = uuid.uuid4()
+    for role, status in (("analyst", 200), ("auditor", 200), ("admin", 200), ("viewer", 403)):
+        r = client.get("/api/v1/reports/cleaning.pdf", headers={"X-User-Role": role})
+        assert r.status_code == status, (role, r.text)
+    # Every route on the reports router refuses a viewer, whatever the handler does.
+    paths = [r.path.replace("{version_id}", str(vid)).replace("{module}", "MARA").replace("{matnr}", "M1")
+             for r in reports.router.routes if r.path.startswith("/api/v1/reports")]
+    assert len(paths) >= 9
+    for p in paths:
+        assert client.get(p, params={"v2": "x"}, headers={"X-User-Role": "viewer"}).status_code == 403, p

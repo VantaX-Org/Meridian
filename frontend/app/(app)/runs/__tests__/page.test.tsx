@@ -64,7 +64,9 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    expect(screen.getByText("74.8")).toBeInTheDocument();
+    const links = screen.getAllByText("74.8").map((el) => el.closest("a"));
+    expect(links.length).toBeGreaterThan(1); // hero tile and table cell
+    for (const link of links) expect(link).toHaveAttribute("href", "/runs/v2");
     expect(screen.getByRole("button", { name: /ECC Prod/ })).toBeInTheDocument();
   });
 
@@ -126,5 +128,31 @@ describe("RunsPage", () => {
 
     await waitFor(() => expect(screen.getByText("Filtered")).toBeInTheDocument());
     expect(getVersions).toHaveBeenCalledWith({ system_id: "sys-1", limit: 100 });
+  });
+});
+
+describe("RunsPage status param", () => {
+  it.each(["garbage", "constructor"])("ignores ?status=%s: every run, no banner", async (v) => {
+    searchParams.set("status", v);
+    const failed = version({ id: "v3", label: "Broken run", status: "failed" });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    expect(screen.getByText("Broken run")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show all runs" })).not.toBeInTheDocument();
+    searchParams.delete("status");
+  });
+
+  it("?status=failed shows only failed runs", async () => {
+    searchParams.set("status", "failed");
+    const failed = version({ id: "v3", label: "Broken run", status: "failed" });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
+    expect(screen.queryByText("Oct 8 upload")).not.toBeInTheDocument();
+    searchParams.delete("status");
   });
 });

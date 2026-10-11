@@ -2,19 +2,13 @@ import { cloneElement, type ButtonHTMLAttributes, type CSSProperties, type React
 import { cva, type VariantProps } from "class-variance-authority";
 import { clsx } from "clsx";
 
-const button = cva(
-  "inline-flex items-center justify-center gap-2 rounded px-3 py-1.5 text-[13px] leading-[18px] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed",
-  {
-    variants: {
-      variant: {
-        primary: "",
-        secondary: "border",
-        ghost: "",
-      },
-    },
-    defaultVariants: { variant: "primary" },
+const button = cva("m-btn m-motion-colors aria-disabled:opacity-50 aria-disabled:cursor-not-allowed", {
+  variants: {
+    variant: { primary: "m-btn-primary", secondary: "m-btn-secondary", ghost: "m-btn-ghost", danger: "m-btn-danger" },
+    size: { sm: "m-btn-sm", md: "", lg: "m-btn-lg" },
   },
-);
+  defaultVariants: { variant: "primary", size: "md" },
+});
 
 type RenderProps = { className?: string; style?: CSSProperties; children?: ReactNode };
 
@@ -22,27 +16,29 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof button> & {
     /** Render the button as this element instead of a <button>, e.g. a Link — avoids nesting a button inside an anchor. */
     render?: ReactElement<RenderProps>;
+    /** Replaces the leading icon with a spinner and disables the button. */
+    pending?: boolean;
   };
 
-export function Button({ className, variant, style, render, children, ...props }: ButtonProps) {
-  const variantStyle =
-    variant === "secondary"
-      ? { borderColor: "var(--m-line)", color: "var(--m-ink)", background: "var(--m-sheet)" }
-      : variant === "ghost"
-        ? { color: "var(--m-ink)", background: "transparent" }
-        : { background: "var(--m-accent)", color: "var(--m-sheet)" };
-  const classes = clsx(button({ variant }), className);
-  const mergedStyle = { ...variantStyle, ...style };
+export function Button({ className, variant, size, style, render, pending, children, disabled, ...props }: ButtonProps) {
+  const classes = clsx(button({ variant, size }), className);
+  const content = (
+    <>
+      {pending && <span className="m-spinner m-motion-spin" aria-hidden="true" />}
+      {children}
+    </>
+  );
   if (render) {
     return cloneElement(render, {
       className: clsx(classes, render.props.className),
-      style: { ...mergedStyle, ...render.props.style },
-      children: render.props.children ?? children,
-    });
+      style: { ...style, ...render.props.style },
+      children: render.props.children ?? content,
+      ...(pending ? { "aria-busy": true, "aria-disabled": true } : {}),
+    } as Partial<RenderProps>);
   }
   return (
-    <button className={classes} style={mergedStyle} {...props}>
-      {children}
+    <button className={classes} style={style} disabled={disabled || pending} aria-busy={pending || undefined} {...props}>
+      {content}
     </button>
   );
 }

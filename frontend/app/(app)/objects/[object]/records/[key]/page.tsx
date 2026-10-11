@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { Button, EmptyState, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -113,6 +113,7 @@ export default function RecordFixSheetPage() {
 
   return (
     <RecordPage recordKey={material.matnr} object={object} status={status}>
+      <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} exportOptions={exportOptions} overview={<>
       <div className="flex justify-end">
         <ExportMenu options={exportOptions} />
       </div>
@@ -217,6 +218,7 @@ export default function RecordFixSheetPage() {
           )}
         </section>
       )}
+      </>} />
     </RecordPage>
   );
 }

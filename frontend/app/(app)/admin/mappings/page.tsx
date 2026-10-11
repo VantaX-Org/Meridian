@@ -94,6 +94,7 @@ export default function AdminMappingsPage() {
       <div className="flex items-center gap-2 flex-wrap">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search fields" aria-label="Search fields" />
         <Select
+          label="Object"
           value={object}
           onValueChange={setObject}
           options={[{ value: "", label: "All objects" }, ...objects.map((o) => ({ value: o, label: formatModuleName(o) }))]}

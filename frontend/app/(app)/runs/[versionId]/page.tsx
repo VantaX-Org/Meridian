@@ -9,8 +9,11 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
-  Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
+  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
+  entityTabs, NextActions, Pareto,
 } from "@/design";
+import { DqsScore } from "@/components/insight/dqs-score";
+import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { isListFailure } from "@/lib/error";
@@ -21,6 +24,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, previousRunId } from "@/lib/runs";
 import type { Finding } from "@/types/api";
@@ -80,11 +84,18 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
   const modules = history.data?.modules ?? {};
 
   const columns: ColumnDef<ObjectSummary>[] = [
-    { id: "module", header: "Object", accessorFn: (o) => formatModuleName(o.module) },
+    {
+      id: "module",
+      header: "Object",
+      accessorFn: (o) => formatModuleName(o.module),
+      cell: ({ row }) => <DrillLink object={row.original.module} run={versionId}>{formatModuleName(row.original.module)}</DrillLink>,
+    },
     {
       id: "composite",
       header: "Composite score",
-      cell: ({ row }) => (row.original.composite_score == null ? "—" : row.original.composite_score.toFixed(1)),
+      cell: ({ row }) => (row.original.composite_score == null ? "—" : (
+        <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
+      )),
     },
     {
       id: "readiness",
@@ -92,8 +103,16 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
       cell: ({ row }) =>
         row.original.readiness ? <Pill tone={READINESS_TONE[row.original.readiness] ?? "neutral"}>{labelOf(row.original.readiness)}</Pill> : "—",
     },
-    { accessorKey: "failing_checks", header: "Failing checks" },
-    { accessorKey: "affected_records", header: "Affected records" },
+    {
+      accessorKey: "failing_checks",
+      header: "Failing checks",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.failing_checks}</DrillLink>,
+    },
+    {
+      accessorKey: "affected_records",
+      header: "Affected records",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.affected_records}</DrillLink>,
+    },
     {
       id: "trend",
       header: "Trend",
@@ -126,20 +145,28 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
 function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
   const router = useRouter();
   const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
+  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
   const history = useQuery({
     queryKey: queryKeys.scoreHistory(systemId),
     queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
     enabled: systemId != null,
   });
 
-  if (aggregate.isLoading) return <Skeleton height={240} />;
+  if (aggregate.isLoading) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true">
+        <div className="flex gap-4">{[0, 1, 2].map((i) => <Skeleton key={i} width={160} height={88} />)}</div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (aggregate.isError || !aggregate.data) {
     return <ErrorState message={errorText(aggregate.error)} onRetry={() => aggregate.refetch()} />;
   }
 
   const a = aggregate.data;
   if (a.total === 0) {
-    return <EmptyState title="No findings were produced for this run. Open the steps tab to see what ran." />;
+    return <EmptyState title="No findings were produced for this run. Open Steps to see what ran." />;
   }
 
   const composite = a.dqs.composite;
@@ -152,6 +179,21 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
   }));
 
   const historyRows = [...(history.data?.history ?? [])].reverse();
+  const points = historyRows.map((h) => ({ x: formatDate(h.run_at, "date"), y: h.at_the_time.composite ?? 0, runId: h.version_id }));
+  // Mark this run, and any run whose composite fell 5 points or more from the one before it.
+  const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
+    if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
+    return i > 0 && points[i - 1].y - p.y >= 5 ? [{ x: p.x, label: "Score fell", kind: "change" as const }] : [];
+  });
+  const paretoData = a.by_module.map((m) => ({ x: formatModuleName(m.module), y: m.findings, object: m.module }));
+  const next = (prescriptive.data?.actions ?? []).slice(0, 5).map((act) => ({
+    id: act.id,
+    title: act.title,
+    impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
+    verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
+    href: act.type === "finding" ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}` : "/inbox",
+    why: `Ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
+  }));
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -159,15 +201,17 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         The composite score for this run is {composite != null ? composite.toFixed(1) : "not scored"}.
         {a.dqs.capped ? " The score is capped by a critical finding." : ""}
       </p>
-      <div className="flex flex-wrap gap-8">
+      <div className="flex flex-wrap items-center gap-8">
+        <DqsScore agg={a} versionId={versionId} />
         <Stat
           label="Composite score"
           value={composite != null ? composite.toFixed(1) : "—"}
+          href={`/runs/${versionId}?tab=objects`}
           delta={delta != null ? <span>vs previous run: <span style={{ color: delta >= 0 ? "var(--m-pass)" : "var(--m-critical)" }}>{delta > 0 ? "+" : ""}{delta.toFixed(1)}</span></span> : undefined}
         />
-        <Stat label="Affected records" value={a.affected_records.toLocaleString()} />
-        <Stat label="Findings" value={a.total.toLocaleString()} />
-        {a.cost_at_risk != null ? <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} /> : null}
+        <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+        <Stat label="Findings" value={a.total.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+        {a.cost_at_risk != null ? <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} /> : null}
       </div>
       <section className="flex flex-col gap-2">
         <h2 className="text-[13px] font-semibold">Score by dimension</h2>
@@ -177,6 +221,14 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         />
       </section>
       <section className="flex flex-col gap-2">
+        <h2 className="text-[13px] font-semibold">Where the findings concentrate</h2>
+        <Pareto data={paretoData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&module=${p.object ?? ""}`)} />
+      </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[13px] font-semibold">Next actions (all systems)</h2>
+        {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
+      </section>
+      <section className="flex flex-col gap-2">
         <h2 className="text-[13px] font-semibold">Composite over runs</h2>
         {history.isLoading ? (
           <Skeleton height={120} />
@@ -184,11 +236,8 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
           <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No score history for this system yet.</p>
         ) : (
           <Line
-            data={historyRows.map((h) => ({
-              x: formatDate(h.run_at, "date"),
-              y: h.at_the_time.composite ?? 0,
-              runId: h.version_id,
-            }))}
+            data={points}
+            annotations={annotations}
             onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)}
           />
         )}
@@ -242,6 +291,11 @@ function FindingsTab({ versionId }: { versionId: string }) {
       id: "affected",
       header: "Affected",
       accessorFn: (f) => `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}`,
+      cell: ({ row }) => (
+        <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records&check_id=${row.original.check_id}`}>
+          {row.original.affected_count.toLocaleString()} of {row.original.total_count.toLocaleString()}
+        </DrillLink>
+      ),
     },
   ];
 
@@ -249,8 +303,8 @@ function FindingsTab({ versionId }: { versionId: string }) {
     <ExplorerPage
       filterBar={
         <div className="flex gap-2">
-          <Select value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
-          <Select value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
+          <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
+          <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
         </div>
       }
       toolbarEnd={
@@ -275,7 +329,9 @@ export default function RunDetailPage() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { can } = useRole();
-  const tab = searchParams.get("tab") ?? "summary";
+  // "summary" is the pre-18a name of the first tab; keep old deep links working.
+  const rawTab = searchParams.get("tab") ?? "overview";
+  const tab = rawTab === "summary" ? "overview" : rawTab;
 
   const version = useQuery({ queryKey: queryKeys.run(versionId), queryFn: () => getVersion(versionId) });
   const steps = useQuery({ queryKey: [...queryKeys.run(versionId), "steps"], queryFn: () => getRunSteps(versionId) });
@@ -373,9 +429,10 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "summary", label: "Summary", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} systemId={systemId} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} /> },
+          { value: "config", label: "Config matches", content: <ConfigMatchesTab versionId={versionId} /> },
           {
             value: "steps",
             label: "Steps",
@@ -390,6 +447,7 @@ export default function RunDetailPage() {
               />
             ),
           },
+          ...entityTabs({ entityType: "versions", entityId: versionId, exportOptions, canExport: can("export") }),
         ]}
       />
     </div>

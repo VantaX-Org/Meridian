@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Pill, Sparkline, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Mono, Pill, Sparkline, Stat, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -30,7 +30,7 @@ const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk
 
 function makeColumns(systemName: Map<string, string>, allVersions: Version[]): ColumnDef<Version>[] {
   return [
-    { id: "label", accessorFn: (v) => v.label ?? v.id, header: "Run" },
+    { id: "label", accessorFn: (v) => v.label ?? v.id, header: "Name", cell: ({ row }) => (row.original.label ? row.original.label : <Mono>{row.original.id}</Mono>) },
     {
       id: "status",
       accessorFn: (v) => v.status,
@@ -46,7 +46,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
       header: "DQS",
       cell: ({ row }) => {
         const dqs = overallDqs(row.original);
-        return dqs === null ? "—" : <span className="tabular-nums">{dqs.toFixed(1)}</span>;
+        return dqs === null ? "—" : <DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink>;
       },
     },
     {
@@ -81,6 +81,8 @@ function scopeName(scope: string, systemName: Map<string, string>): string {
 export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
+  const [rawStatus, setStatus] = useUrlState("status", "");
+  const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
   const all = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions({ limit: 100 }) });
@@ -96,12 +98,30 @@ export default function RunsPage() {
   const columns = useMemo(() => makeColumns(systemName, allVersions), [systemName, allVersions]);
   // The upload scope has no system_id to filter by (the API has no "no system" filter), so it is not clickable here.
   const series = useMemo(() => runSeries(allVersions).filter((s) => s.scope !== "upload"), [allVersions]);
-  const rows = system ? filtered.data?.versions ?? [] : allVersions;
+  const scoped = system ? filtered.data?.versions ?? [] : allVersions;
+  const rows = failedOnly ? scoped.filter((v) => statusTone(v.status) === "no-go") : scoped;
   const activeQuery = system ? filtered : all;
 
   const state = activeQuery.isLoading ? "loading" : isListFailure(activeQuery) ? "error" : rows.length === 0 ? "empty" : undefined;
 
-  const summary = series.length > 0 && (
+  const latest = rows[0];
+  const latestDqs = latest ? overallDqs(latest) : null;
+  const prevId = latest ? previousRunId(latest, allVersions) : null;
+  const prevRun = prevId ? allVersions.find((v) => v.id === prevId) : undefined;
+  const prevDqs = prevRun ? overallDqs(prevRun) : null;
+  const delta = latestDqs !== null && prevDqs !== null ? latestDqs - prevDqs : null;
+  const summary = rows.length > 0 && (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-6">
+        <Stat label="Runs" value={rows.length} />
+        <Stat
+          label="Latest DQS"
+          value={latest && latestDqs !== null ? <DrillLink href={`/runs/${latest.id}`}>{latestDqs.toFixed(1)}</DrillLink> : "—"}
+          hint={delta !== null && prevId && latest ? <DrillLink href={`/runs/${latest.id}/vs/${prevId}`}>{`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} vs previous`}</DrillLink> : "No earlier run to compare with"}
+        />
+        <Stat label="Failed" value={scoped.filter((v) => statusTone(v.status) === "no-go").length} tone={scoped.some((v) => statusTone(v.status) === "no-go") ? "no-go" : undefined} href="/runs?status=failed" />
+      </div>
+      {series.length > 0 && (
     <div className="flex flex-wrap items-center gap-3">
       {series.map((s) => {
         const active = system === s.scope;
@@ -121,6 +141,8 @@ export default function RunsPage() {
       })}
       {system ? <Button variant="ghost" onClick={() => setSystem("")}>Show all</Button> : null}
     </div>
+      )}
+    </div>
   );
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportRuns("xlsx", { system_id: system || undefined, limit: 100 }) }];
@@ -128,6 +150,12 @@ export default function RunsPage() {
   return (
     <ExplorerPage
       toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
+      filterBar={failedOnly ? (
+        <div className="flex items-center gap-2 text-[13px]">
+          <span style={{ color: "var(--m-ink-2)" }}>Showing failed runs.</span>
+          <Button variant="secondary" onClick={() => setStatus("")}>Show all runs</Button>
+        </div>
+      ) : undefined}
       summary={summary}
       table={
         <DataTable
@@ -154,8 +182,8 @@ export default function RunsPage() {
       }
       state={state}
       emptyProps={{
-        title: "No runs yet.",
-        detail: dayOne.step?.detail ?? "Connect a system to start your first run.",
+        title: "No runs yet. Run the first extraction from Systems.",
+        detail: dayOne.step?.detail,
         action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Connect a system" />,
         ghost: "table",
       }}

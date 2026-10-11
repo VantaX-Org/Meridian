@@ -1,17 +1,19 @@
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Mono, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
 import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import { apiErrorMessage } from "@/lib/error";
-import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
+import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
+import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User, UserRole } from "@/types/api";
@@ -34,13 +36,15 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }))
 const WEEK = 7 * 24 * 3600 * 1000;
 
 export default function AdminUsersPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "users");
+  const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
   const { can } = useRole();
   const canManage = can("manage_users");
 
   if (!canManage) {
     return (
       <div className="flex flex-col gap-2 p-6">
-        <strong>Users and audit needs the manage_users permission</strong>
+        <strong>Users and audit needs the <Mono>manage_users</Mono> permission</strong>
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
           Ask an administrator to change roles or review the audit log.
         </p>
@@ -54,6 +58,8 @@ export default function AdminUsersPage() {
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
       </header>
       <Tabs
+        value={tab}
+        onValueChange={setTab}
         items={[
           { value: "users", label: "Users", content: <UsersView /> },
           { value: "roles", label: "Roles", content: <RolesView /> },
@@ -244,31 +250,6 @@ function AuditView() {
   );
 }
 
-function InviteForm({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<UserRole>("viewer");
-  const m = useMutation({
-    mutationFn: () => inviteUser({ email, name: name || undefined, role }),
-    onSuccess: () => { toast.success(`Invitation sent to ${email}`); onDone(); },
-    onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`),
-  });
-  return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (email) m.mutate(); }}>
-      <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
-      <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-      <Field label="Role">
-        <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
-      </Field>
-      <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={!email || m.isPending}>Send invitation</Button>
-        <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
-      </div>
-    </form>
-  );
-}
-
 function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: () => void; onRemove: () => void; removing: boolean }) {
   const [role, setRole] = useState<UserRole>(user.role);
   const [isActive, setActive] = useState(user.is_active);
@@ -304,7 +285,7 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
           </p>
           {/* ponytail: this reason is a client-side confirmation gate only, same as the
               legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+          <textarea aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           <div className="flex gap-2">
             <Button
               variant="secondary"

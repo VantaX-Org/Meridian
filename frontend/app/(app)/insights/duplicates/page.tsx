@@ -85,7 +85,7 @@ export default function DuplicatesPage() {
   }
 
   const state: "loading" | "empty" | "error" | undefined =
-    !object || !recordId ? "empty" : cluster.isLoading ? "loading" : cluster.isError ? "error" : nodes.length === 0 ? "empty" : undefined;
+    objects.isLoading ? "loading" : !object || !recordId ? "empty" : cluster.isLoading ? "loading" : cluster.isError ? "error" : nodes.length === 0 ? "empty" : undefined;
 
   return (
     <ExplorerPage

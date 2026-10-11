@@ -121,7 +121,7 @@ describe("RunDetailPage", () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     renderWithQuery(<RunDetailPage />);
     await waitFor(() =>
-      expect(screen.getByText("No findings were produced for this run. Open the steps tab to see what ran.")).toBeInTheDocument(),
+      expect(screen.getByText("No findings were produced for this run. Open Steps to see what ran.")).toBeInTheDocument(),
     );
   });
 
@@ -135,8 +135,7 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByRole("tab", { name: "Objects" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Objects" }));
     await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Material Master"));
-    expect(push).toHaveBeenCalledWith("/objects/material_master?run=v2");
+    expect(screen.getByRole("link", { name: "Material Master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
   });
 
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {
@@ -192,5 +191,11 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
+  });
+
+  it("shows a loading skeleton while the run loads", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
   });
 });

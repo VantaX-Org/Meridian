@@ -16,7 +16,7 @@ interface Row { item: TreeItem; level: Level; index: number; count: number }
 
 const WORD: Record<DqColour, string> = { red: "Blocked activities below", amber: "Degraded activities below", green: "" };
 
-export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocked, editable }: {
+export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocked, editable, canDesign = true }: {
   doc: Doc;
   selected: string | null;
   colour: (item: TreeItem, level: Level) => DqColour | null;
@@ -24,6 +24,8 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
   onSelect: (id: string) => void;
   onBlocked: () => void;
   editable: boolean;
+  /** False when the user lacks `analyse` (wave 16): mutating controls are not rendered. */
+  canDesign?: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(() => {
     const out = new Set(doc.l1.map((x) => x.id));
@@ -104,7 +106,7 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
                     <Button variant="secondary" onClick={() => { actions.remove(id); setConfirm(null); }}>Delete</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep</Button>
                   </span>
-                ) : renaming === id ? null : (
+                ) : renaming === id || !canDesign ? null : (
                   <span className="aurora-designer__actions">
                     <Button variant="ghost" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}>Rename</Button>
                     {r.level < 4 ? <Button variant="ghost" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}>Add</Button> : null}
@@ -118,7 +120,7 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
           );
         })}
       </ul>
-      <Button variant="ghost" onClick={() => guard(() => actions.add(null))}>Add L1 process</Button>
+      {canDesign ? <Button variant="ghost" onClick={() => guard(() => actions.add(null))}>Add L1 process</Button> : null}
     </div>
   );
 }

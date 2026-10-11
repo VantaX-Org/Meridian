@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, EmptyState, ErrorState, Mono, Pill, type PillTone } from "@/design";
+import { Button, DrillLink, EmptyState, ErrorState, Mono, Pill, type PillTone } from "@/design";
 import { getConfigLoad, startConfigLoad, type AreaObject, type AreaStatus, type ConfigLoad, type LoadArea } from "@/lib/api/config-load";
 import { getJob } from "@/lib/api/jobs";
 import { apiErrorMessage } from "@/lib/error";
@@ -182,8 +182,8 @@ function Result({ systemId, load, retry, retrying, canLoad }: { systemId: string
         Loaded {relativeTime(load.finished_at ?? load.created_at)}.
       </p>
       <dl className="grid grid-cols-2 gap-2 text-[13px]">
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with rows</dt><dd>{(s.loaded ?? 0).toLocaleString()}</dd></div>
-        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with no rows</dt><dd>{(s.empty ?? 0).toLocaleString()}</dd></div>
+        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.loaded ?? 0).toLocaleString()}</DrillLink></dd></div>
+        <div><dt style={{ color: "var(--m-ink-2)" }}>Objects with no rows</dt><dd><DrillLink href={`/systems/${systemId}?tab=objects`}>{(s.empty ?? 0).toLocaleString()}</DrillLink></dd></div>
         <div>
           <dt style={{ color: "var(--m-ink-2)" }}>Processes derived</dt>
           <dd>{load.flows_derived ? <Link href="/process?tab=readiness" className="underline">View in Process</Link> : "None"}</dd>

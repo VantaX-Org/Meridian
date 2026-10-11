@@ -4,7 +4,8 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, ExportMenu, Pill, ReportPage, Skeleton, Stat, Waterfall, type PillTone } from "@/design";
+import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -25,19 +26,23 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
     header: "Verdict",
     cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{row.original.verdict}</Pill>,
   },
-  { accessorKey: "blocker_count", header: "Blockers" },
+  {
+    accessorKey: "blocker_count",
+    header: "Blockers",
+    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.blocker_count}</DrillLink>,
+  },
 ];
 
 const impactColumns: ColumnDef<ImpactRow>[] = [
   { accessorKey: "feature", header: "Feature" },
   { accessorKey: "status", header: "Status" },
-  { accessorKey: "record_count", header: "Blocked records" },
+  { accessorKey: "record_count", header: "Blocked records", cell: ({ row }) => <DrillLink href="/insights/impact">{row.original.record_count}</DrillLink> },
   { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => row.original.value_at_risk.toLocaleString() },
 ];
 
 const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
-  { accessorKey: "score", header: "Score" },
+  { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Delta" },
 ];
 
@@ -51,6 +56,7 @@ export default function ExecPage() {
     queryFn: () => getExec({ version_id: run }),
   });
 
+  const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
     : isListFailure({ isError, error })
@@ -74,6 +80,28 @@ export default function ExecPage() {
       charts={<Waterfall data={data?.waterfall ?? []} />}
       tables={
         <div className="flex flex-col gap-6">
+          {(roi.isLoading || roi.isError) && (
+            <Card title="Return on investment">
+              {roi.isLoading ? (
+                <Skeleton height={48} />
+              ) : (
+                <div className="flex items-center gap-3 text-[13px]" role="alert">
+                  <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
+                  <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
+                </div>
+              )}
+            </Card>
+          )}
+          {roi.data && (
+            <Card title="Return on investment">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Stat label="ROI multiple" value={`${roi.data.roi.roi_multiple}x`} />
+                <Stat label="Payback" value={`${roi.data.roi.payback_months} months`} />
+                <Stat label="Risk mitigated" value={roi.data.roi.risk_mitigated.toLocaleString()} />
+                <Stat label="Annual subscription" value={roi.data.roi.subscription_annual.toLocaleString()} />
+              </div>
+            </Card>
+          )}
           <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} />
           <DataTable columns={impactColumns} data={data?.impact_rows ?? []} getRowId={(row) => row.feature} />
           <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} />

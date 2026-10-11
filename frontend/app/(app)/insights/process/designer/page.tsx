@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ErrorState, Mono, Select, Skeleton, Stat } from "@/design";
+import { Button, ErrorState, Mono, Notice, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
@@ -12,6 +12,7 @@ import {
 import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useRole } from "@/hooks/use-role";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
@@ -23,23 +24,11 @@ import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
 
-function Banner({ tone, title, children, action }: { tone: "info" | "warning" | "danger"; title: string; children?: React.ReactNode; action?: React.ReactNode }) {
-  const border = tone === "danger" ? "var(--m-critical)" : tone === "warning" ? "var(--m-warning)" : "var(--m-line)";
-  return (
-    <div className="rounded border p-3 flex items-start justify-between gap-3" style={{ borderColor: border, background: "var(--m-sheet-2)" }}>
-      <div>
-        <strong>{title}</strong>
-        {children ? <div className="ui-note">{children}</div> : null}
-      </div>
-      {action ? <span className="flex gap-2">{action}</span> : null}
-    </div>
-  );
-}
-
 export default function ProcessDesigner() {
   const sp = useSearchParams();
   const model = sp.get("model") ?? "reference";
-  const v = sp.get("v");
+  const vRaw = sp.get("v");
+  const v = vRaw && /^[1-9]\d{0,5}$/.test(vRaw) ? vRaw : null;
   const overlayOn = sp.get("overlay") !== "none";
   const reference = model === "reference";
 
@@ -108,7 +97,12 @@ function Editor(p: EditorProps) {
   const attr = sp.get("attr");
   const node = sp.get("node");
   const reference = model === "reference";
-  const editable = !reference && !viewingOld;
+  // Wave 16: every designer write needs `analyse`, the export needs `export`. Without them the
+  // controls are not rendered and the reference prompt never opens.
+  const role = useRole();
+  const canDesign = role.can("analyse");
+  const canExport = role.can("export");
+  const editable = canDesign && !reference && !viewingOld;
 
   const [doc, setDoc] = useState(initial);
   const [note, setNote] = useState("");
@@ -171,7 +165,7 @@ function Editor(p: EditorProps) {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("beforeunload", onLeave); };
   }, [dirty]);
 
-  const blocked = () => { if (reference) setPrompt(true); };
+  const blocked = () => { if (reference && canDesign) setPrompt(true); };
   const edit = (fn: (d: ProcessModelDocument) => ProcessModelDocument) => { if (editable) setDoc(fn); else blocked(); };
 
   const located = node ? D.locate(doc, node) : null;
@@ -213,12 +207,14 @@ function Editor(p: EditorProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={model}
+          <Select
+            label="Process model"
+            value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
             onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
-          <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button>
-          <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button>
+          {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
+          {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
         </div>
       </div>
 
@@ -232,24 +228,24 @@ function Editor(p: EditorProps) {
       ) : null}
 
       {prompt ? (
-        <Banner tone="info" title="Create a model from the reference to edit it"
+        <Notice tone="info" title="Create a model from the reference to edit it"
           action={<><Button variant="primary" disabled={create.isPending} onClick={() => create.mutate({ name: "My process model", from: "reference" })}>Create model</Button><Button variant="ghost" onClick={() => setPrompt(false)}>Not now</Button></>}>
           The reference model is shared and read-only.
-        </Banner>
+        </Notice>
       ) : null}
-      {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={() => restore.mutate()} onLatest={() => go({ v: null })} /> : null}
+      {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={canDesign ? () => restore.mutate() : undefined} onLatest={() => go({ v: null })} /> : null}
       {fail?.kind === "stale" ? (
-        <Banner tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
+        <Notice tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
           action={<><Button variant="secondary" onClick={() => { setFail(null); setDoc(initial); refresh(); }}>Reload</Button><Button variant="secondary" disabled={copy.isPending} onClick={() => copy.mutate()}>Save as a copy</Button></>}>
           Reload to take their version, or save your changes as a copy.
-        </Banner>
+        </Notice>
       ) : null}
       {fail?.kind === "invalid" ? (
-        <Banner tone="danger" title="The model was not saved">
+        <Notice tone="danger" title="The model was not saved">
           <ul>{fail.errors.slice(0, 8).map((e, i) => <li key={i}>{e.path ? <><Mono>{e.path}</Mono>{" "}</> : null}{e.message}</li>)}</ul>
-        </Banner>
+        </Notice>
       ) : null}
-      {fail?.kind === "other" ? <Banner tone="danger" title="The model was not saved">{fail.message}</Banner> : null}
+      {fail?.kind === "other" ? <Notice tone="danger" title="The model was not saved">{fail.message}</Notice> : null}
       {dirty && editable ? (
         <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
           <span>Unsaved changes</span>
@@ -277,10 +273,10 @@ function Editor(p: EditorProps) {
 
       <div className="flex flex-col gap-4 md:flex-row">
         <aside className="w-full md:w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Process tree">
-          <ProcessTree doc={doc} selected={node} editable={editable} onBlocked={blocked} actions={actions}
+          <ProcessTree doc={doc} selected={node} editable={editable} canDesign={canDesign} onBlocked={blocked} actions={actions}
             colour={(item, level) => (ov ? D.worstUnder(item, level, actColour) : null)}
             onSelect={(id) => go({ node: id, attr: null })} />
-          <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} />
+          {canDesign ? <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} /> : null}
         </aside>
         <section className="flex-1 min-w-0 overflow-x-auto" aria-label="Process view">
           {l4 ? (
@@ -289,7 +285,7 @@ function Editor(p: EditorProps) {
                 <h2 className="text-[17px] font-semibold">{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
-              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} onBlocked={blocked}
+              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
                 onSelect={(id) => go({ attr: id })}
                 onMove={(id, x, y) => edit((d) => D.moveNode(d, l4.id, id, x, y))}
                 onConnect={(s, t) => edit((d) => D.connect(d, l4.id, s, t))}
@@ -304,13 +300,13 @@ function Editor(p: EditorProps) {
                 onLayout={() => edit((d) => D.autoLayout(d, l4.id))} />
             </>
           ) : (
-            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} actions={actions} editable={editable} onBlocked={blocked}
+            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} actions={actions} editable={editable} canDesign={canDesign} onBlocked={blocked}
               onOpen={(id) => go({ node: id, attr: null })} />
           )}
         </section>
       </div>
 
-      <AttributeDrawer doc={doc} attr={attr} editable={editable} onBlocked={blocked} onClose={() => go({ attr: null })}
+      <AttributeDrawer doc={doc} attr={attr} editable={editable} canDesign={canDesign} onBlocked={blocked} onClose={() => go({ attr: null })}
         overlay={ov} unmapped={unmapped} canAdopt={editable && !dirty}
         onAdopt={(variantId, l4Id) => adopt.mutate({ variantId, l4Id })} findingHref={p.findingHref}
         patchActivity={(id, patch) => edit((d) => D.patchActivity(d, id, patch))}

@@ -14,6 +14,7 @@
  *   @/design's force-directed `Graph`.
  */
 
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ import {
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
@@ -211,7 +213,8 @@ function ReadinessView() {
     meta: { ignoreError: true },
   });
   const findingHref = useFindingHref(latest?.id);
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const systemScope = useSystemScope();
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
   const [systemChoice, setSystem] = useState("all");
   const systemId = systemChoice === "all" ? undefined : systemChoice;
   const aware = useQuery({
@@ -233,7 +236,7 @@ function ReadinessView() {
   }
 
   const objectPicker = (
-    <Select value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
+    <Select label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
       onValueChange={(m) => { setObject(m); setL1(""); }} />
   );
 
@@ -288,10 +291,12 @@ function ReadinessView() {
       <div className="flex gap-3 items-center flex-wrap">
         {objectPicker}
         {processes.length > 1 ? (
-          <Select value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
+          <Select label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
         {(systems.data?.length ?? 0) > 1 ? (
-          <Select value={systemChoice}
+          <Select
+            label="System"
+            value={systemChoice}
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
@@ -389,7 +394,7 @@ function MapView() {
   const analysed = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const modules = useMemo(() => analysed.filter((m) => MAPPED.has(m)), [analysed]);
   const moduleParam = search.get("module");
-  const active = moduleParam || modules[0] || null;
+  const active = oneOf(moduleParam ?? "", modules, modules[0] ?? "") || null;
   const setModule = (m: string) => {
     const next = new URLSearchParams(search.toString());
     next.set("module", m);
@@ -431,7 +436,7 @@ function MapView() {
   return (
     <div className="flex flex-col gap-4">
       {modules.length > 1 ? (
-        <Select value={active ?? ""} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={setModule} />
+        <Select label="Object" value={active ?? ""} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={setModule} />
       ) : null}
 
       {graphQ.isLoading ? <Skeleton height={240} /> : graphQ.error ? (
@@ -500,13 +505,15 @@ function MapView() {
 /* ---------- Page ---------- */
 
 export default function ProcessInsightsPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "readiness");
+  const tab = (["readiness", "map"] as string[]).includes(tabRaw) ? tabRaw : "readiness";
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>
         <h2 className="text-[22px] font-semibold">Process</h2>
         <p style={{ color: "var(--m-ink-2)" }}>How ready each process step is, and the mined activity map behind it.</p>
       </div>
-      <Tabs items={[
+      <Tabs value={tab} onValueChange={setTab} items={[
         { value: "readiness", label: "Readiness", content: <ReadinessView /> },
         { value: "map", label: "Map", content: <MapView /> },
       ]} />

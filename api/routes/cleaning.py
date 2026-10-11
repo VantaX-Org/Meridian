@@ -14,7 +14,7 @@ from sqlalchemy import func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import current_user_id, current_user_label, require_permission
+from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.cleaning")
 
@@ -235,7 +235,7 @@ async def approve_cleaning_item(
     body: ApproveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -270,7 +270,7 @@ async def approve_cleaning_item(
 # ── POST /api/v1/cleaning/reject/{id} ────────────────────────────────────────
 
 
-@router.post("/cleaning/reject/{item_id}", dependencies=[Depends(require_permission("approve"))])
+@router.post("/cleaning/reject/{item_id}", dependencies=[Depends(require_permission("approve", scope=scope_from_path))])
 async def reject_cleaning_item(
     item_id: str,
     body: RejectBody,
@@ -310,7 +310,7 @@ async def bulk_approve(
     body: BulkApproveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -338,11 +338,16 @@ async def bulk_approve(
                 ORDER BY priority DESC
                 LIMIT :max_count
             )
-            RETURNING cq.id
+            RETURNING cq.id, cq.record_key, cq.object_type
         """),
         {**params, "approver": current_user_id()},
     )
-    approved_ids = [str(r[0]) for r in result.fetchall()]
+    approved = result.fetchall()
+    approved_ids = [str(r[0]) for r in approved]
+    # One audit row per item, like the single approve route, so a batch's trail covers bulk approvals.
+    actor = current_user_label()
+    for r in approved:
+        await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], actor_name=actor, metadata={"bulk": True})
     await db.commit()
 
     return {"approved_count": len(approved_ids), "skipped_count": 0}
@@ -357,7 +362,7 @@ async def apply_cleaning_item(
     body: ApplyBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("apply")),
+    _role: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -414,7 +419,7 @@ async def rollback_cleaning_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("apply")),
+    _role: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -463,7 +468,7 @@ async def rollback_cleaning_item(
 async def get_cleaning_export_options(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Return the object types and statuses actually present in this tenant's
     cleaning queue, along with row counts. Used by the export modal to build
@@ -515,7 +520,7 @@ async def export_cleaning_data(
     ),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     valid_formats = ("csv", "lsmw", "bapi", "idoc", "sf_csv", "xlsx")
     if export_format not in valid_formats:
@@ -675,12 +680,13 @@ async def get_cleaning_metrics(
 @router.get("/cleaning/audit")
 async def list_cleaning_audit(
     queue_id: Optional[str] = None,
+    batch_id: Optional[uuid.UUID] = Query(None, description="Only rows for items of this cleaning-queue batch"),
     action: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -690,6 +696,11 @@ async def list_cleaning_audit(
     if queue_id:
         where_clauses.append("queue_id = :qid")
         params["qid"] = queue_id
+    if batch_id:
+        where_clauses.append(
+            "queue_id IN (SELECT id FROM cleaning_queue WHERE batch_id = :bid AND tenant_id = :tid)"
+        )
+        params["bid"] = str(batch_id)
     if action:
         where_clauses.append("action = :act")
         params["act"] = action
@@ -774,7 +785,7 @@ async def list_dedup_candidates(
 # ── POST /api/v1/dedup/preview ────────────────────────────────────────────────
 
 
-@router.post("/dedup/preview", dependencies=[Depends(require_permission("mdm.read"))])
+@router.post("/dedup/preview", dependencies=[Depends(require_permission("mdm.read", scope=scope_from_path))])
 async def dedup_preview(
     body: DedupPreviewBody,
     db: AsyncSession = Depends(get_db),
@@ -821,7 +832,7 @@ async def dedup_preview(
 # ── POST /api/v1/dedup/merge ─────────────────────────────────────────────────
 
 
-@router.post("/dedup/merge", dependencies=[Depends(require_permission("approve"))])
+@router.post("/dedup/merge", dependencies=[Depends(require_permission("approve", scope=scope_from_path))])
 async def dedup_merge(
     body: DedupMergeBody,
     db: AsyncSession = Depends(get_db),

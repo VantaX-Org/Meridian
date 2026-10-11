@@ -11,6 +11,7 @@ import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
-from api.services.rbac import require_permission
+from api.services.rbac import require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["audit"])
 
@@ -37,7 +38,17 @@ _COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, met
 _EXPORT_MAX = 100_000
 
 
-def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until) -> tuple[str, dict]:
+def _filters(
+    tenant: Tenant,
+    actor_user_id: Optional[str],
+    entity_type: Optional[str],
+    entity_id: Optional[str],
+    action: Optional[str],
+    method: Optional[str],
+    since: Optional[str],
+    until: Optional[str],
+    path_contains: Optional[str] = None,
+) -> tuple[str, dict]:
     conditions = ["tenant_id = :tid"]
     params: dict = {"tid": str(tenant.id)}
     for value, clause, key in (
@@ -52,6 +63,12 @@ def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, meth
         if value:
             conditions.append(clause)
             params[key] = value
+    if path_contains:
+        # Entities keyed by something other than a UUID/number (object names, material numbers)
+        # have no entity_id, so the detail pages match on the request path instead.
+        escaped = path_contains.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        conditions.append("path ILIKE :pathlike ESCAPE '\\'")
+        params["pathlike"] = f"%{escaped}%"
     return " AND ".join(conditions), params
 
 
@@ -78,15 +95,18 @@ async def list_audit_entries(
     until: Optional[str] = Query(
         None, description="ISO-8601 timestamp — return entries at or before this time"
     ),
+    path_contains: Optional[str] = Query(
+        None, max_length=200, description="Substring of the request path (case-insensitive)"
+    ),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """List audit log entries for this tenant, newest first."""
     await _set_rls(db, tenant.id)
-    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
+    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until, path_contains)
 
     count_result = await db.execute(
         text(f"SELECT COUNT(*) FROM audit_log WHERE {where_clause}"),
@@ -132,7 +152,7 @@ async def export_audit_entries(
     format: Literal["csv", "xlsx"] = Query("csv"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """Audit log as CSV or XLSX for auditors and SIEM import, oldest first, same filters as /audit.
     Capped at 100,000 rows; narrow with since/until for longer histories."""
@@ -177,7 +197,7 @@ async def export_audit_entries(
 async def audit_summary(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """Counts grouped by action + entity_type for the last 30 days.
     Used by the Admin overview tile."""
@@ -199,3 +219,91 @@ async def audit_summary(
     )
     rows = [dict(r._mapping) for r in result.fetchall()]
     return {"summary": rows}
+
+
+class LlmAuditEntry(BaseModel):
+    id: str
+    service_name: str
+    called_at: Optional[str] = None
+    model_version: Optional[str] = None
+    prompt_hash: Optional[str] = None
+    token_count: Optional[int] = None
+    latency_ms: Optional[int] = None
+    success: Optional[bool] = None
+    deterministic_hit: Optional[bool] = None
+    skip_reason: Optional[str] = None
+
+
+class LlmCacheSummary(BaseModel):
+    service_name: str
+    decisions: int
+    deterministic: int
+
+
+class LlmAuditOut(BaseModel):
+    entries: list[LlmAuditEntry]
+    total: int
+    limit: int
+    offset: int
+    cache: list[LlmCacheSummary]
+
+
+@router.get("/audit/llm", response_model=LlmAuditOut)
+async def list_llm_audit(
+    service_name: Optional[str] = Query(None),
+    success: Optional[bool] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
+) -> LlmAuditOut:
+    """LLM call audit (llm_audit_log, newest first, paged) plus a per-service
+    summary of the persistent decision cache. Prompt text is never stored, only hashes."""
+    await _set_rls(db, tenant.id)
+    conds = ["tenant_id = :tid"]
+    params: dict = {"tid": str(tenant.id)}
+    if service_name:
+        conds.append("service_name = :svc")
+        params["svc"] = service_name
+    if success is not None:
+        conds.append("success = :ok")
+        params["ok"] = success
+    where = " AND ".join(conds)
+
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM llm_audit_log WHERE {where}"), params)).scalar() or 0
+    rows = await db.execute(
+        text(
+            f"""
+            SELECT id, service_name, called_at, model_version, prompt_hash, token_count,
+                   latency_ms, success, deterministic_hit, skip_reason
+            FROM llm_audit_log WHERE {where}
+            ORDER BY called_at DESC LIMIT :limit OFFSET :offset
+            """
+        ),
+        {**params, "limit": limit, "offset": offset},
+    )
+    entries = []
+    for r in rows.fetchall():
+        d = dict(r._mapping)
+        d["id"] = str(d["id"])
+        if d.get("called_at"):
+            d["called_at"] = d["called_at"].isoformat()
+        entries.append(d)
+
+    cache = await db.execute(
+        text(
+            """
+            SELECT service_name, COUNT(*) AS decisions,
+                   COUNT(*) FILTER (WHERE deterministic_hit) AS deterministic
+            FROM llm_decision_cache WHERE tenant_id = :tid
+            GROUP BY service_name ORDER BY decisions DESC
+            """
+        ),
+        {"tid": str(tenant.id)},
+    )
+    cache_summary = [dict(r._mapping) for r in cache.fetchall()]
+    return LlmAuditOut(
+        entries=[LlmAuditEntry(**e) for e in entries], total=total, limit=limit, offset=offset,
+        cache=[LlmCacheSummary(**c) for c in cache_summary],
+    )

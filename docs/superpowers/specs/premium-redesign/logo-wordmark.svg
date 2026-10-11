@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="32" viewBox="0 0 128 32" fill="none" role="img" aria-label="Meridian">
+  <title>Meridian wordmark</title>
+  <!-- monoline capitals, stroke 2.4, cap height 18 (y 7 to 25); the I letters share the mark's meridian weight -->
+  <g stroke="#141519" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- M -->
+    <path d="M2 25V7L9 18L16 7V25"/>
+    <!-- E -->
+    <path d="M33 7H21V25H33M21 16H31"/>
+    <!-- R -->
+    <path d="M38 25V7H46A4.5 4.5 0 0 1 46 16H38M45 16L51 25"/>
+    <!-- D -->
+    <path d="M63 7V25H69A9 9 0 0 0 69 7Z"/>
+    <!-- A -->
+    <path d="M90 25L97 7L104 25M93 19H101"/>
+    <!-- N -->
+    <path d="M109 25V7L122 25V7"/>
+  </g>
+  <!-- the two I's are meridians: accent colour, same geometry as the mark's line -->
+  <g stroke="#2B4BE0" stroke-width="2.4" stroke-linecap="round">
+    <path d="M56 7V25"/>
+    <path d="M83 7V25"/>
+  </g>
+</svg>

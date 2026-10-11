@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, AuthNotice, AuthSpinner, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
 import { Button, Field } from "@/design";
 import { resolveNavHref } from "@/lib/nav";
 import { isRole } from "@/hooks/use-role";
@@ -71,11 +71,11 @@ export default function SignInPage() {
   };
 
   return (
-    <AuthFrame title="Sign in" lead="Use your work email. Your session stays on this server."
+    <AuthFrame title="Sign in"
       side={
         <>
-          <h2 className="text-[15px] leading-5 font-semibold" style={{ color: "var(--m-ink)" }}>Your SAP data stays on this server.</h2>
-          <ol className="flex list-decimal flex-col gap-2 pl-5 text-[13px] leading-[18px] marker:text-[12px] marker:leading-4 marker:[color:var(--m-ink-3)]" style={{ color: "var(--m-ink-2)" }}>
+          <h2 className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>Your SAP data stays on this server.</h2>
+          <ol className="flex list-decimal flex-col gap-1 pl-5 marker:[color:var(--m-ink-3)]">
             <li><strong>Extracts and uploads</strong> are checked here, inside your own deployment.</li>
             <li><strong>Findings, records and reports</strong> are stored in this deployment&apos;s database.</li>
             <li><strong>The AI assistant</strong> sees field names and aggregate counts, never record values. A cloud model provider, if your administrator picked one, receives only those.</li>
@@ -101,13 +101,11 @@ export default function SignInPage() {
         </Field>
         <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password"
           error={passwordError} readOnly={loading} />
-        <div className={authActionsClass}>
-          <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password</Link>
+        <div className={`${authActionsClass} justify-end`}>
+          <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password?</Link>
         </div>
-        <Button type="submit" aria-busy={loading} disabled={loading || invalid}
-          style={loading || invalid ? { background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" } : undefined}
-          className="h-9 w-full">
-          {loading ? "Signing in" : "Sign in"}
+        <Button type="submit" aria-busy={loading} disabled={loading} className="h-10 w-full">
+          {loading ? <><AuthSpinner /> Signing in…</> : "Sign in"}
         </Button>
       </form>
     </AuthFrame>

@@ -66,13 +66,13 @@ export function PilotTab({ id }: { id: string }) {
     <div className="flex flex-col gap-4">
       <div className={card} style={cardStyle}>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Stat label="Precision" value={p?.precision == null ? "—" : `${(p.precision * 100).toFixed(1)}%`}
+          <Stat label="Precision" href={`/systems/${id}?tab=pilot#rules`} value={p?.precision == null ? "—" : `${(p.precision * 100).toFixed(1)}%`}
             delta={p ? `${n(p.reviewed - p.false_positives)} of ${n(p.reviewed)} reviewed issues were real.` : "No issues reviewed yet."} />
-          <Stat label="Recall" value={rec?.recall == null ? "—" : `${(rec.recall * 100).toFixed(1)}%`}
+          <Stat label="Recall" href={`/systems/${id}?tab=pilot#missed`} value={rec?.recall == null ? "—" : `${(rec.recall * 100).toFixed(1)}%`}
             delta={rec?.known ? `${n(rec.caught)} of ${n(rec.known)} known issues were caught.` : "No known issues uploaded."} />
-          <Stat label="Rules to tune" value={n(tuning)}
+          <Stat label="Rules to tune" href={`/systems/${id}?tab=pilot#rules`} value={n(tuning)}
             delta={tuning ? `${n(tuning)} of ${n(data?.rules.length ?? 0)} rules are below target.` : "No rule is below target."} />
-          <Stat label="Known issues missed" value={n(rec?.missed_total ?? 0)}
+          <Stat label="Known issues missed" href={`/systems/${id}?tab=pilot#missed`} value={n(rec?.missed_total ?? 0)}
             delta={rec?.known ? `${n(rec.missed_total)} of ${n(rec.known)} were not flagged.` : "Upload known issues to measure recall."} />
         </div>
       </div>

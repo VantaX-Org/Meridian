@@ -6,10 +6,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Dialog, EntityTabs, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage } from "@/lib/error";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -18,7 +19,9 @@ import type { MasterRecordDetail } from "@/types/api";
 export default function MasterRecordPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const canApprove = useRole().can("approve");
+  const { can } = useRole();
+  const canApprove = can("approve");
+  const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
@@ -94,6 +97,50 @@ export default function MasterRecordPage() {
 
   return (
     <RecordPage recordKey={record.sap_object_key} object={record.domain} status={status}>
+      <EntityTabs entityType="master-records" entityId={id}
+        related={<>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Related records ({relationships.length})</h2>
+        {relationships.length === 0 ? (
+          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No related records found.</p>
+        ) : (
+          <table className="text-[13px]">
+            <thead><tr><th className="text-left pr-4">Relationship</th><th className="text-left pr-4">To</th><th className="text-left">Domain</th></tr></thead>
+            <tbody>
+              {relationships.map((r) => (
+                <tr key={r.id}>
+                  <td className="pr-4">{r.relationship_type.replace(/_/g, " ")}</td>
+                  <td className="pr-4"><Mono>{r.to_key}</Mono></td>
+                  <td>{formatModuleName(r.to_domain)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+        </>}
+        history={<>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>History ({history.length})</h2>
+        {history.length === 0 ? (
+          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
+        ) : (
+          <table className="text-[13px]">
+            <thead><tr><th className="text-left pr-4">When</th><th className="text-left pr-4">Type</th><th className="text-left">By</th></tr></thead>
+            <tbody>
+              {history.map((e) => (
+                <tr key={e.id}>
+                  <td className="pr-4">{e.changed_at}</td>
+                  <td className="pr-4">{e.change_type}</td>
+                  <td>{e.changed_by ?? "System"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+        </>}
+        overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={record.status === "golden" ? "go" : record.status === "superseded" ? "no-go" : "at-risk"}>
           {record.status.replace("_", " ")}
@@ -107,13 +154,15 @@ export default function MasterRecordPage() {
             {promote.isPending ? "Promoting…" : "Promote"}
           </Button>
         ) : null}
-        <Button
+        <GatedPrimary
+          kind="writeback"
+          allowed={canApply}
           variant="secondary"
           disabled={writeback.isPending || (writeback.data ? !writeback.data.writeback_supported : false)}
           onClick={() => writeback.mutate()}
         >
-          {writeback.isPending ? "Writing back…" : "Writeback"}
-        </Button>
+          {writeback.isPending ? "Writing back…" : "Write back"}
+        </GatedPrimary>
       </section>
       {writeback.data ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>
@@ -173,45 +222,8 @@ export default function MasterRecordPage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>Related records ({relationships.length})</h2>
-        {relationships.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No related records found.</p>
-        ) : (
-          <table className="text-[13px]">
-            <thead><tr><th className="text-left pr-4">Relationship</th><th className="text-left pr-4">To</th><th className="text-left">Domain</th></tr></thead>
-            <tbody>
-              {relationships.map((r) => (
-                <tr key={r.id}>
-                  <td className="pr-4">{r.relationship_type.replace(/_/g, " ")}</td>
-                  <td className="pr-4"><Mono>{r.to_key}</Mono></td>
-                  <td>{formatModuleName(r.to_domain)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>History ({history.length})</h2>
-        {history.length === 0 ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
-        ) : (
-          <table className="text-[13px]">
-            <thead><tr><th className="text-left pr-4">When</th><th className="text-left pr-4">Type</th><th className="text-left">By</th></tr></thead>
-            <tbody>
-              {history.map((e) => (
-                <tr key={e.id}>
-                  <td className="pr-4">{e.changed_at}</td>
-                  <td className="pr-4">{e.change_type}</td>
-                  <td>{e.changed_by ?? "System"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+        </>}
+      />
 
       <section>
         <Link href="/insights/duplicates" className="text-[13px]" style={{ color: "var(--m-accent)" }}>

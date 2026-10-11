@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
-import { AuthFrame, AuthNotice, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, AuthNotice, AuthSpinner, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
 import { Button, Field } from "@/design";
 
 export default function ForgotPasswordPage() {
@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthFrame title="Reset your password"
-      lead={submitted ? undefined : "Enter the email you sign in with. If it belongs to an account, we send a reset link."}>
+      lead={submitted ? undefined : "We'll email a link that works for one hour."}>
       {submitted ? (
         <>
           <AuthNotice tone="success" title="Check your email">
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
               aria-label="Work email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <div className={authActionsClass}>
-            <Button type="submit" disabled={submitting}>{submitting ? "Sending" : "Send reset link"}</Button>
+            <Button type="submit" disabled={submitting} className="h-10 w-full">{submitting ? <><AuthSpinner /> Sending…</> : "Send link"}</Button>
           </div>
         </form>
       )}

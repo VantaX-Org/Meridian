@@ -47,6 +47,11 @@ export function useUrlState(key: string, initial: string = ""): [string, (v: str
   return [value, update];
 }
 
+/** Whitelist a URL value: anything not in `allowed` (including `constructor`) falls back. */
+export function oneOf<T extends string>(raw: string, allowed: readonly T[], fallback: T): T {
+  return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+}
+
 /** Comma-separated URL-synced multi-value helper. */
 export function useUrlMultiState(
   key: string,

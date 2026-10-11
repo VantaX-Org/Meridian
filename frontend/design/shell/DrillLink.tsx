@@ -22,8 +22,14 @@ export function buildDrillHref(target: DrillTarget & { run?: string }): string {
   return qs ? `${path}?${qs}` : path;
 }
 
-export function DrillLink({
-  object, dimension, ruleId, filters, run, children,
-}: DrillTarget & { run?: string; children: ReactNode }) {
-  return <Link href={buildDrillHref({ object, dimension, ruleId, filters, run })}>{children}</Link>;
+type DrillLinkProps = ((DrillTarget & { run?: string; href?: undefined }) | { href: string; object?: undefined }) & { children: ReactNode };
+
+/** Drills to an object (object/dimension/ruleId/filters) or, with `href`, to any route. Numbers stay tabular and never trigger the row click. */
+export function DrillLink(props: DrillLinkProps) {
+  const href = props.href ?? buildDrillHref(props as DrillTarget & { run?: string });
+  return (
+    <Link href={href} className="m-numeric underline-offset-2 hover:underline" onClick={(e) => e.stopPropagation()}>
+      {props.children}
+    </Link>
+  );
 }

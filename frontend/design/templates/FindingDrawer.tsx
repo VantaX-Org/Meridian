@@ -50,7 +50,7 @@ export function FindingDrawer({ findingId, versionId, onClose }: FindingDrawerPr
   });
 
   return (
-    <Drawer open={findingId !== null} onOpenChange={(open) => { if (!open) onClose(); }} title="Finding">
+    <Drawer open={findingId !== null} onOpenChange={(open) => { if (!open) onClose(); }} title="Finding" subtitle={findingQuery.data ? <Mono>{findingQuery.data.check_id}</Mono> : undefined}>
       {findingId === null ? null : findingQuery.isLoading ? (
         <div className="flex flex-col gap-2">
           <Skeleton height={24} />

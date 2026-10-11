@@ -1,10 +1,8 @@
 "use client";
 
 /**
- * One system: Overview, Objects, Runs, Health, Pilot tabs. @/design's Tabs
- * is uncontrolled, so the ?tab= deep link is read once (useSearchParams)
- * and passed as defaultValue — enough to land `/systems/:id/pilot`'s
- * redirect to `?tab=pilot` on the right tab; no live two-way sync.
+ * One system: Overview, Objects, Runs, Health, Pilot tabs. The active tab is
+ * controlled from the ?tab= search param, so Stat links and redirects switch it.
  * Edit via a Drawer.
  */
 
@@ -15,11 +13,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, Select, Skeleton, Stat, Tabs,
+  Bar, Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
+  entityTabs,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
-import { ConfigComparePanel } from "./config-compare-panel";
+import { DqsScore } from "@/components/insight/dqs-score";
+import { ConfigurationTab } from "./config-tab";
+import { CustomObjectsTab } from "./custom-objects-tab";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
@@ -29,6 +30,7 @@ import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } 
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
@@ -61,8 +63,8 @@ function runColumns(): ColumnDef<SystemVersion>[] {
       ),
     },
     { id: "status", header: "Status", cell: ({ row }) => <Pill>{labelOf(row.original.status)}</Pill> },
-    { id: "objects", header: "Objects", cell: ({ row }) => row.original.objects.length },
-    { id: "rows", header: "Rows", cell: ({ row }) => sumRecords(row.original).toLocaleString() },
+    { id: "objects", header: "Objects", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}?tab=objects`}>{row.original.objects.length}</DrillLink> },
+    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}`}>{sumRecords(row.original).toLocaleString()}</DrillLink> },
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
@@ -70,9 +72,8 @@ function runColumns(): ColumnDef<SystemVersion>[] {
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
-          <Link href={findingsHref(row.original.id)} className="underline">
-            {d.toFixed(1)}
-          </Link>
+          // The run summary carries the score explainer.
+          <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>
         );
       },
     },
@@ -86,6 +87,7 @@ export default function SystemPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
   const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -121,7 +123,15 @@ export default function SystemPage() {
     onError: (e) => toast.error((e as Error).message || "Analysis refused"),
   });
 
-  if (systemsQ.isLoading) return <Skeleton height={240} />;
+  if (systemsQ.isLoading) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true">
+        <Skeleton height={56} />
+        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={88} />)}</div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (systemsQ.isError || !system) {
     return (
       <ErrorState
@@ -145,6 +155,10 @@ export default function SystemPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
+            onClick={() => setExtractOpen(true)}>
+            Extract now
+          </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !(latest ?? versions[0])} onClick={() => analyse.mutate()}>
               Analyse
@@ -174,14 +188,18 @@ export default function SystemPage() {
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} />
-        <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} />
-        <Stat label="Latest DQS" value={dqs === null ? "—" : dqs.toFixed(1)} />
-        <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} />
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} href={`/systems/${systemId}?tab=health`} />
+        <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        <Stat
+          label="Latest DQS"
+          value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
+          href={latest ? findingsHref(latest.id) : undefined}
+        />
+        <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
-        defaultValue={initialTab}
+        value={initialTab}
         onValueChange={(tab) => {
           const params = new URLSearchParams(searchParams.toString());
           params.set("tab", tab);
@@ -216,9 +234,18 @@ export default function SystemPage() {
               <Health id={systemId} system={system} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} />
             ),
           },
+          { value: "config", label: "Configuration", content: <ConfigurationTab systemId={systemId} canPropose={can("trigger_sync")} /> },
+          { value: "custom", label: "Custom objects", content: <CustomObjectsTab /> },
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
+          ...entityTabs({ entityType: "systems", entityId: systemId, canExport: can("export") }),
         ]}
       />
+
+      {can("trigger_sync") ? (
+        <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
+          <ScopePicker id={systemId} onDownloaded={() => { setExtractOpen(false); refresh(); }} />
+        </Drawer>
+      ) : null}
 
       <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
         <EditForm
@@ -317,7 +344,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       cell: ({ row }) => <Link href={`/objects/${row.original.module}`} className="underline">{formatModuleName(row.original.module)}</Link>,
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
-    { id: "rows", header: "Rows", cell: ({ row }) => row.original.row_count.toLocaleString() },
+    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
     { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
     { id: "config", header: "Configuration", cell: () => cfgLabel },
     {
@@ -325,7 +352,9 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       header: "DQS",
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
-        return typeof d === "number" ? d.toFixed(1) : "—";
+        return typeof d === "number" && latest ? (
+          <DrillLink href={findingsHref(latest.id, row.original.module)}>{d.toFixed(1)}</DrillLink>
+        ) : "—";
       },
     },
     {
@@ -470,7 +499,6 @@ function Health({ id, system, canSync, canManage, onChanged }: {
       </div>
 
       <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
-      <ConfigComparePanel systemId={id} canPropose={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 

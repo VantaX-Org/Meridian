@@ -23,7 +23,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, scope_from_path
 from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
@@ -85,7 +85,7 @@ async def _version_summary(db: AsyncSession, tenant: Tenant, run_id: str) -> tup
     return version[0] or {}, scoring_config(raw_scoring)["thresholds"]
 
 
-@router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view"))])
+@router.get("", response_model=ObjectsListOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def list_objects(run: str = Query(..., alias="run"),
                        db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -128,7 +128,7 @@ _OBJECTS_EXPORT_COLUMNS = [
 ]
 
 
-@router.get("/export", dependencies=[Depends(require_permission("export"))])
+@router.get("/export", dependencies=[Depends(require_permission("export", scope=scope_from_path))])
 async def export_objects(run: str = Query(..., alias="run"),
                          format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
                          db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
@@ -165,7 +165,7 @@ class ObjectDetailOut(BaseModel):
     rules: list[ObjectRuleOut]
 
 
-@router.get("/{module}", response_model=ObjectDetailOut, dependencies=[Depends(require_permission("view"))])
+@router.get("/{module}", response_model=ObjectDetailOut, dependencies=[Depends(require_permission("view", scope=scope_from_path))])
 async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
                      db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await _rls(db, tenant)
@@ -210,7 +210,7 @@ _OBJECT_DIMENSIONS_EXPORT_COLUMNS = [
 ]
 
 
-@router.get("/{module}/export", dependencies=[Depends(require_permission("export"))])
+@router.get("/{module}/export", dependencies=[Depends(require_permission("export", scope=scope_from_path))])
 async def export_object(module: str, run: uuid.UUID = Query(..., alias="run"),
                         format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
                         db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):

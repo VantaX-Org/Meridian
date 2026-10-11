@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ExportMenu, HomePage, InstrumentPanel, SeverityDot, Sparkline, type HeatmapCell,
+  Card, ExportMenu, HomePage, InstrumentPanel, SeverityDot, Sparkline, Stat, type HeatmapCell, type StatTone,
 } from "@/design";
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
 import { getShellCounts } from "@/lib/api/shell";
+import { getSettings } from "@/lib/api/settings";
 import { getSystems } from "@/lib/api/connectivity";
+import { usePermissions } from "@/lib/permissions";
 import { getConfigLandscape } from "@/lib/api/config-load";
 import { getExecutiveReportUrl } from "@/lib/api/reports";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -19,7 +21,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  cappedReason, dimensionBarPoints, unmeasuredDimensions, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
+  runCap, cappedReason, dimensionBarPoints, unmeasuredDimensions, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
@@ -35,17 +37,10 @@ function splitNarrative(narrative: string): { sentence1: string; sentence2?: str
   return i === -1 ? { sentence1: narrative } : { sentence1: narrative.slice(0, i + 1), sentence2: narrative.slice(i + 2) };
 }
 
-function Tile({ label, value, text, href, onClick }: { label: string; value: ReactNode; text?: string; href?: string; onClick?: () => void }) {
-  const body = (
-    <div className="flex flex-col gap-1 rounded border p-4" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
-      <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{label}</span>
-      <span className="text-[22px] leading-[28px] font-semibold tabular-nums" style={{ color: "var(--m-ink)" }}>{value}</span>
-      {text && <span className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{text}</span>}
-    </div>
-  );
-  if (href) return <Link href={href}>{body}</Link>;
-  if (onClick) return <button type="button" onClick={onClick} className="text-left">{body}</button>;
-  return body;
+/** A work tile: a `Stat` that links, or (for the jobs tile) opens the job tray. */
+function Tile({ label, value, text, href, onClick, tone }: { label: string; value: ReactNode; text?: string; href?: string; onClick?: () => void; tone?: StatTone }) {
+  const stat = <Stat label={label} value={value} hint={text} href={href} tone={tone} />;
+  return onClick ? <button type="button" onClick={onClick} className="text-left">{stat}</button> : stat;
 }
 
 function TileGrid({ children }: { children: ReactNode }) {
@@ -62,11 +57,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const dayOne = useDayOne();
   const { active } = useJobs();
   const { can } = useRole();
+  const { scopeFilter } = usePermissions();
 
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const settingsQ = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
 
   const loading = dayOne.status === "loading" || objectsQ.isLoading;
@@ -88,7 +85,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     );
   }
 
-  const objects = objectsQ.data?.objects ?? [];
+  // Ruling 7: a module-scoped user sees only in-scope objects (and so only those heatmap rows).
+  const objects = (objectsQ.data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
   const narrative = splitNarrative(buildNarrative({ role, objects }));
 
   if (dayOne.step !== null) {
@@ -123,6 +121,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   }
   const previous = finished[1];
   const trendPoints = trend(versions);
+  const runCapInfo = runCap(latest);
   const dqs = runDqs(latest);
 
   const scoredObjects = worstObjectsFirst(objects.filter((o) => latest.dqs_summary?.[o.module]));
@@ -141,8 +140,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }),
         { critical: 0, high: 0, medium: 0, low: 0 },
       )}
+      cap={runCapInfo?.cap}
+      criticals={runCapInfo?.criticals}
       trendPoints={trendPoints}
-      dimensionPoints={dimensionBarPoints(latest)}
+      dimensionPoints={dimensionBarPoints(latest, settingsQ.data?.dqs_weights ?? undefined)}
       unmeasured={unmeasuredDimensions(latest)}
       heatmapCells={dimensionHeatmapCells(scoredObjects, latest, objectsQ.data?.thresholds)}
       heatmapRows={heatmapRows}
@@ -164,7 +165,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   if (role === "lead") {
     tiles = (
       <TileGrid>
-        <Tile label="Objects not ready" value={objects.filter((o) => o.readiness === "fail").length} href={`/objects?run=${latest.id}&readiness=fail`} />
+        <Tile label="Objects not ready" tone={objects.some((o) => o.readiness === "fail") ? "no-go" : "go"} value={objects.filter((o) => o.readiness === "fail").length} href={`/objects?run=${latest.id}&readiness=fail`} />
         <Tile label="Failing checks" value={objects.reduce((sum, o) => sum + o.failing_checks, 0)} href={`/objects?run=${latest.id}`} />
         <Tile label="Affected records" value={totalAffected.toLocaleString()} href={`/objects?run=${latest.id}`} />
         <Tile label="Open inbox" value={shellCounts?.inbox ?? 0} href="/inbox" />
@@ -205,8 +206,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const worstRows = worstObjectsFirst(role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects).slice(0, 5);
   const objectLists = role === "basis" ? null : (
-    <div className="flex flex-col gap-2 rounded border" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
-      <p className="px-3 py-2 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Worst objects</p>
+    <Card title="Worst objects" padding="sm">
       {worstRows.map((o) => (
         <Link
           key={o.module}
@@ -217,14 +217,14 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
           {o.readiness && <SeverityDot severity={o.readiness === "fail" ? "critical" : o.readiness === "warn" ? "medium" : "low"} />}
           <span className="flex gap-3" style={{ color: "var(--m-ink)" }}>
             <span>{o.label}</span>
-            <span>{o.composite_score?.toFixed(1) ?? "—"}</span>
+            <span className="m-numeric">{o.composite_score?.toFixed(1) ?? "—"}</span>
             <span>{o.failing_checks} failing</span>
             <span>{o.affected_records.toLocaleString()} affected</span>
           </span>
           <Sparkline data={objectTrend(versions, o.module)} width={60} height={16} />
         </Link>
       ))}
-    </div>
+    </Card>
   );
 
   return (

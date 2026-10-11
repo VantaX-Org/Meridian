@@ -233,6 +233,21 @@ export async function getDdicFields(fields: string[]): Promise<DdicField[]> {
   return data.fields;
 }
 
+export interface RuleDraft {
+  id: string;
+  domain: string;
+  proposed_rule: Record<string, unknown>;
+  rationale: string | null;
+  status: string;
+  created_at: string;
+}
+
+/** Saved AI-assisted rule drafts for this tenant. */
+export async function getRuleDrafts(): Promise<RuleDraft[]> {
+  const { data } = await apiClient.get<{ items: RuleDraft[] }>("/api/v1/rule-authoring/drafts");
+  return data.items;
+}
+
 export interface RuleVersion {
   rule_id: string;
   version: number;
@@ -306,5 +321,38 @@ export async function getRuleHistoryBatch(params: {
     "/api/v1/rules/history",
     { params },
   );
+  return data;
+}
+
+export interface RuleSuppression {
+  id: string;
+  check_id: string;
+  record_key: string | null;
+  reason: string;
+  expires_at: string;
+  created_by: string | null;
+  created_at: string;
+  active: boolean;
+}
+
+export async function getRuleSuppressions(includeExpired = false): Promise<{ suppressions: RuleSuppression[] }> {
+  const { data } = await apiClient.get<{ suppressions: RuleSuppression[] }>("/api/v1/rule-suppressions", { params: { include_expired: includeExpired } });
+  return data;
+}
+
+export async function endRuleSuppression(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/rule-suppressions/${id}`);
+}
+
+export interface RuleFeedbackRow {
+  check_id: string;
+  flagged: number;
+  false_positive: number;
+  real: number;
+  false_positive_rate: number | null;
+}
+
+export async function getRuleFeedback(): Promise<{ rules: RuleFeedbackRow[] }> {
+  const { data } = await apiClient.get<{ rules: RuleFeedbackRow[] }>("/api/v1/rule-feedback");
   return data;
 }

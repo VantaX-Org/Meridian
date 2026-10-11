@@ -6,11 +6,12 @@ import * as systemsApi from "@/lib/api/connectivity";
 import type { MigrationWave } from "@/types/api";
 import MigrationPage from "../page";
 
+let currentSearch = "";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: vi.fn() }),
   usePathname: () => "/migration",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -31,7 +32,7 @@ describe("MigrationPage", () => {
     });
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
-    expect(screen.getByText("At risk")).toBeInTheDocument();
+    expect(screen.getAllByText("At risk")[0]).toBeInTheDocument();
     expect(screen.getByText("97.0%")).toBeInTheDocument();
     expect(screen.getByText("Mock 1")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run now" }));
@@ -64,5 +65,27 @@ describe("MigrationPage", () => {
     vi.spyOn(migrationApi, "getWaves").mockRejectedValue(new Error("network down"));
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText(/could not reach the server/i)).toBeInTheDocument();
+  });
+});
+
+describe("MigrationPage verdict param", () => {
+  it.each(["garbage", "constructor"])("ignores ?verdict=%s: every wave, no banner", async (v) => {
+    currentSearch = `verdict=${v}`;
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no-go" }]);
+    renderWithQuery(<MigrationPage />);
+    expect(await screen.findByText("Wave 1")).toBeInTheDocument();
+    expect(screen.getByText("Wave 2")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show all waves" })).not.toBeInTheDocument();
+    currentSearch = "";
+  });
+
+  it("?verdict=no_go lists only no-go waves", async () => {
+    currentSearch = "verdict=no_go";
+    vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no-go" }]);
+    renderWithQuery(<MigrationPage />);
+    expect(await screen.findByText("Wave 2")).toBeInTheDocument();
+    expect(screen.queryByText("Wave 1")).not.toBeInTheDocument();
+    currentSearch = "";
   });
 });

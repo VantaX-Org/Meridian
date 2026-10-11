@@ -3,13 +3,13 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithQuery } from "../../../../../__tests__/render";
 import BatchPage from "../page";
-import { approveCleaning, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
+import { approveCleaning, getCleaningAudit, getCleaningQueue, type CleaningQueueItem } from "@/lib/api/cleaning";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ batchId: "B1" }) }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/lib/api/cleaning", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/cleaning")>("@/lib/api/cleaning");
-  return { ...actual, getCleaningQueue: vi.fn(), approveCleaning: vi.fn(), rejectCleaning: vi.fn(), bulkApprove: vi.fn(), downloadCleaningExport: vi.fn() };
+  return { ...actual, getCleaningQueue: vi.fn(), getCleaningAudit: vi.fn(), approveCleaning: vi.fn(), rejectCleaning: vi.fn(), bulkApprove: vi.fn(), downloadCleaningExport: vi.fn() };
 });
 
 const item = (over: Partial<CleaningQueueItem>): CleaningQueueItem => ({
@@ -48,5 +48,20 @@ describe("BatchPage", () => {
 
     await screen.findByText("100001");
     expect(getCleaningQueue).toHaveBeenCalledWith(expect.objectContaining({ batch_id: "B1" }));
+  });
+
+  it("audit tab lists the cleaning audit rows of this batch", async () => {
+    vi.mocked(getCleaningQueue).mockResolvedValue({ items: [item({})], total: 1, page: 1, per_page: 100 });
+    vi.mocked(getCleaningAudit).mockResolvedValue({
+      items: [{ id: "a1", action: "approved", actor_name: "Steward One", record_key: "100001", data_before: null, data_after: null, metadata: null, created_at: "2026-01-01T10:00:00Z" }],
+      total: 1,
+    });
+
+    renderWithQuery(<BatchPage />);
+    await screen.findByText("100001");
+    await userEvent.click(screen.getByRole("tab", { name: "Audit" }));
+
+    expect(await screen.findByText("Steward One")).toBeInTheDocument();
+    expect(getCleaningAudit).toHaveBeenCalledWith(expect.objectContaining({ batch_id: "B1" }));
   });
 });

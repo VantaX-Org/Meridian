@@ -25,6 +25,8 @@ export interface AttributeProps {
   attr: string | null;
   editable: boolean;
   onBlocked: () => void;
+  /** False when the user lacks `analyse` (wave 16): mutating controls are not rendered. */
+  canDesign?: boolean;
   onClose: () => void;
   overlay: Record<string, ActivityOverlay> | null;
   unmapped: ProcessVariant[];
@@ -139,12 +141,16 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
                     {finding ? <>{" "}<Link className="ui-link" href={finding}>Open finding</Link></> : null}
                   </span>
                 </div>
-                <label className="ui-note">
-                  <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
-                    onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
-                </label>
-                <Button variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
-                  onClick={() => set(act.fields.filter((x) => x !== f))}>Remove</Button>
+                {p.canDesign === false ? (
+                  <span className="ui-note">{f.mandatory ? "Mandatory" : "Optional"}</span>
+                ) : (
+                  <label className="ui-note">
+                    <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
+                      onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
+                  </label>
+                )}
+                {p.canDesign !== false ? <Button variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
+                  onClick={() => set(act.fields.filter((x) => x !== f))}>Remove</Button> : null}
               </li>
             );
           })}
@@ -161,7 +167,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
             </Field>
             <Button variant="secondary" type="submit">Add field</Button>
           </form>
-        ) : <p className="ui-note"><button type="button" className="ui-link-button" onClick={p.onBlocked}>Create a model to edit fields.</button></p>}
+        ) : p.canDesign === false ? null : <p className="ui-note"><button type="button" className="ui-link-button" onClick={p.onBlocked}>Create a model to edit fields.</button></p>}
       </section>
     </>
   );
@@ -198,7 +204,7 @@ function SubProcess(p: AttributeProps & { l4: L4 }) {
           </ul>
         ) : <p className="ui-note">No variants are attached to this sub-process.</p>}
       </section>
-      {candidates.length ? (
+      {candidates.length && p.canDesign !== false ? (
         <section aria-label="Unmapped variants">
           <h3 className="ui-drawer-head__title">Unmapped variants on its tables</h3>
           {!p.canAdopt ? <p className="ui-note">Save the model, and open a saved model, to adopt a variant.</p> : null}

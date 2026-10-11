@@ -1,0 +1,150 @@
+"use client";
+
+import { useMemo, type ReactNode } from "react";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Tabs, type PillTone } from "@/design";
+import {
+  getZAnomalies, getZDormant, getZDrift, getZGhost, getZProfile, getZRegistry,
+  type ZAnomaly, type ZDormant, type ZDrift, type ZGhost, type ZRegistryEntry,
+} from "@/lib/api/z-objects";
+import { apiErrorMessage, isNotFound } from "@/lib/error";
+import { formatModuleName, labelOf } from "@/lib/format";
+
+const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral" };
+const n = (v: number) => v.toLocaleString();
+const dash = (v: string | null | undefined) => v ?? "—";
+const note = { color: "var(--m-ink-2)" };
+
+function Feed<T>({ q, children }: { q: UseQueryResult<T>; children: (data: T) => ReactNode }) {
+  if (q.isLoading) return <Skeleton height={200} />;
+  if (q.error && isNotFound(q.error)) return <EmptyState title="No custom object analysis yet." detail="Run an analysis to detect Z objects." />;
+  if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+  return <>{q.data ? children(q.data) : null}</>;
+}
+
+function useZ<T>(key: string, fn: () => Promise<T>) {
+  return useQuery({ queryKey: ["z-objects", key], queryFn: fn, retry: false });
+}
+
+function ProfileDetail({ entry }: { entry: ZRegistryEntry }) {
+  const q = useQuery({ queryKey: ["z-objects", "profile", entry.id], queryFn: () => getZProfile(entry.id), retry: false });
+  return (
+    <div className="flex flex-col gap-3 text-[13px]">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+        <dt style={note}>Category</dt><dd>{labelOf(entry.category)}</dd>
+        <dt style={note}>Standard equivalent</dt><dd>{dash(entry.standard_equivalent)}</dd>
+        <dt style={note}>Owner</dt><dd>{dash(entry.owner)}</dd>
+        <dt style={note}>Description</dt><dd>{dash(entry.description)}</dd>
+        <dt style={note}>Rules applied</dt><dd>{entry.rules_applied.length ? entry.rules_applied.join(", ") : "None"}</dd>
+      </dl>
+      <p className="font-medium" style={{ color: "var(--m-ink)" }}>Profile</p>
+      {q.isLoading ? <Skeleton height={80} /> : q.error ? (
+        <p style={note}>{isNotFound(q.error) ? "No profile recorded for this object." : apiErrorMessage(q.error)}</p>
+      ) : q.data ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+          <dt style={note}>Data type</dt><dd>{q.data.data_type}</dd>
+          <dt style={note}>Distinct values</dt><dd>{n(q.data.cardinality)}</dd>
+          <dt style={note}>Empty</dt><dd>{(q.data.null_rate * 100).toFixed(1)}%</dd>
+          <dt style={note}>Transactions</dt><dd>{n(q.data.transaction_count)}</dd>
+          <dt style={note}>Users</dt><dd>{n(q.data.user_count)}</dd>
+          <dt style={note}>Trend</dt><dd>{dash(q.data.trend_direction)}</dd>
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
+function RegistrySection() {
+  const q = useZ("registry", getZRegistry);
+  const cols = useMemo<ColumnDef<ZRegistryEntry, unknown>[]>(() => [
+    { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
+    { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "std", header: "Standard equivalent", cell: ({ row }) => dash(row.original.standard_equivalent) },
+    { id: "tx", header: "Transactions", cell: ({ row }) => n(row.original.transaction_count_total) },
+    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+    { id: "status", header: "Status", cell: ({ row }) => <Pill tone={row.original.status === "active" ? "go" : "at-risk"}>{labelOf(row.original.status)}</Pill> },
+  ], []);
+  return (
+    <Feed q={q}>
+      {(d) => d.entries.length === 0 ? <EmptyState title="No custom objects registered." /> : (
+        <DataTable columns={cols} data={d.entries} getRowId={(e) => e.id} height={420} exportName="z-object-registry"
+          renderDrawer={(e) => <ProfileDetail entry={e} />} />
+      )}
+    </Feed>
+  );
+}
+
+function AnomaliesSection() {
+  const q = useZ("anomalies", getZAnomalies);
+  const cols = useMemo<ColumnDef<ZAnomaly, unknown>[]>(() => [
+    { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
+    { id: "type", header: "Anomaly", cell: ({ row }) => labelOf(row.original.anomaly_type) },
+    { id: "severity", header: "Severity", cell: ({ row }) => <Pill tone={SEVERITY_TONE[row.original.severity] ?? "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "desc", header: "Description", cell: ({ row }) => row.original.description },
+    { id: "dev", header: "Deviation", cell: ({ row }) => `${row.original.deviation_pct.toFixed(1)}%` },
+    { id: "status", header: "Status", cell: ({ row }) => labelOf(row.original.status) },
+  ], []);
+  return (
+    <Feed q={q}>
+      {(d) => d.anomalies.length === 0 ? <EmptyState title="No anomalies detected." /> : (
+        <DataTable columns={cols} data={d.anomalies} getRowId={(a) => a.id ?? `${a.object_name}/${a.anomaly_type}`} height={380} exportName="z-object-anomalies" />
+      )}
+    </Feed>
+  );
+}
+
+function GhostSection() {
+  const q = useZ("ghost", getZGhost);
+  const cols = useMemo<ColumnDef<ZGhost, unknown>[]>(() => [
+    { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
+    { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "field", header: "Source field", cell: ({ row }) => <Mono>{row.original.source_field}</Mono> },
+    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+  ], []);
+  return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No ghost objects." /> : <DataTable columns={cols} data={d} getRowId={(g) => `${g.object_name}/${g.source_field}`} height={360} exportName="z-object-ghost" />}</Feed>;
+}
+
+function DormantSection() {
+  const q = useZ("dormant", getZDormant);
+  const cols = useMemo<ColumnDef<ZDormant, unknown>[]>(() => [
+    { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
+    { id: "category", header: "Category", cell: ({ row }) => labelOf(row.original.category) },
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "last", header: "Last active", cell: ({ row }) => dash(row.original.last_active_date) },
+    { id: "months", header: "Months inactive", cell: ({ row }) => n(row.original.months_inactive) },
+  ], []);
+  return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No dormant objects." /> : <DataTable columns={cols} data={d} getRowId={(g) => g.object_name} height={360} exportName="z-object-dormant" />}</Feed>;
+}
+
+function DriftSection() {
+  const q = useZ("drift", getZDrift);
+  const cols = useMemo<ColumnDef<ZDrift, unknown>[]>(() => [
+    { id: "name", header: "Object", cell: ({ row }) => <Mono>{row.original.object_name}</Mono> },
+    { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
+    { id: "field", header: "Source field", cell: ({ row }) => <Mono>{row.original.source_field}</Mono> },
+    { id: "change", header: "Change", cell: ({ row }) => <Pill>{labelOf(row.original.change_type)}</Pill> },
+    { id: "when", header: "First detected", cell: ({ row }) => dash(row.original.first_detected) },
+  ], []);
+  return <Feed q={q}>{(d) => d.length === 0 ? <EmptyState title="No drift in custom objects." /> : <DataTable columns={cols} data={d} getRowId={(g) => `${g.object_name}/${g.source_field}/${g.change_type}`} height={360} exportName="z-object-drift" />}</Feed>;
+}
+
+/** Systems/[id] › Custom objects. Z-object intelligence is tenant-wide, like configuration analysis. */
+export function CustomObjectsTab() {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-[13px]" style={note}>Custom (Z) objects found across every connected system in this workspace.</p>
+      <Tabs
+        items={[
+          { value: "registry", label: "Registry", content: <RegistrySection /> },
+          { value: "anomalies", label: "Anomalies", content: <AnomaliesSection /> },
+          { value: "ghost", label: "Ghost", content: <GhostSection /> },
+          { value: "dormant", label: "Dormant", content: <DormantSection /> },
+          { value: "drift", label: "Drift", content: <DriftSection /> },
+        ]}
+      />
+    </div>
+  );
+}

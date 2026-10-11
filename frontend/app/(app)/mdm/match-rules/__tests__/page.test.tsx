@@ -10,6 +10,12 @@ vi.mock("@/hooks/use-role", () => ({
   useRole: () => ({ can: () => true }),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/x",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("MatchRulesPage", () => {
   it("renders the rules tab with the active domain's rules", async () => {
     vi.spyOn(matchRulesApi, "getMatchRules").mockResolvedValue({

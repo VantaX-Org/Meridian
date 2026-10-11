@@ -1,10 +1,9 @@
-export function Badge({ count }: { count: number }) {
+import { clsx } from "clsx";
+
+export function Badge({ count, inverted = false, tone }: { count: number; /** Active Rail row: accent-ink fill on soft text. */ inverted?: boolean; tone?: "neutral" }) {
   if (count <= 0) return null;
   return (
-    <span
-      className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[11px] leading-none rounded-full"
-      style={{ background: "var(--m-accent)", color: "var(--m-sheet)" }}
-    >
+    <span className={clsx("m-badge", inverted && "m-badge-inverted", tone === "neutral" && "m-badge-neutral")}>
       {count > 99 ? "99+" : count}
     </span>
   );

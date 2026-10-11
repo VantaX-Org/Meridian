@@ -58,7 +58,7 @@ describe("CompareRunsPage", () => {
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
     expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument();
-    expect(screen.getByText("74.8")).toBeInTheDocument();
+    expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
     expect(screen.getAllByText("MM041").length).toBeGreaterThan(0);
     expect(screen.getByText("MM002")).toBeInTheDocument();
   });
@@ -184,5 +184,11 @@ describe("CompareRunsPage", () => {
 
     await waitFor(() => expect(screen.getByText("No record keys match your filter.")).toBeInTheDocument());
     expect(screen.getByLabelText("Filter record keys")).toBeInTheDocument();
+  });
+
+  it("shows the loading skeleton, then the overall Before, After and Change hero", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
   });
 });

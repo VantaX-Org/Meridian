@@ -38,10 +38,13 @@ from api.routes.analytics import router as analytics_router
 from api.routes.contracts import router as contracts_router
 from api.routes.notifications import router as notifications_router
 from api.routes.users import router as users_router
+from api.routes.roles import router as roles_router
+from api.routes.me import router as me_router
 from api.routes.systems import router as systems_router
 from api.routes.master_records import router as master_records_router
 from api.routes.merge_explain import router as merge_explain_router
 from api.routes.ai_feedback import router as ai_feedback_router
+from api.routes.insight_feedback import router as insight_feedback_router
 from api.routes.match_rules import router as match_rules_router
 from api.routes.glossary import router as glossary_router
 from api.routes.relationships import router as relationships_router
@@ -72,6 +75,7 @@ from api.routes.process_designer import router as process_designer_router
 from api.routes.process_export import router as process_export_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
+from api.routes.survivorship_rules import router as survivorship_rules_router
 from api.routes.prom_metrics import router as prom_metrics_router
 from api.routes.shell import router as shell_router
 from api.routes.system_update import router as system_update_router
@@ -305,10 +309,13 @@ app.include_router(analytics_router)
 app.include_router(contracts_router)
 app.include_router(notifications_router)
 app.include_router(users_router)
+app.include_router(roles_router)
+app.include_router(me_router)
 app.include_router(systems_router)
 app.include_router(master_records_router)
 app.include_router(merge_explain_router)
 app.include_router(ai_feedback_router)
+app.include_router(insight_feedback_router)
 app.include_router(match_rules_router)
 app.include_router(glossary_router)
 app.include_router(relationships_router)
@@ -339,6 +346,7 @@ app.include_router(process_designer_router)
 app.include_router(process_export_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
+app.include_router(survivorship_rules_router)
 app.include_router(prom_metrics_router)
 app.include_router(shell_router)
 app.include_router(system_update_router)

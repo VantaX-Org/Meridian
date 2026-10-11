@@ -153,3 +153,9 @@ export async function getExec(params?: { version_id?: string }): Promise<ExecRes
   const { data } = await apiClient.get<ExecResponse>("/api/v1/insights/exec", { params });
   return data;
 }
+
+/* ─── AI summary feedback (api/routes/insight_feedback.py) ─── */
+
+export async function submitInsightFeedback(body: { surface: string; run_id?: string | null; vote: "up" | "down" }): Promise<void> {
+  await apiClient.post("/api/v1/insights/feedback", body);
+}
