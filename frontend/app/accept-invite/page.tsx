@@ -2,12 +2,14 @@
 
 import { Suspense } from "react";
 import { acceptInvite } from "@/lib/api/auth";
+import { InvitePreview } from "@/components/auth/invite-preview";
 import { SetPasswordForm } from "@/components/auth/set-password-form";
 
 export default function AcceptInvitePage() {
   // useSearchParams must be inside a Suspense boundary under App Router.
   return (
     <Suspense fallback={null}>
+      <InvitePreview />
       <SetPasswordForm title="Set your password" lead="You were invited to Meridian. Choose a password to finish."
         submitLabel="Set password" done="Password set. Sign in to finish joining." redirect="/sign-in?invited=1"
         missingToken="This link is missing its token. Open the link from your invitation email exactly as sent."

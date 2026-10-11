@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from api.services.rbac import (
+    BUILTIN_NAMES,
     PERMISSIONS, PERSONA_ROLES, home_for, permissions_for, require_permission, unscoped_actions_sync,
 )
 from api.deps import get_sync_engine_or_create
@@ -388,6 +389,51 @@ def accept_invite(body: AcceptInviteRequest):
         conn.commit()
 
     return {"ok": True, "email": row[1]}
+
+
+@router.get("/invite/{token}", dependencies=[Depends(_invite_rate_limit)])
+def invite_preview(token: str):
+    """What an invite grants, shown before the invitee sets a password.
+
+    Validates the token exactly as accept-invite does. Any failure (bad, expired, wrong
+    purpose, already used) is one generic 404 so the response never confirms which.
+    """
+    not_found = HTTPException(status_code=404, detail="Not found")
+    engine = get_sync_engine_or_create()
+    with engine.connect() as conn:
+        _ensure_local_auth_schema(conn)
+        secret_row = conn.execute(
+            text("SELECT jwt_secret FROM tenants WHERE id = :tid"), {"tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not secret_row or not secret_row[0]:
+            raise not_found
+        payload = decode_access_token(token, secret_row[0])
+        user_id = payload.get("sub") if payload and payload.get("purpose") == "invite_accept" else None
+        if not user_id:
+            raise not_found
+        conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
+        user = conn.execute(
+            text("SELECT email, role FROM users WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL"),
+            {"uid": user_id, "tid": DEV_TENANT_ID},
+        ).fetchone()
+        if not user:
+            raise not_found
+        rows = conn.execute(
+            text(
+                "SELECT g.role_key, r.name, g.system_id, s.name, g.module "
+                "FROM user_role_scopes g "
+                "LEFT JOIN roles r ON r.key = g.role_key AND r.tenant_id = g.tenant_id "
+                "LEFT JOIN sap_systems s ON s.id = g.system_id AND s.tenant_id = g.tenant_id "
+                "WHERE g.user_id = :uid AND g.tenant_id = :tid ORDER BY g.role_key"
+            ),
+            {"uid": user_id, "tid": DEV_TENANT_ID},
+        ).fetchall()
+    grants = [
+        {"role_key": r[0], "role_label": r[1] or BUILTIN_NAMES.get(r[0], r[0]), "system_id": str(r[2]) if r[2] else None,
+         "system_name": r[3], "module": r[4]}
+        for r in rows
+    ] or [{"role_key": user[1], "role_label": BUILTIN_NAMES.get(user[1], user[1]), "system_id": None, "system_name": None, "module": None}]
+    return {"email": user[0], "grants": grants}
 
 
 class ForgotPasswordRequest(BaseModel):

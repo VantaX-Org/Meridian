@@ -48,3 +48,11 @@ export async function getRoleMatrix(): Promise<Record<string, string[]>> {
   const { data } = await apiClient.get("/api/v1/auth/roles");
   return data;
 }
+
+export interface InviteGrant { role_key: string; role_label: string; system_id?: string | null; system_name?: string | null; module?: string | null }
+
+/** What an invite token grants, shown before the invitee sets a password. 404 when invalid, expired or used. */
+export async function getInvitePreview(token: string): Promise<{ email: string; grants: InviteGrant[] }> {
+  const { data } = await apiClient.get<{ email: string; grants: InviteGrant[] }>(`/api/v1/auth/invite/${encodeURIComponent(token)}`);
+  return data;
+}

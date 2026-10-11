@@ -78,7 +78,7 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Skip excluded paths
-        if path in _EXCLUDED_PATHS:
+        if path in _EXCLUDED_PATHS or path.startswith("/api/v1/auth/invite/"):
             return await call_next(request)
         
         # Allow CORS preflight requests through

@@ -1,0 +1,29 @@
+import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
+import * as authApi from "@/lib/api/auth";
+import { InvitePreview } from "./invite-preview";
+
+let token = "tok";
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(token ? `token=${token}` : "") }));
+
+beforeEach(() => { token = "tok"; vi.restoreAllMocks(); });
+
+describe("InvitePreview", () => {
+  it("shows a busy skeleton while loading", () => {
+    vi.spyOn(authApi, "getInvitePreview").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<InvitePreview />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+  it("lists email and grants", async () => {
+    vi.spyOn(authApi, "getInvitePreview").mockResolvedValue({ email: "a@example.com", grants: [{ role_key: "steward", role_label: "Steward", system_name: "Sys A", module: "material" }] });
+    renderWithQuery(<InvitePreview />);
+    expect(await screen.findByText("Invited as a@example.com")).toBeTruthy();
+    expect(screen.getByText("Steward, Sys A, material")).toBeTruthy();
+  });
+  it("shows a generic message when the link is invalid", async () => {
+    vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new Error("404"));
+    renderWithQuery(<InvitePreview />);
+    expect(await screen.findByText("This invitation link is invalid or has expired.")).toBeTruthy();
+  });
+});

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { ErrorState, Field, Select, Skeleton } from "@/design";
+import { getSystemModules } from "@/lib/api/connectivity";
 import { getUserEffective, getRolePermissions } from "@/lib/api/roles";
 import { apiErrorMessage } from "@/lib/error";
 import type { SystemRef } from "./grants-picker";
@@ -10,9 +11,11 @@ import type { SystemRef } from "./grants-picker";
 const ALL = "__all__";
 
 /** Effective matrix for a user at a chosen system/module. Hover on a granted cell names the grants that produced it. */
-export function EffectivePermissionsView({ userId, systems, modules = [] }: { userId: string; systems: SystemRef[]; modules?: string[] }) {
+export function EffectivePermissionsView({ userId, systems }: { userId: string; systems: SystemRef[] }) {
   const [system, setSystem] = useState(ALL);
   const [modKey, setModKey] = useState(ALL);
+  const modulesQ = useQuery({ queryKey: ["system-modules", system], queryFn: () => getSystemModules(system), enabled: system !== ALL });
+  const modules = (modulesQ.data ?? []).map((m) => m.module);
   const params = { ...(system !== ALL ? { system_id: system } : {}), ...(modKey !== ALL ? { module: modKey } : {}) };
   const q = useQuery({ queryKey: ["user-effective", userId, system, modKey], queryFn: () => getUserEffective(userId, params) });
   const roleKeys = Array.from(new Set(q.data?.roles.map((r) => r.key) ?? []));
@@ -26,7 +29,7 @@ export function EffectivePermissionsView({ userId, systems, modules = [] }: { us
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
-        <Field label="System"><Select value={system} onValueChange={setSystem} options={[{ value: ALL, label: "All systems" }, ...systems.map((s) => ({ value: s.id, label: s.name }))]} /></Field>
+        <Field label="System"><Select value={system} onValueChange={(v) => { setSystem(v); setModKey(ALL); }} options={[{ value: ALL, label: "All systems" }, ...systems.map((s) => ({ value: s.id, label: s.name }))]} /></Field>
         <Field label="Module"><Select value={modKey} onValueChange={setModKey} options={[{ value: ALL, label: "All modules" }, ...modules.map((m) => ({ value: m, label: m }))]} /></Field>
       </div>
       {q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} /> : !q.data ? <Skeleton height={160} /> : (
