@@ -30,6 +30,20 @@ const ROUTES = [
   "/rules/scoring",
 ];
 
+/** Routes backed by the 18c mocks: the seeded text must appear, proving real content, not an error state. */
+const CONTENT: Record<string, RegExp> = {
+  "/systems/s1?tab=config": /material.master/i,
+  "/systems/s1?tab=custom": /ZMM_GRADE/,
+  "/runs/v1?tab=config": /MM101|MM102|config_driven|data_error/i,
+  "/inbox?kind=issues": /MATNR=100|MM101/,
+  "/inbox?kind=sap": /Nightly extract job failed/,
+  "/inbox?kind=approvals": /Approve/,
+  "/fix?tab=monitor": /MM101|ECC Prod/,
+  "/fix?tab=dedup": /LIFNR=V1|93/,
+  "/rules?tab=suppressions": /Accepted by the data owner|MM101/,
+  "/rules?tab=feedback": /MM101/,
+};
+
 for (const path of ROUTES) {
   test(`${path} renders`, async ({ app }) => {
     const errors: string[] = [];
@@ -37,6 +51,9 @@ for (const path of ROUTES) {
     await app.goto(path, { waitUntil: "load" });
     await expect(app.getByRole("main")).toBeVisible();
     await expect(app.getByRole("main").getByText(/application error|something went wrong|coming soon/i)).toHaveCount(0);
+    await expect(app.getByRole("main").getByText("Could not reach the server.")).toHaveCount(0);
+    const want = CONTENT[path];
+    if (want) await expect(app.getByRole("main").getByText(want).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 }

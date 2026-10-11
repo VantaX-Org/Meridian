@@ -12,6 +12,7 @@ import { queryKeys } from "@/lib/query-keys";
  * settings (normalised over measured dimensions), and the five findings costing the most.
  * Falls back to the plain ring while the weights are unavailable, never to invented weights.
  */
+/** `size` applies to the fallback ring only; ScoreExplainer renders a fixed 48px ring. */
 export function DqsScore({ agg, versionId, size = 48 }: { agg: FindingsAggregate; versionId?: string; size?: number }) {
   const settings = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   const top = useQuery({

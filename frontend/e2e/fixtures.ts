@@ -16,6 +16,7 @@ import path from "node:path";
 import { test as base, expect, type Page } from "@playwright/test";
 import routes from "./routes.json";
 import depth from "./fixtures/depth.json";
+import { mockRoutes18c } from "./fixtures/mocks-18c";
 import { permissionsPayload } from "./fixtures/legacy-permissions";
 
 export const HAR = path.join(__dirname, "fixtures", "api.har");
@@ -56,6 +57,7 @@ export const test = base.extend<{ app: Page }>({
     await mockExtraction(page);
     await mockUnrecorded(page);
     await mockGapRoutes(page);
+    await mockRoutes18c(page);
     // Not in the recording (wave 16); the recorded user is an admin. Specs override it per role.
     await page.route(/\/api\/v1\/me\/permissions/, (r) => r.fulfill(json(permissionsPayload("admin"))));
     await provide(page);
