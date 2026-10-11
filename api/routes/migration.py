@@ -780,7 +780,7 @@ async def run_findings(
     return {"total": int(total or 0), "items": [_row(x) for x in rows.fetchall()]}
 
 
-@router.get("/runs/{run_id}/findings/export")
+@router.get("/runs/{run_id}/findings/export", dependencies=[Depends(require_permission("export"))])
 async def export_findings(
     run_id: uuid.UUID,
     format: str = Query("xlsx", pattern="^(csv|xlsx)$"),

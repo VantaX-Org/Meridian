@@ -133,3 +133,45 @@ def test_require_any_permission_raises_only_when_every_action_fails():
             raise AssertionError("expected 403")
     finally:
         os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
+
+
+def _reports_client(monkeypatch):
+    import uuid
+
+    from fastapi import FastAPI
+    from fastapi.responses import Response
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import reports
+
+    async def _pdf(*_a, **_k):
+        return Response(b"%PDF-1.4", media_type="application/pdf")
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    monkeypatch.setattr(reports, "_pdf", _pdf)
+    app = FastAPI()
+    app.include_router(reports.router)
+
+    async def _db():
+        yield _EmptyDB()
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "T", [])
+    return app, TestClient(app)
+
+
+def test_report_downloads_need_export(monkeypatch):
+    import uuid
+
+    app, client = _reports_client(monkeypatch)
+    vid = uuid.uuid4()
+    for role, status in (("analyst", 200), ("auditor", 200), ("admin", 200), ("viewer", 403)):
+        r = client.get("/api/v1/reports/cleaning.pdf", headers={"X-User-Role": role})
+        assert r.status_code == status, (role, r.text)
+    # Every route on the reports router refuses a viewer, whatever the handler does.
+    paths = [r.path.replace("{version_id}", str(vid)).replace("{module}", "MARA").replace("{matnr}", "M1")
+             for r in app.routes if r.path.startswith("/api/v1/reports")]
+    assert len(paths) >= 9
+    for p in paths:
+        assert client.get(p, params={"v2": "x"}, headers={"X-User-Role": "viewer"}).status_code == 403, p

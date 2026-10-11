@@ -16,11 +16,13 @@ from api.services.report_pdf import (
     ReportNotAssembled,
     build_and_store_pdf,
 )
+from api.services.rbac import require_permission
 from api.services.storage import download_file
 from api.config import settings
 from db.schema import Report
 
-router = APIRouter(prefix="/api/v1", tags=["reports"])
+# Every route here returns a downloadable file, so the whole router needs export.
+router = APIRouter(prefix="/api/v1", tags=["reports"], dependencies=[Depends(require_permission("export"))])
 logger = logging.getLogger("meridian.reports")
 
 

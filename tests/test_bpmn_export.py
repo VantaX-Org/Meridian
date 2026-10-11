@@ -292,6 +292,11 @@ def test_route_reference_download(client):
     assert client.audits[-1]["action"] == "export" and client.audits[-1]["entity_id"] is None
 
 
+def test_route_viewer_cannot_download(client):
+    r = client.c.get("/api/v1/process-designer/reference/export/signavio", headers={"X-User-Role": "viewer"})
+    assert r.status_code == 403 and client.audits == []
+
+
 def test_route_model_version_and_audit(client):
     base = f"/api/v1/process-designer/models/{client.mine}/export/signavio"
     r = client.c.get(base)
