@@ -21,9 +21,13 @@ export function runDqs(v: Version): number | null {
   return round1(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
-/** Mean of each dimension across the measured modules (as `runDqs`) that measured it (null: not measured), or null with no measured modules. */
+/**
+ * Mean of each dimension across the modules that measured it (null: not measured), or null with no such module.
+ * A module can have measured dimensions yet no composite (a tenant weighting every measured dimension at 0), so
+ * it counts when it has a composite or any dimension coverage.
+ */
 export function runDimensions(v: Version): Record<DimensionKey, number | null> | null {
-  const modules = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null);
+  const modules = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null || Object.values(m.dimension_coverage ?? {}).some((c) => c > 0));
   if (modules.length === 0) return null;
   const out = {} as Record<DimensionKey, number | null>;
   for (const dim of DIMENSIONS) {

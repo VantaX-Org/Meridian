@@ -6,7 +6,7 @@
  * Edit via a Drawer.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +41,8 @@ import { ScopePicker } from "./scope-picker";
 import { ReferencePanel } from "./reference-panel";
 import { SchedulesPanel } from "./schedules-panel";
 
+/** Longest to wait for a just-started download to report progress. */
+const AWAIT_DOWNLOAD_MS = 120_000;
 const when = (iso: string | null | undefined, never = "Never") => (iso ? relativeTime(iso) : never);
 const meanDqs = (v: SystemVersion) => {
   const x = Object.values(v.dqs ?? {}).filter((d): d is number => typeof d === "number");
@@ -88,7 +90,7 @@ export default function SystemPage() {
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
   const [extractOpen, setExtractOpen] = useState(false);
-  const [startedAt, setStartedAt] = useState<number | null>(null); // epoch ms of the download just started, while its progress is awaited
+  const [awaitedJobId, setAwaitedJobId] = useState<string | null>(null); // job id of the download just started, while its progress is awaited
   const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -97,8 +99,17 @@ export default function SystemPage() {
   const versionsQ = useQuery({
     queryKey: queryKeys.systemVersions(systemId),
     queryFn: () => getSystemVersions(systemId),
-    refetchInterval: (q) => downloadPollMs(q.state.data?.download, startedAt),
+    refetchInterval: (q) => downloadPollMs(q.state.data?.download, awaitedJobId),
   });
+  const download = versionsQ.data?.download;
+  useEffect(() => {
+    if (awaitedJobId === null) return;
+    const t = setTimeout(() => setAwaitedJobId(null), AWAIT_DOWNLOAD_MS); // one deadline per start: never poll forever for a job that does not report
+    return () => clearTimeout(t);
+  }, [awaitedJobId]);
+  if (awaitedJobId !== null && download?.job_id === awaitedJobId && download.status !== "queued" && download.status !== "running") {
+    setAwaitedJobId(null); // the awaited download finished: stop waiting (state adjusted during render)
+  }
   const modules = useMemo(() => modulesQ.data ?? [], [modulesQ.data]);
   const versions = useMemo(
     () => [...(versionsQ.data?.versions ?? [])].sort((a, b) => b.run_at.localeCompare(a.run_at)),
@@ -244,7 +255,7 @@ export default function SystemPage() {
 
       {can("trigger_sync") ? (
         <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
-          <ScopePicker id={systemId} onDownloaded={() => { setStartedAt(Date.now()); setExtractOpen(false); refresh(); }} />
+          <ScopePicker id={systemId} onDownloaded={(jobId) => { setAwaitedJobId(jobId); setExtractOpen(false); refresh(); }} />
         </Drawer>
       ) : null}
 

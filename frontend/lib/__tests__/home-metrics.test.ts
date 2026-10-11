@@ -84,6 +84,17 @@ describe("home-metrics", () => {
     expect(runDimensions(none)).toBeNull();
   });
 
+  it("runDimensions keeps a module with measured dimensions but no composite (every measured dimension weighted 0)", () => {
+    const v = version("v1", "2026-01-01", { material_master: 60 });
+    const m = v.dqs_summary!.material_master;
+    m.composite_score = null;
+    m.dimension_coverage = { completeness: 5, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 };
+    expect(runDqs(v)).toBeNull();
+    const d = runDimensions(v)!;
+    expect(d.completeness).toBe(60);
+    expect(d.accuracy).toBeNull();
+  });
+
   it("trend keeps only finished versions, oldest first", () => {
     const pending = version("v0", "2026-01-01", {});
     const first = version("v1", "2026-01-02", { material_master: 70 });

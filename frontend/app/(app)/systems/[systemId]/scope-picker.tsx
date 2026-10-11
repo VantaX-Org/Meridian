@@ -22,7 +22,7 @@ const note = "text-[13px]";
 const noteStyle = { color: "var(--m-ink-2)" };
 
 /** Choose objects and scope, confirm inline, then extract into a new run. */
-export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: () => void }) {
+export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (jobId: string) => void }) {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: queryKeys.systemObjects(id), queryFn: () => getSystemObjects(id) });
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -48,11 +48,11 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: ()
       }
       return startDownload(id, { objects: Array.from(picked), scope, label: label || undefined, analyse });
     },
-    onSuccess: (_, analyse) => {
+    onSuccess: (job, analyse) => {
       toast.success(analyse ? "Extraction started. Analysis follows." : "Extraction started. A new run appears under Runs.");
       setPicked(new Set()); setConfirm(null);
       qc.invalidateQueries({ queryKey: queryKeys.systemVersions(id) });
-      onDownloaded();
+      onDownloaded(job.job_id);
     },
     onError: (e) => toast.error((e as Error).message || "Extraction refused"),
   });

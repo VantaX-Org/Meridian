@@ -20,7 +20,8 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [object()] });
     const startDownload = vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-1", status: "queued" });
 
-    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    const onDownloaded = vi.fn();
+    renderWithQuery(<ScopePicker id="sys1" onDownloaded={onDownloaded} />);
 
     const row = await screen.findByText("Material Master");
     fireEvent.click(row);
@@ -33,6 +34,8 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     await waitFor(() =>
       expect(startDownload).toHaveBeenCalledWith("sys1", expect.objectContaining({ scope: {} })),
     );
+
+    await waitFor(() => expect(onDownloaded).toHaveBeenCalledWith("dl-1")); // the page awaits this job by id
 
     // onSuccess clears the selection; re-pick the object before the second extraction.
     fireEvent.click(await screen.findByText("Material Master"));

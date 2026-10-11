@@ -106,14 +106,16 @@ export default function ObjectsPage() {
         };
   }
 
-  const reportRun = data?.run_id ?? run;
+  const reportRun = data?.run_id; // no run yet: there is no report to download
   const exportOptions = [
     { format: "xlsx" as const, run: () => exportObjects(run) },
-    {
-      format: "pdf" as const,
-      label: "Analysis report (PDF)",
-      run: () => downloadAuthenticated(getAnalysisReportUrl(reportRun), `meridian-analysis-${reportRun}.pdf`),
-    },
+    ...(reportRun
+      ? [{
+          format: "pdf" as const,
+          label: "Analysis report (PDF)",
+          run: () => downloadAuthenticated(getAnalysisReportUrl(reportRun), `meridian-analysis-${reportRun}.pdf`),
+        }]
+      : []),
   ];
 
   const objs = objects;
