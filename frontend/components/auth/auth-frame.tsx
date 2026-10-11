@@ -76,8 +76,7 @@ function BrandInstrument({ pct }: { pct: number }) {
             className="m-motion-draw" style={{ ["--m-draw-length" as string]: len }} />
         ) : null}
         <g className="m-motion-rise" stroke="var(--m-brand-ink)" strokeWidth={1.5} strokeLinecap="round">
-          <path d={`M${mid} 4V60`} />
-          <path d={`M${mid} 260V316`} />
+          <path d={`M${mid} 4V316`} strokeOpacity={0.4} />
         </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-14 text-center">
@@ -150,11 +149,16 @@ export function PasswordField({ label, value, onChange, autoComplete, helper, er
 }) {
   const [show, setShow] = useState(false);
   const inputId = useId();
+  const errorId = `${inputId}-error`;
   return (
-    <Field label={helper ? `${label} \u2014 ${helper}` : label} error={error}>
+    <div className="flex flex-col gap-1">
+      <label htmlFor={inputId} className="text-[12px] leading-4" style={{ color: "var(--m-ink-2)" }}>
+        {helper ? `${label} \u2014 ${helper}` : label}
+      </label>
       <div className="relative">
         <input id={inputId} className={authInputClass} style={{ paddingRight: 44 }} type={show ? "text" : "password"} required
           autoComplete={autoComplete} readOnly={readOnly}
+          aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined}
           aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
         <button type="button" aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} aria-controls={inputId}
           onClick={() => setShow((v) => !v)}
@@ -163,6 +167,7 @@ export function PasswordField({ label, value, onChange, autoComplete, helper, er
           {show ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
         </button>
       </div>
-    </Field>
+      {error ? <p id={errorId} className="text-[12px] leading-4" style={{ color: "var(--m-critical)" }}>{error}</p> : null}
+    </div>
   );
 }

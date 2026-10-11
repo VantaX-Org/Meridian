@@ -61,4 +61,14 @@ describe("signed-out pages render with the redesigned AuthFrame", () => {
     expect(getByLabelText("Hide password").getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector("input[type=text][autocomplete=current-password]")).not.toBeNull();
   });
+
+  it("password error is tied to the input via aria-describedby", () => {
+    const { getByRole, container } = render(<SignInPage />);
+    fireEvent.click(getByRole("button", { name: "Sign in" }));
+    fireEvent.submit(container.querySelector("form")!);
+    const input = container.querySelector("input[autocomplete=current-password]")!;
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    const id = input.getAttribute("aria-describedby")!;
+    expect(container.querySelector(`#${CSS.escape(id)}`)?.textContent).toBe("Enter your password");
+  });
 });
