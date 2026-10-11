@@ -310,7 +310,8 @@ def change_password(body: ChangePasswordRequest, request: Request):
             raise HTTPException(status_code=401, detail="Not authenticated")
 
         if not row[1] or not verify_password(body.current_password, row[1]):
-            raise HTTPException(status_code=401, detail="Current password is incorrect")
+            # 422 like the other input errors here: a 401 would sign the user out (frontend/lib/api/client.ts)
+            raise HTTPException(status_code=422, detail="Current password is incorrect")
 
         conn.execute(
             text(

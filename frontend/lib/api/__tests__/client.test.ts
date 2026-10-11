@@ -43,3 +43,33 @@ describe("apiClient per_page clamp", () => {
     expect(config.params).toBeUndefined();
   });
 });
+
+interface ResponseManagerWithHandlers {
+  handlers: Array<{ rejected?: (error: unknown) => Promise<unknown> } | null>;
+}
+
+async function runResponseErrorInterceptors(client: AxiosInstance, error: unknown): Promise<void> {
+  const manager = client.interceptors.response as unknown as ResponseManagerWithHandlers;
+  for (const handler of manager.handlers) {
+    if (handler?.rejected) await handler.rejected(error).catch(() => undefined);
+  }
+}
+
+describe("apiClient 401 handling", () => {
+  const error = (status: number) => ({
+    config: { url: "/api/v1/auth/change-password", method: "post" },
+    response: { status, data: { detail: "Current password is incorrect" } },
+  });
+
+  it("keeps the session when change-password rejects the current password (422)", async () => {
+    localStorage.setItem("mn_auth_token", "t");
+    await runResponseErrorInterceptors(apiClient, error(422));
+    expect(localStorage.getItem("mn_auth_token")).toBe("t");
+  });
+
+  it("clears the session on a 401 from any non-login call", async () => {
+    localStorage.setItem("mn_auth_token", "t");
+    await runResponseErrorInterceptors(apiClient, error(401));
+    expect(localStorage.getItem("mn_auth_token")).toBeNull();
+  });
+});
