@@ -12,6 +12,14 @@ services:
     networks:
       - meridian-net
     restart: unless-stopped
+    environment:
+      # The API pins its configured model with a long keep_alive, so any other
+      # model pulled in by a settings test or a manual run would also stay
+      # resident for hours. On a CPU host that memory is shared with the check
+      # worker, and three resident models (about 7.6 GB) were enough to push a
+      # large rule run out of memory. Keep one model loaded at a time.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
     healthcheck:
       # curl isn't actually in ollama/ollama:latest — confirmed at runtime
       # ("executable file not found in $PATH"). The Dockerfile's own
