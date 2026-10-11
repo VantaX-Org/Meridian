@@ -41,13 +41,14 @@ SPECS = (
 )
 
 
-def _modified_z(x: pd.Series) -> pd.Series:
-    med = x.median()
-    mad = (x - med).abs().median()
-    if mad > 0:
-        return 0.6745 * (x - med) / mad
-    mean_ad = (x - med).abs().mean()
-    return (x - med) / (1.253314 * mean_ad) if mean_ad > 0 else x * 0.0
+def _modified_z(x: pd.Series, by: list[pd.Series]) -> pd.Series:
+    """Modified z-score of ``x`` within its ``by`` group; 0 in groups under MIN_GROUP.
+    Grouped transforms only: a Python call per group is minutes at millions of rows."""
+    dev = x - x.groupby(by).transform("median")
+    spread = dev.abs().groupby(by)
+    mad, mean_ad = spread.transform("median"), spread.transform("mean")
+    z = (0.6745 * dev / mad).where(mad > 0, (dev / (1.253314 * mean_ad)).where(mean_ad > 0, 0.0))
+    return z.where(x.groupby(by).transform("size") >= MIN_GROUP, 0.0)
 
 
 def find(module: str, frames: TableFrames) -> dict[str, dict]:
@@ -69,8 +70,7 @@ def find(module: str, frames: TableFrames) -> dict[str, dict]:
         keys = df[spec["per"]].astype("string").apply(lambda s: s.str.strip()).fillna("")
         ok = value.gt(0) & keys.ne("").all(axis=1)
         logv = np.log10(value[ok])
-        z = logv.groupby([keys.loc[ok, c] for c in spec["per"]]).transform(
-            lambda g: _modified_z(g) if len(g) >= MIN_GROUP else g * 0.0)
+        z = _modified_z(logv, [keys.loc[ok, c] for c in spec["per"]])
         median = value[ok].groupby([keys.loc[ok, c] for c in spec["per"]]).transform("median")
         size = value[ok].groupby([keys.loc[ok, c] for c in spec["per"]]).transform("size")
         ratio = value[ok] / median
