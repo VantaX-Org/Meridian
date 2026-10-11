@@ -206,11 +206,11 @@ function Dependencies() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-row gap-3 items-center flex-wrap">
-        <Select value={sid} options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+        <Select label="System" value={sid} options={(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
           onValueChange={(v) => { setSystemId(v); setVersionId(""); setObject(""); }} />
-        <Select value={vid} options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
+        <Select label="Analysis run" value={vid} options={(versions.data ?? []).map((v) => ({ value: v.id, label: `${formatDate(v.run_at, "datetime")}${v.label ? `, ${v.label}` : ""}` }))}
           onValueChange={(v) => { setVersionId(v); setObject(""); }} />
-        <Select value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
+        <Select label="Object" value={obj} options={(profile.data?.objects ?? (obj ? [obj] : [])).map((o) => ({ value: o, label: formatModuleName(o) }))}
           onValueChange={setObject} />
         {sid && vid ? <Link href={profileHref} className="text-[13px] underline">Open profile</Link> : null}
         {sid && vid ? (
@@ -269,7 +269,7 @@ function Patterns() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <Select placeholder="All types" value={type} onValueChange={setType}
+      <Select label="Pattern type" placeholder="All types" value={type} onValueChange={setType}
         options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
       <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." />
     </div>

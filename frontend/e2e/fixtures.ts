@@ -147,7 +147,8 @@ const MATERIAL = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "ma
 async function mockMaterial(page: Page) {
   await page.route(/\/api\/v1\/materials\/(\d+)(?:\/(findings|supersession|duplicates))?(?:\?|$)/, (r) => {
     const [, id, sub] = /\/materials\/(\d+)(?:\/(\w+))?/.exec(new URL(r.request().url()).pathname) ?? [];
-    const body = MATERIAL[id]?.[sub ?? "material"];
+    // SAP pads MATNR with leading zeros; the fixture is keyed by the bare number
+    const body = MATERIAL[String(Number(id))]?.[sub ?? "material"];
     return body ? r.fulfill(json(body)) : r.fulfill({ status: 404, contentType: "application/json", body: '{"detail":"Not found"}' });
   });
 }

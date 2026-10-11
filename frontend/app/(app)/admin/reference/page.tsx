@@ -26,7 +26,7 @@ export default function ReferenceAdminPage() {
   const failed = isListFailure(systems) ? systems : isListFailure(q) ? q : null;
   return (
     <ExplorerPage
-      filterBar={list.length > 0 ? <Select value={id} onValueChange={setPicked} options={list.map((s) => ({ value: s.id, label: s.name }))} placeholder="System" /> : undefined}
+      filterBar={list.length > 0 ? <Select label="System" value={id} onValueChange={setPicked} options={list.map((s) => ({ value: s.id, label: s.name }))} placeholder="System" /> : undefined}
       state={systems.isLoading || (!!id && q.isLoading) ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No reference data loaded.", detail: list.length === 0 ? "Connect a system first." : "Upload postal codes or a BIC directory from the system page." }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void systems.refetch(); void q.refetch(); } }}

@@ -236,7 +236,7 @@ function ReadinessView() {
   }
 
   const objectPicker = (
-    <Select value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
+    <Select label="Object" value={object} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))}
       onValueChange={(m) => { setObject(m); setL1(""); }} />
   );
 
@@ -291,10 +291,10 @@ function ReadinessView() {
       <div className="flex gap-3 items-center flex-wrap">
         {objectPicker}
         {processes.length > 1 ? (
-          <Select value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
+          <Select label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
         {(systems.data?.length ?? 0) > 1 ? (
-          <Select value={systemChoice}
+          <Select label="System" value={systemChoice}
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}
@@ -434,7 +434,7 @@ function MapView() {
   return (
     <div className="flex flex-col gap-4">
       {modules.length > 1 ? (
-        <Select value={active ?? ""} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={setModule} />
+        <Select label="Object" value={active ?? ""} options={modules.map((m) => ({ value: m, label: formatModuleName(m) }))} onValueChange={setModule} />
       ) : null}
 
       {graphQ.isLoading ? <Skeleton height={240} /> : graphQ.error ? (

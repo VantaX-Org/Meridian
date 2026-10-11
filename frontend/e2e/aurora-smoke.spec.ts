@@ -16,13 +16,13 @@ for (const r of ROUTES) {
     await expect(app.getByRole("navigation").filter({ has: app.getByRole("button", { name: /(collapse|expand) navigation/i }) })).toBeVisible();
     await expect(app.getByRole("button", { name: /jobs/i })).toBeVisible();
     expect(errors).toEqual([]);
-    // no snake_case identifier leaks into visible copy, except inside Mono and FieldChip
+    // no snake_case identifier leaks into visible copy, except inside Mono
     const leaks = await app.evaluate(() => {
       const found: string[] = [];
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         const el = n.parentElement;
-        if (!el || el.closest(".ui-mono, .ui-field, code, script, style, [hidden]")) continue;
+        if (!el || el.closest(".m-mono, code, script, style, [hidden]")) continue;
         const hit = (n.textContent ?? "").match(/\b[a-z]+_[a-z]+\b/);
         if (hit) found.push(`${hit[0]} in "${(el.closest("tr,[role=row]") ?? el).textContent?.slice(0, 90)}"`);
       }

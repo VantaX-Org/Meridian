@@ -30,7 +30,7 @@ const statusTone = (status: string): PillTone => STATUS_TONE[status] ?? "at-risk
 
 function makeColumns(systemName: Map<string, string>, allVersions: Version[]): ColumnDef<Version>[] {
   return [
-    { id: "label", accessorFn: (v) => v.label ?? v.id, header: "Run", cell: ({ row }) => (row.original.label ? row.original.label : <Mono>{row.original.id}</Mono>) },
+    { id: "label", accessorFn: (v) => v.label ?? v.id, header: "Name", cell: ({ row }) => (row.original.label ? row.original.label : <Mono>{row.original.id}</Mono>) },
     {
       id: "status",
       accessorFn: (v) => v.status,

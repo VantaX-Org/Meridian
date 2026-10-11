@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Mono, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
   if (!canManage) {
     return (
       <div className="flex flex-col gap-2 p-6">
-        <strong>Users and audit needs the manage_users permission</strong>
+        <strong>Users and audit needs the <Mono>manage_users</Mono> permission</strong>
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
           Ask an administrator to change roles or review the audit log.
         </p>

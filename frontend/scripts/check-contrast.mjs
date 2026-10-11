@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Contrast guard: parses design/tokens.css and checks WCAG contrast >= 4.5
- * for every ink/surface and status/soft pair in both themes. Exits 1 on failure.
+ * for every text/background token pair the library renders, in light, dark
+ * and the system-preference dark block (which must also match the explicit
+ * dark block value for value). Exits 1 on failure.
  */
 import { readFileSync } from "node:fs";
 
@@ -13,7 +15,17 @@ const block = (open) => {
 };
 const decls = (body) => Object.fromEntries([...body.matchAll(/(--m-[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 const light = decls(block(":root {"));
-const themes = { light, dark: { ...light, ...decls(block('[data-theme="dark"] {')) } };
+const darkOwn = decls(block('[data-theme="dark"] {'));
+const systemOwn = decls(block(':root:not([data-theme="light"]):not([data-theme="dark"]) {'));
+const themes = { light, dark: { ...light, ...darkOwn }, system: { ...light, ...systemOwn } };
+
+let fail = 0;
+for (const name of new Set([...Object.keys(darkOwn), ...Object.keys(systemOwn)])) {
+  if (darkOwn[name] !== systemOwn[name]) {
+    fail++;
+    console.log(`FAIL dark blocks differ on ${name}: ${darkOwn[name]} vs ${systemOwn[name]}`);
+  }
+}
 
 function resolve(vars, name, depth = 0) {
   let v = vars[name];
@@ -34,16 +46,19 @@ const ratio = (a, b) => {
 };
 
 const status = ["critical", "high", "medium", "pass"];
+const surfaces = ["sheet", "canvas", "sheet-raised", "sheet-sunken", "rail"];
 const pairs = [
-  ...["ink", "ink-2", "ink-3"].flatMap((i) => ["sheet", "canvas", "sheet-raised"].map((s) => [i, s])),
-  ["ink", "sheet-sunken"],
-  ["ink-on-accent", "accent"],
-  ["accent", "sheet"], ["accent", "canvas"],
+  ...["ink", "ink-2", "ink-3"].flatMap((i) => surfaces.map((s) => [i, s])),
+  ...["ink", "ink-2"].map((i) => [i, "accent-soft"]),
+  ...["accent", "accent-hover", "accent-active"].map((a) => ["ink-on-accent", a]),
+  ...["sheet", "canvas", "sheet-raised"].map((s) => ["accent", s]),
   ["accent-ink", "accent-soft"], ["accent", "accent-soft"], ["accent-ink", "accent-soft-2"],
-  ...status.flatMap((s) => [[s, "sheet"], [s, `${s}-soft`], [`${s}-ink`, `${s}-soft`]]),
+  ...status.flatMap((s) => [[s, "sheet"], [s, "canvas"], [s, "sheet-raised"], [s, `${s}-soft`], [`${s}-ink`, `${s}-soft`], [`${s}-ink`, "sheet"]]),
+  ["low", "low-soft"], ["low", "sheet"],
+  ["viz-tooltip-ink", "viz-tooltip-bg"],
+  ["viz-axis", "sheet"],
 ];
 
-let fail = 0;
 for (const [theme, vars] of Object.entries(themes)) {
   for (const [fg, bg] of pairs) {
     const r = ratio(resolve(vars, `--m-${fg}`), resolve(vars, `--m-${bg}`));
@@ -52,5 +67,5 @@ for (const [theme, vars] of Object.entries(themes)) {
     console.log(`${ok ? "ok  " : "FAIL"} ${theme.padEnd(5)} ${fg} on ${bg}: ${r.toFixed(2)}`);
   }
 }
-console.log(fail ? `check-contrast: ${fail} pair(s) below 4.5:1` : `check-contrast: ${pairs.length * 2} pairs ok`);
+console.log(fail ? `check-contrast: ${fail} failure(s)` : `check-contrast: ${pairs.length * Object.keys(themes).length} pairs ok`);
 process.exit(fail ? 1 : 0);

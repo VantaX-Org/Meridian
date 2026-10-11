@@ -138,7 +138,7 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
   return (
     <div className="flex flex-col gap-3">
       <DeviationPanel id={id} />
-      <Select value={open} onValueChange={setOpen}
+      <Select label="Configuration table" value={open} onValueChange={setOpen}
         options={tables.map((t) => ({ value: t.table, label: `${t.table}, ${t.rows} rows, ${t.source}` }))} />
       {data && (
         <>
@@ -251,8 +251,8 @@ export function SnapshotsTab({ id }: { id: string }) {
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-semibold" style={{ color: "var(--m-ink)" }}>Design drift</p>
           <div className="flex gap-2">
-            <Select value={a} options={opts} onValueChange={setFrom} />
-            <Select value={b} options={opts} onValueChange={setTo} />
+            <Select label="Compare from" value={a} options={opts} onValueChange={setFrom} />
+            <Select label="Compare to" value={b} options={opts} onValueChange={setTo} />
           </div>
           {diff && (diff.changes.length === 0 ? <p className={muted} style={mutedStyle}>No dictionary changes between these snapshots.</p> : (
             <table className="w-full text-[13px]">

@@ -119,7 +119,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   const next =
     worst && f.total > 0
       ? {
-          sentence: `Start with ${worst.label}, which has ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} critical` : ""}.`,
+          sentence: `${worst.label} needs attention first: ${n(worst.findings)} findings${worst.critical ? `, ${n(worst.critical)} critical` : ""}.`,
           href: `/objects/${worst.module}${q(f.runId)}`,
           action: { label: "Open object", href: `/objects/${worst.module}${q(f.runId)}` },
         }

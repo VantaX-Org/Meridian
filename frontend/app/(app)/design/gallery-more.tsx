@@ -36,7 +36,7 @@ export function GalleryMore() {
       ]} />
       <div className="flex flex-wrap gap-4 items-end">
         <Field label="Field"><input className="m-input" defaultValue="Value" /></Field>
-        <Select value={sel} onValueChange={setSel} options={[{ value: "a", label: "Option A" }, { value: "b", label: "Option B" }]} />
+        <Select label="Sample option" value={sel} onValueChange={setSel} options={[{ value: "a", label: "Option A" }, { value: "b", label: "Option B" }]} />
         <Button variant="secondary" onClick={() => setDialog(true)}>Open dialog</Button>
         <Button variant="secondary" onClick={() => setDrawer(true)}>Open drawer</Button>
       </div>
@@ -44,7 +44,7 @@ export function GalleryMore() {
       {drawer && <Drawer open onOpenChange={setDrawer} title="Drawer">Drawer body.</Drawer>}
       <div className="grid gap-4 md:grid-cols-2">
         <EmptyState title="Nothing here yet." detail="Designed fresh-install sentence." ghost="grid" />
-        <ErrorState message="The request failed." onRetry={() => undefined} />
+        <ErrorState message="The request failed." />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Line data={SERIES} height={160} label="Line" />

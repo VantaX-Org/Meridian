@@ -2,6 +2,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { formatModuleName } from "@/lib/format";
 
 export interface Crumb {
   label: string;
@@ -25,7 +26,7 @@ export function useDrill(): { crumbs: Crumb[]; up: Crumb | null; next: (path: st
   // /objects/[object] -> crumb "object" at /objects/[object]
   // /objects/[object]/rules/[ruleId] -> + crumb "ruleId" at /objects/[object]/rules/[ruleId]
   if (segments[0] === "objects" && segments[1]) {
-    crumbs.push({ label: segments[1], href: `/objects/${segments[1]}${suffix}` });
+    crumbs.push({ label: formatModuleName(segments[1]), href: `/objects/${segments[1]}${suffix}` });
     if (segments[2] === "rules" && segments[3]) {
       crumbs.push({ label: segments[3], href: `/objects/${segments[1]}/rules/${segments[3]}${suffix}` });
     }

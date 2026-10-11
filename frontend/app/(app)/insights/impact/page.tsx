@@ -173,7 +173,7 @@ export default function ImpactPage() {
 
   return (
     <ReportPage
-      narrative="value_at_risk = record_count × value_per_record"
+      narrative="Value at risk is the record count times the value per record."
       charts={null}
       tables={
         <div className="flex flex-col gap-8">

@@ -8,12 +8,18 @@ export interface SelectOption {
   label: string;
 }
 
+/**
+ * A combobox takes its accessible name from a label, never from the value or
+ * placeholder it shows. Inside a Field or a wrapping <label> the name is wired
+ * already; anywhere else pass `label`.
+ */
 export function Select({
-  value, onValueChange, options, placeholder, className,
-}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; className?: string }) {
+  value, onValueChange, options, placeholder, label, className,
+}: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; label?: string; className?: string }) {
   return (
     <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options}>
       <BaseSelect.Trigger
+        aria-label={label}
         className={className ?? "m-input inline-flex items-center justify-between gap-2 min-w-[160px]"}
       >
         <BaseSelect.Value placeholder={placeholder} />

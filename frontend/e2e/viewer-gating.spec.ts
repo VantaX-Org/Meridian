@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test, ROUTES } from "./fixtures";
 import { LEGACY_PERMISSIONS, permissionsPayload } from "./fixtures/legacy-permissions";
+import { mockRoutes12 } from "./fixtures/mocks-12";
 
 const NAV_SOURCE = fs.readFileSync(path.join(__dirname, "..", "lib", "nav.ts"), "utf8");
 const NAV_HREFS = [...NAV_SOURCE.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
@@ -23,6 +24,8 @@ const PRIMARY = /^(approve|write back|sign off|extract now)\b/i;
 
 test.describe("viewer gating", () => {
   test.beforeEach(async ({ app }) => {
+    // the detail routes render their content (and so their controls) rather than an error state
+    await mockRoutes12(app);
     const viewer = permissionsPayload("viewer");
     await app.route(/\/api\/v1\/me\/permissions/, (r) =>
       r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(viewer) }));

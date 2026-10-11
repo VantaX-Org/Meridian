@@ -24,6 +24,7 @@ import { getProfileByVersion, type ShapeCount, type ValueCount } from "@/lib/api
 import { apiErrorMessage } from "@/lib/error";
 import { getRuleHistoryBatch } from "@/lib/api/rules";
 import { queryKeys } from "@/lib/query-keys";
+import { formatModuleName } from "@/lib/format";
 
 const PAGE_SIZE = 25;
 const RULE_HISTORY_RUNS = 8;
@@ -278,7 +279,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
     () => [
       { accessorKey: "record_key", header: "Record", cell: ({ row }) => <Mono>{row.original.record_key}</Mono> },
       { accessorKey: "grain", header: "Grain", cell: ({ row }) => row.original.grain ?? "—" },
-      { accessorKey: "module", header: "Module" },
+      { accessorKey: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
       ...fieldValueKeys.map((key): ColumnDef<FindingRecord> => ({
         id: `field_values.${key}`,
         header: key,

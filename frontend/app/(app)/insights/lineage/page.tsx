@@ -185,9 +185,9 @@ export default function LineagePage() {
                 placeholder="LFB1.ZTERM, AP017, kpi:dpo"
                 className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
               />
-              <Select value={direction} onValueChange={(v) => setDirection(v as LineageDirection)}
+              <Select label="Direction" value={direction} onValueChange={(v) => setDirection(v as LineageDirection)}
                 options={[{ value: "both", label: "Up and downstream" }, { value: "down", label: "Downstream" }, { value: "up", label: "Upstream" }]} />
-              <Select value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
+              <Select label="Depth" value={String(depth)} onValueChange={(v) => setDepth(Number(v))}
                 options={[2, 3, 4, 6, 8, 12].map((n) => ({ value: String(n), label: `Depth ${n}` }))} />
               <Button type="submit">Trace</Button>
             </form>

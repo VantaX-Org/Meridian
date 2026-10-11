@@ -54,7 +54,7 @@ function severityTone(severity: string): PillTone {
 const diffColumns: ColumnDef<RecordDiffCheck>[] = [
   { accessorKey: "check_id", header: "Check", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
   { accessorKey: "severity", header: "Severity" },
-  { accessorKey: "new", header: "New" },
+  { accessorKey: "new", header: "Added" },
   { accessorKey: "resolved", header: "Resolved" },
   { accessorKey: "persisting", header: "Persisting" },
   {
@@ -340,7 +340,7 @@ export default function CompareRunsPage() {
   const waterfallData: ChartPoint[] = diff
     ? [
         { x: "Resolved", y: -diff.totals.resolved },
-        { x: "New", y: diff.totals.new },
+        { x: "Added", y: diff.totals.new },
         { x: "Persisting", y: diff.totals.persisting },
       ]
     : [];

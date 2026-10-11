@@ -233,7 +233,7 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
             </table>
             {write && unfloored.length ? (
               <div className="mt-2" style={{ maxWidth: 260 }}>
-                <Select value="" placeholder="Add a floor for"
+                <Select label="Add a floor for" value="" placeholder="Add a floor for"
                   options={unfloored.map((m) => ({ value: m, label: formatModuleName(m) }))}
                   onValueChange={(m) => m && setFloor(m, 80)} />
               </div>

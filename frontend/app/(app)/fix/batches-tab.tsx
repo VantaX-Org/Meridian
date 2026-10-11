@@ -394,7 +394,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             Meridian never posts to SAP. {ask === "export" ? "This hands a file to the Migration Cockpit or a mass-change template." : "This is Meridian's record only."}
           </p>
           <div className="flex items-center gap-2">
-            {ask === "export" ? <Select value={format} onValueChange={(v) => setFormat(v as ExportFormat)} options={FORMATS} /> : null}
+            {ask === "export" ? <Select label="Export format" value={format} onValueChange={(v) => setFormat(v as ExportFormat)} options={FORMATS} /> : null}
             {ask === "export" && format === "mdg_cr_json" ? (
               <Field label="Change request type">
                 <input

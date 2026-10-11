@@ -118,7 +118,7 @@ function RulesTab() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Select placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
+        <Select label="Domain" placeholder="All domains" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setSimulation(null); }} />
         {write ? (
           <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>New rule</Button>
         ) : null}
@@ -240,7 +240,7 @@ function TuningTab() {
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
-      <Select placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
+      <Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
       {!domain ? (
         <EmptyState title="Pick a domain to tune." />
       ) : rulesQuery.isLoading ? (
@@ -348,8 +348,8 @@ function ConstraintsTab() {
         Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
       </p>
       <div className="flex items-center gap-2">
-        <Select placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
-        <Select placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
+        <Select label="Domain" placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
+        <Select label="Constraint kind" placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
         <input
           placeholder="Record key"
           className="rounded border px-3 py-1.5 text-[13px]"

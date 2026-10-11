@@ -20,7 +20,7 @@
   /* ---------- Ink ---------- */
   --m-ink: #141519;             /* 16.4:1 on sheet */
   --m-ink-2: #4A4C55;           /* 8.1:1 */
-  --m-ink-3: #6A6C76;           /* 5.4:1 on sheet, 4.6:1 on canvas; minimum for body text */
+  --m-ink-3: #686A74;           /* 5.4:1 on sheet, 4.8:1 on canvas, 4.6:1 on sunken; minimum for body text */
   --m-ink-4: #A3A5AD;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 

@@ -43,7 +43,7 @@ Everything is a CSS variable in `design/tokens.css`, with a light value on `:roo
 | Glass | `--m-glass-bg/blur/line` (class `m-glass`, chrome only) |
 | Motion | `--m-motion-duration` 120ms, `-slow` 240ms, `-draw` 480ms, `-shimmer` 1400ms, `--m-motion-ease`; classes `m-motion-*`, `m-skeleton-sweep`, `m-meridian-live`; all zero under `prefers-reduced-motion` |
 
-Contrast: `npm run check:contrast` (`scripts/check-contrast.mjs`) parses `tokens.css` and fails unless every ink/surface pair and every status colour on `--m-sheet` and on its own `-soft` tint is at least 4.5:1, in both themes.
+Contrast: `npm run check:contrast` (`scripts/check-contrast.mjs`) parses `tokens.css` and fails unless every text/background pair is at least 4.5:1 in light, dark and the system-preference dark block. The pairs are `--m-ink`, `-2` and `-3` on every surface (sheet, canvas, raised, sunken, rail); `--m-ink` and `-2` on `--m-accent-soft`; `--m-ink-on-accent` on the accent and its hover and active states; the accent on sheet, canvas and raised; each status colour on sheet, canvas, raised and its own `-soft` tint, and its `-ink` on its `-soft` tint and on sheet; `--m-low` on `--m-low-soft`; the chart tooltip ink on its background; and the chart axis on sheet. It also fails if the two dark blocks disagree on any value.
 
 The shadcn semantic vars in `app/globals.css` (`--background`, `--card`, `--border`, `--ring`, ...) are a one-time bridge onto these tokens. Components use `@/design` primitives or `--m-*` directly.
 
@@ -66,6 +66,7 @@ All in `design/primitives/`. Export names unchanged. Styles come from classes de
 28×28 (`sm`) / 32×32 default, radius control, ghost styling, icon 16 `--m-ink-2`; hover `--m-ink`.
 
 ### 7.3 Field / Select / Combobox / inputs
+- `Select` is a combobox, which takes its accessible name from a label, never from the value or placeholder it shows. Inside a `Field` or a wrapping `<label>` the name is wired for you; anywhere else pass `label`.
 - Control height 32 (`--m-control-h`), radius control, bg `--m-sheet`, border `--m-line-strong`, padding 0 10, 13/18, placeholder `--m-ink-3`. Hover border `--m-ink-3`. Focus: border `--m-accent` + `--m-elev-focus`. Invalid: border `--m-critical`.
 - `Field` label 12/16 500 `--m-ink-2`, gap 6; error 12/16 `--m-critical` with critical square 8px.
 - `Select` popup: `m-elev-2`, bg `--m-sheet`, radius sheet, padding 4; items 32h radius control; selected bg `--m-accent-soft` text `--m-accent-ink`; check icon right.
@@ -136,7 +137,7 @@ Same card as EmptyState with a 3px `--m-critical` top bar, title "Could not reac
 `font-family: var(--m-font-mono)`, 12/16 inside 13px text, `--m-ink`, bg `--m-sheet-sunken`, padding 1 4, radius 4 when `inline` prop; bare otherwise.
 
 ## Routes
-Live pages are under `app/(app)/`: `home`, `systems`, `objects`, `runs`, `rules`, `insights` (process, lineage, mining, readiness, forecast, exec, impact, duplicates), `mdm` (glossary, golden, match-rules), `inbox`, `fix`, `import`, `search`, `admin` (users, settings, mappings, ai, licence, billing, triage), and `design` (the component gallery). Every legacy URL (`/workbench`, `/command-centre`, `/analyse/...`, `/settings/...`, and so on) 301s into this tree via `next.config.ts`'s `redirects()`, asserted exactly by `frontend/__tests__/legacy-redirects.test.ts`.
+Live pages are under `app/(app)/`: `home`, `systems`, `objects`, `runs`, `rules`, `insights` (process, lineage, mining, readiness, forecast, exec, impact, duplicates), `mdm` (glossary, golden, match-rules, survivorship), `migration`, `inbox`, `fix`, `import`, `search`, `admin` (users, roles, audit, settings, mappings, reference, notifications, jobs, ai, licence, billing, triage), and `design` (the component gallery). `e2e/routes.json` lists every one of them, with a seeded id for each dynamic segment, and every e2e spec that walks routes reads that file. Every legacy URL (`/workbench`, `/command-centre`, `/analyse/...`, `/settings/...`, and so on) 301s into this tree via `next.config.ts`'s `redirects()`, asserted exactly by `frontend/__tests__/legacy-redirects.test.ts`.
 
 ## Depth
 Meridian is read top-down. Every level answers one question and opens the level below in one click.
@@ -154,6 +155,7 @@ Meridian is read top-down. Every level answers one question and opens the level 
 - `npm run lint` runs `eslint . --max-warnings 0`.
 - `npm run check:contrast` gates the colour pairs above.
 - Reduced motion turns off every animation. Focus rings always show (`--m-elev-focus`).
+- `e2e/visual.spec.ts` walks every route in `routes.json` in light, dark, reduced motion and a fresh-install empty pass. Each pass saves a full-page screenshot to `test-results` (no baselines are committed) and fails on any axe WCAG 2.1 A/AA violation. The reduced-motion pass also fails if any element, `::before` or `::after` has a computed `animation-name` other than `none`. Fix a failure in the library or the tokens, never with a per-page override or an axe rule exclusion.
 - Every number is a `DrillLink`; one `h1` per route (rendered by `Breadcrumb`); dates go through the shared formatter; no raw ids as copy.
 
 ## Known exception

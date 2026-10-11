@@ -37,7 +37,7 @@ export default function AdminRolesPage() {
   if (!can("manage_users")) {
     return (
       <div className="flex flex-col gap-2 p-6">
-        <strong>Roles and access needs the manage_users permission</strong>
+        <strong>Roles and access needs the <Mono>manage_users</Mono> permission</strong>
         <p className="text-[13px]" style={dim}>Ask an administrator to change roles or grants.</p>
       </div>
     );

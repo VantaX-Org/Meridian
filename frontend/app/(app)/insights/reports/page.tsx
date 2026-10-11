@@ -68,7 +68,7 @@ export default function ReportsPage() {
   return (
     <ExplorerPage
       filterBar={
-        <Select
+        <Select label="Analysis run"
           value={versionId}
           onValueChange={setPicked}
           placeholder="Choose a run"

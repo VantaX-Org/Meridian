@@ -248,6 +248,8 @@ const OFF_NAV_TITLES: Record<string, string> = {
   "/executive-report": "Executive report",
   "/data": "Connect and load",
   "/admin/billing": "Exception billing",
+  "/admin/roles": "Roles and access",
+  "/design": "Design library",
   "/workbench/record": "Record report",
   "/workbench/progress": "Progress",
   "/workbench/triage": "My queue",
