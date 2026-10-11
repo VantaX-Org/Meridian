@@ -98,7 +98,7 @@ export default function SystemsPage() {
   const configById = new Map(configQ.data?.systems.map((c) => [c.system_id, c]) ?? []);
   const [configFilter, setConfigFilter] = useUrlState("config", "");
   const [rawHealth, setHealthFilter] = useUrlState("health", "");
-  const healthFilter = rawHealth in HEALTH_LABEL ? rawHealth : "";
+  const healthFilter = Object.hasOwn(HEALTH_LABEL, rawHealth) ? rawHealth : "";
   const shown = systems
     .filter((s) => !configFilter || configById.get(s.id)?.status === configFilter)
     .filter((s) => !healthFilter || s.health_status === healthFilter);

@@ -18,7 +18,7 @@ const field = "w-full rounded-md border px-2 py-1 text-[13px]";
 const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };
 
 function isWaveStage(v: string): v is WaveStage {
-  return v in STAGE_LABEL;
+  return Object.hasOwn(STAGE_LABEL, v);
 }
 
 export function CreateWaveDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {

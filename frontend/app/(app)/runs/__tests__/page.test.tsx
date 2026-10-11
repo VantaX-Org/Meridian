@@ -132,14 +132,16 @@ describe("RunsPage", () => {
 });
 
 describe("RunsPage status param", () => {
-  it("ignores an unknown ?status= value and shows every run", async () => {
-    searchParams.set("status", "garbage");
+  it.each(["garbage", "constructor"])("ignores ?status=%s: every run, no banner", async (v) => {
+    searchParams.set("status", v);
     const failed = version({ id: "v3", label: "Broken run", status: "failed" });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     expect(screen.getByText("Broken run")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show all runs" })).not.toBeInTheDocument();
     searchParams.delete("status");
   });
 

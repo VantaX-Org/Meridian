@@ -22,8 +22,8 @@ const KIND_LABEL: Record<AlertChannelKind, string> = {
 const DIGEST_LABEL: Record<AlertDigest, string> = { daily: "Daily digest", weekly: "Weekly digest", off: "No digest" };
 const KIND_OPTIONS = Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }));
 const DIGEST_OPTIONS = Object.entries(DIGEST_LABEL).map(([value, label]) => ({ value, label }));
-const isKind = (v: string): v is AlertChannelKind => v in KIND_LABEL;
-const isDigest = (v: string): v is AlertDigest => v in DIGEST_LABEL;
+const isKind = (v: string): v is AlertChannelKind => Object.hasOwn(KIND_LABEL, v);
+const isDigest = (v: string): v is AlertDigest => Object.hasOwn(DIGEST_LABEL, v);
 
 /** Where data-quality alerts go: per-system score drops, new critical rules, SLA breaches. */
 export function AlertChannelsPanel() {

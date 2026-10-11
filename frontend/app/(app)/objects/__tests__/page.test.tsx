@@ -73,14 +73,15 @@ describe("ObjectsPage", () => {
 });
 
 describe("ObjectsPage verdict param", () => {
-  it("ignores an unknown ?verdict= value and shows every object", async () => {
-    currentSearch = "run=v1&verdict=garbage";
+  it.each(["garbage", "constructor"])("ignores ?verdict=%s: every object, no banner", async (v) => {
+    currentSearch = `run=v1&verdict=${v}`;
     const mk = (module: string, label: string, readiness: "pass" | "warn") => ({ module, label, composite_score: 80, readiness, failing_checks: 0, affected_records: 0 });
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "Ready Obj", "pass"), mk("b", "Blocked Obj", "warn")] });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(screen.getByText("Ready Obj")).toBeInTheDocument());
     expect(screen.getByText("Blocked Obj")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Show all objects" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     currentSearch = "run=v1";
   });
 });

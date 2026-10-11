@@ -69,12 +69,14 @@ describe("MigrationPage", () => {
 });
 
 describe("MigrationPage verdict param", () => {
-  it("ignores an unknown ?verdict= value and lists every wave", async () => {
-    currentSearch = "verdict=garbage";
+  it.each(["garbage", "constructor"])("ignores ?verdict=%s: every wave, no banner", async (v) => {
+    currentSearch = `verdict=${v}`;
     vi.spyOn(migrationApi, "getWaves").mockResolvedValue([WAVE, { ...WAVE, id: "w2", name: "Wave 2", last_verdict: "no-go" }]);
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
     expect(screen.getByText("Wave 2")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show all waves" })).not.toBeInTheDocument();
     currentSearch = "";
   });
 

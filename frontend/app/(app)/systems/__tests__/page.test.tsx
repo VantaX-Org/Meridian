@@ -114,8 +114,8 @@ describe("systems list page", () => {
 });
 
 describe("systems page health param", () => {
-  it("ignores an unknown ?health= value: every system, no banner", async () => {
-    currentSearch = "health=garbage";
+  it.each(["garbage", "constructor", "toString"])("ignores ?health=%s: every system, no banner", async (v) => {
+    currentSearch = `health=${v}`;
     const sick = { ...SYSTEM, id: "s2", name: "BW Down", health_status: "degraded" } as SAPSystemExtended;
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM, sick]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
