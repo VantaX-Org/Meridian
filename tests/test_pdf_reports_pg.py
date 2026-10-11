@@ -126,7 +126,8 @@ def test_reports_are_tenant_scoped(app_engine, monkeypatch):
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(who["tenant"]), "T", [])
 
     async def scenario():
-        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t",
+                               headers={"X-User-Role": "analyst"}) as c:  # reports need export
             for url in (f"/api/v1/reports/analysis/{v['v2']}.pdf", f"/api/v1/reports/extraction/{v['v2']}.pdf",
                         f"/api/v1/reports/cleaning.pdf?version_id={v['v2']}", "/api/v1/reports/cleaning.pdf",
                         f"/api/v1/reports/compare.pdf?v2={v['v2']}"):
@@ -142,6 +143,7 @@ def test_reports_are_tenant_scoped(app_engine, monkeypatch):
                 assert (await c.get(url)).status_code == 404, url
         await aeng.dispose()
 
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
     asyncio.run(scenario())
 
 

@@ -1,7 +1,6 @@
 /** Wave 18b: every gap route renders its page (heading or designed empty state) with the signed-in `app` fixture. */
 import { expect, test } from "./fixtures";
 
-/** Route and the designed text its page shows against the empty bodies in `mockGapRoutes`. */
 /** Valid empty bodies for endpoints neither the recording nor mockGapRoutes covers, per route. */
 const EMPTY: Record<string, [RegExp, unknown][]> = {
   "/insights/reports": [[/\/api\/v1\/versions(\?.*)?$/, { versions: [] }]],
