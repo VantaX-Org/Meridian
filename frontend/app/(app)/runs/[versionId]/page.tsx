@@ -145,7 +145,7 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
 function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
   const router = useRouter();
   const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
-  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
+  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
   const history = useQuery({
     queryKey: queryKeys.scoreHistory(systemId),
     queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
@@ -202,7 +202,7 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         {a.dqs.capped ? " The score is capped by a critical finding." : ""}
       </p>
       <div className="flex flex-wrap items-center gap-8">
-        <DqsScore agg={a} versionId={versionId} size={64} />
+        <DqsScore agg={a} versionId={versionId} />
         <Stat
           label="Composite score"
           value={composite != null ? composite.toFixed(1) : "—"}
@@ -225,7 +225,7 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         <Pareto data={paretoData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&module=${p.object ?? ""}`)} />
       </section>
       <section className="flex flex-col gap-2">
-        <h2 className="text-[13px] font-semibold">Next actions</h2>
+        <h2 className="text-[13px] font-semibold">Next actions (all systems)</h2>
         {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
       </section>
       <section className="flex flex-col gap-2">

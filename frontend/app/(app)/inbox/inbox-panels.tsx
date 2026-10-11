@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone } from "@/design";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
 import { getSAPMonitor } from "@/lib/api/exceptions";
 import {
@@ -154,6 +155,7 @@ export function SapMonitorPanel() {
 /* ─── Approvals: live write-back requests waiting for a second person ─── */
 
 export function ApprovalsPanel() {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["inbox", "approvals"], queryFn: getPendingApprovals, retry: false });
   const approve = useMutation({
@@ -174,9 +176,11 @@ export function ApprovalsPanel() {
     { id: "by", header: "Requested by", cell: ({ row }) => <Mono>{row.original.requested_by?.slice(0, 8) ?? "—"}</Mono> },
     { id: "when", header: "Requested", cell: ({ row }) => row.original.created_at ? relativeTime(row.original.created_at) : "—" },
     { id: "act", header: "", cell: ({ row }) => (
-      <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled} onClick={() => approve.mutate(row.original.id)}>Approve</Button>
+      <Button variant="secondary" disabled={approve.isPending || !q.data?.live_enabled || (user != null && row.original.requested_by === user.id)}
+        title={user != null && row.original.requested_by === user.id ? "You requested this; another approver must approve it." : undefined}
+        onClick={() => approve.mutate(row.original.id)}>Approve</Button>
     ) },
-  ], [approve, q.data?.live_enabled]);
+  ], [approve, q.data?.live_enabled, user]);
   const list = q.data?.approvals ?? [];
   return (
     <Panel q={q}>

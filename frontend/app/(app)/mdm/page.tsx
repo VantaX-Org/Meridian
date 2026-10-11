@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, ExplorerPage, Line, ScoreRing, Stat } from "@/design";
+import { Button, Card, ExplorerPage, Line, ScoreExplainer, Stat } from "@/design";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -31,7 +31,19 @@ export default function MdmOverviewPage() {
       table={
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-            <Card title="MDM health">{m ? <ScoreRing score={m.mdm_health_score} size={120} /> : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No current snapshot yet.</p>}</Card>
+            <Card title="MDM health">{m ? <ScoreExplainer
+              score={m.mdm_health_score}
+              band={m.mdm_health_score >= 85 ? { label: "Healthy", tone: "go" } : m.mdm_health_score >= 60 ? { label: "Needs attention", tone: "at-risk" } : { label: "Unhealthy", tone: "no-go" }}
+              // Fixed weights from api/services/mdm_scoring.py; the snapshot carries the four inputs.
+              dimensions={[
+                { name: "Golden record coverage", weight: 0.4, score: m.golden_record_coverage_pct },
+                { name: "Match confidence", weight: 0.3, score: m.avg_match_confidence * 100 },
+                { name: "Steward SLA", weight: 0.2, score: m.steward_sla_compliance_pct },
+                { name: "Source consistency", weight: 0.1, score: m.source_consistency_pct },
+              ]}
+              rules={[]}
+              historyHref="/mdm"
+            /> : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No current snapshot yet.</p>}</Card>
             <Card title="Health over time">
               {points.length === 0 ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No history yet.</p> : <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" />}
             </Card>

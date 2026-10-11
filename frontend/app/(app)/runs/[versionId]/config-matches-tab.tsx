@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { exportConfigMatches, getConfigMatches, type ConfigMatch } from "@/lib/api/config-matches";
+import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 
@@ -13,6 +14,7 @@ const CLASS_TONE: Record<string, PillTone> = { config_driven: "go", data_error: 
 
 /** Runs/[v] › Config matches: where live configuration disagrees with the standard rule. Export needs `export`. */
 export function ConfigMatchesTab({ versionId }: { versionId: string }) {
+  const { can } = useRole();
   const q = useQuery({ queryKey: ["config-matches", versionId], queryFn: () => getConfigMatches(versionId), retry: false });
   const cols = useMemo<ColumnDef<ConfigMatch, unknown>[]>(() => [
     { id: "module", header: "Module", cell: ({ row }) => formatModuleName(row.original.module) },
@@ -42,7 +44,7 @@ export function ConfigMatchesTab({ versionId }: { versionId: string }) {
       </div>
       <DataTable columns={cols} data={items} getRowId={(m) => `${m.module}/${m.check_id}/${m.record_key ?? ""}/${m.field ?? ""}`}
         height={440} exportName={`config-matches-${versionId}`}
-        exportOptions={[{ format: "xlsx", label: "Config matches (.xlsx)", run: () => exportConfigMatches(versionId) }]} />
+        exportOptions={can("export") ? [{ format: "xlsx", label: "Config matches (.xlsx)", run: () => exportConfigMatches(versionId) }] : undefined} />
     </div>
   );
 }

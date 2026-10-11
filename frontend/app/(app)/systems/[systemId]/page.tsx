@@ -72,7 +72,8 @@ function runColumns(): ColumnDef<SystemVersion>[] {
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
-          <DrillLink href={findingsHref(row.original.id)}>{d.toFixed(1)}</DrillLink>
+          // The run summary carries the score explainer.
+          <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>
         );
       },
     },

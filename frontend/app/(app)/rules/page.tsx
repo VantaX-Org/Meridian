@@ -21,9 +21,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { DrillLink, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
 import { useSystemScope } from "@/lib/permissions";
@@ -34,8 +34,6 @@ import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } fr
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
-import { Tabs } from "@/design";
-import { oneOf } from "@/hooks/use-url-state";
 import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };

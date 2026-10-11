@@ -108,7 +108,8 @@ export default function InboxPage() {
   const [typeRaw, setType] = useUrlState("type", "all");
   const [kindRaw, setKind] = useUrlState("kind", "task");
   const view = oneOf(viewRaw, VIEWS.map((v) => v.value), "all");
-  const kind = oneOf(kindRaw, KINDS.map((k) => k.value), "task");
+  // Approvals needs `approve`; a deep link by anyone else falls back to Tasks.
+  const kind = oneOf(kindRaw, KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => k.value), "task");
   const isExceptions = kind === "exception";
   const [search, setSearch] = useState("");
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
