@@ -24,6 +24,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -192,6 +193,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         filter_expr: str | None = None,
         top: int = 0,
         from_date: str | None = None,
+        expand: list[str] | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -202,6 +204,10 @@ class SuccessFactorsConnector(CloudSAPConnector):
             top:        Maximum rows to return. 0 = no limit (all pages).
             from_date:  OData fromDate for effective-dated entities. None = as of today
                         (current record only); "1900-01-01" = full history.
+            expand:     Navigation properties for $expand. Their selected properties
+                        ("nav/prop" in ``select``) come back as "nav/prop" columns: from the
+                        related record in the row's defaultLanguage when both that and
+                        "nav/locale" are selected, else the first non-blank one.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -215,6 +221,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
         params: dict[str, str] = {"$format": "json"}
         if select:
             params["$select"] = ",".join(select)
+        if expand:
+            params["$expand"] = ",".join(expand)
         if filter_expr:
             params["$filter"] = filter_expr
         if from_date:
@@ -241,6 +249,18 @@ class SuccessFactorsConnector(CloudSAPConnector):
             # Strip OData metadata; OData V2 dates arrive as /Date(ms)/ — make them ISO
             for rec in results:
                 rec.pop("__metadata", None)
+                for nav in expand or ():
+                    rel = rec.pop(nav, None) or {}
+                    rel = rel.get("results", [rel]) if isinstance(rel, dict) else []
+                    # ponytail: a to-many navigation (one locale per language) gives one value per row: the
+                    # record's defaultLanguage locale first, else the first non-blank; rows per locale if needed
+                    lang = rec.get("defaultLanguage")
+                    if lang:
+                        rel = sorted(rel, key=lambda r: r.get("locale") != lang)
+                    for s in select or ():
+                        if s.startswith(f"{nav}/"):
+                            k = s.split("/", 1)[1]
+                            rec[s] = next((r[k] for r in rel if r.get(k) is not None and str(r[k]).strip()), None)
                 for k, v in rec.items():
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
@@ -465,3 +485,33 @@ class SuccessFactorsConnector(CloudSAPConnector):
         raise SAPConnectorError(
             f"SuccessFactors request failed after {retries} retries"
         ) from last_exc
+
+
+def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:
+    """(property names, {navigation property: its target type's property names}) of ``entity``
+    in an OData V2 $metadata document; a target is None when the document does not describe it.
+    None if the document does not describe ``entity``."""
+    def local(el: ET.Element) -> str:
+        return el.tag.rsplit("}", 1)[-1]
+
+    def name(qualified: str) -> str:
+        return qualified.rsplit(".", 1)[-1]
+
+    root = ET.fromstring(edmx)
+    types = {el.get("Name", ""): el for el in root.iter() if local(el) == "EntityType"}
+    ends = {el.get("Name", ""): {e.get("Role"): name(e.get("Type", "")) for e in el if local(e) == "End"}
+            for el in root.iter() if local(el) == "Association"}
+
+    def props(t: ET.Element) -> set[str]:
+        return {c.get("Name", "") for c in t if local(c) == "Property"}
+
+    t = types.get(next((name(el.get("EntityType", "")) for el in root.iter()
+                        if local(el) == "EntitySet" and el.get("Name") == entity), entity))
+    if t is None:
+        return None
+    navs: dict[str, set[str] | None] = {}
+    for c in t:
+        if local(c) == "NavigationProperty":
+            target = types.get(ends.get(name(c.get("Relationship", "")), {}).get(c.get("ToRole"), ""))
+            navs[c.get("Name", "")] = props(target) if target is not None else None
+    return props(t), navs

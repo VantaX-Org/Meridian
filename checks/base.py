@@ -4,6 +4,22 @@ from typing import Any, Optional
 import pandas as pd
 from pydantic import BaseModel, PrivateAttr
 
+
+try:
+    from celery.exceptions import SoftTimeLimitExceeded
+except ImportError:  # light installs (perf job) have no celery; nothing can raise the limit there
+    class SoftTimeLimitExceeded(Exception):  # type: ignore[no-redef]
+        """Placeholder, never raised."""
+
+
+def reraise_soft_limit(exc: BaseException) -> None:
+    """Re-raise the task's soft time limit from a broad ``except Exception``.
+
+    SoftTimeLimitExceeded subclasses Exception, so a handler that swallows it leaves the version
+    'running' until the hard kill. Call this first in every broad handler on the run path."""
+    if isinstance(exc, SoftTimeLimitExceeded):
+        raise exc
+
 # Exact SAP primary key fields — highest priority.
 SAP_PRIMARY_KEYS = [
     "BUT000.PARTNER", "MARA.MATNR", "SKA1.SAKNR", "KNA1.KUNNR",
@@ -244,6 +260,8 @@ class BaseCheck(ABC):
             return None
         try:
             ev = self.evaluate(df)
+        except SoftTimeLimitExceeded:  # the task's time limit ends the run, never one rule
+            raise
         except Exception as e:  # rule-level error is visible, never silent
             return self._error(df, str(e))
         if ev is None:

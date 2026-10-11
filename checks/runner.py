@@ -10,7 +10,7 @@ import pandas as pd
 import yaml
 
 from checks import auto_fix, cost
-from checks.base import BaseCheck, CheckResult, as_of_time, failing_values, record_keys, sap_number
+from checks.base import BaseCheck, CheckResult, SoftTimeLimitExceeded, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.profiling import is_sensitive
@@ -29,7 +29,7 @@ from checks.types.balance_check import BalanceCheck
 from checks.types.country_format_check import CountryFormatCheck
 from checks.types.aggregate_check import AggregateCheck
 from checks.types.interval_check import IntervalCheck
-from checks.types.exists_check import ExistsCheck, key_of
+from checks.types.exists_check import ExistsCheck, target_keys
 from checks.types.dependency_check import DependencyCheck
 from checks.types.hierarchy_check import HierarchyCheck
 from checks.types.similarity_check import SimilarityCheck
@@ -250,7 +250,7 @@ def _with_targets(rule: dict, frames: TableFrames, as_of: Any = None) -> dict | 
         return None
     when = {f"{t}.{k}": v for k, v in (rule.get("target_when") or {}).items()}
     target = apply_context(target[list(dict.fromkeys(target_columns(rule)))], when, as_of)
-    return {**rule, "_target_values": set(key_of(target, [f"{t}.{f}" for f in rule["target_fields"]]))}
+    return {**rule, "_target_values": target_keys(target, [f"{t}.{f}" for f in rule["target_fields"]])}
 
 
 def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
@@ -356,6 +356,8 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         if result is not None and result.affected_count and not result.error and auto_fix.enabled(rule):
             result.record_fixes = _auto_fixes(rule, check_cls(rule), scoped, result, frames)
         return rule, result
+    except SoftTimeLimitExceeded:  # the task's time limit ends the run, never one rule
+        raise
     except Exception as e:
         logger.error(f"Exception in check {rule.get('id')}: {e}", exc_info=True)
         return rule, check_cls(rule)._error(frames.flat if frames.flat is not None else pd.DataFrame(), str(e))
@@ -434,7 +436,8 @@ def _rule_columns(rule: dict, frames: TableFrames,
         for c in [c for x in excl for c in (x.get("fields") or [x["field"]])] + list(rule.get("applies_when") or {}):
             stripped[c] = stripped.get(c, 0) + 1
         return set(cols) | set(optional), stripped
-    except Exception:  # run_rule reports it
+    except Exception as e:  # run_rule reports it
+        reraise_soft_limit(e)
         return set(), {}
 
 
@@ -529,7 +532,8 @@ def run_checks(
         try:
             cols = rule_columns(rule) if rule.get("check_class") in REGISTRY else []
             return frames.grain_for(cols, rule.get("grain")) or "", tuple(sorted(tables_of(cols)))
-        except Exception:
+        except Exception as e:
+            reraise_soft_limit(e)
             return "", ()
     groups = [group_of(r) for r in rules]
     done_by_rule: dict[int, tuple[dict, CheckResult] | None] = {}
@@ -554,12 +558,16 @@ def run_checks(
                 frames.clear_cache()
                 try:  # best effort: a rule that finds nothing prefetched builds its own frame
                     frames.prefetch(plan[i], prev)
+                except SoftTimeLimitExceeded:
+                    raise
                 except Exception as e:
                     logger.warning(f"Prefetch for grain {prev} failed, evaluating rule by rule: {e}")
                     frames.clear_cache()
             if on_progress is not None:
                 try:
                     on_progress(done, total_rules, rule.get("id", "UNKNOWN"))
+                except SoftTimeLimitExceeded:
+                    raise
                 except Exception:  # progress is UX only
                     pass
             t0 = time.monotonic()
@@ -585,7 +593,8 @@ def run_checks(
                         on_result(result)
                 finally:
                     result._all_failing_keys = None  # release the full key Series even if on_result raises
-            done_by_rule[i] = (rule, result)
+            # the resolved target keys / child sums served this rule only; not held for the whole run
+            done_by_rule[i] = ({k: v for k, v in rule.items() if k not in ("_target_values", "_child_sums")}, result)
     finally:
         frames.clear_cache()
     for i in range(total_rules):
@@ -659,6 +668,7 @@ def run_checks(
                 "record_fixes": record_fixes or None,
             })
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Fix enrichment failed for {result.check_id}: {e}")
 
     return results

@@ -320,3 +320,194 @@ def test_rest_extractor_renames_to_canonical(system, module, table, payload, exp
     row = frames[table].iloc[0].to_dict()
     assert {k: row[k] for k in expect} == expect
     assert {"table": table, "status": "live"}.items() <= next(c for c in coverage if c["table"] == table).items()
+
+
+# ── SF extraction against the tenant's $metadata (fake tenant, no network) ─────
+
+from sap.base import SAPConnectorError  # noqa: E402
+
+
+def _edmx(entity: str, props: list[str], navs: tuple[str, ...] = ()) -> str:
+    p = "".join(f'<Property Name="{x}" Type="Edm.String"/>' for x in props)
+    n = "".join(f'<NavigationProperty Name="{x}" Relationship="SFOData.r_{x}" FromRole="a" ToRole="b"/>'
+                for x in navs)
+    return ('<?xml version="1.0" encoding="utf-8"?>'
+            '<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">'
+            '<edmx:DataServices><Schema Namespace="SFOData" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">'
+            f'<EntityType Name="{entity}"><Key><PropertyRef Name="{props[0]}"/></Key>{p}{n}</EntityType>'
+            f'<EntityContainer Name="EntitiesV2"><EntitySet Name="{entity}" EntityType="SFOData.{entity}"/>'
+            '</EntityContainer></Schema></edmx:DataServices></edmx:Edmx>')
+
+
+class _Tenant(_Fake):
+    """A tenant whose entities have only the given properties: like SF, $select of anything else
+    fails the whole read, and an entity it does not have is a 404."""
+
+    def __init__(self, model: dict[str, tuple[list[str], tuple[str, ...]]], data: dict[str, list[dict]]):
+        super().__init__(data)
+        self.model, self.expands = model, {}
+
+    def metadata(self, entity: str | None = None) -> str:
+        if entity not in self.model:
+            raise SAPConnectorError(f"SuccessFactors request failed: Client error '404 Not Found' for url "
+                                    f"'https://sf.example.test/odata/v2/{entity}/$metadata'")
+        return _edmx(entity, *self.model[entity])
+
+    def read_entity_set(self, entity, select=None, expand=None, **kw):
+        if entity not in self.model:
+            raise SAPConnectorError("SuccessFactors request failed: Client error '404 Not Found'")
+        props, navs = self.model[entity]
+        bad = [s for s in select or [] if (s.split("/")[0] not in navs if "/" in s else s not in props)]
+        if bad:
+            raise SAPConnectorError(f"[COE0021]Invalid property names: {entity}/{bad[0]}")
+        self.expands[entity] = expand
+        return super().read_entity_set(entity, select=select, **kw)
+
+
+def _sf(conn, modules, monkeypatch):
+    import api.services.source_design as sd
+    monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
+    cm = object.__new__(ConnectivityManager)
+    cm.session = None
+    frames, coverage = ConnectivityManager._extract_successfactors(
+        cm, conn, modules, dictionary_for_system("successfactors"), None)
+    return frames, {c["table"]: c for c in coverage}
+
+
+_EMP = ["userId", "personIdExternal", "startDate", "endDate", "createdDateTime"]
+_JOB = ["userId", "startDate", "seqNumber", "company", "division", "department", "location", "costCenter",
+        "jobCode", "jobTitle", "managerId", "position", "employmentType", "eventReason", "emplStatus",
+        "lastModifiedDateTime"]
+
+
+def test_sf_join_key_only_selected_when_the_entity_has_it(monkeypatch):
+    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},
+                   {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
+                    "EmpJob": [{"userId": "U1", "company": "C1"}]})
+    frames, cov = _sf(conn, ["employee_central"], monkeypatch)
+    assert all("personIdExternal" not in (s or []) for e, s in conn.calls if e == "EmpJob")
+    assert cov["EMPEMPLOYMENT"]["status"] == "live"
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.COMPANY"].tolist() == ["C1"]
+    assert not any(c["status"] == "failed" for c in cov.values())
+
+
+def test_sf_property_the_tenant_lacks_is_unavailable_not_a_failed_read(monkeypatch):
+    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},  # neither has isPrimary
+                   {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
+                    "EmpJob": [{"userId": "U1", "company": "C1"}]})
+    frames, cov = _sf(conn, ["employee_central"], monkeypatch)
+    emp = cov["EMPEMPLOYMENT"]
+    assert emp["status"] == "live" and "IS_PRIMARY" in emp["unavailable_fields"]
+    assert "EMPEMPLOYMENT.IS_PRIMARY" not in frames["EMPEMPLOYMENT"].columns  # absent, like overlay gaps
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.START_DATE"].tolist() == ["2020-01-01"]
+
+
+def test_sf_navigation_path_is_selected_with_slash_and_expanded(monkeypatch):
+    conn = _Tenant({"JobRequisition": (["jobReqId", "createdDateTime"], ("jobReqLocale",))},
+                   {"JobRequisition": [{"jobReqId": 7, "jobReqLocale/jobTitle": "Engineer"}]})
+    frames, cov = _sf(conn, ["recruiting_onboarding"], monkeypatch)
+    sel = next(s for e, s in conn.calls if e == "JobRequisition")
+    assert "jobReqLocale/jobTitle" in sel and not any("." in s for s in sel)
+    assert conn.expands["JobRequisition"] == ["jobReqLocale"]
+    assert frames["JOBREQUISITION"]["JOBREQUISITION.TITLE"].tolist() == ["Engineer"]
+    assert cov["JOBREQUISITION"]["status"] == "live" and "STATUS" in cov["JOBREQUISITION"]["unavailable_fields"]
+
+
+def test_sf_entity_not_in_tenant_is_not_in_system(monkeypatch):
+    conn = _Tenant({}, {})  # benefits not enabled: every entity 404s
+    frames, cov = _sf(conn, ["benefits"], monkeypatch)
+    assert "BENEFITENROLLMENT" not in frames
+    assert cov["BENEFITENROLLMENT"]["status"] == "not_in_system" and "404" in cov["BENEFITENROLLMENT"]["detail"]
+    assert not any(c["status"] == "failed" for c in cov.values())
+
+
+def test_sf_read_404_without_metadata_is_not_in_system(monkeypatch):
+    class _NoMeta(_Tenant):
+        def metadata(self, entity=None):
+            raise SAPConnectorError("SuccessFactors request failed: Server error '503 Service Unavailable'")
+
+    frames, cov = _sf(_NoMeta({}, {}), ["benefits"], monkeypatch)
+    assert cov["BENEFITENROLLMENT"]["status"] == "not_in_system"
+    assert not any(c["status"] == "failed" for c in cov.values())
+
+
+@pytest.mark.parametrize("model", [
+    {"BenefitEnrollment": (["externalCode"], ()), "Benefit": (["externalCode"], ())},  # no mapped property
+    {"BenefitEnrollment": (["externalCode"], ())},  # one entity absent, the other has no mapped property
+])
+def test_sf_table_with_no_dictionary_property_in_tenant_still_gets_a_coverage_row(monkeypatch, model):
+    frames, cov = _sf(_Tenant(model, {}), ["benefits"], monkeypatch)
+    assert "BENEFITENROLLMENT" not in frames
+    row = cov["BENEFITENROLLMENT"]
+    assert row["status"] == "not_in_system" and "PLAN_ID" in row["unavailable_fields"]
+    assert not any(c["status"] == "failed" for c in cov.values())
+
+
+def _http_error(code: int, url: str) -> SAPConnectorError:
+    import httpx
+    req = httpx.Request("GET", url)
+    cause = httpx.HTTPStatusError(f"Client error '{code}' for url '{url}'", request=req,
+                                  response=httpx.Response(code, request=req))
+    err = SAPConnectorError(f"SuccessFactors request failed: {cause}")
+    err.__cause__ = cause
+    return err
+
+
+def test_not_found_trusts_the_http_status_over_the_message_text():
+    from api.services.connectivity_manager import _not_found
+
+    assert _not_found(_http_error(404, "https://sf.example.test/odata/v2/Benefit"))
+    assert not _not_found(_http_error(400, "https://sf.example.test/odata/v2/Benefit?$filter=code eq '404'"))
+    assert _not_found(SAPConnectorError("Client error '404 Not Found'"))  # no HTTP cause: message fallback
+
+
+_REQ = ["jobReqId", "createdDateTime", "defaultLanguage"]
+
+
+def _req_edmx(locale_props: list[str]) -> str:
+    """JobRequisition with a to-many jobReqLocale whose target type is in the same document."""
+    p = "".join(f'<Property Name="{x}" Type="Edm.String"/>' for x in _REQ)
+    lp = "".join(f'<Property Name="{x}" Type="Edm.String"/>' for x in locale_props)
+    return ('<?xml version="1.0" encoding="utf-8"?>'
+            '<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">'
+            '<edmx:DataServices><Schema Namespace="SFOData" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">'
+            f'<EntityType Name="JobRequisition"><Key><PropertyRef Name="jobReqId"/></Key>{p}'
+            '<NavigationProperty Name="jobReqLocale" Relationship="SFOData.req_locale" '
+            'FromRole="req" ToRole="locale"/></EntityType>'
+            f'<EntityType Name="JobRequisitionLocale"><Key><PropertyRef Name="jobReqLocalId"/></Key>{lp}</EntityType>'
+            '<Association Name="req_locale"><End Role="req" Type="SFOData.JobRequisition" Multiplicity="1"/>'
+            '<End Role="locale" Type="SFOData.JobRequisitionLocale" Multiplicity="*"/></Association>'
+            '<EntityContainer Name="EntitiesV2"><EntitySet Name="JobRequisition" EntityType="SFOData.JobRequisition"/>'
+            '</EntityContainer></Schema></edmx:DataServices></edmx:Edmx>')
+
+
+class _ReqTenant(_Tenant):
+    def __init__(self, locale_props: list[str], data: dict[str, list[dict]]):
+        super().__init__({"JobRequisition": (_REQ, ("jobReqLocale",))}, data)
+        self.locale_props = locale_props
+
+    def metadata(self, entity=None):
+        return _req_edmx(self.locale_props)
+
+
+def test_entity_model_resolves_the_navigation_target_properties():
+    from sap.successfactors import entity_model
+
+    props, navs = entity_model(_req_edmx(["jobTitle", "locale"]), "JobRequisition")
+    assert navs == {"jobReqLocale": {"jobTitle", "locale"}}
+    assert entity_model(_edmx("A", ["x"], ("n",)), "A")[1] == {"n": None}  # target not in the document
+
+
+def test_sf_navigation_property_missing_on_the_target_type_is_unavailable(monkeypatch):
+    conn = _ReqTenant(["locale"], {"JobRequisition": [{"jobReqId": 7}]})
+    frames, cov = _sf(conn, ["recruiting_onboarding"], monkeypatch)
+    sel = next(s for e, s in conn.calls if e == "JobRequisition")
+    assert "jobReqLocale/jobTitle" not in sel
+    assert cov["JOBREQUISITION"]["status"] == "live" and "TITLE" in cov["JOBREQUISITION"]["unavailable_fields"]
+
+
+def test_sf_locale_navigation_reads_the_default_language_with_its_locale(monkeypatch):
+    conn = _ReqTenant(["jobTitle", "locale"], {"JobRequisition": [{"jobReqId": 7}]})
+    _sf(conn, ["recruiting_onboarding"], monkeypatch)
+    sel = next(s for e, s in conn.calls if e == "JobRequisition")
+    assert {"jobReqLocale/jobTitle", "jobReqLocale/locale", "defaultLanguage"} <= set(sel)

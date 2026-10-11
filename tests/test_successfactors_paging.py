@@ -52,3 +52,40 @@ def test_unlimited_read_sends_no_top():
 
     _connector(handler).read_entity_set("User")
     assert "$top" not in seen[0].params
+
+
+def test_expand_flattens_navigation_values_into_slash_columns():
+    seen: list[httpx.URL] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url)
+        return httpx.Response(200, json={"d": {"results": [
+            {"jobReqId": 1, "jobReqLocale": {"results": [{"jobTitle": "Engineer", "__metadata": {}}]}},
+            {"jobReqId": 2, "jobReqLocale": {"results": []}},
+            {"jobReqId": 3, "jobReqLocale": {"jobTitle": "Clerk"}},
+        ]}})
+
+    df = _connector(handler).read_entity_set(
+        "JobRequisition", select=["jobReqId", "jobReqLocale/jobTitle"], expand=["jobReqLocale"])
+    assert seen[0].params["$expand"] == "jobReqLocale"
+    assert seen[0].params["$select"] == "jobReqId,jobReqLocale/jobTitle"
+    col = df["jobReqLocale/jobTitle"]
+    assert col[0] == "Engineer" and col.isna()[1] and col[2] == "Clerk"
+    assert "jobReqLocale" not in df.columns
+
+
+def test_to_many_expand_prefers_the_default_language_then_the_first_non_blank_value():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"d": {"results": [
+            {"jobReqId": 1, "defaultLanguage": "en_US", "jobReqLocale": {"results": [
+                {"locale": "de_DE", "jobTitle": "Ingenieur"}, {"locale": "en_US", "jobTitle": "Engineer"}]}},
+            {"jobReqId": 2, "defaultLanguage": "en_US", "jobReqLocale": {"results": [
+                {"locale": "en_US", "jobTitle": " "}, {"locale": "fr_FR", "jobTitle": "Commis"}]}},
+            {"jobReqId": 3, "jobReqLocale": {"results": [
+                {"locale": "de_DE", "jobTitle": None}, {"locale": "fr_FR", "jobTitle": "Chef"}]}},
+        ]}})
+
+    df = _connector(handler).read_entity_set(
+        "JobRequisition", select=["jobReqId", "defaultLanguage", "jobReqLocale/locale", "jobReqLocale/jobTitle"],
+        expand=["jobReqLocale"])
+    assert df["jobReqLocale/jobTitle"].tolist() == ["Engineer", "Commis", "Chef"]

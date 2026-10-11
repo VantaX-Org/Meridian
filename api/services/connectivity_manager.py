@@ -10,11 +10,13 @@ Coordinates:
 
 import json
 import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+import httpx
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -35,6 +37,14 @@ logger = logging.getLogger("meridian.connectivity_manager")
 
 RFC_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp")
+
+
+def _not_found(e: Exception) -> bool:
+    """An OData 404: the entity is not enabled in this tenant. The HTTP status decides when the
+    error carries one; the message (which includes the URL) is only a fallback."""
+    if isinstance(e.__cause__, httpx.HTTPStatusError):
+        return e.__cause__.response.status_code == 404
+    return bool(re.search(r"\b404\b|is not found", str(e)))
 
 
 def baseline_key(system_type: str) -> str:
@@ -539,6 +549,7 @@ class ConnectivityManager:
         snap = latest_snapshot_id(self.session, system_id)
         live = load_overlay(self.session, snap)[0] if snap else {}
         frames, coverage = {}, []
+        models: dict[str, tuple[set[str], dict[str, set[str] | None]] | str | None] = {}  # per entity, this extraction
         options: dict[str, dict[str, str]] = {}
         if self.session is not None and system_id:
             from sqlalchemy import text as _text
@@ -565,18 +576,56 @@ class ConnectivityManager:
             # effective-dated entities return only today's record unless fromDate is given
             history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
             merged = None
+            absent: list[str] = []
+            failed = False
             for ent, props in by_entity.items():
+                if ent not in models:
+                    models[ent] = self._sf_entity_model(connector, ent)
+                model = models[ent]
+                if isinstance(model, str):  # the tenant does not have this entity
+                    unavailable |= {n for names in props.values() for n in names}
+                    absent.append(model)
+                    coverage.append({"table": f"{table}←{ent}", "status": "not_in_system", "entity": ent,
+                                     "detail": model})
+                    continue
+                # $select only what the tenant's entity has; "nav.prop" is "nav/prop" + $expand=nav
+                sel: dict[str, str] = {}
+                for prop, names in props.items():
+                    nav, _, sub = prop.partition(".")
+                    # ponytail: a nav whose target type is not in the entity's $metadata goes unchecked
+                    target = model[1].get(nav) if model is not None and sub else None
+                    if model is None or (prop in model[0] if not sub else
+                                         nav in model[1] and (target is None or sub in target)):
+                        sel[prop] = f"{nav}/{sub}" if sub else prop
+                    else:
+                        unavailable |= set(names)
+                if not sel:
+                    continue
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
-                join = [p for p in ("userId", "personIdExternal") if p not in props] if len(by_entity) > 1 else []
+                join = [p for p in ("userId", "personIdExternal") if p not in props
+                        and (model is None or p in model[0])] if len(by_entity) > 1 else []
+                expand = sorted({p.split("/")[0] for p in sel.values() if "/" in p})
+                # a to-many locale navigation is read in the record's own default language
+                lang = {s for nav in expand if model is not None and "defaultLanguage" in model[0]
+                        and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
                 try:
-                    df = connector.read_entity_set(ent, select=sorted(set(props) | set(join)), **history)
+                    df = connector.read_entity_set(ent, select=sorted(set(sel.values()) | set(join) | lang), **history,
+                                                   **({"expand": expand} if expand else {}))
                 except Exception as e:
-                    coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
+                    if _not_found(e):
+                        unavailable |= {n for names in props.values() for n in names}
+                        absent.append(str(e)[:300])
+                        coverage.append({"table": f"{table}←{ent}", "status": "not_in_system", "entity": ent,
+                                         "detail": str(e)[:300]})
+                    else:
+                        failed = True
+                        coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
                     continue
                 out = pd.DataFrame(index=df.index)
                 for prop, names in props.items():
-                    for n in names:
-                        out[f"{table}.{n}"] = df.get(prop)
+                    if prop in sel:
+                        for n in names:
+                            out[f"{table}.{n}"] = df.get(sel[prop])
                 for j in ("userId", "personIdExternal"):
                     if j in df.columns:
                         out[f"__{j}"] = df[j]
@@ -587,6 +636,11 @@ class ConnectivityManager:
                     merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
                                           how="left", on=on) if on else merged
             if merged is None:
+                if not failed:  # every entity absent, or none has a property the dictionary maps
+                    coverage.append({"table": table, "status": "not_in_system", "entities": sorted(by_entity),
+                                     "unavailable_fields": sorted(unavailable),
+                                     "detail": ("; ".join(absent) if len(absent) == len(by_entity)
+                                                else "no dictionary property in tenant $metadata")[:300]})
                 continue
             merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
             # BOOLEAN fields arrive as Python bool from OData V2 JSON; astype("string") would give
@@ -606,6 +660,22 @@ class ConnectivityManager:
             coverage.append({"table": table, "status": "live", "rows": len(merged),
                              "entities": sorted(by_entity), "unavailable_fields": sorted(unavailable)})
         return frames, coverage
+
+    @staticmethod
+    def _sf_entity_model(connector, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | str | None:
+        """(properties, {navigation: target properties}) of ``entity`` from the tenant's $metadata; a str
+        (why) if the tenant does not have the entity; None if its metadata cannot be read."""
+        from sap.successfactors import entity_model
+
+        if not hasattr(connector, "metadata"):
+            return None
+        try:
+            return entity_model(connector.metadata(entity), entity)
+        except Exception as e:
+            if _not_found(e):
+                return str(e)[:300]
+            logger.warning(f"SuccessFactors $metadata for {entity} unreadable, selecting unchecked: {e}")
+            return None
 
     @staticmethod
     def _rule_tables(modules) -> set[str]:

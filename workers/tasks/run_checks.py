@@ -10,10 +10,12 @@ import pandas as pd
 import yaml
 
 from celery import Task
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from api.services.run_steps import record_step
+from checks.base import reraise_soft_limit
 from api.services.task_progress import (
     STEP_FINALISE,
     STEP_RUN_CHECKS,
@@ -225,6 +227,7 @@ _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 # boolean, not a count, and the Redis transport does not set it reliably.
 _MAX_LOST = 2
 _LOST_ERROR = "checks worker ran out of memory twice; aborted"
+_TIME_LIMIT_ERROR = f"checks exceeded the time limit of {_CHECKS_LIMIT}s; aborted"
 _DELIVERY_TTL = 2 * 24 * 3600
 
 
@@ -242,6 +245,7 @@ def _count_delivery(task_id: str | None) -> int:
         client.expire(_delivery_key(task_id), _DELIVERY_TTL)
         return n
     except Exception as e:  # never fail an analysis over its delivery counter
+        reraise_soft_limit(e)
         logger.warning(f"run_checks delivery counter unavailable: {e}")
         return 0
 
@@ -253,6 +257,7 @@ def _clear_deliveries(task_id: str | None) -> None:
     try:
         client.delete(_delivery_key(task_id))
     except Exception as e:
+        reraise_soft_limit(e)
         logger.warning(f"run_checks delivery counter not cleared: {e}")
 
 
@@ -301,6 +306,10 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
                     _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
                     return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
                 return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+            except SoftTimeLimitExceeded:  # the hard limit follows and runs no handler: fail the version now
+                logger.error(f"run_checks {task_id} for version_id={version_id}: {_TIME_LIMIT_ERROR}")
+                _mark_failed(engine, tenant_id, version_id, _TIME_LIMIT_ERROR)
+                raise
             finally:
                 _clear_deliveries(task_id)
         finally:
@@ -511,6 +520,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     keys = keys[~keys.isin(sup_records[r.check_id])]
                 tracker.add(r.check_id, keys)
             except Exception as e:
+                reraise_soft_limit(e)
                 logger.warning(f"Clean-record tracking failed on {r.check_id}: {e}", exc_info=True)
                 tracker.failing, tracker.reason = None, f"clean-record tracking failed on {r.check_id}"
         for idx, module_name in enumerate(modules):
@@ -556,6 +566,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     prof = profile_and_store(engine, str(tenant_id), str(version_id), module_name, frames, dictionary)
                     logger.info(f"field profile for {module_name}: {prof}")
                 except Exception as e:
+                    reraise_soft_limit(e)
                     logger.error(f"field profiling failed for {module_name}, continuing: {e}", exc_info=True)
             # Post-module tick so users see movement between modules.
             rows_done_after = int(((idx + 1) / module_count) * row_count)
@@ -594,10 +605,12 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                             res._all_failing_keys = None
                             all_results.append(res)
                     except Exception as e:
+                        reraise_soft_limit(e)
                         logger.warning(
                             f"Z-table rule {rule.get('id')} failed: {e}"
                         )
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Z-table check pass failed, continuing: {e}")
 
         frames.clear_cache()  # the conformance pass decodes every column: nothing may accumulate
@@ -643,6 +656,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     res._all_failing_keys = None
                     all_results.append(res)
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)
 
         logger.info(f"Total check results: {len(all_results)}")
@@ -656,6 +670,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             from checks.root_cause import enrich_results_with_root_cause
             enrich_results_with_root_cause(engine, str(tenant_id), all_results)
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"root_cause enrichment failed, continuing: {e}")
 
         # Step 6e: cost of poor data quality + impact ranking. Rule results are priced
@@ -796,8 +811,10 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                             with session.begin_nested():
                                 monitor.notify(session, str(tenant_id), str(version_id), summary)
                     except Exception as e:
+                        reraise_soft_limit(e)
                         logger.error(f"baseline monitor failed for {version_id}: {e}", exc_info=True)
             except Exception as e:
+                reraise_soft_limit(e)
                 logger.error(f"record-level tracking failed for {version_id}: {e}", exc_info=True)
 
             # Step 9c: route new / re-opened issues to owners and start their SLA clocks
@@ -808,6 +825,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                     started = apply_sla(session, str(tenant_id))
                 logger.info(f"triage for {version_id}: assigned={assigned} sla_started={started}")
             except Exception as e:
+                reraise_soft_limit(e)
                 logger.error(f"triage auto-assign failed for {version_id}: {e}", exc_info=True)
 
             # Step 10: Update version with DQS summary + which rule set produced it
@@ -913,6 +931,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 session.commit()
             logger.info(f"Deterministic report generated for version_id={version_id}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Deterministic report generation failed (non-fatal): {e}")
 
         logger.info(f"run_checks complete: version_id={version_id}, findings={len(all_results)}")
@@ -934,6 +953,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 )
                 session.commit()
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to create analysis notification (non-fatal): {e}")
 
         # Enqueue agent pipeline (skippable for fast-feedback testing)
@@ -952,6 +972,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 ai_enrich_report.delay(version_id, tenant_id)
                 logger.info(f"Enqueued ai_enrich_report for version_id={version_id}")
             except Exception as e:
+                reraise_soft_limit(e)
                 logger.warning(f"Failed to enqueue ai_enrich_report (non-fatal): {e}")
         else:
             logger.info("SKIP_AI_ENRICHMENT=true — skipping AI report enrichment")
@@ -963,6 +984,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 run_cleaning.delay(version_id, tenant_id, module_name, parquet_path)
             logger.info(f"Enqueued run_cleaning for version_id={version_id}, modules={modules}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue run_cleaning (non-fatal): {e}")
 
         # Config Intelligence + Z-object profiling on this version's data
@@ -973,6 +995,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             run_config_intelligence.delay(version_id, tenant_id, parquet_path)
             logger.info(f"Enqueued run_config_intelligence for version_id={version_id}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue run_config_intelligence (non-fatal): {e}")
 
         # Data contracts (quality / volume / schema) against this run
@@ -980,6 +1003,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             from workers.tasks.evaluate_contracts import evaluate_contracts
             evaluate_contracts.delay(version_id, tenant_id)
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue evaluate_contracts (non-fatal): {e}")
 
         # Alert thresholds (failing-check counts, DQS drop, per-module floors)
@@ -987,6 +1011,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             from workers.tasks.send_notifications import send_notification
             send_notification.delay(version_id, tenant_id, "thresholds")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue threshold alerts (non-fatal): {e}")
 
         # Migration waves sourced from this system re-run against the fresh version
@@ -997,6 +1022,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             if n:
                 logger.info(f"Enqueued {n} migration wave re-run(s) for version_id={version_id}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue migration wave re-runs (non-fatal): {e}")
 
         # Enqueue exception scan (non-blocking — failure is non-fatal)
@@ -1005,6 +1031,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             run_exception_scan.delay(version_id, tenant_id)
             logger.info(f"Enqueued run_exception_scan for version_id={version_id}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue run_exception_scan (non-fatal): {e}")
 
         # Enqueue proven-cost metrics (non-blocking — failure is non-fatal)
@@ -1013,6 +1040,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             compute_proven_cost.delay(version_id, tenant_id, parquet_path)
             logger.info(f"Enqueued compute_proven_cost for version_id={version_id}")
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue compute_proven_cost (non-fatal): {e}")
 
         # Enqueue mining — dedup / match / anomaly / relationship (non-blocking).
@@ -1036,6 +1064,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 f"version_id={version_id}, modules={modules}"
             )
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue mining tasks (non-fatal): {e}")
 
         # Enqueue golden-record build (non-blocking — failure is non-fatal).
@@ -1052,6 +1081,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 f"modules={modules}"
             )
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue build_golden_records (non-fatal): {e}")
 
         # Root cause by origin from SAP change documents (non-blocking, non-fatal; skips uploads)
@@ -1059,10 +1089,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             from workers.tasks.root_cause import root_cause_findings
             root_cause_findings.delay(version_id, tenant_id)
         except Exception as e:
+            reraise_soft_limit(e)
             logger.warning(f"Failed to enqueue root_cause_findings (non-fatal): {e}")
 
         return {"version_id": version_id, "status": "complete", "findings_count": len(all_results)}
 
+    except SoftTimeLimitExceeded:
+        raise  # run_checks marks the version failed with the time-limit reason
     except Exception as e:
         # Step 12: On failure, update status
         logger.error(f"run_checks failed: {traceback.format_exc()}")
