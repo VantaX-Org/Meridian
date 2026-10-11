@@ -68,6 +68,7 @@ import workers.tasks.triage_sla  # noqa: F401 — SLA sweep + auto-assign
 import workers.tasks.forced_update  # noqa: F401
 import workers.tasks.run_simulation  # noqa: F401 — fix what-if on a copy of the frames
 import workers.tasks.send_owner_digests  # noqa: F401 — weekly owner digest (beat)
+import workers.tasks.run_process_discovery  # noqa: F401 — process discovery chain and nightly prune
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

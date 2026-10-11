@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from api.models.process_model import (ID_PATTERN, L1, L2, L3, L4, L5, Diagram, DiscoveryEdge, DiscoveryStats, FieldRef,
                                       Flow, Node, ProcessModelDocument)
+from api.services.process_discovery import primary_case_type
 from api.services.process_discovery.events import ActivityMap
 from api.services.process_discovery.mining import (END, START, CaseTypeResult, MiningResult, Scope, Variant,
                                                    is_unmapped)
@@ -334,3 +335,11 @@ def write_back(session: Session, scope: Scope, l5_of: dict[tuple[str, str], str]
     return session.execute(WRITE_BACK_SQL, {
         "t": scope.tenant_id, "s": scope.system_id, "l1": scope.l1,
         "cts": [k[0] for k in keys], "acts": [k[1] for k in keys], "l5s": [l5_of[k] for k in keys]}).rowcount
+
+
+def reference_model(base: ProcessModelDocument, l1: str, system_type: Optional[str] = None) -> ProcessModelDocument:
+    """The reference model with every node marked unobserved: the result when an L1 has no events."""
+    doc = generate(base, MiningResult(l1, primary_case_type(l1, system_type or ""), {}), (),
+                   system_type=system_type).document
+    doc.source = base.source
+    return doc

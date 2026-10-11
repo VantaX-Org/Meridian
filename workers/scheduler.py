@@ -996,4 +996,8 @@ celery_app.conf.beat_schedule = {
         "task": "workers.tasks.mining.orchestrator.nightly_mining_all_tenants",
         "schedule": crontab(hour=0, minute=30),  # 00:30 UTC = 02:30 SAST
     },
+    "prune-process-events-0315": {
+        "task": "workers.tasks.run_process_discovery.prune_events",
+        "schedule": crontab(hour=3, minute=15),  # old process events and surplus discovery runs
+    },
 }

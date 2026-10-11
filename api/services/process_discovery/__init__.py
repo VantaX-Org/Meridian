@@ -29,3 +29,18 @@ def primary_case_type(l1: str, system_type: str) -> str:
     if l1 == "WH" and system_type == "ewm":
         return "warehouse_task"
     return PRIMARY_CASE_TYPE[l1]
+
+
+CLOUD_L1S: tuple[str, ...] = ("SFX", "ARB", "CNQ")
+ABAP_SYSTEM_TYPES_WITH_EVENTS: tuple[str, ...] = ("ecc", "s4hana_onprem", "ewm")
+
+
+def reason(l1: str, system_type: str) -> str | None:
+    """Why ``l1`` has no mined flow on ``system_type``; None when the system type can discover it."""
+    if l1 in L1S_BY_SYSTEM.get(system_type, ()):
+        return None
+    if system_type in ABAP_SYSTEM_TYPES_WITH_EVENTS and l1 in CLOUD_L1S:
+        return "Connect the SuccessFactors / Ariba / Concur system to discover this process."
+    if system_type in ("successfactors", "ariba", "concur") and l1 not in CLOUD_L1S:
+        return "Discovered from an ABAP system."
+    return "Event tables are not exposed by this connector; showing the reference model and configuration."
