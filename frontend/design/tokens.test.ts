@@ -1,6 +1,6 @@
 // frontend/design/tokens.test.ts
 import { describe, expect, it, vi } from "vitest";
-import { mColor, mSpace, mRadius, mMotion, reducedMotion } from "./tokens";
+import { mColor, mSpace, mRadius, mMotion, dqsBand, reducedMotion } from "./tokens";
 
 describe("design tokens", () => {
   it("exposes 8 chart series colours as CSS var references", () => {
@@ -15,13 +15,19 @@ describe("design tokens", () => {
   });
 
   it("exposes radius and motion", () => {
-    expect(mRadius.control).toBe(4);
-    expect(mRadius.sheet).toBe(6);
+    expect(mRadius.control).toBe(6);
+    expect(mRadius.sheet).toBe(10);
+    expect(mRadius.tile).toBe(14);
     expect(mMotion.duration).toBe(120);
-    expect(mMotion.ease).toBe("ease-out");
-    expect(mMotion.slow).toBe(320);
-    expect(mMotion.draw).toBe(640);
+    expect(mMotion.ease).toBe("cubic-bezier(0.2, 0, 0, 1)");
+    expect(mMotion.slow).toBe(240);
+    expect(mMotion.draw).toBe(480);
     expect(mMotion.shimmer).toBe(1400);
+  });
+
+  it("dqsBand picks the colour key by threshold", () => {
+    const b = { target: 90, warning: 75, critical: 60 };
+    expect([95, 90, 80, 75, 65, 60, 10].map((n) => dqsBand(n, b))).toEqual(["pass", "pass", "medium", "medium", "high", "high", "critical"]);
   });
 
   it("reducedMotion() reads prefers-reduced-motion from matchMedia", () => {

@@ -11,6 +11,24 @@ export const mColor = {
   ink3: "var(--m-ink-3)",
   accent: "var(--m-accent)",
   accentSoft: "var(--m-accent-soft)",
+  accentHover: "var(--m-accent-hover)",
+  accentInk: "var(--m-accent-ink)",
+  sheetSunken: "var(--m-sheet-sunken)",
+  rail: "var(--m-rail)",
+  lineStrong: "var(--m-line-strong)",
+  ink4: "var(--m-ink-4)",
+  inkOnAccent: "var(--m-ink-on-accent)",
+  criticalSoft: "var(--m-critical-soft)",
+  highSoft: "var(--m-high-soft)",
+  mediumSoft: "var(--m-medium-soft)",
+  passSoft: "var(--m-pass-soft)",
+  criticalInk: "var(--m-critical-ink)",
+  highInk: "var(--m-high-ink)",
+  mediumInk: "var(--m-medium-ink)",
+  passInk: "var(--m-pass-ink)",
+  vizArea: "var(--m-viz-area)",
+  vizTooltipBg: "var(--m-viz-tooltip-bg)",
+  vizTooltipInk: "var(--m-viz-tooltip-ink)",
   critical: "var(--m-critical)",
   high: "var(--m-high)",
   medium: "var(--m-medium)",
@@ -31,9 +49,29 @@ export const mSpace = {
   1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48, 16: 64, 24: 96,
 } as const;
 
-export const mRadius = { control: 4, sheet: 6 } as const;
+// Mirrors tokens.css radii.
+export const mRadius = { control: 6, sheet: 10, tile: 14, pill: 999 } as const;
 
-export const mMotion = { duration: 120, slow: 320, draw: 640, shimmer: 1400, ease: "ease-out" as const };
+export const mMotion = { duration: 120, slow: 240, draw: 480, shimmer: 1400, ease: "cubic-bezier(0.2, 0, 0, 1)" } as const;
+
+/** Elevation levels: flat (hairline), raised (menus), floating (drawer, dialog, palette), plus focus ring. */
+export const mElev = {
+  flat: "var(--m-elev-1)",
+  raised: "var(--m-elev-2)",
+  floating: "var(--m-elev-3)",
+  focus: "var(--m-elev-focus)",
+} as const;
+
+/** Colour key for a DQS score: >= target pass, >= warning medium, >= critical high, else critical. */
+export function dqsBand(
+  score: number,
+  bands: { target: number; warning: number; critical: number },
+): "pass" | "medium" | "high" | "critical" {
+  if (score >= bands.target) return "pass";
+  if (score >= bands.warning) return "medium";
+  if (score >= bands.critical) return "high";
+  return "critical";
+}
 
 /** True when the user has asked the OS for reduced motion; JS animations jump to the end state. */
 export function reducedMotion(): boolean {
