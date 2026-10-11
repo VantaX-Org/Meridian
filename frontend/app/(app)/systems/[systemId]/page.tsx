@@ -26,7 +26,7 @@ import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { discoverSystem, getDesign } from "@/lib/api/source-design";
-import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
+import { analyseVersion, downloadPollMs, getSystemVersions, startDownload, type SystemVersion } from "@/lib/api/system-objects";
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
@@ -88,6 +88,7 @@ export default function SystemPage() {
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
   const [extractOpen, setExtractOpen] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null); // epoch ms of the download just started, while its progress is awaited
   const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -96,7 +97,7 @@ export default function SystemPage() {
   const versionsQ = useQuery({
     queryKey: queryKeys.systemVersions(systemId),
     queryFn: () => getSystemVersions(systemId),
-    refetchInterval: (q) => (["queued", "running"].includes(q.state.data?.download?.status ?? "") ? 4000 : false),
+    refetchInterval: (q) => downloadPollMs(q.state.data?.download, startedAt),
   });
   const modules = useMemo(() => modulesQ.data ?? [], [modulesQ.data]);
   const versions = useMemo(
@@ -243,7 +244,7 @@ export default function SystemPage() {
 
       {can("trigger_sync") ? (
         <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
-          <ScopePicker id={systemId} onDownloaded={() => { setExtractOpen(false); refresh(); }} />
+          <ScopePicker id={systemId} onDownloaded={() => { setStartedAt(Date.now()); setExtractOpen(false); refresh(); }} />
         </Drawer>
       ) : null}
 

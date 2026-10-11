@@ -21,9 +21,9 @@ export function runDqs(v: Version): number | null {
   return round1(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
-/** Mean of each dimension across the modules that measured it in this run (null: not measured), or null with no modules. */
+/** Mean of each dimension across the measured modules (as `runDqs`) that measured it (null: not measured), or null with no measured modules. */
 export function runDimensions(v: Version): Record<DimensionKey, number | null> | null {
-  const modules = Object.values(v.dqs_summary ?? {});
+  const modules = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null);
   if (modules.length === 0) return null;
   const out = {} as Record<DimensionKey, number | null>;
   for (const dim of DIMENSIONS) {

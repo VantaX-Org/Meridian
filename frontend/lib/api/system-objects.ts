@@ -113,6 +113,19 @@ export interface DownloadProgress {
   version_id?: string;
 }
 
+/**
+ * Poll interval for `getSystemVersions`: poll while a download is queued or running. Just after a download is
+ * started (`startedAt`, epoch ms) the worker has not published progress yet and a stale finished one may still be
+ * cached, so keep polling until a download that began after `startedAt` reaches a terminal status; otherwise
+ * polling stops on the first stale or empty answer and the panel never leaves its old state.
+ */
+export function downloadPollMs(download: DownloadProgress | null | undefined, startedAt: number | null): number | false {
+  const status = download?.status;
+  if (status === "queued" || status === "running") return 4000;
+  const fresh = !!download && Date.parse(download.started_at) >= (startedAt ?? Infinity);
+  return startedAt !== null && !fresh ? 4000 : false;
+}
+
 export async function getSystemVersions(
   id: string
 ): Promise<{ versions: SystemVersion[]; download: DownloadProgress | null }> {
