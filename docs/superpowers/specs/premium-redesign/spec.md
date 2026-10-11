@@ -377,7 +377,7 @@ Geometry (32-unit grid, used by every asset):
 
 - Arc: centre (16,16), radius 10, stroke 3, round caps, gap of 70° centred on 12 o'clock. Path: `M21.74 7.81 A10 10 0 1 1 10.26 7.81`.
 - Meridian: `M16 3 V29`, stroke 3, round caps.
-- Two-tone: arc in `--m-ink`, meridian in `--m-accent` (light) or arc `#EDEDF0`, meridian `#8DA3FF` (dark). Mono: both in one colour.
+- Two-tone: arc in `--m-ink`, meridian in `--m-accent` (light) or arc `#F4F3EF`, meridian `#8DA3FF` (dark). Mono: both in one colour.
 
 Files delivered beside this spec: `logo-mark.svg`, `logo-wordmark.svg`, `logo-lockup.svg`, `logo-lockup-dark.svg`, `favicon.svg`, `apple-icon.svg`, `og-image.svg`.
 
@@ -385,12 +385,12 @@ Wordmark: "MERIDIAN" is not typeset; it is drawn as monoline strokes (stroke 3, 
 
 Usage rules:
 
-- **Minimum size.** Mark 16px (favicon uses stroke 4 and no two-tone). Lockup 96px wide. Below 96px, use the mark alone.
+- **Minimum size.** Mark 16px. At 16px the favicon is two-tone but uses its own simplified geometry (stroke 4, wider gap, meridian from 2.5 to 29.5; see `favicon.svg`). Lockup 96px wide. Below 96px, use the mark alone.
 - **Clear space.** Half the mark's height (16 units at 32) on every side. Nothing enters it, including the word "Meridian" in UI chrome — the Rail brand row uses the mark plus a text label set in Instrument Sans, not the lockup.
 - **Colour.** Two-tone on `--m-canvas`/`--m-sheet` only. Mono-ink on photography, dark gradients or when the accent is not available. Reversed (paper on dark) is `logo-lockup-dark.svg`. Never on a tile or rounded square except the OS app icon (`apple-icon.svg`), which uses `--m-grad-brand`.
 - **Do not** rotate, add a drop shadow, fill the arc, close the arc, change the gap angle, or place text inside the arc.
 - **In product.** `MeridianMark` (`components/meridian/icons.tsx`) renders the geometry above with `variant="two-tone" | "mono"`; the old `"tile"` variant is deleted (one call site: Rail; one in AuthFrame). `app/icon.svg` = `favicon.svg`. `public/brand/mark-light.svg` = `logo-mark.svg`; `brand-rasterise.mjs` reads *both* paths (`d` attributes of the two `<path>` elements).
-- `public/brand/brand.json` → `{"accent":"#2B4BE0","accentDark":"#8DA3FF","canvas":"#F4F3EF","canvasDark":"#0C0D11","ink":"#141519","inkDark":"#EDEDF0"}`.
+- `public/brand/brand.json` → `{"accent":"#2B4BE0","accentDark":"#8DA3FF","canvas":"#F4F3EF","canvasDark":"#0C0D11","ink":"#141519","inkDark":"#F4F3EF"}`.
 
 ---
 

@@ -2,8 +2,9 @@
 /**
  * Rasterises the Meridian brand SVGs (frontend/public/brand, plus app/icon.svg)
  * into the PNGs Next.js and the backend templates consume. Idempotent.
- * The mark geometry is read from public/brand/mark-light.svg (the two <path d>
- * elements: gauge arc, meridian line) and from app/icon.svg (favicon variant).
+ * icon-32/192/512.png and the templates PNGs are rasterised from mark-light.svg
+ * (gauge arc + meridian line). app/icon.svg is the hand-authored favicon; it is
+ * only validated here (must contain the two paths), never rewritten.
  *
  * Usage: node scripts/brand-rasterise.mjs  (or: npm run brand:rasterise)
  */
