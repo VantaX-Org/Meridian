@@ -460,7 +460,7 @@ Routes: `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, `/accept-
 Two columns from `lg` (≥1024): **brand panel left** 45% (min 440, max 620), **form column right** flex-1. Below `lg`: brand panel becomes a 160px band at the top with the lockup and the hairline only.
 
 **Brand panel** (`aside.m-brand-panel`, radius 0; padding 48):
-- Top: `logo-lockup-dark.svg` geometry at 32px high (mark two-tone: arc `#8DA3FF`, meridian `#EDEDF0`).
+- Top: `logo-lockup-dark.svg` geometry at 32px high (mark two-tone: arc `#8DA3FF`, meridian `#F4F3EF`).
 - Middle (vertically centred): a large decorative instrument — the ScoreRing geometry at 320px, stroke 6, track `rgb(255 255 255 / 0.10)`, arc `#8DA3FF`, drawn with `m-motion-draw` on mount to 72% and the meridian line descending through it (`m-motion-rise`). Inside the ring the serif line "SAP data quality, measured." at 28/34 `#EDEDF0` plus 13/18 `rgb(255 255 255 / 0.72)` "Every check is deterministic. Every number opens the rows behind it." These texts are static copy in the component, not customer data.
 - Bottom: four facts as a 2×2 grid of 12/16 `rgb(237 237 240 / 0.72)` lines with a 6px `#8DA3FF` dot: "Runs inside your network", "800+ SAP checks", "29 modules, 7 system types", "Nothing leaves this server". Then the 1px `m-meridian-line` across the panel width.
 - Colours inside the brand panel are the only place a component may use literal paper/accent values — they come from `--m-grad-brand` tokens plus `--m-ink-on-accent`-style tokens; add `--m-brand-ink: #EDEDF0`, `--m-brand-ink-2: rgb(237 237 240 / 0.72)`, `--m-brand-accent: #8DA3FF`, `--m-brand-track: rgb(255 255 255 / 0.10)` to tokens.css (both themes identical).
