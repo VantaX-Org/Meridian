@@ -1,14 +1,18 @@
 import type { ReactNode } from "react";
 
+/** Floats at the bottom of the scroll parent; actions are inverted ghost buttons. */
 export function BulkBar({ count, actions }: { count: number; actions: ReactNode }) {
   if (count === 0) return null;
   return (
-    <div
-      className="flex items-center justify-between px-3 py-2 rounded"
-      style={{ background: "var(--m-accent-soft)" }}
-    >
-      <span className="text-[13px]" style={{ color: "var(--m-ink)" }}>{count} selected</span>
-      <div className="flex gap-2">{actions}</div>
+    <div className="sticky bottom-4 z-10 flex justify-center pointer-events-none">
+      <div
+        className="m-elev-3 m-motion-rise pointer-events-auto flex w-fit items-center gap-4 rounded-full px-4 py-2
+          [&_button]:!bg-transparent [&_button]:!border-transparent [&_button]:!text-[var(--m-sheet)]"
+        style={{ background: "var(--m-ink)", color: "var(--m-sheet)" }}
+      >
+        <span className="text-[13px] leading-[18px] m-numeric">{count} selected</span>
+        <div className="flex gap-2">{actions}</div>
+      </div>
     </div>
   );
 }
