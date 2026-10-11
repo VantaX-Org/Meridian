@@ -4,7 +4,7 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { DataTable, DrillLink, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -25,19 +25,23 @@ const readinessColumns: ColumnDef<ReadinessCell>[] = [
     header: "Verdict",
     cell: ({ row }) => <Pill tone={VERDICT_TONE[row.original.verdict]}>{row.original.verdict}</Pill>,
   },
-  { accessorKey: "blocker_count", header: "Blockers" },
+  {
+    accessorKey: "blocker_count",
+    header: "Blockers",
+    cell: ({ row }) => <DrillLink object={row.original.module} filters={{ blocking: "true" }}>{row.original.blocker_count}</DrillLink>,
+  },
 ];
 
 const impactColumns: ColumnDef<ImpactRow>[] = [
   { accessorKey: "feature", header: "Feature" },
   { accessorKey: "status", header: "Status" },
-  { accessorKey: "record_count", header: "Blocked records" },
+  { accessorKey: "record_count", header: "Blocked records", cell: ({ row }) => <DrillLink href="/insights/impact">{row.original.record_count}</DrillLink> },
   { accessorKey: "value_at_risk", header: "Value at risk", cell: ({ row }) => row.original.value_at_risk.toLocaleString() },
 ];
 
 const ownerColumns: ColumnDef<OwnerCardResponse>[] = [
   { accessorKey: "owner", header: "Owner" },
-  { accessorKey: "score", header: "Score" },
+  { accessorKey: "score", header: "Score", cell: ({ row }) => <DrillLink href="/insights/owners">{row.original.score}</DrillLink> },
   { accessorKey: "delta", header: "Delta" },
 ];
 

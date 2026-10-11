@@ -1,4 +1,5 @@
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 /**
  * Insights → Process: readiness (L1-L5 process readiness, scored from DQ
@@ -500,13 +501,15 @@ function MapView() {
 /* ---------- Page ---------- */
 
 export default function ProcessInsightsPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "readiness");
+  const tab = (["readiness", "map"] as string[]).includes(tabRaw) ? tabRaw : "readiness";
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>
         <h2 className="text-[22px] font-semibold">Process</h2>
         <p style={{ color: "var(--m-ink-2)" }}>How ready each process step is, and the mined activity map behind it.</p>
       </div>
-      <Tabs items={[
+      <Tabs value={tab} onValueChange={setTab} items={[
         { value: "readiness", label: "Readiness", content: <ReadinessView /> },
         { value: "map", label: "Map", content: <MapView /> },
       ]} />

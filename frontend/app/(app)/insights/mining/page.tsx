@@ -1,4 +1,5 @@
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 /**
  * Insights → Mining: entity relationships, mined field dependencies, and
@@ -30,7 +31,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -289,8 +290,8 @@ function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty }:
 }
 
 export default function MiningPage() {
-  const sp = useSearchParams();
-  const initialLens = sp.get("lens") === "patterns" ? "patterns" : sp.get("lens") === "dependencies" ? "dependencies" : "links";
+  const [tabRaw, setTab] = useUrlState("tab", "links");
+  const tab = (["links", "dependencies", "patterns"] as string[]).includes(tabRaw) ? tabRaw : "links";
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>
@@ -298,7 +299,7 @@ export default function MiningPage() {
         <p style={{ color: "var(--m-ink-2)" }}>What links the master data together: entity relationships, mined field dependencies and mined patterns.</p>
       </div>
       <GraphTally />
-      <Tabs defaultValue={initialLens} items={[
+      <Tabs value={tab} onValueChange={setTab} items={[
         { value: "links", label: "Entity links", content: <EntityLinks /> },
         { value: "dependencies", label: "Mined dependencies", content: <Dependencies /> },
         { value: "patterns", label: "Patterns", content: <Patterns /> },

@@ -96,8 +96,12 @@ export default function ReadinessPage() {
                           <Pill tone={VERDICT_TONE[cell.verdict]}>{VERDICT_LABEL[cell.verdict]}</Pill>
                         </DrillLink>
                       </td>
-                      <td className="text-right tabular-nums">{cell.score === null ? "—" : `${cell.score.toFixed(1)}%`}</td>
-                      <td className="text-right tabular-nums">{cell.records_blocked.toLocaleString()}</td>
+                      <td className="text-right tabular-nums">
+                        {cell.score === null ? "—" : <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{`${cell.score.toFixed(1)}%`}</DrillLink>}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        <DrillLink object={module} filters={{ blocking: "true" }} run={run}>{cell.records_blocked.toLocaleString()}</DrillLink>
+                      </td>
                     </Fragment>
                   );
                 })}

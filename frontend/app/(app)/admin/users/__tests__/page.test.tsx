@@ -14,6 +14,12 @@ const USER: User = {
   role: "steward", permissions: null, is_active: true, last_login: null, created_at: "2026-01-01T00:00:00Z",
 };
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/x",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("admin users page", () => {
   it("renders users, roles and audit log once loaded", async () => {
     vi.spyOn(usersApi, "getUsers").mockResolvedValue({ users: [USER] });

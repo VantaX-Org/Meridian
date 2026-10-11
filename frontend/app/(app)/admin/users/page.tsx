@@ -1,4 +1,5 @@
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +35,8 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }))
 const WEEK = 7 * 24 * 3600 * 1000;
 
 export default function AdminUsersPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "users");
+  const tab = (["users", "roles", "audit"] as string[]).includes(tabRaw) ? tabRaw : "users";
   const { can } = useRole();
   const canManage = can("manage_users");
 
@@ -54,6 +57,8 @@ export default function AdminUsersPage() {
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
       </header>
       <Tabs
+        value={tab}
+        onValueChange={setTab}
         items={[
           { value: "users", label: "Users", content: <UsersView /> },
           { value: "roles", label: "Roles", content: <RolesView /> },

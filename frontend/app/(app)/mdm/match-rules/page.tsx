@@ -1,5 +1,6 @@
 // frontend/app/(app)/mdm/match-rules/page.tsx
 "use client";
+import { useUrlState } from "@/hooks/use-url-state";
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,6 +53,8 @@ type Draft = { domain: string; field: string; match_type: MatchType; weight: num
 const emptyDraft = (domain: string): Draft => ({ domain, field: "", match_type: "fuzzy", weight: 1, threshold: 0.85, active: true });
 
 export default function MatchRulesPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "rules");
+  const tab = (["rules", "tuning", "constraints"] as string[]).includes(tabRaw) ? tabRaw : "rules";
   return (
     <div className="flex flex-col gap-4 p-6">
       <h2 className="text-[16px] font-semibold" style={{ color: "var(--m-ink)" }}>Match rules</h2>
@@ -59,6 +62,8 @@ export default function MatchRulesPage() {
         How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned.
       </p>
       <Tabs
+        value={tab}
+        onValueChange={setTab}
         items={[
           { value: "rules", label: "Rules", content: <RulesTab /> },
           { value: "tuning", label: "Tuning", content: <TuningTab /> },
