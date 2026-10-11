@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
+import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getRun, startRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
@@ -41,6 +42,7 @@ export default function ProcessRunPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const { jobs } = useJobs();
+  const { can } = useRole();
   const run = useQuery({
     queryKey: queryKeys.processRun(runId),
     queryFn: () => getRun(runId),
@@ -64,6 +66,7 @@ export default function ProcessRunPage() {
     .map(([table, t]) => ({ table, rows: t.rows, partial: t.partial, truncated: truncated.has(table) }));
   const fitness = s.conformance?.fitness ?? null;
   const active = ACTIVE_RUN.has(r.status);
+  const canRun = can("run_process_discovery");
 
   return (
     <div className="grid gap-4">
@@ -79,7 +82,9 @@ export default function ProcessRunPage() {
           ? { sentence: `Read the as-is ${r.l1} flow.`,
               action: { label: `Open ${r.l1}`, href: l1Href(r.l1, r.system_id, r.coverage === "reference" ? undefined : r.id) } }
           : r.status === "failed"
-            ? { sentence: "Fix the cause, then run the process again.", action: { label: "Retry", onClick: () => retry.mutate() } }
+            ? (canRun
+              ? { sentence: "Fix the cause, then run the process again.", action: { label: "Retry", onClick: () => retry.mutate() } }
+              : { sentence: "Ask a process analyst to run it again." })
             : { sentence: "Leave this page open or come back later; the run continues in the background." }}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -88,7 +93,7 @@ export default function ProcessRunPage() {
         {active && stageLabel(job) && <span>{stageLabel(job)}{job ? ` · ${Math.round(job.percent)}%` : ""}</span>}
       </div>
       {r.status === "failed" && (
-        <ErrorState message={r.error ?? "The run failed without a message."} onRetry={() => retry.mutate()} />
+        <ErrorState message={r.error ?? "The run failed without a message."} onRetry={canRun ? () => retry.mutate() : undefined} />
       )}
       {retry.isError && <Notice tone="danger" title="Could not start the retry">{apiErrorMessage(retry.error)}</Notice>}
       {r.coverage === "reference" && s.reason && (

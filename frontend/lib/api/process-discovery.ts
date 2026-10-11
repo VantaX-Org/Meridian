@@ -31,9 +31,7 @@ export interface CatalogueRow {
   last_run: {
     id: string;
     status: RunStatus;
-    job_id: string | null;
     finished_at: string | null;
-    error: string | null;
     cases: number | null;
     variants: number | null;
     median_seconds: number | null;

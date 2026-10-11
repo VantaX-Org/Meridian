@@ -1,6 +1,6 @@
 "use client";
 
-/** Process analyst home (process-discovery spec §7.2): coverage, volume, conformance, automation, latest runs. */
+/** Process analyst home (process-discovery spec §7.2): coverage, conformance, latest runs. */
 import { useQuery } from "@tanstack/react-query";
 import { Card, ErrorState, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
@@ -9,7 +9,7 @@ import { getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  CatalogueGrid, NoSystem, RunsTable, SystemSelect, fitnessTone, fmtCount, fmtFitness, headline, processInsight, useProcessSystem,
+  CatalogueGrid, NoSystem, RunsTable, SystemSelect, fitnessTone, fmtFitness, headline, processInsight, useProcessSystem,
 } from "../../process/_components/shared";
 
 export default function ProcessHomePage() {
@@ -39,12 +39,10 @@ export default function ProcessHomePage() {
     <div className="grid gap-4">
       <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
       <div className="max-w-xs"><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
-        <Stat label="Cases" value={fmtCount(h.cases)} href={catalogueHref} />
         <Stat label="Median fitness" value={fmtFitness(h.fitness)}
           tone={h.fitness == null ? undefined : (fitnessTone(h.fitness) as StatTone)} />
-        <Stat label="Automation rate" value={h.automation == null ? "—" : `${Math.round(h.automation * 100)}%`} />
       </div>
       <CatalogueGrid rows={rows} systemId={system.id} jobs={jobs} />
       <Card title="Latest runs">

@@ -45,7 +45,7 @@ const DOC: ProcessModelDocument = {
 };
 const ROW: CatalogueRow = {
   l1: "PTP", name: "Procure to Pay", coverage: "discovered", reason: null, sources: [],
-  last_run: { id: "run-1", status: "completed", job_id: null, finished_at: "2026-10-10T00:10:00Z", error: null,
+  last_run: { id: "run-1", status: "completed", finished_at: "2026-10-10T00:10:00Z",
     cases: 100, variants: 2, median_seconds: 86_400, automation_rate: 0.5, fitness: 0.9 },
   in_progress: null, failed: null,
 };

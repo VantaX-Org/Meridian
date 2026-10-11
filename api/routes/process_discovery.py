@@ -144,13 +144,14 @@ class SourceTable(BaseModel):
     partial: bool
 
 
+RunStatus = Literal["queued", "waiting", "extracting", "building", "mining", "completed", "failed"]
+
+
 class LastRun(BaseModel):
     """The latest completed run of an L1: the card's data. Newer runs are ``in_progress`` / ``failed``."""
     id: str
-    status: str
-    job_id: Optional[str] = None
+    status: RunStatus
     finished_at: Optional[datetime]
-    error: Optional[str] = None
     cases: Optional[int]
     variants: Optional[int] = None
     median_seconds: Optional[float] = None
@@ -161,7 +162,7 @@ class LastRun(BaseModel):
 class RunRef(BaseModel):
     """A run newer than the last completed one (in flight, or failed): shown beside the last good result."""
     id: str
-    status: str
+    status: RunStatus
     job_id: Optional[str] = None
     error: Optional[str] = None
 
@@ -375,7 +376,7 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
             coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
             last_run=None if r is None else LastRun(
-                id=r.id, status=r.status, job_id=r.job_id, finished_at=r.finished_at, error=r.error,
+                id=r.id, status=r.status, finished_at=r.finished_at,
                 cases=stats.case_types.get(primary_case_type(l1, system_type)), variants=stats.variants,
                 median_seconds=stats.throughput.median_seconds, automation_rate=stats.automation_rate,
                 fitness=stats.conformance.fitness),
@@ -470,7 +471,7 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
             jobs.finish_job(tid, job_id, "failed", error=DISPATCH_ERROR)
         except Exception:
             logger.exception("Could not close job %s", job_id)
-        raise HTTPException(status_code=503, detail="Job queue unavailable")
+        raise HTTPException(status_code=503, detail="Job queue unavailable") from None
     return RunStarted(job_id=job_id, run_ids=run_ids)
 
 

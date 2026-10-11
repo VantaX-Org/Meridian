@@ -26,7 +26,7 @@ const L1S = ["PTP", "OTC", "R2R", "PP", "PM", "QM", "PS", "WH", "HTR", "MDG", "S
 const SYS = { id: "sys-1", name: "KSA PRD", system_type: "S4HANA" } as unknown as SAPSystemExtended;
 const reference = (l1: string): CatalogueRow => ({ l1, name: `${l1} process`, coverage: "reference", reason: null, last_run: null, in_progress: null, failed: null, sources: [] });
 const lastRun = (over: Partial<NonNullable<CatalogueRow["last_run"]>>): NonNullable<CatalogueRow["last_run"]> => ({
-  id: "run-1", status: "completed", job_id: null, finished_at: "2026-10-10T00:00:00Z", error: null,
+  id: "run-1", status: "completed", finished_at: "2026-10-10T00:00:00Z",
   cases: 100, variants: 7, median_seconds: 86_400, automation_rate: 0.5, fitness: 0.9, ...over,
 });
 const job = (over: Partial<Job>): Job => ({
@@ -99,13 +99,15 @@ describe("process catalogue", () => {
 });
 
 describe("headline", () => {
-  it("weights automation by cases and ignores reference L1s", () => {
+  it("counts discovered L1s, takes median fitness and gives no cross-L1 totals", () => {
     const rows: CatalogueRow[] = [
       { ...reference("PTP"), coverage: "discovered", last_run: lastRun({ cases: 300, automation_rate: 1, fitness: 0.9 }) },
       { ...reference("OTC"), coverage: "partial", last_run: lastRun({ cases: 100, automation_rate: 0, fitness: 0.5 }) },
       { ...reference("R2R"), failed: { id: "run-3", status: "failed", job_id: null, error: "boom" } },
     ];
-    expect(headline(rows)).toEqual({ discovered: 2, cases: 400, fitness: 0.7, automation: 0.75 });
+    expect(headline(rows)).toEqual({ discovered: 2, fitness: 0.7 });
+    expect(headline(rows)).not.toHaveProperty("cases");
+    expect(headline(rows)).not.toHaveProperty("automation");
   });
 });
 
@@ -146,6 +148,16 @@ describe("run detail", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Retry/ })[0]);
     await waitFor(() => expect(start).toHaveBeenCalledWith("sys-1", { l1s: ["PTP"], mode: "full" }));
     await waitFor(() => expect(h.push).toHaveBeenCalledWith("/process/runs/run-2"));
+  });
+
+  it("offers no Retry to a role that cannot run discovery", async () => {
+    h.can = () => false;
+    vi.spyOn(pdApi, "getRun").mockResolvedValue({ ...RUN, status: "failed", coverage: null, finished_at: null,
+      error: "EKPO read failed", system_id: "sys-1", system_type: "S4HANA" });
+    renderWithQuery(<ProcessRunPage />);
+    expect(await screen.findByText("EKPO read failed")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+    expect(screen.getByText("Ask a process analyst to run it again.")).toBeTruthy();
   });
 
   it("lists the tables read with partial and truncated flags", async () => {

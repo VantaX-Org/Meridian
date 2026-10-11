@@ -113,7 +113,7 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert by["PTP"]["coverage"] == "partial" and by["PTP"]["reason"] is None
             assert by["PTP"]["last_run"]["id"] == rid and by["PTP"]["last_run"]["cases"] == 2
             last = by["PTP"]["last_run"]
-            assert last["variants"] >= 1 and last["error"] is None and "job_id" in last
+            assert last["variants"] >= 1 and "error" not in last and "job_id" not in last
             assert "median_seconds" in last and "automation_rate" in last
             assert by["PTP"]["in_progress"] is None and by["PTP"]["failed"] is None
             assert {"table": "EKKO", "rows": 1, "partial": False} in by["PTP"]["sources"]
@@ -194,6 +194,9 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             f = {"doc_type": "NB"}
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["cached"] is False
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["cached"] is True
+            wrong = {**f, "level": 3}  # the cached node is the L1, so its children are level 2
+            assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=wrong)).status_code == 422
+            assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params={**f, "level": 2})).json()["cached"] is True
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params={"node_id": "NOPE"})).status_code == 404
 
             v = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer)).json()

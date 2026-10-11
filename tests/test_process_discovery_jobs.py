@@ -19,7 +19,10 @@ from api.services.process_discovery import reason
 from tests.test_process_designer_api import app_engine  # noqa: F401 — fixture
 from workers.tasks import run_process_discovery as rpd
 
-pg = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
+# Every Postgres test builds on app_engine, which runs migrations and DROP/CREATE ROLE: never against port 5432.
+_shared_db = (urlparse(os.environ.get("MERIDIAN_TEST_DB_URL", "")).port or 5432) == 5432
+pg = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL") or _shared_db,
+                        reason="MERIDIAN_TEST_DB_URL not set, or it points at the shared port 5432")
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GiB = 1024 ** 3
 
@@ -111,9 +114,7 @@ def test_gives_up_after_two_hours(monkeypatch) -> None:
 
 @pytest.fixture(scope="module")
 def engine(app_engine):  # noqa: F811
-    """The owner engine, for seeding and assertions. Port 5432 is a shared database and is never used."""
-    if (urlparse(os.environ["MERIDIAN_TEST_DB_URL"]).port or 5432) == 5432:
-        pytest.skip("refusing to run migrations against port 5432")
+    """The owner engine, for seeding and assertions."""
     return app_engine[0]
 
 
@@ -267,7 +268,7 @@ def _seed_prune(owner, tid: str, sid: str) -> list[str]:
 
 
 @pg
-def test_prune_keeps_recent_runs_and_runs_with_events(app_engine, monkeypatch) -> None:
+def test_prune_keeps_recent_runs_and_runs_with_events(app_engine, monkeypatch) -> None:  # noqa: F811
     """Runs as the NOBYPASSRLS app role, one tenant session per tenant, as the nightly task does."""
     from sqlalchemy import text
 
@@ -328,6 +329,24 @@ def test_abort_runs_fails_only_pending_runs_and_keeps_a_real_failure(engine, app
     assert _status(engine, real) == ("failed", rpd.MEMORY_ERROR)
     assert _status(engine, pending) == ("failed", rpd.EXTRACTION_ERROR)
     assert finished == [] and released == [sid, sid]
+
+
+@pg
+def test_abort_runs_closes_a_run_killed_while_mining(engine, app, monkeypatch) -> None:
+    from sqlalchemy import text
+
+    tid, sid, _, (mining, done) = _seed(engine, [("PTP", "full", None), ("R2R", "full", None)])
+    with engine.begin() as c:  # the worker was killed mid-stage: the run never left "mining"
+        c.execute(text("UPDATE process_discovery_runs SET status = 'mining' WHERE id = :r"), {"r": mining})
+        c.execute(text("UPDATE process_discovery_runs SET status = 'completed' WHERE id = :r"), {"r": done})
+    released, finished = [], []
+    monkeypatch.setattr(rpd, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
+    rpd.abort_runs.run(tid, sid, [mining, done])
+    assert _status(engine, mining) == ("failed", rpd.ABORT_ERROR)  # not the extraction message: it had finished
+    assert _status(engine, done)[0] == "completed"
+    assert finished == [("failed", {"error": rpd.ABORT_ERROR})] and released == [sid]
 
 
 @pg

@@ -60,6 +60,7 @@ BUILD_ERROR = "Event log build failed"
 MINE_ERROR = "Discovery failed"
 GENERATE_ERROR = "Generation failed"
 EXTRACTION_ERROR = "Extraction failed"
+ABORT_ERROR = "Run stopped before it finished"
 
 INSERT_EVENT_SQL = text("""
 INSERT INTO process_events (tenant_id, system_id, l1, case_type, case_id, activity, l5_id, ts, ts_precision, seq,
@@ -244,10 +245,11 @@ def _set(session: Session, tenant_id: str, run_ids: Sequence[str], **cols: Optio
 
 
 def _fail(session: Session, tenant_id: str, run_ids: Sequence[str], error: str, *, pending_only: bool = False) -> int:
-    """Marks the runs failed and returns how many changed. ``pending_only`` leaves runs a stage already failed or
-    advanced alone, so a late error callback cannot overwrite the real failure."""
+    """Marks the runs failed and returns how many changed. ``pending_only`` leaves runs a stage already finished
+    (completed or failed) alone, so a late error callback cannot overwrite the real outcome; runs still
+    building or mining are closed."""
     session.rollback()
-    keep = "status IN ('queued', 'waiting', 'extracting')" if pending_only else "status <> 'completed'"
+    keep = "status NOT IN ('completed', 'failed')" if pending_only else "status <> 'completed'"
     n = session.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
                              f"WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND {keep}"),
                         {"ids": list(run_ids), "e": error[:500], "t": tenant_id}).rowcount
@@ -415,13 +417,18 @@ def discover_process(self: Task, tenant_id: str, system_id: str, run_ids: list[s
 
 @celery_app.task(name="workers.tasks.run_process_discovery.abort_runs", soft_time_limit=300, time_limit=360)
 def abort_runs(tenant_id: str, system_id: str, run_ids: list[str]) -> None:
-    """Chain error callback: the extraction raised, so ``discover_process`` never runs. Fails the runs still
-    waiting for it, finishes the job and frees the lock (otherwise held for the full 6-hour TTL). When no run is
-    pending a stage has already recorded the real failure, which this must not overwrite."""
+    """Chain error callback: the chain raised. Fails every run not yet completed or failed (waiting on the
+    extraction, or killed mid build or mine), finishes the job and frees the lock (otherwise held for the full
+    6-hour TTL). When none is open a stage has already recorded the real outcome, which this must not overwrite."""
     session = tenant_session(get_sync_engine(), tenant_id)
     try:
-        if _fail(session, tenant_id, run_ids, EXTRACTION_ERROR, pending_only=True):
-            jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error=EXTRACTION_ERROR)
+        # Runs still queued/waiting/extracting never reached discovery, so the extraction is what failed.
+        extraction = session.execute(text(
+            "SELECT count(*) FROM process_discovery_runs WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
+            "AND status IN ('queued', 'waiting', 'extracting')"), {"t": tenant_id, "ids": list(run_ids)}).scalar()
+        msg = EXTRACTION_ERROR if extraction else ABORT_ERROR
+        if _fail(session, tenant_id, run_ids, msg, pending_only=True):
+            jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error=msg)
     finally:
         session.close()
         release_lock(tenant_id, system_id)

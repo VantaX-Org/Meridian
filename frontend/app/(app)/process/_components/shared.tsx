@@ -187,17 +187,12 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
-/** Headline figures over the discovered L1s; automation is weighted by each L1's case count. */
+/** Headline figures over the discovered L1s. Case counts and automation are per-L1 only: they do not add across processes. */
 export function headline(rows: CatalogueRow[]) {
   const runs = rows.filter((r) => r.coverage !== "reference" && r.last_run).map((r) => r.last_run!);
-  const cases = runs.reduce((n, r) => n + (r.cases ?? 0), 0);
-  const auto = runs.filter((r) => r.automation_rate != null && r.cases);
-  const autoCases = auto.reduce((n, r) => n + (r.cases ?? 0), 0);
   return {
     discovered: runs.length,
-    cases,
     fitness: median(runs.map((r) => r.fitness).filter((f): f is number => f != null)),
-    automation: autoCases ? auto.reduce((n, r) => n + (r.automation_rate as number) * (r.cases as number), 0) / autoCases : null,
   };
 }
 

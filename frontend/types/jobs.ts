@@ -42,9 +42,9 @@ export interface Job {
   version_id?: string;
   modules?: string[];
   /** Entity-prefix list this job changed, e.g. ["object", "rule", "run"]. Absent means unknown — do not invalidate. */
+  touches?: string[];
   /** process_discovery: the queued process_discovery_runs ids this job drives. */
   run_ids?: string[];
-  touches?: string[];
 }
 
 export interface JobListResponse {
