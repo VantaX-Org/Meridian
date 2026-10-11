@@ -47,6 +47,15 @@ def _not_found(e: Exception) -> bool:
     return bool(re.search(r"\b404\b|is not found", str(e)))
 
 
+def _bad_property(e: Exception, entity: str) -> str | None:
+    """The property an SF 400 ('[COE0003]Bad property expression: Ent/prop', '[COE0021]Invalid property
+    names: Ent/prop') rejects, as it appears in $select."""
+    if not (isinstance(e.__cause__, httpx.HTTPStatusError) and e.__cause__.response.status_code == 400):
+        return None
+    m = re.search(rf"(?:Bad property expression|Invalid property names?):\s*{re.escape(entity)}/([\w/]+)", str(e))
+    return m.group(1) if m else None
+
+
 def baseline_key(system_type: str) -> str:
     """Map a sap_systems.system_type to its BASELINE_CONFIG / registry key."""
     return {"s4hana_onprem": "ecc", "ewm": "ewms"}.get(system_type, system_type)
@@ -604,13 +613,27 @@ class ConnectivityManager:
                 # merge keys only when several entities feed the table (FO objects and Position carry neither)
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
-                expand = sorted({p.split("/")[0] for p in sel.values() if "/" in p})
-                # a to-many locale navigation is read in the record's own default language
-                lang = {s for nav in expand if model is not None and "defaultLanguage" in model[0]
-                        and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
                 try:
-                    df = connector.read_entity_set(ent, select=sorted(set(sel.values()) | set(join) | lang), **history,
-                                                   **({"expand": expand} if expand else {}))
+                    # a property in $metadata can still be "not viewable" to the API user: SF names the
+                    # first such property in its 400, so drop it (unavailable) and read again
+                    while True:
+                        expand = sorted({p.split("/")[0] for p in sel.values() if "/" in p})
+                        # a to-many locale navigation is read in the record's own default language
+                        lang = {s for nav in expand if model is not None and "defaultLanguage" in model[0]
+                                and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
+                        try:
+                            df = connector.read_entity_set(
+                                ent, select=sorted(set(sel.values()) | set(join) | lang), **history,
+                                **({"expand": expand} if expand else {}))
+                            break
+                        except Exception as e:
+                            bad = _bad_property(e, ent)
+                            drop = [p for p, path in sel.items() if path == bad or p == bad]
+                            if not drop or len(sel) == len(drop):
+                                raise
+                            for p in drop:
+                                unavailable |= set(props[p])
+                                del sel[p]
                 except Exception as e:
                     if _not_found(e):
                         unavailable |= {n for names in props.values() for n in names}

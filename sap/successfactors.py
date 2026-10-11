@@ -294,7 +294,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
         """OData $metadata document (whole service, or one entity to keep it small)."""
         self._ensure_connected()
         path = f"/odata/v2/{entity}/$metadata" if entity else "/odata/v2/$metadata"
-        return self._request_with_retry("GET", path, params={}).text
+        # the client's default Accept is JSON; $metadata is XML-only and answers 406 to it
+        return self._request_with_retry("GET", path, params={}, headers={"Accept": "application/xml"}).text
 
     # ------------------------------------------------------------------
     # Report reading
@@ -388,6 +389,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         url: str,
         *,
         params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         retries: int = _MAX_RETRIES,
     ) -> httpx.Response:
         """Execute an HTTP request with rate-limit handling and retries.
@@ -402,7 +404,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
         for attempt in range(1, retries + 1):
             try:
-                resp = self._client.request(method, url, params=params)
+                resp = self._client.request(method, url, params=params, headers=headers)
 
                 # Check rate limit headers
                 remaining = resp.headers.get("X-RateLimit-Remaining")
@@ -459,6 +461,9 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     )
                     time.sleep(wait)
                     continue
+                body = error_body(exc.response)
+                if body:
+                    safe_msg = f"{self._mask_secret(body, self._params.password if self._params else '')} :: {safe_msg}"
                 raise SAPConnectorError(
                     f"SuccessFactors request failed: {safe_msg}"
                 ) from exc
@@ -485,6 +490,15 @@ class SuccessFactorsConnector(CloudSAPConnector):
         raise SAPConnectorError(
             f"SuccessFactors request failed after {retries} retries"
         ) from last_exc
+
+
+def error_body(resp: httpx.Response, limit: int = 300) -> str:
+    """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated."""
+    try:
+        m = re.search(r'"value"\s*:\s*"((?:[^"\\]|\\.)*)"', resp.text) or re.search(r"<message[^>]*>([^<]+)", resp.text)
+        return (m.group(1) if m else resp.text).strip()[:limit]
+    except Exception:
+        return ""
 
 
 def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:

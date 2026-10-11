@@ -443,12 +443,38 @@ def test_sf_table_with_no_dictionary_property_in_tenant_still_gets_a_coverage_ro
     assert not any(c["status"] == "failed" for c in cov.values())
 
 
-def _http_error(code: int, url: str) -> SAPConnectorError:
+def test_sf_property_metadata_lists_but_the_api_user_cannot_view_is_dropped_and_read_again(monkeypatch):
+    class _Unviewable(_Tenant):
+        def read_entity_set(self, entity, select=None, **kw):
+            if "okToRehire" in (select or []):
+                raise _http_error(400, "https://sf.example.test/odata/v2/EmpEmployment",
+                                  "[COE0003]Bad property expression: EmpEmployment/okToRehire; not viewable")
+            return super().read_entity_set(entity, select=select, **kw)
+
+    conn = _Unviewable({"EmpEmployment": (_EMP + ["okToRehire"], ()), "EmpJob": (_JOB, ())},
+                       {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
+                        "EmpJob": [{"userId": "U1", "company": "C1"}]})
+    frames, cov = _sf(conn, ["employee_central"], monkeypatch)
+    assert cov["EMPEMPLOYMENT"]["status"] == "live" and "OK_TO_REHIRE" in cov["EMPEMPLOYMENT"]["unavailable_fields"]
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.START_DATE"].tolist() == ["2020-01-01"]
+
+
+def test_sf_other_400_is_failed_with_the_error_body_in_the_detail(monkeypatch):
+    class _Bad(_Tenant):
+        def read_entity_set(self, entity, select=None, **kw):
+            raise _http_error(400, "https://sf.example.test/odata/v2/" + entity, "[COE0001]Something else")
+
+    _, cov = _sf(_Bad({"EmpEmployment": (_EMP, ())}, {}), ["employee_central"], monkeypatch)
+    assert cov["EMPEMPLOYMENT←EmpEmployment"]["status"] == "failed"
+    assert "[COE0001]Something else" in cov["EMPEMPLOYMENT←EmpEmployment"]["detail"]
+
+
+def _http_error(code: int, url: str, body: str = "") -> SAPConnectorError:
     import httpx
     req = httpx.Request("GET", url)
     cause = httpx.HTTPStatusError(f"Client error '{code}' for url '{url}'", request=req,
                                   response=httpx.Response(code, request=req))
-    err = SAPConnectorError(f"SuccessFactors request failed: {cause}")
+    err = SAPConnectorError(f"SuccessFactors request failed: {body} :: {cause}")
     err.__cause__ = cause
     return err
 

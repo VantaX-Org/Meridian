@@ -89,3 +89,26 @@ def test_to_many_expand_prefers_the_default_language_then_the_first_non_blank_va
         "JobRequisition", select=["jobReqId", "defaultLanguage", "jobReqLocale/locale", "jobReqLocale/jobTitle"],
         expand=["jobReqLocale"])
     assert df["jobReqLocale/jobTitle"].tolist() == ["Engineer", "Commis", "Chef"]
+
+
+def test_metadata_is_requested_as_xml_not_json():
+    def handler(request: httpx.Request) -> httpx.Response:
+        ok = request.headers["accept"] == "application/xml"
+        return httpx.Response(200 if ok else 406, text="<edmx/>")
+
+    c = _connector(handler)
+    c._client.headers["Accept"] = "application/json"
+    assert c.metadata("EmpJob") == "<edmx/>"
+
+
+def test_failed_request_carries_the_sf_error_body_first_and_truncated():
+    import pytest
+    from sap.base import SAPConnectorError
+
+    body = {"error": {"code": "COE0003", "message": {"lang": "en-US", "value":
+            "[COE0003]Bad property expression: EmpJob/operation; " + "x" * 500}}}
+    with pytest.raises(SAPConnectorError) as ei:
+        _connector(lambda r: httpx.Response(400, json=body)).read_entity_set("EmpJob")
+    msg = str(ei.value)
+    assert msg.startswith("SuccessFactors request failed: [COE0003]Bad property expression: EmpJob/operation")
+    assert "400 Bad Request" in msg and msg.index("::") < 400
