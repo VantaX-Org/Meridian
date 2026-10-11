@@ -162,6 +162,35 @@ def test_rerun_and_row_order_are_deterministic(l1: str) -> None:
         assert first and run(l1, tables(system), system) == first == run(l1, shuffled, system)
 
 
+# (table, key columns, column changed in the duplicate): the duplicate row differs from the original in value
+DUPLICATES = [("AUFK", ["AUFNR"], "ERNAM"), ("QALS", ["PRUEFLOS"], "ERSTELLER"), ("QMEL", ["QMNUM"], "ERNAM"),
+              ("LTAK", ["LGNUM", "TANUM"], "BNAME"), ("PRPS", ["PSPNR"], "ERNAM"), ("PROJ", ["PSPNR"], "ERNAM"),
+              ("TQ80", ["QMART"], "QMTYP")]
+
+
+def with_duplicate_keys(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    out = dict(tables)
+    for table, _, col in DUPLICATES:
+        if table in out:
+            dup = out[table].copy()
+            dup[col] = dup[col].map(lambda v: "ZZ" + v)
+            out[table] = pd.concat([out[table], dup], ignore_index=True)
+    return out
+
+
+@pytest.mark.parametrize("l1", sorted(CASES))
+def test_duplicate_key_rows_are_order_independent(l1: str) -> None:
+    for system, tables in CASES[l1]:
+        base = with_duplicate_keys(tables(system))
+        if not any(t in base for t, _, _ in DUPLICATES):  # the eWM bundle has none of these tables
+            continue
+        first = run(l1, base, system)
+        assert first
+        for seed in range(6):
+            shuffled = {k: v.sample(frac=1, random_state=seed) for k, v in base.items()}
+            assert run(l1, shuffled, system) == first, (l1, system, seed)
+
+
 @pytest.mark.parametrize("l1", sorted(CASES))
 def test_seq_is_mapping_order_and_ids_exist(l1: str) -> None:
     doc = reference_document()

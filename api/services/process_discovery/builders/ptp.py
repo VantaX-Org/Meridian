@@ -6,8 +6,8 @@ from collections import defaultdict
 from typing import Iterable, Iterator, Optional
 
 from api.services.process_discovery.events import (
-    ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, event, master_data_events, rows,
-    sap_day, sap_ts, sorted_rows, value_attr, earliest_clearing,
+    ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, earliest_clearing, event,
+    master_data_events, rows, sap_day, sap_ts, sorted_rows, value_attr,
 )
 
 A = ActivityMap
@@ -109,7 +109,9 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
 
     # History: one row per (item, event type, document); EKBE repeats account-assignment lines.
     ekbe = frames.get("EKBE", ["EBELN", "EBELP", "VGABE", "GJAHR", "BELNR", "BWART", "SHKZG", "CPUDT", "CPUTM",
-                               "ERNAM"]).drop_duplicates(["EBELN", "EBELP", "VGABE", "GJAHR", "BELNR"])
+                               "ERNAM"])
+    ekbe = ekbe.sort_values(list(ekbe.columns), kind="stable").drop_duplicates(
+        ["EBELN", "EBELP", "VGABE", "GJAHR", "BELNR"])
     rbkp = {(r["BELNR"], r["GJAHR"]): r for r in sorted_rows(frames.get(
         "RBKP", ["BELNR", "GJAHR", "CPUDT", "CPUTM", "USNAM", "ZLSPR", "RBSTAT"]))}
     bkpf = frames.get("BKPF", ["BUKRS", "BELNR", "GJAHR", "AWTYP", "AWKEY"])

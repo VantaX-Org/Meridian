@@ -6,8 +6,8 @@ from collections import defaultdict
 from typing import Iterable, Iterator, Optional
 
 from api.services.process_discovery.events import (
-    ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, event, master_data_events, rows,
-    sap_day, sap_ts, sorted_rows, value_attr, earliest_clearing,
+    ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, earliest_clearing, event,
+    master_data_events, rows, sap_day, sap_ts, sorted_rows, value_attr,
 )
 
 A = ActivityMap
