@@ -252,6 +252,57 @@ async def create_writeback(
     )
 
 
+class PendingApproval(BaseModel):
+    id: str
+    finding_id: Optional[str] = None
+    version_id: Optional[str] = None
+    requested_by: Optional[str] = None
+    records_updated: int = 0
+    sap_host: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class PendingApprovalList(BaseModel):
+    approvals: list[PendingApproval]
+    live_enabled: bool
+
+
+@router.get(
+    "/writeback/approvals",
+    response_model=PendingApprovalList,
+    dependencies=[Depends(require_permission("approve"))],
+)
+async def list_pending_writebacks(
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+):
+    """Live write-back requests still waiting for a second user (newest first)."""
+    tenant_id = str(tenant.id)
+    await db.execute(text(f"SET app.tenant_id = \'{tenant_id}\'"))
+    result = await db.execute(
+        text("""
+            SELECT id, finding_id, version_id, requested_by, records_updated, sap_host, created_at
+            FROM write_back_log
+            WHERE tenant_id = :tid AND dry_run = false AND approved_by IS NULL
+            ORDER BY created_at DESC
+            LIMIT 200
+        """),
+        {"tid": tenant_id},
+    )
+    from api.config import settings
+    return PendingApprovalList(
+        approvals=[
+            PendingApproval(
+                id=str(r[0]), finding_id=str(r[1]) if r[1] else None, version_id=str(r[2]) if r[2] else None,
+                requested_by=str(r[3]) if r[3] else None, records_updated=r[4] or 0, sap_host=r[5],
+                created_at=r[6].isoformat() if r[6] else None,
+            )
+            for r in result.fetchall()
+        ],
+        live_enabled=bool(settings.live_writeback_enabled),
+    )
+
+
 @router.post(
     "/writeback/approve/{approval_id}",
     response_model=ApprovalResponse,
