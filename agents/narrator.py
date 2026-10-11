@@ -27,6 +27,8 @@ from typing import Optional
 
 from jinja2 import Template
 
+from agents.numeric import count_of, mean_or
+
 logger = logging.getLogger("meridian.agents.narrator")
 
 # ---------------------------------------------------------------------------
@@ -109,7 +111,7 @@ def _select_template(findings: list[dict]) -> str:
         return "multi_module"
     
     # Check for poor quality (avg pass rate < 80)
-    avg_pass_rate = sum(f.get("pass_rate", 0) for f in findings) / len(findings)
+    avg_pass_rate = mean_or((f.get("pass_rate") for f in findings), 0)
     if avg_pass_rate < 80:
         return "poor_quality"
     
@@ -363,10 +365,10 @@ def _measured_mean(scores: list[Optional[float]]) -> Optional[float]:
 
 def _compute_key_metrics(findings: list[dict], dqs_scores: dict) -> dict:
     """Compute key metrics for the narrative."""
-    total_affected = sum(f.get("affected_count", 0) for f in findings)
-    total_records = sum(f.get("total_count", 0) for f in findings) or 1
+    total_affected = sum(count_of(f, "affected_count") for f in findings)
+    total_records = sum(count_of(f, "total_count") for f in findings) or 1
     
-    avg_pass_rate = sum(f.get("pass_rate", 0) for f in findings) / len(findings) if findings else 100
+    avg_pass_rate = mean_or((f.get("pass_rate") for f in findings), 100 if not findings else 0)
     
     modules_affected = len({f.get("module") for f in findings})
     
@@ -412,15 +414,15 @@ def generate_narrative(
     
     context = {
         "findings_count": len(findings_summary),
-        "total_affected": sum(f.get("affected_count", 0) for f in findings_summary),
+        "total_affected": sum(count_of(f, "affected_count") for f in findings_summary),
         "critical_count": sum(1 for f in findings_summary if f.get("severity") == "critical"),
-        "critical_affected": sum(f.get("affected_count", 0) for f in findings_summary if f.get("severity") == "critical"),
+        "critical_affected": sum(count_of(f, "affected_count") for f in findings_summary if f.get("severity") == "critical"),
         "high_count": sum(1 for f in findings_summary if f.get("severity") == "high"),
-        "high_affected": sum(f.get("affected_count", 0) for f in findings_summary if f.get("severity") == "high"),
+        "high_affected": sum(count_of(f, "affected_count") for f in findings_summary if f.get("severity") == "high"),
         "module_count": len(modules),
         "dimension_count": len({f.get("dimension") for f in findings_summary}),
-        "avg_pass_rate": sum(f.get("pass_rate", 0) for f in findings_summary) / len(findings_summary) if findings_summary else 100,
-        "total_records": sum(f.get("total_count", 0) for f in findings_summary) or 0,
+        "avg_pass_rate": mean_or((f.get("pass_rate") for f in findings_summary), 100 if not findings_summary else 0),
+        "total_records": sum(count_of(f, "total_count") for f in findings_summary) or 0,
         "process_impact": "Process failures expected if not resolved before go-live",
         "top_risk": {
             "module": findings_summary[0].get("module", "Unknown") if findings_summary else "Unknown",
