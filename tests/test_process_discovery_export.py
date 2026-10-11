@@ -169,22 +169,29 @@ def test_no_event_resources_in_export(doc: ProcessModelDocument) -> None:
     assert seeded
     for name, blob in _files(export_zip(dirty, None, META)).items():
         text = blob.decode()
-        for needle in (*LEAKY, "@", "case_id", "user_id"):
+        for needle in (*LEAKY, "owner", "@", "case_id", "user_id"):
             assert needle not in text, (name, needle)
 
 
-def test_shared_activity_is_never_summed_across_l1s(doc: ProcessModelDocument) -> None:
-    """RMRP invoice posting sits under PTP and R2R; each L1 keeps its own count, no total exists anywhere."""
-    n = 4321
+def test_shared_activity_is_never_summed_across_l1s() -> None:
+    """The R2R posting row is mapped to the PTP invoice-receipt L5 id, so one id is claimed by two L1s with
+    different counts. Each L1 keeps its own count, and no file carries the total."""
+    ptp_n, r2r_n = 4321, 77
+    shared = {m.key: m.l5_id for m in MAP}["INVOICE_RECEIPT"]
+    r2r_map = tuple(dataclasses.replace(m, l5_id=shared) if m.key == "POST_GL_DOC" else m for m in R2R_MAPPING)
     ptp = generate(reference_document(), MiningResult("PTP", "po_item", {
-        "po_item": _result("po_item", [(("INVOICE_RECEIPT",), n)])}), MAP, system_type="ecc").document
+        "po_item": _result("po_item", [(("INVOICE_RECEIPT",), ptp_n)])}), MAP, system_type="ecc").document
     r2r = generate(reference_document(), MiningResult("R2R", "fi_doc", {
-        "fi_doc": _result("fi_doc", [(("POST_GL_DOC",), n)], mapping=R2R_MAPPING)}), R2R_MAPPING,
+        "fi_doc": _result("fi_doc", [(("POST_GL_DOC",), r2r_n)], mapping=r2r_map)}), r2r_map,
         system_type="ecc").document
     both = ProcessModelDocument(**{**ptp.model_dump(), "l1": [ptp.l1[0], r2r.l1[0]]})
-    text = b"".join(_files(export_zip(both, None, META)).values()).decode()
-    assert str(2 * n) not in text
+    by_file = {n: b.decode() for n, b in _files(export_zip(both, None, META)).items()}
+    text = "".join(by_file.values())
+    assert str(ptp_n + r2r_n) not in text
     assert "event_count" not in text and "eventCount" not in text
+    assert str(ptp_n) in by_file["L1_PTP.bpmn"] + "".join(v for k, v in by_file.items() if "PTP" in k)
+    assert not any(str(ptp_n) in v for k, v in by_file.items() if "R2R" in k)
+    assert not any(str(r2r_n) in v for k, v in by_file.items() if k.startswith("L1_PTP"))
 
 
 def test_export_never_sums_event_counts_across_l1s(doc: ProcessModelDocument) -> None:

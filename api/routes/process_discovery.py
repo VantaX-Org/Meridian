@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from api.deps import Tenant, get_db, get_tenant
 from api.middleware.audit import _insert_audit_row
+from api.middleware.licence import enforce_licensed_modules
 from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
@@ -43,7 +44,8 @@ from api.services.process_discovery.mining import END as MINED_END
 from api.services.process_discovery.mining import (CACHE_TTL, CASE_TYPES_SQL, OTHER_HASH, CaseTypeResult, MiningResult,
                                                    Scope, Variant, cache_key, mine_case_type)
 from api.services.process_model_validator import validate_document
-from api.services.rbac import require_permission
+from api.services.rbac import Scope as RbacScope
+from api.services.rbac import require_permission, require_scope, scope_from_path
 from api.services.task_progress import _redis_client
 from sap.process_definitions import reference_document
 
@@ -51,8 +53,8 @@ logger = logging.getLogger("meridian.process_discovery")
 DISPATCH_ERROR = "Could not queue the discovery job"
 router = APIRouter(prefix="/api/v1/process-discovery", tags=["process-discovery"])
 
-VIEW = [Depends(require_permission("view"))]
-EXPORT = [Depends(require_permission("export_process"))]
+VIEW = [Depends(require_permission("view", scope=scope_from_path))]
+EXPORT = [Depends(require_permission("export_process", scope=scope_from_path))]
 
 OVERLAP_DAYS = 14  # spec §8.2 step 3: incremental scope starts at watermark - 14 days
 
@@ -386,20 +388,25 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
     return out
 
 
-@router.post("/systems/{system_id}/runs", dependencies=[Depends(require_permission("run_process_discovery"))],
+@router.post("/systems/{system_id}/runs", dependencies=[Depends(require_permission("run_process_discovery", scope=scope_from_path))],
              response_model=RunStarted)
 async def start_runs(system_id: str, body: RunRequest, request: Request, tenant: Tenant = Depends(get_tenant),
                      db: AsyncSession = Depends(get_db)) -> RunStarted:
     from workers.tasks.run_extraction import run_extraction
-    from workers.tasks.run_process_discovery import abort_runs, discover_process, lock_key, release_lock
+    from workers.tasks.run_process_discovery import (
+        LOCK_TTL, PURPOSE, abort_runs, discover_process, lock_key, release_lock)
 
     system_id = _id(system_id)
     system_type, tz = await _system(db, tenant, system_id)
+    # the entitlement boundary for module data entering the system, as on /extract: only the L1s that extract
+    enforce_licensed_modules(request, sorted({MODULE_OF[l1] for l1 in body.l1s
+                                              if l1 in L1S_BY_SYSTEM.get(system_type, ())}))
     client = _redis_client()
     if client is None:
         raise HTTPException(status_code=503, detail="Job queue unavailable")
     tid = str(tenant.id)
-    if not client.set(lock_key(tid, system_id), uuid.uuid4().hex, nx=True, ex=21600):
+    token = uuid.uuid4().hex
+    if not client.set(lock_key(tid, system_id), token, nx=True, ex=LOCK_TTL):
         raise HTTPException(status_code=409, detail="A process discovery run is already active for this system")
     try:
         sourced = [l1 for l1 in body.l1s if l1 in L1S_BY_SYSTEM.get(system_type, ())]
@@ -441,12 +448,12 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
                          {"j": job_id, "ids": run_ids, "t": tid})
         await db.commit()
     except BaseException:
-        release_lock(tid, system_id)
+        release_lock(tid, system_id, token)
         raise
 
     queued = [r for r, l1 in zip(run_ids, body.l1s) if l1 in sourced]
     if not queued:
-        release_lock(tid, system_id)
+        release_lock(tid, system_id, token)
         return RunStarted(job_id=None, run_ids=run_ids)
     starts = [w for w in window.values() if w]
     scope = {"date_from": min(starts).isoformat(), "date_to": today.isoformat()} if starts else None
@@ -456,12 +463,12 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
         jobs.update_job(tid, job_id, stage="extraction", percent=0, message="Extracting event tables")
         chain(run_extraction.si(tid, system_id, [MODULE_OF[l1] for l1 in sourced], include_config=False,
                                 sync_type="data", scope=scope, analyse=False, label="Process discovery",
-                                version_id=version_id),
-              discover_process.si(tid, system_id, queued, version_id)).apply_async(
-            link_error=abort_runs.si(tid, system_id, queued))
+                                version_id=version_id, purpose=PURPOSE),
+              discover_process.si(tid, system_id, queued, version_id, token)).apply_async(
+            link_error=abort_runs.si(tid, system_id, queued, version_id, token))
     except Exception:  # broker down: free the lock and fail the queued runs so the UI is not stuck
         logger.exception("Process discovery dispatch failed for %s", job_id)
-        release_lock(tid, system_id)
+        release_lock(tid, system_id, token)
         await _rls(db, tenant)
         await db.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
                               "WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND status = 'queued'"),
@@ -586,6 +593,18 @@ async def variants(run_id: str, request: Request, limit: int = Query(50, ge=1, l
                    tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_db)) -> VariantPage:
     run = await _run(db, tenant, run_id)
     flt, ct = _filter(request, run)
+    page = await _variants(db, tenant, run, flt, ct, limit, offset)
+    # sample case ids are SAP document keys: the case explorer's permission, not the viewer's
+    try:
+        await require_scope(request, db, tenant, "export_process", RbacScope(uuid.UUID(run.system_id)))
+    except HTTPException:
+        for item in page.items:
+            item.sample_case_ids = []
+    return page
+
+
+async def _variants(db: AsyncSession, tenant: Tenant, run: RunRecord, flt: ProcessFilter, ct: str, limit: int,
+                    offset: int) -> VariantPage:
     if flt.model_copy(update={"case_type": None}) == ProcessFilter():
         rows = (await db.execute(text("""
             SELECT variant_hash AS hash, activities, case_count, share, median_seconds, p90_seconds, fitness,

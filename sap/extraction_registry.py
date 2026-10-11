@@ -20,7 +20,7 @@ Usage::
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 
 from sap.process_definitions import flow_config_tables as _flow_config_tables

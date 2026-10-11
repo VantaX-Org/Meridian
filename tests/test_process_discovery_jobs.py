@@ -48,6 +48,30 @@ def test_lock_and_job_ids() -> None:
     assert rpd.job_id_of(["r1", "r2"]) == "pd-r1"
 
 
+class _LockRedis:
+    def __init__(self, data: dict[str, str]) -> None:
+        self.data = data
+
+    def eval(self, _script, _numkeys, key, token):
+        if self.data.get(key) == token:
+            del self.data[key]
+
+
+def test_release_lock_leaves_another_owners_lock(monkeypatch) -> None:
+    redis = _LockRedis({rpd.lock_key("t", "s"): "new-owner"})
+    monkeypatch.setattr(rpd, "_redis_client", lambda: redis)
+    rpd.release_lock("t", "s", "old-owner")  # a chain whose lock expired must not free its successor's
+    assert redis.data == {rpd.lock_key("t", "s"): "new-owner"}
+    rpd.release_lock("t", "s", "new-owner")
+    assert redis.data == {}
+
+
+def test_lock_outlives_the_longest_chain() -> None:
+    from workers.celery_app import EXTRACT_TIME_LIMIT
+
+    assert rpd.LOCK_TTL > EXTRACT_TIME_LIMIT + 60 + rpd.WAIT_RETRIES * rpd.WAIT_COUNTDOWN + 7500  # extract + wait + discover
+
+
 def test_reason_per_system_type() -> None:
     assert reason("PTP", "ecc") is None
     assert reason("SFX", "ecc") == "Connect the SuccessFactors / Ariba / Concur system to discover this process."
@@ -83,7 +107,7 @@ def test_waits_for_running_extraction_and_keeps_the_lock(monkeypatch) -> None:
     monkeypatch.setattr(rpd, "tenant_session", lambda eng, t: session)
     monkeypatch.setattr(rpd, "get_sync_engine", lambda: None)
     monkeypatch.setattr(rpd, "other_extraction_active", lambda *a: True)
-    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s, k: released.append(s))
     monkeypatch.setattr(rpd.jobs, "update_job", lambda *a, **k: updates.append(k))
     with pytest.raises(Retry):
         rpd.discover_process.run("t", "s1", ["r1"], "v1")
@@ -97,7 +121,7 @@ def test_gives_up_after_two_hours(monkeypatch) -> None:
     monkeypatch.setattr(rpd, "tenant_session", lambda eng, t: session)
     monkeypatch.setattr(rpd, "get_sync_engine", lambda: None)
     monkeypatch.setattr(rpd, "other_extraction_active", lambda *a: True)
-    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s, k: released.append(s))
     monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
     rpd.discover_process.push_request(retries=rpd.WAIT_RETRIES)
     try:
@@ -318,7 +342,7 @@ def test_abort_runs_fails_only_pending_runs_and_keeps_a_real_failure(engine, app
                   {"e": rpd.MEMORY_ERROR, "r": real})
     released, finished = [], []
     monkeypatch.setattr(rpd, "get_sync_engine", lambda: app)
-    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s, k: released.append(s))
     monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
     rpd.abort_runs.run(tid, sid, [real, pending])
     assert _status(engine, real) == ("failed", rpd.MEMORY_ERROR)
@@ -341,12 +365,55 @@ def test_abort_runs_closes_a_run_killed_while_mining(engine, app, monkeypatch) -
         c.execute(text("UPDATE process_discovery_runs SET status = 'completed' WHERE id = :r"), {"r": done})
     released, finished = [], []
     monkeypatch.setattr(rpd, "get_sync_engine", lambda: app)
-    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s, k: released.append(s))
     monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
     rpd.abort_runs.run(tid, sid, [mining, done])
     assert _status(engine, mining) == ("failed", rpd.ABORT_ERROR)  # not the extraction message: it had finished
     assert _status(engine, done)[0] == "completed"
     assert finished == [("failed", {"error": rpd.ABORT_ERROR})] and released == [sid]
+
+
+@pg
+def test_abort_runs_gives_each_run_the_error_of_the_stage_it_died_in(engine, app, monkeypatch) -> None:
+    from sqlalchemy import text
+
+    tid, sid, _, (building, queued) = _seed(engine, [("PTP", "full", None), ("R2R", "full", None)])
+    with engine.begin() as c:
+        c.execute(text("UPDATE process_discovery_runs SET status = 'building' WHERE id = :r"), {"r": building})
+    finished = []
+    monkeypatch.setattr(rpd, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s, k: None)
+    monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
+    rpd.abort_runs.run(tid, sid, [building, queued])
+    assert _status(engine, building) == ("failed", rpd.ABORT_ERROR)
+    assert _status(engine, queued) == ("failed", rpd.EXTRACTION_ERROR)
+    assert finished == [("failed", {"error": rpd.EXTRACTION_ERROR})]
+
+
+@pg
+def test_cleanup_removes_only_the_discovery_extraction(engine, app, monkeypatch) -> None:
+    from sqlalchemy import text
+
+    from workers.db import tenant_session
+
+    tid, sid, plain, _ = _seed(engine, [("PTP", "full", None)])  # `plain` is an ordinary download: never touched
+    mine = str(uuid.uuid4())
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                       "VALUES (:v, :t, 'extracted', CAST(:m AS jsonb))"),
+                  {"v": mine, "t": tid, "m": json.dumps({"dataset_path": "mem", "purpose": rpd.PURPOSE})})
+    removed = []
+    objs = [SimpleNamespace(object_name=f"staging/{tid}/{mine}/EKKO.parquet")]
+    fake = SimpleNamespace(list_objects=lambda bucket, prefix, recursive: objs if prefix.endswith(f"{mine}/") else [],
+                           remove_object=lambda bucket, name: removed.append(name))
+    monkeypatch.setattr("api.services.storage.get_minio_client", lambda: fake)
+    s = tenant_session(app, tid)
+    rpd.cleanup_extraction(s, tid, mine)
+    rpd.cleanup_extraction(s, tid, plain)
+    s.close()
+    with engine.connect() as c:
+        left = {str(r[0]) for r in c.execute(text("SELECT id FROM analysis_versions WHERE tenant_id = :t"), {"t": tid})}
+    assert left == {plain} and removed == [objs[0].object_name]
 
 
 @pg

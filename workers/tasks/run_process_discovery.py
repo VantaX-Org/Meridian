@@ -13,7 +13,7 @@ import os
 import resource
 import sys
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time
 from typing import Callable, Iterable, Mapping, Optional, Sequence
 from zoneinfo import ZoneInfo
 
@@ -34,12 +34,11 @@ from api.services.process_discovery.generate import generate, reference_model, w
 from api.services.process_discovery.mining import MiningResult, Scope, mine, store_variants
 from api.services.task_progress import _redis_client
 from sap.process_definitions import reference_document
-from workers.celery_app import celery_app
+from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.process_discovery")
 
-LOCK_TTL = 21600            # spec §8.1: SET NX EX 21600
 BATCH = 50_000              # spec §2.1: delete-and-insert batches
 MIN_BATCH = 1_000
 SOFT_BYTES = 1536 * 1024 * 1024
@@ -49,6 +48,9 @@ WAIT_COUNTDOWN = 300
 MIN_CASES = 50              # spec §10: below this the DFG is anecdotes, not a process
 EVENT_DAYS = 730            # retention: 24 months of events
 KEEP_RUNS = 20              # retention: runs kept per (system, l1)
+# Longest chain: the extraction, the wait for another extraction, then discover_process (time_limit 7500), plus slack.
+LOCK_TTL = EXTRACT_TIME_LIMIT + WAIT_RETRIES * WAIT_COUNTDOWN + 7500 + 600
+PURPOSE = "process_discovery"  # analysis_versions.metadata.purpose of the extraction a chain makes
 EXCLUSIVE_KINDS = ("extraction", "config_sync")
 LIVE = frozenset({"live", "delta", "delta_fallback"})
 
@@ -87,10 +89,33 @@ def lock_key(tenant_id: str, system_id: str) -> str:
     return f"pd:lock:{tenant_id}:{system_id}"
 
 
-def release_lock(tenant_id: str, system_id: str) -> None:
+# Compare-and-delete: a chain whose lock expired must not free the lock a newer chain now holds.
+_RELEASE_LUA = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) end return 0"
+
+
+def release_lock(tenant_id: str, system_id: str, token: str) -> None:
     client = _redis_client()
     if client is not None:
-        client.delete(lock_key(tenant_id, system_id))
+        client.eval(_RELEASE_LUA, 1, lock_key(tenant_id, system_id), token)
+
+
+def cleanup_extraction(session: Session, tenant_id: str, version_id: str) -> None:
+    """Remove what the chain's own extraction left behind: the dataset files and the version row. The events are
+    built, so nothing reads them again, and the version must never be analysable as a data quality run."""
+    try:
+        from api.config import settings
+        from api.services.storage import get_minio_client
+
+        client = get_minio_client()
+        for obj in list(client.list_objects(settings.minio_bucket_uploads,
+                                            prefix=f"staging/{tenant_id}/{version_id}/", recursive=True)):
+            client.remove_object(settings.minio_bucket_uploads, obj.object_name)
+        session.execute(text("DELETE FROM analysis_versions WHERE id = :v AND tenant_id = :t "
+                             "AND metadata->>'purpose' = :p"), {"v": version_id, "t": tenant_id, "p": PURPOSE})
+        session.commit()
+    except Exception:  # best effort: a leftover is cosmetic, a failure here must not fail the run
+        session.rollback()
+        logger.exception("process discovery cleanup of extraction %s failed", version_id)
 
 
 def job_id_of(run_ids: Sequence[str]) -> str:
@@ -244,12 +269,15 @@ def _set(session: Session, tenant_id: str, run_ids: Sequence[str], **cols: Optio
                     {"ids": list(run_ids), "t": tenant_id, **cols})
 
 
-def _fail(session: Session, tenant_id: str, run_ids: Sequence[str], error: str, *, pending_only: bool = False) -> int:
+def _fail(session: Session, tenant_id: str, run_ids: Sequence[str], error: str, *, pending_only: bool = False,
+          statuses: Sequence[str] = ()) -> int:
     """Marks the runs failed and returns how many changed. ``pending_only`` leaves runs a stage already finished
     (completed or failed) alone, so a late error callback cannot overwrite the real outcome; runs still
-    building or mining are closed."""
+    building or mining are closed. ``statuses`` limits the update to runs in exactly those states."""
     session.rollback()
     keep = "status NOT IN ('completed', 'failed')" if pending_only else "status <> 'completed'"
+    if statuses:
+        keep = "status IN (" + ", ".join(f"'{x}'" for x in statuses) + ")"  # constants from this module, never input
     n = session.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
                              f"WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND {keep}"),
                         {"ids": list(run_ids), "e": error[:500], "t": tenant_id}).rowcount
@@ -370,7 +398,7 @@ def other_extraction_active(tenant_id: str, system_id: str, version_id: Optional
 @celery_app.task(bind=True, name="workers.tasks.run_process_discovery.discover_process", acks_late=True,
                  soft_time_limit=7200, time_limit=7500, max_retries=WAIT_RETRIES)
 def discover_process(self: Task, tenant_id: str, system_id: str, run_ids: list[str],
-                     version_id: Optional[str]) -> dict[str, str]:
+                     version_id: Optional[str], token: str = "") -> dict[str, str]:
     job_id = job_id_of(run_ids)
     session = tenant_session(get_sync_engine(), tenant_id)
     keep_lock = False
@@ -410,28 +438,31 @@ def discover_process(self: Task, tenant_id: str, system_id: str, run_ids: list[s
         jobs.finish_job(tenant_id, job_id, "failed", error=MINE_ERROR)
         raise
     finally:
-        session.close()
         if not keep_lock:
-            release_lock(tenant_id, system_id)
+            if version_id:
+                cleanup_extraction(session, tenant_id, version_id)
+            release_lock(tenant_id, system_id, token)
+        session.close()
 
 
 @celery_app.task(name="workers.tasks.run_process_discovery.abort_runs", soft_time_limit=300, time_limit=360)
-def abort_runs(tenant_id: str, system_id: str, run_ids: list[str]) -> None:
+def abort_runs(tenant_id: str, system_id: str, run_ids: list[str], version_id: Optional[str] = None,
+               token: str = "") -> None:
     """Chain error callback: the chain raised. Fails every run not yet completed or failed (waiting on the
-    extraction, or killed mid build or mine), finishes the job and frees the lock (otherwise held for the full
-    6-hour TTL). When none is open a stage has already recorded the real outcome, which this must not overwrite."""
+    extraction, or killed mid build or mine), finishes the job and frees the lock (otherwise held for the full TTL). When none is open a stage has already recorded the real outcome, which this must not overwrite."""
     session = tenant_session(get_sync_engine(), tenant_id)
     try:
-        # Runs still queued/waiting/extracting never reached discovery, so the extraction is what failed.
-        extraction = session.execute(text(
-            "SELECT count(*) FROM process_discovery_runs WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) "
-            "AND status IN ('queued', 'waiting', 'extracting')"), {"t": tenant_id, "ids": list(run_ids)}).scalar()
-        msg = EXTRACTION_ERROR if extraction else ABORT_ERROR
-        if _fail(session, tenant_id, run_ids, msg, pending_only=True):
-            jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error=msg)
+        # Runs still queued/waiting/extracting never reached discovery, so the extraction is what failed; runs
+        # killed while building or mining had their extraction finish.
+        extraction = _fail(session, tenant_id, run_ids, EXTRACTION_ERROR, statuses=("queued", "waiting", "extracting"))
+        aborted = _fail(session, tenant_id, run_ids, ABORT_ERROR, statuses=("building", "mining"))
+        if extraction or aborted:
+            jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error=EXTRACTION_ERROR if extraction else ABORT_ERROR)
     finally:
+        if version_id:
+            cleanup_extraction(session, tenant_id, version_id)
         session.close()
-        release_lock(tenant_id, system_id)
+        release_lock(tenant_id, system_id, token)
 
 
 PRUNE_EVENTS_SQL = text("DELETE FROM process_events WHERE tenant_id = :t "

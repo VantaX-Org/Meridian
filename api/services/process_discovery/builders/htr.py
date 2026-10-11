@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Iterator, Optional
 
 from api.services.process_discovery.events import (
-    ActivityMap, BuildContext, EventRow, Frames, Stamp, event, rows, sap_day, sorted_rows,
+    ActivityMap, BuildContext, EventRow, Frames, event, rows, sap_day, sorted_rows,
 )
 
 A = ActivityMap

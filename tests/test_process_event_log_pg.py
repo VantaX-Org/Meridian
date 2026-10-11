@@ -155,7 +155,7 @@ def test_with_check_blocks_cross_tenant_insert(engines: tuple[Engine, Engine]) -
     # Create a run in tenant A
     with app.begin() as c:
         c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": a})
-        rid_a = _run(c, a, sa)
+        _run(c, a, sa)
 
     # Try to insert a row with tenant A data while tenant_id is set to B (should fail)
     with app.begin() as c:

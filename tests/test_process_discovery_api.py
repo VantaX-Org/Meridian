@@ -40,6 +40,12 @@ class FakeRedis:
     def delete(self, key):
         self.data.pop(key, None)
 
+    def eval(self, _script, _numkeys, key, token):  # the compare-and-delete release script
+        if self.data.get(key) == token:
+            del self.data[key]
+            return 1
+        return 0
+
 
 class FakeChain:
     calls: list = []
@@ -101,6 +107,12 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
 
     api = FastAPI()
     api.include_router(route.router)
+
+    @api.middleware("http")
+    async def _licence(request, call_next):  # what LicenceMiddleware sets from the manifest
+        if lic := request.headers.get("X-Test-Licensed"):
+            request.state.licensed_modules = lic.split(",")
+        return await call_next(request)
     api.dependency_overrides[get_db] = _db
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "D", [])
 
@@ -129,6 +141,9 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             started_ids = r.json()["run_ids"]
             assert r.json()["job_id"] == f"pd-{started_ids[0]}" and len(started_ids) == 2
             (sigs, errback), = FakeChain.calls
+            token = redis.data[rpd.lock_key(tid, sid)]  # the lock holds an owner token that the whole chain carries
+            assert sigs[0].kwargs["purpose"] == rpd.PURPOSE
+            assert sigs[1].args[-1] == token and errback.args[-1] == token and rpd.LOCK_TTL > 6 * 3600
             extract, disc = sigs
             want_from = (watermark.astimezone(route.ZoneInfo("Africa/Johannesburg")).date() - timedelta(days=14))
             assert extract.args[2] == ["process_events_ptp"]
@@ -138,6 +153,12 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert started[0][0][2] == "process_discovery"
             assert (await c.post(f"{BASE}/systems/{sid}/runs", headers=h, json={"l1s": ["PTP"]})).status_code == 409
             redis.delete(rpd.lock_key(tid, sid))
+
+            # an L1 whose module the licence does not entitle is refused before any lock or run
+            n_runs = len((await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).json())
+            r = await c.post(f"{BASE}/systems/{sid}/runs", json={"l1s": ["PTP"]}, headers={**h, "X-Test-Licensed": "fi_gl"})
+            assert r.status_code == 402 and rpd.lock_key(tid, sid) not in redis.data
+            assert len((await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).json()) == n_runs
 
             runs = (await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer, params={"l1": "SFX"})).json()
             assert runs[0]["status"] == "completed" and runs[0]["coverage"] == "reference"
@@ -260,3 +281,43 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
 
     asyncio.run(scenario())
     asyncio.run(aeng.dispose())
+
+
+@pg
+def test_discovery_extraction_is_not_a_data_quality_version(app_engine, monkeypatch):  # noqa: F811
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import versions
+
+    owner, app_eng = app_engine
+    tid, mine, normal = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :n)"), {"t": tid, "n": f"PDV-{tid[:8]}"})
+        for v, meta in ((mine, {"dataset_path": "mem", "purpose": "process_discovery"}), (normal, {"dataset_path": "mem"})):
+            c.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, metadata) "
+                           "VALUES (:v, :t, 'extracted', CAST(:m AS jsonb))"), {"v": v, "t": tid, "m": json.dumps(meta)})
+    factory = async_sessionmaker(create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg")),
+                                 expire_on_commit=False)
+
+    async def _db():
+        async with factory() as sess:
+            yield sess
+
+    api = FastAPI()
+    api.include_router(versions.router)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "D", [])
+
+    async def scenario():
+        h = {"X-User-Role": "admin"}
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            ids = {x["id"] for x in (await c.get("/api/v1/versions", headers=h)).json()["versions"]}
+            assert ids == {normal}
+            assert (await c.post(f"/api/v1/versions/{mine}/analyse", headers=h)).status_code == 409
+
+    asyncio.run(scenario())

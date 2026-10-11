@@ -404,6 +404,13 @@ async def _resolve_scope(request: Request, db: AsyncSession, tenant_id: uuid.UUI
         if not r or not r[0] or (r[1] and r[1] != r[0]):
             return Scope()
         sids.append(r[0])
+    elif "/process-discovery/runs/" in path and pp.get("run_id"):
+        rid = _as_uuid(pp.get("run_id"))
+        if not rid:  # the route's own validation answers 422
+            return Scope()
+        r = await _row(db, "SELECT system_id FROM process_discovery_runs WHERE id = :i AND tenant_id = :t",
+                       str(rid), tenant_id)
+        sids.append(r[0] if r else None)
     elif "/connectivity/" in path and request.method == "POST" and not system:
         try:
             body = await request.json()

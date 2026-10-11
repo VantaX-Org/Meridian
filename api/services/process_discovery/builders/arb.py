@@ -29,7 +29,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     for r in rows(frames.get("requisitions", ["requisitionId", "requestor", "status", "createdDate",
                                               "approvalStatus"])):
         yield event(ctx, M["CREATE_REQUISITION"], r["requisitionId"], in_window(ctx, iso_ts(ctx, r["createdDate"])),
-                    "requisitions", user=r["requestor"],
+                    "requisitions", user=r["requestor"], hashed=True,
                     attrs={"status": r["status"], "approvalStatus": r["approvalStatus"]})
     for r in rows(frames.get("suppliers", ["supplierId", "qualificationStatus", "registrationDate"])):
         yield event(ctx, M["REGISTER_SUPPLIER"], r["supplierId"], in_window(ctx, iso_ts(ctx, r["registrationDate"])),
@@ -37,8 +37,8 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     for r in rows(frames.get("contracts", ["contractId", "status", "effectiveDate", "expirationDate", "owner"])):
         attrs = {"status": r["status"]}
         yield event(ctx, M["CONTRACT_EFFECTIVE"], r["contractId"], in_window(ctx, iso_ts(ctx, r["effectiveDate"])),
-                    "contracts", user=r["owner"], attrs=attrs)
+                    "contracts", user=r["owner"], hashed=True, attrs=attrs)
         expired = in_window(ctx, iso_ts(ctx, r["expirationDate"]))
         if expired and expired[0].date() <= ctx.run_date:
-            yield event(ctx, M["CONTRACT_EXPIRED"], r["contractId"], expired, "contracts", user=r["owner"],
+            yield event(ctx, M["CONTRACT_EXPIRED"], r["contractId"], expired, "contracts", user=r["owner"], hashed=True,
                         attrs=attrs)

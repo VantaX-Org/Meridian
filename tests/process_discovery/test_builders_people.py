@@ -11,7 +11,6 @@ import pytest
 
 from api.models.process_model import ID_PATTERN
 from api.services.process_discovery import builders
-from api.services.process_discovery.builders import arb, cnq, htr, mdg, sfx
 from api.services.process_discovery.events import MemoryFrames, collect, iso_ts, make_context, sap_ts
 from sap.process_definitions import reference_document
 from tests.process_discovery.test_builders_core import JNB, RUN, by, df
@@ -217,7 +216,7 @@ def test_arb_contracts_expire_only_up_to_run_date():
     assert [e.activity for e in ev if e.case_id == "C1"] == ["CONTRACT_EFFECTIVE", "CONTRACT_EXPIRED"]
     assert [e.activity for e in ev if e.case_id == "C2"] == ["CONTRACT_EFFECTIVE"]  # expires after RUN
     (req,) = by(ev, "CREATE_REQUISITION")
-    assert req.resource == "buyer1" and req.case_type == "requisition"
+    assert req.resource != "buyer1" and len(req.resource) == 32 and req.case_type == "requisition"
 
 
 def test_cnq_first_expense_then_submit_with_statuses_as_attributes():
@@ -226,7 +225,7 @@ def test_cnq_first_expense_then_submit_with_statuses_as_attributes():
     incur, submit = ev
     assert incur.ts == datetime(2026, 1, 10, tzinfo=JNB) and incur.ts_precision == "day"
     assert incur.object_refs == (("entryId", "E1"), ("entryId", "E2"))
-    assert submit.resource == "emp1@corp"
+    assert submit.resource != "emp1@corp" and len(submit.resource) == 32
     for e in ev:
         assert dict(e.attributes) == {"approvalStatus": "A_APPR", "paymentStatus": "P_PAID"}
     assert not any("APPR" in e.activity or "PAID" in e.activity for e in ev)
@@ -258,3 +257,9 @@ def test_iso_day_uses_local_date_near_midnight():
     ny = make_context(MemoryFrames({}), "t1", "successfactors", RUN, tz_name="America/New_York")
     assert iso_ts(ny, "2026-02-01T02:00:00Z", day=True)[0].date() == date(2026, 1, 31)
     assert iso_ts(ctx, "2026-01-31T23:30:00Z", day=True)[0].date() == sap_ts(ctx, "20260201")[0].date()
+
+
+@pytest.mark.parametrize("l1,raw", [("ARB", "buyer1"), ("CNQ", "emp1@corp")])
+def test_cloud_user_ids_are_hashed_not_stored_raw(l1, raw):
+    resources = {e.resource for e in run(l1) if e.resource}
+    assert resources and raw not in resources and all(len(r) == 32 for r in resources)

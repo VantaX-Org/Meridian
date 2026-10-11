@@ -292,7 +292,12 @@ def generate(base: ProcessModelDocument, mining: MiningResult, mapping: Sequence
     keys = unique_keys(a for r in mining.by_type.values() for a in r.activities)
     for ct, r in sorted(mining.by_type.items()):
         rows = {a: mapping_row(a, [m for m in mapping if m.case_type == ct]) for a in r.activities}
-        for a in sorted(r.activities, key=lambda a: (rows[a].order if rows[a] else 1_000_000, a)):
+
+        def order(a: str) -> tuple[int, str]:
+            row = rows[a]
+            return (row.order if row else 1_000_000, a)
+
+        for a in sorted(r.activities, key=order):
             l5_of[(ct, a)] = ix.place(a, r.activities[a].l5_id, rows[a], keys[a])
 
     # Stats per level; a node seen by several case types keeps the one with the most cases.
@@ -311,11 +316,12 @@ def generate(base: ProcessModelDocument, mining: MiningResult, mapping: Sequence
                     best[x] = st
 
     p = mining.by_type.get(mining.primary)
-    known = sum(a.auto_known for a in p.activities.values()) if p else 0
+    acts = list(p.activities.values()) if p else []
+    known = sum(a.auto_known for a in acts)
     root.discovery = DiscoveryStats(
         case_count=p.cases if p else 0, share=1.0 if p and p.cases else 0.0, event_count=p.events if p else 0,
         median_seconds=p.median_seconds if p else None, p90_seconds=p.p90_seconds if p else None,
-        automation_rate=round(sum(a.auto_events for a in p.activities.values()) / known, 6) if known else None,
+        automation_rate=round(sum(a.auto_events for a in acts) / known, 6) if known else None,
         fitness=p.conformance.fitness if p else None, observed=bool(p and p.cases), case_type=mining.primary)
     for nodes in (ix.l2, ix.l3, ix.l4, ix.l5):
         for x, node in nodes.items():

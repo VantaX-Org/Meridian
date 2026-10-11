@@ -89,7 +89,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
             # Original and reversal point at each other; only the later document is the reversal event.
             rev = docs.get((key[0], h["STBLG"], h["STJAH"] or key[2]))
             rev_when = sap_ts(ctx, rev["CPUDT"], rev["CPUTM"]) if rev else None
-            if rev_when and when and rev_when[0] >= when[0] and (rev_when[0], rev["BELNR"]) > (when[0], key[1]):
+            if rev and rev_when and when and rev_when[0] >= when[0] and (rev_when[0], rev["BELNR"]) > (when[0], key[1]):
                 yield ev(M["REVERSE_DOC"], key, rev_when, "BKPF", rev["USNAM"],
                          refs=(("STBLG", f"{h['STBLG']}/{h['STJAH']}"),))
 

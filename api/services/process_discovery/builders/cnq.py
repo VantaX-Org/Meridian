@@ -40,8 +40,8 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
             first[r["reportId"]] = when
     for report, when in first.items():
         yield event(ctx, M["INCUR_EXPENSE"], report, in_window(ctx, when), "entries",
-                    user=reports[report]["ownerLoginId"] if report in reports else "",
+                    user=reports[report]["ownerLoginId"] if report in reports else "", hashed=True,
                     refs=[("entryId", e) for e in sorted(entries[report])], attrs=attrs(report))
     for report, r in reports.items():
         yield event(ctx, M["SUBMIT_REPORT"], report, in_window(ctx, iso_ts(ctx, r["submitDate"])), "reports",
-                    user=r["ownerLoginId"], attrs=attrs(report))
+                    user=r["ownerLoginId"], hashed=True, attrs=attrs(report))
