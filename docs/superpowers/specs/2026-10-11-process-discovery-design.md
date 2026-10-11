@@ -52,7 +52,9 @@ The brief contains three corrections:
 - USR02 is already read (`:439`), but without `USTYP`.
 - The OTC copy-control flow `_document_flow` is at `config_intelligence/process_flow_derivation.py:175`, not `:182`.
 
-DDIC files exist under `sap/dictionaries/ecc6/tables/` for every SAP table this spec reads, with five exceptions: `VBFA`, `AFRU`, `TCDOB`, `T529T` and `MATDOC`. This design does not read those five tables. §1.2 states the replacement for each.
+DDIC files exist under `sap/dictionaries/ecc6/tables/` for every ECC table this spec reads, with five exceptions: `VBFA`, `AFRU`, `TCDOB`, `T529T` and `MATDOC`. This design does not read the first four. §1.2 states the replacement for each.
+
+`MATDOC` is read on `s4hana_onprem` (ruling 38). There is no S/4 table directory today: the S/4 dictionary is the ECC bundle plus `sap/dictionaries/s4hana_delta.yaml`, applied by `_apply_s4_delta` (`sap/ddic.py:260`). The delta lists `MKPF` and `MSEG` as obsolete tables replaced by `MATDOC` (`s4hana_delta.yaml:51-56`). It has no way to add a table that does not exist in ECC. Wave 19 therefore adds `sap/dictionaries/s4hana/tables/MATDOC.json` and has `get_dictionary("s4hana")` load that directory after the delta (§1.3).
 
 ---
 
@@ -84,7 +86,18 @@ PROCESS_EVENTS_DATA: dict[str, dict[str, set[str]]] = {...}   # module -> table 
   - in monthly slices of its own date window, or
   - `via` a parent's primary-key IN-list (60 keys per clause, `in_lists`), where the parent was read in monthly slices.
 - A `via` edge always joins on a prefix of the child's primary key, or on a field the child has an index on. This spec uses only primary-key edges.
-- `BSEG`, `VBFA`, `MATDOC` and full `CDPOS` are never read.
+- `BSEG`, `VBFA` and full `CDPOS` are never read.
+- `MATDOC` is read only on `s4hana_onprem`, only in `BUDAT` monthly slices, and only under the per-slice row guard below. It is never read unsliced.
+
+**MATDOC row guard.** `MATDOC` has no header table to page through, so the month slice is the read unit. `process_event_windows.yaml` gives MATDOC two extra keys: `max_slice_rows: 30000` and `split_by: [WERKS]`. `connectivity_manager.extract` handles each month slice in these steps:
+
+1. Read the slice with `read_table_full(..., max_rows=30001)`.
+2. If it returns 30,000 rows or fewer, keep it.
+3. If it returns 30,001 rows, discard it. Re-read the month once per plant, adding `WERKS = '<plant>'` to the slice `where`. The plant list is the `T001W.WERKS` config read (whole, `CONFIG_MAX_ROWS`), which the PP and PM modules add on `s4hana_onprem`.
+4. If one plant-month still returns 30,001 rows, split that plant-month into calendar days on `BUDAT`.
+5. If one plant-day still returns 30,001 rows, keep the first 30,000 rows. Record `MATDOC` under `stats.truncated_tables` with the plant and day, and mark the L1 `partial`.
+
+No single RFC read of MATDOC returns more than 30,001 rows. The guard keeps every read far below the size at which a grid read hangs the SAP GUI.
 
 **Row caps.** Every process-event table uses `max_rows=MERIDIAN_EXTRACT_MAX_ROWS`, which defaults to 5,000,000 (`connectivity_manager.py`). When a table hits the cap, the run is marked `truncated` for that L1 in `process_discovery_runs.stats.truncated_tables`, and the UI shows the Notice "Window truncated at 5,000,000 rows; narrow the period."
 
@@ -96,7 +109,7 @@ PROCESS_EVENTS_DATA: dict[str, dict[str, set[str]]] = {...}   # module -> table 
 
 ### 1.2 Tables per L1
 
-Window column: `24m` means 24 months back on the named field, `via X` means read by X's primary keys, and `slice` means monthly slices. Every table also reads its DDIC primary key. Every L1 reads `USR02 (BNAME, USTYP, CLASS)` once, whole, as a config-class read capped at `CONFIG_MAX_ROWS = 50_000`.
+Window column: `24m` means 24 months back on the named field, `via X` means read by X's primary keys, and `slice` means monthly slices. Every table also reads its DDIC primary key, except `MATDOC`. Its key is the technical `KEY1`…`KEY6`, which the builders do not use, so MATDOC reads only its listed fields. `MBLNR`, `MJAHR` and `ZEILE` identify the line. Every L1 reads `USR02 (BNAME, USTYP, CLASS)` once, whole, as a config-class read capped at `CONFIG_MAX_ROWS = 50_000`.
 
 **PTP** (`process_events_ptp`)
 
@@ -113,6 +126,8 @@ Window column: `24m` means 24 months back on the named field, `via X` means read
 | CDPOS | OBJECTCLAS, OBJECTID, CHANGENR, TABNAME, TABKEY, FNAME, CHNGIND, VALUE_NEW | via CDHDR, extra where `FNAME IN ('FRGZU','FRGKE','MENGE','NETPR','EINDT','LOEKZ','KEY')` | CDHDR→CDPOS (exists in `joins.yaml:232`, reused as is) |
 
 `via_filters` uses the most selective join field (`:381-383`). For BKPF→BSAK that field is `BELNR`, and the BUKRS and GJAHR match is applied afterwards in the builder. For CDHDR→CDPOS it is `CHANGENR`.
+
+PTP goods receipts come from `EKBE` (`VGABE='1'`) on both `ecc` and `s4hana_onprem`. EKBE is a normal table in S/4HANA, so PTP does not read MKPF, MSEG or MATDOC.
 
 **OTC** (`process_events_otc`)
 
@@ -149,9 +164,15 @@ BKPF uses a 12-month window, not 24, because it is the highest-volume header in 
 | JCDS | OBJNR, STAT, CHGNR, UDATE, UTIME, USNAM, INACT | via AUFK | AUFK→JCDS `{OBJNR: OBJNR}` |
 | MKPF | MBLNR, MJAHR, CPUDT, CPUTM, USNAM, BLART | CPUDT 24m, slice (ECC only) | (root) |
 | MSEG | MBLNR, MJAHR, ZEILE, BWART, AUFNR, WERKS | via MKPF, extra where `BWART IN ('101','102','261','262')` (ECC only) | MKPF→MSEG `{MBLNR: MBLNR, MJAHR: MJAHR}` |
+| MATDOC | MBLNR, MJAHR, ZEILE, BWART, MATNR, WERKS, LGORT, BUDAT, CPUDT, CPUTM, USNAM, EBELN, EBELP, AUFNR, KDAUF, KDPOS, VBELN_IM, VBELP_IM, RECORD_TYPE | BUDAT 24m, slice, row guard (§1.1), extra where `RECORD_TYPE = 'MDOC' AND BWART IN ('101','102','261','262')` (`s4hana_onprem` only) | (root) |
+| T001W | WERKS | config (whole) (`s4hana_onprem` only, for the MATDOC split) | (none) |
 | CDHDR / CDPOS | as PTP | `OBJECTCLAS IN ('STUE')` | as PTP |
 
-On `s4hana_onprem`, MKPF and MSEG are compatibility views over MATDOC (`sap/dictionaries/s4hana_delta.yaml:51-56`), and MATDOC has no DDIC file. The plan skips MKPF and MSEG for that system type. The goods-movement L5s then read "not observed on S/4HANA". Production confirmations come from JCDS status `I0009`/`I0010`, not from AFRU, which has no DDIC file.
+On `s4hana_onprem`, MKPF and MSEG are compatibility views over MATDOC (`sap/dictionaries/s4hana_delta.yaml:51-56`). The plan never reads them there. It reads MATDOC instead, and on `ecc` it reads MKPF and MSEG and never MATDOC. `plan_modules` chooses by `system_type`. MATDOC carries the header fields `BUDAT`, `CPUDT`, `CPUTM` and `USNAM` on every line, so no header read or `via` edge is needed.
+
+**MATDOC record filter.** The condition is `RECORD_TYPE = 'MDOC'`. MATDOC also holds rows that are not material-document lines, such as stock aggregates and archive or compression carry-forward rows. Those rows carry other `RECORD_TYPE` values, and the filter excludes every one of them. The filter is part of every slice `where`, including the WERKS and day splits.
+
+**MATDOC fields.** The 19 fields are the MATDOC names in SAP S/4HANA. No field was dropped. `MBLNR`, `MJAHR` and `ZEILE` are ordinary fields in MATDOC, not its key. `EBELN`, `EBELP`, `KDAUF`, `KDPOS`, `VBELN_IM` and `VBELP_IM` go into `object_refs` and attributes only. They do not create events. Production confirmations come from JCDS status `I0009`/`I0010`, not from AFRU, which has no DDIC file.
 
 **PM** (`process_events_pm`)
 
@@ -163,9 +184,10 @@ On `s4hana_onprem`, MKPF and MSEG are compatibility views over MATDOC (`sap/dict
 | AFIH | AUFNR, WARPL, EQUNR, IWERK | via AUFK | AUFK→AFIH `{AUFNR: AUFNR}` |
 | JCDS | as PP | via AUFK | AUFK→JCDS |
 | MKPF / MSEG | as PP, `BWART IN ('261','262')` | as PP (ECC only) | as PP |
+| MATDOC / T001W | as PP, `RECORD_TYPE = 'MDOC' AND BWART IN ('261','262')` | as PP (`s4hana_onprem` only) | as PP |
 | CDHDR / CDPOS | as PTP | `OBJECTCLAS IN ('QMEL','EQUI')`; `FNAME IN ('PRIOK','KEY')` | as PTP |
 
-When a table is listed in both PP and PM, `plan_modules` merges the two plans into one read with the union of the `where` filters (`AUTYP IN ('10','30')`). The builders then split the rows by AUTYP.
+When a table is listed in both PP and PM, `plan_modules` merges the two plans into one read with the union of the `where` filters (`AUTYP IN ('10','30')`). The builders then split the rows by AUTYP. MATDOC merges the same way into one read with `BWART IN ('101','102','261','262')`, and the builders split the rows by the order's AUTYP through `AUFNR`.
 
 **QM** (`process_events_qm`)
 
@@ -197,6 +219,8 @@ The usage decision in QAVE has no time field (`VZEIT` is absent from the DDIC). 
 | LTAK | LGNUM, TANUM, BWLVS, BDATU, BZEIT, BNAME, BETYP, BENUM, KQUIT, VBELN | BDATU 12m, slice (ECC WM) | (root) |
 | LTAP | LGNUM, TANUM, TAPOS, QDATU, QZEIT, QNAME, VLTYP, NLTYP, PQUIT | via LTAK | LTAK→LTAP (exists, `joins.yaml:218`) |
 | /SCWM/ORDIM_C | LGNUM, TANUM, TAPOS, TOSTAT, TRART, PROCTY, CREATED_AT, CREATED_BY, CONFIRMED_AT, CONFIRMED_BY, VLPLA, NLPLA | CONFIRMED_AT 12m, slice (system type `ewm`) | (root) |
+
+WH cases are transfer orders and warehouse tasks, not material documents. WH reads no MKPF, MSEG or MATDOC on any system type.
 
 **HTR** (`process_events_htr`)
 
@@ -248,6 +272,8 @@ PA0002 and PA0008 read keys, dates and user only. Names, salaries and other payl
 | `sap/dictionaries/process_event_windows.yaml` | one entry per root table above: `{field, months, slice_months: 1, where}` |
 | `sap/dictionaries/process_event_joins.yaml` | the edges in the "Edge" columns above, excluding the two that already exist in `joins.yaml` |
 | `sap/dictionaries/ecc6/tables/BSAS.json` | only when missing. Same format as `BSAK.json`, from the ECC 6.0 standard DDIC |
+| `sap/dictionaries/s4hana/tables/MATDOC.json` | new. Same JSON format as `ecc6/tables/MSEG.json` (`table`, `description`, `source`, `fields[]` with `pos`, `name`, `key`, `data_element`, `domain`, `type`, `length`, `decimals`, `description`, `check_table`). Content comes from the SAP S/4HANA standard DDIC for MATDOC (DD03L), with `source` naming it. It must contain at least the 19 fields of §1.2 and the key fields as DD03L defines them. Field types are taken from DD03L, not copied from MSEG by assumption |
+| `sap/ddic.py` | `get_dictionary("s4hana")` loads `s4hana/tables/*.json` after `_apply_s4_delta` and before the canonical views. An ECC table is never copied there; the directory holds only tables that do not exist in ECC 6.0 |
 
 `tests/checks/test_joins_valid.py` is extended to load `process_event_joins.yaml`, so every edge field must exist in the dictionaries.
 
@@ -490,11 +516,16 @@ The template L4s R2R-BNK-FI12, R2R-BNK-FBZP, R2R-BNK-FTXP and R2R-CO-KE51 have n
 | 6 | JCDS `STAT='I0009'` | `CONFIRM_ORDER` | Confirm order | `PP-ORD-CO01-X_CONFIRM` | Y |
 | 7 | MSEG `BWART='101'` with `AUFNR` = case | `GOODS_RECEIPT_ORDER` | Receive goods from order | `PP-ORD-CO01-X_GOODS_RECEIPT` | Y |
 | 8 | MSEG `BWART IN ('102','262')` | `REVERSE_MOVEMENT` | Reverse goods movement | `PP-ORD-CO01-X_REVERSE_MOVEMENT` | N |
+| 4 | MATDOC `RECORD_TYPE='MDOC'`, `BWART='261'`, `AUFNR` = case; ts CPUDT+CPUTM; resource USNAM | `ISSUE_COMPONENTS` | Issue components | `PP-ORD-CO01-X_GOODS_ISSUE` | N |
+| 7 | MATDOC `RECORD_TYPE='MDOC'`, `BWART='101'`, `AUFNR` = case; ts CPUDT+CPUTM; resource USNAM | `GOODS_RECEIPT_ORDER` | Receive goods from order | `PP-ORD-CO01-X_GOODS_RECEIPT` | Y |
+| 8 | MATDOC `RECORD_TYPE='MDOC'`, `BWART IN ('102','262')`, `AUFNR` = case; ts CPUDT+CPUTM; resource USNAM | `REVERSE_MOVEMENT` | Reverse goods movement | `PP-ORD-CO01-X_REVERSE_MOVEMENT` | N |
 | 9 | JCDS `STAT='I0012'` | `DELIVER_ORDER` | Order delivered | `PP-ORD-CO01-X_DELIVERED` | N |
 | 10 | JCDS `STAT='I0045'` | `TECO_ORDER` | Technically complete order | `PP-ORD-CO01-X_TECO` | Y |
 | 11 | JCDS `STAT='I0046'` | `CLOSE_ORDER` | Close order | `PP-ORD-CO01-X_CLOSE` | N |
 | 1 | case type `bom`: CDHDR class STUE, `CHANGE_IND='I'` | `CREATE_BOM` | Create bill of material | `PP-BOM-CS01-01` | Y |
 | 2 | CDPOS class STUE, `TABNAME='STPO'` | `CHANGE_BOM_ITEM` | Change BOM item | `PP-BOM-CS01-02` | N |
+
+The MATDOC rows apply on `s4hana_onprem` and the MSEG rows on `ecc`. They give the same activity key, L5 id, Order and `object_refs` (`MBLNR/MJAHR`), so ECC and S/4 models of the same process compare one to one. `MKPF` supplies the timestamp and user for the MSEG rows; MATDOC carries them on the line.
 
 Order row 2 needs class `ORDER` in the CDHDR filter. The PP and PM CDHDR reads therefore both include `'ORDER'`, with `FNAME IN ('GSTRP','GLTRP','PRIOK','KEY')`. JCDS rows with status codes not listed here become `STATUS_<STAT>` under rule 2 of §4.2 (`PP-ORD-CO01-X_STATUS_<STAT>`).
 
@@ -512,6 +543,7 @@ Attributes: `AUART`, `BWART`, `STAT`. Org: `WERKS`.
 | 3 | AUFK `AUTYP='30'`, AFIH `WARPL<>''` | `CREATE_ORDER_FROM_PLAN` | Create order from maintenance plan | `PM-PLN-IP01-02` | Y |
 | 4 | JCDS `STAT='I0002'` | `RELEASE_ORDER` | Release order | `PM-PLN-IW31-X_RELEASE` | Y |
 | 5 | MSEG `BWART='261'`, `AUFNR` = case | `ISSUE_SPARES` | Issue spare parts | `PM-PLN-IW31-02` | N |
+| 5 | MATDOC `RECORD_TYPE='MDOC'`, `BWART='261'`, `AUFNR` = case; ts CPUDT+CPUTM; resource USNAM (`s4hana_onprem`) | `ISSUE_SPARES` | Issue spare parts | `PM-PLN-IW31-02` | N |
 | 6 | JCDS `STAT='I0010'` | `PARTIAL_CONFIRM` | Partially confirm order | `PM-PLN-IW31-X_PARTIAL_CONFIRM` | N |
 | 7 | JCDS `STAT='I0009'` | `CONFIRM_ORDER` | Confirm order | `PM-PLN-IW31-X_CONFIRM` | Y |
 | 8 | JCDS `STAT='I0045'` | `TECO_ORDER` | Technically complete order | `PM-PLN-IW31-X_TECO` | Y |
@@ -1169,10 +1201,10 @@ These waves continue `spec.md` §10 from 19. Each wave is one reviewable PR-size
 
 | # | Wave | Files touched | Acceptance checks |
 |---|---|---|---|
-| 19 | **Event extraction plan** | `sap/extraction_plan.py` (`PROCESS_EVENT_MODULES`, `PROCESS_EVENTS_DATA`, `slices`, `extra_edges` in `via_filters`, window file switch), `sap/dictionaries/process_event_windows.yaml`, `sap/dictionaries/process_event_joins.yaml`, `sap/dictionaries/ecc6/tables/BSAS.json` (if missing), `api/services/connectivity_manager.py` (slice loop), `sap/extraction_registry.py` (`process_events_sfx`, `_arb`, `_cnq`), `tests/test_extraction_plan_process_events.py`, `tests/checks/test_joins_valid.py` | `plan_modules(["process_events_ptp"], ecc6)` returns exactly the §1.2 PTP tables and fields, with `via` set as listed. Every root table has month slices over 24m. DQ module plans are byte-identical before and after (snapshot of `plan_modules` for every DQ module). No `via` edge is added to `joins.yaml`. Every `process_event_joins.yaml` field exists in the DDIC. Cloud modules list only existing entity sets. |
+| 19 | **Event extraction plan** | `sap/extraction_plan.py` (`PROCESS_EVENT_MODULES`, `PROCESS_EVENTS_DATA`, `slices`, `extra_edges` in `via_filters`, window file switch), `sap/dictionaries/process_event_windows.yaml`, `sap/dictionaries/process_event_joins.yaml`, `sap/dictionaries/ecc6/tables/BSAS.json` (if missing), `sap/dictionaries/s4hana/tables/MATDOC.json`, `sap/ddic.py` (load `s4hana/tables`), `api/services/connectivity_manager.py` (slice loop, MATDOC row guard and WERKS/day split), `sap/extraction_registry.py` (`process_events_sfx`, `_arb`, `_cnq`), `tests/test_extraction_plan_process_events.py`, `tests/checks/test_joins_valid.py` | `plan_modules(["process_events_ptp"], ecc6)` returns exactly the §1.2 PTP tables and fields, with `via` set as listed. Every root table has month slices over 24m. DQ module plans are byte-identical before and after (snapshot of `plan_modules` for every DQ module). No `via` edge is added to `joins.yaml`. Every `process_event_joins.yaml` field exists in the DDIC. `dictionary_for_system("s4hana_onprem")` has `MATDOC`, and every one of the 19 MATDOC fields in §1.2 exists in `MATDOC.json`; the ECC dictionary has no `MATDOC`. `plan_modules(["process_events_pp"], s4hana)` reads MATDOC and T001W and no MKPF or MSEG; on ECC it reads MKPF and MSEG and no MATDOC. Every MATDOC slice `where` contains `RECORD_TYPE = 'MDOC'` and a one-month BUDAT range. A fake RFC returning 30,001 rows for a month triggers the per-plant re-read, then the per-day split, and no read asks for more than 30,001 rows. No MATDOC read is ever issued without a BUDAT range. Cloud modules list only existing entity sets. |
 | 20 | **Event log schema** | `db/migrations/versions/077_process_event_log.py`, `db/schema.py` (3 models), `tests/test_process_event_log_migration.py` | Upgrade and downgrade on an empty DB. RLS is enabled and forced on all three tables. A session with another `app.tenant_id` reads 0 rows. Indexes exist. |
 | 21 | **Builders PTP, OTC, R2R** | `api/services/process_discovery/__init__.py`, `events.py` (`EventRow`, timestamp precedence, hashing, USR02 automation), `builders/ptp.py`, `otc.py`, `r2r.py`, `tests/process_discovery/fixtures/*.parquet` (synthetic), `tests/process_discovery/test_builders_core.py` | Each mapping row of §2.3 for these L1s fires on a fixture row and produces its `activity`, `l5_id`, `ts`, `ts_precision` and `resource`. Day-precision `seq` follows Order. A rerun gives identical rows. The GR shared across two PO items appears in both cases with the same `object_refs`. |
-| 22 | **Builders PP, PM, QM, PS, WH** | `builders/pp.py`, `pm.py`, `qm.py`, `ps.py`, `wh.py`, `tests/process_discovery/test_builders_logistics.py` | Same as wave 21 for these L1s. The PM and QM notification split by TQ80, and the fallback by PRUEFLOS, are both tested. On `s4hana_onprem` MKPF and MSEG are skipped, and their L5s are marked not observed. JCDS unknown status becomes `X_STATUS_<STAT>`. |
+| 22 | **Builders PP, PM, QM, PS, WH** | `builders/pp.py`, `pm.py`, `qm.py`, `ps.py`, `wh.py`, `tests/process_discovery/test_builders_logistics.py` | Same as wave 21 for these L1s. The PM and QM notification split by TQ80, and the fallback by PRUEFLOS, are both tested. On `s4hana_onprem` the MATDOC rows fire for BWART 101, 102, 261 and 262 and give the same activity, `l5_id`, `ts`, `resource` and `object_refs` as the MSEG fixture rows on `ecc`. A MATDOC fixture row with `RECORD_TYPE` other than `'MDOC'` produces no event. JCDS unknown status becomes `X_STATUS_<STAT>`. |
 | 23 | **Builders HTR, MDG, SFX, ARB, CNQ** | `builders/htr.py`, `mdg.py`, `sfx.py`, `arb.py`, `cnq.py`, `tests/process_discovery/test_builders_people.py` | No raw PERNR or userId in any stored column (assert on all columns). Hash is stable per tenant and differs across tenants. SFX status keys normalise to `ID_PATTERN`. Concur approval and payment stay attributes. |
 | 24 | **Mining** | `api/services/process_discovery/mining.py`, `filters.py` (`ProcessFilter`), `tests/process_discovery/test_mining.py` | On a fixture log of known cases: DFG counts, variant shares, medians, p90, rework and loops equal hand-computed values. Conformance missing, extra and out-of-order counts and fitness equal the §3.5 formula. Every filter narrows correctly. 2,000-variant cap with the "other" bucket. `EXPLAIN` shows `ix_pe_case` is used. |
 | 25 | **Generation + model** | `api/models/process_model.py` (`Source`, `DiscoveryStats`, `DiscoveryEdge`, optional `discovery`/`source`), `api/services/process_discovery/generate.py`, `tests/process_discovery/test_generate.py`, existing `tests/test_process_model*.py` untouched | All four §4.2 rules are produced. All ids match `ID_PATTERN`. Not-observed template L5s are kept. Stored models from before this wave still validate. Upward aggregation and collapsed edges match fixtures. Every L5 has case_count, share and median. |
@@ -1201,8 +1233,8 @@ The 50-case floor exists because a DFG over fewer cases is not a process, it is 
 | PTP | ecc, s4hana_onprem | `po_item` | PR-ME51N, PO-ME21N, REL-ME29N, GR-MIGO, IV-MIRO, PAY-F110, VM-FK01 | none | CDHDR not readable (authorisation): change and release L5s not observed, coverage `partial` |
 | OTC | ecc, s4hana_onprem | `so_item` | SO-VA01, DEL-VL01N, BIL-VF01, DUN-F150 (clearing), CM-FD01 | none | BSAD unreadable: clearing not observed, `partial` |
 | R2R | ecc, s4hana_onprem | `fi_doc` | GL-FB50, AA-ABZON, AA-AFAB, GL-FS00, AA-AS01, CO-KS01, CO-KA01, CO-KO01 | BNK-FI12, BNK-FBZP, BNK-FTXP, CO-KE51 | BSAS missing from DDIC: clearing not observed, `partial` |
-| PP | ecc; s4hana_onprem without goods movements | `prod_order` | ORD-CO01, BOM-CS01 | RTG-CR01, RTG-CA01, ORD-MD01 | s4hana_onprem: goods-movement L5s not observed (MATDOC), `partial` |
-| PM | ecc; s4hana_onprem without goods movements | `pm_order` | PLN-IW21, PLN-IW31, PLN-IP01 (-02 only), TO-IE01 | TO-IL01 | same MATDOC rule, `partial` |
+| PP | ecc (MKPF/MSEG), s4hana_onprem (MATDOC) | `prod_order` | ORD-CO01, BOM-CS01 | RTG-CR01, RTG-CA01, ORD-MD01 | MATDOC missing from the S/4 DDIC or not authorised: goods-movement L5s not observed, `partial`. A plant-day hit the MATDOC row guard: `partial`, named in `truncated_tables` |
+| PM | ecc (MKPF/MSEG), s4hana_onprem (MATDOC) | `pm_order` | PLN-IW21, PLN-IW31, PLN-IP01 (-02 only), TO-IE01 | TO-IL01 | same MATDOC rule as PP |
 | QM | ecc, s4hana_onprem | `insp_lot` | IN-QA01, IN-QM01 | MD-QS21, MD-QP01 | TQ80 unreadable: notification split by PRUEFLOS |
 | PS | ecc, s4hana_onprem | `wbs` | PRJ-CJ01, PRJ-CJ02 | PRJ-CJ02S | none |
 | WH | ecc (WM: LT06, LT03, LT01); ewm (SCWM_PRDI, SCWM_PRDO, SCWM_MON) | `transfer_order` / `warehouse_task` | per system type | the other system type's L4s | system without WM tables (LTAK empty): `reference` |
@@ -1240,10 +1272,10 @@ These are not built:
 1. Hierarchy names follow the code (`process_definitions.py:3-9`). The brief's labels map onto them one level shifted (§4.1).
 2. Process-event extraction is a new set of plan modules in `extraction_plan.py`. It is not a registry change for ABAP. The modules are added only when explicitly requested.
 3. Process-event windows and `via` edges live in their own YAML files. `joins.yaml` and `extraction_windows.yaml` are untouched, so DQ grain and windows do not change.
-4. Large tables are read in monthly slices or via primary-key IN-lists only. BSEG, VBFA, MATDOC and full CDPOS are never read.
+4. Large tables are read in monthly slices or via primary-key IN-lists only. BSEG, VBFA and full CDPOS are never read. MATDOC is read only in BUDAT monthly slices under the row guard of ruling 38.
 5. VBFA is replaced by `LIPS.VGBEL/VGPOS` and `VBRP.AUBEL/AUPOS` for OTC links.
 6. AFRU is replaced by JCDS confirmation statuses `I0009`/`I0010`.
-7. On `s4hana_onprem`, goods movements are not read (MATDOC has no DDIC file). Those L5s show "not observed on S/4HANA".
+7. Reversed by ruling 38. (Was: on `s4hana_onprem`, goods movements are not read, and those L5s show "not observed on S/4HANA".)
 8. PRPS via `PSPHI` is the one non-key `via` edge, allowed because WBS volumes are small.
 9. USR02 is read for `BNAME, USTYP, CLASS`. `USTYP B/S` means automated. An unreadable USR02 shows "not available".
 10. The event log has three tables (`process_discovery_runs`, `process_events`, `process_variants`) in migration 077, with RLS and 730-day event retention.
@@ -1274,3 +1306,4 @@ These are not built:
 35. Coverage is discovered when there are at least 50 cases and no partial source, partial when cases exist with missing sources, and otherwise reference ("reference, not discovered").
 36. `s4hana_cloud` and `btp` are reference-only for all L1s. Each system's catalogue is separate.
 37. Three corrections to the brief are recorded: RSEG and BSAK are already extracted, USR02 is already read but without USTYP, and `_document_flow` is at `:175`.
+38. Ruling 7 is reversed at the user's request. On `s4hana_onprem`, goods movements are read from MATDOC with `RECORD_TYPE = 'MDOC'`, in BUDAT monthly slices, with a 30,000-row guard per read that splits by WERKS and then by day. MATDOC is never read unsliced. Its events use the same activity keys and L5 ids as MKPF/MSEG, so ECC and S/4 models compare one to one. Wave 19 adds `sap/dictionaries/s4hana/tables/MATDOC.json` and the loader for it.
