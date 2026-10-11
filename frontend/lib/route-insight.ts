@@ -13,6 +13,8 @@ export interface InsightFacts {
   affected: number;
   /** findings/aggregate cost_at_risk, when the tenant has a cost rate configured */
   costAtRisk?: number;
+  /** versions/compare delta between the latest run and its baseline: objects whose score moved */
+  moved?: { count: number; biggest?: { label: string; change: number }; href: string };
   worst?: { module: string; label: string; findings: number; critical: number };
   systems: number;
   waves: number;
@@ -95,12 +97,16 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   if (section === "migration") situation = `${n(f.waves)} migration wave${f.waves === 1 ? "" : "s"} defined. ${score}.`;
   if ((section === "inbox" || section === "mdm") && f.backlog !== null) situation = `${n(f.backlog)} item${f.backlog === 1 ? "" : "s"} waiting for a steward. ${score}.`;
 
-  const changed =
+  const mv = f.moved;
+  const moves = mv && mv.count > 0 ? `${n(mv.count)} object${mv.count === 1 ? "" : "s"} moved${mv.biggest ? `; biggest: ${mv.biggest.label} ${mv.biggest.change > 0 ? "+" : "-"}${Math.abs(mv.biggest.change)}` : ""}.` : null;
+  const scoreChanged =
     delta === null
       ? "No earlier run to compare against yet."
       : delta === 0
         ? "Score is unchanged since the previous run."
         : `Score ${delta > 0 ? "rose" : "fell"} ${Math.abs(delta)} points since the previous run.`;
+
+  const changed = moves ? (delta === null || delta === 0 ? moves : `${scoreChanged.replace(/ since the previous run\.$/, "")}; ${moves}`) : scoreChanged;
 
   const why =
     f.critical > 0
@@ -121,7 +127,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   return {
     situation: { sentence: situation, href: f.runId ? `/runs/${f.runId}` : "/runs", tone: tone(dqs) },
-    changed: { sentence: changed, href: "/runs", tone: delta === null || delta === 0 ? "neutral" : delta > 0 ? "go" : "no-go" },
+    changed: { sentence: changed, href: mv?.href ?? "/runs", tone: delta === null || delta === 0 ? "neutral" : delta > 0 ? "go" : "no-go" },
     why: { sentence: why + risk, href: `/objects${q(f.runId)}${f.critical > 0 ? `${f.runId ? "&" : "?"}severity=critical` : ""}`, tone: f.critical > 0 ? "no-go" : "neutral" },
     next,
   };

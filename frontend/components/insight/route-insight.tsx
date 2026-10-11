@@ -12,7 +12,7 @@ import { getFindingsAggregate } from "@/lib/api/findings";
 import { getExec, submitInsightFeedback } from "@/lib/api/insights";
 import { getWaves } from "@/lib/api/migration";
 import { getMetrics } from "@/lib/api/stewardship";
-import { getVersions } from "@/lib/api/versions";
+import { compareVersions, getVersions } from "@/lib/api/versions";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { buildInsight, sectionOf, type InsightFacts } from "@/lib/route-insight";
@@ -31,6 +31,14 @@ export function RouteInsight() {
   const hasRun = (versionsQ.data?.versions ?? []).some((v) => FINISHED.has(v.status));
   const runId = run ?? (versionsQ.data?.versions ?? []).find((v) => FINISHED.has(v.status))?.id;
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
+  const finished = (versionsQ.data?.versions ?? []).filter((v) => FINISHED.has(v.status));
+  // Changed cell: per-object movement between this run and its baseline (server picks the pair); falls back to the score delta.
+  const cmpQ = useQuery({
+    queryKey: ["insight", "compare", runId],
+    queryFn: () => compareVersions(undefined, runId as string),
+    enabled: !!section && finished.length >= 2 && !!runId,
+    retry: false,
+  });
   const wavesQ = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves, enabled: section === "migration" });
   const backlogQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, enabled: section === "inbox" || section === "mdm" });
   const llmQ = useQuery({ queryKey: ["health", "llm"], queryFn: getLlmHealth, enabled: !!section && hasRun, staleTime: 60_000 });
@@ -41,6 +49,10 @@ export function RouteInsight() {
 
   const agg = aggQ.data;
   const worst = [...(agg?.by_module ?? [])].sort((a, b) => b.critical - a.critical || b.findings - a.findings)[0];
+  const cmp = cmpQ.data;
+  const movers = Object.entries(cmp?.delta ?? {})
+    .filter(([, d]) => d.dqs_change !== 0)
+    .sort((a, b) => Math.abs(b[1].dqs_change) - Math.abs(a[1].dqs_change));
   const facts: InsightFacts = {
     hasRun,
     runId,
@@ -50,6 +62,13 @@ export function RouteInsight() {
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
     costAtRisk: agg?.cost_at_risk,
+    moved: cmp
+      ? {
+          count: movers.length,
+          biggest: movers[0] ? { label: formatModuleName(movers[0][0]), change: Math.round(movers[0][1].dqs_change * 10) / 10 } : undefined,
+          href: `/runs/${cmp.v1.id}/vs/${cmp.v2.id}`,
+        }
+      : undefined,
     worst: worst ? { module: worst.module, label: formatModuleName(worst.module), findings: worst.findings, critical: worst.critical } : undefined,
     systems: (systemsQ.data ?? []).length,
     waves: (wavesQ.data ?? []).length,
