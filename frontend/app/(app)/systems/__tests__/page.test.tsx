@@ -9,10 +9,11 @@ import type { SAPSystemExtended, SyncProfile } from "@/types/api";
 import type { SystemVersion } from "@/lib/api/system-objects";
 import SystemsPage from "../page";
 
+let currentSearch = "";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/systems",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(currentSearch),
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
@@ -25,6 +26,19 @@ const SYSTEM: SAPSystemExtended = {
 } as SAPSystemExtended;
 
 describe("systems list page", () => {
+  it("?health=healthy hides unhealthy systems", async () => {
+    currentSearch = "health=healthy";
+    const sick = { ...SYSTEM, id: "s2", name: "BW Down", health_status: "degraded" } as SAPSystemExtended;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM, sick]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 2 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.queryByText("BW Down")).not.toBeInTheDocument();
+    currentSearch = "";
+  });
+
   it("renders systems once loaded", async () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM]);
     vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });

@@ -16,6 +16,16 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 describe("ObjectsPage", () => {
+  it.each([["ready", "Ready Obj", "Blocked Obj"], ["not_ready", "Blocked Obj", "Ready Obj"]])("?verdict=%s filters rows", async (v, shown, hidden) => {
+    currentSearch = `run=v1&verdict=${v}`;
+    const mk = (module: string, label: string, readiness: "pass" | "warn") => ({ module, label, composite_score: 80, readiness, failing_checks: 0, affected_records: 0 });
+    vi.spyOn(objectsApi, "getObjects").mockResolvedValue({ run_id: "v1", objects: [mk("a", "Ready Obj", "pass"), mk("b", "Blocked Obj", "warn")] });
+    renderWithQuery(<ObjectsPage />);
+    await waitFor(() => expect(screen.getByText(shown)).toBeInTheDocument());
+    expect(screen.queryByText(hidden)).not.toBeInTheDocument();
+    currentSearch = "run=v1";
+  });
+
   it("renders one row per object with its readiness", async () => {
     vi.spyOn(objectsApi, "getObjects").mockResolvedValue({
       run_id: "v1",

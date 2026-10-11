@@ -103,14 +103,14 @@ export default function ObjectsPage() {
 
   const objs = data?.objects ?? [];
   const ready = objs.filter((o) => o.readiness === "pass").length;
-  const firstReady = objs.find((o) => o.readiness === "pass");
-  const firstNotReady = objs.find((o) => o.readiness !== "pass");
+  const verdict = search.get("verdict");
+  const shownObjs = verdict ? objs.filter((o) => (o.readiness === "pass") === (verdict === "ready")) : objs;
   const columns = makeColumns(run); // React Compiler memoizes on run
   const hero = objs.length > 0 && (
     <div className="flex flex-wrap gap-6">
       <Stat label="Objects" value={objs.length} />
-      <Stat label="Ready" value={ready} tone="go" href={firstReady ? `/objects/${firstReady.module}?run=${run}` : undefined} />
-      <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} href={firstNotReady ? `/objects/${firstNotReady.module}?run=${run}&tab=rules` : undefined} />
+      <Stat label="Ready" value={ready} tone="go" href={`/objects?run=${run}&verdict=ready`} />
+      <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} href={`/objects?run=${run}&verdict=not_ready`} />
     </div>
   );
 
@@ -121,7 +121,7 @@ export default function ObjectsPage() {
       table={
         <DataTable
           columns={columns}
-          data={data?.objects ?? []}
+          data={shownObjs}
           getRowId={(row) => row.module}
           onRowClick={(row) => router.push(`/objects/${row.module}?run=${run}&tab=rules`)}
         />

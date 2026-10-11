@@ -97,7 +97,10 @@ export default function SystemsPage() {
   });
   const configById = new Map(configQ.data?.systems.map((c) => [c.system_id, c]) ?? []);
   const [configFilter, setConfigFilter] = useUrlState("config", "");
-  const shown = configFilter ? systems.filter((s) => configById.get(s.id)?.status === configFilter) : systems;
+  const [healthFilter, setHealthFilter] = useUrlState("health", "");
+  const shown = systems
+    .filter((s) => !configFilter || configById.get(s.id)?.status === configFilter)
+    .filter((s) => !healthFilter || s.health_status === healthFilter);
 
   const cfgTotal = configQ.data?.total ?? 0;
   const cfgLoaded = configQ.data?.loaded ?? 0;
@@ -206,10 +209,12 @@ export default function SystemsPage() {
   return (
     <ExplorerPage
       filterBar={
-        configFilter ? (
+        configFilter || healthFilter ? (
           <div className="flex items-center gap-2 text-[13px]">
-            <span style={{ color: "var(--m-ink-2)" }}>Showing systems with configuration {CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter}.</span>
-            <Button variant="secondary" onClick={() => setConfigFilter("")}>Show all systems</Button>
+            <span style={{ color: "var(--m-ink-2)" }}>
+              {healthFilter ? `Showing ${HEALTH_LABEL[healthFilter as HealthStatus]?.toLowerCase() ?? healthFilter} systems.` : `Showing systems with configuration ${CONFIG_LABEL[configFilter as SystemConfigState] ?? configFilter}.`}
+            </span>
+            <Button variant="secondary" onClick={() => { setConfigFilter(""); setHealthFilter(""); }}>Show all systems</Button>
           </div>
         ) : undefined
       }
@@ -223,7 +228,7 @@ export default function SystemsPage() {
                 value={systems.filter((s) => s.health_status === "healthy").length}
                 tone={systems.some((s) => s.health_status !== "healthy") ? "at-risk" : "go"}
                 hint={`${systems.filter((s) => s.health_status !== "healthy").length} need attention`}
-                href={`/systems/${(systems.find((s) => s.health_status !== "healthy") ?? systems[0]).id}`}
+                href="/systems?health=healthy"
               />
             </>
           ) : null}
