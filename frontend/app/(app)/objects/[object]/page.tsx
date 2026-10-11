@@ -301,7 +301,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
         <ExportMenu options={exportOptions} />
       </div>
       <DataTable columns={columns} data={data.records} getRowId={(row) => row.record_key} />
-      <Pager page={page} pageCount={pageCount} onPageChange={setPage} />
+      <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
       <RootCauseSection run={run} ruleId={checkId} />
     </div>
   );

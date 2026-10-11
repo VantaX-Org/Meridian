@@ -439,7 +439,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         {items.length ? (
           <>
             <DataTable columns={columns} data={page} getRowId={(i) => i.id} />
-            {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} onPageChange={setItemPage} /> : null}
+            {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} pageSize={ITEM_PAGE_SIZE} total={items.length} onPageChange={setItemPage} /> : null}
           </>
         ) : (
           <EmptyState title="No items in this batch." />

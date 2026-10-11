@@ -141,7 +141,7 @@ export function DataTable<T>({
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
                       className={`px-2 text-[11px] leading-[14px] font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
                       style={{
-                        height: 36, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
+                        height: ROW_H, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
                       }}
                     >
@@ -176,7 +176,6 @@ export function DataTable<T>({
                 <tr
                   key={row.id}
                   className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"}`}
-                  aria-selected={bulkActions ? row.getIsSelected() : undefined}
                   tabIndex={activate ? 0 : undefined}
                   onClick={activate}
                   onKeyDown={

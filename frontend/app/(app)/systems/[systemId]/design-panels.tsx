@@ -72,7 +72,7 @@ export function TablesTab({ id }: { id: string }) {
           ))}
         </tbody>
       </table>
-      <Pager page={Math.floor(offset / PAGE) + 1} pageCount={Math.max(1, Math.ceil(total / PAGE))}
+      <Pager page={Math.floor(offset / PAGE) + 1} pageCount={Math.max(1, Math.ceil(total / PAGE))} pageSize={PAGE} total={total}
         onPageChange={(p) => setOffset((p - 1) * PAGE)} />
       <TableDrawer id={id} table={open} onClose={() => setOpen(null)} />
     </div>

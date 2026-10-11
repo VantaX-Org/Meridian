@@ -67,7 +67,7 @@ function CleaningQueueTab() {
             getRowId={(row) => row.batch_id}
             onRowClick={(row) => router.push(`/fix/${row.batch_id}`)}
           />
-          {pageCount > 1 && <Pager page={page} pageCount={pageCount} onPageChange={setPage} />}
+          {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={100} total={data?.total ?? 0} onPageChange={setPage} />}
         </div>
       }
     />
