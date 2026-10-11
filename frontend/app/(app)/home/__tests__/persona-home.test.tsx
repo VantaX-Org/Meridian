@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as versionsApi from "@/lib/api/versions";
+import * as settingsApi from "@/lib/api/settings";
 import * as shellApi from "@/lib/api/shell";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
@@ -69,6 +70,20 @@ describe("PersonaHomePage 404 handling", () => {
     await waitFor(() => expect(objectsApi.getObjects).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByText(/could not reach the server/i)).toBeNull();
+  });
+});
+
+describe("PersonaHomePage dimension weights", () => {
+  it("falls back to the default weights when settings fail to load", async () => {
+    vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
+    vi.spyOn(settingsApi, "getSettings").mockRejectedValue(new Error("forbidden"));
+
+    const { container } = renderWithQuery(<LeadHomePage />);
+
+    await waitFor(() => expect(settingsApi.getSettings).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(container.querySelector('[role=img][aria-label^="Score by dimension"]')?.getAttribute("aria-label")).toContain("Completeness · 25%"),
+    );
   });
 });
 

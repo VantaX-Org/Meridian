@@ -67,11 +67,12 @@ describe("HomePage data state", () => {
 
 describe("HomePage fresh install vs data", () => {
   it("fresh install shows the stepper card, a ghost ring and the Situation sentence", () => {
-    const { container } = render(<HomePage persona="lead" state="no-data" verdict={{ sentence1: "Zero modules scored." }} journey={{ systemsConnected: false, configLoaded: false, extracted: false, complete: false, step: null }} />);
+    const { container } = render(<HomePage persona="lead" state="no-data" verdict={{ sentence1: "Zero modules scored.", sentence2: "Second sentence." }} journey={{ systemsConnected: false, configLoaded: false, extracted: false, complete: false, step: null }} />);
     expect(screen.getByText("Get to your first score")).toBeInTheDocument();
     expect(container.querySelector('[data-ghost="ring"]')).not.toBeNull();
     expect(screen.getByTestId("home-verdict")).toHaveTextContent("No analysis yet. Connect a system and run the first extraction.");
     expect(screen.queryByText("Zero modules scored.")).toBeNull();
+    expect(screen.queryByText("Second sentence.")).toBeNull();
     expect(container.querySelector("[role=img][aria-label^=Score]")).toBeNull();
     expect(screen.getByText("Preview").closest("[aria-hidden]")).toBeNull();
   });

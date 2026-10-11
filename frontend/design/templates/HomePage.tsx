@@ -126,7 +126,7 @@ export function HomePage({
               >
                 {state === "no-data" ? NO_DATA_VERDICT : verdict?.sentence1}
               </p>
-              {verdict?.sentence2 && (
+              {state === "data" && verdict?.sentence2 && (
                 <p
                   className="text-[13px] leading-[18px]"
                   style={{ color: "var(--m-ink-2)" }}

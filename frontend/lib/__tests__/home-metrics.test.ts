@@ -136,11 +136,23 @@ describe("runCap", () => {
     expect(runCap(v)).toBeNull();
   });
 
-  it("is the lowest cap with summed criticals when every module is capped", () => {
+  it("is null when caps differ (the mean could exceed the lowest cap)", () => {
     const v = version("v1", "2026-01-01", { a: 70, b: 85 });
     capped(v, ["a"], "3 critical failures — score capped at 70", 3);
     capped(v, ["b"], "1 critical failure — score capped at 85", 1);
-    expect(runCap(v)).toEqual({ cap: 70, criticals: 4 });
+    expect(runCap(v)).toBeNull();
+  });
+
+  it("is null when one capped module's reason has no parsable cap", () => {
+    const v = version("v1", "2026-01-01", { a: 85, b: 85 });
+    capped(v, ["a"], "1 critical failure — score capped at 85", 1);
+    capped(v, ["b"], "capped", 2);
+    expect(runCap(v)).toBeNull();
+  });
+
+  it("is the shared cap with summed criticals when every module is capped at 85", () => {
+    const v = capped(version("v1", "2026-01-01", { a: 85, b: 80 }), ["a", "b"], "1 critical failure — score capped at 85", 1);
+    expect(runCap(v)).toEqual({ cap: 85, criticals: 2 });
   });
 
   it("is null with no modules or no parsable cap", () => {

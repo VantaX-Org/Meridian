@@ -137,15 +137,16 @@ export function objectTrend(versions: Version[], module: string): { x: string; y
 }
 
 /**
- * The cap on the run-wide DQS, or null. `runDqs` is a mean of per-module scores that are already capped, so a cap
- * is only a run-level cap when EVERY scored module is capped; one capped module among healthy ones moves the mean
- * only partly, and drawing its cap on the ring would misstate the headline. `criticals` sums the capped modules'
- * critical counts (all of them here). The cap number is read from the reason text ("... capped at 70"); the API has no field for it.
+ * The cap on the run-wide DQS, or null. `runDqs` is a mean of per-module scores that are already capped, so a single
+ * cap is only valid for the mean when EVERY scored module is capped, EVERY reason names its cap, and all caps are equal.
+ * Anything else (mixed or unparsable caps) returns null and the cap_reason Pill alone signals the cap. `criticals` sums
+ * the modules' critical counts (all of them are capped here). The number is read from the reason text
+ * ("... capped at 70"); the API has no field for it.
  */
 export function runCap(v: Version): { cap: number; criticals: number } | null {
   const mods = Object.values(v.dqs_summary ?? {});
   if (mods.length === 0 || !mods.every((m) => m.capped)) return null;
-  const caps = mods.map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1])).filter((n) => Number.isFinite(n));
-  if (caps.length === 0) return null;
-  return { cap: Math.min(...caps), criticals: mods.reduce((n, m) => n + m.critical_count, 0) };
+  const caps = mods.map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1]));
+  if (!caps.every((n) => Number.isFinite(n) && n === caps[0])) return null;
+  return { cap: caps[0], criticals: mods.reduce((n, m) => n + m.critical_count, 0) };
 }
