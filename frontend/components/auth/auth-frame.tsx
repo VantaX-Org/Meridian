@@ -11,7 +11,7 @@ import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { MeridianMark } from "@/components/meridian/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Field, Skeleton } from "@/design";
+import { Skeleton } from "@/design";
 import { useAuroraPrefs } from "@/hooks/use-theme";
 
 /** Markup shared by the signed-out forms, so each page keeps the same spacing. */
