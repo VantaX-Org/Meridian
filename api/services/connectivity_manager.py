@@ -549,7 +549,7 @@ class ConnectivityManager:
         snap = latest_snapshot_id(self.session, system_id)
         live = load_overlay(self.session, snap)[0] if snap else {}
         frames, coverage = {}, []
-        models: dict[str, tuple[set[str], set[str]] | str | None] = {}  # per entity, this extraction
+        models: dict[str, tuple[set[str], dict[str, set[str] | None]] | str | None] = {}  # per entity, this extraction
         options: dict[str, dict[str, str]] = {}
         if self.session is not None and system_id:
             from sqlalchemy import text as _text
@@ -592,7 +592,10 @@ class ConnectivityManager:
                 sel: dict[str, str] = {}
                 for prop, names in props.items():
                     nav, _, sub = prop.partition(".")
-                    if model is None or (prop in model[0] if not sub else nav in model[1]):
+                    # ponytail: a nav whose target type is not in the entity's $metadata goes unchecked
+                    target = model[1].get(nav) if model is not None and sub else None
+                    if model is None or (prop in model[0] if not sub else
+                                         nav in model[1] and (target is None or sub in target)):
                         sel[prop] = f"{nav}/{sub}" if sub else prop
                     else:
                         unavailable |= set(names)
@@ -656,8 +659,8 @@ class ConnectivityManager:
         return frames, coverage
 
     @staticmethod
-    def _sf_entity_model(connector, entity: str) -> tuple[set[str], set[str]] | str | None:
-        """(properties, navigation properties) of ``entity`` from the tenant's $metadata; a str
+    def _sf_entity_model(connector, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | str | None:
+        """(properties, {navigation: target properties}) of ``entity`` from the tenant's $metadata; a str
         (why) if the tenant does not have the entity; None if its metadata cannot be read."""
         from sap.successfactors import entity_model
 

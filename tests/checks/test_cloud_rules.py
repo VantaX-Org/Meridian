@@ -459,3 +459,48 @@ def test_not_found_trusts_the_http_status_over_the_message_text():
     assert _not_found(_http_error(404, "https://sf.example.test/odata/v2/Benefit"))
     assert not _not_found(_http_error(400, "https://sf.example.test/odata/v2/Benefit?$filter=code eq '404'"))
     assert _not_found(SAPConnectorError("Client error '404 Not Found'"))  # no HTTP cause: message fallback
+
+
+_REQ = ["jobReqId", "createdDateTime", "defaultLanguage"]
+
+
+def _req_edmx(locale_props: list[str]) -> str:
+    """JobRequisition with a to-many jobReqLocale whose target type is in the same document."""
+    p = "".join(f'<Property Name="{x}" Type="Edm.String"/>' for x in _REQ)
+    lp = "".join(f'<Property Name="{x}" Type="Edm.String"/>' for x in locale_props)
+    return ('<?xml version="1.0" encoding="utf-8"?>'
+            '<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">'
+            '<edmx:DataServices><Schema Namespace="SFOData" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">'
+            f'<EntityType Name="JobRequisition"><Key><PropertyRef Name="jobReqId"/></Key>{p}'
+            '<NavigationProperty Name="jobReqLocale" Relationship="SFOData.req_locale" '
+            'FromRole="req" ToRole="locale"/></EntityType>'
+            f'<EntityType Name="JobRequisitionLocale"><Key><PropertyRef Name="jobReqLocalId"/></Key>{lp}</EntityType>'
+            '<Association Name="req_locale"><End Role="req" Type="SFOData.JobRequisition" Multiplicity="1"/>'
+            '<End Role="locale" Type="SFOData.JobRequisitionLocale" Multiplicity="*"/></Association>'
+            '<EntityContainer Name="EntitiesV2"><EntitySet Name="JobRequisition" EntityType="SFOData.JobRequisition"/>'
+            '</EntityContainer></Schema></edmx:DataServices></edmx:Edmx>')
+
+
+class _ReqTenant(_Tenant):
+    def __init__(self, locale_props: list[str], data: dict[str, list[dict]]):
+        super().__init__({"JobRequisition": (_REQ, ("jobReqLocale",))}, data)
+        self.locale_props = locale_props
+
+    def metadata(self, entity=None):
+        return _req_edmx(self.locale_props)
+
+
+def test_entity_model_resolves_the_navigation_target_properties():
+    from sap.successfactors import entity_model
+
+    props, navs = entity_model(_req_edmx(["jobTitle", "locale"]), "JobRequisition")
+    assert navs == {"jobReqLocale": {"jobTitle", "locale"}}
+    assert entity_model(_edmx("A", ["x"], ("n",)), "A")[1] == {"n": None}  # target not in the document
+
+
+def test_sf_navigation_property_missing_on_the_target_type_is_unavailable(monkeypatch):
+    conn = _ReqTenant(["locale"], {"JobRequisition": [{"jobReqId": 7}]})
+    frames, cov = _sf(conn, ["recruiting_onboarding"], monkeypatch)
+    sel = next(s for e, s in conn.calls if e == "JobRequisition")
+    assert "jobReqLocale/jobTitle" not in sel
+    assert cov["JOBREQUISITION"]["status"] == "live" and "TITLE" in cov["JOBREQUISITION"]["unavailable_fields"]

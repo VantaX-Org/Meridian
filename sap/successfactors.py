@@ -482,17 +482,31 @@ class SuccessFactorsConnector(CloudSAPConnector):
         ) from last_exc
 
 
-def entity_model(edmx: str, entity: str) -> tuple[set[str], set[str]] | None:
-    """(property names, navigation property names) of ``entity`` in an OData V2 $metadata
-    document; None if the document does not describe it."""
+def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:
+    """(property names, {navigation property: its target type's property names}) of ``entity``
+    in an OData V2 $metadata document; a target is None when the document does not describe it.
+    None if the document does not describe ``entity``."""
     def local(el: ET.Element) -> str:
         return el.tag.rsplit("}", 1)[-1]
 
+    def name(qualified: str) -> str:
+        return qualified.rsplit(".", 1)[-1]
+
     root = ET.fromstring(edmx)
-    name = next((el.get("EntityType", "").rsplit(".", 1)[-1] for el in root.iter()
-                 if local(el) == "EntitySet" and el.get("Name") == entity), entity)
-    for el in root.iter():
-        if local(el) == "EntityType" and el.get("Name") == name:
-            return ({c.get("Name", "") for c in el if local(c) == "Property"},
-                    {c.get("Name", "") for c in el if local(c) == "NavigationProperty"})
-    return None
+    types = {el.get("Name", ""): el for el in root.iter() if local(el) == "EntityType"}
+    ends = {el.get("Name", ""): {e.get("Role"): name(e.get("Type", "")) for e in el if local(e) == "End"}
+            for el in root.iter() if local(el) == "Association"}
+
+    def props(t: ET.Element) -> set[str]:
+        return {c.get("Name", "") for c in t if local(c) == "Property"}
+
+    t = types.get(next((name(el.get("EntityType", "")) for el in root.iter()
+                        if local(el) == "EntitySet" and el.get("Name") == entity), entity))
+    if t is None:
+        return None
+    navs: dict[str, set[str] | None] = {}
+    for c in t:
+        if local(c) == "NavigationProperty":
+            target = types.get(ends.get(name(c.get("Relationship", "")), {}).get(c.get("ToRole"), ""))
+            navs[c.get("Name", "")] = props(target) if target is not None else None
+    return props(t), navs
