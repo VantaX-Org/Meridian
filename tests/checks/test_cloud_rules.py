@@ -476,6 +476,15 @@ def test_a_400_whose_body_mentions_404_stays_failed(monkeypatch):
     assert not _not_found(err)
 
 
+def test_a_connect_error_mentioning_404_is_not_not_found():
+    import httpx
+    from api.services.connectivity_manager import _not_found
+
+    err = SAPConnectorError("SuccessFactors request failed: https://h/odata/v2/404")
+    err.__cause__ = httpx.ConnectError("https://h/odata/v2/404")
+    assert not _not_found(err)
+
+
 def _http_error(code: int, url: str, body: str = "") -> SAPConnectorError:
     import httpx
     req = httpx.Request("GET", url)

@@ -114,17 +114,6 @@ def test_failed_request_carries_the_sf_error_body_first_and_truncated():
     assert "400 Bad Request" in msg and msg.index("::") < 400
 
 
-def _err(handler, **params):
-    import pytest
-    from sap.base import SAPConnectorError
-
-    c = _connector(handler)
-    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic", **params)
-    with pytest.raises(SAPConnectorError) as ei:
-        c.read_entity_set("EmpJob")
-    return ei.value
-
-
 def test_error_body_masks_password_client_secret_and_token():
     c_body = {"error": {"message": {"value": "echo pw-1 cs-2 tok-3 Bearer abc.def"}}}
     c = _connector(lambda r: httpx.Response(400, json=c_body))
@@ -154,3 +143,22 @@ def test_error_body_html_gives_content_type_and_short_snippet():
                        headers={"content-type": "text/html"})
     out = error_body(r)
     assert out.startswith("[text/html] Bad gateway") and len(out) < 130 and "<" not in out
+
+
+def test_secret_straddling_the_truncation_boundary_is_fully_masked():
+    import pytest
+    from sap.base import SAPConnectorError
+
+    secret = 'sec"ret-' + "z" * 20
+    body = {"error": {"message": {"value": "a" * 290 + secret}}}
+    c = _connector(lambda r: httpx.Response(400, json=body))
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic", password=secret)
+    with pytest.raises(SAPConnectorError) as ei:
+        c.read_entity_set("EmpJob")
+    assert "sec" not in str(ei.value).replace("secure", "") and "zzz" not in str(ei.value)
+
+
+def test_error_body_empty_snippet_gives_nothing():
+    from sap.successfactors import error_body
+
+    assert error_body(httpx.Response(502, text="  ", headers={"content-type": "text/html"})) == ""

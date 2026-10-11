@@ -27,7 +27,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import httpx
 import pandas as pd
@@ -126,8 +126,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
                 )
 
         except httpx.HTTPError as exc:
-            safe_msg = self._mask_secret(str(exc), params.password)
-            safe_msg = self._mask_secret(safe_msg, params.client_secret)
+            safe_msg = self._mask(str(exc))
             raise SAPConnectorError(
                 f"SuccessFactors connection failed: {safe_msg}"
             ) from exc
@@ -177,8 +176,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
             return access_token
 
         except httpx.HTTPError as exc:
-            safe_msg = self._mask_secret(str(exc), params.client_secret)
-            safe_msg = self._mask_secret(safe_msg, params.password)
+            safe_msg = self._mask(str(exc))
             raise SAPConnectorError(
                 f"SuccessFactors OAuth token request failed: {safe_msg}"
             ) from exc
@@ -381,7 +379,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         """Mask every secret this connector holds (password, client secret, bearer token) in ``text``."""
         prm = self._params
         for secret in (prm.password if prm else "", prm.client_secret if prm else "", self._access_token or ""):
-            text = self._mask_secret(text, secret)
+            text = self._mask_secret(self._mask_secret(text, secret), json.dumps(secret)[1:-1] if secret else "")
         return re.sub(r"(?i)(bearer\s+)[\w.~+/=-]+", r"\1****", text)
 
     def _ensure_connected(self) -> None:
@@ -468,7 +466,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     )
                     time.sleep(wait)
                     continue
-                body = error_body(exc.response)
+                body = error_body(exc.response, self._mask)
                 if body:
                     safe_msg = f"{self._mask(body)} :: {safe_msg}"
                 raise SAPConnectorError(
@@ -498,7 +496,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         ) from last_exc
 
 
-def error_body(resp: httpx.Response, limit: int = 300) -> str:
+def error_body(resp: httpx.Response, mask: Callable[[str], str] = str, limit: int = 300) -> str:
     """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated.
     A body that is not SF's JSON/XML error (an HTML or proxy page) gives its content-type and a short snippet."""
     text = resp.text or ""
@@ -507,14 +505,14 @@ def error_body(resp: httpx.Response, limit: int = 300) -> str:
         msg = err.get("message")
         msg = msg.get("value") if isinstance(msg, dict) else msg
         if isinstance(msg, str) and msg.strip():
-            return msg.strip()[:limit]
+            return mask(msg.strip())[:limit]
     except (ValueError, AttributeError):
         pass
     m = re.search(r"<message[^>]*>([^<]+)", text)
     if m:
-        return m.group(1).strip()[:limit]
-    snippet = re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", text)).strip()[:100]
-    return f"[{resp.headers.get('content-type', 'unknown content-type')}] {snippet}".strip()
+        return mask(m.group(1).strip())[:limit]
+    snippet = mask(re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", text)).strip())[:100]
+    return f"[{resp.headers.get('content-type', 'unknown content-type')}] {snippet}" if snippet else ""
 
 
 def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:

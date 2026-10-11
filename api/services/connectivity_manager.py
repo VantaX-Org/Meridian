@@ -44,7 +44,7 @@ def _not_found(e: Exception) -> bool:
     error carries one; the message (which includes the URL) is only a fallback."""
     if isinstance(e.__cause__, httpx.HTTPStatusError):
         return e.__cause__.response.status_code == 404
-    return bool(re.search(r"\b404\b|is not found", str(e)))
+    return e.__cause__ is None and bool(re.search(r"\b404\b|is not found", str(e)))
 
 
 def _bad_property(e: Exception, entity: str) -> str | None:
