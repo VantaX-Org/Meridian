@@ -66,6 +66,8 @@ async def list_versions(
         .where(AnalysisVersion.tenant_id == tenant.id)
         .order_by(AnalysisVersion.run_at.desc())
     )
+    # a process discovery download is not a data quality run
+    stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("purpose").is_distinct_from("process_discovery"))
     if not include_archived:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("archived").is_distinct_from("true"))
     if module:
@@ -383,10 +385,12 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
 
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     vid = uuid.UUID(version_id)
-    row = (await db.execute(text("SELECT status, metadata->>'dataset_path', metadata->>'system_id', label "
+    row = (await db.execute(text("SELECT status, metadata->>'dataset_path', metadata->>'system_id', label, metadata->>'purpose' "
                                  "FROM analysis_versions WHERE id = :v"), {"v": vid})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Version not found")
+    if row[4] == "process_discovery":
+        raise HTTPException(status_code=409, detail="This download belongs to a process discovery run.")
     if not row[1]:
         raise HTTPException(status_code=409, detail="This version has no stored dataset to analyse.")
     if row[0] in ("pending", "running"):

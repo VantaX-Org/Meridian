@@ -3,8 +3,8 @@
 from api.services.rbac import PERMISSIONS, PERSONA_ROLES, VALID_ROLES, has_permission, permissions_for
 
 LEGACY_SNAPSHOT: dict[str, list[str]] = {
-    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_users', 'mdm.read', 'mdm.write', 'review_ai_rules', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
-    "manager": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'manage_systems', 'mdm.read', 'mdm.write', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
+    "admin": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'manage_field_mappings', 'manage_llm', 'manage_rules', 'manage_settings', 'manage_system', 'manage_systems', 'manage_users', 'mdm.read', 'mdm.write', 'review_ai_rules', 'run_process_discovery', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
+    "manager": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'export_process', 'manage_systems', 'mdm.read', 'mdm.write', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence', 'view_audit'],
     "steward": ['ai_feedback', 'analyse', 'apply', 'approve', 'assign', 'export', 'manage_rules', 'mdm.read', 'mdm.write', 'review_ai_rules', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
     "analyst": ['analyse', 'export', 'mdm.read', 'trigger_ai', 'trigger_sync', 'upload', 'view', 'view_ai_confidence'],
     "approver": ['approve', 'export', 'mdm.read', 'view', 'view_ai_confidence'],

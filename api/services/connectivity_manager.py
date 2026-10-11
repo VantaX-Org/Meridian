@@ -14,7 +14,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import httpx
 import pandas as pd
@@ -32,6 +32,10 @@ from sap.extraction_registry import (
     get_available_modules,
     ExtractionTarget,
 )
+
+if TYPE_CHECKING:
+    from sap.extraction_plan import TablePlan
+    from sap.rfc import RFCConnector
 
 logger = logging.getLogger("meridian.connectivity_manager")
 
@@ -246,7 +250,8 @@ class ConnectivityManager:
         import os
 
         from api.services.source_design import dictionary_for
-        from sap.extraction_plan import ABAP_SYSTEM_TYPES, plan_modules, read_order, via_filters
+        from sap.extraction_plan import (ABAP_SYSTEM_TYPES, PROCESS_EVENT_CLOUD_MODULES, pe_edges, plan_modules,
+                                         read_order, via_filters)
 
         system_row = self._load_system(system_id)
         system_type = system_row.system_type
@@ -265,7 +270,7 @@ class ConnectivityManager:
                 # SAP dates/times are system-local: the freshness checks need the offset (sap/ddic_reader.py)
                 from sap.ddic_reader import utc_offset_seconds
                 self.sap_utc_offset_seconds = utc_offset_seconds(connector) if hasattr(connector, "call") else None
-                plans = plan_modules(modules, dictionary, scope)
+                plans = plan_modules(modules, dictionary, scope, system_type=system_type)
                 # fields this system's field-status customizing controls (checks/field_status_rules.py)
                 from checks.field_status_rules import extra_fields, load_config, material_fields
                 from sap.field_status_config import resolve_all, resolve_material
@@ -277,7 +282,8 @@ class ConnectivityManager:
                         plans[t].fields |= {f for f in fs if dictionary.field(t, f) is not None}
                 raw: dict[str, pd.DataFrame] = {}
                 # raw frames a later read filters by (via) or derives from (payroll); nothing else is kept
-                needed_raw = {p.via for p in plans.values() if p.via} | {"HRPY_RGDIR"}
+                needed_raw = {x for p in plans.values() for x in (p.via, *p.also_via, *p.split_by.values()) if x} \
+                    | {"HRPY_RGDIR"}
                 # reconciliation: an unfiltered read must return exactly SAP's own row count
                 counts = connector.count_rows([t for t, p in plans.items() if not p.where and not p.via]) \
                     if hasattr(connector, "count_rows") else {}
@@ -329,18 +335,26 @@ class ConnectivityManager:
                     t0 = time.monotonic()
                     where = plan.where
                     delta_info: Optional[dict] = None
+                    sliced: list[dict] = []
                     try:
                         df, delta_info = self._delta_read(
                             connector, table, cols, list(t.keys), plan.where, delta, delta_keys, delta_map,
                             raw.get(plan.via) if plan.via else None, counts.get(table), max_rows,
                         ) if delta is not None and table in delta_map else (None, None)
                         if df is None and plan.via:
-                            wheres = via_filters(table, plan.via, raw.get(plan.via))
-                            parts = [connector.read_table_full(table, cols, list(t.keys),
+                            wheres = [w for parent in (plan.via, *plan.also_via)
+                                      for w in via_filters(table, parent, raw.get(parent), extra_edges=pe_edges(),
+                                                           in_field=plan.in_field, group_field=plan.group_field)]
+                            parts = [connector.read_table_full(table, cols, list(t.keys) if plan.keys else [],
                                      where=" AND ".join(x for x in (w, plan.where) if x), max_rows=max_rows,
                                      on_progress=lambda g, n, rows: report(table, g, n, rows))
                                      for w in wheres]
                             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)
+                        elif df is None and plan.slices:
+                            plants = raw.get(next(iter(plan.split_by.values()), ""))
+                            df, sliced = self._read_slices(connector, table, cols, list(t.keys) if plan.keys else [],
+                                                           plan, plants, max_rows,
+                                                           lambda g, n, rows: report(table, g, n, rows))
                         elif df is None:
                             df = connector.read_table_full(table, cols, list(t.keys), where=where,
                                                            max_rows=max_rows,
@@ -370,12 +384,19 @@ class ConnectivityManager:
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
                     if table in counts:
                         entry["source_rows"] = counts[table]
-                    entry["complete"] = not entry["truncated"] and not dup_keys and \
-                        (table not in counts or counts[table] == len(df))
+                    entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     if delta_info:
                         entry["delta"] = delta_info
+                    if plan.slices:
+                        entry["slices"] = len(plan.slices)
+                        entry["window"] = plan.where
+                        entry["truncated"] = bool(sliced)  # per-slice reads: the total is not capped by max_rows
+                        entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
+                    if sliced:
+                        entry["truncated_slices"] = sliced
+                        entry["complete"] = False
                     coverage.append(entry)
                     logger.info(f"extract {system_id}: {table} {len(df)} rows, complete={entry['complete']}")
                     framed = df.rename(columns={c: f"{table}.{c}" for c in df.columns})
@@ -386,6 +407,8 @@ class ConnectivityManager:
                         frames[table] = framed
                 i = len(order)
                 report()  # final state of every table
+            elif set(modules) & set(PROCESS_EVENT_CLOUD_MODULES):
+                frames, coverage = self._extract_process_cloud(connector, modules, system_type, scope)
             elif system_type == "successfactors":
                 frames, coverage = self._extract_successfactors(connector, modules, dictionary, system_id)
             elif system_type == "s4hana_cloud":
@@ -400,6 +423,84 @@ class ConnectivityManager:
                                            f"the cross-system integration module"})
         finally:
             connector.close()
+        return frames, coverage
+
+    @staticmethod
+    def _is_complete(truncated: bool, dup_keys: object, source_rows: Optional[int], n: int) -> bool:
+        return not truncated and not dup_keys and (source_rows is None or source_rows == n)
+
+    @staticmethod
+    def _read_slices(connector: "RFCConnector", table: str, cols: list[str], keys: list[str], plan: "TablePlan", plants: Optional[pd.DataFrame],
+                     max_rows: int, on_progress: Callable[[int, int, int], None]) -> tuple[pd.DataFrame, list[dict]]:
+        """Read ``plan.slices`` one at a time (spec §1.1).
+
+        With ``plan.max_slice_rows`` (MATDOC) no read returns more than max_slice_rows + 1 rows. A full slice is
+        re-read once per ``split_by`` value (plant), a full plant-month once per day, and a full plant-day
+        keeps its first max_slice_rows rows and is reported in the returned truncation list."""
+        from sap.extraction_plan import day_slices
+        from sap.rfc import _literal
+
+        parts: list[pd.DataFrame] = []
+        truncated: list[dict] = []
+        limit = plan.max_slice_rows
+
+        def read(where: str, cap: int) -> pd.DataFrame:
+            return connector.read_table_full(table, cols, keys, where=where, max_rows=cap, on_progress=on_progress)
+
+        for s in plan.slices:
+            if not limit:
+                df = read(s, max_rows)
+                if len(df) >= max_rows:
+                    truncated.append({"slice": s, "plant": None, "day": None})
+                parts.append(df)
+                continue
+            df = read(s, limit + 1)
+            if len(df) <= limit:
+                parts.append(df)
+                continue
+            # ponytail: one split field (WERKS); a second split_by entry is ignored until a table needs it
+            split = next(iter(plan.split_by), None)
+            values = sorted({str(v).strip() for v in plants[split]} - {""}) \
+                if split and plants is not None and split in plants.columns else []
+            if not values:
+                parts.append(df.head(limit))
+                truncated.append({"slice": s, "plant": None, "day": None})
+                continue
+            for v in values:
+                ws = f"{s} AND {split} = {_literal(v)}"
+                dv = read(ws, limit + 1)
+                if len(dv) <= limit:
+                    parts.append(dv)
+                    continue
+                for d in day_slices(ws):
+                    dd = read(d, limit + 1)
+                    if len(dd) > limit:
+                        dd = dd.head(limit)
+                        truncated.append({"slice": s, "plant": v, "day": d.split("'")[1][:8]})
+                    parts.append(dd)
+        return (pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=cols)), truncated
+
+    @staticmethod
+    def _extract_process_cloud(connector, modules: list[str], system_type: str,
+                               scope: Optional[dict]) -> tuple[dict[str, pd.DataFrame], list[dict]]:
+        """Process-event entity sets of SuccessFactors / Ariba / Concur (sap/extraction_registry.py).
+        Frames are keyed by entity name with ``NAME.field`` columns."""
+        from sap.extraction_registry import process_event_targets
+
+        frames: dict[str, pd.DataFrame] = {}
+        coverage: list[dict] = []
+        for m in modules:
+            for name, target in process_event_targets(system_type, m, (scope or {}).get("date_from")):
+                kwargs = {"from_date": target.from_date} if target.from_date else {}
+                try:
+                    df = connector.read_entity_set(target.source, select=target.fields, filter_expr=target.filter,
+                                                   **kwargs)
+                except Exception as e:  # one failed entity set is reported, the others still read
+                    coverage.append({"table": name, "status": "failed", "detail": str(e)[:300], "modules": [m]})
+                    continue
+                frames[name] = df.rename(columns={c: f"{name}.{c}" for c in df.columns})
+                coverage.append({"table": name, "status": "live", "rows": len(df), "modules": [m],
+                                 "purpose": "data", "window": target.filter or target.from_date})
         return frames, coverage
 
     @staticmethod

@@ -18,6 +18,7 @@ Design rule: **extend, never replace.** `api/services/rbac.py` today is a flat `
 | `platform_admin` | Platform admin | `/home/lead` | `admin` | `admin` |
 | `auditor` | Auditor | `/home/lead` (read-only) | `auditor` | `auditor` |
 | `viewer` | Viewer | `/home/lead` (read-only) | `viewer` | `viewer` |
+| `process_analyst` | Process analyst | `/home/process` | `viewer` + `run_process_discovery`, `export_process` | none (new; process-discovery spec §6.1) |
 
 Legacy keys stay in `PERMISSIONS` and `VALID_ROLES`. `users.role` keeps accepting them. Persona keys are added to the same dict as the union described above, so `has_permission("programme_lead", "export")` is true with zero new code paths. `ai_reviewer` remains valid as a legacy alias; the Roles UI shows it under "Legacy" with "Upgrade to Analyst" until no user holds it.
 
@@ -33,7 +34,7 @@ A custom role is a tenant-scoped row in `roles` cloned from a built-in; it carri
 
 Actions: `view`, `create`, `edit`, `approve`, `run`, `export`, `admin`.
 
-Resources: `systems`, `credentials`, `extraction`, `analysis`, `rules`, `findings`, `fixes`, `mdm`, `glossary`, `stewardship`, `contracts`, `reports`, `llm`, `users`, `licence`, `audit`.
+Resources: `systems`, `credentials`, `extraction`, `analysis`, `rules`, `findings`, `fixes`, `mdm`, `glossary`, `stewardship`, `contracts`, `reports`, `llm`, `users`, `licence`, `audit`, `process`.
 
 Every existing action string maps to one or more (resource, action) pairs. The map lives in `rbac.py` as `LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]]`:
 
@@ -50,7 +51,7 @@ Every existing action string maps to one or more (resource, action) pairs. The m
 | `approve` | (`fixes`, `approve`), (`mdm`, `approve`), (`stewardship`, `approve`), (`analysis`, `approve`) [migration sign-off] |
 | `apply` | (`fixes`, `run`) |
 | `assign` | (`stewardship`, `edit`) |
-| `export` | (`reports`, `export`) and (`*`, `export`) |
+| `export` | (`reports`, `export`) and (`*`, `export`) except `process` |
 | `manage_rules` | (`rules`, `create`/`edit`), (`contracts`, `create`/`edit`), (`glossary`, `edit`) |
 | `review_ai_rules` | (`rules`, `approve`) |
 | `ai_feedback` | (`findings`, `edit`) |
@@ -61,6 +62,8 @@ Every existing action string maps to one or more (resource, action) pairs. The m
 | `manage_llm` | (`llm`, `admin`) |
 | `manage_users` | (`users`, `admin`) |
 | `view_audit` | (`audit`, `view`), (`audit`, `export`) |
+| `run_process_discovery` | (`process`, `run`): held by `admin` / `platform_admin` and `process_analyst` |
+| `export_process` | (`process`, `export`): held by `admin` / `platform_admin`, `manager` / `programme_lead` and `process_analyst` |
 
 ### 2.2 Full matrix (built-in roles)
 
@@ -84,8 +87,9 @@ Legend: V view · C create · E edit · A approve · R run · X export · ★ ad
 | users | V | | | | | V | |
 | licence | V | | | | V | V | |
 | audit | V | | | | | V X | |
+| process | V X | V | V | V | V | V | V |
 
-Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`.
+Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`. `process_analyst` and `platform_admin` hold V R X on `process`; nobody reaches (`process`, `export`) through the legacy `export` action, so the BPMN export package (`export_process`) is the only path for the exported model. Case-level samples are not gated that tightly: `GET /runs/{id}/variants` returns `sample_case_ids` under plain `view`, and the export strips event-derived text (case notions that are not identifiers) rather than relying on the permission.
 
 ### 2.3 Scope dimensions
 
@@ -192,7 +196,7 @@ def require_permission(action: str, *, resource: str | None = None,
 
 Resolution order inside the dependency: `dev_role_override` → JWT → `grants_for` (empty → `[(users.role, Scope())]`) → `has_permission_scoped`. On failure of a scoped check: 403 whose body is nested by FastAPI, `{"detail": {"detail": "forbidden", "resource": …, "action": …, "request_access": true}}`, so the UI reads `body.detail.request_access` to offer the request-access flow. Tenant-wide (unscoped) checks keep the legacy string detail.
 
-Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `findings`, `versions`, `migration`, `cleaning`, `remediation`, `master_records`, `stewardship` get `scope=scope_from_path` in wave 14; everything else stays tenant-wide. Nothing becomes more permissive at any step.
+Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `findings`, `versions`, `migration`, `cleaning`, `remediation`, `master_records`, `stewardship`, `process_discovery` get `scope=scope_from_path` in wave 14 (the run-scoped `process_discovery` routes resolve `run_id` to `system_id` first and check the system scope against that); everything else stays tenant-wide. Nothing becomes more permissive at any step.
 
 ### 3.3 Endpoints
 

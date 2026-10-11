@@ -19,7 +19,8 @@ Usage::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import date
 from typing import Optional
 
 from sap.process_definitions import flow_config_tables as _flow_config_tables
@@ -1502,6 +1503,67 @@ SYSTEM_EXTRACTIONS: dict[str, dict[str, list[ExtractionTarget]]] = {
     "ewm": EWMS_EXTRACTIONS,  # sap_systems.system_type spelling
     "btp": BTP_EXTRACTIONS,
 }
+
+
+# Process discovery, cloud systems (spec §1.2 SFX / ARB / CNQ): subsets of the targets above, same
+# source and field names. (frame name, source module, source, fields, months, date property, effective dated)
+_PROCESS_EVENT_CLOUD: dict[str, tuple[str, list[tuple[str, str, str, list[str], int, str, bool]]]] = {
+    "process_events_sfx": ("successfactors", [
+        ("JobRequisition", "recruiting_onboarding", "JobRequisition",
+         ["requisitionId", "status", "createdDate", "hiringManager"], 24, "createdDate", False),
+        ("JobApplication", "recruiting_onboarding", "JobApplication",
+         ["applicationId", "requisitionId", "status", "appliedDate", "lastModifiedDate"], 24, "lastModifiedDate",
+         False),
+        ("EmpJob", "employee_central", "EmpJob",
+         ["userId", "startDate", "seqNumber", "event", "eventReason", "company", "department"], 24, "startDate",
+         True),
+        ("EmployeeTime", "time_attendance", "EmployeeTime",
+         ["userId", "timeType", "startDate", "endDate", "approvalStatus"], 12, "startDate", False),
+    ]),
+    "process_events_arb": ("ariba", [
+        ("suppliers", "ariba_supplier", "/api/suppliers", ["supplierId", "qualificationStatus", "registrationDate"],
+         24, "registrationDate", False),
+        ("contracts", "ariba_contracts", "/api/contracts",
+         ["contractId", "status", "effectiveDate", "expirationDate", "owner"], 24, "effectiveDate", False),
+        ("requisitions", "ariba_procurement", "/api/procurement/requisitions",
+         ["requisitionId", "requestor", "status", "createdDate", "approvalStatus"], 24, "createdDate", False),
+    ]),
+    "process_events_cnq": ("concur", [
+        ("reports", "concur_expense", "/api/v3.0/expense/reports",
+         ["reportId", "ownerLoginId", "submitDate", "approvalStatus", "paymentStatus"], 24, "submitDate", False),
+        ("entries", "concur_expense", "/api/v3.0/expense/entries",
+         ["reportId", "entryId", "expenseTypeCode", "transactionDate"], 24, "transactionDate", False),
+    ]),
+}
+
+
+def process_event_targets(system_type: str, module: str, date_from: Optional[str] = None,
+                          today: Optional[date] = None) -> list[tuple[str, ExtractionTarget]]:
+    """(frame name, target) per entity set of a cloud process-event module.
+
+    SuccessFactors: effective-dated EmpJob gets ``from_date``; the others an OData ``$filter`` on their
+    date property. Ariba and Concur connectors take no date argument: the builder applies the window.
+    """
+    owner, rows = _PROCESS_EVENT_CLOUD.get(module, ("", []))
+    if owner != system_type:
+        return []
+    today = today or date.today()
+    out = []
+    for name, src_module, source, fields, months, prop, effective in rows:
+        base = next(t for t in SYSTEM_EXTRACTIONS[owner][src_module] if t.source == source)
+        missing = set(fields) - set(base.fields)
+        if missing:
+            raise ValueError(f"{source} has no {sorted(missing)} in the registry")
+        y, m = today.year, today.month - months
+        while m <= 0:
+            m, y = m + 12, y - 1
+        start = date_from or f"{y:04d}-{m:02d}-{min(today.day, 28):02d}"
+        target = replace(base, fields=list(fields), is_config=False, from_date=None, filter=None)
+        if owner == "successfactors":
+            target = replace(target, from_date=start) if effective else \
+                replace(target, filter=f"{prop} ge datetime'{start}T00:00:00'")
+        out.append((name, target))
+    return out
 
 
 # ============================================================================

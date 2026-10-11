@@ -47,6 +47,8 @@ STAGES: dict[str, list[tuple[str, str]]] = {
                ("report", "Building report")],
     "simulation": [("load", "Loading data"), ("before", "Checks as is"), ("patch", "Applying fixes"),
                    ("after", "Checks after fixes"), ("score", "Scoring")],
+    "process_discovery": [("extraction", "Extracting"), ("building", "Building event log"), ("mining", "Mining"),
+                          ("generating", "Generating model")],
 }
 
 # Entity-prefix list each job kind changes (spec section 9.1). The job tray
@@ -60,6 +62,7 @@ TOUCHES: dict[str, list[str]] = {
     "simulation": ["records", "batch", "shell-counts"],
     "config_sync": ["systems", "run"],
     "config_load": ["systems", "run"],
+    "process_discovery": ["process", "run"],
 }
 
 # analysis progress (task_progress step numbers) → analysis job stage

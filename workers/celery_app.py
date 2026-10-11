@@ -8,6 +8,8 @@ broker_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 # large object takes hours over RFC_READ_TABLE. Lives here so task modules can
 # read it without importing each other.
 EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
+# run_extraction retries this long for the system's config sync (it waits before it extracts)
+CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
 
 celery_app = Celery(
     "meridian",
@@ -68,6 +70,7 @@ import workers.tasks.triage_sla  # noqa: F401 — SLA sweep + auto-assign
 import workers.tasks.forced_update  # noqa: F401
 import workers.tasks.run_simulation  # noqa: F401 — fix what-if on a copy of the frames
 import workers.tasks.send_owner_digests  # noqa: F401 — weekly owner digest (beat)
+import workers.tasks.run_process_discovery  # noqa: F401 — process discovery chain and nightly prune
 import workers.scheduler  # noqa: F401, E402 — registers beat schedule
 
 

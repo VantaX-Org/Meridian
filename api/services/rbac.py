@@ -49,12 +49,12 @@ PERMISSIONS: dict[str, set[str]] = {
         "manage_users", "manage_rules", "manage_field_mappings", "manage_llm",
         "manage_system", "manage_systems", "manage_settings", "view_audit",
         "ai_feedback", "review_ai_rules", "trigger_ai", "trigger_sync",
-        "mdm.write",
+        "mdm.write", "run_process_discovery", "export_process",
     },
     "manager": _READ | {
         "upload", "analyse", "approve", "apply", "export", "assign",
         "manage_systems", "view_audit",
-        "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write",
+        "ai_feedback", "trigger_ai", "trigger_sync", "mdm.write", "export_process",
     },
     "steward": _READ | {
         "upload", "analyse", "approve", "apply", "export", "assign",
@@ -88,6 +88,8 @@ PERSONA_ROLES: dict[str, set[str]] = {
         "manage_systems", "trigger_sync", "manage_field_mappings", "upload",
     },
     "platform_admin": PERMISSIONS["admin"],
+    # Process discovery (process-discovery spec 6.1): read everything, run discovery, export as-is models.
+    "process_analyst": _READ | {"run_process_discovery", "export_process"},
 }
 
 # Persona key -> legacy key whose special-cased behaviour it inherits.
@@ -100,6 +102,7 @@ PERSONA_HOME: dict[str, str] = {
     "programme_lead": "/home/lead", "data_steward": "/home/steward",
     "data_owner": "/home/steward", "analyst": "/home/lead", "sap_basis": "/home/basis",
     "platform_admin": "/home/lead", "auditor": "/home/lead", "viewer": "/home/lead",
+    "process_analyst": "/home/process",
 }
 
 
@@ -214,11 +217,13 @@ async def _get_user_role(
 
 RESOURCES: tuple[str, ...] = (
     "systems", "credentials", "extraction", "analysis", "rules", "findings", "fixes", "mdm",
-    "glossary", "stewardship", "contracts", "reports", "llm", "users", "licence", "audit",
+    "glossary", "stewardship", "contracts", "reports", "llm", "users", "licence", "audit", "process",
 )
 ACTIONS: tuple[str, ...] = ("view", "create", "edit", "approve", "run", "export", "admin")
 
 _NO_VIEW = {"audit", "llm", "users", "licence", "credentials"}
+# The legacy `export` action predates `process`; process export is granted only by export_process.
+_NO_EXPORT = {"process"}
 
 LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     "view": {("*", "view")},
@@ -248,17 +253,20 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     "manage_llm": {("llm", "admin")},
     "manage_users": {("users", "admin")},
     "view_audit": {("audit", "view"), ("audit", "export")},
+    "run_process_discovery": {("process", "run")},
+    "export_process": {("process", "export")},
 }
 
 
 def _expand(pairs: set[tuple[str, str]]) -> set[tuple[str, str]]:
-    """Concrete (resource, action) pairs; `*` expands to every resource (view skips _NO_VIEW)."""
+    """Concrete (resource, action) pairs; `*` expands to every resource (view skips _NO_VIEW, export _NO_EXPORT)."""
     out: set[tuple[str, str]] = set()
     for res, act in pairs:
         if res != "*":
             out.add((res, act))
         else:
-            out |= {(r, act) for r in RESOURCES if not (act == "view" and r in _NO_VIEW)}
+            out |= {(r, act) for r in RESOURCES
+                    if not (act == "view" and r in _NO_VIEW) and not (act == "export" and r in _NO_EXPORT)}
     return out
 
 
@@ -396,6 +404,13 @@ async def _resolve_scope(request: Request, db: AsyncSession, tenant_id: uuid.UUI
         if not r or not r[0] or (r[1] and r[1] != r[0]):
             return Scope()
         sids.append(r[0])
+    elif "/process-discovery/runs/" in path and pp.get("run_id"):
+        rid = _as_uuid(pp.get("run_id"))
+        if not rid:  # the route's own validation answers 422
+            return Scope()
+        r = await _row(db, "SELECT system_id FROM process_discovery_runs WHERE id = :i AND tenant_id = :t",
+                       str(rid), tenant_id)
+        sids.append(r[0] if r else None)
     elif "/connectivity/" in path and request.method == "POST" and not system:
         try:
             body = await request.json()
@@ -532,6 +547,7 @@ BUILTIN_NAMES: dict[str, str] = {
     "platform_admin": "Platform admin", "auditor": "Auditor", "viewer": "Viewer",
     "admin": "Admin (legacy)", "manager": "Manager (legacy)", "steward": "Steward (legacy)",
     "approver": "Approver (legacy)", "ai_reviewer": "AI reviewer (legacy)",
+    "process_analyst": "Process analyst",
 }
 
 

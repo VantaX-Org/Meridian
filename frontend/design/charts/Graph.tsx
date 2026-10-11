@@ -108,14 +108,22 @@ export function Graph(props: {
   masterId?: string;
   width?: number;
   height?: number;
+  /** Accessible name of the chart; defaults to the duplicate-cluster wording. */
+  title?: string;
+  /** Radius scales with `size` and nodes show `label`: the process flow view (node size is cases). */
+  weighted?: boolean;
 }) {
-  const { nodes, edges, onNodeClick, width = 600, height = 400 } = props;
-  const masterId = props.masterId ?? [...nodes].sort((a, b) => b.size - a.size)[0]?.id;
+  const { nodes, edges, onNodeClick, width = 600, height = 400, title = "Duplicate cluster graph", weighted } = props;
+  const masterId = weighted ? undefined : props.masterId ?? [...nodes].sort((a, b) => b.size - a.size)[0]?.id;
+  const maxSize = Math.max(1, ...nodes.map((n) => n.size));
+  const node = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const radius = (id: string) =>
+    weighted ? 4 + 10 * Math.sqrt((node.get(id)?.size ?? 0) / maxSize) : id === masterId ? 6 : 4;
   const points = useMemo(() => layoutGraph(nodes, edges, { width, height }), [nodes, edges, width, height]);
   const byId = useMemo(() => new Map(points.map((p) => [p.id, p])), [points]);
 
   return (
-    <svg width={width} height={height} role="group" aria-label={`Duplicate cluster graph, ${nodes.length} nodes, ${edges.length} links`}>
+    <svg width={width} height={height} role="group" aria-label={`${title}, ${nodes.length} nodes, ${edges.length} links`}>
       {edges.map((e, i) => {
         const a = byId.get(e.source);
         const b = byId.get(e.target);
@@ -137,7 +145,7 @@ export function Graph(props: {
           className="m-graph-node"
           role={onNodeClick ? "button" : "img"}
           tabIndex={onNodeClick ? 0 : undefined}
-          aria-label={`Node ${nodes.find((n) => n.id === p.id)?.label ?? p.id}`}
+          aria-label={`Node ${node.get(p.id)?.label ?? p.id}`}
           onClick={() => onNodeClick?.(p.id)}
           onKeyDown={(e) => {
             if (onNodeClick && (e.key === "Enter" || e.key === " ")) {
@@ -147,9 +155,9 @@ export function Graph(props: {
           }}
           style={{ cursor: onNodeClick ? "pointer" : "default" }}
         >
-          <circle cx={p.x} cy={p.y} r={p.id === masterId ? 6 : 4} fill={p.id === masterId ? "var(--m-ink)" : "var(--m-viz-1)"} />
-          <text x={p.x} y={p.y - 10} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-2)" textAnchor="middle">
-            {p.id}
+          <circle cx={p.x} cy={p.y} r={radius(p.id)} fill={p.id === masterId ? "var(--m-ink)" : "var(--m-viz-1)"} />
+          <text x={p.x} y={p.y - (weighted ? radius(p.id) + 6 : 10)} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-2)" textAnchor="middle">
+            {weighted ? node.get(p.id)?.label ?? p.id : p.id}
           </text>
         </g>
       ))}

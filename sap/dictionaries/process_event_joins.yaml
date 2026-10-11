@@ -1,0 +1,19 @@
+# Process-discovery read edges (spec §1.3). Same edge shape as joins.yaml, but read only by
+# sap/extraction_plan.via_filters(extra_edges=pe_edges()). Never merged into joins.yaml: that file
+# is the check engine's grain graph (checks/frames.py) and an edge there changes rule evaluation.
+# Edges that already exist in joins.yaml are not repeated here: EKKO→EKPO, EKPO→EKBE, VBAK→VBAP,
+# PROJ→PRPS, LTAK→LTAP, CDHDR→CDPOS. tests/checks/test_joins_valid.py checks every field.
+edges:
+  - {parent: BKPF, child: BSAK, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
+  - {parent: BKPF, child: BSAS, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
+  - {parent: VBRK, child: BSAD, join: {BUKRS: BUKRS, BELNR: BELNR, GJAHR: GJAHR}, cardinality: many}
+  - {parent: LIKP, child: LIPS, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: VBRK, child: VBRP, join: {VBELN: VBELN}, cardinality: many}
+  - {parent: AUFK, child: AFKO, join: {AUFNR: AUFNR}, cardinality: one}
+  - {parent: AUFK, child: AFIH, join: {AUFNR: AUFNR}, cardinality: one}
+  - {parent: AUFK, child: JCDS, join: {OBJNR: OBJNR}, cardinality: many}
+  - {parent: PRPS, child: JCDS, join: {OBJNR: OBJNR}, cardinality: many}
+  - {parent: MKPF, child: MSEG, join: {MBLNR: MBLNR, MJAHR: MJAHR}, cardinality: many}
+  - {parent: QALS, child: QAVE, join: {PRUEFLOS: PRUEFLOS}, cardinality: many}
+  - {parent: QMEL, child: QMFE, join: {QMNUM: QMNUM}, cardinality: many}
+  - {parent: QMEL, child: QMSM, join: {QMNUM: QMNUM}, cardinality: many}

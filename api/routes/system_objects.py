@@ -141,7 +141,8 @@ async def system_versions(system_id: uuid.UUID, limit: int = Query(50, le=200),
     await _rls(db, tenant)
     rows = (await db.execute(text("""
         SELECT id, run_at, label, status, metadata, dqs_summary FROM analysis_versions
-         WHERE metadata->>'system_id' = :sid ORDER BY run_at DESC LIMIT :limit
+         WHERE metadata->>'system_id' = :sid AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
+         ORDER BY run_at DESC LIMIT :limit
     """), {"sid": str(system_id), "limit": limit})).fetchall()
     out = []
     for r in rows:
@@ -184,6 +185,7 @@ async def trends(system_id: uuid.UUID, object: Optional[str] = None, all_series:
     versions = (await db.execute(text(f"""
         SELECT id, run_at, label, metadata, dqs_summary FROM analysis_versions
          WHERE metadata->>'system_id' = :sid AND status IN {_ANALYSED} AND dqs_summary IS NOT NULL
+           AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery'
          ORDER BY run_at
     """), {"sid": str(system_id)})).fetchall()
     ids = [v.id for v in versions]

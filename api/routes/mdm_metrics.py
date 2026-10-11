@@ -6,7 +6,7 @@ GET /api/v1/mdm-metrics/history  — time-series for sparklines
 Role visibility:
   - Admin, Steward, ai_reviewer: full data including ai_narrative, ai_projected_score, ai_risk_flags
   - Analyst: mdm_health_score visible, ai_narrative/ai_projected_score/ai_risk_flags stripped
-  - Viewer: no MDM data (403 — viewer only sees DQS)
+  - Viewer, process_analyst (RESTRICTED_ROLES): empty MDM data (they only see DQS / process views)
 """
 
 from typing import Optional
@@ -91,6 +91,9 @@ def _should_see_ai_panel(role: str) -> bool:
     return has_permission(role, "review_ai_rules")
 
 
+RESTRICTED_ROLES = frozenset({"viewer", "process_analyst"})
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 
@@ -105,7 +108,7 @@ async def get_mdm_dashboard(
     user_role = await _get_user_role(request, tenant, db)
 
     # Viewer role: no MDM data at all
-    if user_role == "viewer":
+    if user_role in RESTRICTED_ROLES:
         return MdmDashboardResponse()
 
     tid = str(tenant.id)
@@ -207,7 +210,7 @@ async def get_mdm_history(
     """Get MDM metrics history for trend charts."""
     user_role = await _get_user_role(request, tenant, db)
 
-    if user_role == "viewer":
+    if user_role in RESTRICTED_ROLES:
         return MdmHistoryResponse()
 
     tid = str(tenant.id)

@@ -21,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.services import jobs
-from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
+from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.extraction")
@@ -107,9 +107,6 @@ def baseline_loader(prefix: str) -> Callable[[str], "Optional[pd.DataFrame]"]:
     return load
 
 
-CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
-
-
 def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     """'loaded' when the system has a completed config load; retry while a fresh load runs; else 'baseline'."""
     from api.services.config_pairing import config_basis
@@ -129,7 +126,7 @@ def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     reject_on_worker_lost=True,
 )
 def run_extraction(self, tenant_id, system_id, modules, include_config=True, sync_type="both",
-                   scope=None, analyse=True, label=None, version_id=None, delta=False):
+                   scope=None, analyse=True, label=None, version_id=None, delta=False, purpose=None):
     """Download ``modules`` (business objects) from ``system_id`` into a new version.
 
     The version is stored as ``extracted`` with its objects, scope and per-object
@@ -138,6 +135,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
     Progress is reported to the job registry as job ``dl-<version_id>``
     (api/services/jobs.py); the caller may pre-register it as queued.
     ``delta`` re-reads only what SAP's change documents say changed since the previous version.
+    ``purpose`` marks a download made for something other than data quality (process discovery): it is recorded on
+    the version and the DQ side effects (module map, table profiles) are skipped.
     """
     from api.services.task_progress import publish_progress
 
@@ -201,7 +200,9 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                 stored_rows[table] = len(df)
                 if (d := latest_activity({table: df})) is not None:
                     activity.append(d)
-                profiles.append(_profile(session, tenant_id, system_id, version_id, modules, table, df, entry, dictionary))
+                if not purpose:
+                    profiles.append(_profile(session, tenant_id, system_id, version_id, modules, table, df, entry,
+                                             dictionary))
                 jobs.update_job(tenant_id, job_id, stage="read", rows_done=sum(stored_rows.values()),
                                 message=f"Stored {table}")
 
@@ -232,7 +233,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                         and c["table"] not in stored_rows:
                     store(c["table"], frames.pop(c["table"]), c)
             if not stored_rows:
-                _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+                if not purpose:
+                    _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
                 progress({"status": "failed", "error": "No data tables were read"}, 3600)
                 jobs.finish_job(tenant_id, job_id, "failed", error="No data table could be read",
                                 result={"coverage": coverage})
@@ -253,7 +255,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
                  "label": label, "meta": json.dumps({
                     "modules": modules, "source": "extraction", "system_id": system_id,
                     "config_basis": config_basis,
-                    "scope": scope or {}, "started_at": started["started_at"],
+                    "scope": scope or {}, **({"purpose": purpose} if purpose else {}),
+                    "started_at": started["started_at"],
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
                     "latest_activity": max(activity) if activity else None,
                     # SAP system-local time vs UTC; None = unknown (checks treat it as 0)
@@ -269,9 +272,10 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
             session.commit()
 
             failed = {c["table"] for c in coverage if c["status"] == "failed" or c.get("complete") is False}
-            _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success", total_rows)
-            jobs.update_job(tenant_id, job_id, stage="register", message="Recording table profiles")
-            _store_profiles(session, tenant_id, system_id, version_id, profiles)
+            if not purpose:
+                _mark_modules(session, tenant_id, system_id, modules, "partial" if failed else "success", total_rows)
+                jobs.update_job(tenant_id, job_id, stage="register", message="Recording table profiles")
+                _store_profiles(session, tenant_id, system_id, version_id, profiles)
 
         progress({"status": "complete", "percent": 100, "version_id": version_id}, 300)
         if analyse:
@@ -290,7 +294,8 @@ def run_extraction(self, tenant_id, system_id, modules, include_config=True, syn
         progress({"status": "failed", "error": f"Timed out after {EXTRACT_TIME_LIMIT // 60} minutes"}, 3600)
         with Session(engine) as session:
             session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
-            _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
+            if not purpose:
+                _mark_modules(session, tenant_id, system_id, modules, "failed", 0)
         jobs.finish_job(tenant_id, job_id, "failed", error="Timed out")
         return {"status": "failed", "error": "timeout"}
     except Exception as e:

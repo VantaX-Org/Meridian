@@ -518,7 +518,8 @@ export type UserRole =
   | "approver"
   | "auditor"
   | "viewer"
-  | "ai_reviewer";
+  | "ai_reviewer"
+  | "process_analyst";
 
 export interface User {
   id: string;

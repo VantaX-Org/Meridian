@@ -9,7 +9,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
@@ -20,7 +20,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.middleware.audit import _insert_audit_row
 from api.models.process_model import ProcessModelDocument
 from api.routes.process_designer import _document, _invalid, _model, _rls, _uuid
-from api.services.bpmn_export import BpmnExportError, export_zip, slug
+from api.services.bpmn_export import BpmnExportError, ExportMeta, Overlay, OverlayActivity, export_zip, slug
 from api.services.process_model_validator import validate_document
 from api.services.rbac import require_permission
 from sap.process_definitions import reference_document
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/v1/process-designer", tags=["process-designer"])
 
 
 async def _overlay(db: AsyncSession, tenant: Tenant, doc: ProcessModelDocument,
-                   overlay: Optional[str]) -> Optional[dict[str, Any]]:
+                   overlay: Optional[str]) -> Optional[Overlay]:
     """Aggregate DQ per activity for an analysed dataset version (same colouring as the designer overlay)."""
     if not overlay or overlay == "none":
         return None
@@ -44,18 +44,22 @@ async def _overlay(db: AsyncSession, tenant: Tenant, doc: ProcessModelDocument,
     findings = {r[0]: {"pass_rate": float(r[1]) if r[1] is not None else None, "affected_count": r[2],
                        "severity": r[3], "message": r[4] or ""} for r in rows.fetchall()}
     acts = activity_statuses(doc, findings, {}, [])
+    activities: dict[str, OverlayActivity] = {}
     for l4 in doc.all_l4():
         for a in l4.activities:
-            acts[a.id]["check_ids"] = [c for c in a.check_ids if c in findings]
-    return {"version_id": str(vid), "activities": acts}
+            activities[a.id] = OverlayActivity(
+                dq_status=acts[a.id].get("dq_status"), pass_rate=acts[a.id].get("pass_rate"),
+                affected_count=int(acts[a.id].get("affected_count") or 0),
+                check_ids=[c for c in a.check_ids if c in findings])
+    return {"version_id": str(vid), "activities": activities}
 
 
 async def _respond(request: Request, tenant: Tenant, doc: ProcessModelDocument, name: str, version_no: int,
-                   model_id: Optional[uuid.UUID], overlay: Optional[dict[str, Any]]) -> Response:
+                   model_id: Optional[uuid.UUID], overlay: Optional[Overlay]) -> Response:
     result = validate_document(doc)
     if result.errors:
         return _invalid(result.errors)
-    meta = {"model_id": str(model_id) if model_id else None, "name": name, "version_no": version_no,
+    meta: ExportMeta = {"model_id": str(model_id) if model_id else None, "name": name, "version_no": version_no,
             "exported_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "app_version": request.app.version}
     try:

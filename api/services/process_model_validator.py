@@ -72,7 +72,11 @@ def _validate_diagram(l4: L4, path: str, errors: list[Issue]) -> None:
             if t in nodes and t not in seen:
                 seen.add(t)
                 stack.append(t)
+    # Process discovery draws reference activities with no observed case as unconnected tasks (spec §4.3).
+    unobserved = {a.id for a in l4.activities if a.discovery is not None and not a.discovery.observed}
     for i, n in enumerate(l4.diagram.nodes):
+        if n.type == "task" and n.activity_id in unobserved:
+            continue
         if starts and n.id not in seen:
             errors.append(Issue(path=f"{path}.diagram.nodes[{i}]", message=f"node {n.id} is not reachable from a startEvent"))
 

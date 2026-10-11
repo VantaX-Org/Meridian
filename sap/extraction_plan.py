@@ -19,10 +19,12 @@ from typing import Iterable, Optional
 
 import yaml
 
-from checks.frames import _MOVED, TableFrames, _graph, tables_of
+from checks.frames import _MOVED, Edge, TableFrames, _graph, tables_of
 from sap.ddic import Dictionary
 
 _WINDOWS = Path(__file__).resolve().parent / "dictionaries" / "extraction_windows.yaml"
+_PE_WINDOWS = Path(__file__).resolve().parent / "dictionaries" / "process_event_windows.yaml"
+_PE_JOINS = Path(__file__).resolve().parent / "dictionaries" / "process_event_joins.yaml"
 
 _ECC = ["business_partner", "material_master", "fi_gl", "accounts_payable", "accounts_receivable",
         "asset_accounting", "hcm", "mm_purchasing", "plant_maintenance", "production_planning", "project_system",
@@ -97,6 +99,119 @@ PROVEN_COST_DATA: dict[str, set[str]] = {
 _PROVEN_COST_TRIGGER = {"mm_purchasing", "material_master", "sd_sales_orders",
                         "sd_customer_master", "accounts_payable"}
 
+# Process discovery (spec docs/superpowers/specs/2026-10-11-process-discovery-design.md §1.2):
+# the event tables per L1. Planned only when the module itself is requested; windows and read edges
+# come from process_event_windows.yaml / process_event_joins.yaml, never from the DQ files.
+PROCESS_EVENT_MODULES: tuple[str, ...] = (
+    "process_events_ptp", "process_events_otc", "process_events_r2r", "process_events_pp",
+    "process_events_pm", "process_events_qm", "process_events_ps", "process_events_wh",
+    "process_events_htr", "process_events_mdg",
+)
+PROCESS_EVENT_CLOUD_MODULES: tuple[str, ...] = ("process_events_sfx", "process_events_arb", "process_events_cnq")
+PROCESS_EVENT_MODULES_BY_SYSTEM: dict[str, tuple[str, ...]] = {
+    "ecc": PROCESS_EVENT_MODULES,
+    "s4hana_onprem": PROCESS_EVENT_MODULES,
+    "ewm": ("process_events_wh",),
+    "successfactors": ("process_events_sfx",),
+    "ariba": ("process_events_arb",),
+    "concur": ("process_events_cnq",),
+}
+_USR02 = {"BNAME", "USTYP", "CLASS"}
+_CDHDR = {"OBJECTCLAS", "OBJECTID", "CHANGENR", "USERNAME", "UDATE", "UTIME", "TCODE", "CHANGE_IND"}
+_CDPOS = {"OBJECTCLAS", "OBJECTID", "CHANGENR", "TABNAME", "TABKEY", "FNAME", "CHNGIND", "VALUE_NEW"}
+_AUFK = {"AUFNR", "AUTYP", "AUART", "WERKS", "ERDAT", "ERFZEIT", "ERNAM", "OBJNR"}
+_JCDS = {"OBJNR", "STAT", "CHGNR", "UDATE", "UTIME", "USNAM", "INACT"}
+_MKPF = {"MBLNR", "MJAHR", "CPUDT", "CPUTM", "USNAM", "BLART"}
+_MSEG = {"MBLNR", "MJAHR", "ZEILE", "BWART", "AUFNR", "WERKS"}
+_MATDOC = {"MBLNR", "MJAHR", "ZEILE", "BWART", "MATNR", "WERKS", "LGORT", "BUDAT", "CPUDT", "CPUTM", "USNAM",
+           "EBELN", "EBELP", "AUFNR", "KDAUF", "KDPOS", "VBELN_IM", "VBELP_IM", "RECORD_TYPE"}
+_QMEL = {"QMNUM", "QMART", "QMDAT", "MZEIT", "ERNAM", "ERDAT", "QMDAB", "QMZAB", "PRIOK", "AUFNR", "PRUEFLOS",
+         "IWERK"}  # IWERK is not in the ECC 6.0 DDIC file: dropped by the DDIC check, QMEL marked partial
+_TQ80 = {"QMART", "QMTYP"}
+_HR_KEYS = {"PERNR", "BEGDA", "SEQNR", "AEDTM", "UNAME"}
+PROCESS_EVENTS_DATA: dict[str, dict[str, set[str]]] = {
+    "process_events_ptp": {
+        "EKKO": {"EBELN", "AEDAT", "ERNAM", "BSART", "BUKRS", "EKORG", "EKGRP", "LIFNR"},
+        "EKPO": {"EBELN", "EBELP", "BANFN", "BNFPO", "WERKS", "MATKL", "LOEKZ", "AEDAT"},
+        "EBAN": {"BANFN", "BNFPO", "ERDAT", "ERNAM", "BADAT", "FRGDT", "FRGZU", "BSART", "EKORG", "WERKS"},
+        "EKBE": {"EBELN", "EBELP", "VGABE", "GJAHR", "BELNR", "BUZEI", "BEWTP", "BWART", "SHKZG", "BUDAT",
+                 "CPUDT", "CPUTM", "ERNAM"},
+        "RBKP": {"BELNR", "GJAHR", "CPUDT", "CPUTM", "USNAM", "BLART", "BUKRS", "ZLSPR", "RBSTAT"},
+        "BKPF": {"BUKRS", "BELNR", "GJAHR", "AWTYP", "AWKEY", "CPUDT", "CPUTM", "USNAM", "BLART", "TCODE"},
+        "BSAK": {"BUKRS", "BELNR", "GJAHR", "BUZEI", "AUGDT", "AUGBL", "LIFNR"},
+        "CDHDR": _CDHDR, "CDPOS": _CDPOS, "USR02": _USR02,
+    },
+    "process_events_otc": {
+        "VBAK": {"VBELN", "ERDAT", "ERZET", "ERNAM", "AUART", "VKORG", "VTWEG", "SPART", "LIFSK", "FAKSK", "KUNNR"},
+        "VBAP": {"VBELN", "POSNR", "ERDAT", "ERZET", "ERNAM", "PSTYV", "WERKS", "ABGRU"},
+        "LIKP": {"VBELN", "ERDAT", "ERZET", "ERNAM", "LFART", "VSTEL", "WADAT_IST"},
+        "LIPS": {"VBELN", "POSNR", "VGBEL", "VGPOS"},
+        "VBRK": {"VBELN", "ERDAT", "ERZET", "ERNAM", "FKART", "BUKRS", "BELNR", "GJAHR", "FKSTO", "SFAKN"},
+        "VBRP": {"VBELN", "POSNR", "AUBEL", "AUPOS", "VGBEL", "VGPOS"},
+        "BSAD": {"BUKRS", "BELNR", "GJAHR", "BUZEI", "AUGDT", "AUGBL", "KUNNR"},
+        "CDHDR": _CDHDR, "CDPOS": _CDPOS, "USR02": _USR02,
+    },
+    "process_events_r2r": {
+        "BKPF": {"BUKRS", "BELNR", "GJAHR", "BLART", "BSTAT", "CPUDT", "CPUTM", "USNAM", "TCODE", "STBLG",
+                 "STJAH", "AWTYP"},
+        "BSAS": {"BUKRS", "BELNR", "GJAHR", "BUZEI", "AUGDT", "AUGBL", "HKONT"},
+        "AUFK": {"AUFNR", "AUTYP", "AUART", "ERDAT", "ERFZEIT", "ERNAM", "BUKRS", "OBJNR"},
+        "CDHDR": _CDHDR, "CDPOS": _CDPOS, "USR02": _USR02,
+    },
+    "process_events_pp": {
+        "AUFK": _AUFK, "AFKO": {"AUFNR", "GSTRP", "GLTRP", "GSTRI", "GLTRI", "PLNBEZ"}, "JCDS": _JCDS,
+        "MKPF": _MKPF, "MSEG": _MSEG, "MATDOC": _MATDOC, "T001W": {"WERKS"},
+        "CDHDR": _CDHDR, "CDPOS": _CDPOS, "USR02": _USR02,
+    },
+    "process_events_pm": {
+        "QMEL": _QMEL, "TQ80": _TQ80, "AUFK": _AUFK, "AFIH": {"AUFNR", "WARPL", "EQUNR", "IWERK"},
+        "JCDS": _JCDS, "MKPF": _MKPF, "MSEG": _MSEG, "MATDOC": _MATDOC, "T001W": {"WERKS"},
+        "CDHDR": _CDHDR, "CDPOS": _CDPOS, "USR02": _USR02,
+    },
+    "process_events_qm": {
+        "QALS": {"PRUEFLOS", "ENSTEHDAT", "ENTSTEZEIT", "ERSTELLER", "ART", "HERKUNFT", "WERK", "MATNR", "EBELN",
+                 "AUFNR", "OBJNR"},
+        "QAVE": {"PRUEFLOS", "VDATUM", "VNAME", "VCODE", "VAEDATUM"},
+        "QMEL": _QMEL, "QMFE": {"QMNUM", "FENUM", "ERDAT", "ERZEIT", "ERNAM", "FECOD"},
+        "QMSM": {"QMNUM", "MANUM", "ERDAT", "ERZEIT", "ERNAM", "PETER", "ERLDAT", "ERLZEIT", "ERLNAM"},
+        "TQ80": _TQ80, "USR02": _USR02,
+    },
+    "process_events_ps": {
+        "PROJ": {"PSPNR", "PSPID", "ERDAT", "ERNAM", "VBUKR", "OBJNR"},
+        "PRPS": {"PSPNR", "POSID", "PSPHI", "ERDAT", "ERNAM", "PBUKR", "OBJNR"},
+        "JCDS": _JCDS, "USR02": _USR02,
+    },
+    "process_events_wh": {
+        "LTAK": {"LGNUM", "TANUM", "BWLVS", "BDATU", "BZEIT", "BNAME", "BETYP", "BENUM", "KQUIT", "VBELN"},
+        "LTAP": {"LGNUM", "TANUM", "TAPOS", "QDATU", "QZEIT", "QNAME", "VLTYP", "NLTYP", "PQUIT"},
+        "/SCWM/ORDIM_C": {"LGNUM", "TANUM", "TAPOS", "TOSTAT", "TRART", "PROCTY", "CREATED_AT", "CREATED_BY",
+                          "CONFIRMED_AT", "CONFIRMED_BY", "VLPLA", "NLPLA"},
+        "USR02": _USR02,
+    },
+    "process_events_htr": {
+        "PA0000": {"PERNR", "BEGDA", "ENDDA", "SEQNR", "MASSN", "MASSG", "STAT2", "AEDTM", "UNAME"},
+        "PA0001": _HR_KEYS | {"BUKRS", "WERKS", "PERSG", "ORGEH"},
+        "PA0002": set(_HR_KEYS), "PA0008": set(_HR_KEYS),  # keys, dates and user only: no names, no pay
+        "HRP1000": {"PLVAR", "OTYPE", "OBJID", "BEGDA", "AEDTM", "UNAME"},
+        "HRP1001": {"PLVAR", "OTYPE", "OBJID", "RSIGN", "RELAT", "SCLAS", "BEGDA", "AEDTM", "UNAME"},
+        "USR02": _USR02,
+    },
+    "process_events_mdg": {
+        "USMD120C": {"USMD_CREQUEST", "USMD_CREQ_TYPE", "USMD_CREQ_STATUS", "USMD_CREATED_AT", "USMD_CREATED_BY",
+                     "USMD_RELEASED_AT", "USMD_RELEASED_BY", "USMD_CHANGED_AT", "USMD_CHANGED_BY",
+                     "USMD_DATA_CHN_AT", "USMD_PRIORITY"},
+        "USR02": _USR02,
+    },
+}
+_PE_CONFIG = {"USR02", "TQ80", "T001W"}           # whole reads, CONFIG_MAX_ROWS
+_PE_SYSTEMS: dict[str, tuple[str, ...]] = {        # tables read on some system types only (spec §1.2)
+    "MKPF": ("ecc",), "MSEG": ("ecc",),
+    "MATDOC": ("s4hana_onprem",), "T001W": ("s4hana_onprem",),
+    "LTAK": ("ecc", "s4hana_onprem"), "LTAP": ("ecc", "s4hana_onprem"),
+    "/SCWM/ORDIM_C": ("ewm",),
+}
+_PE_NO_KEYS = {"MATDOC"}                           # technical KEY1..KEY6: read the listed fields only
+
 
 @dataclass
 class TablePlan:
@@ -109,6 +224,12 @@ class TablePlan:
     purpose: str = "data"              # data | config
     modules: set[str] = field(default_factory=set)
     partial: bool = False              # windowed / parent-keyed / scoped: not every record of the table
+    slices: list[str] = field(default_factory=list)   # one full WHERE per month slice (process events)
+    also_via: list[str] = field(default_factory=list)  # further via parents, IN-lists concatenated
+    in_field: Optional[str] = None     # via: child field of the IN-list (default: most selective join field)
+    group_field: Optional[str] = None  # via: child key-prefix field set per IN-list group
+    max_slice_rows: int = 0            # >0: a full slice is re-read per split_by value, then per day
+    split_by: dict[str, str] = field(default_factory=dict)  # field -> config table listing its values
 
     def columns(self) -> list[str]:
         return list(dict.fromkeys(self.keys + sorted(self.fields - set(self.keys))))
@@ -216,8 +337,145 @@ def _window(template: str, scope: dict) -> str:
     return " AND ".join(parts)
 
 
-def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dict] = None) -> dict[str, TablePlan]:
-    """Tables/fields to extract so every rule of ``modules`` can be evaluated."""
+@lru_cache(maxsize=1)
+def _pe_windows() -> dict:
+    return yaml.safe_load(_PE_WINDOWS.read_text()) or {}
+
+
+@lru_cache(maxsize=1)
+def pe_edges() -> tuple[Edge, ...]:
+    """Process-discovery read edges (process_event_joins.yaml), searched after joins.yaml."""
+    doc = yaml.safe_load(_PE_JOINS.read_text())
+    return tuple(Edge(parent=e["parent"], child=e["child"], on=tuple((k, v) for k, v in e["join"].items()),
+                      cardinality=e["cardinality"]) for e in doc["edges"])
+
+
+def _ymd(s: str) -> date:
+    return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+
+
+def month_slices(field: str, start: date, today: date, end: Optional[date] = None, suffix: str = "",
+                 step: int = 1) -> list[str]:
+    """``FIELD >= lo AND FIELD < hi`` per ``step`` calendar months from ``start``. With ``end`` the last
+    slice stops after ``end`` (inclusive); without, the slice holding ``today`` is open-ended."""
+    stop = end + timedelta(days=1) if end else None
+    out, lo = [], start
+    while True:
+        k = lo.month - 1 + step
+        hi = date(lo.year + k // 12, k % 12 + 1, 1)
+        if stop is not None and hi >= stop:
+            out.append(f"{field} >= '{lo:%Y%m%d}{suffix}' AND {field} < '{stop:%Y%m%d}{suffix}'")
+            return out
+        if stop is None and hi > today:
+            out.append(f"{field} >= '{lo:%Y%m%d}{suffix}'")
+            return out
+        out.append(f"{field} >= '{lo:%Y%m%d}{suffix}' AND {field} < '{hi:%Y%m%d}{suffix}'")
+        lo = hi
+
+
+_RANGE = re.compile(r"^(\w+) >= '(\d{8})(\d*)'(?: AND \1 < '(\d{8})\d*')?")
+
+
+def day_slices(slice_where: str, today: Optional[date] = None) -> list[str]:
+    """The slice's leading date range as one range per calendar day; the rest of the WHERE is kept."""
+    m = _RANGE.match(slice_where)
+    if not m:
+        return [slice_where]
+    f, lo, suffix, hi = m.groups()
+    rest = slice_where[m.end():]
+    d = _ymd(lo)
+    stop = _ymd(hi) if hi else (today or date.today()) + timedelta(days=1)
+    out = []
+    while d < stop:
+        n = d + timedelta(days=1)
+        out.append(f"{f} >= '{d:%Y%m%d}{suffix}' AND {f} < '{n:%Y%m%d}{suffix}'{rest}")
+        d = n
+    return out
+
+
+def _or(clauses: Iterable[Optional[str]]) -> Optional[str]:
+    """OR of per-module filters; one module without a filter means every row is needed."""
+    cs = set(clauses)
+    if not cs or None in cs:
+        return None
+    cs = sorted(cs)  # deterministic regardless of module order
+    return cs[0] if len(cs) == 1 else "(" + " OR ".join(f"({c})" for c in cs) + ")"
+
+
+def _pe_tables(modules: Iterable[str], system_type: str) -> dict[str, tuple[set[str], set[str]]]:
+    """table -> (fields wanted, modules) for the process-event modules on this system type."""
+    out: dict[str, tuple[set[str], set[str]]] = {}
+    for m in modules:
+        for t, cols in PROCESS_EVENTS_DATA.get(m, {}).items():
+            if system_type in _PE_SYSTEMS.get(t, ABAP_SYSTEM_TYPES):
+                fs, ms = out.setdefault(t, (set(), set()))
+                fs |= cols
+                ms.add(m)
+    return out
+
+
+def process_event_gaps(modules: Iterable[str], dictionary: Dictionary, system_type: str) -> dict[str, list[str]]:
+    """Fields (or ``["*"]`` for a whole table) the dictionary lacks: the coverage reason of §10."""
+    out: dict[str, list[str]] = {}
+    for t, (cols, _) in sorted(_pe_tables(modules, system_type).items()):
+        if dictionary.table(t) is None or dictionary.table(t).category == "VIEW":
+            out[t] = ["*"]
+        elif missing := sorted(f for f in cols if dictionary.field(t, f) is None):
+            out[t] = missing
+    return out
+
+
+def _plan_process_events(modules: list[str], dictionary: Dictionary, system_type: str, scope: dict,
+                         today: date) -> dict[str, TablePlan]:
+    windows = _pe_windows()
+    plans: dict[str, TablePlan] = {}
+    for t, (cols, mods) in _pe_tables(modules, system_type).items():
+        tt = dictionary.table(t)
+        if tt is None or tt.category == "VIEW":
+            continue
+        keep = {f for f in cols if dictionary.field(t, f) is not None}
+        plans[t] = TablePlan(table=t, fields=keep, modules=set(mods), partial=keep != cols,
+                             keys=[] if t in _PE_NO_KEYS else list(dictionary.keys(t)),
+                             purpose="config" if t in _PE_CONFIG else "data")
+    for t, p in plans.items():
+        if p.purpose == "config":
+            continue
+        w = windows.get(t) or {}
+        per = {m: {**w, **((w.get("modules") or {}).get(m) or {})} for m in sorted(p.modules)}
+        scoped = _scope_filters(t, dictionary, scope)
+        p.partial = True
+        if w.get("via"):
+            parents = [x for x in [w["via"], *(w.get("also_via") or [])] if x in plans]
+            p.via, p.also_via = (parents[0] if parents else None), parents[1:]
+            p.in_field, p.group_field = w.get("in_field"), w.get("group_field")
+            p.where = " AND ".join(x for x in (_or(c.get("where") for c in per.values()), *scoped) if x) or None
+            continue
+        suffix = str(w.get("suffix") or "")
+        starts = {m: date.fromisoformat(scope["date_from"]) if scope.get("date_from")
+                  else _ymd(_months_ago(int(c["months"]), today)) for m, c in per.items()}
+        start = min(starts.values())
+        end = date.fromisoformat(scope["date_to"]) if scope.get("date_to") else None
+        for r in month_slices(w["field"], start, today, end, suffix, int(w.get("slice_months") or 1)):
+            hi = _RANGE.match(r).group(4)
+            covering = [c.get("where") for m, c in per.items() if hi is None or starts[m] < _ymd(hi)]
+            p.slices.append(" AND ".join(x for x in (r, _or(covering), *scoped) if x))
+        whole = [f"{w['field']} >= '{start:%Y%m%d}{suffix}'"]
+        if end:
+            whole.append(f"{w['field']} < '{end + timedelta(days=1):%Y%m%d}{suffix}'")
+        p.where = " AND ".join(x for x in (*whole, _or(c.get("where") for c in per.values()), *scoped) if x)
+        p.max_slice_rows = int(w.get("max_slice_rows") or 0)
+        p.split_by = {f: src for f, src in (w.get("split_by") or {}).items() if src in plans}
+    return plans
+
+
+def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dict] = None, *,
+                 system_type: str = "ecc", today: Optional[date] = None) -> dict[str, TablePlan]:
+    """Tables/fields to extract so every rule of ``modules`` can be evaluated.
+
+    Process-event modules (PROCESS_EVENT_MODULES) are planned by ``_plan_process_events`` and merged
+    last: a table a DQ module also reads keeps its DQ window and gains the process-event fields."""
+    process = [m for m in modules if m in PROCESS_EVENT_MODULES]
+    modules = [m for m in modules if m not in PROCESS_EVENT_MODULES]
     from checks.population import fields_for
     from checks.config_rules import fields_for as config_fields
     from checks.country_rules import fields_for as country_fields
@@ -341,20 +599,29 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
                     and dictionary.table(rt).category != "VIEW":
                 plans[rt] = TablePlan(table=rt, fields={rf}, keys=list(dictionary.keys(rt)), purpose="config",
                                       modules=set(p.modules))
+    if process:
+        for t, p in _plan_process_events(process, dictionary, system_type, scope or {},
+                                         today or date.today()).items():
+            if t in plans:
+                plans[t].fields |= p.fields
+                plans[t].modules |= p.modules
+            else:
+                plans[t] = p
     return plans
 
 
 def read_order(plans: dict[str, TablePlan]) -> list[str]:
-    """Tables ordered so every ``via`` parent is read before its children."""
+    """Tables ordered so every ``via`` / ``also_via`` parent and ``split_by`` source is read first."""
     done: list[str] = []
 
     def visit(t: str, seen: set[str]) -> None:
         if t in done or t in seen:
             return
         seen.add(t)
-        parent = plans[t].via
-        if parent:
-            visit(parent, seen)
+        p = plans[t]
+        for parent in [p.via, *p.also_via, *p.split_by.values()]:
+            if parent and parent in plans:
+                visit(parent, seen)
         done.append(t)
 
     for t in sorted(plans):
@@ -373,15 +640,30 @@ def in_lists(field: str, values: Iterable[str], chunk: int = 60) -> list[str]:
             for i in range(0, len(vals), chunk)]
 
 
-def via_filters(child: str, parent: str, parent_rows, chunk: int = 60) -> list[str]:
-    """WHERE clauses selecting child rows of already-read parent rows (key IN-lists)."""
+def via_filters(child: str, parent: str, parent_rows, chunk: int = 60, *, extra_edges: Iterable[Edge] = (),
+                in_field: Optional[str] = None, group_field: Optional[str] = None) -> list[str]:
+    """WHERE clauses selecting child rows of already-read parent rows (key IN-lists).
+
+    ``extra_edges`` (process_event_joins.yaml) are searched after joins.yaml. ``in_field`` names the
+    child field of the IN-list; ``group_field`` prefixes each IN-list with ``FIELD = '<value>' AND`` per
+    distinct parent value, so the read hits a key prefix (CDPOS: OBJECTCLAS, OBJECTID)."""
+    from sap.rfc import _literal
+
     edges, _ = _graph()
-    edge = next((e for e in edges if e.parent == parent and e.child == child), None)
+    edge = next((e for e in (*edges, *extra_edges) if e.parent == parent and e.child == child), None)
     if edge is None or parent_rows is None or len(parent_rows) == 0:
         return []
-    # use the most selective single join field (document number) for IN-lists
-    child_f, parent_f = max(edge.on, key=lambda cp: cp[1] not in ("BUKRS", "GJAHR", "LGNUM", "MANDT"))
-    return in_lists(child_f, parent_rows[parent_f].tolist(), chunk)
+    on = dict(edge.on)
+    if in_field:
+        child_f, parent_f = in_field, on[in_field]
+    else:  # the most selective single join field (document number)
+        child_f, parent_f = max(edge.on, key=lambda cp: cp[1] not in ("BUKRS", "GJAHR", "LGNUM", "MANDT"))
+    if not group_field:
+        return in_lists(child_f, parent_rows[parent_f].tolist(), chunk)
+    groups = parent_rows.assign(_g=parent_rows[on[group_field]].astype(str).str.strip())
+    return [f"{group_field} = {_literal(g)} AND {c}"
+            for g, rows in sorted(groups.groupby("_g"), key=lambda x: x[0])
+            for c in in_lists(child_f, rows[parent_f].tolist(), chunk)]
 
 
 def _is_config_table(dictionary: Dictionary, table: str) -> bool:

@@ -311,7 +311,8 @@ async def get_exec(
     await _rls(db, tenant)
     if version_id is None:
         version_id = (await db.execute(
-            text("SELECT id FROM analysis_versions WHERE tenant_id = :t ORDER BY run_at DESC LIMIT 1"),
+            text("SELECT id FROM analysis_versions WHERE tenant_id = :t "
+                 "AND metadata->>'purpose' IS DISTINCT FROM 'process_discovery' ORDER BY run_at DESC LIMIT 1"),
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:

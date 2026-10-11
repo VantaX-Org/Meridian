@@ -20,10 +20,11 @@ export type Role =
   | "approver"
   | "auditor"
   | "ai_reviewer"
-  | "viewer";
+  | "viewer"
+  | "process_analyst";
 
 export const ROLES: readonly Role[] = [
-  "admin", "manager", "steward", "analyst", "approver", "auditor", "ai_reviewer", "viewer",
+  "admin", "manager", "steward", "analyst", "approver", "auditor", "ai_reviewer", "viewer", "process_analyst",
 ];
 
 /** Type guard for an arbitrary string from the API/URL — never trust a bare cast to `Role`. */

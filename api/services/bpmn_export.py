@@ -11,12 +11,16 @@ import json
 import re
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import Any, Optional
+from typing import Callable, Optional, Sequence, TypedDict, Union
+
+from pydantic import BaseModel
 
 from api.models.process_model import (L1, L2, L3, L4, L5, Diagram, FieldRef, Flow, Node, ProcessModelDocument,
                                       VariantRef)
 from api.services.bpmn_layout import Layout, layout_diagram
 from api.services.bpmn_validate import BPMN, BPMNDI, DC, DI, validate_package
+from api.services.process_discovery.generate import EDGE_THRESHOLD, keep_edges
+from api.services.process_discovery.mining import END as _DFG_END
 
 MER = "urn:meridian:bpmn:1"
 SIG = "http://www.signavio.com"
@@ -26,6 +30,99 @@ for _p, _u in (("bpmn", BPMN), ("bpmndi", BPMNDI), ("dc", DC), ("di", DI), ("mer
     ET.register_namespace(_p, _u)
 
 _STATUS_WORD = {"red": "blocked", "amber": "at risk", "green": "ready"}
+_CASE_TYPE = re.compile(r"[a-z][a-z0-9_]*")  # case notions are identifiers; anything else is not written to the export
+_CASES = re.compile(r"^([0-9,]+) cases$")  # flow label written by process discovery (generate._diagram)
+_Parent = Union[L1, L2, L3]
+_Child = Union[L2, L3, L4]
+
+
+# "from" is a keyword, so the functional TypedDict form is needed.
+_Window = TypedDict("_Window", {"from": Optional[str], "to": Optional[str]}, total=False)
+
+
+class DiscoveryMeta(TypedDict, total=False):
+    """``meta["discovery"]``: provenance of a discovered model, copied to manifest.json."""
+    run_id: str
+    window: _Window
+    edge_threshold: float
+    filters: dict[str, object]  # the run's filter spec, JSON-serialisable
+
+
+class ExportMeta(TypedDict, total=False):
+    """The ``meta`` argument of ``export_zip``; ``name``, ``version_no`` and ``exported_at`` are always given."""
+    model_id: str | None
+    name: str
+    version_no: int
+    exported_at: str
+    app_version: str
+    discovery: DiscoveryMeta
+
+
+class _LevelRow(TypedDict):
+    level: int
+    id: str
+    name: str
+    file: str
+    parent: str | None
+    order: int
+
+
+class _FieldRow(TypedDict):
+    field: str
+    check_id: str | None
+    mandatory: bool
+
+
+class _ActivityRow(TypedDict):
+    id: str
+    l4_id: str
+    name: str
+    tcode: str | None
+    fields: list[_FieldRow]
+    check_ids: list[str]
+    dq_status: str | None
+
+
+class _ModelRow(TypedDict):
+    id: str | None
+    name: str
+    version_no: int
+    exported_at: str
+
+
+class _Manifest(TypedDict, total=False):
+    """manifest.json; ``discovery`` is optional and ignored by ``import_zip``."""
+    schema_version: int
+    model: _ModelRow
+    overlay_version_id: Optional[str]
+    levels: list[_LevelRow]
+    activities: list[_ActivityRow]
+    discovery: DiscoveryMeta
+
+
+class _Head(TypedDict):
+    proc: ET.Element
+    lv: ET.Element
+    kw: dict[str, object]
+
+
+class _BuildMeta(ExportMeta):
+    _pos: int  # position of the node among its siblings, set per file
+
+
+class OverlayActivity(TypedDict, total=False):
+    dq_status: Optional[str]
+    pass_rate: Optional[float]
+    affected_count: int
+    check_ids: list[str]
+
+
+class Overlay(TypedDict):
+    """Per-activity data-quality overlay of an analysed dataset version."""
+    version_id: str
+    activities: dict[str, OverlayActivity]
+
+
 _ZIP_TIME = (2020, 1, 1, 0, 0, 0)  # fixed, so two exports differ only in manifest exported_at
 _NODE_TAG = {"startEvent": "startEvent", "endEvent": "endEvent", "task": "task",
              "exclusiveGateway": "exclusiveGateway", "parallelGateway": "parallelGateway"}
@@ -48,14 +145,14 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "model"
 
 
-def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[dict[str, Any]] = None, text: Optional[str] = None):
+def _sub(parent: ET.Element, ns: str, tag: str, attrs: Optional[dict[str, object]] = None, text: Optional[str] = None):
     el = ET.SubElement(parent, _q(ns, tag), {k: str(v) for k, v in (attrs or {}).items() if v is not None})
     if text is not None:
         el.text = text
     return el
 
 
-def _extras(obj: Any, prefix: str = "") -> dict[str, str]:
+def _extras(obj: BaseModel, prefix: str = "") -> dict[str, str]:
     """Optional ``source`` / ``evidence`` fields (added by the config-derived flows batch), exported when present."""
     out: dict[str, str] = {}
     for f in ("source", "evidence"):
@@ -71,8 +168,8 @@ def _extras(obj: Any, prefix: str = "") -> dict[str, str]:
     return out
 
 
-def _read_extras(cls: Any, attrs: dict[str, str], prefix: str = "") -> dict[str, Any]:
-    out: dict[str, Any] = {}
+def _read_extras(cls: type[BaseModel], attrs: dict[str, str], prefix: str = "") -> dict[str, object]:
+    out: dict[str, object] = {}
     for f in ("source", "evidence"):
         key = prefix + (f if not prefix else f.capitalize())
         if f in cls.model_fields and key in attrs:
@@ -83,7 +180,7 @@ def _read_extras(cls: Any, attrs: dict[str, str], prefix: str = "") -> dict[str,
 # ----------------------------------------------------------------------------- building
 
 
-def _definitions(meta: dict[str, Any]) -> ET.Element:
+def _definitions(meta: ExportMeta) -> ET.Element:
     return ET.Element(_q(BPMN, "definitions"), {
         "id": "D_MERIDIAN", "targetNamespace": MER, "exporter": "Meridian",
         "exporterVersion": str(meta.get("app_version", "")),
@@ -103,7 +200,7 @@ def _diagram(defs: ET.Element, pid: str, elems: list[tuple[str, str, ET.Element]
     plane = _sub(d, BPMNDI, "BPMNPlane", {"id": f"P_{pid}", "bpmnElement": pid})
     for key, eid, _ in elems:
         b = lay.shapes[key]
-        attrs: dict[str, Any] = {"id": f"S_{eid}", "bpmnElement": eid}
+        attrs: dict[str, object] = {"id": f"S_{eid}", "bpmnElement": eid}
         if gateways.get(key) == "exclusiveGateway":
             attrs["isMarkerVisible"] = "true"
         shape = _sub(plane, BPMNDI, "BPMNShape", attrs)
@@ -136,7 +233,39 @@ def _wire(process: ET.Element, flows: list[tuple[str, str, str]], eid_of: dict[s
                     _sub(el, BPMN, "outgoing", text=f"F_{fid}")
 
 
-def _landscape(level: int, node: Any, children: list[Any], meta: dict[str, Any]) -> bytes:
+def landscape_counts(node: _Parent, children: Sequence[_Child]) -> Optional[list[tuple[str, str, int]]]:
+    """As-is flows between ``children`` (spec 5.2): ``(source, target, case count)`` with ``START`` / ``END`` for
+    the events, pruned like the L4 diagram. None when ``node`` was not mined, so the linear chain is kept."""
+    d = node.discovery
+    if d is None or not d.observed:
+        return None
+    seen = [c for c in children if c.discovery is not None and c.discovery.observed]
+    ids = {c.id for c in seen}
+    cand = [("START", c.id, c.discovery.entry_count) for c in seen if c.discovery and c.discovery.entry_count]
+    for c in seen:
+        for e in c.discovery.edges if c.discovery else []:
+            t = "END" if e.target == _DFG_END else e.target
+            if t == "END" or t in ids:
+                cand.append((c.id, t, e.count))
+    cand.sort()  # total order: output must not depend on the input order
+    return keep_edges(cand, d.case_count, ["START"], EDGE_THRESHOLD)
+
+
+def landscape_edges(node: _Parent, children: Sequence[_Child]) -> Optional[list[tuple[str, str, str]]]:
+    """``landscape_counts`` with each count as the ``"1,234 cases"`` label the diagram draws."""
+    kept = landscape_counts(node, children)
+    return None if kept is None else [(s, t, f"{n:,} cases") for s, t, n in kept]
+
+
+def _count_meta(flow_el: ET.Element, label: Optional[str]) -> None:
+    m = _CASES.match(label or "")
+    if m:
+        _sub(_sub(flow_el, BPMN, "extensionElements"), SIG, "signavioMetaData",
+             {"metaKey": "meridian_edge_count", "metaValue": m.group(1).replace(",", "")})
+
+
+def _landscape(level: int, node: _Parent, children: Sequence[_Child], meta: _BuildMeta,
+               edges: Optional[list[tuple[str, str, str]]] = None) -> bytes:
     pid = f"L{level}_{node.id}"
     defs = _definitions(meta)
     proc = _sub(defs, BPMN, "process", {"id": pid, "name": node.name, "isExecutable": "false"})
@@ -144,32 +273,62 @@ def _landscape(level: int, node: Any, children: list[Any], meta: dict[str, Any])
     ext = _sub(proc, BPMN, "extensionElements")
     lv = _sub(ext, MER, "level", {"id": node.id, "level": level, "order": node.order, "pos": meta["_pos"],
                                   "description": node.description or None, **_extras(node)})
-    for m in getattr(node, "modules", []):
+    for m in node.modules if isinstance(node, L1) else []:
         _sub(lv, MER, "module", {"name": m})
-    kids = sorted(enumerate(children), key=lambda p: (p[1].order, p[0]))
-    keys = ["START", *[c.id for _, c in kids], "END"]
+    kids = [c for _, c in sorted(enumerate(children), key=lambda ic: (ic[1].order, ic[0]))]  # ties keep document order
+    keys = ["START", *[c.id for c in kids], "END"]
     elems: list[tuple[str, str, ET.Element]] = []
-    eid_of: dict[str, str] = {}
     start = _sub(proc, BPMN, "startEvent", {"id": "E_START", "name": "Start"})
     elems.append(("START", "E_START", start))
-    for pos, c in kids:
+    for c in kids:
         el = _sub(proc, BPMN, "callActivity", {"id": f"CA_{c.id}", "name": c.name,
                                                "calledElement": f"L{level + 1}_{c.id}"})
         elems.append((c.id, f"CA_{c.id}", el))
     end = _sub(proc, BPMN, "endEvent", {"id": "E_END", "name": "End"})
     elems.append(("END", "E_END", end))
-    flows = [(str(i + 1), keys[i], keys[i + 1]) for i in range(len(keys) - 1)]
-    flow_el = {}
+    kinds = [(k, _KIND["startEvent"] if k in ("START", "END") else "task") for k in keys]
+    gateways: dict[str, str] = {}
+    labels: dict[str, str] = {}
+    if edges is None:
+        flows = [(str(i + 1), keys[i], keys[i + 1]) for i in range(len(keys) - 1)]
+    else:
+        # Discovered: XOR gateways where a node branches or merges; a DFG cannot show concurrency (spec 5.2).
+        outdeg = {k: sum(1 for e in edges if e[0] == k) for k in keys}
+        indeg = {k: sum(1 for e in edges if e[1] == k) for k in keys}
+        out_gw = {k: f"GW_{k}_OUT" for k in keys if outdeg[k] > 1}
+        in_gw = {k: f"GW_{k}_IN" for k in keys if k != "END" and indeg[k] > 1}
+        chain: list[tuple[str, str, Optional[str]]] = [(g, k, None) for k, g in in_gw.items()]
+        chain += [(k, g, None) for k, g in out_gw.items()]
+        chain += [(out_gw.get(s, s), in_gw.get(t, t), label) for s, t, label in edges]
+        for g, direction in [*((g, "Converging") for g in in_gw.values()),
+                             *((g, "Diverging") for g in out_gw.values())]:
+            elems.append((g, g, _sub(proc, BPMN, "exclusiveGateway", {"id": g, "gatewayDirection": direction})))
+            kinds.append((g, "gateway"))
+            gateways[g] = "exclusiveGateway"
+        flows = [(str(i + 1), s, t) for i, (s, t, _) in enumerate(chain)]
+        labels = {str(i + 1): label for i, (_, _, label) in enumerate(chain) if label}
+    eid_of = {k: e for k, e, _ in elems}
+    flow_el: dict[str, str] = {}
     for fid, s, t in flows:
         flow_el[fid] = f"F_{fid}"
-        _sub(proc, BPMN, "sequenceFlow", {"id": f"F_{fid}", "sourceRef": dict((k, e) for k, e, _ in elems)[s],
-                                          "targetRef": dict((k, e) for k, e, _ in elems)[t]})
-    eid_of = {k: e for k, e, _ in elems}
+        fe = _sub(proc, BPMN, "sequenceFlow", {"id": f"F_{fid}", "sourceRef": eid_of[s], "targetRef": eid_of[t],
+                                               "name": labels.get(fid)})
+        _count_meta(fe, labels.get(fid))
     _wire(proc, flows, eid_of)
-    lay = layout_diagram([(k, _KIND["startEvent"] if k in ("START", "END") else "task") for k in keys], flows,
-                         starts=["START"])
-    _diagram(defs, pid, elems, lay, [f for f, _, _ in flows], flow_el, {"START", "END"}, {})
+    lay = layout_diagram(kinds, flows, labels or None, starts=["START"])
+    _diagram(defs, pid, elems, lay, [f for f, _, _ in flows], flow_el, {"START", "END"}, gateways)
     return _xml(defs)
+
+
+def duration(seconds: float) -> str:
+    """``3d 4h``, ``5h 12m``, ``7m`` or ``40s``: the Signavio ``meridian_median`` value."""
+    s = int(round(seconds))
+    d, h, m = s // 86400, s % 86400 // 3600, s % 3600 // 60
+    if d:
+        return f"{d}d {h}h"
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m" if m else f"{s}s"
 
 
 def _field_line(f: FieldRef) -> str:
@@ -179,7 +338,7 @@ def _field_line(f: FieldRef) -> str:
     return f"{f.field} ({', '.join(notes)})" if notes else f.field
 
 
-def _dq_line(dq: dict[str, Any]) -> str:
+def _dq_line(dq: OverlayActivity) -> str:
     word = _STATUS_WORD.get(dq["dq_status"], dq["dq_status"])
     n = int(dq.get("affected_count") or 0)
     checks = ", ".join(dq.get("check_ids") or [])
@@ -187,7 +346,7 @@ def _dq_line(dq: dict[str, Any]) -> str:
     return f"Data quality: {word} ({detail})" if detail else f"Data quality: {word}"
 
 
-def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dict[str, Any]]) -> ET.Element:
+def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[Overlay]) -> ET.Element:
     el = _sub(proc, BPMN, "task", {"id": f"A_{act.id}", "name": act.name})
     lines = [act.description]
     if act.tcode:
@@ -199,6 +358,13 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dic
     dq = (overlay or {}).get("activities", {}).get(act.id)
     if dq and dq.get("dq_status"):
         lines.append(_dq_line(dq))
+    d = act.discovery
+    if d is not None and d.observed:
+        lines.append(f"Cases: {d.case_count:,} ({d.share * 100:.1f}%)")
+        if d.median_seconds is not None:
+            lines.append(f"Median to next step: {duration(d.median_seconds)}")
+    if act.source == "discovered":
+        lines.append("Source: discovered, not in reference")
     _doc(el, lines)
     ext = _sub(el, BPMN, "extensionElements")
     ma = _sub(ext, MER, "activity", {
@@ -214,16 +380,26 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dic
     if dq and dq.get("dq_status"):
         _sub(ext, MER, "dq", {"status": dq["dq_status"],
                               "passRate": f"{dq['pass_rate']:.1f}" if dq.get("pass_rate") is not None else None,
-                              "affected": int(dq.get("affected_count") or 0), "versionId": overlay.get("version_id")})
+                              "affected": int(dq.get("affected_count") or 0), "versionId": overlay["version_id"] if overlay else None})
+    if d is not None:
+        _sub(ext, MER, "discovery", {
+            "caseCount": d.case_count, "share": d.share, "medianSeconds": d.median_seconds,
+            "p90Seconds": d.p90_seconds, "fitness": d.fitness, "reworkRate": d.rework_rate,
+            "automationRate": d.automation_rate, "observed": str(d.observed).lower()})
     meta = [("meridian_tcode", act.tcode), ("meridian_rules", ";".join(act.check_ids) or None),
             ("meridian_dq_status", dq["dq_status"] if dq and dq.get("dq_status") else None)]
+    if d is not None:
+        meta += [("meridian_case_count", str(d.case_count)), ("meridian_share", f"{d.share * 100:.1f}"),
+                 ("meridian_median", duration(d.median_seconds) if d.median_seconds is not None else None),
+                 ("meridian_source", act.source),
+                 ("meridian_fitness", f"{d.fitness:.4f}" if d.fitness is not None else None)]
     for k, v in meta:
         if v:
             _sub(ext, SIG, "signavioMetaData", {"metaKey": k, "metaValue": v})
     return el
 
 
-def _l4_file(l4: L4, meta: dict[str, Any], overlay: Optional[dict[str, Any]]) -> bytes:
+def _l4_file(l4: L4, meta: _BuildMeta, overlay: Optional[Overlay]) -> bytes:
     pid = f"L4_{l4.id}"
     defs = _definitions(meta)
     proc = _sub(defs, BPMN, "process", {"id": pid, "name": l4.name, "isExecutable": "false"})
@@ -263,6 +439,8 @@ def _l4_file(l4: L4, meta: dict[str, Any], overlay: Optional[dict[str, Any]]) ->
         flow_el[f.id] = f"F_{f.id}"
         fe = _sub(proc, BPMN, "sequenceFlow", {"id": f"F_{f.id}", "sourceRef": eid_of[f.source],
                                                "targetRef": eid_of[f.target], "name": f.label})
+        if l4.discovery is not None:
+            _count_meta(fe, f.label)
         if f.condition:
             _sub(fe, BPMN, "conditionExpression", {_q(XSI, "type"): "bpmn:tFormalExpression"}, f.condition)
     flows = [(f.id, f.source, f.target) for f in l4.diagram.flows]
@@ -275,12 +453,35 @@ def _l4_file(l4: L4, meta: dict[str, Any], overlay: Optional[dict[str, Any]]) ->
     return _xml(defs)
 
 
+def _build_meta(meta: ExportMeta, pos: int) -> _BuildMeta:
+    out: _BuildMeta = {**meta, "_pos": pos}
+    return out
+
+
 def _xml(defs: ET.Element) -> bytes:
     ET.indent(defs, space="  ")
     return ET.tostring(defs, encoding="utf-8", xml_declaration=True)
 
 
-def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]], meta: dict[str, Any]) -> bytes:
+_Plan = tuple[int, Union[L1, L2, L3, L4], Optional[str], int, Callable[[_BuildMeta], bytes]]
+
+
+def _file_plan(document: ProcessModelDocument, overlay: Optional[Overlay]) -> list[_Plan]:
+    """Every L1-L4 file as (level, node, parent id, position, builder), in document order."""
+    plan: list[_Plan] = []
+    for i1, l1 in enumerate(document.l1):
+        plan.append((1, l1, None, i1, lambda m, n=l1: _landscape(1, n, n.l2, m, landscape_edges(n, n.l2))))
+        for i2, l2 in enumerate(l1.l2):
+            plan.append((2, l2, l1.id, i2, lambda m, n=l2: _landscape(2, n, n.l3, m, landscape_edges(n, n.l3))))
+            for i3, l3 in enumerate(l2.l3):
+                plan.append((3, l3, l2.id, i3,
+                             lambda m, n=l3: _landscape(3, n, n.l4, m, landscape_edges(n, n.l4))))
+                for i4, l4 in enumerate(l3.l4):
+                    plan.append((4, l4, l3.id, i4, lambda m, n=l4: _l4_file(n, m, overlay)))
+    return plan
+
+
+def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta: ExportMeta) -> bytes:
     """``overlay`` = {"version_id": str, "activities": {l5_id: {dq_status, pass_rate, affected_count, check_ids?}}} or None.
 
     ``meta`` = {model_id, name, version_no, exported_at, app_version}. Raises BpmnExportError when the generated
@@ -288,23 +489,18 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
     """
     root = f"{slug(meta['name'])}-v{meta['version_no']}"
     files: dict[str, bytes] = {}
-    levels: list[dict[str, Any]] = []
-    activities: list[dict[str, Any]] = []
+    levels: list[_LevelRow] = []
+    activities: list[_ActivityRow] = []
 
-    def add(level: int, node: Any, parent: Optional[str], pos: int, data_fn) -> None:
+    for level, node, parent, pos, data_fn in _file_plan(document, overlay):
         name = f"L{level}_{node.id}.bpmn"
-        files[name] = data_fn({**meta, "_pos": pos})
+        files[name] = data_fn(_build_meta(meta, pos))
         levels.append({"level": level, "id": node.id, "name": node.name, "file": name,
                        "parent": parent, "order": node.order})
-
-    for i1, l1 in enumerate(document.l1):
-        add(1, l1, None, i1, lambda m, n=l1: _landscape(1, n, n.l2, m))
-        for i2, l2 in enumerate(l1.l2):
-            add(2, l2, l1.id, i2, lambda m, n=l2: _landscape(2, n, n.l3, m))
-            for i3, l3 in enumerate(l2.l3):
-                add(3, l3, l2.id, i3, lambda m, n=l3: _landscape(3, n, n.l4, m))
-                for i4, l4 in enumerate(l3.l4):
-                    add(4, l4, l3.id, i4, lambda m, n=l4: _l4_file(n, m, overlay))
+    for l1 in document.l1:
+        for l2 in l1.l2:
+            for l3 in l2.l3:
+                for l4 in l3.l4:
                     for a in l4.activities:
                         dq = (overlay or {}).get("activities", {}).get(a.id) or {}
                         activities.append({
@@ -312,13 +508,16 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
                             "fields": [{"field": f.field, "check_id": f.check_id, "mandatory": f.mandatory}
                                        for f in a.fields],
                             "check_ids": a.check_ids, "dq_status": dq.get("dq_status")})
-    manifest = {
+    manifest: _Manifest = {
         "schema_version": 1,
         "model": {"id": meta.get("model_id"), "name": meta["name"], "version_no": meta["version_no"],
                   "exported_at": meta["exported_at"]},
         "overlay_version_id": (overlay or {}).get("version_id"),
         "levels": levels, "activities": activities,
     }
+    if meta.get("discovery"):
+        # optional; import_zip ignores it (spec 5.2). Keys sorted at every level: output must not depend on caller order.
+        manifest["discovery"] = json.loads(json.dumps(meta["discovery"], sort_keys=True))
     errors = validate_package(files, manifest)
     if errors:
         raise BpmnExportError(errors)
@@ -332,6 +531,8 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
         "L4_*.bpmn       one per L4 sub-process: the real diagram (events, tasks, gateways, flows)\n\n"
         "Import the .bpmn files with Signavio's BPMN 2.0 import. The hierarchy is carried by the\n"
         "calledElement links between files and by manifest.json, not by folders.\n")
+    if document.source == "discovered":
+        readme += _discovery_readme(document, meta.get("discovery") or DiscoveryMeta())
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         def put(name: str, data: bytes) -> None:
@@ -345,6 +546,35 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
         for name in sorted(files):
             put(name, files[name])
     return out.getvalue()
+
+
+def _discovery_readme(document: ProcessModelDocument, disc: DiscoveryMeta) -> str:
+    window = disc.get("window") or {}
+    notions = sorted({l1.discovery.case_type for l1 in document.l1 if l1.discovery and l1.discovery.case_type
+                     and _CASE_TYPE.fullmatch(l1.discovery.case_type)})
+    threshold = disc.get("edge_threshold", EDGE_THRESHOLD)
+    return (
+        f"\nThis is an as-is model discovered from the SAP event log, {window.get('from') or 'start'} to "
+        f"{window.get('to') or 'latest'}. Case notion: {', '.join(notions) or 'none'}. Flows are observed\n"
+        f"directly-follows edges carrying at least {threshold:.0%} of cases (or a step's only exit). Gateways are\n"
+        "exclusive choices inferred from branching; parallel work is never inferred. Reference steps never\n"
+        "observed are drawn unconnected.\n\n"
+        "Signavio import:\n"
+        "1. Open the target folder.\n"
+        "2. Choose Import, then BPMN 2.0 (.bpmn), and upload the files from the zip. Start with L1_<L1>.bpmn,\n"
+        "   then the remaining files.\n"
+        "3. Each callActivity's calledElement is the process id of the exported file it refers to. Signavio may\n"
+        "   not link them on import: confirm the links after import and set any missing ones by hand.\n")
+
+
+def export_node(document: ProcessModelDocument, node_id: str, overlay: Optional[Overlay],
+                meta: ExportMeta) -> tuple[str, bytes]:
+    """One ``L{level}_{id}.bpmn`` for an L1-L4 node, byte-identical to the same file in ``export_zip``.
+    Raises KeyError when the node is not in the document."""
+    for level, node, _parent, pos, fn in _file_plan(document, overlay):
+        if node.id == node_id:
+            return f"L{level}_{node.id}.bpmn", fn(_build_meta(meta, pos))
+    raise KeyError(node_id)
 
 
 # ----------------------------------------------------------------------------- import (round-trip)
@@ -369,7 +599,7 @@ def import_zip(data: bytes) -> ProcessModelDocument:
         kids = [c.get("calledElement").split("_", 1)[1] for c in proc.findall(_q(BPMN, "callActivity"))]
         return sorted(((int(_ext(proc_of(level + 1, k), "level").get("pos")), k) for k in kids))
 
-    def head(level: int, id_: str, cls: Any) -> dict[str, Any]:
+    def head(level: int, id_: str, cls: type[BaseModel]) -> _Head:
         proc = proc_of(level, id_)
         lv = _ext(proc, "level")
         return {"proc": proc, "lv": lv, "kw": {"id": id_, "name": proc.get("name") or "",
