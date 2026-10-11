@@ -265,7 +265,7 @@ export function Rail() {
         {expanded && <span className="flex-1 truncate" style={depth === 1 ? { fontSize: 12, lineHeight: "16px" } : undefined}>{item.label}</span>}
         {expanded && count > 0 && (
           <span key={count} className="m-motion-rise">
-            <Badge count={count} />
+            <Badge count={count} inverted={active} />
           </span>
         )}
         {expanded && item.shortcut && (

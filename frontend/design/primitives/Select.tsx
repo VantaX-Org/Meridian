@@ -14,23 +14,21 @@ export function Select({
   return (
     <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options}>
       <BaseSelect.Trigger
-        className={className ?? "inline-flex items-center justify-between gap-2 rounded border px-3 py-1.5 text-[13px] min-w-[160px]"}
-        style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
-      >
+        className={className ?? "m-input inline-flex items-center justify-between gap-2 min-w-[160px]"}
+              >
         <BaseSelect.Value placeholder={placeholder} />
         <ChevronDown size={14} />
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         <BaseSelect.Positioner>
           <BaseSelect.Popup
-            className="rounded border shadow-sm py-1"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
+            className="m-popup"
           >
             {options.map((o) => (
               <BaseSelect.Item
                 key={o.value}
                 value={o.value}
-                className="flex items-center justify-between gap-2 px-3 py-1.5 text-[13px] cursor-pointer"
+                className="m-popup-item"
               >
                 <BaseSelect.ItemText>{o.label}</BaseSelect.ItemText>
                 <BaseSelect.ItemIndicator><Check size={14} /></BaseSelect.ItemIndicator>

@@ -6,6 +6,7 @@ export * from "./primitives/IconButton";
 export * from "./primitives/Field";
 export * from "./primitives/Select";
 export * from "./primitives/Combobox";
+export * from "./primitives/Card";
 export * from "./primitives/Pill";
 export * from "./primitives/Badge";
 export * from "./primitives/Tabs";

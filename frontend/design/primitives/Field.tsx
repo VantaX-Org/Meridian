@@ -15,13 +15,13 @@ export function Field({ label, children, error }: { label: string; children: Rea
     ? cloneElement<ControlProps>(control as ReactElement<ControlProps>, { id: controlId })
     : children;
   return (
-    <BaseField.Root className="flex flex-col gap-1">
-      <BaseField.Label htmlFor={controlId} className="text-[12px] leading-4" style={{ color: "var(--m-ink-2)" }}>
+    <BaseField.Root className="flex flex-col gap-1.5">
+      <BaseField.Label htmlFor={controlId} className="m-field-label">
         {label}
       </BaseField.Label>
       {content}
       {error && (
-        <BaseField.Error className="text-[12px] leading-4" style={{ color: "var(--m-critical)" }}>
+        <BaseField.Error className="m-field-error">
           {error}
         </BaseField.Error>
       )}

@@ -14,15 +14,14 @@ export function Combobox({
     <BaseCombobox.Root items={options} value={value} onValueChange={(v) => onValueChange(String(v ?? ""))}>
       <BaseCombobox.Input
         placeholder={placeholder}
-        className="rounded border px-3 py-1.5 text-[13px]"
-        style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+        className="m-input"
       />
       <BaseCombobox.Portal>
         <BaseCombobox.Positioner>
-          <BaseCombobox.Popup className="rounded border shadow-sm py-1" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
+          <BaseCombobox.Popup className="m-popup">
             <BaseCombobox.List>
               {(option: ComboboxOption) => (
-                <BaseCombobox.Item key={option.value} value={option.value} className="px-3 py-1.5 text-[13px] cursor-pointer">
+                <BaseCombobox.Item key={option.value} value={option.value} className="m-popup-item">
                   {option.label}
                 </BaseCombobox.Item>
               )}

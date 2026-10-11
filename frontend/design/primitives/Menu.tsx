@@ -15,9 +15,9 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
       {isValidElement(trigger) ? <BaseMenu.Trigger render={trigger as ReactElement<Record<string, unknown>>} /> : <BaseMenu.Trigger>{trigger}</BaseMenu.Trigger>}
       <BaseMenu.Portal>
         <BaseMenu.Positioner>
-          <BaseMenu.Popup className="rounded border shadow-sm py-1" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
+          <BaseMenu.Popup className="m-popup">
             {items.map((item) => (
-              <BaseMenu.Item key={item.label} onClick={item.onSelect} className="px-3 py-1.5 text-[13px] cursor-pointer">
+              <BaseMenu.Item key={item.label} onClick={item.onSelect} className="m-popup-item">
                 {item.label}
               </BaseMenu.Item>
             ))}
