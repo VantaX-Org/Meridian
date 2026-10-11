@@ -1,5 +1,5 @@
 "use client";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 
 /**
  * Insights → Mining: entity relationships, mined field dependencies, and
@@ -15,12 +15,8 @@ import { useUrlState } from "@/hooks/use-url-state";
  * - `Tally`'s per-figure href/verdict/tone is replaced by plain @/design
  *   `Stat` cells (label/value only); the "click to view" affordance and the
  *   loading/error-retry wiring on each figure are dropped.
- * - The lens switch (legacy `Tabs` controlled by `useUrlState("lens", ...)`)
- *   is replaced by @/design's `Tabs`, which is uncontrolled (`defaultValue`
- *   only, no onValueChange) — matching the Task 22 precedent in
- *   insights/process/page.tsx. The initial lens still reads `?lens=` from
- *   the URL (so the /mining and /relationships redirects land on the right
- *   tab), but switching tabs after that no longer updates the URL.
+ * - The lens switch is now `?tab=` (controlled Tabs, whitelisted). A legacy
+ *   `?lens=` is honoured only when `?tab=` is absent.
  * - The "domain" filter under Entity links, and the system/version/object
  *   selection under Mined dependencies, use plain `useState` instead of
  *   `useUrlState` for the same reason (no controlled-Tabs URL round trip to
@@ -31,7 +27,7 @@ import { useUrlState } from "@/hooks/use-url-state";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -290,8 +286,11 @@ function DataTableWithMaybeEmpty<T>({ columns, data, getRowId, loading, empty }:
 }
 
 export default function MiningPage() {
-  const [tabRaw, setTab] = useUrlState("tab", "links");
-  const tab = (["links", "dependencies", "patterns"] as string[]).includes(tabRaw) ? tabRaw : "links";
+  const [tabRaw, setTab] = useUrlState("tab", "");
+  const TABS = ["links", "dependencies", "patterns"] as const;
+  // Legacy bookmarks used ?lens=; honour it only when ?tab= is absent, through the same whitelist.
+  const lens = useSearchParams().get("lens") ?? "";
+  const tab = oneOf(tabRaw, TABS, oneOf(lens, TABS, "links"));
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>

@@ -1,5 +1,5 @@
 "use client";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 
 /**
  * Insights → Process: readiness (L1-L5 process readiness, scored from DQ
@@ -390,7 +390,7 @@ function MapView() {
   const analysed = useMemo(() => (latest?.dqs_summary ? Object.keys(latest.dqs_summary) : []), [latest]);
   const modules = useMemo(() => analysed.filter((m) => MAPPED.has(m)), [analysed]);
   const moduleParam = search.get("module");
-  const active = moduleParam || modules[0] || null;
+  const active = oneOf(moduleParam ?? "", modules, modules[0] ?? "") || null;
   const setModule = (m: string) => {
     const next = new URLSearchParams(search.toString());
     next.set("module", m);

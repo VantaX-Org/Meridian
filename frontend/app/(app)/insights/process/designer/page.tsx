@@ -26,7 +26,8 @@ const NEW_NAME = ["New process", "New process area", "New process group", "New s
 export default function ProcessDesigner() {
   const sp = useSearchParams();
   const model = sp.get("model") ?? "reference";
-  const v = sp.get("v");
+  const vRaw = sp.get("v");
+  const v = vRaw && /^\d+$/.test(vRaw) ? vRaw : null;
   const overlayOn = sp.get("overlay") !== "none";
   const reference = model === "reference";
 

@@ -10,7 +10,7 @@ import { downloadCleaningExport, getCleaningQueue, groupIntoBatches, type Cleani
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
@@ -75,7 +75,8 @@ function CleaningQueueTab() {
 }
 
 export default function FixPage() {
-  const [tab, setTab] = useUrlState("tab", "cleaning");
+  const [tabRaw, setTab] = useUrlState("tab", "cleaning");
+  const tab = oneOf(tabRaw, ["cleaning", "batches"], "cleaning");
 
   return (
     <Tabs

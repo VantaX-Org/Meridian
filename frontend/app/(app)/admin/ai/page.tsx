@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Notice, Select } from "@/design";
+import { Button, ErrorState, Field, Notice, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -48,6 +48,7 @@ export default function AdminAIPage() {
 
   const c = config.data;
   const loading = config.isLoading;
+  if (loading) return <div aria-busy="true" className="flex flex-col gap-6 p-6"><Skeleton height={240} /></div>;
   const provider = c ? providers.data?.[c.provider]?.label || c.provider || null : null;
 
   return (

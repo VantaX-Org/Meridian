@@ -18,13 +18,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Pager, Pill, Select, Skeleton, Stat, Tooltip,
+  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
   type PillTone, type SelectOption,
 } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useNowSec } from "@/hooks/use-now";
 import { useRole } from "@/hooks/use-role";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import {
   acceptHighConfidence, approveBatch, errorText, exportBatch, getBatch, getBatchDiff, getBatchEvents,
   getBatchPackages, getMonitor, listBatches, patchItem,
@@ -35,6 +35,8 @@ import {
 import { formatDate, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 
+const SORT_COLS = ["name", "status", "items", "with_proposal", "auto_approvable", "fixed", "still_failing", "created_at"] as const;
+const SORTS = SORT_COLS.flatMap((c) => [`${c}:asc`, `${c}:desc`]);
 const STATUS_TONE: Record<BatchStatus, PillTone> = { draft: "neutral", approved: "at-risk", exported: "go" };
 const FORMATS: SelectOption[] = Object.entries(FORMAT_LABEL).map(([value, label]) => ({ value, label }));
 const ITEM_PAGE_SIZE = 100;
@@ -86,9 +88,11 @@ export function BatchesTab() {
   // Monitoring section below links straight to a specific batch's drawer, including
   // across navigation from elsewhere, which local state cannot survive.
   const [batchId, setBatchId] = useUrlState("batch", "");
-  const [status, setStatus] = useUrlState("status", "");
+  const [statusRaw, setStatus] = useUrlState("status", "");
+  const status = oneOf(statusRaw, ["draft", "approved", "exported"], "") as BatchStatus | "";
   const [search, setSearch] = useUrlState("q", "");
-  const [sort, setSort] = useUrlState("sort", "created_at:desc");
+  const [sortRaw, setSort] = useUrlState("sort", "created_at:desc");
+  const sort = oneOf(sortRaw, SORTS, "created_at:desc");
 
   const q = useQuery({ queryKey: queryKeys.remediationBatches(), queryFn: listBatches });
   const monitor = useQuery({ queryKey: queryKeys.remediationMonitor(), queryFn: getMonitor, staleTime: 60_000 });
@@ -184,6 +188,12 @@ export function BatchesTab() {
             : null}
         </p>
       </div>
+
+      {status ? (
+        <Notice action={<Button variant="ghost" onClick={() => setStatus("")}>Show all</Button>}>
+          Showing {STATUS_LABEL[status].toLowerCase()} batches only.
+        </Notice>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Search">

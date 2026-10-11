@@ -91,7 +91,7 @@ export default function AdminTriagePage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6" aria-busy={teams.isLoading || undefined}>
       <header>
         <strong className="text-[17px]">Triage</strong>
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>

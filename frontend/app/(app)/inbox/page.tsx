@@ -13,10 +13,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, Pill, Select, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
-import { useUrlState } from "@/hooks/use-url-state";
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { exportIssues } from "@/lib/api/issues";
 import { assignItem, bulkApprove, escalateItem, getMetrics, getQueueItems, resolveItem, submitAiFeedback } from "@/lib/api/stewardship";
 import { getTriageMetrics, ownerRungs } from "@/lib/api/triage";
@@ -96,9 +96,11 @@ export default function InboxPage() {
   const canApprove = can("approve");
   const canSeeTeam = can("assign");
   const canManageRules = can("manage_rules");
-  const [view, setView] = useUrlState("view", "all");
-  const [type, setType] = useUrlState("type", "all");
-  const [kind, setKind] = useUrlState("kind", "task");
+  const [viewRaw, setView] = useUrlState("view", "all");
+  const [typeRaw, setType] = useUrlState("type", "all");
+  const [kindRaw, setKind] = useUrlState("kind", "task");
+  const view = oneOf(viewRaw, VIEWS.map((v) => v.value), "all");
+  const kind = oneOf(kindRaw, KINDS.map((k) => k.value), "task");
   const isExceptions = kind === "exception";
   const [search, setSearch] = useState("");
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
@@ -147,6 +149,8 @@ export default function InboxPage() {
     [names, user?.id],
   );
 
+  // A type is only a filter when the loaded tasks carry it; unknown values apply nothing.
+  const type = useMemo(() => oneOf(typeRaw, [...new Set(all.map((t) => t.item_type))], "all"), [typeRaw, all]);
   const items = useMemo(() => {
     const q = search.trim().toLowerCase();
     const rows = all.filter((t) => {
@@ -400,9 +404,9 @@ export default function InboxPage() {
             ) : (
               <>
                 <Stat label="Open" value={isLoading ? "…" : all.length} />
-                <Stat label="Overdue" value={isLoading ? "…" : counts.breached} />
-                <Stat label="Due today" value={isLoading ? "…" : counts.today} />
-                <Stat label="Unassigned" value={isLoading ? "…" : counts.unassigned} />
+                <Stat label="Overdue" value={isLoading ? "…" : counts.breached} href="/inbox?view=breached" />
+                <Stat label="Due today" value={isLoading ? "…" : counts.today} href="/inbox?view=today" />
+                <Stat label="Unassigned" value={isLoading ? "…" : counts.unassigned} href="/inbox?view=unassigned" />
                 <Stat label="Resolved this week" value={weekQ.isLoading ? "…" : weekQ.data?.weekly.at(-1)?.resolved ?? "—"} />
               </>
             )}
@@ -448,6 +452,11 @@ export default function InboxPage() {
               style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
             />
           </Field>
+          {!isExceptions && (view !== "all" || type !== "all") && (
+            <Notice action={<Button variant="ghost" onClick={() => { setView("all"); setType("all"); }}>Show all</Button>}>
+              Showing {[view !== "all" ? VIEWS.find((v) => v.value === view)?.label.toLowerCase() : null, type !== "all" ? `${labelOf(type).toLowerCase()} tasks` : null].filter(Boolean).join(", ")} only.
+            </Notice>
+          )}
           {isExceptions && canManageRules && (
             <Button variant="secondary" onClick={() => setRulesOpen(true)}>Manage exception rules</Button>
           )}
