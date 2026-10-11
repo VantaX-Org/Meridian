@@ -11,7 +11,8 @@ import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
 import { exportAuditEntries, getAuditEntries, type AuditEntry } from "@/lib/api/audit";
 import { apiErrorMessage } from "@/lib/error";
-import { deleteUser, getAssignableUsers, getUsers, inviteUser, updateUser } from "@/lib/api/users";
+import { deleteUser, getAssignableUsers, getUsers, updateUser } from "@/lib/api/users";
+import { InviteForm } from "@/components/admin/invite-form";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { User, UserRole } from "@/types/api";
@@ -241,31 +242,6 @@ function AuditView() {
         </div>
       ) : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No audit activity recorded yet.</p>}
     </div>
-  );
-}
-
-function InviteForm({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<UserRole>("viewer");
-  const m = useMutation({
-    mutationFn: () => inviteUser({ email, name: name || undefined, role }),
-    onSuccess: () => { toast.success(`Invitation sent to ${email}`); onDone(); },
-    onError: (e) => toast.error(`Invitation not sent. ${apiErrorMessage(e)}`),
-  });
-  return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (email) m.mutate(); }}>
-      <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
-      <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-      <Field label="Role">
-        <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
-      </Field>
-      <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
-      <div className="flex gap-2">
-        <Button type="submit" disabled={!email || m.isPending}>Send invitation</Button>
-        <Button type="button" variant="secondary" onClick={onDone}>Close</Button>
-      </div>
-    </form>
   );
 }
 
