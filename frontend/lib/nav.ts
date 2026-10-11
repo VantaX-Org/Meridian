@@ -37,6 +37,9 @@ import {
   UploadIcon,
 } from "@/components/meridian/nav-icons";
 import type { Role } from "@/hooks/use-role";
+import { homeHrefForRole } from "@/lib/persona";
+
+export { homeHrefForRole };
 
 export type NavIcon =
   | LucideIcon
@@ -81,14 +84,6 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/admin/ai", label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   { href: "/admin/licence", label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
-
-/** The home route for this role's persona. Steward gets its own page; every
- * other role (including ones with no dedicated persona page) falls back to
- * lead, not basis — there is no "basis" role. */
-export function homeHrefForRole(role: Role): string {
-  if (role === "steward") return "/home/steward";
-  return "/home/lead";
-}
 
 /**
  * A nav item's href, with `/home/*` resolved to the viewer's own persona

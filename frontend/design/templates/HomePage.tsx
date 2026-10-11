@@ -1,7 +1,8 @@
 // frontend/design/templates/HomePage.tsx
 import type { ReactNode } from "react";
-import { Counter } from "../primitives/Counter";
+import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
+import { DEFAULT_SCORE_BANDS, ScoreRing } from "../primitives/ScoreRing";
 import { Pill } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
@@ -15,6 +16,9 @@ import { GhostPanel } from "./GhostPanel";
 import type { DayOneStep } from "../../hooks/use-day-one";
 import { formatDate } from "../../lib/format";
 import type { SeverityTotals } from "../../lib/home-metrics";
+
+/** Situation sentence for a fresh install (screens.md 3.1). */
+const NO_DATA_VERDICT = "No analysis yet. Connect a system and run the first extraction.";
 
 export interface HomeVerdict {
   /** The narrative's first sentence (the headline verdict). */
@@ -85,15 +89,26 @@ export function HomePage({
   }
 
   return (
-    <div className="mx-auto flex flex-col" style={{ padding: "var(--m-space-6)", gap: "var(--m-space-6)", maxWidth: 1280 }}>
+    <div className="mx-auto flex flex-col" style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           {state === "loading" ? (
-            <Skeleton height={28} width={420} />
+            <div className="m-motion-stagger flex flex-col gap-2">
+              <Skeleton height={34} width={520} />
+              <Skeleton height={18} width={360} />
+            </div>
           ) : (
             <>
-              <p className="text-[20px] leading-[26px] font-semibold" style={{ color: "var(--m-ink)" }}>
-                {verdict?.sentence1}
+              <p
+                data-testid="home-verdict"
+                style={{
+                  fontFamily: "var(--m-font-display)",
+                  fontSize: "var(--m-text-verdict)",
+                  lineHeight: "var(--m-leading-verdict)",
+                  color: state === "no-data" ? "var(--m-ink-3)" : "var(--m-ink)",
+                }}
+              >
+                {verdict?.sentence1 ?? NO_DATA_VERDICT}
               </p>
               {verdict?.sentence2 && (
                 <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{verdict.sentence2}</p>
@@ -111,17 +126,30 @@ export function HomePage({
       </div>
 
       {state === "no-data" && journey && (
-        <JourneyStepper
-          systemsConnected={journey.systemsConnected}
-          configLoaded={journey.configLoaded}
-          extracted={journey.extracted}
-          complete={journey.complete}
-          step={journey.step}
-        />
+        <Card title="Get to your first score">
+          <JourneyStepper
+            systemsConnected={journey.systemsConnected}
+            configLoaded={journey.configLoaded}
+            extracted={journey.extracted}
+            complete={journey.complete}
+            step={journey.step}
+          />
+        </Card>
       )}
 
       {state === "no-data" && <GhostPanel />}
-      {state === "loading" && <Skeleton height={360} />}
+      {state === "loading" && (
+        <div className="m-motion-stagger flex flex-col gap-4" data-testid="home-loading">
+          <span className="inline-flex overflow-hidden" style={{ width: 160, height: 160, borderRadius: "50%" }}>
+            <Skeleton width={160} height={160} />
+          </span>
+          <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <Skeleton height={96} />
+            <Skeleton height={96} />
+            <Skeleton height={96} />
+          </div>
+        </div>
+      )}
       {state === "data" && panel}
       {state === "data" && tiles}
       {lists}
@@ -134,6 +162,8 @@ export interface InstrumentPanelData {
   delta: number | null;
   previousLabel?: string;
   severity: SeverityTotals;
+  /** The severity cap in force (e.g. 70), drawn as a tick on the ring. */
+  cap?: number | null;
   trendPoints: ChartPoint[];
   dimensionPoints: ChartPoint[];
   heatmapCells: HeatmapCell[];
@@ -146,34 +176,45 @@ export interface InstrumentPanelData {
 
 const SEVERITY_ORDER: (keyof SeverityTotals)[] = ["critical", "high", "medium", "low"];
 
-/** Spec 7.1's instrument panel: Hero DQS, DQS-over-runs, six dimensions, object readiness grid. */
+/** Spec 3.1 hero: 12-col grid in a large card (ring 3 / trend 6 / dimensions 3), then the object readiness heatmap card. */
 export function InstrumentPanel({
-  dqs, delta: dqsDelta, previousLabel, severity, trendPoints, dimensionPoints, heatmapCells, heatmapRows, heatmapCols,
+  dqs, delta: dqsDelta, previousLabel, severity, cap, trendPoints, dimensionPoints, heatmapCells, heatmapRows, heatmapCols,
   versionId, onTrendPointClick, onHeatmapCellClick,
 }: InstrumentPanelData) {
   return (
-    <div
-      className="flex flex-col"
-      style={{ gap: "var(--m-space-6)", padding: "var(--m-space-6)", border: "1px solid var(--m-line)", borderRadius: "var(--m-radius-sheet)", background: "var(--m-sheet)" }}
-    >
-      <div className="flex items-center gap-6">
-        <Counter value={dqs} versionId={versionId} decimals={1} size={56} />
-        {dqsDelta !== null && dqsDelta !== undefined && <Delta value={dqsDelta} run={previousLabel} />}
-        <div className="flex gap-4">
-          {SEVERITY_ORDER.filter((k) => severity[k] > 0).map((k) => (
-            <span key={k} className="flex items-center gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
-              <SeverityDot severity={k} /> {severity[k]}
-            </span>
-          ))}
+    <div data-version={versionId} className="flex flex-col" style={{ gap: "var(--m-space-6)" }}>
+      <Card padding="lg">
+        <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
+          <div className="flex flex-col items-center gap-3 lg:col-span-3">
+            {dqs !== null && (
+              <ScoreRing score={dqs} size={160} cap={cap ?? undefined} criticals={severity.critical} />
+            )}
+            {dqsDelta !== null && dqsDelta !== undefined && <Delta value={dqsDelta} run={previousLabel} />}
+            <div className="flex flex-wrap justify-center gap-3">
+              {SEVERITY_ORDER.filter((k) => severity[k] > 0).map((k) => (
+                <span key={k} className="flex items-center gap-1 text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+                  <SeverityDot severity={k} /> {severity[k]}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="lg:col-span-6">
+            {trendPoints.length > 0 && (
+              <Line data={trendPoints} onPointClick={onTrendPointClick} height={200} draw dqsThreshold={DEFAULT_SCORE_BANDS.target} label="DQS over runs" />
+            )}
+          </div>
+          <div className="lg:col-span-3">
+            {dimensionPoints.length > 0 && (
+              <Bar data={dimensionPoints} height={200} dqsThreshold={DEFAULT_SCORE_BANDS.critical} draw label="Score by dimension" />
+            )}
+          </div>
         </div>
-      </div>
-
-      {trendPoints.length > 0 && <Line data={trendPoints} onPointClick={onTrendPointClick} height={160} draw />}
-
-      {dimensionPoints.length > 0 && <Bar data={dimensionPoints} height={200} dqsThreshold={60} draw />}
+      </Card>
 
       {heatmapCells.length > 0 && (
-        <Heatmap rows={heatmapRows} cols={heatmapCols} cells={heatmapCells} onPointClick={onHeatmapCellClick} cellSize={24} draw />
+        <Card title="Object readiness by dimension">
+          <Heatmap rows={heatmapRows} cols={heatmapCols} cells={heatmapCells} onPointClick={onHeatmapCellClick} cellSize={32} draw />
+        </Card>
       )}
     </div>
   );

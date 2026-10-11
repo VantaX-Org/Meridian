@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { Mono } from "../primitives/Mono";
+import { Skeleton } from "../primitives/Skeleton";
 
 export interface RecordStatus {
   label: "passing" | "failing" | "in batch" | "fixed";
@@ -9,12 +10,30 @@ export interface RecordStatus {
 }
 
 export function RecordPage({
-  recordKey, object, status, children,
-}: { recordKey: string; object: string; status: RecordStatus; children: ReactNode }) {
+  recordKey, object, status, children, loading = false,
+}: {
+  recordKey: string;
+  object: string;
+  status: RecordStatus;
+  children: ReactNode;
+  /** Header 32 + body 120 skeletons (screens.md 3.3) while the record loads. */
+  loading?: boolean;
+}) {
+  const wrap = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
+  if (loading) {
+    return (
+      <div className="m-motion-stagger mx-auto flex w-full flex-col gap-6" style={wrap} data-state="loading">
+        <Skeleton height={32} />
+        <Skeleton height={120} />
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full flex-col gap-6" style={wrap}>
       <header className="flex items-center gap-3">
-        <Mono>{recordKey}</Mono>
+        <span style={{ fontSize: "var(--m-text-title)", lineHeight: "var(--m-leading-title)", fontWeight: 600 }}>
+          <Mono>{recordKey}</Mono>
+        </span>
         <span style={{ color: "var(--m-ink-3)" }}>{object}</span>
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>

@@ -128,3 +128,12 @@ export function objectTrend(versions: Version[], module: string): { x: string; y
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
     .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score }));
 }
+
+/** The lowest cap a capped module reports ("... capped at 70"), or null when none is capped or none names a number. */
+export function capValue(v: Version): number | null {
+  const caps = Object.values(v.dqs_summary ?? {})
+    .filter((m) => m.capped)
+    .map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1]))
+    .filter((n) => Number.isFinite(n));
+  return caps.length ? Math.min(...caps) : null;
+}

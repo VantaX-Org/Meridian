@@ -37,13 +37,13 @@ describe("NAV_GROUPS", () => {
 });
 
 describe("homeHrefForRole", () => {
-  it("routes steward to the steward persona and every other role to lead", () => {
+  it("routes steward and approver to the steward persona and every other role to lead", () => {
     expect(homeHrefForRole("steward")).toBe("/home/steward");
     expect(homeHrefForRole("admin")).toBe("/home/lead");
     expect(homeHrefForRole("manager")).toBe("/home/lead");
     expect(homeHrefForRole("viewer")).toBe("/home/lead");
     expect(homeHrefForRole("analyst")).toBe("/home/lead");
-    expect(homeHrefForRole("approver")).toBe("/home/lead");
+    expect(homeHrefForRole("approver")).toBe("/home/steward"); // rbac.md 1.1: data_owner -> steward home
     expect(homeHrefForRole("auditor")).toBe("/home/lead");
     expect(homeHrefForRole("ai_reviewer")).toBe("/home/lead");
   });
