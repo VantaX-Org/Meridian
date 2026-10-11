@@ -74,6 +74,7 @@ from api.routes.process_designer import router as process_designer_router
 from api.routes.process_export import router as process_export_router
 from api.routes.admin_doctor import router as admin_doctor_router
 from api.routes.audit import router as audit_router
+from api.routes.survivorship_rules import router as survivorship_rules_router
 from api.routes.prom_metrics import router as prom_metrics_router
 from api.routes.shell import router as shell_router
 from api.routes.system_update import router as system_update_router
@@ -343,6 +344,7 @@ app.include_router(process_designer_router)
 app.include_router(process_export_router)
 app.include_router(admin_doctor_router)
 app.include_router(audit_router)
+app.include_router(survivorship_rules_router)
 app.include_router(prom_metrics_router)
 app.include_router(shell_router)
 app.include_router(system_update_router)

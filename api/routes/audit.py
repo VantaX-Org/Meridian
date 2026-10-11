@@ -199,3 +199,61 @@ async def audit_summary(
     )
     rows = [dict(r._mapping) for r in result.fetchall()]
     return {"summary": rows}
+
+
+@router.get("/audit/llm")
+async def list_llm_audit(
+    service_name: Optional[str] = Query(None),
+    success: Optional[bool] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant),
+    _role: str = Depends(require_permission("manage_users")),
+):
+    """LLM call audit (llm_audit_log, newest first, paged) plus a per-service
+    summary of the persistent decision cache. Prompt text is never stored, only hashes."""
+    await _set_rls(db, tenant.id)
+    conds = ["tenant_id = :tid"]
+    params: dict = {"tid": str(tenant.id)}
+    if service_name:
+        conds.append("service_name = :svc")
+        params["svc"] = service_name
+    if success is not None:
+        conds.append("success = :ok")
+        params["ok"] = success
+    where = " AND ".join(conds)
+
+    total = (await db.execute(text(f"SELECT COUNT(*) FROM llm_audit_log WHERE {where}"), params)).scalar() or 0
+    rows = await db.execute(
+        text(
+            f"""
+            SELECT id, service_name, called_at, model_version, prompt_hash, token_count,
+                   latency_ms, success, deterministic_hit, skip_reason
+            FROM llm_audit_log WHERE {where}
+            ORDER BY called_at DESC LIMIT :limit OFFSET :offset
+            """
+        ),
+        {**params, "limit": limit, "offset": offset},
+    )
+    entries = []
+    for r in rows.fetchall():
+        d = dict(r._mapping)
+        d["id"] = str(d["id"])
+        if d.get("called_at"):
+            d["called_at"] = d["called_at"].isoformat()
+        entries.append(d)
+
+    cache = await db.execute(
+        text(
+            """
+            SELECT service_name, COUNT(*) AS decisions,
+                   COUNT(*) FILTER (WHERE deterministic_hit) AS deterministic
+            FROM llm_decision_cache WHERE tenant_id = :tid
+            GROUP BY service_name ORDER BY decisions DESC
+            """
+        ),
+        {"tid": str(tenant.id)},
+    )
+    cache_summary = [dict(r._mapping) for r in cache.fetchall()]
+    return {"entries": entries, "total": total, "limit": limit, "offset": offset, "cache": cache_summary}
