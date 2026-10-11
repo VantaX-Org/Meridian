@@ -20,6 +20,7 @@ The migration scan handles every shape the codebase uses to enable RLS:
     list/tuple of literals
   * ``for t in _RLS_TABLES: ...`` — a tuple of literals, module-level (043) or
     function-local
+  * ``for t in (...): _rls(t)`` — a helper called with the loop variable (077)
   * ``def _enable_rls(t): ... f"ALTER TABLE {t} ENABLE ..."`` then
     ``_enable_rls("x")`` — a per-table helper called with literal args (037)
 
@@ -131,7 +132,8 @@ def _rls_enabled_tables() -> set[str]:
             # Loop forms: resolve the iterable when the loop body enables RLS.
             if isinstance(node, ast.For):
                 segment = ast.get_source_segment(src, node) or ""
-                if _RLS_MARKER in segment:
+                # ...or calls an RLS helper per item (077: ``for t in (...): _rls(t)``).
+                if _RLS_MARKER in segment or any(f"{h}(" in segment for h in helpers):
                     enabled.update(
                         t.lower() for t in _resolve_iter(node.iter, string_lists)
                     )

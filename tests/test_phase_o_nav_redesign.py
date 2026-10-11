@@ -1,5 +1,6 @@
 """Phase O — UI navigation redesign and AI rules page tests."""
 
+import re
 from pathlib import Path
 import pytest
 
@@ -25,6 +26,11 @@ NAV_GROUP_ORDER = (
     "Rules",
     "Admin",
 )
+
+
+def _has_item(text: str, href: str, label: str) -> bool:
+    """href then label on one nav item, tolerating keys (requires, ...) between them."""
+    return re.search(rf'href: "{re.escape(href)}",[^{{}}]*?label: "{re.escape(label)}"', text) is not None
 
 
 def _nav() -> str:
@@ -60,7 +66,7 @@ def test_sidebar_and_palette_share_nav():
 def test_overview_items():
     """Home holds the role home at /home/lead; no 'Dashboard' label."""
     block = _group_block(_nav(), "Home")
-    assert 'href: "/home/lead", label: "Home"' in block
+    assert _has_item(block, "/home/lead", "Home")
     assert '"/analytics"' not in block
     assert 'label: "Dashboard"' not in LAYOUT.read_text(encoding="utf-8") and 'label: "Dashboard"' not in _nav()
 
@@ -77,17 +83,17 @@ def test_sidebar_systems_and_data_items():
 def test_sidebar_quality_items():
     """Objects and Runs are their own sections."""
     content = _nav()
-    assert 'href: "/objects", label: "Objects"' in _group_block(content, "Objects")
-    assert 'href: "/runs", label: "Runs"' in _group_block(content, "Runs")
+    assert _has_item(_group_block(content, "Objects"), "/objects", "Objects")
+    assert _has_item(_group_block(content, "Runs"), "/runs", "Runs")
 
 
 
 def test_sidebar_fix_items():
     """Fix holds cleaning; the steward inbox, with Exceptions beneath it, is its own section."""
     content = _nav()
-    assert 'href: "/fix", label: "Fix"' in _group_block(content, "Fix")
+    assert _has_item(_group_block(content, "Fix"), "/fix", "Fix")
     inbox = _group_block(content, "Inbox")
-    assert 'href: "/inbox",\n        label: "Inbox"' in inbox
+    assert _has_item(inbox, "/inbox", "Inbox")
     assert '"/inbox?kind=exception"' in inbox
     assert '"/stewardship"' not in content
     assert '"/workbench"' not in content
@@ -113,7 +119,7 @@ def test_sidebar_process_and_impact_items():
 def test_sidebar_reports_and_admin_items():
     """Insights is the report hub; Admin has Users and audit and Settings with its sub-pages."""
     content = _nav()
-    assert 'href: "/insights",\n        label: "Insights"' in _group_block(content, "Insights")
+    assert _has_item(_group_block(content, "Insights"), "/insights", "Insights")
     assert '"/rules"' in _group_block(content, "Rules")
     admin = _group_block(content, "Admin")
     assert '"/admin/users"' in admin and '"/admin/settings"' in admin

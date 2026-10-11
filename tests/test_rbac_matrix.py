@@ -164,14 +164,16 @@ def _reports_client(monkeypatch):
 def test_report_downloads_need_export(monkeypatch):
     import uuid
 
-    app, client = _reports_client(monkeypatch)
+    from api.routes import reports
+
+    _, client = _reports_client(monkeypatch)
     vid = uuid.uuid4()
     for role, status in (("analyst", 200), ("auditor", 200), ("admin", 200), ("viewer", 403)):
         r = client.get("/api/v1/reports/cleaning.pdf", headers={"X-User-Role": role})
         assert r.status_code == status, (role, r.text)
     # Every route on the reports router refuses a viewer, whatever the handler does.
     paths = [r.path.replace("{version_id}", str(vid)).replace("{module}", "MARA").replace("{matnr}", "M1")
-             for r in app.routes if r.path.startswith("/api/v1/reports")]
+             for r in reports.router.routes if r.path.startswith("/api/v1/reports")]
     assert len(paths) >= 9
     for p in paths:
         assert client.get(p, params={"v2": "x"}, headers={"X-User-Role": "viewer"}).status_code == 403, p
