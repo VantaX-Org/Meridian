@@ -6,14 +6,15 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AuthFrame, AuthNotice, PasswordField, authActionsClass, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { AuthFrame, AuthNotice, AuthSpinner, PasswordField, authActionsClass, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
 import { Button } from "@/design";
 
 /** Server-side minimum (api.routes.auth._MIN_PASSWORD_LENGTH = 12). */
 const MIN_PASSWORD_LENGTH = 12;
 
-export function SetPasswordForm({ title, lead, submitLabel, missingToken, failure, done, redirect, submit }: {
+export function SetPasswordForm({ title, lead, submitLabel, missingToken, failure, done, redirect, submit, retryHref }: {
   title: string; lead: string; submitLabel: string; missingToken: string; failure: string; done: string; redirect: string;
+  retryHref?: string;
   submit: (token: string, password: string) => Promise<unknown>;
 }) {
   const router = useRouter();
@@ -45,12 +46,17 @@ export function SetPasswordForm({ title, lead, submitLabel, missingToken, failur
   return (
     <AuthFrame title={title} lead={lead}>
       <form className={authFormClass} onSubmit={onSubmit} noValidate>
-        {error ? <AuthNotice tone="danger">{error}</AuthNotice> : null}
+        {error ? (
+          <AuthNotice tone="danger">
+            {error}
+            {retryHref ? <> <Link className="underline" href={retryHref}>Request a new link</Link></> : null}
+          </AuthNotice>
+        ) : null}
         <PasswordField label="New password" value={password} onChange={setPassword} autoComplete="new-password"
           helper={`At least ${MIN_PASSWORD_LENGTH} characters.`} />
         <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} autoComplete="new-password" />
         <div className={authActionsClass}>
-          <Button type="submit" disabled={submitting}>{submitting ? "Saving" : submitLabel}</Button>
+          <Button type="submit" disabled={submitting} className="h-10 w-full">{submitting ? <><AuthSpinner /> Saving…</> : submitLabel}</Button>
         </div>
       </form>
       <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>

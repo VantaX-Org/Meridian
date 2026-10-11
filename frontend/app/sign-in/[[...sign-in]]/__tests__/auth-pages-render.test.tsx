@@ -1,5 +1,5 @@
 // Smoke test: every signed-out page still renders after the AuthFrame redesign (T5).
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -51,5 +51,14 @@ describe("signed-out pages render with the redesigned AuthFrame", () => {
   it("accept-invite renders exactly one h1", () => {
     const { container } = render(<AcceptInvitePage />);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
+  });
+
+  it("password eye toggle exposes aria-pressed and flips the input type", () => {
+    const { getByLabelText, container } = render(<SignInPage />);
+    const toggle = getByLabelText("Show password");
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(toggle);
+    expect(getByLabelText("Hide password").getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector("input[type=text][autocomplete=current-password]")).not.toBeNull();
   });
 });
