@@ -54,6 +54,7 @@ export const test = base.extend<{ app: Page }>({
     await mockInsightsReadiness(page);
     await mockFix(page);
     await mockExtraction(page);
+    await mockUnrecorded(page);
     // Not in the recording (wave 16); the recorded user is an admin. Specs override it per role.
     await page.route(/\/api\/v1\/me\/permissions/, (r) => r.fulfill(json(permissionsPayload("admin"))));
     await provide(page);
@@ -242,6 +243,35 @@ async function mockExtraction(page: Page) {
       { step_number: 1, step_name: "extract_BUT000", status: "ok", started_at: "2026-10-02T10:00:00Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 1200, error_detail: null },
       { step_number: 2, step_name: "extract_MARA", status: "failed", started_at: "2026-10-02T10:00:01Z", finished_at: "2026-10-02T10:00:01Z", duration_ms: 400, error_detail: "RFC_COMMUNICATION_FAILURE: connection reset" },
     ],
+  })));
+}
+
+/**
+ * Endpoints that the routes call but the recording does not hold. Without
+ * these, the page falls into its ErrorState (with a Retry button) once the
+ * query retries run out, and specs then test the error state, not the page.
+ */
+const WAVE_W1 = {
+  id: "w1", name: "Wave 1", source_system_id: "s1", target_system_id: null, target_release: "S/4HANA 2023",
+  modules: [OBJECT_SUMMARY.module], target_date: null, stage: "mock1" as const, min_readiness: 90, min_dqs: null,
+  signed_off_by: null, signed_off_at: null, created_at: "2026-10-01T08:00:00Z", updated_at: "2026-10-01T08:00:00Z",
+};
+async function mockUnrecorded(page: Page) {
+  await page.route(/\/api\/v1\/insights\/impact(\?.*)?$/, (r) => r.fulfill(json({ version_id: VERSION_ID, rows: [] })));
+  await page.route(/\/api\/v1\/insights\/owners(\?.*)?$/, (r) => r.fulfill(json({ owners: [] })));
+  await page.route(/\/api\/v1\/insights\/exec(\?.*)?$/, (r) => r.fulfill(json({
+    version_id: VERSION_ID, narrative: "", readiness_cells: [], waterfall: [], impact_rows: [], owner_rows: [],
+  })));
+  await page.route(/\/api\/v1\/triage\/(teams|rules|sla-policies)(\?.*)?$/, (r) => r.fulfill(json([])));
+  await page.route(/\/api\/v1\/migration\/waves(\?.*)?$/, (r) => r.fulfill(json({ waves: [WAVE_W1] })));
+  await page.route("**/api/v1/migration/waves/w1/cockpit", (r) => r.fulfill(json({
+    wave: WAVE_W1, run_id: VERSION_ID, source_version_id: VERSION_ID, dest_system_type: "s4hana", verdict: "no_go",
+    score: OBJECT_SUMMARY.composite_score, records_total: 10, records_blocked: OBJECT_SUMMARY.affected_records,
+    objects: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, verdict: "no_go", score: OBJECT_SUMMARY.composite_score,
+      records: 10, records_blocked: OBJECT_SUMMARY.affected_records, blocker_count: 1, dqs: OBJECT_SUMMARY.composite_score }],
+    trend: [],
+    blockers: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, gap_type: "target_mandatory", field: "MARA.MTART",
+      severity: "critical", records: OBJECT_SUMMARY.affected_records, gaps: 1 }],
   })));
 }
 

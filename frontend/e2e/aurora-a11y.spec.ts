@@ -12,6 +12,10 @@ for (const r of ROUTES) {
     await app.goto(r.path, { waitUntil: "load" });
     await expect(app.getByRole("heading", { level: 1, name: r.heading })).toBeVisible();
     await expect(app.getByRole("heading", { level: 1 })).toHaveCount(1);
+    // The layout-level insight header can mount after the h1 and fade in; axe
+    // reads mid-fade opacity as low contrast, so wait for finite animations to end.
+    await app.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
 
     const result = await new AxeBuilder({ page: app })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
