@@ -159,3 +159,45 @@ describe("Drawer", () => {
     expect(screen.getByText("Save")).toBeInTheDocument();
   });
 });
+
+describe("DataTable toolbar", () => {
+  const two = [textColumn<Row>("id", "Id"), textColumn<Row>("name", "Name")];
+
+  it("hides a column from the chooser", () => {
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-cols" />);
+    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByLabelText("Name"));
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("toggles density", () => {
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" />);
+    const btn = screen.getByRole("button", { name: "Compact rows" });
+    fireEvent.click(btn);
+    expect(screen.getByRole("button", { name: "Comfortable rows" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("saves and re-applies a view, keyed by table id", () => {
+    window.localStorage.clear();
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-views" />);
+    fireEvent.click(screen.getByText("Columns"));
+    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByText("Views"));
+    fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save view" }));
+    expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
+    fireEvent.click(screen.getByText(/^Columns/));
+    fireEvent.click(screen.getByLabelText("Name")); // show again
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Views/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ids only" }));
+    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("offers CSV export and can hide the toolbar", () => {
+    const { rerender } = render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} />);
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    rerender(<DataTable columns={two} data={rows} getRowId={(r) => r.id} hideToolbar />);
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+  });
+});
