@@ -149,11 +149,11 @@ def test_cloud_targets(system_type: str, module: str, names: list[str]) -> None:
 def test_read_slices_matdoc_guard_splits_plant_then_day() -> None:
     from api.services.connectivity_manager import ConnectivityManager
 
-    calls: list[str] = []
+    caps: list[int] = []
 
     class Fake:
         def read_table_full(self, table, cols, keys, where=None, max_rows=0, on_progress=None):
-            calls.append(where)
+            caps.append(max_rows)
             full = "WERKS" not in where or ("WERKS = '1000'" in where and (
                 "BUDAT >= '20260929' AND BUDAT < '20261001'" in where or "BUDAT >= '20260930'" in where))
             n = 30001 if full else 3
@@ -164,7 +164,16 @@ def test_read_slices_matdoc_guard_splits_plant_then_day() -> None:
     plants = pd.DataFrame({"WERKS": ["1000", "2000"]})
     df, truncated = ConnectivityManager._read_slices(Fake(), "MATDOC", ["MBLNR"], [], plan, plants, 5_000_000,
                                                      lambda g, n, r: None)
-    assert all(len(pd.DataFrame({"x": range(1)})) for _ in calls)
-    assert max(len(w) for w in calls) > 0
+    assert caps and all(0 < c <= 30001 for c in caps)
     assert truncated and truncated[0]["plant"] == "1000" and truncated[0]["day"] == "20260930"
     assert len(df) == 30000 + 3 + 3                       # truncated day + other day + plant 2000
+
+
+def test_sliced_table_at_max_rows_is_complete_when_no_slice_truncated() -> None:
+    from api.services.connectivity_manager import ConnectivityManager as CM
+
+    # sliced table: total rows >= max_rows but no slice truncated -> truncated False, so complete True
+    assert CM._is_complete(False, None, None, 5_000_000) is True
+    assert CM._is_complete(True, None, None, 10) is False
+    assert CM._is_complete(False, {"k": 1}, None, 10) is False
+    assert CM._is_complete(False, None, 11, 10) is False

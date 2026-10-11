@@ -14,7 +14,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import httpx
 import pandas as pd
@@ -32,6 +32,10 @@ from sap.extraction_registry import (
     get_available_modules,
     ExtractionTarget,
 )
+
+if TYPE_CHECKING:
+    from sap.extraction_plan import TablePlan
+    from sap.rfc import RFCConnector
 
 logger = logging.getLogger("meridian.connectivity_manager")
 
@@ -380,8 +384,7 @@ class ConnectivityManager:
                              "truncated": len(df) >= max_rows, "seconds": round(time.monotonic() - t0, 1)}
                     if table in counts:
                         entry["source_rows"] = counts[table]
-                    entry["complete"] = not entry["truncated"] and not dup_keys and \
-                        (table not in counts or counts[table] == len(df))
+                    entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
                     if dup_keys:
                         entry["duplicate_keys"] = dup_keys
                     if delta_info:
@@ -390,6 +393,7 @@ class ConnectivityManager:
                         entry["slices"] = len(plan.slices)
                         entry["window"] = plan.where
                         entry["truncated"] = bool(sliced)  # per-slice reads: the total is not capped by max_rows
+                        entry["complete"] = self._is_complete(entry["truncated"], dup_keys, counts.get(table), len(df))
                     if sliced:
                         entry["truncated_slices"] = sliced
                         entry["complete"] = False
@@ -422,7 +426,11 @@ class ConnectivityManager:
         return frames, coverage
 
     @staticmethod
-    def _read_slices(connector, table: str, cols: list[str], keys: list[str], plan, plants: Optional[pd.DataFrame],
+    def _is_complete(truncated: bool, dup_keys: object, source_rows: Optional[int], n: int) -> bool:
+        return not truncated and not dup_keys and (source_rows is None or source_rows == n)
+
+    @staticmethod
+    def _read_slices(connector: "RFCConnector", table: str, cols: list[str], keys: list[str], plan: "TablePlan", plants: Optional[pd.DataFrame],
                      max_rows: int, on_progress: Callable[[int, int, int], None]) -> tuple[pd.DataFrame, list[dict]]:
         """Read ``plan.slices`` one at a time (spec §1.1).
 
