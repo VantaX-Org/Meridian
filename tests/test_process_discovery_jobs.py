@@ -67,8 +67,12 @@ def test_release_lock_leaves_another_owners_lock(monkeypatch) -> None:
 
 
 def test_lock_outlives_the_longest_chain() -> None:
-    from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT
-    
+    from workers.celery_app import (
+        CONFIG_WAIT_RETRIES,
+        CONFIG_WAIT_SECONDS,
+        EXTRACT_TIME_LIMIT,
+    )
+
     chain = (CONFIG_WAIT_SECONDS * CONFIG_WAIT_RETRIES + EXTRACT_TIME_LIMIT + 60  # config wait + extract hard limit
              + rpd.WAIT_RETRIES * rpd.WAIT_COUNTDOWN + 7500)  # wait for another extraction + discover
     assert rpd.LOCK_TTL > chain

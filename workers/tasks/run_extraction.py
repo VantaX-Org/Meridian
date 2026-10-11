@@ -107,8 +107,6 @@ def baseline_loader(prefix: str) -> Callable[[str], "Optional[pd.DataFrame]"]:
     return load
 
 
-
-
 def wait_for_config(task: Task, session: Session, system_id: str) -> str:
     """'loaded' when the system has a completed config load; retry while a fresh load runs; else 'baseline'."""
     from api.services.config_pairing import config_basis
