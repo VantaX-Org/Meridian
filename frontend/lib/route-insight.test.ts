@@ -29,10 +29,10 @@ describe("route insight", () => {
   it("builds the Changed cell from the compare delta and links the compare view", () => {
     const h = buildInsight("runs", {
       ...empty, hasRun: true, runId: "r2", dqs: 70, prevDqs: 74.2, critical: 0, total: 5, affected: 9,
-      moved: { count: 3, biggest: { label: "Material master", change: -4.2 }, href: "/runs/r1/vs/r2" },
+      moved: { count: 3, biggest: { label: "Material master", change: -4.2 }, href: "/runs/r2/vs/r1" },
     });
     expect(h.changed.sentence).toBe("Score fell 4.2 points; 3 objects moved; biggest: Material master -4.2.");
-    expect(h.changed.href).toBe("/runs/r1/vs/r2");
+    expect(h.changed.href).toBe("/runs/r2/vs/r1");
   });
   it("falls back to the score delta when no compare data exists", () => {
     const h = buildInsight("runs", { ...empty, hasRun: true, runId: "r2", dqs: 70, prevDqs: 74, critical: 0, total: 5, affected: 9 });

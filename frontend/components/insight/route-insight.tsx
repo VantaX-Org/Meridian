@@ -32,11 +32,13 @@ export function RouteInsight() {
   const runId = run ?? (versionsQ.data?.versions ?? []).find((v) => FINISHED.has(v.status))?.id;
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
   const finished = (versionsQ.data?.versions ?? []).filter((v) => FINISHED.has(v.status));
-  // Changed cell: per-object movement between this run and its baseline (server picks the pair); falls back to the score delta.
+  // Changed cell: per-object movement between this run and the finished run before it (list is newest first); falls back to the score delta.
+  const at = finished.findIndex((v) => v.id === runId);
+  const prevId = at >= 0 ? finished[at + 1]?.id : undefined;
   const cmpQ = useQuery({
-    queryKey: ["insight", "compare", runId],
-    queryFn: () => compareVersions(undefined, runId as string),
-    enabled: !!section && finished.length >= 2 && !!runId,
+    queryKey: ["insight", "compare", prevId, runId],
+    queryFn: () => compareVersions(prevId as string, runId as string),
+    enabled: !!section && !!prevId && !!runId,
     retry: false,
   });
   const wavesQ = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves, enabled: section === "migration" });
@@ -66,7 +68,7 @@ export function RouteInsight() {
       ? {
           count: movers.length,
           biggest: movers[0] ? { label: formatModuleName(movers[0][0]), change: Math.round(movers[0][1].dqs_change * 10) / 10 } : undefined,
-          href: `/runs/${cmp.v1.id}/vs/${cmp.v2.id}`,
+          href: `/runs/${cmp.v2.id}/vs/${cmp.v1.id}`,
         }
       : undefined,
     worst: worst ? { module: worst.module, label: formatModuleName(worst.module), findings: worst.findings, critical: worst.critical } : undefined,
