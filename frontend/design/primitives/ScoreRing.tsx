@@ -2,7 +2,12 @@ import type { CSSProperties } from "react";
 import { dqsBand, mColor } from "../tokens";
 
 /** Mirrors `--m-dqs-target`, `--m-dqs-warning`, `--m-dqs-critical` in tokens.css. */
-export const DEFAULT_SCORE_BANDS = { target: 90, warning: 75, critical: 60 } as const;
+export interface ScoreBands {
+  target: number;
+  warning: number;
+  critical: number;
+}
+export const DEFAULT_SCORE_BANDS: ScoreBands = { target: 90, warning: 75, critical: 60 };
 
 const ARC = 0.75; // 270 degrees, open at 12 o'clock like the logo
 const START = 45; // degrees clockwise from 12 o'clock where the arc begins
@@ -21,10 +26,12 @@ export function ScoreRing({
   cap?: number;
   /** Critical findings behind the cap, used in the label under the ring. */
   criticals?: number;
-  bands?: { target: number; warning: number; critical: number };
+  bands?: ScoreBands;
 }) {
   const measured = clamp(score);
-  const shown = cap !== undefined ? Math.min(measured, cap) : measured;
+  const capV = cap !== undefined ? clamp(cap) : undefined;
+  const capped = capV !== undefined && measured > capV;
+  const shown = capped ? capV : measured;
   const stroke = Math.max(3, size / 10);
   const c = size / 2;
   const r = (size - stroke) / 2;
@@ -42,22 +49,22 @@ export function ScoreRing({
   });
   const numSize = size / 2.8;
   const big = size >= 96;
-  const capA = cap !== undefined ? point(cap, r - stroke / 2) : null;
-  const capB = cap !== undefined ? point(cap, r + stroke / 2) : null;
+  const capA = capV !== undefined ? point(capV, r - stroke / 2) : null;
+  const capB = capV !== undefined ? point(capV, r + stroke / 2) : null;
 
   const svg = (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score ${Math.round(shown)}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={capped ? `Score ${Math.round(shown)}, capped from ${Math.round(measured)}${criticals ? `, ${criticals} critical` : ""}` : `Score ${Math.round(shown)}`}>
       <circle cx={c} cy={c} r={r} fill="none" stroke="var(--m-dqs-track)" strokeWidth={stroke} strokeLinecap="round" transform={rot} {...arc(0, 100)} />
       {big && <line x1={c} x2={c} y1={stroke / 2} y2={size - stroke / 2} stroke="var(--m-line-strong)" strokeWidth={1} />}
-      {cap !== undefined && measured > cap && (
-        <path data-ghost d={`M ${point(cap, r).x} ${point(cap, r).y} A ${r} ${r} 0 ${(measured - cap) * 2.7 > 180 ? 1 : 0} 1 ${point(measured, r).x} ${point(measured, r).y}`} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray="3 3" strokeOpacity={0.5} />
+      {capped && capV !== undefined && (
+        <path data-ghost d={`M ${point(capV, r).x} ${point(capV, r).y} A ${r} ${r} 0 ${(measured - capV) * 2.7 > 180 ? 1 : 0} 1 ${point(measured, r).x} ${point(measured, r).y}`} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray="3 3" strokeOpacity={0.5} />
       )}
       {shown > 0 && (
         <circle
           data-value
           className="m-motion-draw"
           cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" transform={rot}
-          style={{ "--m-draw-length": circ } as CSSProperties}
+          style={{ "--m-draw-length": (arcLen * shown) / 100 } as CSSProperties}
           {...arc(0, shown)}
         />
       )}
@@ -70,12 +77,12 @@ export function ScoreRing({
       )}
     </svg>
   );
-  if (cap === undefined) return svg;
+  if (!capped) return svg;
   return (
     <div className="inline-flex flex-col items-center gap-1">
       {svg}
       <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-2)" }}>
-        {`Capped at ${cap}${criticals ? ` — ${criticals} critical` : ""}`}
+        {`Capped at ${capV}${criticals ? ` — ${criticals} critical` : ""}`}
       </span>
     </div>
   );

@@ -3,7 +3,7 @@
 // frontend/design/charts/Line.tsx
 import type { ActiveDotProps } from "recharts";
 import { ComposedChart, Area, Line as RLine, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
-import { chartTheme, type ChartPoint } from "./theme";
+import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { mMotion, reducedMotion } from "../tokens";
 
@@ -13,17 +13,21 @@ export function Line({
   height = 240,
   draw = false,
   dqsThreshold,
+  label,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
   height?: number;
   draw?: boolean;
   dqsThreshold?: number;
+  /** Names the chart for assistive tech; the data points are appended. */
+  label?: string;
 }) {
   const animate = draw && !reducedMotion();
   return (
+    <div role="img" aria-label={chartSummary(data, label)}>
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data}>
+      <ComposedChart data={data} accessibilityLayer={false}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" vertical={false} />
         <XAxis dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
         <YAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} domain={[0, 100]} />
@@ -40,6 +44,7 @@ export function Line({
         <RLine
           type="monotone"
           dataKey="y"
+          name={label ?? "Value"}
           stroke={chartTheme.series[0]}
           strokeWidth={2}
           isAnimationActive={animate}
@@ -62,5 +67,6 @@ export function Line({
         />
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   );
 }

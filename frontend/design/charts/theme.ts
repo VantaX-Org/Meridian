@@ -29,3 +29,8 @@ export const chartTheme = {
   medium: mColor.medium,
   pass: mColor.pass,
 };
+
+/** Text alternative for a chart: caller's label (or a default) plus every point as "x y". */
+export function chartSummary(data: ChartPoint[], label = "Chart"): string {
+  return `${label}: ${data.map((p) => `${p.x} ${p.y}`).join(", ") || "no data"}`;
+}

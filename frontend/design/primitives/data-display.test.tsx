@@ -74,7 +74,15 @@ describe("wave 6 readings", () => {
     const { container } = render(<ScoreRing score={80} size={96} />);
     const arc = container.querySelector("[data-value]") as SVGElement;
     expect(arc.getAttribute("class")).toContain("m-motion-draw");
-    expect(arc.style.getPropertyValue("--m-draw-length")).not.toBe("");
+    // dash length of the value arc (270 degrees at 80%), so the draw grows from the start
+    const dash = parseFloat(arc.getAttribute("stroke-dasharray") ?? "");
+    expect(parseFloat(arc.style.getPropertyValue("--m-draw-length"))).toBeCloseTo(dash, 3);
+  });
+
+  it("ScoreRing does not label a cap that does not bind", () => {
+    render(<ScoreRing score={70} cap={85} size={96} />);
+    expect(screen.queryByText(/Capped at/)).toBeNull();
+    expect(screen.getByLabelText("Score 70")).toBeInTheDocument();
   });
 
   it("ScoreRing cap shows tick, ghost arc, clamped value and label", () => {
@@ -82,7 +90,7 @@ describe("wave 6 readings", () => {
     expect(container.querySelector("[data-cap]")).toBeTruthy();
     expect(container.querySelector("[data-ghost]")).toBeTruthy();
     expect(screen.getByText("Capped at 85 — 1 critical")).toBeInTheDocument();
-    expect(screen.getByLabelText("Score 85")).toBeInTheDocument();
+    expect(screen.getByLabelText("Score 85, capped from 96, 1 critical")).toBeInTheDocument();
   });
 
   it("Counter uses the hero token by default", () => {

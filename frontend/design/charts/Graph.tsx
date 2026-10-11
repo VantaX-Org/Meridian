@@ -115,7 +115,7 @@ export function Graph(props: {
   const byId = useMemo(() => new Map(points.map((p) => [p.id, p])), [points]);
 
   return (
-    <svg width={width} height={height} role="img" aria-label="Duplicate cluster graph">
+    <svg width={width} height={height} role="group" aria-label={`Duplicate cluster graph, ${nodes.length} nodes, ${edges.length} links`}>
       {edges.map((e, i) => {
         const a = byId.get(e.source);
         const b = byId.get(e.target);
@@ -132,7 +132,21 @@ export function Graph(props: {
         );
       })}
       {points.map((p) => (
-        <g key={p.id} onClick={() => onNodeClick?.(p.id)} style={{ cursor: onNodeClick ? "pointer" : "default" }}>
+        <g
+          key={p.id}
+          className="m-graph-node"
+          role={onNodeClick ? "button" : "img"}
+          tabIndex={onNodeClick ? 0 : undefined}
+          aria-label={`Node ${nodes.find((n) => n.id === p.id)?.label ?? p.id}`}
+          onClick={() => onNodeClick?.(p.id)}
+          onKeyDown={(e) => {
+            if (onNodeClick && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onNodeClick(p.id);
+            }
+          }}
+          style={{ cursor: onNodeClick ? "pointer" : "default" }}
+        >
           <circle cx={p.x} cy={p.y} r={p.id === masterId ? 6 : 4} fill={p.id === masterId ? "var(--m-ink)" : "var(--m-viz-1)"} />
           <text x={p.x} y={p.y - 10} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-2)" textAnchor="middle">
             {p.id}

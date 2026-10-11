@@ -22,7 +22,7 @@ export function Dialog({
       <BaseDialog.Portal>
         <BaseDialog.Backdrop className="fixed inset-0" style={{ background: "var(--m-scrim)" }} />
         <BaseDialog.Popup
-          className="m-elev-3 m-motion-scale-in fixed inset-0 m-auto h-fit w-[480px] max-w-[calc(100%-32px)]"
+          className="m-elev-3 m-motion-scale-in fixed inset-0 m-auto h-fit max-h-[calc(100%-32px)] w-[480px] max-w-[calc(100%-32px)] overflow-auto"
           style={{ background: "var(--m-sheet)", borderRadius: "var(--m-radius-sheet)", padding: "var(--m-space-6)" }}
         >
           <BaseDialog.Title

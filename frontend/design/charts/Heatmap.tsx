@@ -49,20 +49,15 @@ export function Heatmap({
                     onClick={() => cell && onPointClick?.(cell)}
                     disabled={!cell}
                     aria-label={cell ? `${r} ${c}: ${cell.value}` : `${r} ${c}: no data`}
-                    className={`flex items-center justify-center border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
+                    className={`m-heat-cell flex items-center justify-center border-0 p-0 ${draw ? "m-motion-rise" : ""}`}
                     style={{
                       width: cellSize,
                       height: cellSize,
                       borderRadius: 3,
                       background: cell ? `var(--m-${cell.value}-soft)` : "var(--m-sheet-sunken)",
                       cursor: cell ? "pointer" : "default",
-                      outlineOffset: 2,
                       animationDelay: draw ? `calc(var(--m-motion-duration) * ${index / 10})` : undefined,
                     }}
-                    onFocus={(e) => { e.currentTarget.style.outline = "2px solid var(--m-accent)"; }}
-                    onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
-                    onMouseEnter={(e) => { if (cell) e.currentTarget.style.outline = "2px solid var(--m-accent)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.outline = "none"; }}
                   >
                     {cell && <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: `var(--m-${cell.value})` }} />}
                   </button>

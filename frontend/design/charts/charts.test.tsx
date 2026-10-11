@@ -2,7 +2,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { Heatmap } from "./Heatmap";
+import { Bar } from "./Bar";
+import { Graph } from "./Graph";
 import { Line } from "./Line";
+import { Radar } from "./Radar";
 import { Sparkline } from "./Sparkline";
 import { Waterfall } from "./Waterfall";
 
@@ -97,5 +100,36 @@ describe("chart tooltip and theme", () => {
     const btn = screen.getByLabelText("a b: at-risk");
     expect(btn.style.background).toContain("--m-at-risk-soft");
     expect(btn.querySelector("span")?.getAttribute("style")).toContain("--m-at-risk");
+  });
+
+  it("ChartTooltip is a polite live status region", () => {
+    render(<ChartTooltip active payload={[{ name: "DQS", value: 91 }]} />);
+    const tip = screen.getByRole("status");
+    expect(tip).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("every chart has a text alternative; sparkline is hidden", () => {
+    render(<Line data={data} label="DQS trend" />);
+    expect(screen.getByRole("img", { name: "DQS trend: r1 10, r2 20" })).toBeInTheDocument();
+    render(<Bar data={data} />);
+    expect(screen.getByRole("img", { name: "Chart: r1 10, r2 20" })).toBeInTheDocument();
+    render(<Waterfall data={data} label="Bridge" />);
+    expect(screen.getByRole("img", { name: "Bridge: r1 10, r2 20" })).toBeInTheDocument();
+    render(<Radar data={data} label="Dimensions" />);
+    expect(screen.getByRole("img", { name: "Dimensions: r1 10, r2 20" })).toBeInTheDocument();
+    const { container } = render(<Sparkline data={data} />);
+    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("Graph nodes are keyboard reachable and activate on Enter and Space", () => {
+    const onNodeClick = vi.fn();
+    render(<Graph nodes={[{ id: "a", size: 1 }, { id: "b", size: 1 }]} edges={[]} onNodeClick={onNodeClick} />);
+    const node = screen.getByRole("button", { name: "Node a" });
+    expect(node).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(node, { key: "Enter" });
+    fireEvent.keyDown(node, { key: " " });
+    fireEvent.keyDown(node, { key: "x" });
+    expect(onNodeClick).toHaveBeenCalledTimes(2);
+    expect(onNodeClick).toHaveBeenCalledWith("a");
   });
 });

@@ -2,7 +2,7 @@
 
 // frontend/design/charts/Bar.tsx
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
-import { chartTheme, type ChartPoint } from "./theme";
+import { chartTheme, chartSummary, type ChartPoint } from "./theme";
 import { ChartTooltip } from "./Tooltip";
 import { mMotion, reducedMotion } from "../tokens";
 
@@ -12,23 +12,28 @@ export function Bar({
   height = 240,
   draw = false,
   dqsThreshold,
+  label,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
   height?: number;
   draw?: boolean;
   dqsThreshold?: number;
+  /** Names the chart for assistive tech; the data points are appended. */
+  label?: string;
 }) {
   const animate = draw && !reducedMotion();
   return (
+    <div role="img" aria-label={chartSummary(data, label)}>
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" barSize={20} barCategoryGap="40%">
+      <BarChart data={data} layout="vertical" barCategoryGap="40%" accessibilityLayer={false}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" horizontal={false} />
         <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
         <YAxis type="category" dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
         <Tooltip content={<ChartTooltip />} cursor={false} />
         <RBar
           dataKey="y"
+          name={label ?? "Value"}
           radius={[0, 3, 3, 0]}
           activeBar={{ fill: chartTheme.accentHover }}
           onClick={(_, index) => onPointClick?.(data[index])}
@@ -47,5 +52,6 @@ export function Bar({
         </RBar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

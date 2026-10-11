@@ -78,7 +78,7 @@ describe("DuplicatesPage", () => {
 
     await pickObjectAndRecord();
 
-    expect(await screen.findByRole("img", { name: /duplicate cluster graph/i })).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: /duplicate cluster graph/i })).toBeInTheDocument();
     const masterRadio = await screen.findByRole("radio", { name: "000101" });
     fireEvent.click(masterRadio);
 
