@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ErrorState, Mono, Select, Skeleton, Stat } from "@/design";
+import { Button, ErrorState, Mono, Notice, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
@@ -22,19 +22,6 @@ import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
-
-function Banner({ tone, title, children, action }: { tone: "info" | "warning" | "danger"; title: string; children?: React.ReactNode; action?: React.ReactNode }) {
-  const border = tone === "danger" ? "var(--m-critical)" : tone === "warning" ? "var(--m-warning)" : "var(--m-line)";
-  return (
-    <div className="rounded border p-3 flex items-start justify-between gap-3" style={{ borderColor: border, background: "var(--m-sheet-2)" }}>
-      <div>
-        <strong>{title}</strong>
-        {children ? <div className="ui-note">{children}</div> : null}
-      </div>
-      {action ? <span className="flex gap-2">{action}</span> : null}
-    </div>
-  );
-}
 
 export default function ProcessDesigner() {
   const sp = useSearchParams();
@@ -232,24 +219,24 @@ function Editor(p: EditorProps) {
       ) : null}
 
       {prompt ? (
-        <Banner tone="info" title="Create a model from the reference to edit it"
+        <Notice tone="info" title="Create a model from the reference to edit it"
           action={<><Button variant="primary" disabled={create.isPending} onClick={() => create.mutate({ name: "My process model", from: "reference" })}>Create model</Button><Button variant="ghost" onClick={() => setPrompt(false)}>Not now</Button></>}>
           The reference model is shared and read-only.
-        </Banner>
+        </Notice>
       ) : null}
       {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={() => restore.mutate()} onLatest={() => go({ v: null })} /> : null}
       {fail?.kind === "stale" ? (
-        <Banner tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
+        <Notice tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
           action={<><Button variant="secondary" onClick={() => { setFail(null); setDoc(initial); refresh(); }}>Reload</Button><Button variant="secondary" disabled={copy.isPending} onClick={() => copy.mutate()}>Save as a copy</Button></>}>
           Reload to take their version, or save your changes as a copy.
-        </Banner>
+        </Notice>
       ) : null}
       {fail?.kind === "invalid" ? (
-        <Banner tone="danger" title="The model was not saved">
+        <Notice tone="danger" title="The model was not saved">
           <ul>{fail.errors.slice(0, 8).map((e, i) => <li key={i}>{e.path ? <><Mono>{e.path}</Mono>{" "}</> : null}{e.message}</li>)}</ul>
-        </Banner>
+        </Notice>
       ) : null}
-      {fail?.kind === "other" ? <Banner tone="danger" title="The model was not saved">{fail.message}</Banner> : null}
+      {fail?.kind === "other" ? <Notice tone="danger" title="The model was not saved">{fail.message}</Notice> : null}
       {dirty && editable ? (
         <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
           <span>Unsaved changes</span>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, ErrorState, Pill } from "@/design";
+import { Button, ErrorState, Notice, Pill, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getDoctor, type DoctorItem } from "@/lib/api/admin-doctor";
 import { getLicenceManifest } from "@/lib/api/licence";
@@ -29,6 +29,14 @@ export default function AdminSettingsPage() {
   const doctor = useQuery({ queryKey: queryKeys.adminDoctor(), queryFn: getDoctor, enabled: can("manage_system"), refetchInterval: 30_000 });
   const l = licence.data;
 
+  if (licence.isLoading) {
+    return (
+      <div aria-busy="true" className="flex flex-col gap-6 p-6">
+        <Skeleton height={240} />
+      </div>
+    );
+  }
+
   if (licence.isError) {
     return (
       <div className="flex flex-col gap-6 p-6">
@@ -47,9 +55,9 @@ export default function AdminSettingsPage() {
       </header>
 
       {l?.valid === false ? (
-        <div role="alert" className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}>
+        <Notice tone="danger">
           The licence is not valid. Meridian HQ reports status &ldquo;{labelOf(l.status)}&rdquo;. Analyses still run; module entitlements may be restricted until the licence is renewed.
-        </div>
+        </Notice>
       ) : null}
 
       <section className="flex flex-col gap-2">

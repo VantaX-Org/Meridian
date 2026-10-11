@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, ErrorState, Pill, Skeleton } from "@/design";
+import { Button, ErrorState, Notice, Pill, Skeleton } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useUpdateModal } from "@/context/update-modal-context";
 import { getLicenceManifest } from "@/lib/api/licence";
@@ -58,14 +58,14 @@ export default function AdminLicencePage() {
       </div>
 
       {l?.valid === false ? (
-        <div role="alert" className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-critical)", color: "var(--m-critical)" }}>
+        <Notice tone="danger">
           The licence is not valid. Meridian HQ reports status &ldquo;{labelOf(l.status)}&rdquo;. Renew it in Meridian HQ; this deployment keeps its data either way.
-        </div>
+        </Notice>
       ) : null}
       {l?.valid === null && l?.status ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
+        <Notice tone="info">
           Not validated yet. The deployment validates with Meridian HQ on a schedule; defaults apply until the next check.
-        </div>
+        </Notice>
       ) : null}
 
       {q.isLoading ? <Skeleton height={120} /> : null}
