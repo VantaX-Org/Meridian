@@ -33,6 +33,21 @@ describe("AiSummary", () => {
   });
 });
 
+describe("AiSummary fallback and admin link", () => {
+  it("shows the fallback open by default", () => {
+    const { container } = render(<AiSummary llmOk={false} fallback="rule words" />);
+    expect(container.querySelector("details")?.hasAttribute("open")).toBe(true);
+  });
+  it("shows the admin link only when adminHref is given and the LLM is off", () => {
+    const { rerender } = render(<AiSummary llmOk={false} fallback="f" adminHref="/admin/ai" />);
+    expect(screen.getByRole("link", { name: /Enable in Admin/ }).getAttribute("href")).toBe("/admin/ai");
+    rerender(<AiSummary llmOk={false} fallback="f" />);
+    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
+    rerender(<AiSummary llmOk text="t" fallback="f" adminHref="/admin/ai" />);
+    expect(screen.queryByRole("link", { name: /Enable in Admin/ })).toBeNull();
+  });
+});
+
 describe("InsightHeader", () => {
   it("renders four cells as links to evidence and the next action", () => {
     render(

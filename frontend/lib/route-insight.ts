@@ -102,7 +102,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
 
   const why =
     f.critical > 0
-      ? `${n(f.critical)} critical finding${f.critical === 1 ? "" : "s"} cap the score at 85 and can stop go-live.`
+      ? `${n(f.critical)} critical finding${f.critical === 1 ? "" : "s"} hold the score down and can stop go-live.`
       : f.total > 0
         ? "No critical findings, so the score is not capped."
         : "No findings in this run.";

@@ -22,7 +22,7 @@ describe("route insight", () => {
     });
     expect(h.situation.sentence).toBe("Data quality score is 72, with 120 findings across 4,500 records.");
     expect(h.changed.sentence).toBe("Score rose 2.4 points since the previous run.");
-    expect(h.why.sentence).toMatch(/3 critical findings cap the score at 85/);
+    expect(h.why.sentence).toMatch(/3 critical findings hold the score down/);
     expect(h.next.href).toBe("/objects/material_master?run=r1");
     expect(h.next.sentence).toBe("Start with Material master, which has 61 findings, 2 critical.");
   });

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
 import { InsightHeader } from "@/design";
+import { useRole } from "@/hooks/use-role";
 import { useDayOne } from "@/hooks/use-day-one";
 import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
@@ -23,6 +24,7 @@ export function RouteInsight() {
   const run = useSearchParams().get("run") ?? undefined;
   const section = sectionOf(pathname);
   const dayOne = useDayOne();
+  const { isAdmin } = useRole();
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions(), enabled: !!section });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, enabled: !!section });
   const hasRun = (versionsQ.data?.versions ?? []).some((v) => FINISHED.has(v.status));
@@ -30,8 +32,9 @@ export function RouteInsight() {
   const aggQ = useQuery({ queryKey: ["insight", "aggregate", runId], queryFn: () => getFindingsAggregate(runId), enabled: !!section && hasRun && !!runId });
   const wavesQ = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves, enabled: section === "migration" });
   const backlogQ = useQuery({ queryKey: queryKeys.stewardshipMetrics(), queryFn: getMetrics, enabled: section === "inbox" || section === "mdm" });
-  const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId });
   const llmQ = useQuery({ queryKey: ["health", "llm"], queryFn: getLlmHealth, enabled: !!section && hasRun, staleTime: 60_000 });
+  const llmOn = llmQ.data?.llm_available === true;
+  const execQ = useQuery({ queryKey: queryKeys.insights("exec", runId), queryFn: () => getExec({ version_id: runId }), enabled: !!section && hasRun && !!runId && llmOn });
 
   if (!section) return null;
 
@@ -65,7 +68,8 @@ export function RouteInsight() {
           fallback: `${cells.situation.sentence} ${cells.why.sentence}`,
           findingsCount: agg?.total,
           runId,
-          loading: execQ.isLoading && llmQ.data?.llm_available === true,
+          loading: execQ.isLoading && llmOn,
+          adminHref: isAdmin && llmQ.data?.llm_available === false ? "/admin/ai" : undefined,
         } : undefined}
       />
     </div>
