@@ -2,8 +2,14 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 import pandas as pd
-from celery.exceptions import SoftTimeLimitExceeded
 from pydantic import BaseModel, PrivateAttr
+
+
+try:
+    from celery.exceptions import SoftTimeLimitExceeded
+except ImportError:  # light installs (perf job) have no celery; nothing can raise the limit there
+    class SoftTimeLimitExceeded(Exception):  # type: ignore[no-redef]
+        """Placeholder, never raised."""
 
 
 def reraise_soft_limit(exc: BaseException) -> None:

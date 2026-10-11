@@ -8,10 +8,9 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
-from celery.exceptions import SoftTimeLimitExceeded
 
 from checks import auto_fix, cost
-from checks.base import BaseCheck, CheckResult, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
+from checks.base import BaseCheck, CheckResult, SoftTimeLimitExceeded, as_of_time, failing_values, record_keys, reraise_soft_limit, sap_number
 from checks.frames import TableFrames, tables_of
 from checks.population import exclude, exclusions, fields_for
 from checks.profiling import is_sensitive
