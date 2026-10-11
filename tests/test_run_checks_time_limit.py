@@ -127,22 +127,64 @@ def test_soft_limit_in_auto_fix_verification_is_not_swallowed() -> None:
         auto_fix.proposals({"field": "T.F"}, df, pd.Series([True]), evaluate=evaluate)
 
 
-def test_every_broad_handler_in_the_task_reraises_the_soft_limit() -> None:
-    """Every ``except Exception`` in the run_checks task (bar the progress heartbeat thread, which
-    the soft limit never reaches) first lets SoftTimeLimitExceeded through."""
+def _broad_handlers(source: str, skip: str = "") -> tuple[int, list[int]]:
+    """(number of broad handlers, line numbers of those that can swallow SoftTimeLimitExceeded).
+
+    Broad: bare ``except:``, ``except Exception``/``BaseException``, or a tuple naming either. A
+    handler is guarded when its first statement is ``reraise_soft_limit(...)`` or an earlier handler
+    of the same ``try`` catches SoftTimeLimitExceeded. Handlers inside function ``skip`` are ignored."""
     import ast
+
+    def names(t: ast.expr | None) -> set[str]:
+        elts = t.elts if isinstance(t, ast.Tuple) else [t] if t is not None else []
+        return {e.id if isinstance(e, ast.Name) else getattr(e, "attr", "") for e in elts}
+
+    tree = ast.parse(source)
+    skipped = {id(n) for f in ast.walk(tree) if isinstance(f, ast.FunctionDef) and f.name == skip
+               for n in ast.walk(f)}
+    broad, bad = 0, []
+    for t in ast.walk(tree):
+        if not isinstance(t, ast.Try) or id(t) in skipped:
+            continue
+        for k, h in enumerate(t.handlers):
+            if not (h.type is None or names(h.type) & {"Exception", "BaseException"}):
+                continue
+            broad += 1
+            first = h.body[0]
+            if any("SoftTimeLimitExceeded" in names(p.type) for p in t.handlers[:k]) or (
+                    isinstance(first, ast.Expr) and isinstance(first.value, ast.Call)
+                    and getattr(first.value.func, "id", "") == "reraise_soft_limit"):
+                continue
+            bad.append(h.lineno)
+    return broad, bad
+
+
+def test_broad_handler_scan_sees_tuples_bare_and_base_exception() -> None:
+    src = """
+try: pass
+except (ValueError, Exception): pass
+try: pass
+except: pass
+try: pass
+except BaseException as e: pass
+try: pass
+except ValueError: pass
+try: pass
+except Exception as e:
+    reraise_soft_limit(e)
+try: pass
+except SoftTimeLimitExceeded: raise
+except Exception: pass
+"""
+    assert _broad_handlers(src) == (5, [3, 5, 7])
+
+
+def test_every_broad_handler_in_the_task_reraises_the_soft_limit() -> None:
+    """Every broad handler in the run_checks task (bar the progress heartbeat thread, which the
+    soft limit never reaches) lets SoftTimeLimitExceeded through."""
     import inspect
 
     from workers.tasks import run_checks as mod
 
-    tree = ast.parse(inspect.getsource(mod))
-    beat = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "beat")
-    in_beat = {id(n) for n in ast.walk(beat)}
-    handlers = [h for h in ast.walk(tree) if isinstance(h, ast.ExceptHandler) and id(h) not in in_beat
-                and isinstance(h.type, ast.Name) and h.type.id == "Exception"]
-    assert len(handlers) > 20
-    bad = [h.lineno for h in handlers if not (
-        isinstance(h.body[0], ast.Expr) and isinstance(h.body[0].value, ast.Call)
-        and getattr(h.body[0].value.func, "id", "") == "reraise_soft_limit")]
-    # the task's own outer handler already has an ``except SoftTimeLimitExceeded: raise`` before it
-    assert bad == [max(h.lineno for h in handlers)]
+    broad, bad = _broad_handlers(inspect.getsource(mod), skip="beat")
+    assert broad > 20 and bad == []
