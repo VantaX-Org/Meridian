@@ -10,14 +10,14 @@ import uuid
 from datetime import date
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.config_pairing import enqueue_config_load, pair_error
-from api.services.rbac import require_permission, scope_from_path
+from api.services.rbac import Scope, _as_uuid, require_permission, require_scope, scope_from_path
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
     CLOUD_SYSTEM_TYPES,
@@ -327,11 +327,18 @@ async def list_systems(
 async def update_system(
     system_id: str,
     body: UpdateSystemRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Update an SAP system. Admin and Steward only."""
+    if body.target_system_id:  # pairing with another system needs rights on it too
+        tgt = _as_uuid(body.target_system_id)
+        if tgt:
+            await require_scope(request, db, tenant, "manage_systems", Scope(tgt, None))
+    if body.role == "source":  # the cascade below writes other systems' rows: tenant-wide only
+        await require_scope(request, db, tenant, "manage_systems", Scope())
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Build dynamic SET clause

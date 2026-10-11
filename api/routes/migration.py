@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
-from api.services.rbac import current_user_id, require_permission, scope_from_path
+from api.services.rbac import Scope, current_user_id, require_permission, require_scope, scope_from_path
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
 
@@ -483,6 +483,7 @@ async def create_wave(
 async def update_wave(
     wave_id: uuid.UUID,
     body: WaveUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
@@ -490,6 +491,9 @@ async def update_wave(
     await _set_rls(db, tenant.id)
     current = await _load_wave(db, tenant.id, wave_id)
     changes = body.model_dump(exclude_unset=True)
+    for f in ("source_system_id", "target_system_id"):  # a new system must itself be in the caller's scope
+        if changes.get(f):
+            await require_scope(request, db, tenant, "analyse", Scope(changes[f], None))
     await _check_systems(db, tenant.id, changes.get("source_system_id", current.source_system_id),
                          changes.get("target_system_id", current.target_system_id))
     params = {k: (str(v) if isinstance(v, uuid.UUID) else v) for k, v in changes.items()}

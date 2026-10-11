@@ -187,40 +187,47 @@ def test_convert_object_approvals(owner: Engine, monkeypatch: pytest.MonkeyPatch
         as_admin, as_ua = {"x-test-uid": u["admin"]}, {"x-test-uid": u["ua"]}
         # preview changes nothing
         r = await c.post(url("t1"), json={}, headers=as_admin)
-        assert r.status_code == 200 and r.json()["converted"] == ["material_master"], r.text
+        assert r.status_code == 200 and r.json()["skipped"] == ["material_master"], r.text
         assert grants("t1") == [] and stored("t1") is not None
         # no self conversion
         r = await c.post(url("admin"), json={"confirm": True}, headers=as_admin)
         assert r.status_code == 403, r.text
         assert grants("admin") == [] and stored("admin") is not None
-        # ceiling: a users-only admin cannot hand out steward rights; nothing is written, JSONB survives
-        r = await c.post(url("t3"), json={"confirm": True}, headers=as_ua)
-        assert r.status_code == 403, r.text
-        assert grants("t3") == [] and stored("t3") is not None
         # the admin gate on the dependency: a plain steward is refused
         r = await c.post(url("t4"), json={"confirm": True}, headers={"x-test-uid": u["t1"]})
         assert r.status_code == 403
-        # a viewer is never widened: approve=true on a role without approve is skipped, no grant, JSONB kept
-        before = audits()
-        r = await c.post(url("t2"), json={"confirm": True}, headers=as_admin)
-        assert r.status_code == 200 and r.json()["converted"] == [] and r.json()["skipped"] == [MM], r.text
-        assert grants("t2") == [] and stored("t2") == {MM: {"approve": True}} and audits() == before
         # a non-object JSONB is a 422 and is left alone
         r = await c.post(url("t5"), json={"confirm": True}, headers=as_admin)
         assert r.status_code == 422 and stored("t5") == ["not", "an", "object"]
-        # confirm: the user's own role as a module grant (no new actions), JSONB cleared after the grant
+        # confirm: approve=true is dropped, no grant is ever created
         r = await c.post(url("t4"), json={"confirm": True}, headers=as_admin)
-        assert r.status_code == 200 and r.json()["cleared"] is True, r.text
-        assert grants("t4") == [("steward", MM)] and stored("t4") is None
-        # re-confirm with nothing left: no UPDATE, no audit row, no extra grant
+        assert r.status_code == 200 and r.json()["cleared"] is True and r.json()["converted"] == [], r.text
+        assert grants("t4") == [] and stored("t4") is None
+        # re-confirm with nothing left: no UPDATE, no audit row
         before = audits()
         r = await c.post(url("t4"), json={"confirm": True}, headers=as_admin)
-        assert r.status_code == 200 and r.json()["converted"] == [], r.text
-        assert audits() == before and grants("t4") == [("steward", MM)]
+        assert r.status_code == 200 and r.json()["skipped"] == [], r.text
+        assert audits() == before and grants("t4") == []
+        # N1: a converted steward demoted to viewer gets 403 on approve, same as an unconverted control
+        sys_a = _system(owner, tid)
+        ver = _version(owner, tid, sys_a)
+        item = str(uuid.uuid4())
+        with owner.begin() as cn:
+            cn.execute(text("INSERT INTO cleaning_queue (id, tenant_id, object_type, record_key, version_id) "
+                            "VALUES (:i, :t, :o, 'k', :v)"), {"i": item, "t": tid, "o": MM, "v": ver})
+            cn.execute(text("UPDATE users SET permissions = CAST(:p AS jsonb) WHERE id = ANY(CAST(:ids AS uuid[]))"),
+                       {"p": '{"material_master": {"approve": true}}', "ids": [u["t4"], u["t3"]]})
+        r = await c.post(url("t4"), json={"confirm": True}, headers=as_admin)
+        assert r.status_code == 200 and grants("t4") == []
+        with owner.begin() as cn:
+            cn.execute(text("UPDATE users SET role = 'viewer' WHERE id = ANY(CAST(:ids AS uuid[]))"), {"ids": [u["t4"], u["t3"]]})
+        for who in ("t4", "t3"):
+            r = await c.post(f"/api/v1/cleaning/approve/{item}", headers={"x-test-uid": u[who]})
+            assert r.status_code == 403, (who, r.text)
         # a denial cannot be a grant: it stays, so the user is never widened
         r = await c.post(url("t1"), json={"confirm": True}, headers=as_admin)
         assert r.json()["kept"] == [FI] and r.json()["cleared"] is False, r.text
-        assert grants("t1") == [("steward", MM)] and stored("t1") == {FI: {"approve": False}}
+        assert grants("t1") == [] and stored("t1") == {FI: {"approve": False}}
         before = audits()
         r = await c.post(url("t1"), json={"confirm": True}, headers=as_admin)
         assert audits() == before and stored("t1") == {FI: {"approve": False}}
@@ -303,5 +310,50 @@ def test_version_metadata_system_id_not_client_writable(owner: Engine, monkeypat
             got = cx.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = :v"),
                              {"v": ver}).scalar()
         assert got == sys_b
+
+    _serve(owner, monkeypatch, tid, scenario)
+
+
+def test_body_and_path_hardening(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """N2 wave PATCH body, N3 system PUT body/cascade, N4 unparseable path ids."""
+    tid, u = _tenant(owner, {"stw": "viewer", "basis": "viewer", "admin": "admin"})
+    sys_a, sys_b, sys_c = _system(owner, tid), _system(owner, tid), _system(owner, tid)
+    _scoped_grant(owner, tid, u["stw"], "steward", sys_a, None)
+    _scoped_grant(owner, tid, u["basis"], "sap_basis", sys_a, None)
+    wave = str(uuid.uuid4())
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO migration_waves (id, tenant_id, name, source_system_id) "
+                       "VALUES (:i, :t, 'w', :s)"), {"i": wave, "t": tid, "s": sys_a})
+        c.execute(text("UPDATE sap_systems SET role='target' WHERE id = :s"), {"s": sys_a})
+        c.execute(text("UPDATE sap_systems SET role='source', target_system_id = :a WHERE id = :b"),
+                  {"a": sys_a, "b": sys_b})
+
+    def col(table: str, c_: str, i: str) -> str | None:
+        with owner.connect() as cn:
+            v = cn.execute(text(f"SELECT {c_} FROM {table} WHERE id = :i"), {"i": i}).scalar()
+        return str(v) if v else None
+
+    async def scenario(c: AsyncClient) -> None:
+        h = {"x-test-uid": u["stw"]}
+        w = f"/api/v1/migration/waves/{wave}"
+        for field in ("source_system_id", "target_system_id"):
+            r = await c.patch(w, json={field: sys_b}, headers=h)
+            assert r.status_code == 403, (field, r.text)
+        assert col("migration_waves", "source_system_id", wave) == sys_a
+        assert col("migration_waves", "target_system_id", wave) is None
+        r = await c.patch(w, json={"target_release": "2027"}, headers=h)
+        assert r.status_code == 200, r.text
+        hb = {"x-test-uid": u["basis"]}
+        r = await c.put(f"/api/v1/systems/{sys_a}", json={"description": "x"}, headers=hb)
+        assert r.status_code == 200, r.text
+        r = await c.put(f"/api/v1/systems/{sys_a}", json={"target_system_id": sys_c}, headers=hb)
+        assert r.status_code == 403, r.text
+        r = await c.put(f"/api/v1/systems/{sys_a}", json={"role": "source"}, headers=hb)
+        assert r.status_code == 403, r.text
+        assert col("sap_systems", "target_system_id", sys_b) == sys_a  # cascade did not run
+        r = await c.get("/api/v1/migration/runs/not-a-uuid", headers={"x-test-uid": u["admin"]})
+        assert r.status_code == 422, r.text
+        r = await c.get("/api/v1/migration/waves/not-a-uuid/cockpit", headers={"x-test-uid": u["admin"]})
+        assert r.status_code == 422, r.text
 
     _serve(owner, monkeypatch, tid, scenario)

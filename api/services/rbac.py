@@ -389,7 +389,10 @@ async def _resolve_scope(request: Request, db: AsyncSession, tenant_id: uuid.UUI
         sql = ("SELECT source_system_id, target_system_id FROM migration_waves WHERE id = :i AND tenant_id = :t"
                if pp.get("wave_id") else
                "SELECT source_system_id, dest_system_id FROM migration_runs WHERE id = :i AND tenant_id = :t")
-        r = await _row(db, sql, str(_as_uuid(pp.get("wave_id") or pp.get("run_id")) or ""), tenant_id)
+        rid = _as_uuid(pp.get("wave_id") or pp.get("run_id"))
+        if not rid:  # the route's own validation answers 422
+            return Scope()
+        r = await _row(db, sql, str(rid), tenant_id)
         if not r or not r[0] or (r[1] and r[1] != r[0]):
             return Scope()
         sids.append(r[0])
@@ -410,6 +413,20 @@ async def _grants_allow(grants: list[Grant], action: str, scope: Scope,
         if _scope_matches(s, scope) and action in await actions_for(role, tenant_id, db):
             return True
     return False
+
+
+async def require_scope(request: Request, db: AsyncSession, tenant: Tenant, action: str, scope: Scope) -> None:
+    """In-handler check: 403 unless the caller holds `action` at `scope` (same rules as require_permission).
+    Use for ids in a request body that the path scope does not cover."""
+    role = await _get_user_role(tenant, db, request)
+    uid = getattr(request.state, "local_user_id", None)
+    if dev_role_override(request) is not None or not uid:
+        ok = has_permission(role, action)
+    else:
+        ok = await _grants_allow(await user_grants(db, tenant.id, uid, role), action, scope, tenant.id, db)
+    if not ok:
+        raise HTTPException(status_code=403, detail={"detail": "forbidden", "resource": None, "action": action,
+                                                     "request_access": True})
 
 
 def require_permission(
