@@ -28,10 +28,19 @@ if TYPE_CHECKING:
 
 SAST = ZoneInfo("Africa/Johannesburg")
 
-ACCENT = "2D3A8C"
+ACCENT = "2B4BE0"
 _ACCENT = ACCENT
-_LINE = "D5DBE0"
+_LINE = "E4E2DB"
+_WASH = "FAF9F6"
+_INK = "141519"
+_INK3 = "6F717B"
+_NAVY = "0F1430"
 _WHITE = "FFFFFF"
+
+# Soft status tints (fill) and their ink, matching the report.css status colours.
+STATUS_TINTS = {"bad": ("FCEBE9", "8E1B12"), "high": ("FDEEE3", "8F3908"),
+                "warn": ("FBF1DB", "6E4900"), "ok": ("E4F4EA", "0F5C2D")}
+_TINT_INK = {fill: ink for fill, ink in STATUS_TINTS.values()}
 
 # Spreadsheet formula-injection guard — same prefixes as api.routes.audit._csv_cell.
 FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -39,7 +48,8 @@ FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 MAX_SHEET_TITLE = 31
 ROW_CAP = 100_000
 
-_MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-light.png"
+_MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-dark.png"  # reversed, sits on the navy band
+_COVER_BAND_ROWS = 40
 
 ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono", "raw"]
 
@@ -203,6 +213,8 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
         if col.kind in ("mono", "raw"):
             cell.font = Font(color=_WHITE, bold=True, size=11, name="Consolas")
     ws.row_dimensions[1].height = 18
+    ws.sheet_properties.tabColor = _ACCENT
+    wash = PatternFill(fill_type="solid", fgColor=_WASH)
 
     sample_values: dict[int, list[str]] = {i: [] for i in range(1, len(spec.columns) + 1)}
     row_count = 0
@@ -220,9 +232,14 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
             if number_format:
                 cell.number_format = number_format
             if col.kind in ("mono", "raw"):
-                cell.font = Font(name="Consolas", size=10)
+                cell.font = Font(name="Consolas", size=10, color=_INK)
+            if row_idx % 2 == 1:  # alternate rows (3, 5, ...) take the wash
+                cell.fill = wash
             if col.fill_by_value and raw in col.fill_by_value:
-                cell.fill = PatternFill(fill_type="solid", fgColor=col.fill_by_value[raw])
+                tint = col.fill_by_value[raw]
+                cell.fill = PatternFill(fill_type="solid", fgColor=tint)
+                if tint in _TINT_INK:
+                    cell.font = Font(name=cell.font.name, size=cell.font.size, color=_TINT_INK[tint])
             if len(sample_values[col_idx]) < 500 and value is not None:
                 sample_values[col_idx].append(str(value))
         row_idx += 1
@@ -250,22 +267,28 @@ def _write_cover_sheet(
     sheet_meta: list[tuple[str, int, Optional[str]]],
 ) -> None:
     ws.sheet_view.showGridLines = False
-    ws.column_dimensions["A"].width = 18
-    ws.column_dimensions["B"].width = 60
+    ws.sheet_properties.tabColor = _NAVY
+    ws.column_dimensions["A"].width = 4
+    ws.column_dimensions["B"].width = 24
+    ws.column_dimensions["C"].width = 70
+
+    band = PatternFill(fill_type="solid", fgColor=_NAVY)
+    for r in range(1, _COVER_BAND_ROWS + 1):
+        ws.cell(row=r, column=1).fill = band
 
     if _MARK_PATH.exists():
         try:
             img = XLImage(str(_MARK_PATH))
             img.width = 64
             img.height = 64
-            ws.add_image(img, "A1")
+            ws.add_image(img, "B2")
         except Exception:
             pass  # cover still renders without the mark if Pillow/the file is unavailable
 
-    ws["A3"] = "Meridian"
-    ws["A3"].font = Font(bold=True, size=20, color=_ACCENT)
-    ws["A4"] = guard_formula_cell(title)
-    ws["A4"].font = Font(size=14)
+    ws["B5"] = guard_formula_cell(title)
+    ws["B5"].font = Font(bold=True, size=20, color=_INK)
+    ws["B6"] = guard_formula_cell(tenant_name)
+    ws["B6"].font = Font(size=12, color=_INK3)
 
     rows: list[tuple[str, object]] = [
         ("Organisation", guard_formula_cell(tenant_name)),
@@ -273,30 +296,31 @@ def _write_cover_sheet(
         ("Run ID", guard_formula_cell(run_id) or "—"),
         ("Generated", _fmt_generated(generated_at)),
     ]
-    row_idx = 6
+    row_idx = 8
     for label, value in rows:
-        ws.cell(row=row_idx, column=1, value=label).font = Font(bold=True)
-        cell = ws.cell(row=row_idx, column=2, value=value)
-        if label == "Run ID":
-            cell.font = Font(name="Consolas", size=10)
+        ws.cell(row=row_idx, column=2, value=label).font = Font(bold=True, color=_INK)
+        cell = ws.cell(row=row_idx, column=3, value=value)
+        cell.font = Font(name="Consolas", size=10, color=_INK) if label == "Run ID" else Font(color=_INK)
         row_idx += 1
 
     row_idx += 1
-    ws.cell(row=row_idx, column=1, value="Sheets").font = Font(bold=True)
+    ws.cell(row=row_idx, column=2, value="Sheets").font = Font(bold=True, color=_INK)
     row_idx += 1
+    link_font = Font(color=ACCENT, underline="single")
     for sheet_title, count, note in sheet_meta:
         text = f"{sheet_title} — {count:,} row{'s' if count != 1 else ''}"
         if note:
-            # Don't guard `note` here on its own: it's being appended mid-string
-            # after the sheet_title/count prefix, not placed at the start of the
-            # cell. Guarding it here would leave a literal, visible apostrophe
-            # in the middle of the sentence. The whole concatenated `text` is
-            # guarded once below, which is what matters for the cell's actual
-            # leading character.
+            # Guarded once on the whole cell below; the note is mid-string here.
             text += f". {note}"
-        ws.cell(row=row_idx, column=1, value=guard_formula_cell(sheet_title)).font = Font(bold=False)
-        ws.cell(row=row_idx, column=2, value=guard_formula_cell(text))
+        link = ws.cell(row=row_idx, column=2, value=sheet_title)
+        link.hyperlink = f"#'{sheet_title}'!A1"
+        link.font = link_font
+        ws.cell(row=row_idx, column=3, value=guard_formula_cell(text)).font = Font(color=_INK)
         row_idx += 1
+
+    footer = ws.cell(row=max(row_idx + 1, _COVER_BAND_ROWS + 2), column=2,
+                     value="Generated by Meridian · stays inside your network")
+    footer.font = Font(size=8, color=_INK3)
 
 
 def build_workbook(

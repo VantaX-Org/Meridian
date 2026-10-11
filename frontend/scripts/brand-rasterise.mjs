@@ -49,7 +49,7 @@ await png(svg("og-image.svg"), join(ROOT, "app", "opengraph-image.png"), 1200, 6
 // Backend copies (XLSX cover, PDF cover).
 mkdirSync(TEMPLATES, { recursive: true });
 copyFileSync(svg("mark-light.svg"), join(TEMPLATES, "mark-light.svg"));
-await png(svg("mark-light.svg"), join(TEMPLATES, "mark-light.png"), 64);
-await png(svg("mark-dark.svg"), join(TEMPLATES, "mark-dark.png"), 64);
+await png(svg("mark-light.svg"), join(TEMPLATES, "mark-light.png"), 256);
+await png(svg("mark-dark.svg"), join(TEMPLATES, "mark-dark.png"), 256);
 
 console.log("Brand assets rasterised.");
