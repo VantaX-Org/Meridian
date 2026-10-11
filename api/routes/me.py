@@ -12,9 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import (
-    ACTIONS, RESOURCES, EffectivePermissions, _get_user_role, actions_for, current_user_id,
-    dev_role_override, effective_permissions, has_permission, require_permission, resource_matrix, write_audit,
+    LEGACY_ACTION_MAP, EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id,
+    dev_role_override, effective_permissions, require_permission, resource_matrix, write_audit,
 )
+
+# Only pairs some legacy action yields can be conferred by a role; asking for any other pair could
+# never be granted, so it is refused up front.
+_GRANTABLE = resource_matrix(set(LEGACY_ACTION_MAP))
 
 router = APIRouter(prefix="/api/v1", tags=["rbac"])
 
@@ -88,8 +92,8 @@ async def create_access_request(
     body: AccessRequestBody, request: Request,
     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
 ) -> AccessRequestOut:
-    if body.resource not in RESOURCES or body.action not in ACTIONS:
-        raise HTTPException(status_code=422, detail="Unknown resource or action")
+    if not _GRANTABLE.get(body.resource, {}).get(body.action):
+        raise HTTPException(status_code=422, detail="Unknown or ungrantable resource/action")
     uid = current_user_id(request)
     if not uid:
         raise HTTPException(status_code=403, detail="Authentication required")
@@ -113,10 +117,11 @@ async def list_access_requests(
     db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant),
 ) -> list[AccessRequestOut]:
     """Admins (manage_users) see every request; everyone else only their own."""
-    role = await _get_user_role(tenant, db, request)
+    from api.routes.roles import resolve_caller  # local: avoids an import cycle with roles
+    caller = await resolve_caller(db, tenant, request, Scope())  # grants count, not just users.role
     await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant.id)}'"))
     where, params = "tenant_id = :t", {"t": str(tenant.id)}
-    if not has_permission(role, "manage_users"):
+    if "manage_users" not in caller.actions:
         where += " AND user_id = :u"
         uid = current_user_id(request)
         if not uid:
@@ -146,7 +151,7 @@ async def decide_access_request(
     if before.status != "open":
         raise HTTPException(status_code=409, detail="Already decided")
     actor = current_user_id(request)
-    if actor and actor == before.user_id:
+    if actor and str(actor).lower() == before.user_id:
         raise HTTPException(status_code=403, detail="You cannot decide your own access request")
     if body.decision == "granted" and body.role_key:
         # The role must confer what was asked for; insert_grant then applies the caller ceiling.

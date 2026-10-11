@@ -9,10 +9,14 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from typing import TYPE_CHECKING
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 
 import pytest
 from sqlalchemy import Engine
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 pytestmark = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"),
                                 reason="MERIDIAN_TEST_DB_URL not set")
@@ -137,7 +141,9 @@ def _audit_count(owner: Engine, tid: str) -> int:
         return int(c.execute(text("SELECT COUNT(*) FROM audit_log WHERE tenant_id = :t"), {"t": tid}).scalar_one())
 
 
-def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+def _serve(owner: Engine, monkeypatch: pytest.MonkeyPatch, tid: str,
+           scenario: Callable[["AsyncClient"], Awaitable[None]]) -> None:
+    """Run `scenario` against the roles, me and users routers; x-test-uid sets the caller."""
     from fastapi import FastAPI, Request
     from httpx import ASGITransport, AsyncClient
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -156,16 +162,6 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
             return None
 
     monkeypatch.setattr(users_mod, "send_invitation_email", _NoMail)
-
-    tid, u = _tenant(owner, {"padmin": "platform_admin", "admin": "admin", "mgr": "viewer",
-                             "target": "viewer", "steward": "data_steward"})
-    for name, role in (("padmin", "platform_admin"), ("admin", "admin"), ("mgr", "viewer"),
-                       ("target", "viewer"), ("steward", "data_steward")):
-        _grant(owner, tid, u[name], role)  # the 077 backfill mirror
-    # A user administrator by custom role only: users/admin and nothing else.
-    _seed_custom(owner, tid, "custom:user-admin", {("users", "admin")})
-    _grant(owner, tid, u["mgr"], "custom:user-admin")
-
     aeng = create_async_engine(owner.url.set(drivername="postgresql+asyncpg"))
     factory = async_sessionmaker(aeng, expire_on_commit=False)
 
@@ -184,115 +180,128 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
     api.dependency_overrides[get_db] = _db
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "Rbac", [])
 
-    async def scenario() -> None:
-        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as c:
-            def as_(who: str) -> dict[str, str]:
-                return {"x-test-uid": u[who]}
-
-            grants = f"/api/v1/users/{{}}/grants"
-            # H1: no self-grant; no grant above the caller's own permissions; platform_admin only by one.
-            r = await c.post(grants.format(u["mgr"]), json={"role_key": "platform_admin"}, headers=as_("mgr"))
-            assert r.status_code == 403, r.text
-            for key in ("platform_admin", "admin", "data_steward"):
-                r = await c.post(grants.format(u["target"]), json={"role_key": key}, headers=as_("mgr"))
-                assert r.status_code == 403, (key, r.text)
-            r = await c.post(grants.format(u["target"]), json={"role_key": "viewer", "module": "fi_gl"},
-                             headers=as_("mgr"))
-            assert r.status_code == 201, r.text
-            r = await c.post(grants.format(u["target"]), json={"role_key": "platform_admin"}, headers=as_("steward"))
-            assert r.status_code == 403  # no manage_users at all
-            r = await c.post(grants.format(u["padmin"]), json={"role_key": "auditor"}, headers=as_("padmin"))
-            assert r.status_code == 403  # self, even for platform_admin
-            r = await c.post(grants.format(u["target"]), json={"role_key": "sap_basis"}, headers=as_("padmin"))
-            assert r.status_code == 201, r.text
-
-            # H1 on role change: no self re-role, no promotion above the caller.
-            r = await c.put(f"/api/v1/users/{u['mgr']}", json={"role": "admin"}, headers=as_("mgr"))
-            assert r.status_code == 403
-            r = await c.put(f"/api/v1/users/{u['padmin']}", json={"role": "viewer"}, headers=as_("padmin"))
-            assert r.status_code == 403
-            r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "admin"}, headers=as_("mgr"))
-            assert r.status_code == 403
-
-            # H1 on invite: a custom user admin cannot invite an admin.
-            r = await c.post("/api/v1/users/invite", json={"email": "x@example.test", "role": "admin"},
-                             headers=as_("mgr"))
-            assert r.status_code == 403, r.text
-
-            # H2: clone and matrix edit stay under the caller.
-            r = await c.post("/api/v1/roles", json={"name": "Admin copy", "cloned_from": "admin"}, headers=as_("mgr"))
-            assert r.status_code == 403
-            r = await c.post("/api/v1/roles", json={"name": "Viewer copy", "cloned_from": "viewer"},
-                             headers=as_("mgr"))
-            assert r.status_code == 201, r.text
-            everything = [{"resource": res, "action": a} for res in ("users", "licence", "systems")
-                          for a in ("view", "create", "edit", "admin")]
-            r = await c.put("/api/v1/roles/custom:viewer-copy/permissions", json={"permissions": everything},
-                            headers=as_("mgr"))
-            assert r.status_code == 403
-            r = await c.put("/api/v1/roles/custom:viewer-copy/permissions",
-                            json={"permissions": [{"resource": "mdm", "action": "view"}]}, headers=as_("mgr"))
-            assert r.status_code == 200, r.text
-            r = await c.post("/api/v1/roles", json={"name": "Padmin copy", "cloned_from": "platform_admin"},
-                             headers=as_("padmin"))
-            assert r.status_code == 201, r.text
-
-            # H3: no self-approval; the granted role must confer the request.
-            r = await c.post("/api/v1/access-requests", json={"resource": "users", "action": "admin"},
-                             headers=as_("mgr"))
-            own = r.json()["id"]
-            r = await c.post(f"/api/v1/access-requests/{own}/decide",
-                             json={"decision": "granted", "role_key": "platform_admin"}, headers=as_("mgr"))
-            assert r.status_code == 403
-            r = await c.post("/api/v1/access-requests", json={"resource": "fixes", "action": "approve"},
-                             headers=as_("target"))
-            req = r.json()["id"]
-            r = await c.post(f"/api/v1/access-requests/{req}/decide",
-                             json={"decision": "granted", "role_key": "auditor"}, headers=as_("padmin"))
-            assert r.status_code == 422, r.text  # auditor does not approve fixes
-            r = await c.post(f"/api/v1/access-requests/{req}/decide",
-                             json={"decision": "granted", "role_key": "data_owner"}, headers=as_("mgr"))
-            assert r.status_code == 403  # confers it, but is above the custom user admin
-            r = await c.post(f"/api/v1/access-requests/{req}/decide",
-                             json={"decision": "granted", "role_key": "data_owner"}, headers=as_("padmin"))
-            assert r.status_code == 200, r.text
-
-            # M6: the users.role mirror cannot be deleted (it would revoke nothing); no audit row.
-            listed = (await c.get(grants.format(u["target"]), headers=as_("padmin"))).json()
-            mirror = next(g["id"] for g in listed
-                          if g["role_key"] == "viewer" and g["system_id"] is None and g["module"] is None)
-            before = _audit_count(owner, tid)
-            r = await c.delete(f"/api/v1/users/{u['target']}/grants/{mirror}", headers=as_("padmin"))
-            assert r.status_code == 409, r.text
-            assert _audit_count(owner, tid) == before
-
-            # L1: role change onto a role already granted unscoped -> no unique-index 500.
-            _grant(owner, tid, u["target"], "analyst")
-            r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "analyst"}, headers=as_("padmin"))
-            assert r.status_code == 200, r.text
-            keys = [k for i, k in _unscoped(owner, tid) if i == u["target"]]
-            assert keys.count("analyst") == 1 and "viewer" not in keys, keys  # old mirror dropped, no dupe
-
-            # L2: no uid -> 401, not a 500 on a "" uuid.
-            assert (await c.get("/api/v1/me/permissions")).status_code == 401
-
-            # L5: invite with a custom first grant keeps users.role built-in; /auth/me sees the custom action.
-            r = await c.post("/api/v1/users/invite",
-                             json={"email": "ua@example.test", "grants": [{"role_key": "custom:user-admin"}]},
-                             headers=as_("padmin"))
-            assert r.status_code == 200, r.text
-            assert r.json()["role"] == "viewer"
-            new_id = r.json()["id"]
-            r = await c.get("/api/v1/me/permissions", headers={"x-test-uid": new_id})
-            assert r.status_code == 200 and "manage_users" in r.json()["actions"]
-
     async def main() -> None:
         try:
-            await scenario()
+            async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as c:
+                await scenario(c)
         finally:
             await aeng.dispose()
 
     asyncio.run(main())
+
+
+def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    tid, u = _tenant(owner, {"padmin": "platform_admin", "admin": "admin", "mgr": "viewer",
+                             "target": "viewer", "steward": "data_steward"})
+    for name, role in (("padmin", "platform_admin"), ("admin", "admin"), ("mgr", "viewer"),
+                       ("target", "viewer"), ("steward", "data_steward")):
+        _grant(owner, tid, u[name], role)  # the 077 backfill mirror
+    # A user administrator by custom role only: users/admin and nothing else.
+    _seed_custom(owner, tid, "custom:user-admin", {("users", "admin")})
+    _grant(owner, tid, u["mgr"], "custom:user-admin")
+
+    async def scenario(c: AsyncClient) -> None:
+        def as_(who: str) -> dict[str, str]:
+            return {"x-test-uid": u[who]}
+
+        grants = f"/api/v1/users/{{}}/grants"
+        # H1: no self-grant; no grant above the caller's own permissions; platform_admin only by one.
+        r = await c.post(grants.format(u["mgr"]), json={"role_key": "platform_admin"}, headers=as_("mgr"))
+        assert r.status_code == 403, r.text
+        for key in ("platform_admin", "admin", "data_steward"):
+            r = await c.post(grants.format(u["target"]), json={"role_key": key}, headers=as_("mgr"))
+            assert r.status_code == 403, (key, r.text)
+        r = await c.post(grants.format(u["target"]), json={"role_key": "viewer", "module": "fi_gl"},
+                         headers=as_("mgr"))
+        assert r.status_code == 201, r.text
+        r = await c.post(grants.format(u["target"]), json={"role_key": "platform_admin"}, headers=as_("steward"))
+        assert r.status_code == 403  # no manage_users at all
+        r = await c.post(grants.format(u["padmin"]), json={"role_key": "auditor"}, headers=as_("padmin"))
+        assert r.status_code == 403  # self, even for platform_admin
+        r = await c.post(grants.format(u["target"]), json={"role_key": "sap_basis"}, headers=as_("padmin"))
+        assert r.status_code == 201, r.text
+
+        # H1 on role change: no self re-role, no promotion above the caller.
+        r = await c.put(f"/api/v1/users/{u['mgr']}", json={"role": "admin"}, headers=as_("mgr"))
+        assert r.status_code == 403
+        r = await c.put(f"/api/v1/users/{u['padmin']}", json={"role": "viewer"}, headers=as_("padmin"))
+        assert r.status_code == 403
+        r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "admin"}, headers=as_("mgr"))
+        assert r.status_code == 403
+
+        # H1 on invite: a custom user admin cannot invite an admin.
+        r = await c.post("/api/v1/users/invite", json={"email": "x@example.test", "role": "admin"},
+                         headers=as_("mgr"))
+        assert r.status_code == 403, r.text
+
+        # H2: clone and matrix edit stay under the caller.
+        r = await c.post("/api/v1/roles", json={"name": "Admin copy", "cloned_from": "admin"}, headers=as_("mgr"))
+        assert r.status_code == 403
+        r = await c.post("/api/v1/roles", json={"name": "Viewer copy", "cloned_from": "viewer"},
+                         headers=as_("mgr"))
+        assert r.status_code == 201, r.text
+        everything = [{"resource": res, "action": a} for res in ("users", "licence", "systems")
+                      for a in ("view", "create", "edit", "admin")]
+        r = await c.put("/api/v1/roles/custom:viewer-copy/permissions", json={"permissions": everything},
+                        headers=as_("mgr"))
+        assert r.status_code == 403
+        r = await c.put("/api/v1/roles/custom:viewer-copy/permissions",
+                        json={"permissions": [{"resource": "mdm", "action": "view"}]}, headers=as_("mgr"))
+        assert r.status_code == 200, r.text
+        r = await c.post("/api/v1/roles", json={"name": "Padmin copy", "cloned_from": "platform_admin"},
+                         headers=as_("padmin"))
+        assert r.status_code == 201, r.text
+
+        # H3: no self-approval; the granted role must confer the request.
+        r = await c.post("/api/v1/access-requests", json={"resource": "users", "action": "admin"},
+                         headers=as_("mgr"))
+        own = r.json()["id"]
+        r = await c.post(f"/api/v1/access-requests/{own}/decide",
+                         json={"decision": "granted", "role_key": "platform_admin"}, headers=as_("mgr"))
+        assert r.status_code == 403
+        r = await c.post("/api/v1/access-requests", json={"resource": "fixes", "action": "approve"},
+                         headers=as_("target"))
+        req = r.json()["id"]
+        r = await c.post(f"/api/v1/access-requests/{req}/decide",
+                         json={"decision": "granted", "role_key": "auditor"}, headers=as_("padmin"))
+        assert r.status_code == 422, r.text  # auditor does not approve fixes
+        r = await c.post(f"/api/v1/access-requests/{req}/decide",
+                         json={"decision": "granted", "role_key": "data_owner"}, headers=as_("mgr"))
+        assert r.status_code == 403  # confers it, but is above the custom user admin
+        r = await c.post(f"/api/v1/access-requests/{req}/decide",
+                         json={"decision": "granted", "role_key": "data_owner"}, headers=as_("padmin"))
+        assert r.status_code == 200, r.text
+
+        # M6: the users.role mirror cannot be deleted (it would revoke nothing); no audit row.
+        listed = (await c.get(grants.format(u["target"]), headers=as_("padmin"))).json()
+        mirror = next(g["id"] for g in listed
+                      if g["role_key"] == "viewer" and g["system_id"] is None and g["module"] is None)
+        before = _audit_count(owner, tid)
+        r = await c.delete(f"/api/v1/users/{u['target']}/grants/{mirror}", headers=as_("padmin"))
+        assert r.status_code == 409, r.text
+        assert _audit_count(owner, tid) == before
+
+        # L1: role change onto a role already granted unscoped -> no unique-index 500.
+        _grant(owner, tid, u["target"], "analyst")
+        r = await c.put(f"/api/v1/users/{u['target']}", json={"role": "analyst"}, headers=as_("padmin"))
+        assert r.status_code == 200, r.text
+        keys = [k for i, k in _unscoped(owner, tid) if i == u["target"]]
+        assert keys.count("analyst") == 1 and "viewer" not in keys, keys  # old mirror dropped, no dupe
+
+        # L2: no uid -> 401, not a 500 on a "" uuid.
+        assert (await c.get("/api/v1/me/permissions")).status_code == 401
+
+        # L5: invite with a custom first grant keeps users.role built-in; /auth/me sees the custom action.
+        r = await c.post("/api/v1/users/invite",
+                         json={"email": "ua@example.test", "grants": [{"role_key": "custom:user-admin"}]},
+                         headers=as_("padmin"))
+        assert r.status_code == 200, r.text
+        assert r.json()["role"] == "viewer"
+        new_id = r.json()["id"]
+        r = await c.get("/api/v1/me/permissions", headers={"x-test-uid": new_id})
+        assert r.status_code == 200 and "manage_users" in r.json()["actions"]
+
+    _serve(owner, monkeypatch, tid, scenario)
 
     from sqlalchemy import text
 
@@ -302,3 +311,91 @@ def test_escalation_guards(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
                            {"t": tid}).scalar_one()
         assert "manage_users" in unscoped_actions_sync(c, tid, str(new_id), "viewer")
         assert "manage_users" not in unscoped_actions_sync(c, tid, u["target"], "analyst")
+
+
+def test_rereview_bypasses(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each bypass the wave 13 re-review proved (N1-N6), replayed; every one must now be refused."""
+    names = ("padmin", "admin", "mgr", "clone", "selfy", "target", "t2", "t3")
+    roles = {"padmin": "platform_admin", "admin": "admin"}
+    tid, u = _tenant(owner, {n: roles.get(n, "viewer") for n in names})
+    for n in names:
+        _grant(owner, tid, u[n], roles.get(n, "viewer"))  # the 077 backfill mirror
+    _seed_custom(owner, tid, "custom:user-admin", {("users", "admin")})
+    _grant(owner, tid, u["mgr"], "custom:user-admin")
+    _grant(owner, tid, u["selfy"], "custom:user-admin")
+    _grant(owner, tid, u["selfy"], "data_steward")
+
+    async def scenario(c: AsyncClient) -> None:
+        def as_(who: str) -> dict[str, str]:
+            return {"x-test-uid": u[who]}
+
+        grants = "/api/v1/users/{}/grants"
+        # Setup as in the re-review: a platform admin makes an admin copy and hands it to `clone`.
+        r = await c.post("/api/v1/roles", json={"name": "Admin copy", "cloned_from": "admin"}, headers=as_("padmin"))
+        assert r.status_code == 201, r.text
+        copy = r.json()["key"]
+        r = await c.post(grants.format(u["clone"]), json={"role_key": copy}, headers=as_("padmin"))
+        assert r.status_code == 201, r.text
+
+        # N1: admin is platform-equivalent, so only an admin or platform admin confers it.
+        r = await c.post(grants.format(u["target"]), json={"role_key": "admin"}, headers=as_("clone"))
+        assert r.status_code == 403, ("P1b", r.text)
+        r = await c.put(f"/api/v1/users/{u['t2']}", json={"role": "admin"}, headers=as_("clone"))
+        assert r.status_code == 403, ("P1d", r.text)
+        r = await c.post("/api/v1/users/invite", json={"email": "p7@example.test", "role": "admin"},
+                         headers=as_("clone"))
+        assert r.status_code == 403, ("P7", r.text)
+        r = await c.post(grants.format(u["target"]), json={"role_key": copy}, headers=as_("clone"))
+        assert r.status_code == 403, ("admin-equivalent custom role", r.text)
+        for src in ("admin", copy):
+            r = await c.post("/api/v1/roles", json={"name": f"Again {src}", "cloned_from": src},
+                             headers=as_("clone"))
+            assert r.status_code == 403, ("clone", src, r.text)
+        r = await c.post(grants.format(u["t3"]), json={"role_key": "platform_admin"}, headers=as_("admin"))
+        assert r.status_code == 201, r.text  # deviation 2: a legacy admin still may
+
+        # N2: a non-canonical UUID does not dodge the self check.
+        r = await c.put(f"/api/v1/users/{u['selfy'].upper()}", json={"role": "data_steward"},
+                        headers=as_("selfy"))
+        assert r.status_code == 403, ("P2a", r.text)
+
+        # N3: deactivate, reactivate and delete are ceiling- and self-checked.
+        r = await c.put(f"/api/v1/users/{u['padmin']}", json={"is_active": False}, headers=as_("mgr"))
+        assert r.status_code == 403, ("P3a", r.text)
+        r = await c.delete(f"/api/v1/users/{u['admin']}", headers=as_("mgr"))
+        assert r.status_code == 403, ("P3c", r.text)
+        r = await c.delete(f"/api/v1/users/{u['clone']}", headers=as_("mgr"))
+        assert r.status_code == 403, ("delete holder of a custom admin copy", r.text)
+        for active in (False, True):
+            r = await c.put(f"/api/v1/users/{u['t2']}", json={"is_active": active}, headers=as_("mgr"))
+            assert r.status_code == 200, r.text  # a viewer sits under the user admin
+
+        # N4: no rewriting, renaming or deleting a role held above the caller.
+        r = await c.put(f"/api/v1/roles/{copy}/permissions",
+                        json={"permissions": [{"resource": "mdm", "action": "view"}]}, headers=as_("mgr"))
+        assert r.status_code == 403, ("P4", r.text)
+        r = await c.put(f"/api/v1/roles/{copy}", json={"name": "Renamed"}, headers=as_("mgr"))
+        assert r.status_code == 403, r.text
+        r = await c.delete(f"/api/v1/roles/{copy}", headers=as_("mgr"))
+        assert r.status_code == 403, r.text
+
+        # N6: a pair no role can confer is refused when asked for.
+        r = await c.post("/api/v1/access-requests", json={"resource": "users", "action": "view"},
+                         headers=as_("target"))
+        assert r.status_code == 422, ("N6", r.text)
+        r = await c.post("/api/v1/access-requests", json={"resource": "rules", "action": "view"},
+                         headers=as_("target"))
+        assert r.status_code == 201, r.text
+        req = r.json()["id"]
+
+        # N5: a user admin by custom role sees the queue it can decide.
+        r = await c.get("/api/v1/access-requests", headers=as_("mgr"))
+        assert r.status_code == 200 and req in [x["id"] for x in r.json()], ("N5", r.text)
+
+        # Last: at base these succeed and would lock the user admin out of the probes above.
+        r = await c.delete(f"/api/v1/users/{u['mgr']}", headers=as_("mgr"))
+        assert r.status_code == 403, ("self delete", r.text)
+        r = await c.put(f"/api/v1/users/{u['mgr'].upper()}", json={"is_active": False}, headers=as_("mgr"))
+        assert r.status_code == 403, ("self deactivate", r.text)
+
+    _serve(owner, monkeypatch, tid, scenario)

@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.routes.roles import enforce_ceiling, forbid_self, insert_grant, resolve_caller
+from api.routes.roles import enforce_ceiling, forbid_self, guard_user_access_change, insert_grant, resolve_caller
 from api.services.rbac import Scope, require_permission, VALID_ROLES
 from workers.tasks.send_user_invitation import send_invitation_email
 
@@ -84,7 +84,7 @@ async def list_users(
 
 @router.put("/users/{user_id}")
 async def update_user(
-    user_id: str,
+    user_id: uuid.UUID,
     body: UpdateUserBody,
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -94,7 +94,7 @@ async def update_user(
     await _set_rls(db, tenant.id)
 
     updates = []
-    params: dict = {"uid": user_id, "tid": str(tenant.id)}
+    params: dict = {"uid": str(user_id), "tid": str(tenant.id)}
 
     if body.role is not None:
         if body.role not in VALID_ROLES:
@@ -109,10 +109,15 @@ async def update_user(
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    if body.is_active is not None:
+        # Deactivating (or reactivating) takes all of a user's access away (or gives it back): not
+        # yourself, and only for a user whose every role sits under your own permissions.
+        await guard_user_access_change(db, tenant, request, user_id)
+
     old_role = None
     if body.role is not None:
         old = await db.execute(text("SELECT role FROM users WHERE id = :uid AND tenant_id = :tid"),
-                               {"uid": user_id, "tid": str(tenant.id)})
+                               {"uid": str(user_id), "tid": str(tenant.id)})
         old_row = old.fetchone()
         old_role = old_row[0] if old_row else None
         if old_role and old_role != body.role:
@@ -135,7 +140,7 @@ async def update_user(
         # The unscoped grant mirrors users.role; a stale one would keep the old (maybe higher) role alive.
         # If the user already holds an unscoped grant of the new role, renaming would hit the unique
         # index, so drop the old mirror instead.
-        sync = {"new": body.role, "old": old_role, "uid": user_id, "tid": str(tenant.id)}
+        sync = {"new": body.role, "old": old_role, "uid": str(user_id), "tid": str(tenant.id)}
         unscoped = "tenant_id = :tid AND user_id = :uid AND system_id IS NULL AND module IS NULL"
         has_new = (await db.execute(text(f"SELECT 1 FROM user_role_scopes WHERE {unscoped} AND role_key = :new"),
                                     sync)).fetchone()
@@ -148,7 +153,7 @@ async def update_user(
     # Return updated user
     row = await db.execute(
         text("SELECT id, email, name, role, is_active, last_login, created_at FROM users WHERE id = :uid AND tenant_id = :tid"),
-        {"uid": user_id, "tid": str(tenant.id)},
+        {"uid": str(user_id), "tid": str(tenant.id)},
     )
     return _row_to_dict(row.fetchone())
 
@@ -256,7 +261,8 @@ async def invite_user(
 
 @router.delete("/users/{user_id}")
 async def delete_user(
-    user_id: str,
+    user_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
@@ -269,6 +275,7 @@ async def delete_user(
     from sqlalchemy.exc import IntegrityError
 
     await _set_rls(db, tenant.id)
+    await guard_user_access_change(db, tenant, request, user_id)
 
     try:
         result = await db.execute(
@@ -276,7 +283,7 @@ async def delete_user(
                 "DELETE FROM users WHERE id = :uid AND tenant_id = :tid "
                 "RETURNING id"
             ),
-            {"uid": user_id, "tid": str(tenant.id)},
+            {"uid": str(user_id), "tid": str(tenant.id)},
         )
         if not result.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
@@ -291,4 +298,4 @@ async def delete_user(
             ),
         )
 
-    return {"id": user_id, "status": "deleted"}
+    return {"id": str(user_id), "status": "deleted"}

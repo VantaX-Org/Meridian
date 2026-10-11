@@ -212,10 +212,13 @@ Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `finding
 Escalation guards (all 403 unless noted):
 
 - **Ceiling.** Granting, inviting, re-roling a user, removing a grant, cloning a role and editing a custom role's matrix all require the role's effective permissions to be a subset of the caller's own at that scope.
-- **platform_admin.** Only a holder of `platform_admin` (or legacy `admin`) may grant it.
-- **Self.** Nobody may grant, remove or re-role their own access, or decide their own access request.
+- **Admin-equivalent.** `admin` and `platform_admin` are equal. Only a holder of either may grant, invite into, re-role to, clone or define an admin-equivalent role: either key, or any custom role holding (`licence`, `admin`).
+- **Deactivate / reactivate / delete.** `PUT /users/{id}` with `is_active` and `DELETE /users/{id}` require the target's `users.role` and every grant (each at its own scope) to sit under the caller. Never on yourself.
+- **Custom role edits.** Renaming, deleting or rewriting the matrix of a custom role also requires its *current* permissions to sit under the caller, so nobody strips a role held above them.
+- **Self.** Nobody may grant, remove, re-role, deactivate or delete their own access, or decide their own access request. User ids are compared as UUIDs, never as strings.
 - **Mirror grant.** The unscoped grant equal to `users.role` cannot be deleted: 409, pointing at `PUT /users/{id}`. No audit row is written.
 - **Decide.** A granted `role_key` must confer the requested (resource, action), else 422, and then passes the ceiling.
+- **Request.** `POST /access-requests` refuses with 422 a (resource, action) that no legacy action yields (e.g. `users`/`view`), since no role could ever confer it. The queue and the effective view count custom-role grants when checking `manage_users`.
 - **Invite.** `users.role` is the first unscoped built-in grant, else `viewer`; custom grants are inserted alongside it.
 
 ### 3.4 Migration from the current map

@@ -4,7 +4,8 @@ Escalation guards (every write path routes through them):
 - ceiling: a caller may only grant, clone or define a permission set that is a subset
   of their own effective permissions at that scope (legacy actions AND matrix pairs);
 - nobody grants, alters or approves their own access;
-- only platform_admin (or its legacy alias admin) may grant platform_admin.
+- admin and platform_admin are equal: only a holder of either may grant, clone or define an
+  admin-equivalent role (either key, or any role holding licence/admin, i.e. manage_system).
 """
 
 import re
@@ -23,7 +24,7 @@ from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import (
     ACTIONS, BUILTIN_NAMES, PERMISSIONS, PERSONA_ALIAS, PERSONA_ROLES, RESOURCES, VALID_ROLES,
     EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id, dev_role_override,
-    effective_actions, effective_permissions, has_permission, legacy_actions_for_pairs, permissions_for,
+    effective_actions, effective_permissions, legacy_actions_for_pairs, permissions_for,
     require_permission,
     resource_matrix, user_grants, write_audit,
 )
@@ -33,6 +34,7 @@ router = APIRouter(prefix="/api/v1", tags=["rbac"])
 _LEGACY = set(PERMISSIONS) - set(PERSONA_ROLES) - {"analyst", "auditor", "viewer"}
 _SLUG = re.compile(r"[^a-z0-9]+")
 _PLATFORM_ADMIN = {"platform_admin", PERSONA_ALIAS["platform_admin"]}
+_PLATFORM_PAIR = ("licence", "admin")  # manage_system: held only by admin / platform_admin
 
 
 class Pair(BaseModel):
@@ -152,21 +154,52 @@ async def resolve_caller(db: AsyncSession, tenant: Tenant, request: Request, sco
     return Caller(uid, frozenset(actions), bool(keys & _PLATFORM_ADMIN))
 
 
-def _forbid_above(caller: Caller, actions: set[str], pairs: set[tuple[str, str]]) -> None:
+def _as_uuid(v: Optional[str]) -> Optional[uuid.UUID]:
+    try:
+        return uuid.UUID(str(v)) if v else None
+    except ValueError:
+        return None
+
+
+def _forbid_above(caller: Caller, actions: set[str], pairs: set[tuple[str, str]],
+                  role_key: Optional[str] = None) -> None:
+    if (role_key in _PLATFORM_ADMIN or _PLATFORM_PAIR in pairs) and not caller.platform_admin:
+        raise HTTPException(status_code=403, detail="Only an admin or platform admin may grant admin rights")
     if not (actions <= caller.actions and pairs <= _matrix_pairs(set(caller.actions))):
         raise HTTPException(status_code=403, detail="Exceeds your own permissions")
 
 
 async def enforce_ceiling(db: AsyncSession, tenant_id: uuid.UUID, caller: Caller, role_key: str) -> None:
     """403 unless `caller` may hand out (or take back) `role_key`."""
-    if role_key == "platform_admin" and not caller.platform_admin:
-        raise HTTPException(status_code=403, detail="Only a platform admin may grant platform_admin")
-    _forbid_above(caller, await actions_for(role_key, tenant_id, db), await _role_pairs(db, tenant_id, role_key))
+    _forbid_above(caller, await actions_for(role_key, tenant_id, db), await _role_pairs(db, tenant_id, role_key),
+                  role_key)
 
 
-def forbid_self(caller: Caller, user_id: str) -> None:
-    if caller.user_id and caller.user_id == str(user_id):
+def forbid_self(caller: Caller, user_id: str | uuid.UUID) -> None:
+    """Compared as UUIDs: Postgres casts text to uuid case-insensitively, so string equality is not enough."""
+    me = _as_uuid(caller.user_id)
+    if me and me == _as_uuid(str(user_id)):
         raise HTTPException(status_code=403, detail="You cannot change your own access")
+
+
+async def guard_user_access_change(db: AsyncSession, tenant: Tenant, request: Request,
+                                   user_id: uuid.UUID) -> None:
+    """Deactivate, reactivate or delete a user: not yourself, and only if every role the user holds
+    (users.role and each grant, at its scope) sits under the caller's own permissions."""
+    row = (await db.execute(text("SELECT role FROM users WHERE id = :u AND tenant_id = :t"),
+                            {"u": str(user_id), "t": str(tenant.id)})).fetchone()
+    if not row:
+        return  # caller's own 404 path
+    caller = await resolve_caller(db, tenant, request, Scope())
+    forbid_self(caller, user_id)
+    await enforce_ceiling(db, tenant.id, caller, row[0])
+    grants = await db.execute(text("SELECT DISTINCT role_key, system_id, module FROM user_role_scopes "
+                                   "WHERE tenant_id = :t AND user_id = :u"),
+                              {"t": str(tenant.id), "u": str(user_id)})
+    for key, system_id, module in grants.fetchall():
+        at = caller if system_id is None and module is None else \
+            await resolve_caller(db, tenant, request, Scope(system_id, module))
+        await enforce_ceiling(db, tenant.id, at, key)
 
 
 async def insert_grant(db: AsyncSession, tenant: Tenant, request: Request, user_id: str, role_key: str,
@@ -231,7 +264,7 @@ async def clone_role(body: CloneRoleBody, request: Request, db: AsyncSession = D
         raise HTTPException(status_code=409, detail="A role with this key already exists")
     pairs = await _role_pairs(db, tenant.id, body.cloned_from)
     caller = await resolve_caller(db, tenant, request, Scope())
-    _forbid_above(caller, await actions_for(body.cloned_from, tenant.id, db), pairs)
+    _forbid_above(caller, await actions_for(body.cloned_from, tenant.id, db), pairs, body.cloned_from)
     row = await db.execute(
         text("INSERT INTO roles (tenant_id, key, name, description, built_in, cloned_from, created_by) "
              "VALUES (:t, :k, :n, :d, false, :c, :u) RETURNING id"),
@@ -249,6 +282,14 @@ async def clone_role(body: CloneRoleBody, request: Request, db: AsyncSession = D
     return out
 
 
+async def _guard_custom_role(db: AsyncSession, tenant: Tenant, request: Request, key: str) -> Caller:
+    """Changing or removing a custom role changes every holder: its current set must sit under the caller."""
+    caller = await resolve_caller(db, tenant, request, Scope())
+    current = await _role_pairs(db, tenant.id, key)
+    _forbid_above(caller, legacy_actions_for_pairs(current), current, key)
+    return caller
+
+
 @router.put("/roles/{key}", dependencies=[Depends(require_permission("manage_users"))])
 async def update_role(key: str, body: UpdateRoleBody, request: Request, db: AsyncSession = Depends(get_db),
                       tenant: Tenant = Depends(get_tenant)) -> RoleOut:
@@ -256,6 +297,7 @@ async def update_role(key: str, body: UpdateRoleBody, request: Request, db: Asyn
     role = await _custom_role(db, tenant.id, key)
     if not role:
         raise HTTPException(status_code=404, detail="Custom role not found")
+    await _guard_custom_role(db, tenant, request, key)
     before = {"name": role[2], "description": role[3]}
     after = {"name": body.name or role[2],
              "description": body.description if body.description is not None else role[3]}
@@ -274,6 +316,7 @@ async def delete_role(key: str, request: Request, db: AsyncSession = Depends(get
     role = await _custom_role(db, tenant.id, key)
     if not role:
         raise HTTPException(status_code=404, detail="Custom role not found")
+    await _guard_custom_role(db, tenant, request, key)
     in_use = (await db.execute(
         text("SELECT (SELECT COUNT(*) FROM user_role_scopes WHERE tenant_id = :t AND role_key = :k) + "
              "(SELECT COUNT(*) FROM users WHERE tenant_id = :t AND role = :k)"),
@@ -310,7 +353,8 @@ async def put_role_permissions(key: str, body: PermissionsBody, request: Request
     if not role:
         raise HTTPException(status_code=404, detail="Custom role not found")
     new = _check_pairs(body.permissions)
-    _forbid_above(await resolve_caller(db, tenant, request, Scope()), legacy_actions_for_pairs(new), new)
+    caller = await _guard_custom_role(db, tenant, request, key)  # no stripping a role held above the caller
+    _forbid_above(caller, legacy_actions_for_pairs(new), new)
     before = await _role_pairs(db, tenant.id, key)
     await db.execute(text("DELETE FROM role_permissions WHERE role_id = :r"), {"r": str(role[0])})
     for res, act in sorted(new):
@@ -384,8 +428,8 @@ async def user_effective(user_id: uuid.UUID, request: Request, system_id: Option
                          module: Optional[str] = None, db: AsyncSession = Depends(get_db),
                          tenant: Tenant = Depends(get_tenant)) -> EffectivePermissions:
     """Same shape as /me/permissions. manage_users, or the user themself."""
-    caller_role = await _get_user_role(tenant, db, request)
-    if not has_permission(caller_role, "manage_users") and current_user_id(request) != str(user_id):
+    caller = await resolve_caller(db, tenant, request, Scope())
+    if "manage_users" not in caller.actions and _as_uuid(caller.user_id) != user_id:
         raise HTTPException(status_code=403, detail="Not permitted")
     await _rls(db, tenant)
     row = (await db.execute(text("SELECT role FROM users WHERE id = :u AND tenant_id = :t"),
