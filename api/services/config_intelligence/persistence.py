@@ -237,20 +237,35 @@ class ConfigIntelligencePersistence:
     # ------------------------------------------------------------------
 
     async def get_latest_run_id(
-        self, db: AsyncSession, tenant_id: str
+        self, db: AsyncSession, tenant_id: str, system_id: Optional[str] = None
     ) -> Optional[str]:
-        """Get the most recent run_id for a tenant."""
+        """Get the most recent run_id for a tenant, optionally only runs of
+        versions downloaded from ``system_id``."""
         await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
-        row = (
-            await db.execute(
-                text(
-                    "SELECT run_id FROM config_health_scores "
-                    "WHERE tenant_id = :tid ORDER BY recorded_at DESC LIMIT 1"
-                ),
-                {"tid": tenant_id},
-            )
-        ).first()
+        sql = "SELECT h.run_id FROM config_health_scores h "
+        params = {"tid": tenant_id}
+        if system_id:
+            sql += ("JOIN analysis_versions v ON v.id = h.run_id AND v.tenant_id = h.tenant_id "
+                    "AND v.metadata->>'system_id' = :sid ")
+            params["sid"] = system_id
+        sql += "WHERE h.tenant_id = :tid ORDER BY h.recorded_at DESC LIMIT 1"
+        row = (await db.execute(text(sql), params)).first()
         return str(row[0]) if row else None
+
+    async def run_in_system(
+        self, db: AsyncSession, tenant_id: str, run_id: str, system_id: str
+    ) -> bool:
+        """Whether ``run_id`` is a version downloaded from ``system_id``."""
+        try:
+            uuid.UUID(run_id)
+        except ValueError:
+            return False
+        await db.execute(text(f"SET app.tenant_id = \'{str(tenant_id)}\'"))
+        row = (await db.execute(text(
+            "SELECT 1 FROM analysis_versions WHERE tenant_id = :tid "
+            "AND id = CAST(:rid AS uuid) AND metadata->>'system_id' = :sid"),
+            {"tid": tenant_id, "rid": run_id, "sid": system_id})).first()
+        return row is not None
 
     async def get_previous_run_id(
         self, db: AsyncSession, tenant_id: str, current_run_id: str

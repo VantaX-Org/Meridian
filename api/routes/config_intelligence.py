@@ -49,12 +49,18 @@ persistence = ConfigIntelligencePersistence()
 # ------------------------------------------------------------------
 
 async def _resolve_run_id(
-    db: AsyncSession, tenant_id: str, run_id: Optional[str]
+    db: AsyncSession, tenant_id: str, run_id: Optional[str], system_id: Optional[str] = None
 ) -> str:
-    """Resolve run_id — use provided value or fall back to latest."""
-    if run_id:
+    """Resolve run_id — use provided value or fall back to latest. With
+    ``system_id`` the run must belong to a version downloaded from that system
+    (``run_id`` is the version id), the same scoping ``/versions`` applies."""
+    if run_id and not system_id:
         return run_id
-    latest = await persistence.get_latest_run_id(db, tenant_id)
+    if run_id:
+        if not await persistence.run_in_system(db, tenant_id, run_id, system_id):
+            raise HTTPException(status_code=404, detail="Run not found for this system")
+        return run_id
+    latest = await persistence.get_latest_run_id(db, tenant_id, system_id)
     if not latest:
         raise HTTPException(status_code=404, detail="No config intelligence runs found")
     return latest
@@ -97,13 +103,14 @@ async def discover_config(
 @router.get("/inventory", response_model=ConfigInventoryListResponse)
 async def list_inventory(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     module: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """List discovered config elements, optionally filtered by module."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     elements = await persistence.load_inventory(db, tid, rid, module=module)
     return ConfigInventoryListResponse(
         run_id=rid,
@@ -121,12 +128,13 @@ async def list_inventory(
 async def get_inventory_by_module(
     module: str,
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """List config elements for a specific SAP module."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     elements = await persistence.load_inventory(db, tid, rid, module=module)
     return ConfigInventoryListResponse(
         run_id=rid,
@@ -143,12 +151,13 @@ async def get_inventory_by_module(
 @router.get("/processes", response_model=ProcessListResponse)
 async def list_processes(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """List all 7 business process health summaries."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     processes = await persistence.load_processes(db, tid, rid)
     return ProcessListResponse(
         run_id=rid,
@@ -164,12 +173,13 @@ async def list_processes(
 async def get_process_detail(
     process_id: str,
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Get detailed health for a single business process (e.g. OTC, PTP)."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     process = await persistence.load_process_detail(db, tid, rid, process_id)
     if not process:
         raise HTTPException(status_code=404, detail=f"Process '{process_id}' not found")
@@ -183,6 +193,7 @@ async def get_process_detail(
 @router.get("/alignment", response_model=AlignmentListResponse)
 async def list_alignment_findings(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     severity: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -190,7 +201,7 @@ async def list_alignment_findings(
 ):
     """List alignment findings with optional severity/category filters."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     findings = await persistence.load_findings(
         db, tid, rid, severity=severity, category=category,
     )
@@ -209,12 +220,13 @@ async def list_alignment_findings(
 async def get_alignment_by_module(
     module: str,
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """List alignment findings for a specific SAP module."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     findings = await persistence.load_findings(db, tid, rid, module=module)
     return AlignmentListResponse(
         run_id=rid,
@@ -231,12 +243,13 @@ async def get_alignment_by_module(
 @router.get("/ghost", response_model=AlignmentListResponse)
 async def list_ghost_config(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Ghost Config Register — config elements with no transactional activity."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     findings = await persistence.load_findings_by_category(db, tid, rid, "ghost")
     return AlignmentListResponse(
         run_id=rid,
@@ -252,12 +265,13 @@ async def list_ghost_config(
 @router.get("/shadow", response_model=AlignmentListResponse)
 async def list_shadow_processes(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Shadow Process Alerts — undocumented processes detected in data."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     findings = await persistence.load_findings_by_category(db, tid, rid, "shadow")
     return AlignmentListResponse(
         run_id=rid,
@@ -273,13 +287,14 @@ async def list_shadow_processes(
 @router.get("/drift", response_model=DriftListResponse)
 async def list_drift(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     previous_run_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Config drift between the current and previous analysis runs."""
     tid = str(tenant.id)
-    current_rid = await _resolve_run_id(db, tid, run_id)
+    current_rid = await _resolve_run_id(db, tid, run_id, system_id)
     if not previous_run_id:
         previous_run_id = await persistence.get_previous_run_id(db, tid, current_rid)
     if not previous_run_id:
@@ -303,12 +318,13 @@ async def list_drift(
 @router.get("/licence-utilisation", response_model=LicenceUtilisationListResponse)
 async def list_licence_utilisation(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Per-module licence utilisation based on config element activity."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     elements = await persistence.load_inventory(db, tid, rid)
 
     # Aggregate per module
@@ -354,12 +370,13 @@ async def list_licence_utilisation(
 @router.get("/health-score", response_model=HealthScoreListResponse)
 async def list_health_scores(
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Config Health Scores per SAP module."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
     scores = await persistence.load_health_scores(db, tid, rid)
     return HealthScoreListResponse(
         run_id=rid,
@@ -375,12 +392,13 @@ async def list_health_scores(
 async def get_root_cause(
     finding_id: str,
     run_id: Optional[str] = Query(None),
+    system_id: Optional[str] = Query(None, description="Only runs of versions downloaded from this system"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
 ):
     """Root cause analysis bridging a DQ or alignment finding to config issues."""
     tid = str(tenant.id)
-    rid = await _resolve_run_id(db, tid, run_id)
+    rid = await _resolve_run_id(db, tid, run_id, system_id)
 
     # Try to find the alignment finding by check_id
     finding_obj = await persistence.load_finding_by_check_id(db, tid, rid, finding_id)
