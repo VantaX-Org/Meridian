@@ -15,8 +15,31 @@ NodeType = Literal["startEvent", "endEvent", "task", "exclusiveGateway", "parall
 Classification = Literal["implemented", "dormant", "configured_not_used", "customer_specific"]
 
 
-Source = Literal["template", "config"]
+Source = Literal["template", "config", "discovered"]
 NodeStatus = Literal["configured", "not_configured", "client_specific"]
+
+
+class DiscoveryEdge(BaseModel):
+    """As-is flow from a node: to a sibling at the same level, or "__END__" (case ends or leaves the parent)."""
+    target: str
+    count: int
+    median_seconds: Optional[float] = None
+
+
+class DiscoveryStats(BaseModel):
+    """Mined stats of one node (process discovery). Counts only, never event data."""
+    case_count: int = 0
+    share: float = 0.0                # cases containing this node / cases of the case type
+    event_count: int = 0
+    median_seconds: Optional[float] = None
+    p90_seconds: Optional[float] = None
+    rework_rate: Optional[float] = None
+    automation_rate: Optional[float] = None
+    fitness: Optional[float] = None
+    observed: bool = False
+    case_type: Optional[str] = None
+    edges: list[DiscoveryEdge] = []   # as-is flow to siblings, used by export and the L1-L3 flow view
+    entry_count: int = 0              # transitions into this node from outside its parent, or at case start
 
 
 class Evidence(BaseModel):
@@ -72,6 +95,7 @@ class L5(BaseModel):
     source: Source = "template"
     status: Optional[NodeStatus] = None  # None: no config evidence either way (table not extracted)
     evidence: list[Evidence] = []
+    discovery: Optional[DiscoveryStats] = None
 
     def with_derived(self) -> "L5":
         ids = list(dict.fromkeys([*self.check_ids, *(f.check_id for f in self.fields if f.check_id)]))
@@ -115,6 +139,7 @@ class L4(BaseModel):
     config_variants: list[Evidence] = []  # configured document/order/movement types (config keys)
     document_flow: list[DocFlowEdge] = []  # OTC: order -> delivery -> billing paths from copy control
     next_l4: list[str] = []  # derived sequence: L4 ids that follow this one (copy control)
+    discovery: Optional[DiscoveryStats] = None
 
 
 class L3(BaseModel):
@@ -123,6 +148,8 @@ class L3(BaseModel):
     description: str = ""
     order: int = 0
     l4: list[L4] = []
+    source: Source = "template"
+    discovery: Optional[DiscoveryStats] = None
 
 
 class L2(BaseModel):
@@ -131,6 +158,8 @@ class L2(BaseModel):
     description: str = ""
     order: int = 0
     l3: list[L3] = []
+    source: Source = "template"
+    discovery: Optional[DiscoveryStats] = None
 
 
 class L1(BaseModel):
@@ -140,6 +169,8 @@ class L1(BaseModel):
     order: int = 0
     modules: list[str] = []
     l2: list[L2] = []
+    source: Source = "template"
+    discovery: Optional[DiscoveryStats] = None
 
 
 class ProcessModelDocument(BaseModel):
