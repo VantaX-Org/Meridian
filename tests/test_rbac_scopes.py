@@ -51,11 +51,26 @@ def test_resource_matrix_viewer_vs_steward() -> None:
     assert not steward["users"]["admin"]
 
 
-def test_custom_role_pairs_round_trip_to_legacy_actions() -> None:
-    pairs = {(r, a) for r, acts in resource_matrix(set(rbac.permissions_for("approver"))).items()
-             for a, ok in acts.items() if ok}
-    assert legacy_actions_for_pairs(pairs) >= set(rbac.permissions_for("approver"))
-    assert "manage_users" not in legacy_actions_for_pairs(pairs)
+def _pairs(actions: set[str]) -> set[tuple[str, str]]:
+    return {(r, a) for r, acts in resource_matrix(actions).items() for a, ok in acts.items() if ok}
+
+
+@pytest.mark.parametrize("role", sorted(rbac.VALID_ROLES))
+def test_custom_role_pairs_round_trip_exactly(role: str) -> None:
+    """A clone of any built-in holds exactly the built-in's actions: no more (escalation), no less."""
+    perms = set(rbac.permissions_for(role))
+    assert legacy_actions_for_pairs(_pairs(perms)) == perms
+
+
+def test_manage_system_is_platform_admin_only() -> None:
+    assert {r for r in rbac.VALID_ROLES if rbac.has_permission(r, "manage_system")} == {"admin", "platform_admin"}
+    assert "manage_system" not in rbac.permissions_for("sap_basis")
+    for role in rbac.VALID_ROLES - {"admin", "platform_admin"}:
+        assert "manage_system" not in legacy_actions_for_pairs(_pairs(set(rbac.permissions_for(role))))
+    # Every systems/credentials box ticked on a custom role still does not reach platform update.
+    systems = {("systems", a) for a in ACTIONS} | {("credentials", a) for a in ACTIONS}
+    assert "manage_systems" in legacy_actions_for_pairs(systems)
+    assert "manage_system" not in legacy_actions_for_pairs(systems)
 
 
 # ── require_permission dependency (fake DB) ──────────────────────────────────
@@ -135,17 +150,17 @@ def test_effective_permissions_shape_and_narrowing() -> None:
     db = FakeDB([("data_owner", SYS_A, "material_master")])
     tid = uuid.uuid4()
     wide = asyncio.run(rbac.effective_permissions(db, tid, "u1", "viewer"))  # type: ignore[arg-type]
-    assert set(wide) == {"role", "roles", "actions", "resources", "scopes", "home"}
-    assert wide["home"] == "/home/lead" and "approve" in wide["actions"]
-    assert wide["scopes"] == [{"system_id": str(SYS_A), "module": "material_master"}]
-    assert wide["resources"]["fixes"]["approve"] is True
-    assert set(wide["resources"]) == set(RESOURCES)
+    assert set(wide.model_dump()) == {"role", "roles", "actions", "resources", "scopes", "home"}
+    assert wide.home == "/home/lead" and "approve" in wide.actions
+    assert [s.model_dump() for s in wide.scopes] == [{"system_id": str(SYS_A), "module": "material_master"}]
+    assert wide.resources["fixes"]["approve"] is True
+    assert set(wide.resources) == set(RESOURCES)
     other = asyncio.run(rbac.effective_permissions(db, tid, "u1", "viewer", SYS_B, None,  # type: ignore[arg-type]
                                                    narrowed=True))
-    assert "approve" not in other["actions"] and other["resources"]["fixes"]["approve"] is False
+    assert "approve" not in other.actions and other.resources["fixes"]["approve"] is False
     inside = asyncio.run(rbac.effective_permissions(db, tid, "u1", "viewer", SYS_A, "material_master",  # type: ignore[arg-type]
                                                     narrowed=True))
-    assert "approve" in inside["actions"]
+    assert "approve" in inside.actions
 
 
 def test_home_for_persona_and_legacy_keys() -> None:
@@ -163,3 +178,43 @@ def test_migration_077_chains_from_076() -> None:
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert (mod.revision, mod.down_revision) == ("077", "076")
+
+
+def test_effective_permissions_without_uid_skips_grant_lookup() -> None:
+    class NoGrantQueries(FakeDB):
+        async def execute(self, stmt, params=None) -> _Res:  # noqa: ANN001
+            assert "user_role_scopes" not in str(stmt), "no grant query for an anonymous caller"
+            return _Res([])
+
+    out = asyncio.run(rbac.effective_permissions(NoGrantQueries([]), uuid.uuid4(), None, "viewer"))  # type: ignore[arg-type]
+    assert out.actions == rbac.permissions_for("viewer")
+
+
+def test_migration_077_backfill_is_extracted_and_guarded() -> None:
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent / "db/migrations/versions/077_rbac_scopes.py"
+    spec = importlib.util.spec_from_file_location("m077b", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert "NOT EXISTS" in mod.BACKFILL_SQL and "set_config('app.tenant_id'" in mod.BACKFILL_SQL
+
+
+def test_schema_declares_nullsafe_grant_index() -> None:
+    from db.schema import UserRoleScope
+    idx = {i.name: i for i in UserRoleScope.__table__.indexes}
+    assert idx["uq_user_role_scopes_nullsafe"].unique
+    assert "COALESCE(module" in " ".join(str(e) for e in idx["uq_user_role_scopes_nullsafe"].expressions)
+
+
+@pytest.mark.parametrize("role", sorted(rbac.VALID_ROLES))
+def test_steward_breakdown_and_ai_panel_follow_the_resolver(role: str) -> None:
+    from api.routes.mdm_metrics import _should_see_ai_panel
+    from api.routes.stewardship import sees_steward_breakdown
+    # Legacy behaviour kept; personas follow their legacy equivalent; nobody else gains it.
+    legacy_breakdown = {"admin", "steward"}
+    legacy_ai = {"admin", "steward", "ai_reviewer"}
+    alias = rbac.PERSONA_ALIAS.get(role, role)
+    assert sees_steward_breakdown(role) == (alias in legacy_breakdown)
+    assert _should_see_ai_panel(role) == (alias in legacy_ai)

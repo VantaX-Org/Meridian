@@ -41,5 +41,5 @@ def test_persona_roles_equal_the_legacy_role_they_replace() -> None:
 
 def test_sap_basis_is_analyst_plus_integration_actions() -> None:
     extra = set(permissions_for("sap_basis")) - set(LEGACY_SNAPSHOT["analyst"])
-    assert extra == {"manage_systems", "manage_system", "manage_field_mappings"}
+    assert extra == {"manage_systems", "manage_field_mappings"}  # manage_system (platform update) is admin-only
     assert not has_permission("sap_basis", "manage_users")

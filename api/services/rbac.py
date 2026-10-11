@@ -13,6 +13,7 @@ Supports both the legacy 7-role system and the simplified 3-tier system:
 Actions: see PERMISSIONS below — it is the single source of truth.
 """
 
+import json
 import os
 import uuid
 from collections.abc import Callable
@@ -20,7 +21,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import text
+from pydantic import BaseModel
+from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -80,8 +82,10 @@ PERSONA_ROLES: dict[str, set[str]] = {
     "programme_lead": PERMISSIONS["manager"],
     "data_steward": PERMISSIONS["steward"],
     "data_owner": PERMISSIONS["approver"],
+    # No manage_system: in code it gates platform update/restart and admin doctor
+    # (system_update.py, admin_doctor.py), not SAP systems. manage_systems covers those.
     "sap_basis": PERMISSIONS["analyst"] | {
-        "manage_systems", "manage_system", "trigger_sync", "manage_field_mappings", "upload",
+        "manage_systems", "trigger_sync", "manage_field_mappings", "upload",
     },
     "platform_admin": PERMISSIONS["admin"],
 }
@@ -237,8 +241,9 @@ LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]] = {
     "manage_field_mappings": {("extraction", "edit")},
     "manage_systems": {("systems", "create"), ("systems", "edit"), ("systems", "admin"),
                        ("credentials", "edit")},
-    "manage_system": {("systems", "create"), ("systems", "edit"), ("systems", "admin"),
-                      ("credentials", "edit")},
+    # Platform update/restart/doctor. A pair only admin/platform_admin hold, so no
+    # custom role derived from a lesser role (or ticked with systems pairs) reaches it.
+    "manage_system": {("licence", "admin")},
     "manage_settings": {("analysis", "admin"), ("reports", "admin"), ("rules", "admin")},
     "manage_llm": {("llm", "admin")},
     "manage_users": {("users", "admin")},
@@ -393,6 +398,9 @@ def require_permission(
                 status_code=403,
                 detail=f"Role '{role}' does not have '{action}' permission",
             )
+        # Nested on purpose: FastAPI wraps `detail`, so the body is
+        # {"detail": {"detail": "forbidden", "resource", "action", "request_access": true}}.
+        # Clients read body.detail.request_access (rbac.md §3.3).
         raise HTTPException(
             status_code=403,
             detail={"detail": "forbidden", "resource": resource, "action": action,
@@ -413,15 +421,54 @@ BUILTIN_NAMES: dict[str, str] = {
 }
 
 
+class RoleRef(BaseModel):
+    key: str
+    name: str
+    system_id: str | None = None
+    module: str | None = None
+
+
+class ScopeRef(BaseModel):
+    system_id: str | None = None
+    module: str | None = None
+
+
+class EffectivePermissions(BaseModel):
+    """The /me/permissions and /users/{id}/effective shape (rbac.md §3.3)."""
+    role: str
+    roles: list[RoleRef]
+    actions: list[str]
+    resources: dict[str, dict[str, bool]]
+    scopes: list[ScopeRef]
+    home: str
+
+
+async def user_grants(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None,
+                       user_role: str) -> list[Grant]:
+    """All grants plus users.role (always counts, as in legacy checks). No uid -> users.role only."""
+    grants = await grants_for(db, user_id, tenant_id, fallback_role=user_role) if user_id else []
+    if not any(r == user_role for r, _ in grants):
+        grants.append((user_role, Scope()))
+    return grants
+
+
+async def effective_actions(db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None,
+                            user_role: str, scope: Scope) -> set[str]:
+    """Legacy actions a user holds at `scope`: users.role plus every grant covering it."""
+    actions: set[str] = set()
+    for key, s in await user_grants(db, tenant_id, user_id, user_role):
+        if _scope_matches(s, scope):
+            actions |= await actions_for(key, tenant_id, db)
+    return actions
+
+
 async def effective_permissions(
-    db: AsyncSession, tenant_id: uuid.UUID, user_id: str, user_role: str,
+    db: AsyncSession, tenant_id: uuid.UUID, user_id: str | None, user_role: str,
     system_id: uuid.UUID | None = None, module: str | None = None, narrowed: bool = False,
-) -> dict:
+) -> EffectivePermissions:
     """The /me/permissions shape. Not narrowed: union of every grant (what the nav needs).
     Narrowed: only grants covering (system_id, module)."""
-    grants = await grants_for(db, user_id, tenant_id, fallback_role=user_role)
-    if not any(r == user_role for r, _ in grants):
-        grants.append((user_role, Scope()))  # users.role always counts, as in legacy checks
+    grants = await user_grants(db, tenant_id, user_id, user_role)
     if narrowed:
         want = Scope(system_id, module)
         grants = [g for g in grants if _scope_matches(g[1], want)]
@@ -434,17 +481,40 @@ async def effective_permissions(
                                    {"t": str(tenant_id), "k": key})
             r = row.fetchone()
             names[key] = r[0] if r else key
-    return {
-        "role": user_role,
-        "roles": [{"key": k, "name": names.get(k) or BUILTIN_NAMES.get(k, k),
-                   "system_id": str(s.system_id) if s.system_id else None, "module": s.module}
-                  for k, s in grants],
-        "actions": sorted(actions),
-        "resources": resource_matrix(actions),
-        "scopes": [{"system_id": str(s.system_id) if s.system_id else None, "module": s.module}
-                   for _, s in grants if s != Scope()],
-        "home": home_for(user_role),
-    }
+    return EffectivePermissions(
+        role=user_role,
+        roles=[RoleRef(key=k, name=names.get(k) or BUILTIN_NAMES.get(k, k),
+                       system_id=str(s.system_id) if s.system_id else None, module=s.module)
+               for k, s in grants],
+        actions=sorted(actions),
+        resources=resource_matrix(actions),
+        scopes=[ScopeRef(system_id=str(s.system_id) if s.system_id else None, module=s.module)
+                for _, s in grants if s != Scope()],
+        home=home_for(user_role),
+    )
+
+
+def unscoped_actions_sync(conn: Connection, tenant_id: str, user_id: str, user_role: str) -> list[str]:
+    """Sync twin of the tenant-wide check for /auth/me: users.role plus unscoped grants
+    (custom ones resolved through role_permissions). Pre-077 DBs: users.role only."""
+    actions = set(_perms(user_role))
+    if conn.execute(text("SELECT to_regclass('user_role_scopes')")).scalar() is None:
+        return sorted(actions)
+    rows = conn.execute(
+        text("SELECT s.role_key, rp.resource, rp.action FROM user_role_scopes s "
+             "LEFT JOIN roles r ON r.tenant_id = s.tenant_id AND r.key = s.role_key "
+             "LEFT JOIN role_permissions rp ON rp.role_id = r.id "
+             "WHERE s.tenant_id = :t AND s.user_id = :u AND s.system_id IS NULL AND s.module IS NULL"),
+        {"t": tenant_id, "u": user_id}).fetchall()
+    custom: dict[str, set[tuple[str, str]]] = {}
+    for key, res, act in rows:
+        if key.startswith("custom:"):
+            custom.setdefault(key, set()).update({(res, act)} if res else set())
+        else:
+            actions |= _perms(key)
+    for pairs in custom.values():
+        actions |= legacy_actions_for_pairs(pairs)
+    return sorted(actions)
 
 
 async def write_audit(
@@ -452,7 +522,6 @@ async def write_audit(
     entity_type: str, entity_id: str, before: dict | None, after: dict | None,
 ) -> None:
     """Append a role/grant/access-request row to audit_log (caller commits)."""
-    import json
     await db.execute(
         text("INSERT INTO audit_log (tenant_id, actor_user_id, actor_email, action, entity_type, entity_id, "
              "method, path, status_code, before_json, after_json) "

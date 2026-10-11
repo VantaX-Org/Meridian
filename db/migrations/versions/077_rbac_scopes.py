@@ -33,6 +33,25 @@ def _rls(table: str) -> None:
                "USING (tenant_id = current_setting('app.tenant_id')::uuid)")
 
 
+# Idempotent backfill: one unscoped grant per user for the role they hold today.
+# users is FORCE-RLS, so set the tenant per iteration. Re-runnable (tests re-run it).
+BACKFILL_SQL = """
+    DO $$
+    DECLARE t uuid;
+    BEGIN
+        FOR t IN SELECT id FROM tenants LOOP
+            PERFORM set_config('app.tenant_id', t::text, true);
+            INSERT INTO user_role_scopes (tenant_id, user_id, role_key)
+            SELECT u.tenant_id, u.id, u.role FROM users u
+            WHERE u.tenant_id = t AND NOT EXISTS (
+                SELECT 1 FROM user_role_scopes s
+                WHERE s.user_id = u.id AND s.role_key = u.role
+                  AND s.system_id IS NULL AND s.module IS NULL);
+        END LOOP;
+    END $$
+"""
+
+
 def upgrade() -> None:
     op.create_table(
         "roles",
@@ -99,22 +118,7 @@ def upgrade() -> None:
                "AND r.tenant_id = current_setting('app.tenant_id')::uuid))")
 
     # Idempotent backfill: one unscoped grant per user for the role they hold today.
-    # users is FORCE-RLS, so set the tenant per iteration.
-    op.execute("""
-        DO $$
-        DECLARE t uuid;
-        BEGIN
-            FOR t IN SELECT id FROM tenants LOOP
-                PERFORM set_config('app.tenant_id', t::text, true);
-                INSERT INTO user_role_scopes (tenant_id, user_id, role_key)
-                SELECT u.tenant_id, u.id, u.role FROM users u
-                WHERE u.tenant_id = t AND NOT EXISTS (
-                    SELECT 1 FROM user_role_scopes s
-                    WHERE s.user_id = u.id AND s.role_key = u.role
-                      AND s.system_id IS NULL AND s.module IS NULL);
-            END LOOP;
-        END $$
-    """)
+    op.execute(BACKFILL_SQL)
 
 
 def downgrade() -> None:

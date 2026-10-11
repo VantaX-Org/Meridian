@@ -21,6 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import current_user_id, dev_role_override, has_permission, require_permission
 
+
+def sees_steward_breakdown(role: str) -> bool:
+    """Per-steward stats: manage_rules holders (admin, steward and their personas), never ai_reviewer."""
+    return has_permission(role, "manage_rules")
+
 router = APIRouter(prefix="/api/v1", tags=["stewardship"])
 
 # Enforce UUID format on {item_id} params so FastAPI doesn't match literal
@@ -315,7 +320,7 @@ async def get_stewardship_metrics(
 
     # Steward breakdown — NOT visible to ai_reviewer
     steward_breakdown = None
-    if role in ("admin", "steward") and role != "ai_reviewer":
+    if sees_steward_breakdown(role):
         result = await db.execute(
             text("""
                 SELECT

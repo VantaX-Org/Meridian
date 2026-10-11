@@ -10,7 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from api.services.rbac import PERMISSIONS, PERSONA_ROLES, home_for, permissions_for, require_permission
+from api.services.rbac import (
+    PERMISSIONS, PERSONA_ROLES, home_for, permissions_for, require_permission, unscoped_actions_sync,
+)
 from api.deps import get_sync_engine_or_create
 from api.services.local_auth import (
     create_access_token,
@@ -188,7 +190,8 @@ def login(body: LoginRequest, response: Response):
         return LoginResponse(
             token=token,
             user=UserResponse(id=user_id, email=row[1], name=row[2], role=row[3],
-                              permissions=permissions_for(row[3]), home=home_for(row[3])),
+                              permissions=unscoped_actions_sync(conn, str(DEV_TENANT_ID), user_id, row[3]),
+                              home=home_for(row[3])),
             must_change_password=must_change,
         )
 
@@ -241,7 +244,8 @@ def me(request: Request):
 
         return MeResponse(
             user=UserResponse(id=str(row[0]), email=row[1], name=row[2], role=row[3],
-                              permissions=permissions_for(row[3]), home=home_for(row[3])),
+                              permissions=unscoped_actions_sync(conn, str(DEV_TENANT_ID), str(row[0]), row[3]),
+                              home=home_for(row[3])),
             must_change_password=bool(row[5]) if len(row) > 5 else False,
         )
 

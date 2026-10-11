@@ -1801,6 +1801,10 @@ class UserRoleScope(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "role_key", "system_id", "module", name="uq_user_role_scopes_grant"),
         Index("ix_user_role_scopes_user", "tenant_id", "user_id"),
+        # The plain constraint treats NULLs as distinct; this one does not (migration 077).
+        Index("uq_user_role_scopes_nullsafe", "user_id", "role_key",
+              text("COALESCE(system_id, '00000000-0000-0000-0000-000000000000'::uuid)"),
+              text("COALESCE(module, '')"), unique=True),
     )
 
 

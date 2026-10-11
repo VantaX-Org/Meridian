@@ -9,8 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.routes.roles import insert_grant
-from api.services.rbac import current_user_id, require_permission, VALID_ROLES
+from api.routes.roles import enforce_ceiling, forbid_self, insert_grant, resolve_caller
+from api.services.rbac import Scope, require_permission, VALID_ROLES
 from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
@@ -86,6 +86,7 @@ async def list_users(
 async def update_user(
     user_id: str,
     body: UpdateUserBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
@@ -114,6 +115,13 @@ async def update_user(
                                {"uid": user_id, "tid": str(tenant.id)})
         old_row = old.fetchone()
         old_role = old_row[0] if old_row else None
+        if old_role and old_role != body.role:
+            # A role change is a grant of the new role and a revocation of the old one: both must sit
+            # under the caller's own permissions, and nobody re-roles themself.
+            caller = await resolve_caller(db, tenant, request, Scope())
+            forbid_self(caller, user_id)
+            await enforce_ceiling(db, tenant.id, caller, body.role)
+            await enforce_ceiling(db, tenant.id, caller, old_role)
 
     set_clause = ", ".join(updates)
     result = await db.execute(
@@ -125,11 +133,15 @@ async def update_user(
 
     if body.role is not None and old_role and old_role != body.role:
         # The unscoped grant mirrors users.role; a stale one would keep the old (maybe higher) role alive.
-        await db.execute(
-            text("UPDATE user_role_scopes SET role_key = :new WHERE tenant_id = :tid AND user_id = :uid "
-                 "AND role_key = :old AND system_id IS NULL AND module IS NULL"),
-            {"new": body.role, "old": old_role, "uid": user_id, "tid": str(tenant.id)},
-        )
+        # If the user already holds an unscoped grant of the new role, renaming would hit the unique
+        # index, so drop the old mirror instead.
+        sync = {"new": body.role, "old": old_role, "uid": user_id, "tid": str(tenant.id)}
+        unscoped = "tenant_id = :tid AND user_id = :uid AND system_id IS NULL AND module IS NULL"
+        has_new = (await db.execute(text(f"SELECT 1 FROM user_role_scopes WHERE {unscoped} AND role_key = :new"),
+                                    sync)).fetchone()
+        await db.execute(text(f"DELETE FROM user_role_scopes WHERE {unscoped} AND role_key = :old") if has_new
+                         else text(f"UPDATE user_role_scopes SET role_key = :new WHERE {unscoped} AND role_key = :old"),
+                         sync)
 
     await db.commit()
 
@@ -154,10 +166,15 @@ async def invite_user(
 ):
     await _set_rls(db, tenant.id)
 
-    role = (next((g.role_key for g in body.grants if g.system_id is None and g.module is None), "viewer")
-            if body.grants else body.role)
-    if not body.grants and role not in VALID_ROLES:
+    # users.role must stay a built-in key (legacy guards read it directly); a custom first grant is
+    # still granted below, and users.role falls back to viewer.
+    first = next((g.role_key for g in body.grants if g.system_id is None and g.module is None), None)
+    role = (first if first in VALID_ROLES else "viewer") if body.grants else body.role
+    if role not in VALID_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+    grants = list(body.grants)
+    if not any(g.role_key == role and g.system_id is None and g.module is None for g in grants):
+        grants.append(InviteGrant(role_key=role))  # the unscoped grant mirroring users.role
 
     # Emails are case-insensitive by convention everywhere else in the auth
     # flow (login, forgot-password) — normalise on write so every row is
@@ -188,8 +205,8 @@ async def invite_user(
     )
     # insert_grant validates each role key (built-in or custom) and system; a bad one aborts the invite.
     try:
-        for g in body.grants or [InviteGrant(role_key=role)]:
-            await insert_grant(db, tenant.id, new_id, g.role_key, g.system_id, g.module, current_user_id(request))
+        for g in grants:
+            await insert_grant(db, tenant, request, new_id, g.role_key, g.system_id, g.module)
     except HTTPException:
         await db.rollback()
         raise
