@@ -11,10 +11,12 @@ import type { AccessDenied } from "./api/client";
 
 export const RESOURCES = [
   "systems", "credentials", "extraction", "analysis", "rules", "findings", "fixes", "mdm", "glossary",
-  "stewardship", "contracts", "reports", "llm", "users", "licence", "audit",
+  "stewardship", "contracts", "reports", "llm", "users", "licence", "audit", "process",
 ] as const;
 export const ACTIONS = ["view", "create", "edit", "approve", "run", "export", "admin"] as const;
 const NO_VIEW = new Set(["audit", "llm", "users", "licence", "credentials"]);
+// The legacy `export` action predates `process`; process export is granted only by export_process.
+const NO_EXPORT = new Set(["process"]);
 
 type Pair = readonly [resource: string, action: string];
 export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
@@ -40,6 +42,8 @@ export const LEGACY_ACTION_MAP: Readonly<Record<string, readonly Pair[]>> = {
   manage_llm: [["llm", "admin"]],
   manage_users: [["users", "admin"]],
   view_audit: [["audit", "view"], ["audit", "export"]],
+  run_process_discovery: [["process", "run"]],
+  export_process: [["process", "export"]],
 };
 
 /** `resource_matrix(actions)`: the {resource: {action: bool}} a legacy action set implies. */
@@ -47,7 +51,9 @@ export function resourceMatrix(actions: Iterable<string>): Record<string, Record
   const granted = new Set<string>();
   for (const a of actions) {
     for (const [r, act] of LEGACY_ACTION_MAP[a] ?? []) {
-      const rs = r === "*" ? RESOURCES.filter((x) => !(act === "view" && NO_VIEW.has(x))) : [r];
+      const rs = r === "*"
+        ? RESOURCES.filter((x) => !(act === "view" && NO_VIEW.has(x)) && !(act === "export" && NO_EXPORT.has(x)))
+        : [r];
       rs.forEach((x) => granted.add(`${x}/${act}`));
     }
   }

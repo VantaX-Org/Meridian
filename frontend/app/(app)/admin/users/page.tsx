@@ -21,7 +21,7 @@ import type { User, UserRole } from "@/types/api";
 // ponytail: getAssignableUsers() is unused here, same as the legacy component it replaces.
 void getAssignableUsers;
 
-const ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor"];
+const ROLES: UserRole[] = ["admin", "manager", "steward", "ai_reviewer", "approver", "analyst", "viewer", "auditor", "process_analyst"];
 const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   admin: { label: "Admin", desc: "Full access. Manage users and rules, approve proposed rules." },
   manager: { label: "Manager", desc: "Run the programme. Connect systems, sync, analyse, approve, apply and assign work." },
@@ -31,6 +31,7 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   analyst: { label: "Analyst", desc: "Upload, sync and run analysis; export results. No approvals." },
   viewer: { label: "Viewer", desc: "Read-only access to dashboards and findings." },
   auditor: { label: "Auditor", desc: "Read-only access including the audit log." },
+  process_analyst: { label: "Process analyst", desc: "Read everything, run process discovery and export as-is process models." },
 };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
 const WEEK = 7 * 24 * 3600 * 1000;

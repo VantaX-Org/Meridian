@@ -18,6 +18,7 @@ Design rule: **extend, never replace.** `api/services/rbac.py` today is a flat `
 | `platform_admin` | Platform admin | `/home/lead` | `admin` | `admin` |
 | `auditor` | Auditor | `/home/lead` (read-only) | `auditor` | `auditor` |
 | `viewer` | Viewer | `/home/lead` (read-only) | `viewer` | `viewer` |
+| `process_analyst` | Process analyst | `/home/process` | `viewer` + `run_process_discovery`, `export_process` | none (new; process-discovery spec §6.1) |
 
 Legacy keys stay in `PERMISSIONS` and `VALID_ROLES`. `users.role` keeps accepting them. Persona keys are added to the same dict as the union described above, so `has_permission("programme_lead", "export")` is true with zero new code paths. `ai_reviewer` remains valid as a legacy alias; the Roles UI shows it under "Legacy" with "Upgrade to Analyst" until no user holds it.
 
@@ -33,7 +34,7 @@ A custom role is a tenant-scoped row in `roles` cloned from a built-in; it carri
 
 Actions: `view`, `create`, `edit`, `approve`, `run`, `export`, `admin`.
 
-Resources: `systems`, `credentials`, `extraction`, `analysis`, `rules`, `findings`, `fixes`, `mdm`, `glossary`, `stewardship`, `contracts`, `reports`, `llm`, `users`, `licence`, `audit`.
+Resources: `systems`, `credentials`, `extraction`, `analysis`, `rules`, `findings`, `fixes`, `mdm`, `glossary`, `stewardship`, `contracts`, `reports`, `llm`, `users`, `licence`, `audit`, `process`.
 
 Every existing action string maps to one or more (resource, action) pairs. The map lives in `rbac.py` as `LEGACY_ACTION_MAP: dict[str, set[tuple[str, str]]]`:
 
@@ -50,7 +51,7 @@ Every existing action string maps to one or more (resource, action) pairs. The m
 | `approve` | (`fixes`, `approve`), (`mdm`, `approve`), (`stewardship`, `approve`), (`analysis`, `approve`) [migration sign-off] |
 | `apply` | (`fixes`, `run`) |
 | `assign` | (`stewardship`, `edit`) |
-| `export` | (`reports`, `export`) and (`*`, `export`) |
+| `export` | (`reports`, `export`) and (`*`, `export`) except `process` |
 | `manage_rules` | (`rules`, `create`/`edit`), (`contracts`, `create`/`edit`), (`glossary`, `edit`) |
 | `review_ai_rules` | (`rules`, `approve`) |
 | `ai_feedback` | (`findings`, `edit`) |
@@ -61,6 +62,8 @@ Every existing action string maps to one or more (resource, action) pairs. The m
 | `manage_llm` | (`llm`, `admin`) |
 | `manage_users` | (`users`, `admin`) |
 | `view_audit` | (`audit`, `view`), (`audit`, `export`) |
+| `run_process_discovery` | (`process`, `run`): held by `admin` / `platform_admin` and `process_analyst` |
+| `export_process` | (`process`, `export`): held by `admin` / `platform_admin`, `manager` / `programme_lead` and `process_analyst` |
 
 ### 2.2 Full matrix (built-in roles)
 
@@ -84,8 +87,9 @@ Legend: V view · C create · E edit · A approve · R run · X export · ★ ad
 | users | V | | | | | V | |
 | licence | V | | | | V | V | |
 | audit | V | | | | | V X | |
+| process | V X | V | V | V | V | V | V |
 
-Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`.
+Derivation from the current map (so behaviour today is not reduced): `manager` already has approve/apply/export/assign/manage_rules/manage_settings; `programme_lead` keeps all of those (`apply` kept for compatibility though the UI hides "Apply" for leads). `steward` has upload/analyse/approve/apply/export/assign/manage_rules/mdm.write — mapped above. `approver` has approve/export/assign. `analyst` has upload/analyse/export/ai_feedback/manage_rules/trigger_ai. `auditor` has view_audit/export. `viewer` is `_READ`. `process_analyst` and `platform_admin` hold V R X on `process`; nobody reaches (`process`, `export`) through the legacy `export` action, so case-level data leaves only with `export_process`.
 
 ### 2.3 Scope dimensions
 

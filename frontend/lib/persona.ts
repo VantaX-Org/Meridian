@@ -1,7 +1,7 @@
 import type { Role } from "@/hooks/use-role";
 
 /** rbac.md section 1.1 personas. `sap_basis` has no legacy role, so it is never derived here. */
-export type Persona = "lead" | "steward" | "analyst";
+export type Persona = "lead" | "steward" | "analyst" | "process";
 
 /**
  * The single legacy-role -> persona mapping (rbac.md 1.1). Wave 16 replaces
@@ -17,13 +17,16 @@ const PERSONA_BY_ROLE: Record<Role, Persona> = {
   approver: "steward", // data_owner defaults to the steward home
   analyst: "analyst",
   ai_reviewer: "analyst",
+  process_analyst: "process", // spec process-discovery section 6.1: a persona key, not a legacy role
 };
 
 export function personaForRole(role: Role): Persona {
   return PERSONA_BY_ROLE[role];
 }
 
+const HOME_BY_PERSONA: Partial<Record<Persona, string>> = { steward: "/home/steward", process: "/home/process" };
+
 /** The home route for this role's persona. The analyst persona shares the lead home. */
 export function homeHrefForRole(role: Role): string {
-  return personaForRole(role) === "steward" ? "/home/steward" : "/home/lead";
+  return HOME_BY_PERSONA[personaForRole(role)] ?? "/home/lead";
 }

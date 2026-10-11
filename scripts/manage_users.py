@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, text
 
 DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
-VALID_ROLES = {"admin", "manager", "viewer", "analyst", "steward", "approver", "auditor", "ai_reviewer"}
+VALID_ROLES = {"admin", "manager", "viewer", "analyst", "steward", "approver", "auditor", "ai_reviewer", "process_analyst"}
 
 
 def get_engine():

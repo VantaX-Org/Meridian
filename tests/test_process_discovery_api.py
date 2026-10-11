@@ -61,14 +61,10 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
 
     from api.deps import Tenant, get_db, get_tenant
     from api.routes import process_discovery as route
-    from api.services import rbac
     from tests.test_process_discovery_jobs import COVERAGE, _frames
     from workers.db import tenant_session
     from workers.tasks import run_process_discovery as rpd
 
-    # Until Task 28 adds them to the role table.
-    monkeypatch.setitem(rbac.PERMISSIONS, "analyst",
-                        rbac.PERMISSIONS["analyst"] | {"run_process_discovery", "export_process"})
     redis, audit, started = FakeRedis(), [], []
     monkeypatch.setattr(route, "_redis_client", lambda: redis)
     monkeypatch.setattr(rpd, "_redis_client", lambda: redis)
@@ -109,7 +105,7 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
     api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "D", [])
 
     async def scenario():
-        h, viewer = {"X-User-Role": "analyst"}, {"X-User-Role": "viewer"}
+        h, viewer = {"X-User-Role": "process_analyst"}, {"X-User-Role": "viewer"}
         async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
             cat = (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
             assert len(cat) == 13
