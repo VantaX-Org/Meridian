@@ -168,8 +168,14 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="T006",
-            fields=["MSEHI", "MSEHL"],
+            fields=["MSEHI", "MSEHL", "DIMID"],
             description="Units of measure",
+            is_config=True,
+        ),
+        ExtractionTarget(
+            source="T134M",
+            fields=["MTART", "BWKEY", "MENGU", "WERTU"],
+            description="Material type valuation and quantity updating per valuation area",
             is_config=True,
         ),
     ],
@@ -552,7 +558,7 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ),
         ExtractionTarget(
             source="T001",
-            fields=["BUKRS"],
+            fields=["BUKRS", "SPRAS"],
             description="Company codes",
             is_config=True,
         ),
@@ -637,12 +643,13 @@ ECC_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
                          filter="BADAT >= '{days_ago:365}'", max_rows=500_000,
                          description="Purchase requisition (type, date)"),
         ExtractionTarget(source="TVAK", fields=["AUART"], is_config=True, description="Sales document types"),
+        ExtractionTarget(source="TVAP", fields=["PSTYV", "PRSFD"], is_config=True, description="Sales document item categories (pricing relevance)"),
         ExtractionTarget(source="T156", fields=["BWART"], is_config=True, description="Movement types"),
         ExtractionTarget(source="TVLK", fields=["LFART"], is_config=True, description="Delivery types"),
         ExtractionTarget(source="TVFK", fields=["FKART"], is_config=True, description="Billing document types"),
         # config tables behind the derived process flows (sap.process_templates probes)
         *[ExtractionTarget(source=t, fields=sorted(f), is_config=True, description="Process flow configuration")
-          for t, (f, _m) in sorted(_flow_config_tables().items()) if t not in {"TVAK", "T156", "TVLK", "TVFK"}],
+          for t, (f, _m) in sorted(_flow_config_tables().items()) if t not in {"TVAK", "TVAP", "T156", "TVLK", "TVFK"}],
     ],
 
     # ------------------------------------------------------------------
@@ -838,7 +845,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="EmpCompensation",
             fields=[
                 "userId", "startDate", "payGroup", "payGrade",
-                "payType", "payrollId",
+                "payType",
             ],
             description="Compensation data",
         ),
@@ -1063,7 +1070,7 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
             source="EmpCompensation",
             fields=[
                 "userId", "startDate", "payGroup", "payGrade",
-                "payType", "payrollId", "eventReason",
+                "payType", "eventReason",
             ],
             description="Compensation records",
         ),

@@ -249,14 +249,14 @@ def test_sf_boolean_fields_lowercased_like_rest_extractor(monkeypatch):
     monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
     conn = _Fake({
         "EmpJob": [{"userId": "U1", "startDate": "2024-01-01", "seqNumber": 1}],
-        "EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "isPrimary": True}],
+        "EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "okToRehire": True}],
         "PerPhone": [{"personIdExternal": "P1", "isPrimary": False}],
     })
     cm = object.__new__(ConnectivityManager)
     cm.session = None
     frames, _ = ConnectivityManager._extract_successfactors(
         cm, conn, ["employee_central"], dictionary_for_system("successfactors"), None)
-    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.IS_PRIMARY"].tolist() == ["true"]
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.OK_TO_REHIRE"].tolist() == ["true"]
     assert frames["PERPHONE"]["PERPHONE.IS_PRIMARY"].tolist() == ["false"]
 
 
@@ -392,13 +392,13 @@ def test_sf_join_key_only_selected_when_the_entity_has_it(monkeypatch):
 
 
 def test_sf_property_the_tenant_lacks_is_unavailable_not_a_failed_read(monkeypatch):
-    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},  # neither has isPrimary
+    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},  # neither has okToRehire
                    {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
                     "EmpJob": [{"userId": "U1", "company": "C1"}]})
     frames, cov = _sf(conn, ["employee_central"], monkeypatch)
     emp = cov["EMPEMPLOYMENT"]
-    assert emp["status"] == "live" and "IS_PRIMARY" in emp["unavailable_fields"]
-    assert "EMPEMPLOYMENT.IS_PRIMARY" not in frames["EMPEMPLOYMENT"].columns  # absent, like overlay gaps
+    assert emp["status"] == "live" and "OK_TO_REHIRE" in emp["unavailable_fields"]
+    assert "EMPEMPLOYMENT.OK_TO_REHIRE" not in frames["EMPEMPLOYMENT"].columns  # absent, like overlay gaps
     assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.START_DATE"].tolist() == ["2020-01-01"]
 
 
@@ -443,12 +443,54 @@ def test_sf_table_with_no_dictionary_property_in_tenant_still_gets_a_coverage_ro
     assert not any(c["status"] == "failed" for c in cov.values())
 
 
-def _http_error(code: int, url: str) -> SAPConnectorError:
+def test_sf_property_metadata_lists_but_the_api_user_cannot_view_is_dropped_and_read_again(monkeypatch):
+    class _Unviewable(_Tenant):
+        def read_entity_set(self, entity, select=None, **kw):
+            if "okToRehire" in (select or []):
+                raise _http_error(400, "https://sf.example.test/odata/v2/EmpEmployment",
+                                  "[COE0003]Bad property expression: EmpEmployment/okToRehire; not viewable")
+            return super().read_entity_set(entity, select=select, **kw)
+
+    conn = _Unviewable({"EmpEmployment": (_EMP + ["okToRehire"], ()), "EmpJob": (_JOB, ())},
+                       {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
+                        "EmpJob": [{"userId": "U1", "company": "C1"}]})
+    frames, cov = _sf(conn, ["employee_central"], monkeypatch)
+    assert cov["EMPEMPLOYMENT"]["status"] == "live" and "OK_TO_REHIRE" in cov["EMPEMPLOYMENT"]["unavailable_fields"]
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.START_DATE"].tolist() == ["2020-01-01"]
+
+
+def test_sf_other_400_is_failed_with_the_error_body_in_the_detail(monkeypatch):
+    class _Bad(_Tenant):
+        def read_entity_set(self, entity, select=None, **kw):
+            raise _http_error(400, "https://sf.example.test/odata/v2/" + entity, "[COE0001]Something else")
+
+    _, cov = _sf(_Bad({"EmpEmployment": (_EMP, ())}, {}), ["employee_central"], monkeypatch)
+    assert cov["EMPEMPLOYMENT←EmpEmployment"]["status"] == "failed"
+    assert "[COE0001]Something else" in cov["EMPEMPLOYMENT←EmpEmployment"]["detail"]
+
+
+def test_a_400_whose_body_mentions_404_stays_failed(monkeypatch):
+    from api.services.connectivity_manager import _not_found
+
+    err = _http_error(400, "https://sf.example.test/odata/v2/Benefit", "[COE0003]no 404 here")
+    assert not _not_found(err)
+
+
+def test_a_connect_error_mentioning_404_is_not_not_found():
+    import httpx
+    from api.services.connectivity_manager import _not_found
+
+    err = SAPConnectorError("SuccessFactors request failed: https://h/odata/v2/404")
+    err.__cause__ = httpx.ConnectError("https://h/odata/v2/404")
+    assert not _not_found(err)
+
+
+def _http_error(code: int, url: str, body: str = "") -> SAPConnectorError:
     import httpx
     req = httpx.Request("GET", url)
     cause = httpx.HTTPStatusError(f"Client error '{code}' for url '{url}'", request=req,
                                   response=httpx.Response(code, request=req))
-    err = SAPConnectorError(f"SuccessFactors request failed: {cause}")
+    err = SAPConnectorError(f"SuccessFactors request failed: {body} :: {cause}")
     err.__cause__ = cause
     return err
 

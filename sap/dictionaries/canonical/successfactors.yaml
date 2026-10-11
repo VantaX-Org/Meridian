@@ -64,7 +64,9 @@ tables:
       PAYROLL_END_DATE: {source: EmpEmployment.payrollEndDate, type: DATE, verify: true, description: Payroll end date}
       OK_TO_REHIRE:    {source: EmpEmployment.okToRehire, type: BOOLEAN, verify: true, description: Eligible for rehire}
       IS_CONTINGENT_WORKER: {source: EmpEmployment.isContingentWorker, type: BOOLEAN, verify: true, description: Contingent worker flag}
-      IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment)}
+      # isPrimary is not a documented standard EmpEmployment property; kept only because 13 append-only rules
+      # reference EMPEMPLOYMENT.IS_PRIMARY. The connector reports it unavailable on tenants without it.
+      IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment); not in the standard property list}
       ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: ST standard, GA global assignment, PH higher duty, ...}
       PAY_GRADE:       {source: EmpJob.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade}
       WORK_SCHEDULE:   {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true, description: Work schedule code}
@@ -163,7 +165,7 @@ tables:
       PAY_SCALE_LEVEL:     {source: EmpJob.payScaleLevel, type: STRING, length: 32, verify: true, description: SAP pay scale level (PA0008.TRFST)}
       END_DATE:            {source: EmpCompensation.endDate, type: DATE, verify: true, description: End of the compensation record's validity}
       PAYCOMP_END_DATE:    {source: EmpPayCompRecurring.endDate, type: DATE, verify: true, description: End of the recurring pay component's validity}
-      PAYROLL_ID:          {source: EmpCompensation.payrollId, type: STRING, length: 256, verify: true, description: Personnel number in the payroll system (EC Payroll PERNR)}
+      PAYROLL_ID:          {source: EmpCompensation.payrollId, type: STRING, length: 256, verify: true, description: Personnel number in the payroll system (EC Payroll PERNR); not a documented standard EmpCompensation property}
       PAYROLL_SYSTEM_ID:   {source: EmpCompensation.payrollSystemId, type: STRING, length: 128, verify: true, description: Payroll system the employee is replicated to}
       PAY_GRADE_STATUS:    {source: FOPayGrade.status, type: STRING, length: 2, verify: true, description: A active / I inactive}
       PAY_RANGE_CURRENCY:  {source: FOPayRange.currency, type: STRING, length: 20, verify: true, description: Currency of the pay range}
@@ -229,7 +231,7 @@ tables:
       ABSENCE_TYPE:      {source: EmployeeTime.timeType, type: STRING, length: 128, check_table: TimeType}
       TIME_ACCOUNT_TYPE: {source: TimeAccount.accountType, type: STRING, length: 128, check_table: TimeAccountType}
       BALANCE:           {source: TimeAccountBalance.balance, type: DECIMAL, verify: true}
-      APPROVER_ID:        {source: EmployeeTimeSheet.approverId, type: STRING, length: 100, verify: true, description: Approver user ID}
+      APPROVER_ID:        {source: EmployeeTimeSheet.approverId, type: STRING, length: 100, verify: true, description: Approver user ID; not a documented standard EmployeeTimeSheet property}
       SUBMITTED_DATE:     {source: EmployeeTimeSheet.submittedDate, type: DATE, verify: true, description: Date timesheet was submitted for approval}
       LAST_MODIFIED_DATE: {source: EmployeeTime.lastModifiedDateTime, type: DATETIME, verify: true, description: Last modified timestamp of the time record}
       QUANTITY_IN_DAYS:   {source: EmployeeTime.quantityInDays, type: DECIMAL, verify: true, description: Absence quantity expressed in days (full/half day)}
@@ -261,7 +263,7 @@ tables:
     source: BenefitEnrollment
     keys: [USERID, PLAN_ID]
     fields:
-      USERID:         {source: BenefitEnrollment.workerId, type: STRING, length: 100, verify: true}
+      USERID:         {source: BenefitEnrollment.userId, type: STRING, length: 100, verify: true}
       PLAN_ID:        {source: BenefitEnrollment.benefit, type: STRING, length: 128, verify: true}
       PLAN_TYPE:      {source: Benefit.benefitType, type: STRING, length: 128, verify: true}
       COVERAGE_LEVEL: {source: BenefitEnrollment.coverage, type: STRING, length: 128, verify: true}
@@ -374,9 +376,9 @@ tables:
     fields:
       JOB_REQ_ID:     {source: JobRequisition.jobReqId, type: INTEGER}
       TITLE:          {source: JobRequisition.jobReqLocale.jobTitle, type: STRING, verify: true}
-      STATUS:         {source: JobRequisition.status, type: STRING, verify: true}
-      HIRING_MANAGER: {source: JobRequisition.hiringManager, type: STRING, verify: true}
-      RECRUITER:      {source: JobRequisition.recruiter, type: STRING, verify: true}
+      STATUS:         {source: JobRequisition.status.externalCode, type: STRING, verify: true, description: Requisition status (navigation property, picklist option code)}
+      HIRING_MANAGER: {source: JobRequisition.hiringManager.userId, type: STRING, verify: true, description: Hiring manager user ID (navigation property)}
+      RECRUITER:      {source: JobRequisition.recruiter.userId, type: STRING, verify: true, description: Recruiter user ID (navigation property)}
       OPEN_DATE:      {source: JobRequisition.createdDateTime, type: DATETIME}
       CLOSE_DATE:     {source: JobRequisition.closedDateTime, type: DATETIME, verify: true}
       NUM_OPENINGS:   {source: JobRequisition.numberOfOpenings, type: INTEGER, verify: true}
@@ -540,7 +542,7 @@ tables:
     keys: [EXTERNAL_CODE]
     fields:
       EXTERNAL_CODE: {source: FODepartment.externalCode, type: STRING, length: 128, description: Department code}
-      COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, description: Default cost centre of the department}
+      COST_CENTER:   {source: FODepartment.costCenter, type: STRING, length: 128, verify: true, description: Default cost centre of the department}
       STATUS:        {source: FODepartment.status, type: STRING, length: 2, description: A active / I inactive}
 
   # Employee Central depth (EC121+): full job history, permits, payment, emergency
@@ -690,7 +692,7 @@ tables:
     fields:
       EXTERNAL_CODE: {source: FOCostCenter.externalCode, type: STRING, length: 128, verify: true}
       STATUS:        {source: FOCostCenter.status, type: STRING, length: 2, verify: true}
-      LEGAL_ENTITY:  {source: FOCostCenter.legalEntity, type: STRING, length: 128, verify: true}
+      LEGAL_ENTITY:  {source: FOCostCenter.cust_LegalEntity.externalCode, type: STRING, length: 128, verify: true}
 
   USERACCOUNT:
     # ponytail: named USERACCOUNT, not the bare entity name USER, to avoid any

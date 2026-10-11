@@ -21,12 +21,13 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import httpx
 import pandas as pd
@@ -125,8 +126,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
                 )
 
         except httpx.HTTPError as exc:
-            safe_msg = self._mask_secret(str(exc), params.password)
-            safe_msg = self._mask_secret(safe_msg, params.client_secret)
+            safe_msg = self._mask(str(exc))
             raise SAPConnectorError(
                 f"SuccessFactors connection failed: {safe_msg}"
             ) from exc
@@ -176,8 +176,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
             return access_token
 
         except httpx.HTTPError as exc:
-            safe_msg = self._mask_secret(str(exc), params.client_secret)
-            safe_msg = self._mask_secret(safe_msg, params.password)
+            safe_msg = self._mask(str(exc))
             raise SAPConnectorError(
                 f"SuccessFactors OAuth token request failed: {safe_msg}"
             ) from exc
@@ -294,7 +293,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
         """OData $metadata document (whole service, or one entity to keep it small)."""
         self._ensure_connected()
         path = f"/odata/v2/{entity}/$metadata" if entity else "/odata/v2/$metadata"
-        return self._request_with_retry("GET", path, params={}).text
+        # the client's default Accept is JSON; $metadata is XML-only and answers 406 to it
+        return self._request_with_retry("GET", path, params={}, headers={"Accept": "application/xml"}).text
 
     # ------------------------------------------------------------------
     # Report reading
@@ -375,6 +375,13 @@ class SuccessFactorsConnector(CloudSAPConnector):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _mask(self, text: str) -> str:
+        """Mask every secret this connector holds (password, client secret, bearer token) in ``text``."""
+        prm = self._params
+        for secret in (prm.password if prm else "", prm.client_secret if prm else "", self._access_token or ""):
+            text = self._mask_secret(self._mask_secret(text, secret), json.dumps(secret)[1:-1] if secret else "")
+        return re.sub(r"(?i)(bearer\s+)[\w.~+/=-]+", r"\1****", text)
+
     def _ensure_connected(self) -> None:
         """Raise if connect() has not been called."""
         if not self._client:
@@ -388,6 +395,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         url: str,
         *,
         params: Optional[dict[str, str]] = None,
+        headers: Optional[dict[str, str]] = None,
         retries: int = _MAX_RETRIES,
     ) -> httpx.Response:
         """Execute an HTTP request with rate-limit handling and retries.
@@ -402,7 +410,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
         for attempt in range(1, retries + 1):
             try:
-                resp = self._client.request(method, url, params=params)
+                resp = self._client.request(method, url, params=params, headers=headers)
 
                 # Check rate limit headers
                 remaining = resp.headers.get("X-RateLimit-Remaining")
@@ -445,8 +453,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
             except httpx.HTTPStatusError as exc:
                 last_exc = exc
-                safe_msg = self._mask_secret(str(exc), self._params.password if self._params else "")
-                safe_msg = self._mask_secret(safe_msg, self._params.client_secret if self._params else "")
+                safe_msg = self._mask(str(exc))
                 if exc.response.status_code in (500, 502, 503, 504) and attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
@@ -459,14 +466,16 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     )
                     time.sleep(wait)
                     continue
+                body = error_body(exc.response, self._mask)
+                if body:
+                    safe_msg = f"{self._mask(body)} :: {safe_msg}"
                 raise SAPConnectorError(
                     f"SuccessFactors request failed: {safe_msg}"
                 ) from exc
 
             except httpx.HTTPError as exc:
                 last_exc = exc
-                safe_msg = self._mask_secret(str(exc), self._params.password if self._params else "")
-                safe_msg = self._mask_secret(safe_msg, self._params.client_secret if self._params else "")
+                safe_msg = self._mask(str(exc))
                 if attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
@@ -485,6 +494,25 @@ class SuccessFactorsConnector(CloudSAPConnector):
         raise SAPConnectorError(
             f"SuccessFactors request failed after {retries} retries"
         ) from last_exc
+
+
+def error_body(resp: httpx.Response, mask: Callable[[str], str] = str, limit: int = 300) -> str:
+    """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated.
+    A body that is not SF's JSON/XML error (an HTML or proxy page) gives its content-type and a short snippet."""
+    text = resp.text or ""
+    try:
+        err = json.loads(text).get("error", {})
+        msg = err.get("message")
+        msg = msg.get("value") if isinstance(msg, dict) else msg
+        if isinstance(msg, str) and msg.strip():
+            return mask(msg.strip())[:limit]
+    except (ValueError, AttributeError):
+        pass
+    m = re.search(r"<message[^>]*>([^<]+)", text)
+    if m:
+        return mask(m.group(1).strip())[:limit]
+    snippet = mask(re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", text)).strip())[:100]
+    return f"[{resp.headers.get('content-type', 'unknown content-type')}] {snippet}" if snippet else ""
 
 
 def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:

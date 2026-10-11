@@ -89,3 +89,76 @@ def test_to_many_expand_prefers_the_default_language_then_the_first_non_blank_va
         "JobRequisition", select=["jobReqId", "defaultLanguage", "jobReqLocale/locale", "jobReqLocale/jobTitle"],
         expand=["jobReqLocale"])
     assert df["jobReqLocale/jobTitle"].tolist() == ["Engineer", "Commis", "Chef"]
+
+
+def test_metadata_is_requested_as_xml_not_json():
+    def handler(request: httpx.Request) -> httpx.Response:
+        ok = request.headers["accept"] == "application/xml"
+        return httpx.Response(200 if ok else 406, text="<edmx/>")
+
+    c = _connector(handler)
+    c._client.headers["Accept"] = "application/json"
+    assert c.metadata("EmpJob") == "<edmx/>"
+
+
+def test_failed_request_carries_the_sf_error_body_first_and_truncated():
+    import pytest
+    from sap.base import SAPConnectorError
+
+    body = {"error": {"code": "COE0003", "message": {"lang": "en-US", "value":
+            "[COE0003]Bad property expression: EmpJob/operation; " + "x" * 500}}}
+    with pytest.raises(SAPConnectorError) as ei:
+        _connector(lambda r: httpx.Response(400, json=body)).read_entity_set("EmpJob")
+    msg = str(ei.value)
+    assert msg.startswith("SuccessFactors request failed: [COE0003]Bad property expression: EmpJob/operation")
+    assert "400 Bad Request" in msg and msg.index("::") < 400
+
+
+def test_error_body_masks_password_client_secret_and_token():
+    c_body = {"error": {"message": {"value": "echo pw-1 cs-2 tok-3 Bearer abc.def"}}}
+    c = _connector(lambda r: httpx.Response(400, json=c_body))
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic",
+                                      password="pw-1", client_secret="cs-2")
+    c._access_token = "tok-3"
+    import pytest
+    from sap.base import SAPConnectorError
+    with pytest.raises(SAPConnectorError) as ei:
+        c.read_entity_set("EmpJob")
+    msg = str(ei.value)
+    assert all(x not in msg for x in ("pw-1", "cs-2", "tok-3", "abc.def")) and "****" in msg
+
+
+def test_error_body_json_unescapes_and_reads_error_message_value():
+    from sap.successfactors import error_body
+
+    body = {"error": {"code": "x", "innererror": {"value": "wrong"},
+                      "message": {"lang": "en", "value": 'bad "quoted" prop'}}}
+    assert error_body(httpx.Response(400, json=body)) == 'bad "quoted" prop'
+
+
+def test_error_body_html_gives_content_type_and_short_snippet():
+    from sap.successfactors import error_body
+
+    r = httpx.Response(502, text="<html><body>\n  <h1>Bad   gateway</h1>" + "x" * 500 + "</body></html>",
+                       headers={"content-type": "text/html"})
+    out = error_body(r)
+    assert out.startswith("[text/html] Bad gateway") and len(out) < 130 and "<" not in out
+
+
+def test_secret_straddling_the_truncation_boundary_is_fully_masked():
+    import pytest
+    from sap.base import SAPConnectorError
+
+    secret = 'sec"ret-' + "z" * 20
+    body = {"error": {"message": {"value": "a" * 290 + secret}}}
+    c = _connector(lambda r: httpx.Response(400, json=body))
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic", password=secret)
+    with pytest.raises(SAPConnectorError) as ei:
+        c.read_entity_set("EmpJob")
+    assert "sec" not in str(ei.value).replace("secure", "") and "zzz" not in str(ei.value)
+
+
+def test_error_body_empty_snippet_gives_nothing():
+    from sap.successfactors import error_body
+
+    assert error_body(httpx.Response(502, text="  ", headers={"content-type": "text/html"})) == ""

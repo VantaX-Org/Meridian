@@ -3,7 +3,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from agents.report_agent import report_node, _compute_overall_status
+from agents.report_agent import report_node, _compute_overall_status, _compute_overall_score
 
 
 def _make_full_state():
@@ -174,3 +174,15 @@ def test_overall_status_logic():
         "a": {"status": "conditional"},
         "b": {"status": "no-go"},
     }) == "no-go"
+
+
+def test_overall_score_ignores_none():
+    assert _compute_overall_score({"a": {"score": 80.0}, "b": {"score": None}}) == 80.0
+
+
+def test_overall_score_all_none_is_zero():
+    assert _compute_overall_score({"a": {"score": None}, "b": {"score": None}}) == 0.0
+
+
+def test_overall_score_mixed_with_missing_key():
+    assert _compute_overall_score({"a": {"score": 60.0}, "b": {}, "c": {"score": None}, "d": {"score": 80.0}}) == 70.0
