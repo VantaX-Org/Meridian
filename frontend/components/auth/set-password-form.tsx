@@ -2,7 +2,7 @@
 
 /** Shared by reset-password and accept-invite: token from the URL, new password twice. */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -12,9 +12,11 @@ import { Button } from "@/design";
 /** Server-side minimum (api.routes.auth._MIN_PASSWORD_LENGTH = 12). */
 const MIN_PASSWORD_LENGTH = 12;
 
-export function SetPasswordForm({ title, lead, submitLabel, missingToken, failure, done, redirect, submit, retryHref }: {
+export function SetPasswordForm({ title, lead, intro, submitLabel, missingToken, failure, done, redirect, submit, retryHref }: {
   title: string; lead: string; submitLabel: string; missingToken: string; failure: string; done: string; redirect: string;
   retryHref?: string;
+  /** Rendered inside the card above the form (accept-invite shows who the invite is for). */
+  intro?: ReactNode;
   submit: (token: string, password: string) => Promise<unknown>;
 }) {
   const router = useRouter();
@@ -45,6 +47,7 @@ export function SetPasswordForm({ title, lead, submitLabel, missingToken, failur
 
   return (
     <AuthFrame title={title} lead={lead}>
+      {intro}
       <form className={authFormClass} onSubmit={onSubmit} noValidate>
         {error ? (
           <AuthNotice tone="danger">

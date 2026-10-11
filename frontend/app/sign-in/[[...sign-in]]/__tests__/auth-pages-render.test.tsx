@@ -1,5 +1,6 @@
 // Smoke test: every signed-out page still renders after the AuthFrame redesign (T5).
 import { fireEvent, render } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/lib/api/auth", () => ({
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
   acceptInvite: vi.fn(),
+  getInvitePreview: vi.fn(),
 }));
 
 import SignInPage from "../page";
@@ -49,7 +51,8 @@ describe("signed-out pages render with the redesigned AuthFrame", () => {
   });
 
   it("accept-invite renders exactly one h1", () => {
-    const { container } = render(<AcceptInvitePage />);
+    // InvitePreview (RBAC) queries the invite, so the page needs a QueryClient like the app root provides.
+    const { container } = render(<QueryClientProvider client={new QueryClient()}><AcceptInvitePage /></QueryClientProvider>);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
   });
 

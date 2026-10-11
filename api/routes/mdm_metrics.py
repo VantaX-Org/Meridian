@@ -87,8 +87,8 @@ def _strip_ai_fields(metric: dict) -> dict:
 
 
 def _should_see_ai_panel(role: str) -> bool:
-    """Admin, Steward, and ai_reviewer see the AI panel. Analyst sees score only."""
-    return role in ("admin", "steward", "ai_reviewer")
+    """review_ai_rules holders (admin, steward, ai_reviewer and their personas). Analyst sees score only."""
+    return has_permission(role, "review_ai_rules")
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────

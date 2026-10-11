@@ -38,6 +38,7 @@ import { exportVersionProfile, getVersionProfile, type FieldDependency } from "@
 import { getMiningPatterns, getMiningSummary, type MiningPattern } from "@/lib/api/mining";
 import { getRelationships } from "@/lib/api/relationships";
 import { getSystemVersions } from "@/lib/api/system-objects";
+import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { formatModuleName, relativeTime, formatDate } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/error";
@@ -154,7 +155,8 @@ function Dependencies() {
   const [versionId, setVersionId] = useState("");
   const [object, setObject] = useState("");
 
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const systemScope = useSystemScope();
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const sid = systemId || systems.data?.[0]?.id || "";
   const versions = useQuery({
     queryKey: queryKeys.systemVersions(sid), queryFn: () => getSystemVersions(sid), enabled: !!sid,

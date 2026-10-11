@@ -25,6 +25,7 @@ import {
 } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { useSystemScope } from "@/lib/permissions";
 import { getBusinessProcess, getConfigImpact, getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareL1, type ConfigAwareTally, type ConfiguredIn } from "@/lib/api/config-load";
 import { getMiningGraph, type MiningActivity, type MiningVariant } from "@/lib/api/process-mining";
@@ -212,7 +213,8 @@ function ReadinessView() {
     meta: { ignoreError: true },
   });
   const findingHref = useFindingHref(latest?.id);
-  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const systemScope = useSystemScope();
+  const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
   const [systemChoice, setSystem] = useState("all");
   const systemId = systemChoice === "all" ? undefined : systemChoice;
   const aware = useQuery({

@@ -14,7 +14,7 @@ Design rule: **extend, never replace.** `api/services/rbac.py` today is a flat `
 | `data_steward` | Data steward | `/home/steward` | `steward` | `steward` |
 | `data_owner` | Data owner / approver | `/home/steward` | `approver` | `approver` |
 | `analyst` | Analyst | `/home/lead` | `analyst` | `analyst`, `ai_reviewer` (gets `review_ai_rules`, `ai_feedback`, `trigger_ai` as extra actions) |
-| `sap_basis` | SAP Basis / integration admin | `/home/basis` | `analyst` + `manage_systems`, `manage_system`, `trigger_sync`, `manage_field_mappings`, `upload` | none (new) |
+| `sap_basis` | SAP Basis / integration admin | `/home/basis` | `analyst` + `manage_systems`, `trigger_sync`, `manage_field_mappings`, `upload` | none (new) |
 | `platform_admin` | Platform admin | `/home/lead` | `admin` | `admin` |
 | `auditor` | Auditor | `/home/lead` (read-only) | `auditor` | `auditor` |
 | `viewer` | Viewer | `/home/lead` (read-only) | `viewer` | `viewer` |
@@ -55,7 +55,8 @@ Every existing action string maps to one or more (resource, action) pairs. The m
 | `review_ai_rules` | (`rules`, `approve`) |
 | `ai_feedback` | (`findings`, `edit`) |
 | `manage_field_mappings` | (`extraction`, `edit`) |
-| `manage_systems`, `manage_system` | (`systems`, `create`/`edit`/`admin`), (`credentials`, `edit`) |
+| `manage_systems` | (`systems`, `create`/`edit`/`admin`), (`credentials`, `edit`) |
+| `manage_system` (platform update, admin doctor) | (`licence`, `admin`): held only by `admin` / `platform_admin`, so no custom clone of another role reaches it |
 | `manage_settings` | (`analysis`, `admin`), (`reports`, `admin`), (`rules`, `admin`) |
 | `manage_llm` | (`llm`, `admin`) |
 | `manage_users` | (`users`, `admin`) |
@@ -154,7 +155,7 @@ PERSONA_ROLES: dict[str, set[str]] = {
     "programme_lead": PERMISSIONS["manager"],
     "data_steward":   PERMISSIONS["steward"],
     "data_owner":     PERMISSIONS["approver"],
-    "sap_basis":      PERMISSIONS["analyst"] | {"manage_systems", "manage_system",
+    "sap_basis":      PERMISSIONS["analyst"] | {"manage_systems",
                       "trigger_sync", "manage_field_mappings", "upload"},
     "platform_admin": PERMISSIONS["admin"],
 }
@@ -189,7 +190,7 @@ def require_permission(action: str, *, resource: str | None = None,
     matching grants only. `resource` is informational for /me/permissions and audit."""
 ```
 
-Resolution order inside the dependency: `dev_role_override` → JWT → `grants_for` (empty → `[(users.role, Scope())]`) → `has_permission_scoped`. On failure: 403 with `{"detail": "forbidden", "resource": …, "action": …, "request_access": true}` so the UI can offer the request-access flow.
+Resolution order inside the dependency: `dev_role_override` → JWT → `grants_for` (empty → `[(users.role, Scope())]`) → `has_permission_scoped`. On failure of a scoped check: 403 whose body is nested by FastAPI, `{"detail": {"detail": "forbidden", "resource": …, "action": …, "request_access": true}}`, so the UI reads `body.detail.request_access` to offer the request-access flow. Tenant-wide (unscoped) checks keep the legacy string detail.
 
 Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `findings`, `versions`, `migration`, `cleaning`, `remediation`, `master_records`, `stewardship` get `scope=scope_from_path` in wave 14; everything else stays tenant-wide. Nothing becomes more permissive at any step.
 
@@ -206,7 +207,19 @@ Rollout of `scope=`: routes under `systems`, `connectivity`, `objects`, `finding
 | `POST /api/v1/users/invite` (existing) | `manage_users` | body gains `grants: [{role_key, system_id?, module?}]`; `role` still accepted |
 | `POST /api/v1/access-requests` · `GET` · `POST /{id}/decide` | signed-in / `manage_users` | request |
 
-`/api/v1/auth/me` keeps returning `permissions_for(role)` (legacy action list) and adds `home`.
+`/api/v1/auth/me` returns the legacy action list resolved over the user's unscoped grants (so custom roles count) and adds `home`.
+
+Escalation guards (all 403 unless noted):
+
+- **Ceiling.** Granting, inviting, re-roling a user, removing a grant, cloning a role and editing a custom role's matrix all require the role's effective permissions to be a subset of the caller's own at that scope.
+- **Admin-equivalent.** `admin` and `platform_admin` are equal. Only a holder of either may grant, invite into, re-role to, clone or define an admin-equivalent role: either key, or any custom role holding (`licence`, `admin`).
+- **Deactivate / reactivate / delete.** `PUT /users/{id}` with `is_active` and `DELETE /users/{id}` require the target's `users.role` and every grant (each at its own scope) to sit under the caller. Never on yourself.
+- **Custom role edits.** Renaming, deleting or rewriting the matrix of a custom role also requires its *current* permissions to sit under the caller, so nobody strips a role held above them.
+- **Self.** Nobody may grant, remove, re-role, deactivate or delete their own access, or decide their own access request. User ids are compared as UUIDs, never as strings.
+- **Mirror grant.** The unscoped grant equal to `users.role` cannot be deleted: 409, pointing at `PUT /users/{id}`. No audit row is written.
+- **Decide.** A granted `role_key` must confer the requested (resource, action), else 422, and then passes the ceiling.
+- **Request.** `POST /access-requests` refuses with 422 a (resource, action) that no legacy action yields (e.g. `users`/`view`), since no role could ever confer it. The queue and the effective view count custom-role grants when checking `manage_users`.
+- **Invite.** `users.role` is the first unscoped built-in grant, else `viewer`; custom grants are inserted alongside it.
 
 ### 3.4 Migration from the current map
 

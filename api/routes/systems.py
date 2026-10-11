@@ -10,14 +10,14 @@ import uuid
 from datetime import date
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.config_pairing import enqueue_config_load, pair_error
-from api.services.rbac import require_permission
+from api.services.rbac import Scope, _as_uuid, require_permission, require_scope, scope_from_path
 from api.services.connectivity_manager import (
     RFC_SYSTEM_TYPES,
     CLOUD_SYSTEM_TYPES,
@@ -159,7 +159,7 @@ async def register_system(
     body: RegisterSystemRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Register a new SAP system. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -275,7 +275,7 @@ async def register_system(
 async def list_systems(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """List all SAP systems for the tenant with last sync status."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -327,11 +327,18 @@ async def list_systems(
 async def update_system(
     system_id: str,
     body: UpdateSystemRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Update an SAP system. Admin and Steward only."""
+    if body.target_system_id:  # pairing with another system needs rights on it too
+        tgt = _as_uuid(body.target_system_id)
+        if tgt:
+            await require_scope(request, db, tenant, "manage_systems", Scope(tgt, None))
+    if body.role == "source":  # the cascade below writes other systems' rows: tenant-wide only
+        await require_scope(request, db, tenant, "manage_systems", Scope())
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
 
     # Build dynamic SET clause
@@ -470,7 +477,7 @@ async def delete_system(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Delete an SAP system and its credentials. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -520,7 +527,7 @@ def _run_connection_test(system_type: str, params: dict, secrets_to_mask: list[s
 @router.post("/systems/test-connection", response_model=TestConnectionResponse)
 async def test_draft_connection(
     body: RegisterSystemRequest,
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Test connection parameters before the system is registered (no system_id yet).
 
@@ -561,7 +568,7 @@ async def test_connection(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Test the connection to an SAP system, for any system_type. Admin and Steward only."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -640,7 +647,7 @@ async def trigger_sync(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("trigger_sync")),
+    role: str = Depends(require_permission("trigger_sync", scope=scope_from_path)),
 ):
     """Trigger a manual sync for all active profiles on this system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -675,7 +682,7 @@ async def create_sync_profile(
     body: CreateSyncProfileRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Create a sync profile for an SAP system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -720,7 +727,7 @@ async def list_sync_profiles(
     system_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """List sync profiles for a system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
@@ -753,7 +760,7 @@ async def update_sync_profile(
     body: UpdateSyncProfileRequest,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("manage_systems")),
+    role: str = Depends(require_permission("manage_systems", scope=scope_from_path)),
 ):
     """Change a profile's re-evaluation schedule or pause it. The next run is
     recomputed from the new cron so a change never fires an immediate sync."""
@@ -805,7 +812,7 @@ async def list_sync_runs(
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    role: str = Depends(require_permission("view")),
+    role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """List sync run history for a system."""
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))

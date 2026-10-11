@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Public or self-service endpoints that intentionally carry no role guard.
 _UNGUARDED_OK = {
     ("auth.py", "/login"), ("auth.py", "/change-password"), ("auth.py", "/accept-invite"),
-    ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"),
+    ("auth.py", "/forgot-password"), ("auth.py", "/reset-password"), ("auth.py", "/invite/preview"),
     ("notifications.py", "/notifications/{notification_id}/read"),
     ("notifications.py", "/notifications/read-all"),
 }

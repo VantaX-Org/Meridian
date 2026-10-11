@@ -1,10 +1,16 @@
 "use client";
 
 import { useAuth } from "@/context/auth-context";
+import { usePermissionsContext } from "@/lib/permissions";
 
 // Roles and permissions come from the backend (/api/v1/auth/me →
 // api/services/rbac.py). The frontend never keeps its own matrix, so UI
 // gating cannot drift from what the API enforces.
+//
+// Inside the (app) layout's PermissionsProvider, `can` reads the
+// /me/permissions action union (every grant, scoped ones included) and
+// answers false until it loads, so every existing gate fails closed. Outside
+// a provider (component tests) it falls back to /auth/me's permissions.
 
 export type Role =
   | "admin"
@@ -29,15 +35,16 @@ export function useRole() {
   const { user } = useAuth();
   const rawRole = user?.role ?? "viewer";
   const role: Role = isRole(rawRole) ? rawRole : "viewer";
+  const fromGrants = usePermissionsContext();
   const perms = new Set(user?.permissions ?? []);
-  const can = (action: string): boolean => perms.has(action);
+  const can = fromGrants ? fromGrants.can : (action: string): boolean => perms.has(action);
 
   return {
     role,
     can,
     isAdmin: role === "admin",
     // "manager tier" = may change data (approve/apply) — used for coarse nav gating
-    isManager: perms.has("approve") || perms.has("apply"),
-    isViewer: !perms.has("upload") && !perms.has("approve"),
+    isManager: can("approve") || can("apply"),
+    isViewer: !can("upload") && !can("approve"),
   };
 }

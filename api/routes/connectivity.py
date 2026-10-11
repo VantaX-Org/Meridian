@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,7 +79,7 @@ async def list_system_modules(
     ]
 
 
-@router.post("/extract", dependencies=[Depends(require_permission("trigger_sync"))])
+@router.post("/extract", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def extract_modules(
     body: ExtractModuleRequest,
     request: Request,
@@ -100,7 +100,7 @@ async def extract_modules(
     return {"job_id": f"dl-{version_id}", "version_id": version_id, "status": "queued", "modules": body.modules}
 
 
-@router.post("/config-sync", dependencies=[Depends(require_permission("trigger_sync"))])
+@router.post("/config-sync", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def sync_config(
     body: ConfigSyncRequest,
     request: Request,
@@ -120,7 +120,7 @@ async def sync_config(
     return {"job_id": f"cfg-{task_id}", "status": "queued"}
 
 
-@router.post("/health-check/{system_id}", dependencies=[Depends(require_permission("trigger_sync"))])
+@router.post("/health-check/{system_id}", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def health_check(
     system_id: str,
     db: AsyncSession = Depends(get_db),
@@ -167,7 +167,7 @@ class ConfigLoadRequest(BaseModel):
     system_id: str
 
 
-@router.post("/config-load", dependencies=[Depends(require_permission("trigger_sync"))])
+@router.post("/config-load", dependencies=[Depends(require_permission("trigger_sync", scope=scope_from_path))])
 async def start_config_load(
     body: ConfigLoadRequest,
     db: AsyncSession = Depends(get_db),

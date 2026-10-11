@@ -20,7 +20,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
-from api.services.rbac import current_user_id, require_permission
+from api.services.rbac import current_user_id, require_permission, scope_from_path
 from api.services.tenant_seed import rule_catalogue
 from db.schema import Finding, Report
 
@@ -480,7 +480,7 @@ async def export_findings(
     format: Literal["csv", "xlsx"] = Query("xlsx"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Every finding matching the same filters as GET /findings, as CSV or XLSX.
 

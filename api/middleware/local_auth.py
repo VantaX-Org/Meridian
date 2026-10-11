@@ -18,6 +18,10 @@ DEV_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 
 _EXCLUDED_PATHS = {
     "/api/v1/auth/login",
+    "/api/v1/auth/accept-invite",
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password",
+    "/api/v1/auth/invite/preview",
     "/api/v1/licence",
     "/health",
 }
@@ -108,6 +112,13 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         # Decode and verify
         payload = decode_access_token(token, secret)
         if not payload:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or expired token"},
+            )
+
+        # Single-purpose tokens (invite, password reset) are never session tokens.
+        if payload.get("purpose"):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or expired token"},

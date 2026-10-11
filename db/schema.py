@@ -1759,6 +1759,76 @@ class DataOwner(Base):
     )
 
 
+class Role(Base):
+    """Custom role (key 'custom:<slug>') or per-tenant override of a built-in. Built-ins live in code."""
+    __tablename__ = "roles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    key = Column(Text, nullable=False)
+    name = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    built_in = Column(Boolean, nullable=False, server_default="false")
+    cloned_from = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (UniqueConstraint("tenant_id", "key", name="uq_roles_tenant_key"),)
+
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+    resource = Column(Text, primary_key=True)
+    action = Column(Text, primary_key=True)
+
+
+class UserRoleScope(Base):
+    """A grant: user holds role_key on system_id (null = all) and module (null = all)."""
+    __tablename__ = "user_role_scopes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role_key = Column(Text, nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=True)
+    module = Column(Text, nullable=True)
+    granted_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "role_key", "system_id", "module", name="uq_user_role_scopes_grant"),
+        Index("ix_user_role_scopes_user", "tenant_id", "user_id"),
+        # The plain constraint treats NULLs as distinct; this one does not (migration 077).
+        Index("uq_user_role_scopes_nullsafe", "user_id", "role_key",
+              text("COALESCE(system_id, '00000000-0000-0000-0000-000000000000'::uuid)"),
+              text("COALESCE(module, '')"), unique=True),
+    )
+
+
+class AccessRequest(Base):
+    __tablename__ = "access_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    resource = Column(Text, nullable=False)
+    action = Column(Text, nullable=False)
+    system_id = Column(UUID(as_uuid=True), nullable=True)
+    module = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    status = Column(Text, nullable=False, server_default="open")
+    decided_by = Column(UUID(as_uuid=True), nullable=True)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("status IN ('open', 'granted', 'declined')", name="ck_access_requests_status"),
+    )
+
+
 class StewardshipQueueItem(Base):
     __tablename__ = "stewardship_queue"
 

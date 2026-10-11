@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.services.rbac import require_permission
+from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,7 +94,7 @@ RESTORE_SQL = ("UPDATE analysis_versions SET metadata = metadata - 'archived' "
 _DONE = ("complete", "partial", "agents_complete", "agents_failed", "ai_enriched", "failed")
 
 
-@router.post("/versions/archive", dependencies=[Depends(require_permission("analyse"))])
+@router.post("/versions/archive", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def archive_versions(
     keep_latest: int = Query(1, ge=0, le=100),
     db: AsyncSession = Depends(get_db),
@@ -109,7 +109,7 @@ async def archive_versions(
     return {"archived": res.rowcount}
 
 
-@router.post("/versions/restore", dependencies=[Depends(require_permission("analyse"))])
+@router.post("/versions/restore", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def restore_versions(db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     await db.execute(text("SELECT set_config('app.tenant_id', :tid, false)"), {"tid": str(tenant.id)})
     res = await db.execute(text(RESTORE_SQL), {"tid": str(tenant.id)})
@@ -321,7 +321,7 @@ _FINDING_RECORDS_BASE_COLUMNS = [
 
 
 @router.get("/versions/{version_id}/findings/{check_id}/records/export",
-           dependencies=[Depends(require_permission("export"))])
+           dependencies=[Depends(require_permission("export", scope=scope_from_path))])
 async def export_finding_records(
     version_id: uuid.UUID,
     check_id: str,
@@ -376,7 +376,7 @@ async def export_finding_records(
     return xlsx_response(data, xlsx_filename(f"records-{check_id}", str(version_id)))
 
 
-@router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse"))])
+@router.post("/versions/{version_id}/analyse", status_code=202, dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)):
     """Run (or re-run, e.g. after a rule change) the analysis on a stored version's data."""
     from workers.tasks.run_checks import run_checks
@@ -400,7 +400,7 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}
 
 
-@router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse"))])
+@router.post("/versions/{version_id}/baseline", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def pin_baseline(
     version_id: str,
     pinned: bool = Query(True),
@@ -444,7 +444,7 @@ async def get_version(
     return _version_to_response(version)
 
 
-@router.patch("/versions/{version_id}", dependencies=[Depends(require_permission("analyse"))])
+@router.patch("/versions/{version_id}", dependencies=[Depends(require_permission("analyse", scope=scope_from_path))])
 async def patch_version(
     version_id: str,
     body: PatchVersionRequest,

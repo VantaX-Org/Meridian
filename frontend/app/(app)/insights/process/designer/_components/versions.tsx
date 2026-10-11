@@ -20,14 +20,14 @@ export function VersionsMenu({ modelId, shown, onPick }: { modelId: string; show
 }
 
 export function OldVersionBanner({ viewing, latest, busy, onRestore, onLatest }: {
-  viewing: number; latest: number; busy: boolean; onRestore: () => void; onLatest: () => void;
+  viewing: number; latest: number; busy: boolean; onRestore?: () => void; onLatest: () => void;
 }) {
   return (
     <Notice
       tone="info"
       title={`Viewing version ${viewing} of ${latest}`}
       action={<>
-        <Button variant="primary" disabled={busy} onClick={onRestore}>Restore as new version</Button>
+        {onRestore ? <Button variant="primary" disabled={busy} onClick={onRestore}>Restore as new version</Button> : null}
         <Button variant="ghost" onClick={onLatest}>Back to latest</Button>
       </>}
     >

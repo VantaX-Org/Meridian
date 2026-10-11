@@ -23,6 +23,7 @@ import {
 } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useNowSec } from "@/hooks/use-now";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import {
@@ -361,11 +362,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
     : !canApprove
       ? "Approving needs the approve permission."
       : undefined;
-  const exportTitle = isCreator
-    ? "The batch creator cannot export it. Ask a second person to export."
-    : !canExport
-      ? "Exporting needs the export permission."
-      : undefined;
+  const exportTitle = isCreator ? "The batch creator cannot export it. Ask a second person to export." : undefined;
   const crTypeMissing = format === "mdg_cr_json" && crType.trim() === "";
 
   return (
@@ -427,12 +424,12 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "draft" ? (
-            <Button variant="secondary" disabled={!canApprove || isCreator} title={approveTitle} onClick={() => setAsk("approve")}>
+            <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" disabled={isCreator} title={approveTitle} onClick={() => setAsk("approve")}>
               Approve batch
-            </Button>
+            </GatedPrimary>
           ) : null}
-          {batch.status === "approved" ? (
-            <Button disabled={!canExport || isCreator} title={exportTitle} onClick={() => setAsk("export")}>
+          {batch.status === "approved" && canExport ? (
+            <Button disabled={isCreator} title={exportTitle} onClick={() => setAsk("export")}>
               Export batch
             </Button>
           ) : null}

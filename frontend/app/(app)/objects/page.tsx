@@ -4,6 +4,7 @@
 import { type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
@@ -76,6 +77,10 @@ export default function ObjectsPage() {
     queryFn: () => getObjects(run),
   });
 
+  // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
+  const { scopeFilter } = usePermissions();
+  const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table"; summary?: string } = {
     title: "No objects measured yet.",
@@ -86,7 +91,7 @@ export default function ObjectsPage() {
     state = "loading";
   } else if (isListFailure({ isError, error })) {
     state = "error";
-  } else if (data && data.objects.length === 0) {
+  } else if (data && objects.length === 0) {
     state = "empty";
     emptyProps = data.run_id
       ? { title: "No objects for this run. This run has no analysed objects yet.", ghost: "table" }
@@ -101,7 +106,7 @@ export default function ObjectsPage() {
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
 
-  const objs = data?.objects ?? [];
+  const objs = objects;
   const ready = objs.filter((o) => o.readiness === "pass").length;
   const rawVerdict = search.get("verdict");
   const verdict = rawVerdict === "ready" || rawVerdict === "not_ready" ? rawVerdict : null;

@@ -27,6 +27,7 @@ import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } 
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
@@ -82,6 +83,7 @@ export default function SystemPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
   const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -149,6 +151,10 @@ export default function SystemPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
+            onClick={() => setExtractOpen(true)}>
+            Extract now
+          </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !(latest ?? versions[0])} onClick={() => analyse.mutate()}>
               Analyse
@@ -227,6 +233,12 @@ export default function SystemPage() {
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
         ]}
       />
+
+      {can("trigger_sync") ? (
+        <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
+          <ScopePicker id={systemId} onDownloaded={() => { setExtractOpen(false); refresh(); }} />
+        </Drawer>
+      ) : null}
 
       <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
         <EditForm

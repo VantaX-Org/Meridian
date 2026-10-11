@@ -9,12 +9,13 @@ import { ChevronRight, PanelLeft } from "lucide-react";
 import { getShellCounts } from "../../lib/api/shell";
 import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
-import { useVisibleNav } from "../../hooks/use-nav";
+import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
 import { MeridianMark } from "../../components/meridian/icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
+import { Skeleton } from "../primitives/Skeleton";
 import { Tooltip } from "../primitives/Tooltip";
 
 const RAIL_KEY = "meridian:rail:open";
@@ -70,6 +71,7 @@ export function Rail() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const groups = useVisibleNav();
+  const navLoading = useNavLoading();
   const { role } = useRole();
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -392,8 +394,14 @@ export function Rail() {
         {expanded && <span className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
       </Link>
 
-      <div data-testid="rail-nav-items" className="flex-1 flex flex-col pb-2">
-        {groups.map((group) => (
+      <div data-testid="rail-nav-items" aria-busy={navLoading || undefined} className="flex-1 flex flex-col pb-2">
+        {/* Waits for /me/permissions: showing the anyOf-only nav first would flash items the grants then hide. */}
+        {navLoading && (
+          <div className="flex flex-col gap-3" style={{ padding: expanded ? "20px 16px" : "20px 0", alignItems: expanded ? "stretch" : "center" }}>
+            {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} width={expanded ? 180 : 32} height={20} />)}
+          </div>
+        )}
+        {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded ? (
               <p className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)", padding: "20px 16px 6px" }}>

@@ -10,7 +10,7 @@ import type { TreeActions } from "./tree";
 interface Row { item: TreeItem; level: Level; activities: number; blocked: number; degraded: number; index: number; count: number }
 
 /** The children of an L1 to L3 item (or the L1s when nothing is selected), with their counts. */
-export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, editable, onBlocked }: {
+export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, editable, onBlocked, canDesign = true }: {
   doc: Doc;
   parent: TreeItem | null;
   parentLevel: Level | 0;
@@ -19,6 +19,8 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
   onOpen: (id: string) => void;
   editable: boolean;
   onBlocked: () => void;
+  /** False when the user lacks `analyse` (wave 16): mutating controls are not rendered. */
+  canDesign?: boolean;
 }) {
   const level = (parentLevel + 1) as Level;
   const list = parent ? childrenOf(parent, parentLevel as Level) : doc.l1;
@@ -32,7 +34,7 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
   }), [list, level, colour]);
   const guard = (fn: () => void) => (editable ? fn() : onBlocked());
 
-  const columns: ColumnDef<Row>[] = [
+  const all: ColumnDef<Row>[] = [
     { id: "name", header: "Name", accessorFn: (r) => r.item.name, cell: ({ row }) => (
       <button type="button" className="ui-link-button" onClick={() => onOpen(row.original.item.id)}>{row.original.item.name}</button>
     ) },
@@ -49,14 +51,15 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
       );
     } },
   ];
+  const columns = canDesign ? all : all.filter((c) => c.id !== "actions");
 
   return (
     <div className="aurora-designer__level">
-      <div className="aurora-designer__toolbar">
+      {canDesign ? <div className="aurora-designer__toolbar">
         <Button variant="secondary" disabled={level > 4} onClick={() => guard(() => actions.add(parent?.id ?? null))}>
           {`Add L${level}`}
         </Button>
-      </div>
+      </div> : null}
       {data.length ? (
         <DataTable columns={columns} data={data} getRowId={(r) => r.item.id} onRowClick={(r) => onOpen(r.item.id)} />
       ) : <EmptyState title="Nothing at this level yet. Add the first item." />}

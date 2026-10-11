@@ -20,6 +20,8 @@ import { getCleaningReportUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useRole } from "@/hooks/use-role";
+import { GatedPrimary } from "@/components/gated-primary";
 
 // Same bulk-approve confidence threshold as the legacy cleaning surface used (85%).
 const HIGH_CONFIDENCE = 0.85;
@@ -27,6 +29,7 @@ const HIGH_CONFIDENCE = 0.85;
 export default function BatchPage() {
   const { batchId } = useParams<{ batchId: string }>();
   const qc = useQueryClient();
+  const canApprove = useRole().can("approve");
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.batch(batchId),
     // Filtered server-side: a client-side filter over one 100-item page missed
@@ -68,10 +71,12 @@ export default function BatchPage() {
       header: "",
       cell: ({ row }) => (
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button variant="secondary" onClick={() => approve.mutate(row.original.id)}>Approve</Button>
-          <Button variant="ghost" onClick={() => reject.mutate({ id: row.original.id, reason: "steward rejected" })}>
-            Reject
-          </Button>
+          <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" onClick={() => approve.mutate(row.original.id)}>Approve</GatedPrimary>
+          {canApprove ? (
+            <Button variant="ghost" onClick={() => reject.mutate({ id: row.original.id, reason: "steward rejected" })}>
+              Reject
+            </Button>
+          ) : null}
         </div>
       ),
       enableSorting: false,
@@ -88,13 +93,15 @@ export default function BatchPage() {
       errorProps={{ message: apiErrorMessage(error), onRetry: refetch }}
       summary={
         <div className="flex items-center gap-3">
-          <Button
-            variant="primary"
-            disabled={confident.length === 0 || acceptHighConfidence.isPending}
-            onClick={() => acceptHighConfidence.mutate()}
-          >
-            Accept {confident.length} at 85% or higher
-          </Button>
+          {canApprove ? (
+            <Button
+              variant="primary"
+              disabled={confident.length === 0 || acceptHighConfidence.isPending}
+              onClick={() => acceptHighConfidence.mutate()}
+            >
+              Accept {confident.length} at 85% or higher
+            </Button>
+          ) : null}
           <ExportMenu
             disabled={items.length === 0}
             options={[
