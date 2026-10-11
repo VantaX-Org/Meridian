@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs, entityTabs } from "@/design";
+import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs, entityTabs, type ExportOption } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
@@ -73,6 +73,24 @@ export default function WaveCockpitPage() {
     x: VERDICT_LABEL[v], y: c.objects.filter((o) => o.verdict === v).length,
   }));
 
+  const exportOptions: ExportOption[] = [
+    { format: "pdf", label: "Readiness report (PDF)", run: () => downloadWaveReport(waveId, "pdf") },
+    { format: "xlsx", label: "Readiness report (Excel)", run: () => downloadWaveReport(waveId, "xlsx") },
+    ...(c.run_id
+      ? ([
+          { format: "xlsx", label: "Gap list (Excel)", run: () => downloadMigrationGaps(c.run_id ?? "", "xlsx") },
+          { format: "xlsx", label: "Realignment (Excel)", run: () => downloadRealignment(c.run_id ?? "", "xlsx") },
+          { format: "pdf", label: "Realignment (PDF)", run: () => downloadRealignment(c.run_id ?? "", "pdf") },
+          { format: "xlsx", label: "Load files (Excel)", run: () => downloadMigrationExport(c.run_id ?? "", "xlsx") },
+          { format: "csv", label: "Load files (CSV)", run: () => downloadMigrationExport(c.run_id ?? "", "csv") },
+        ] as ExportOption[])
+      : []),
+  ];
+
+  // "objects" is the pre-18a name of the first tab; keep old deep links working.
+  const rawTab = searchParams.get("tab") ?? "overview";
+  const tab = rawTab === "objects" ? "overview" : rawTab;
+
   const downloads = (
     <div className="flex flex-wrap gap-2">
       <Button variant="secondary" onClick={() => void downloadWaveReport(waveId, "pdf")}>Readiness report (PDF)</Button>
@@ -112,10 +130,10 @@ export default function WaveCockpitPage() {
       </div>
       {c.objects.length ? <Bar label="Objects by readiness verdict" height={120} data={funnel} /> : null}
       <Tabs
-        value={searchParams.get("tab") ?? "objects"}
+        value={tab}
         onValueChange={(v) => router.replace(`/migration/${waveId}?tab=${v}`)}
         items={[
-          { value: "objects", label: "Objects", content: c.objects.length ? (
+          { value: "overview", label: "Overview", content: c.objects.length ? (
               <DataTable columns={objectColumns(run)} data={c.objects} getRowId={(o) => o.module} />
             ) : <EmptyState title="Add modules to this wave to see its objects." /> },
           { value: "blockers", label: "Blockers", content: <BlockersTab waveId={waveId} runId={c.run_id} blockers={c.blockers} /> },
@@ -123,7 +141,7 @@ export default function WaveCockpitPage() {
               <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
           { value: "downloads", label: "Downloads", content: downloads },
-          ...entityTabs({ entityType: "migration", entityId: waveId }),
+          ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}`, exportOptions }),
         ]}
       />
     </div>

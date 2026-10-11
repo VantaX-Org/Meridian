@@ -1,3 +1,4 @@
+vi.mock("../../../hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
@@ -47,6 +48,22 @@ describe("EntityTabs", () => {
     wrap(<EntityTabs entityType="objects" entityId="material_master" overview={<p>o</p>} />);
     await userEvent.click(screen.getByRole("tab", { name: "Audit" }));
     await waitFor(() => expect(getAuditEntries).toHaveBeenCalledWith({ entity_type: "objects", path_contains: "material_master", limit: 100 }));
+  });
+
+  it("audit tab matches nested resources on auditPath even when the id is a UUID", async () => {
+    const getAuditEntries = vi.spyOn(auditApi, "getAuditEntries");
+    getAuditEntries.mockResolvedValue({ entries: [], total: 0, limit: 100, offset: 0 });
+    const id = "3f2b8c1e-0000-4000-8000-000000000001";
+    wrap(<EntityTabs entityType="migration" entityId={id} auditPath={`/migration/waves/${id}`} overview={<p>o</p>} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Audit" }));
+    await waitFor(() => expect(getAuditEntries).toHaveBeenCalledWith({ path_contains: `/migration/waves/${id}`, limit: 100 }));
+  });
+
+  it("export tab renders the options it is given instead of the empty state", async () => {
+    wrap(<EntityTabs entityType="rules" entityId="42" overview={<p>o</p>} exportOptions={[{ format: "xlsx", run: async () => {} }]} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Export" }));
+    expect(screen.queryByText("Nothing to export here")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
   });
 
   it("audit tab shows a restricted state on 403", async () => {

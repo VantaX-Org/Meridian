@@ -17,9 +17,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Drawer } from "../primitives/Drawer";
 import { BulkBar } from "./BulkBar";
 import { Mono } from "../primitives/Mono";
-import { toast } from "sonner";
 import { Menu } from "../primitives/Menu";
-import type { ExportOption } from "../primitives/ExportMenu";
+import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
 import type { CellMeta } from "./columns";
 import { canBulkEdit, usePermissionsContext } from "../../lib/permissions";
@@ -214,13 +213,7 @@ export function DataTable<T>({
           {(!perms || perms.can("export")) && (
             <Menu
               trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Export table</button>}
-              items={allExport.map((o) => ({
-                label: o.label ?? (o.format === "csv" ? "CSV" : o.format === "xlsx" ? "Excel (.xlsx)" : "PDF"),
-                onSelect: () => void o.run().then(
-                  () => toast.success("Download started"),
-                  (err: unknown) => toast.error(err instanceof Error && err.message ? err.message : "Export failed"),
-                ),
-              }))}
+              items={allExport.map((o) => ({ label: exportOptionLabel(o), onSelect: () => void runExportOption(o) }))}
             />
           )}
         </div>

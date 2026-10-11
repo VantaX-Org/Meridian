@@ -407,7 +407,7 @@ export default function ObjectDetailPage() {
               <EmptyState title="Open the rules tab and choose a rule to see its failing records." />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, exportOptions: data ? exportOptions : undefined }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined }),
         ]}
       />
     </div>

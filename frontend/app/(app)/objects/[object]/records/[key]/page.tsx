@@ -113,7 +113,7 @@ export default function RecordFixSheetPage() {
 
   return (
     <RecordPage recordKey={material.matnr} object={object} status={status}>
-      <EntityTabs entityType="objects" entityId={primary} overview={<>
+      <EntityTabs entityType="objects" entityId={primary} auditPath={`/objects/${object}/records/${primary}`} exportOptions={exportOptions} overview={<>
       <div className="flex justify-end">
         <ExportMenu options={exportOptions} />
       </div>

@@ -11,6 +11,12 @@ import { Menu } from "./Menu";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
 
+const DEFAULT_LABEL: Record<ExportFormat, string> = {
+  xlsx: "Excel (.xlsx)",
+  csv: "CSV",
+  pdf: "PDF",
+};
+
 export interface ExportOption {
   format: ExportFormat;
   label?: string;
@@ -27,17 +33,25 @@ function exportErrorMessage(err: unknown): string {
   return "Export failed";
 }
 
+/** Runs one option with the shared toasts: success unless the option is an empty placeholder, the server's error on failure. */
+export async function runExportOption(option: ExportOption): Promise<void> {
+  try {
+    await option.run();
+    if (!option.empty) toast.success("Download started");
+  } catch (err) {
+    toast.error(exportErrorMessage(err));
+  }
+}
+
+export function exportOptionLabel(option: ExportOption): string {
+  return option.label ?? DEFAULT_LABEL[option.format];
+}
+
 export interface ExportMenuProps {
   options: ExportOption[];
   size?: "sm" | "md";
   disabled?: boolean;
 }
-
-const DEFAULT_LABEL: Record<ExportFormat, string> = {
-  xlsx: "Excel (.xlsx)",
-  csv: "CSV",
-  pdf: "PDF",
-};
 
 /** Export affordance: a single "Export" button, or a menu when there is more than one option. Hidden for viewers. */
 export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
@@ -49,10 +63,7 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
   const runOption = async (option: ExportOption) => {
     setBusy(true);
     try {
-      await option.run();
-      if (!option.empty) toast.success("Download started");
-    } catch (err) {
-      toast.error(exportErrorMessage(err));
+      await runExportOption(option);
     } finally {
       setBusy(false);
     }
@@ -86,7 +97,7 @@ export function ExportMenu({ options, size, disabled }: ExportMenuProps) {
         </Button>
       }
       items={options.map((option) => ({
-        label: option.label ?? DEFAULT_LABEL[option.format],
+        label: exportOptionLabel(option),
         onSelect: () => void runOption(option),
       }))}
     />

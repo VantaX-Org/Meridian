@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EntityTabs, ExplorerPage, ExportMenu, Mono, Pill } from "@/design";
+import { Button, DataTable, EntityTabs, ExplorerPage, ExportMenu, Mono, Pill, type ExportOption } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -83,8 +83,35 @@ export default function BatchPage() {
     },
   ];
 
+  const exportOptions: ExportOption[] = [
+    {
+      format: "xlsx",
+      label: "Approved fixes, this batch (.xlsx)",
+      // N1: exportBatch() posts to /remediation/batches/{id}/export, which expects a
+      // remediation_batches.id — batchId here is an unrelated cleaning_queue.batch_id
+      // (no FK between the two tables), so that call 404ed on every click and would
+      // also mutate the batch's status as a side effect of a read-only export menu.
+      // downloadCleaningExport is a read-only GET scoped by batch_id instead.
+      run: () => downloadCleaningExport("xlsx", "approved", items[0]?.object_type, batchId),
+    },
+    { format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) },
+    {
+      format: "csv",
+      label: "Approved fixes, this batch (.csv)",
+      run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type, batchId),
+    },
+    {
+      format: "pdf",
+      label: "PDF cleaning report (all batches)",
+      // N4: getCleaningReportUrl() has no batch/version scope — the report is
+      // tenant-wide, not batch-specific — so neither the label nor the downloaded
+      // filename should imply it covers only this batch.
+      run: () => downloadAuthenticated(getCleaningReportUrl(), "cleaning-report.pdf"),
+    },
+  ];
+
   return (
-    <EntityTabs entityType="remediation" entityId={batchId} overview={
+    <EntityTabs entityType="cleaning" entityId={batchId} auditPath={batchId} exportOptions={exportOptions} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
@@ -105,32 +132,7 @@ export default function BatchPage() {
           ) : null}
           <ExportMenu
             disabled={items.length === 0}
-            options={[
-              {
-                format: "xlsx",
-                label: "Approved fixes, this batch (.xlsx)",
-                // N1: exportBatch() posts to /remediation/batches/{id}/export, which expects a
-                // remediation_batches.id — batchId here is an unrelated cleaning_queue.batch_id
-                // (no FK between the two tables), so that call 404ed on every click and would
-                // also mutate the batch's status as a side effect of a read-only export menu.
-                // downloadCleaningExport is a read-only GET scoped by batch_id instead.
-                run: () => downloadCleaningExport("xlsx", "approved", items[0]?.object_type, batchId),
-              },
-              { format: "csv", run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type) },
-              {
-                format: "csv",
-                label: "Approved fixes, this batch (.csv)",
-                run: () => downloadCleaningExport("csv", "approved", items[0]?.object_type, batchId),
-              },
-              {
-                format: "pdf",
-                label: "PDF cleaning report (all batches)",
-                // N4: getCleaningReportUrl() has no batch/version scope — the report is
-                // tenant-wide, not batch-specific — so neither the label nor the downloaded
-                // filename should imply it covers only this batch.
-                run: () => downloadAuthenticated(getCleaningReportUrl(), "cleaning-report.pdf"),
-              },
-            ]}
+            options={exportOptions}
           />
         </div>
       }

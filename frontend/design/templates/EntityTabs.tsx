@@ -27,6 +27,12 @@ export interface EntityTabsOptions {
   history?: ReactNode;
   /** Export options for this entity. Omit for the designed empty state. */
   exportOptions?: ExportOption[];
+  /**
+   * Request-path fragment that the audit rows of this entity carry, for nested resources
+   * (e.g. `/migration/waves/<id>`) where the audit middleware records no entity_id.
+   * When set, the Audit tab matches on it instead of entity_type/entity_id.
+   */
+  auditPath?: string;
   /** Tabs the page already renders itself; they are not added again. */
   skip?: EntityTabValue[];
 }
@@ -43,14 +49,16 @@ const AUDIT_COLUMNS: ColumnDef<AuditEntry>[] = [
 ];
 
 /** Audit trail for one entity from GET /audit. Roles without audit access see a designed restricted state. */
-export function AuditTab({ entityType, entityId }: { entityType: string; entityId: string }) {
-  const byId = ID_LIKE.test(entityId);
+export function AuditTab({ entityType, entityId, auditPath }: { entityType: string; entityId: string; auditPath?: string }) {
+  const byId = !auditPath && ID_LIKE.test(entityId);
   const q = useQuery({
-    queryKey: ["audit-entries", "entity", entityType, entityId],
+    queryKey: ["audit-entries", "entity", entityType, entityId, auditPath ?? null],
     queryFn: () =>
       getAuditEntries(byId
         ? { entity_type: entityType, entity_id: entityId, limit: 100 }
-        : { entity_type: entityType, path_contains: entityId, limit: 100 }),
+        : auditPath
+          ? { path_contains: auditPath, limit: 100 }
+          : { entity_type: entityType, path_contains: entityId, limit: 100 }),
     retry: false,
   });
   if (q.isLoading) return <Skeleton height={120} />;
@@ -68,7 +76,7 @@ export function AuditTab({ entityType, entityId }: { entityType: string; entityI
 }
 
 /** Related, History, Audit and Export tab items. Append to a page's own tabs after its Overview. */
-export function entityTabs({ entityType, entityId, related, history, exportOptions, skip = [] }: EntityTabsOptions): TabItem[] {
+export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, skip = [] }: EntityTabsOptions): TabItem[] {
   const items: TabItem[] = [
     {
       value: "related", label: "Related",
@@ -78,7 +86,7 @@ export function entityTabs({ entityType, entityId, related, history, exportOptio
       value: "history", label: "History",
       content: history ?? <EmptyState title="No history to show" detail="This record does not keep a change history of its own. The Audit tab lists every logged action against it." ghost="chart" />,
     },
-    { value: "audit", label: "Audit", content: <AuditTab entityType={entityType} entityId={entityId} /> },
+    { value: "audit", label: "Audit", content: <AuditTab entityType={entityType} entityId={entityId} auditPath={auditPath} /> },
     {
       value: "export", label: "Export",
       content: exportOptions && exportOptions.length > 0

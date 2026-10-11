@@ -304,7 +304,9 @@ export default function RunDetailPage() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { can } = useRole();
-  const tab = searchParams.get("tab") ?? "summary";
+  // "summary" is the pre-18a name of the first tab; keep old deep links working.
+  const rawTab = searchParams.get("tab") ?? "overview";
+  const tab = rawTab === "summary" ? "overview" : rawTab;
 
   const version = useQuery({ queryKey: queryKeys.run(versionId), queryFn: () => getVersion(versionId) });
   const steps = useQuery({ queryKey: [...queryKeys.run(versionId), "steps"], queryFn: () => getRunSteps(versionId) });
@@ -402,7 +404,7 @@ export default function RunDetailPage() {
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "summary", label: "Summary", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} systemId={systemId} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} /> },
           {
@@ -419,7 +421,7 @@ export default function RunDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "versions", entityId: versionId }),
+          ...entityTabs({ entityType: "versions", entityId: versionId, exportOptions }),
         ]}
       />
     </div>

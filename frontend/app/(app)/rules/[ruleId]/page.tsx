@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
-  Button, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, ExportMenu, Line, Mono, Pill, Skeleton, Stat,
+  Button, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, Line, Mono, Pill, Skeleton, Stat,
   buildDrillHref,
 } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
@@ -216,9 +216,9 @@ export default function RulePage() {
           <Pill tone={SEV_TONE[data.severity] ?? "neutral"}>{labelOf(data.severity)}</Pill>
           <Pill tone={data.enabled ? "go" : "neutral"}>{labelOf(data.enabled ? "enabled" : "disabled")}</Pill>
         </div>
-        <ExportMenu options={[{ format: "xlsx", run: () => exportRuleHistory(ruleId, "xlsx") }]} />
-      </header>
+        </header>
       <EntityTabs entityType="rules" entityId={data.id}
+        exportOptions={[{ format: "xlsx", label: "Rule run history (.xlsx)", run: () => exportRuleHistory(ruleId, "xlsx") }]}
         history={history.data && history.data.runs.length > 0 ? (
           <DataTable
             columns={[
