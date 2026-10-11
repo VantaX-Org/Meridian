@@ -6,9 +6,17 @@ import { Select } from "../primitives/Select";
 export interface RunOption {
   id: string;
   label: string;
+  /** The system the run was read from; absent for uploads. */
+  systemId?: string;
 }
 
-export function RunSelector({ runs }: { runs: RunOption[] }) {
+/** Runs the user may pick: all when `systems` is null, else only runs read from an in-scope system. */
+export function runsInScope(runs: RunOption[], systems: ReadonlySet<string> | null | undefined): RunOption[] {
+  return systems ? runs.filter((r) => r.systemId !== undefined && systems.has(r.systemId)) : runs;
+}
+
+export function RunSelector({ runs: all, systems }: { runs: RunOption[]; systems?: ReadonlySet<string> | null }) {
+  const runs = runsInScope(all, systems);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

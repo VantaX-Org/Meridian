@@ -20,7 +20,7 @@ export function VersionsMenu({ modelId, shown, onPick }: { modelId: string; show
 }
 
 export function OldVersionBanner({ viewing, latest, busy, onRestore, onLatest }: {
-  viewing: number; latest: number; busy: boolean; onRestore: () => void; onLatest: () => void;
+  viewing: number; latest: number; busy: boolean; onRestore?: () => void; onLatest: () => void;
 }) {
   return (
     <div className="rounded border p-3 flex items-center justify-between gap-3" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet-2)" }}>
@@ -29,7 +29,7 @@ export function OldVersionBanner({ viewing, latest, busy, onRestore, onLatest }:
         <p className="ui-note">This version is read-only.</p>
       </div>
       <span className="flex gap-2">
-        <Button variant="primary" disabled={busy} onClick={onRestore}>Restore as new version</Button>
+        {onRestore ? <Button variant="primary" disabled={busy} onClick={onRestore}>Restore as new version</Button> : null}
         <Button variant="ghost" onClick={onLatest}>Back to latest</Button>
       </span>
     </div>

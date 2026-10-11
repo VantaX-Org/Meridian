@@ -9,6 +9,8 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { Button, DataTable, ExplorerPage, ExportMenu, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
+import { useSystemScope } from "@/lib/permissions";
+import { useRole } from "@/hooks/use-role";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
 import { getSystemVersions } from "@/lib/api/system-objects";
 import { getSyncProfiles } from "@/lib/api/systems";
@@ -68,7 +70,10 @@ function configSub(c: {
 export default function SystemsPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const systemScope = useSystemScope();
+  // POST /connectivity/health-check needs trigger_sync; the Test button is absent without it.
+  const canTest = useRole().can("trigger_sync");
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, select: systemScope });
   const systems = data ?? [];
   const versionsQ = useQueries({
     queries: systems.map((s) => ({ queryKey: queryKeys.systemVersions(s.id), queryFn: () => getSystemVersions(s.id) })),
@@ -181,7 +186,7 @@ export default function SystemsPage() {
     {
       id: "actions",
       header: "",
-      cell: ({ row }) => (
+      cell: ({ row }) => canTest && (
         <Button
           variant="secondary"
           disabled={test.isPending}

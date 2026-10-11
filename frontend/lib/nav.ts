@@ -11,6 +11,11 @@
  *
  * Gating (`anyOf`) uses the permission names from api/services/rbac.py; the
  * API enforces the same names, so hiding an item only removes a dead end.
+ * Every item also carries `requires`, a (resource, action) pair checked
+ * against /me/permissions.resources (rbac.md §5); an item shows only when
+ * both pass. Each `requires` is a pair every legacy role holding the item's
+ * `anyOf` also holds, so legacy roles see the same nav as before (proved by
+ * nav-identity.test.ts); the pair only narrows custom and persona roles.
  */
 import type { CSSProperties, JSX } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -42,10 +47,18 @@ export type NavIcon =
   | LucideIcon
   | ((props: { size?: number; className?: string; style?: CSSProperties }) => JSX.Element);
 
+/** A (resource, action) pair from rbac.py RESOURCES × ACTIONS. */
+export interface Requirement {
+  resource: string;
+  action: string;
+}
+
 export interface NavItem {
   href: string;
   label: string;
   icon: NavIcon;
+  /** Shown only when /me/permissions.resources grants this pair (and `anyOf` passes). */
+  requires: Requirement;
   /** Shown when the user holds at least one of these permissions. */
   anyOf?: readonly string[];
   /** Licence manifest menu key (enabled_menu_items). */
@@ -63,8 +76,12 @@ export interface NavGroup {
   group: string;
   /** Hide the whole group unless the user holds one of these permissions. */
   anyOf?: readonly string[];
+  /** Hide the whole group unless /me/permissions grants one of these pairs. */
+  requiresAny?: readonly Requirement[];
   items: readonly NavItem[];
 }
+
+const req = (resource: string, action: string): Requirement => ({ resource, action });
 
 /** Any permission that opens at least one settings page or admin tool. */
 export const SETTINGS_PERMISSIONS = [
@@ -76,10 +93,10 @@ export const SETTINGS_PERMISSIONS = [
 ] as const;
 
 export const SETTINGS_ITEMS: readonly NavItem[] = [
-  { href: "/admin/triage", label: "Triage", icon: ChevronRight, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
-  { href: "/admin/mappings", label: "Field mapping", icon: ChevronRight, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
-  { href: "/admin/ai", label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
-  { href: "/admin/licence", label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  { href: "/admin/triage", requires: req("rules", "edit"), label: "Triage", icon: ChevronRight, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
+  { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: ChevronRight, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
+  { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
+  { href: "/admin/licence", requires: req("systems", "view"), label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
 /** The home route for this role's persona. Steward gets its own page; every
@@ -104,34 +121,34 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "Home",
     items: [
-      { href: "/home/lead", label: "Home", icon: Home, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
+      { href: "/home/lead", requires: req("analysis", "view"), label: "Home", icon: Home, licenceKey: "dashboard", keywords: "overview home dqs verdict command centre", shortcut: "⌘1" },
     ],
   },
   {
     group: "Systems",
     items: [
-      { href: "/systems", label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
-      { href: "/import", label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
-      { href: "/migration", label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
+      { href: "/systems", requires: req("systems", "view"), label: "Systems", icon: ServerIcon, keywords: "sap connect ecc s4hana discover objects health sync jobs download history schedule" },
+      { href: "/import", requires: req("extraction", "create"), label: "Import file", icon: UploadIcon, licenceKey: "import", anyOf: ["upload"], keywords: "upload load data file csv xlsx" },
+      { href: "/migration", requires: req("analysis", "run"), label: "Migration", icon: ArrowLeftRight, anyOf: ["analyse"], keywords: "source destination transfer wave cutover readiness" },
     ],
   },
   {
     group: "Objects",
     items: [
-      { href: "/objects", label: "Objects", icon: Boxes, licenceKey: "findings", keywords: "checks critical severity findings" },
+      { href: "/objects", requires: req("findings", "view"), label: "Objects", icon: Boxes, licenceKey: "findings", keywords: "checks critical severity findings" },
     ],
   },
   {
     group: "Runs",
     items: [
-      { href: "/runs", label: "Runs", icon: History, licenceKey: "versions", keywords: "compare history snapshots baseline" },
+      { href: "/runs", requires: req("analysis", "view"), label: "Runs", icon: History, licenceKey: "versions", keywords: "compare history snapshots baseline" },
     ],
   },
   {
     group: "Fix",
     anyOf: ["approve", "apply"],
     items: [
-      { href: "/fix", label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches" },
+      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches" },
     ],
   },
   {
@@ -140,6 +157,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       {
         href: "/inbox",
+        requires: req("stewardship", "view"),
         label: "Inbox",
         icon: InboxIcon,
         licenceKey: "findings",
@@ -147,7 +165,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         badgeKey: "inbox",
         keywords: "workbench queue triage tasks stewardship steward team assign sla metrics failing records issues",
         children: [
-          { href: "/inbox?kind=exception", label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
+          { href: "/inbox?kind=exception", requires: req("stewardship", "view"), label: "Exceptions", icon: ShieldAlert, anyOf: ["approve", "assign"], keywords: "escalate sla exception" },
         ],
       },
     ],
@@ -158,20 +176,21 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       {
         href: "/insights",
+        requires: req("reports", "view"),
         label: "Insights",
         icon: BarChart3,
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
-          { href: "/insights/readiness", label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers" },
-          { href: "/insights/impact", label: "Value at risk", icon: BarChart3, keywords: "impact features cost" },
-          { href: "/insights/owners", label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
-          { href: "/insights/duplicates", label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
-          { href: "/insights/exec", label: "Executive summary", icon: BarChart3, keywords: "exec report narrative pdf" },
-          { href: "/insights/forecast", label: "Forecast", icon: BarChart3, keywords: "predictive dqs forecast" },
-          { href: "/insights/process", label: "Process readiness", icon: BarChart3, keywords: "l1 l5 business process ptp otc process map" },
-          { href: "/insights/process/designer", label: "Process designer", icon: BarChart3, keywords: "designer bpmn model edit l1 l5" },
-          { href: "/insights/lineage", label: "Lineage and impact", icon: BarChart3, keywords: "lineage downstream kpi blast radius guards" },
-          { href: "/insights/mining", label: "Pattern mining", icon: BarChart3, keywords: "patterns clustering relationships graph" },
+          { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers" },
+          { href: "/insights/impact", requires: req("reports", "view"), label: "Value at risk", icon: BarChart3, keywords: "impact features cost" },
+          { href: "/insights/owners", requires: req("reports", "view"), label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
+          { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
+          { href: "/insights/exec", requires: req("reports", "view"), label: "Executive summary", icon: BarChart3, keywords: "exec report narrative pdf" },
+          { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: BarChart3, keywords: "predictive dqs forecast" },
+          { href: "/insights/process", requires: req("reports", "view"), label: "Process readiness", icon: BarChart3, keywords: "l1 l5 business process ptp otc process map" },
+          { href: "/insights/process/designer", requires: req("reports", "view"), label: "Process designer", icon: BarChart3, keywords: "designer bpmn model edit l1 l5" },
+          { href: "/insights/lineage", requires: req("reports", "view"), label: "Lineage and impact", icon: BarChart3, keywords: "lineage downstream kpi blast radius guards" },
+          { href: "/insights/mining", requires: req("reports", "view"), label: "Pattern mining", icon: BarChart3, keywords: "patterns clustering relationships graph" },
         ],
       },
     ],
@@ -179,9 +198,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "MDM",
     items: [
-      { href: "/mdm/golden", label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
-      { href: "/mdm/glossary", label: "Glossary", icon: BookIcon, keywords: "terms business" },
-      { href: "/mdm/match-rules", label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
+      { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
+      { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: BookIcon, keywords: "terms business" },
+      { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
     ],
   },
   {
@@ -189,21 +208,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       {
         href: "/rules",
+        requires: req("rules", "view"),
         label: "Rules",
         icon: ListChecks,
         keywords: "rules checks catalogue yaml contracts scoring alerts",
         children: [
-          { href: "/rules/contracts", label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
-          { href: "/rules/scoring", label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
+          { href: "/rules/contracts", requires: req("contracts", "view"), label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
+          { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
         ],
       },
     ],
   },
   {
     group: "Admin",
+    // rbac.md §5: users ★ | llm ★ | licence V | audit V. rules/edit and extraction/edit are added so a
+    // steward keeps Settings › Triage and Licence, and a field-mapping holder keeps Field mapping, as today.
+    requiresAny: [
+      req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"),
+      req("rules", "edit"), req("extraction", "edit"),
+    ],
     items: [
-      { href: "/admin/users", label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
-      { href: "/admin/settings", label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
+      { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },
 ];
@@ -251,6 +277,8 @@ export function getPageTitle(pathname: string): string {
 export interface NavGate {
   can: (permission: string) => boolean;
   isMenuItemEnabled: (key: string) => boolean;
+  /** /me/permissions.resources check; when absent (anyOf-only callers) `requires` is not checked. */
+  has?: (resource: string, action: string) => boolean;
 }
 
 /** True when the user holds one of `anyOf` (or nothing is required). */
@@ -260,6 +288,7 @@ export function allowed(anyOf: readonly string[] | undefined, can: NavGate["can"
 
 export function isItemVisible(item: NavItem, gate: NavGate): boolean {
   if (item.licenceKey && !gate.isMenuItemEnabled(item.licenceKey)) return false;
+  if (gate.has && !gate.has(item.requires.resource, item.requires.action)) return false;
   return allowed(item.anyOf, gate.can);
 }
 
@@ -271,7 +300,9 @@ function filterItems(items: readonly NavItem[], gate: NavGate): NavItem[] {
 
 /** The nav as this user may see it: role and licence filters, empty groups dropped. */
 export function visibleNav(gate: NavGate): NavGroup[] {
+  const has = gate.has;
   return NAV_GROUPS.filter((g) => allowed(g.anyOf, gate.can))
+    .filter((g) => !has || !g.requiresAny || g.requiresAny.some((r) => has(r.resource, r.action)))
     .map((g) => ({ ...g, items: filterItems(g.items, gate) }))
     .filter((g) => g.items.length > 0);
 }

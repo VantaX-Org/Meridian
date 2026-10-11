@@ -10,6 +10,7 @@ import { Button, Dialog, EmptyState, ErrorState, Mono, Pill, RecordPage, Skeleto
 import { getMasterRecord, getMasterRecordHistory, promoteMasterRecord, writebackMasterRecord } from "@/lib/api/master-records";
 import { getRelationships } from "@/lib/api/relationships";
 import { apiErrorMessage } from "@/lib/error";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -18,7 +19,9 @@ import type { MasterRecordDetail } from "@/types/api";
 export default function MasterRecordPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const canApprove = useRole().can("approve");
+  const { can } = useRole();
+  const canApprove = can("approve");
+  const canApply = can("apply");
   const [confirmPromote, setConfirmPromote] = useState(false);
 
   const recordQuery = useQuery<MasterRecordDetail>({
@@ -107,13 +110,15 @@ export default function MasterRecordPage() {
             {promote.isPending ? "Promoting…" : "Promote"}
           </Button>
         ) : null}
-        <Button
+        <GatedPrimary
+          kind="writeback"
+          allowed={canApply}
           variant="secondary"
           disabled={writeback.isPending || (writeback.data ? !writeback.data.writeback_supported : false)}
           onClick={() => writeback.mutate()}
         >
-          {writeback.isPending ? "Writing back…" : "Writeback"}
-        </Button>
+          {writeback.isPending ? "Writing back…" : "Write back"}
+        </GatedPrimary>
       </section>
       {writeback.data ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{writeback.data.message}</p>

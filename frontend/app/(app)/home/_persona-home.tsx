@@ -11,6 +11,7 @@ import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
 import { getShellCounts } from "@/lib/api/shell";
 import { getSystems } from "@/lib/api/connectivity";
+import { usePermissions } from "@/lib/permissions";
 import { getConfigLandscape } from "@/lib/api/config-load";
 import { getExecutiveReportUrl } from "@/lib/api/reports";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -62,6 +63,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const dayOne = useDayOne();
   const { active } = useJobs();
   const { can } = useRole();
+  const { scopeFilter } = usePermissions();
 
   const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
@@ -88,7 +90,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     );
   }
 
-  const objects = objectsQ.data?.objects ?? [];
+  // Ruling 7: a module-scoped user sees only in-scope objects (and so only those heatmap rows).
+  const objects = (objectsQ.data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
   const narrative = splitNarrative(buildNarrative({ role, objects }));
 
   if (dayOne.step !== null) {

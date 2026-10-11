@@ -29,6 +29,7 @@ import { analyseVersion, getSystemVersions, startDownload, type SystemVersion } 
 import { deleteSystem, updateSystem } from "@/lib/api/systems";
 import { exportRuns } from "@/lib/api/versions";
 import { formatModuleName, labelOf, relativeTime, formatDate } from "@/lib/format";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { queryKeys } from "@/lib/query-keys";
@@ -145,6 +146,10 @@ export default function SystemPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
+            render={<Link href={`/systems/${systemId}?tab=objects`}>Extract now</Link>}>
+            Extract now
+          </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !(latest ?? versions[0])} onClick={() => analyse.mutate()}>
               Analyse

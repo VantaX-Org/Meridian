@@ -9,12 +9,13 @@ import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { getShellCounts } from "../../lib/api/shell";
 import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
-import { useVisibleNav } from "../../hooks/use-nav";
+import { useNavLoading, useVisibleNav } from "../../hooks/use-nav";
 import { useRole } from "../../hooks/use-role";
 import { MeridianMark } from "../../components/meridian/icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
+import { Skeleton } from "../primitives/Skeleton";
 import { Tooltip } from "../primitives/Tooltip";
 
 const RAIL_KEY = "meridian:rail:open";
@@ -70,6 +71,7 @@ export function Rail() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const groups = useVisibleNav();
+  const navLoading = useNavLoading();
   const { role } = useRole();
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -371,8 +373,10 @@ export function Rail() {
         {expanded && <span className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
       </Link>
 
-      <div data-testid="rail-nav-items" className="flex-1 flex flex-col gap-3 px-2 py-2">
-        {groups.map((group) => (
+      <div data-testid="rail-nav-items" aria-busy={navLoading || undefined} className="flex-1 flex flex-col gap-3 px-2 py-2">
+        {/* Waits for /me/permissions: showing the anyOf-only nav first would flash items the grants then hide. */}
+        {navLoading && [0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} width={expanded ? 180 : 32} height={20} />)}
+        {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded && (
               <p className="px-2 mb-0.5 text-[12px]" style={{ color: "var(--m-ink-3)" }}>

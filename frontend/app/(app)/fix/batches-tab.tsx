@@ -23,6 +23,7 @@ import {
 } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useNowSec } from "@/hooks/use-now";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import {
@@ -417,9 +418,9 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "draft" ? (
-            <Button variant="secondary" disabled={!canApprove || isCreator} title={approveTitle} onClick={() => setAsk("approve")}>
+            <GatedPrimary kind="approve" allowed={canApprove} variant="secondary" disabled={isCreator} title={approveTitle} onClick={() => setAsk("approve")}>
               Approve batch
-            </Button>
+            </GatedPrimary>
           ) : null}
           {batch.status === "approved" ? (
             <Button disabled={!canExport || isCreator} title={exportTitle} onClick={() => setAsk("export")}>

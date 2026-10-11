@@ -109,7 +109,7 @@ describe("BatchesTab", () => {
     // disabled by the missing permission, not by four-eyes.
     renderWithQuery(<BatchesTab />);
     await userEvent.click(await screen.findByText("AP001 batch"));
-    expect(await screen.findByRole("button", { name: "Approve batch" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: /^Approve batch/ })).toBeDisabled();
   });
 
   it("disables export without the matching permission", async () => {

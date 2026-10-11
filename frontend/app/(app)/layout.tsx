@@ -16,6 +16,8 @@ import { isNotFound } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne } from "@/hooks/use-day-one";
+import { PermissionsProvider, usePermissions } from "@/lib/permissions";
+import { ScopedPill } from "@/components/scoped-pill";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
@@ -35,9 +37,14 @@ function RunSelectorSlot() {
     queryFn: () => getVersions(),
   });
   const dayOne = useDayOne();
+  const { scopeFilter } = usePermissions();
 
   const versions = data?.versions ?? [];
-  const defaultId = versions.find((v) => FINISHED.has(v.status))?.id ?? versions[0]?.id;
+  // A scoped user's default run is one from a system in scope (ruling 7).
+  const pickable = scopeFilter.systems
+    ? versions.filter((v) => v.metadata?.system_id !== undefined && scopeFilter.systems?.has(v.metadata.system_id))
+    : versions;
+  const defaultId = pickable.find((v) => FINISHED.has(v.status))?.id ?? pickable[0]?.id;
   const hasRunParam = searchParams.has("run");
 
   // Write the default run onto the URL once, so every page under this
@@ -79,14 +86,16 @@ function RunSelectorSlot() {
 
   const runs: RunOption[] = versions.map((v) => ({
     id: v.id,
+    systemId: v.metadata?.system_id,
     label: v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`,
   }));
-  return <RunSelector runs={runs} />;
+  return <RunSelector runs={runs} systems={scopeFilter.systems} />;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
+      <PermissionsProvider>
       <div className="flex h-screen">
         <Suspense fallback={<div style={{ width: 240 }} />}>
           <Rail />
@@ -95,13 +104,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
-            userMenu={<ThemeToggle />}
+            userMenu={<span className="inline-flex items-center gap-2"><ScopedPill /><ThemeToggle /></span>}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             {children}
           </main>
         </div>
       </div>
+      </PermissionsProvider>
     </AuthGuard>
   );
 }

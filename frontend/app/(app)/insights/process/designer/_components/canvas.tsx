@@ -18,6 +18,8 @@ export interface CanvasProps {
   selected: string | null;
   editable: boolean;
   onBlocked: () => void;
+  /** False when the user lacks `analyse` (wave 16): mutating controls are not rendered. */
+  canDesign?: boolean;
   onSelect: (id: string | null) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onConnect: (source: string, target: string) => void;
@@ -91,7 +93,7 @@ function CanvasInner(p: CanvasProps) {
 
   return (
     <div className="aurora-designer__canvas-wrap" onKeyDown={onKeyDown}>
-      <div className="aurora-designer__toolbar" role="toolbar" aria-label="Diagram tools">
+      {p.canDesign !== false ? <div className="aurora-designer__toolbar" role="toolbar" aria-label="Diagram tools">
         <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}>Add activity</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
@@ -107,7 +109,7 @@ function CanvasInner(p: CanvasProps) {
             <Button variant="ghost" onClick={() => setAskDelete(null)}>Keep both</Button>
           </span>
         ) : null}
-      </div>
+      </div> : null}
       <div className="aurora-process-graph aurora-designer__canvas" data-connect={connectMode || undefined}>
         <ReactFlow
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}

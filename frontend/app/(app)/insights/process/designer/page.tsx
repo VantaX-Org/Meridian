@@ -12,6 +12,7 @@ import {
 import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import { useRole } from "@/hooks/use-role";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
@@ -108,7 +109,12 @@ function Editor(p: EditorProps) {
   const attr = sp.get("attr");
   const node = sp.get("node");
   const reference = model === "reference";
-  const editable = !reference && !viewingOld;
+  // Wave 16: every designer write needs `analyse`, the export needs `export`. Without them the
+  // controls are not rendered and the reference prompt never opens.
+  const role = useRole();
+  const canDesign = role.can("analyse");
+  const canExport = role.can("export");
+  const editable = canDesign && !reference && !viewingOld;
 
   const [doc, setDoc] = useState(initial);
   const [note, setNote] = useState("");
@@ -171,7 +177,7 @@ function Editor(p: EditorProps) {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("beforeunload", onLeave); };
   }, [dirty]);
 
-  const blocked = () => { if (reference) setPrompt(true); };
+  const blocked = () => { if (reference && canDesign) setPrompt(true); };
   const edit = (fn: (d: ProcessModelDocument) => ProcessModelDocument) => { if (editable) setDoc(fn); else blocked(); };
 
   const located = node ? D.locate(doc, node) : null;
@@ -217,8 +223,8 @@ function Editor(p: EditorProps) {
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
             onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
-          <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button>
-          <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button>
+          {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
+          {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
         </div>
       </div>
 
@@ -237,7 +243,7 @@ function Editor(p: EditorProps) {
           The reference model is shared and read-only.
         </Banner>
       ) : null}
-      {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={() => restore.mutate()} onLatest={() => go({ v: null })} /> : null}
+      {viewingOld ? <OldVersionBanner viewing={versionNo} latest={currentVersion} busy={restore.isPending} onRestore={canDesign ? () => restore.mutate() : undefined} onLatest={() => go({ v: null })} /> : null}
       {fail?.kind === "stale" ? (
         <Banner tone="warning" title={`Someone saved version ${fail.current ?? "a newer one"} while you edited`}
           action={<><Button variant="secondary" onClick={() => { setFail(null); setDoc(initial); refresh(); }}>Reload</Button><Button variant="secondary" disabled={copy.isPending} onClick={() => copy.mutate()}>Save as a copy</Button></>}>
@@ -277,10 +283,10 @@ function Editor(p: EditorProps) {
 
       <div className="flex flex-col gap-4 md:flex-row">
         <aside className="w-full md:w-[320px] flex-shrink-0 flex flex-col gap-4" aria-label="Process tree">
-          <ProcessTree doc={doc} selected={node} editable={editable} onBlocked={blocked} actions={actions}
+          <ProcessTree doc={doc} selected={node} editable={editable} canDesign={canDesign} onBlocked={blocked} actions={actions}
             colour={(item, level) => (ov ? D.worstUnder(item, level, actColour) : null)}
             onSelect={(id) => go({ node: id, attr: null })} />
-          <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} />
+          {canDesign ? <Discovered variants={unmapped} onCreate={(g) => edit((d) => skeletonFrom(d, g))} /> : null}
         </aside>
         <section className="flex-1 min-w-0 overflow-x-auto" aria-label="Process view">
           {l4 ? (
@@ -289,7 +295,7 @@ function Editor(p: EditorProps) {
                 <h2 className="text-[17px] font-semibold">{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
-              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} onBlocked={blocked}
+              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
                 onSelect={(id) => go({ attr: id })}
                 onMove={(id, x, y) => edit((d) => D.moveNode(d, l4.id, id, x, y))}
                 onConnect={(s, t) => edit((d) => D.connect(d, l4.id, s, t))}
@@ -304,13 +310,13 @@ function Editor(p: EditorProps) {
                 onLayout={() => edit((d) => D.autoLayout(d, l4.id))} />
             </>
           ) : (
-            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} actions={actions} editable={editable} onBlocked={blocked}
+            <LevelTable doc={doc} parent={parent} parentLevel={parentLevel} colour={actColour} actions={actions} editable={editable} canDesign={canDesign} onBlocked={blocked}
               onOpen={(id) => go({ node: id, attr: null })} />
           )}
         </section>
       </div>
 
-      <AttributeDrawer doc={doc} attr={attr} editable={editable} onBlocked={blocked} onClose={() => go({ attr: null })}
+      <AttributeDrawer doc={doc} attr={attr} editable={editable} canDesign={canDesign} onBlocked={blocked} onClose={() => go({ attr: null })}
         overlay={ov} unmapped={unmapped} canAdopt={editable && !dirty}
         onAdopt={(variantId, l4Id) => adopt.mutate({ variantId, l4Id })} findingHref={p.findingHref}
         patchActivity={(id, patch) => edit((d) => D.patchActivity(d, id, patch))}

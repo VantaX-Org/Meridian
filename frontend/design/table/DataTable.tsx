@@ -14,6 +14,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Drawer } from "../primitives/Drawer";
 import { BulkBar } from "./BulkBar";
+import { canBulkEdit, usePermissionsContext } from "../../lib/permissions";
 
 export interface DataTableProps<T> {
   columns: ColumnDef<T>[];
@@ -38,10 +39,14 @@ const VIRTUALIZE_ABOVE = 2000;
 const SELECT_COLUMN_ID = "__select";
 
 export function DataTable<T>({
-  columns, data, getRowId, onRowClick, renderDrawer, bulkActions, height = "calc(100vh - 240px)",
+  columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, height = "calc(100vh - 240px)",
   sorting: sortingProp, onSortingChange: onSortingChangeProp,
 }: DataTableProps<T>) {
   "use no memo";
+  // Ruling 4: no BulkBar (or selection column) for users who can change nothing, e.g. viewer and auditor.
+  // Outside a PermissionsProvider (component tests) the table is ungated.
+  const perms = usePermissionsContext();
+  const bulkActions = perms && !canBulkEdit(perms.can) ? undefined : bulkActionsProp;
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const sorting = sortingProp ?? internalSorting;
   const setSorting = onSortingChangeProp

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button, DataTable, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs } from "@/design";
+import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import {
@@ -82,8 +83,8 @@ export default function WaveCockpitPage() {
             {w.signed_off_at ? `signed off ${formatDate(w.signed_off_at, "datetime", "SAST")}` : "not signed off"}
           </p>
         </div>
-        {can("approve") && c.verdict === "go" && !w.signed_off_at ? (
-          <Button disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</Button>
+        {c.verdict === "go" && !w.signed_off_at ? (
+          <GatedPrimary kind="signoff" allowed={can("approve")} disabled={signoff.isPending} onClick={() => signoff.mutate()}>Sign off</GatedPrimary>
         ) : null}
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

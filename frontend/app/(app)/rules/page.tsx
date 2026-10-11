@@ -26,6 +26,7 @@ import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
 import { getVersions } from "@/lib/api/versions";
+import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigAwareScore, type ConfigAwareModule } from "@/lib/api/config-load";
 import { apiErrorMessage } from "@/lib/error";
@@ -91,7 +92,8 @@ export default function RulesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [cfgSystem, setCfgSystem] = useUrlState("config_system", "");
-  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true } });
+  const systemScope = useSystemScope();
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems, meta: { ignoreError: true }, select: systemScope });
   const awareQ = useQuery({
     queryKey: queryKeys.configAwareScore(undefined, cfgSystem),
     queryFn: () => getConfigAwareScore({ system_id: cfgSystem || undefined }),
