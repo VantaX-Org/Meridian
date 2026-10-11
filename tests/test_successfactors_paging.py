@@ -40,3 +40,15 @@ def test_top_still_caps_rows():
         }})
 
     assert len(_connector(handler).read_entity_set("User", top=3)) == 3
+
+
+def test_unlimited_read_sends_no_top():
+    """SF treats $top as a client limit and returns no __next: an unlimited read must omit it."""
+    seen: list[httpx.URL] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url)
+        return httpx.Response(200, json={"d": {"results": [{"userId": "1"}]}})
+
+    _connector(handler).read_entity_set("User")
+    assert "$top" not in seen[0].params
