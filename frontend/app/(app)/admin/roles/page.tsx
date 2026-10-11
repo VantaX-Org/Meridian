@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
 import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Menu, Pill, Mono, Select, Skeleton, Tabs } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
-import { GrantsPicker } from "@/components/admin/grants-picker";
+import { GrantsPicker, scopeLabel } from "@/components/admin/grants-picker";
 import { InviteForm } from "@/components/admin/invite-form";
 import { matrixDiff, matrixToPairs, RoleMatrix } from "@/components/admin/role-matrix";
 import { useRole } from "@/hooks/use-role";
@@ -160,19 +160,20 @@ function CloneDialog({ roles, from, onClose, onDone }: { roles: Role[]; from: st
   const [name, setName] = useState("");
   const [src, setSrc] = useState<string | null>(null);
   const source = src ?? from ?? "";
+  const close = () => { setName(""); setSrc(null); onClose(); };
   const m = useMutation({
     mutationFn: () => cloneRole({ name, cloned_from: source }),
     onSuccess: () => { toast.success(`${name} created`); setName(""); setSrc(null); onDone(); },
     onError: (e) => toast.error(`Not cloned. ${apiErrorMessage(e)}`),
   });
   return (
-    <Dialog open={!!from} onOpenChange={(o) => { if (!o) onClose(); }} title="Clone role">
+    <Dialog open={!!from} onOpenChange={(o) => { if (!o) close(); }} title="Clone role">
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (name.trim()) m.mutate(); }}>
         <Field label="Clone from"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={source} onValueChange={setSrc} /></Field>
         <Field label="New role name"><input value={name} onChange={(e) => setName(e.target.value)} required /></Field>
         <div className="flex gap-2">
           <Button type="submit" disabled={!name.trim() || m.isPending}>Create clone</Button>
-          <Button type="button" variant="secondary" onClick={onClose}>Close</Button>
+          <Button type="button" variant="secondary" onClick={close}>Close</Button>
         </div>
       </form>
     </Dialog>
@@ -233,6 +234,7 @@ function UsersTab({ roles }: { roles: Role[] }) {
 function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const qc = useQueryClient();
   const [result, setResult] = useState<ConvertResult | null>(null);
+  const [converted, setConverted] = useState(false);
   const grantsQ = useQuery({ queryKey: ["grants", user.id], queryFn: () => listGrants(user.id) });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const systems = systemsQ.data ?? [];
@@ -241,10 +243,10 @@ function UserScopes({ user, roles }: { user: User; roles: Role[] }) {
   const rem = useMutation({ mutationFn: (id: string) => deleteGrant(user.id, id), onSuccess: done, onError: (e) => toast.error(`Grant not removed. ${apiErrorMessage(e)}`) });
   const conv = useMutation({
     mutationFn: (confirm: boolean) => convertObjectApprovals(user.id, confirm),
-    onSuccess: (r) => { setResult(r); if (r.confirmed) done(); },
+    onSuccess: (r) => { setResult(r); if (r.confirmed) { setConverted(true); done(); qc.invalidateQueries({ queryKey: queryKeys.users() }); } },
     onError: (e) => toast.error(`Not converted. ${apiErrorMessage(e)}`),
   });
-  const legacy = user.permissions && Object.keys(user.permissions).length > 0;
+  const legacy = !converted && user.permissions && Object.keys(user.permissions).length > 0;
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[13px]" style={dim}>{user.email}</p>
@@ -296,6 +298,10 @@ function RequestsTab({ roles }: { roles: Role[] }) {
   const [declining, setDeclining] = useState<AccessRequest | null>(null);
   const [reason, setReason] = useState("");
   const q = useQuery({ queryKey: ["access-requests", "open"], queryFn: () => listAccessRequests("open") });
+  const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const who = (id: string) => usersQ.data?.users.find((u) => u.id === id)?.email ?? "Unknown user";
+  const where = (r: AccessRequest) => scopeLabel(r.system_id, r.module, systemsQ.data ?? []);
   const decide = useMutation({
     mutationFn: (v: { id: string; body: Parameters<typeof decideAccessRequest>[1] }) => decideAccessRequest(v.id, v.body),
     onSuccess: () => { toast.success("Request decided"); setGranting(null); setDeclining(null); setReason(""); qc.invalidateQueries({ queryKey: ["access-requests"] }); },
@@ -310,7 +316,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       <ul className="flex flex-col gap-3" aria-label="Open access requests">
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center gap-3 text-[13px]">
-            <span><Mono>{r.user_id}</Mono> wants <Mono>{r.resource} {r.action}</Mono> at {r.system_id ?? "all systems"}{r.module ? ` / ${r.module}` : ""}</span>
+            <span>{who(r.user_id)} wants <Mono>{r.resource} {r.action}</Mono> at {where(r) === "all" ? "all systems" : where(r)}</span>
             <span style={dim}>{r.reason}, {relativeTime(r.created_at)}</span>
             <Button onClick={() => { setRole(""); setGranting(r); }}>Grant</Button>
             <Button variant="secondary" onClick={() => setDeclining(r)}>Decline</Button>
@@ -319,6 +325,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
       </ul>
       <Dialog open={!!granting} onOpenChange={(o) => { if (!o) setGranting(null); }} title="Grant access">
         <div className="flex flex-col gap-3">
+          {granting ? <p className="text-[13px]">{who(granting.user_id)}, {granting.resource} {granting.action}, scope: {where(granting) === "all" ? "all systems" : where(granting)}. The grant is created at this scope.</p> : null}
           <Field label="Role"><Select options={roles.map((r) => ({ value: r.key, label: r.name }))} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
           <div className="flex gap-2">
             <Button disabled={!role || decide.isPending} onClick={() => granting && decide.mutate({ id: granting.id, body: { decision: "granted", role_key: role } })}>Grant access</Button>
@@ -339,7 +346,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
   );
 }
 
-const HISTORY_ACTIONS = ["role.create", "role.update", "role.delete", "grant.create", "grant.delete", "access_request.decide"];
+const HISTORY_ACTIONS = ["role.create", "role.update", "role.delete", "grant.create", "grant.delete", "access_request.create", "access_request.decide"];
 
 function HistoryTab() {
   const qs = useQueries({

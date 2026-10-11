@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { Button, Field, Pill, Select } from "@/design";
+import { getSystemModules } from "@/lib/api/connectivity";
 import type { GrantInput, Role } from "@/lib/api/roles";
 
 export interface SystemRef { id: string; name: string }
@@ -16,12 +18,10 @@ export function scopeLabel(systemId: string | null | undefined, module: string |
 }
 
 /** Role + scope editor over a list of grants. Presentational: the caller persists (or just collects) them. */
-export function GrantsPicker({ grants, roles, systems, modules = [], onAdd, onRemove, busy, preset }: {
+export function GrantsPicker({ grants, roles, systems, onAdd, onRemove, busy, preset }: {
   grants: GrantRowView[];
   roles: Role[];
   systems: SystemRef[];
-  /** Suggestions for the module field (native datalist); any module key may be typed. */
-  modules?: string[];
   onAdd: (g: GrantInput) => void;
   onRemove: (g: GrantRowView) => void;
   busy?: boolean;
@@ -30,6 +30,10 @@ export function GrantsPicker({ grants, roles, systems, modules = [], onAdd, onRe
   const [role, setRole] = useState(preset?.role_key ?? "");
   const [system, setSystem] = useState(preset?.system_id ?? ALL);
   const [modKey, setModKey] = useState(preset?.module ?? "");
+  const listId = useId();
+  // Module suggestions come from the chosen system (native datalist); any module key may still be typed.
+  const modulesQ = useQuery({ queryKey: ["system-modules", system], queryFn: () => getSystemModules(system), enabled: system !== ALL });
+  const modules = (modulesQ.data ?? []).map((m) => m.module);
   const roleOptions = roles.map((r) => ({ value: r.key, label: r.name }));
   const systemOptions = [{ value: ALL, label: "All systems" }, ...systems.map((s) => ({ value: s.id, label: s.name }))];
 
@@ -50,9 +54,9 @@ export function GrantsPicker({ grants, roles, systems, modules = [], onAdd, onRe
         <Field label="Role"><Select options={roleOptions} value={role} onValueChange={setRole} placeholder="Choose a role" /></Field>
         <Field label="System"><Select options={systemOptions} value={system} onValueChange={setSystem} /></Field>
         <Field label="Module (blank for all)">
-          <input list="grant-modules" value={modKey} onChange={(e) => setModKey(e.target.value.trim())} />
+          <input list={listId} value={modKey} onChange={(e) => setModKey(e.target.value.trim())} />
         </Field>
-        <datalist id="grant-modules">{modules.map((m) => <option key={m} value={m} />)}</datalist>
+        <datalist id={listId}>{modules.map((m) => <option key={m} value={m} />)}</datalist>
         <Button
           type="button" variant="secondary" disabled={!role || busy}
           onClick={() => onAdd({ role_key: role, system_id: system === ALL ? null : system, module: modKey || null })}

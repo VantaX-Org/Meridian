@@ -6,7 +6,7 @@ import { ErrorState, Field, Select, Skeleton } from "@/design";
 import { getSystemModules } from "@/lib/api/connectivity";
 import { getUserEffective, getRolePermissions } from "@/lib/api/roles";
 import { apiErrorMessage } from "@/lib/error";
-import type { SystemRef } from "./grants-picker";
+import { scopeLabel, type SystemRef } from "./grants-picker";
 
 const ALL = "__all__";
 
@@ -23,8 +23,12 @@ export function EffectivePermissionsView({ userId, systems }: { userId: string; 
     queries: roleKeys.map((key) => ({ queryKey: ["role-matrix", key], queryFn: () => getRolePermissions(key) })),
   });
   const byRole = Object.fromEntries(roleKeys.map((k, i) => [k, matrices[i]?.data?.matrix]));
+  // A grant counts for the chosen scope only when it is unscoped or scoped to exactly that system/module.
+  const applies = (g: { system_id: string | null; module: string | null }) =>
+    (system === ALL || !g.system_id || g.system_id === system) && (modKey === ALL || !g.module || g.module === modKey);
   const sources = (r: string, a: string) =>
-    (q.data?.roles ?? []).filter((g) => byRole[g.key]?.[r]?.[a]).map((g) => g.name).join(", ");
+    (q.data?.roles ?? []).filter((g) => byRole[g.key]?.[r]?.[a] && applies(g))
+      .map((g) => (g.system_id || g.module ? `${g.name} (${scopeLabel(g.system_id, g.module, systems)})` : g.name)).join(", ");
 
   return (
     <div className="flex flex-col gap-3">

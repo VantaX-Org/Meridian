@@ -25,7 +25,7 @@ export function matrixDiff(base: Matrix, next: Matrix): { added: number; removed
 }
 
 /** Resource rows x action columns of checkboxes. Read-only unless `onChange` is given. */
-export function RoleMatrix({ matrix, onChange, label }: { matrix: Matrix; onChange?: (m: Matrix) => void; label: string }) {
+export function RoleMatrix({ matrix, onChange, label, scoped = false }: { matrix: Matrix; onChange?: (m: Matrix) => void; label: string; /** A system or module scope is chosen, so tenant-wide rows get the lock. */ scoped?: boolean }) {
   const resources = Object.keys(matrix);
   const actions = Object.keys(matrix[resources[0]] ?? {});
   const toggle = (r: string, a: string) => onChange?.({ ...matrix, [r]: { ...matrix[r], [a]: !matrix[r][a] } });
@@ -43,7 +43,7 @@ export function RoleMatrix({ matrix, onChange, label }: { matrix: Matrix; onChan
             <tr key={r}>
               <th scope="row" className="text-left pr-3 py-1 font-normal">
                 {r}
-                {TENANT_WIDE.has(r) ? (
+                {scoped && TENANT_WIDE.has(r) ? (
                   <span className="ml-1 align-middle">
                     <Tooltip label="Tenant-wide; scope does not apply." render={<button type="button" aria-label="Tenant-wide; scope does not apply." />}>
                       <Lock size={12} aria-hidden />

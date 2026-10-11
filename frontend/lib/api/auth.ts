@@ -53,6 +53,6 @@ export interface InviteGrant { role_key: string; role_label: string; system_id?:
 
 /** What an invite token grants, shown before the invitee sets a password. 404 when invalid, expired or used. */
 export async function getInvitePreview(token: string): Promise<{ email: string; grants: InviteGrant[] }> {
-  const { data } = await apiClient.get<{ email: string; grants: InviteGrant[] }>(`/api/v1/auth/invite/${encodeURIComponent(token)}`);
+  const { data } = await apiClient.post<{ email: string; grants: InviteGrant[] }>("/api/v1/auth/invite/preview", { token });
   return data;
 }

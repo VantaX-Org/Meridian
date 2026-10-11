@@ -32,6 +32,7 @@ _login_rate_limit = rate_limit("auth_login", limit=10, window_s=60, key_by="ip")
 _forgot_rate_limit = rate_limit("auth_forgot", limit=5, window_s=60, key_by="ip")
 _reset_rate_limit = rate_limit("auth_reset", limit=5, window_s=60, key_by="ip")
 _invite_rate_limit = rate_limit("auth_invite", limit=5, window_s=60, key_by="ip")
+_invite_preview_rate_limit = rate_limit("auth_invite_preview", limit=5, window_s=60, key_by="ip")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -375,7 +376,7 @@ def accept_invite(body: AcceptInviteRequest):
             text(
                 "UPDATE users "
                 "SET password_hash = :ph, must_change_password = false "
-                "WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL "
+                "WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL AND is_active = true "
                 "RETURNING id, email"
             ),
             {"ph": hash_password(new_password), "uid": user_id, "tid": DEV_TENANT_ID},
@@ -391,8 +392,12 @@ def accept_invite(body: AcceptInviteRequest):
     return {"ok": True, "email": row[1]}
 
 
-@router.get("/invite/{token}", dependencies=[Depends(_invite_rate_limit)])
-def invite_preview(token: str):
+class InvitePreviewRequest(BaseModel):
+    token: str
+
+
+@router.post("/invite/preview", dependencies=[Depends(_invite_preview_rate_limit)])
+def invite_preview(body: InvitePreviewRequest):
     """What an invite grants, shown before the invitee sets a password.
 
     Validates the token exactly as accept-invite does. Any failure (bad, expired, wrong
@@ -407,13 +412,13 @@ def invite_preview(token: str):
         ).fetchone()
         if not secret_row or not secret_row[0]:
             raise not_found
-        payload = decode_access_token(token, secret_row[0])
+        payload = decode_access_token(body.token, secret_row[0])
         user_id = payload.get("sub") if payload and payload.get("purpose") == "invite_accept" else None
         if not user_id:
             raise not_found
         conn.execute(text(f"SET app.tenant_id = '{str(DEV_TENANT_ID)}'"))
         user = conn.execute(
-            text("SELECT email, role FROM users WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL"),
+            text("SELECT email, role FROM users WHERE id = :uid AND tenant_id = :tid AND password_hash IS NULL AND is_active = true"),
             {"uid": user_id, "tid": DEV_TENANT_ID},
         ).fetchone()
         if not user:

@@ -1,3 +1,4 @@
+import { AxiosError, AxiosHeaders } from "axios";
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
@@ -20,6 +21,12 @@ describe("InvitePreview", () => {
     renderWithQuery(<InvitePreview />);
     expect(await screen.findByText("Invited as a@example.com")).toBeTruthy();
     expect(screen.getByText("Steward, Sys A, material")).toBeTruthy();
+  });
+  it("says to wait, not expired, on a 429", async () => {
+    vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new AxiosError("limited", "ERR_BAD_REQUEST", undefined, undefined, { status: 429, data: {}, statusText: "", headers: {}, config: { headers: new AxiosHeaders() } }));
+    renderWithQuery(<InvitePreview />);
+    expect(await screen.findByText("Too many attempts. Try again in a minute.")).toBeTruthy();
+    expect(screen.queryByText(/expired/)).toBeNull();
   });
   it("shows a generic message when the link is invalid", async () => {
     vi.spyOn(authApi, "getInvitePreview").mockRejectedValue(new Error("404"));
