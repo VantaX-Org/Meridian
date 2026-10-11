@@ -40,13 +40,13 @@ def log() -> Iterator[Log]:
 
     from workers.db import tenant_session
 
-    _alembic("upgrade", "head")
     from urllib.parse import urlparse, urlunparse
 
     url = os.environ["MERIDIAN_TEST_DB_URL"]
     u = urlparse(url)
     if (u.port or 5432) == 5432:
         pytest.skip("refusing to run migrations against port 5432")
+    _alembic("upgrade", "head")
     eng = create_engine(url)
     with eng.begin() as c:  # queries run as a non-superuser that cannot bypass RLS
         if c.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": _ROLE}).scalar():

@@ -9,7 +9,7 @@ import pytest
 
 from api.models.process_model import ID_PATTERN, ProcessModelDocument
 from api.services.process_discovery.builders import builder
-from api.services.process_discovery.generate import generate, keep_edges, label_of, mapping_row, node_key
+from api.services.process_discovery.generate import generate, keep_edges, label_of, mapping_row, node_key, unique_keys
 from api.services.process_discovery.mining import (END, ActivityStats, CaseTypeResult, Edge, MiningResult, Variant,
                                                    conformance)
 from api.services.process_model_validator import validate_document
@@ -175,3 +175,31 @@ def test_runtime_keys_take_their_template_label() -> None:
     row = mapping_row("STATUS_TECO", pm)
     assert row.key == "STATUS_<STAT>" and label_of("STATUS_TECO", row) == "Set status TECO"
     assert label_of("ZZ", None) == "ZZ" and node_key("a.b-c") == "A_B_C"
+
+
+def test_colliding_activity_names_get_distinct_keys_and_l4s() -> None:
+    acts = ["a.b", "a_b", "A.B", "CREATE_PO_ITEM"]
+    assert len({node_key(a) for a in acts[:3]}) == 1  # the plain key does collide
+    keys = unique_keys(reversed(acts))
+    assert len(set(keys.values())) == 4 and keys == unique_keys(acts)
+    po = _result("po_item", [(("CREATE_PO_ITEM", "a.b", "a_b", "A.B"), 2)])
+    g = generate(reference_document(), MiningResult("PTP", "po_item", {"po_item": po}), MAP)
+    dsc = [x for x in _nodes(g.document) if x.startswith("PTP-DSC-") and x.count("-") == 2 and x != "PTP-DSC-P1"]
+    assert len(dsc) == 3 and len({g.l5_of[("po_item", a)] for a in acts[:3]}) == 3
+    assert validate_document(g.document, check_ids=[]).errors == []
+
+
+def test_output_is_invariant_to_variant_edge_and_mapping_order() -> None:
+    variants = [(HAPPY, 6), (REWORK, 3), (ODD, 1)]
+    edges = [Edge("CREATE_PO_ITEM", "CHANGE_PO_QTY", 3, 3, 3600.0, 7200.0),
+             Edge("CREATE_PO_ITEM", "GOODS_RECEIPT", 6, 6, 60.0, 90.0), Edge("GOODS_RECEIPT", END, 2, 2, None, None)]
+
+    def doc(mapping, reverse: bool) -> str:
+        po = _result("po_item", variants, edges)
+        if reverse:
+            po.variants.reverse(), po.edges.reverse()
+        return generate(reference_document(), MiningResult("PTP", "po_item", {"po_item": po}), mapping,
+                        system_type="ecc").document.model_dump_json()
+
+    base = doc(MAP, False)
+    assert doc(MAP, True) == base and doc(MAP[::-1], False) == base and doc(MAP[::-1], True) == base

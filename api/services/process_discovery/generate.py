@@ -43,6 +43,22 @@ def node_key(activity: str) -> str:
     return _KEY.sub("_", activity.upper()) or "NONE"
 
 
+def unique_keys(activities: Iterable[str]) -> dict[str, str]:
+    """``node_key`` per activity, made collision-free: activities sharing a key ("a.b", "a_b") are taken in
+    sorted name order and a later one gets ``_<n>`` appended, so no two share a discovered L4."""
+    out: dict[str, str] = {}
+    used: set[str] = set()
+    for a in sorted(set(activities)):
+        base = key = node_key(a)
+        n = 1
+        while key in used:
+            n += 1
+            key = f"{base}_{n}"
+        used.add(key)
+        out[a] = key
+    return out
+
+
 def mapping_row(activity: str, mapping: Sequence[ActivityMap]) -> Optional[ActivityMap]:
     """The exact row, else the template row (``STATUS_<STAT>``) whose prefix the runtime key carries."""
     exact = next((m for m in mapping if m.key == activity), None)
@@ -115,14 +131,13 @@ class _Index:
             self.l4[l4_id], self.up[l4_id] = d, l3_id
         return self.l4[l4_id]
 
-    def place(self, activity: str, l5_id: Optional[str], row: Optional[ActivityMap]) -> str:
+    def place(self, activity: str, l5_id: Optional[str], row: Optional[ActivityMap], key: str) -> str:
         """Spec §4.2 rules 1-3. Returns the L5 id the activity's events belong to."""
         if l5_id in self.l5 and not is_unmapped(l5_id):
             return l5_id                                                           # rule 1
         parent = l5_id.rsplit("-", 1)[0] if l5_id else ""
         if l5_id and not is_unmapped(l5_id) and _ID.match(l5_id) and parent in self.l4:
             return self.add_l5(self.l4[parent], l5_id, label_of(activity, row), fields_of(row)).id  # rule 2
-        key = node_key(activity)                                                   # rule 3
         l4 = self.dsc_l4(key, label_of(activity, row))
         return self.add_l5(l4, f"{l4.id}-01", label_of(activity, row), fields_of(row)).id
 
@@ -221,13 +236,13 @@ def _diagram(l4: L4, cases: int) -> Diagram:
     base = l4.id
     s_id, e_id = f"{base}-S", f"{base}-E"
     acts = sorted(l4.activities, key=lambda a: (a.order, a.id))
-    seen = [a for a in acts if a.discovery and a.discovery.observed]
+    seen = [(a, a.discovery) for a in acts if a.discovery and a.discovery.observed]
     cand: list[tuple[str, str, int]] = []
-    for a in seen:
-        if a.discovery.entry_count:
-            cand.append((s_id, f"{a.id}-T", a.discovery.entry_count))
-    for a in seen:
-        for e in a.discovery.edges:
+    for a, d in seen:
+        if d.entry_count:
+            cand.append((s_id, f"{a.id}-T", d.entry_count))
+    for a, d in seen:
+        for e in d.edges:
             cand.append((f"{a.id}-T", e_id if e.target == END else f"{e.target}-T", e.count))
     kept = keep_edges(cand, cases, [s_id])
     outdeg = Counter(s for s, _, _ in kept)
@@ -237,14 +252,14 @@ def _diagram(l4: L4, cases: int) -> Diagram:
         return f"{base}-GS" if node == s_id else f"{node[:-2]}-G{side}"
 
     nodes: list[Node] = [Node(id=s_id, type="startEvent", label="Start")]
-    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a in seen]
+    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a, _ in seen]
     nodes += [Node(id=e_id, type="endEvent", label="End")]
     flows: list[Flow] = []
 
     def link(src: str, dst: str, label: Optional[str] = None) -> None:
         flows.append(Flow(id=f"{base}-F{len(flows) + 1}", source=src, target=dst, label=label))
 
-    for x in [s_id, *(f"{a.id}-T" for a in seen)]:
+    for x in [s_id, *(f"{a.id}-T" for a, _ in seen)]:
         if outdeg[x] > 1:
             nodes.append(Node(id=gw(x, "O"), type="exclusiveGateway"))
             link(x, gw(x, "O"))
@@ -255,7 +270,7 @@ def _diagram(l4: L4, cases: int) -> Diagram:
         src = gw(s, "O") if outdeg[s] > 1 else s
         dst = gw(t, "I") if t != e_id and indeg[t] > 1 else t
         link(src, dst, f"{n:,} cases")
-    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a in acts if a not in seen]
+    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a in acts if a not in [x for x, _ in seen]]
     return Diagram(nodes=nodes, flows=flows)
 
 
@@ -272,10 +287,11 @@ def generate(base: ProcessModelDocument, mining: MiningResult, mapping: Sequence
     ix = _Index.of(root)
 
     l5_of: dict[tuple[str, str], str] = {}
+    keys = unique_keys(a for r in mining.by_type.values() for a in r.activities)
     for ct, r in sorted(mining.by_type.items()):
         rows = {a: mapping_row(a, [m for m in mapping if m.case_type == ct]) for a in r.activities}
         for a in sorted(r.activities, key=lambda a: (rows[a].order if rows[a] else 1_000_000, a)):
-            l5_of[(ct, a)] = ix.place(a, r.activities[a].l5_id, rows[a])
+            l5_of[(ct, a)] = ix.place(a, r.activities[a].l5_id, rows[a], keys[a])
 
     # Stats per level; a node seen by several case types keeps the one with the most cases.
     best: dict[str, DiscoveryStats] = {}
@@ -303,8 +319,9 @@ def generate(base: ProcessModelDocument, mining: MiningResult, mapping: Sequence
         for x, node in nodes.items():
             node.discovery = best.get(x) or DiscoveryStats(observed=False)                # rule 4
     for x, l4 in ix.l4.items():
-        if l4.discovery.observed:
-            l4.diagram = _diagram(l4, mining.by_type[l4.discovery.case_type].cases)
+        d = l4.discovery
+        if d and d.observed and d.case_type:
+            l4.diagram = _diagram(l4, mining.by_type[d.case_type].cases)
     return Generated(ProcessModelDocument.model_validate(doc.model_dump()), l5_of)
 
 

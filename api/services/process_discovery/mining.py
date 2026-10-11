@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Callable, Iterable, Optional, Sequence
 
 from sqlalchemy import bindparam, text
@@ -190,8 +191,8 @@ def is_unmapped(l5_id: Optional[str]) -> bool:
     return not l5_id or "-DSC-" in l5_id
 
 
-def _f(v: object) -> Optional[float]:
-    return None if v is None else float(v)  # type: ignore[arg-type]  # Decimal or float from SQL
+def _f(v: Decimal | float | None) -> Optional[float]:
+    return None if v is None else float(v)
 
 
 def _query(session: Session, sql: str, scope: Scope, case_type: str, flt: ProcessFilter) -> Sequence[Row[tuple[object, ...]]]:
@@ -216,7 +217,7 @@ def mine_case_type(session: Session, scope: Scope, case_type: str, flt: ProcessF
         r.activity, r.l5_id, int(r.events), int(r.cases), round(r.cases / cases, 6) if cases else 0.0,
         _f(r.median_s), _f(r.p90_s), round(r.rework / r.cases, 6) if r.cases else 0.0,
         round(r.auto_n / r.auto_known, 6) if r.auto_known else None, int(r.auto_n), int(r.auto_known))
-        for r in _query(session, NODES_SQL, scope, case_type, flt)}
+        for r in sorted(_query(session, NODES_SQL, scope, case_type, flt), key=lambda r: r.activity)}
     result = CaseTypeResult(case_type, cases, sum(a.events for a in acts.values()),
                             _f(total.median_s) if total else None, _f(total.p90_s) if total else None,
                             edges, acts, variants)

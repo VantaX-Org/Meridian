@@ -28,6 +28,11 @@ class ProcessFilter(BaseModel):
             raise ValueError(f"invalid org key: {bad[0]}")
         return {k: sorted(set(vals)) for k, vals in sorted(v.items()) if vals}
 
+    @field_validator("doc_type")
+    @classmethod
+    def _doc_types(cls, v: list[str]) -> list[str]:
+        return sorted(set(v))
+
     @classmethod
     def from_query(cls, params: Mapping[str, object]) -> "ProcessFilter":
         """Parse ``?from=&to=&org.BUKRS=&doc_type=&case_type=&automated=``.
@@ -37,19 +42,19 @@ class ProcessFilter(BaseModel):
         def values(key: str) -> list[str]:
             getlist = getattr(params, "getlist", None)
             got = getlist(key) if getlist is not None else params.get(key, [])
-            raw: list[object] = [got] if isinstance(got, str) else list(got)  # type: ignore[call-overload]
+            raw: list[object] = list(got) if isinstance(got, (list, tuple)) else [got]
             return [p for v in raw for p in str(v).split(",") if p]
 
         auto = values("automated")
         first: Callable[[str], Optional[str]] = lambda k: next(iter(values(k)), None)  # noqa: E731
-        return cls(
-            period_from=first("from"),  # type: ignore[arg-type]  # pydantic parses the ISO date
-            period_to=first("to"),  # type: ignore[arg-type]
-            org={k[4:]: values(k) for k in params.keys() if k.startswith("org.")},
-            doc_type=values("doc_type"),
-            case_type=first("case_type"),
-            automated=None if not auto else auto[0].lower() in ("1", "true", "yes"),
-        )
+        return cls.model_validate({  # validation parses the ISO dates
+            "period_from": first("from"),
+            "period_to": first("to"),
+            "org": {k[4:]: values(k) for k in params.keys() if k.startswith("org.")},
+            "doc_type": values("doc_type"),
+            "case_type": first("case_type"),
+            "automated": None if not auto else auto[0].lower() in ("1", "true", "yes"),
+        })
 
     def digest(self) -> str:
         """sha1 of the canonical JSON; the Redis DFG cache key part (spec §3.7)."""
