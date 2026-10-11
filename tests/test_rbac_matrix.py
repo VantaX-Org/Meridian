@@ -62,3 +62,74 @@ def test_audit_reads_accept_view_audit_or_manage_users():
     assert src.count('require_any_permission("view_audit", "manage_users")') == 4
     assert 'require_permission("manage_users")' not in src
     assert has_permission("auditor", "view_audit") and not has_permission("auditor", "manage_users")
+
+
+class _EmptyResult:
+    def scalar(self):
+        return 0
+
+    def fetchall(self):
+        return []
+
+
+class _EmptyDB:
+    async def execute(self, *_a, **_k):
+        return _EmptyResult()
+
+
+def _audit_client(monkeypatch):
+    import uuid
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes.audit import router
+
+    monkeypatch.setenv("MERIDIAN_DEV_ROLE_HEADER", "1")
+    app = FastAPI()
+    app.include_router(router)
+
+    async def _db():
+        yield _EmptyDB()
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_tenant] = lambda: Tenant(uuid.uuid4(), "T", [])
+    return TestClient(app)
+
+
+def test_audit_endpoints_gate_by_role_over_http(monkeypatch):
+    client = _audit_client(monkeypatch)
+    for path in ("/api/v1/audit", "/api/v1/audit/llm"):
+        for role, status in (("auditor", 200), ("admin", 200), ("viewer", 403)):
+            r = client.get(path, headers={"X-User-Role": role})
+            assert r.status_code == status, (path, role, r.text)
+
+
+def test_require_any_permission_raises_only_when_every_action_fails():
+    import asyncio
+    import uuid
+
+    from fastapi import HTTPException, Request
+
+    from api.deps import Tenant
+    from api.services.rbac import require_any_permission
+
+    req = Request({"type": "http", "headers": [(b"x-user-role", b"viewer")], "query_string": b""})
+    t = Tenant(uuid.uuid4(), "T", [])
+
+    async def call(*actions):
+        return await require_any_permission(*actions)(req, t, _EmptyDB())
+
+    import os
+    os.environ["MERIDIAN_DEV_ROLE_HEADER"] = "1"
+    try:
+        assert asyncio.run(call("manage_users", "view_audit_x", "view")) == "viewer"
+        try:
+            asyncio.run(call("manage_users", "view_audit"))
+        except HTTPException as exc:
+            assert exc.status_code == 403
+        else:
+            raise AssertionError("expected 403")
+    finally:
+        os.environ.pop("MERIDIAN_DEV_ROLE_HEADER", None)
