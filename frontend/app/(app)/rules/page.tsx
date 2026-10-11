@@ -86,7 +86,8 @@ export default function RulesPage() {
   const [source, setSource] = useUrlState("source", "");
   const [table, setTable] = useUrlState("table", "");
   const [view, setView] = useUrlState("view", "");
-  const [state, setState] = useUrlState("state", "");
+  const [rawState, setState] = useUrlState("state", "");
+  const state = rawState === "enabled" || rawState === "disabled" ? rawState : "";
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);

@@ -14,7 +14,7 @@ import { apiErrorMessage, isListFailure } from "@/lib/error";
 export default function RuleDraftsPage() {
   const q = useQuery({ queryKey: ["rule-drafts"], queryFn: getRuleDrafts });
   const columns = useMemo<ColumnDef<RuleDraft>[]>(() => [
-    { id: "module", header: "Object", cell: ({ row }) => row.original.domain.replace("dq_rule:", "") },
+    { id: "module", header: "Object", cell: ({ row }) => { const m = row.original.domain.replace("dq_rule:", ""); return <Link href={`/objects/${m}`} className="underline">{m}</Link>; } },
     { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{String(row.original.proposed_rule.id ?? row.original.proposed_rule.rule_id ?? "—")}</Mono> },
     { id: "why", header: "Why", cell: ({ row }) => row.original.rationale ?? "—" },
     { id: "at", header: "Saved", cell: ({ row }) => formatDate(row.original.created_at, "date") },

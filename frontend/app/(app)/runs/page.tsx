@@ -81,6 +81,8 @@ function scopeName(scope: string, systemName: Map<string, string>): string {
 export default function RunsPage() {
   const router = useRouter();
   const [system, setSystem] = useUrlState("system");
+  const [rawStatus, setStatus] = useUrlState("status", "");
+  const failedOnly = rawStatus === "failed";
   const dayOne = useDayOne();
 
   const all = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions({ limit: 100 }) });
@@ -96,7 +98,8 @@ export default function RunsPage() {
   const columns = useMemo(() => makeColumns(systemName, allVersions), [systemName, allVersions]);
   // The upload scope has no system_id to filter by (the API has no "no system" filter), so it is not clickable here.
   const series = useMemo(() => runSeries(allVersions).filter((s) => s.scope !== "upload"), [allVersions]);
-  const rows = system ? filtered.data?.versions ?? [] : allVersions;
+  const scoped = system ? filtered.data?.versions ?? [] : allVersions;
+  const rows = failedOnly ? scoped.filter((v) => statusTone(v.status) === "no-go") : scoped;
   const activeQuery = system ? filtered : all;
 
   const state = activeQuery.isLoading ? "loading" : isListFailure(activeQuery) ? "error" : rows.length === 0 ? "empty" : undefined;
@@ -106,7 +109,6 @@ export default function RunsPage() {
   const prevId = latest ? previousRunId(latest, allVersions) : null;
   const prevRun = prevId ? allVersions.find((v) => v.id === prevId) : undefined;
   const prevDqs = prevRun ? overallDqs(prevRun) : null;
-  const failedRun = rows.find((v) => statusTone(v.status) === "no-go");
   const delta = latestDqs !== null && prevDqs !== null ? latestDqs - prevDqs : null;
   const summary = rows.length > 0 && (
     <div className="flex flex-col gap-3">
@@ -117,7 +119,7 @@ export default function RunsPage() {
           value={latest && latestDqs !== null ? <DrillLink href={`/runs/${latest.id}`}>{latestDqs.toFixed(1)}</DrillLink> : "—"}
           hint={delta !== null && prevId && latest ? <DrillLink href={`/runs/${latest.id}/vs/${prevId}`}>{`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} vs previous`}</DrillLink> : "No earlier run to compare with"}
         />
-        <Stat label="Failed" value={rows.filter((v) => statusTone(v.status) === "no-go").length} tone={rows.some((v) => statusTone(v.status) === "no-go") ? "no-go" : undefined} href={failedRun ? `/runs/${failedRun.id}` : undefined} />
+        <Stat label="Failed" value={scoped.filter((v) => statusTone(v.status) === "no-go").length} tone={scoped.some((v) => statusTone(v.status) === "no-go") ? "no-go" : undefined} href="/runs?status=failed" />
       </div>
       {series.length > 0 && (
     <div className="flex flex-wrap items-center gap-3">
@@ -148,6 +150,12 @@ export default function RunsPage() {
   return (
     <ExplorerPage
       toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
+      filterBar={failedOnly ? (
+        <div className="flex items-center gap-2 text-[13px]">
+          <span style={{ color: "var(--m-ink-2)" }}>Showing failed runs.</span>
+          <Button variant="secondary" onClick={() => setStatus("")}>Show all runs</Button>
+        </div>
+      ) : undefined}
       summary={summary}
       table={
         <DataTable

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useUrlState } from "@/hooks/use-url-state";
 import { toast } from "sonner";
 import { DrillLink, Button, DataTable, ExplorerPage, Pill, Sparkline, Stat, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
@@ -23,6 +24,7 @@ export default function MigrationPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const [creating, setCreating] = useState(false);
+  const [rawVerdict, setVerdict] = useUrlState("verdict", "");
   const waves = useQuery({ queryKey: queryKeys.migrationWaves(), queryFn: getWaves });
   const run = useMutation({
     mutationFn: (id: string) => runWave(id),
@@ -96,7 +98,8 @@ export default function MigrationPage() {
   const goWaves = data.filter((w) => verdictOf(w) === "go");
   const atRiskWaves = data.filter((w) => verdictOf(w) === "at_risk");
   const noGoWaves = data.filter((w) => verdictOf(w) === "no_go");
-  const [firstGo, firstAtRisk, firstNoGo] = [goWaves[0], atRiskWaves[0], noGoWaves[0]];
+  const verdict = rawVerdict === "go" || rawVerdict === "at_risk" || rawVerdict === "no_go" ? rawVerdict : "";
+  const shownWaves = verdict ? data.filter((w) => verdictOf(w) === verdict) : data;
   const [goCount, atRiskCount, noGoCount] = [goWaves.length, atRiskWaves.length, noGoWaves.length];
   const createButton = can("analyse") ? <Button onClick={() => setCreating(true)}>Create wave</Button> : undefined;
   return (
@@ -105,13 +108,23 @@ export default function MigrationPage() {
         summary={data.length > 0 ? (
           <div className="flex flex-wrap gap-6">
             <Stat label="Waves" value={data.length} />
-            <Stat label="Go" value={goCount} tone="go" href={firstGo ? `/migration/${firstGo.id}` : undefined} />
-            <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href={firstAtRisk ? `/migration/${firstAtRisk.id}` : undefined} />
-            <Stat label="No go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href={firstNoGo ? `/migration/${firstNoGo.id}` : undefined} />
+            <Stat label="Go" value={goCount} tone="go" href="/migration?verdict=go" />
+            <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href="/migration?verdict=at_risk" />
+            <Stat label="No go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href="/migration?verdict=no_go" />
           </div>
         ) : undefined}
-        filterBar={<div className="flex justify-end">{createButton}</div>}
-        table={<DataTable columns={columns} data={data} getRowId={(w) => w.id}
+        filterBar={
+          <div className="flex items-center justify-between gap-2 text-[13px]">
+            {verdict ? (
+              <span className="flex items-center gap-2">
+                <span style={{ color: "var(--m-ink-2)" }}>Showing {verdict.replace("_", " ")} waves.</span>
+                <Button variant="secondary" onClick={() => setVerdict("")}>Show all waves</Button>
+              </span>
+            ) : <span />}
+            {createButton}
+          </div>
+        }
+        table={<DataTable columns={columns} data={shownWaves} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
         state={waves.isPending ? "loading" : isListFailure(waves) ? "error" : data.length === 0 ? "empty" : undefined}
         emptyProps={{ title: "No migration waves yet. Create one to track readiness.", action: createButton }}

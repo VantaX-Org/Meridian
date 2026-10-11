@@ -130,3 +130,27 @@ describe("RunsPage", () => {
     expect(getVersions).toHaveBeenCalledWith({ system_id: "sys-1", limit: 100 });
   });
 });
+
+describe("RunsPage status param", () => {
+  it("ignores an unknown ?status= value and shows every run", async () => {
+    searchParams.set("status", "garbage");
+    const failed = version({ id: "v3", label: "Broken run", status: "failed" });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
+    expect(screen.getByText("Broken run")).toBeInTheDocument();
+    searchParams.delete("status");
+  });
+
+  it("?status=failed shows only failed runs", async () => {
+    searchParams.set("status", "failed");
+    const failed = version({ id: "v3", label: "Broken run", status: "failed" });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, failed] });
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
+    renderWithQuery(<RunsPage />);
+    await waitFor(() => expect(screen.getByText("Broken run")).toBeInTheDocument());
+    expect(screen.queryByText("Oct 8 upload")).not.toBeInTheDocument();
+    searchParams.delete("status");
+  });
+});

@@ -112,3 +112,19 @@ describe("systems list page", () => {
     expect(screen.queryByLabelText(/since the previous run/)).not.toBeInTheDocument();
   });
 });
+
+describe("systems page health param", () => {
+  it("ignores an unknown ?health= value: every system, no banner", async () => {
+    currentSearch = "health=garbage";
+    const sick = { ...SYSTEM, id: "s2", name: "BW Down", health_status: "degraded" } as SAPSystemExtended;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([SYSTEM, sick]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 2 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    expect(screen.getByText("BW Down")).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
+    currentSearch = "";
+  });
+});

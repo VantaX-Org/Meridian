@@ -5,7 +5,7 @@ import { type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -103,7 +103,8 @@ export default function ObjectsPage() {
 
   const objs = data?.objects ?? [];
   const ready = objs.filter((o) => o.readiness === "pass").length;
-  const verdict = search.get("verdict");
+  const rawVerdict = search.get("verdict");
+  const verdict = rawVerdict === "ready" || rawVerdict === "not_ready" ? rawVerdict : null;
   const shownObjs = verdict ? objs.filter((o) => (o.readiness === "pass") === (verdict === "ready")) : objs;
   const columns = makeColumns(run); // React Compiler memoizes on run
   const hero = objs.length > 0 && (
@@ -116,6 +117,12 @@ export default function ObjectsPage() {
 
   return (
     <ExplorerPage
+      filterBar={verdict ? (
+        <div className="flex items-center gap-2 text-[13px]">
+          <span style={{ color: "var(--m-ink-2)" }}>Showing {verdict === "ready" ? "ready" : "not ready"} objects.</span>
+          <Button variant="secondary" onClick={() => router.replace(`/objects?run=${run}`)}>Show all objects</Button>
+        </div>
+      ) : undefined}
       summary={hero || undefined}
       toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={

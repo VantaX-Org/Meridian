@@ -82,3 +82,16 @@ describe("rules page", () => {
     expect(screen.getByText("Batch class is mandatory")).toBeInTheDocument();
   });
 });
+
+describe("rules page state param", () => {
+  it("ignores an unknown ?state= value and shows enabled and disabled rules", async () => {
+    searchParams.set("state", "garbage");
+    const off: Rule = { ...RULE, id: "r9", name: "AP009: Disabled rule", enabled: false };
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE, off], total: 2, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    renderWithQuery(<RulesPage />);
+    await waitFor(() => expect(screen.getByText("Vendor number is mandatory")).toBeInTheDocument());
+    expect(screen.getByText("Disabled rule")).toBeInTheDocument();
+    searchParams.delete("state");
+  });
+});
