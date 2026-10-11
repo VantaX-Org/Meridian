@@ -73,3 +73,11 @@ def test_llm_audit_pages_and_summarises_cache() -> None:
     out = asyncio.run(list_llm_audit(service_name=None, success=None, limit=50, offset=0, db=db, tenant=TENANT))
     assert out["total"] == 1 and out["entries"][0]["called_at"].startswith("2026-01-01")
     assert out["cache"][0]["decisions"] == 4
+
+
+def test_audit_path_contains_filter_escapes_wildcards() -> None:
+    from api.routes.audit import _filters
+
+    where, params = _filters(TENANT, None, None, None, None, None, None, None, "50%_x")
+    assert "ILIKE :pathlike" in where
+    assert params["pathlike"] == "%50\\%\\_x%"

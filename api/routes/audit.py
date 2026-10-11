@@ -37,7 +37,7 @@ _COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, met
 _EXPORT_MAX = 100_000
 
 
-def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until) -> tuple[str, dict]:
+def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until, path_contains=None) -> tuple[str, dict]:
     conditions = ["tenant_id = :tid"]
     params: dict = {"tid": str(tenant.id)}
     for value, clause, key in (
@@ -52,6 +52,12 @@ def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, meth
         if value:
             conditions.append(clause)
             params[key] = value
+    if path_contains:
+        # Entities keyed by something other than a UUID/number (object names, material numbers)
+        # have no entity_id, so the detail pages match on the request path instead.
+        escaped = path_contains.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        conditions.append("path ILIKE :pathlike ESCAPE '\\'")
+        params["pathlike"] = f"%{escaped}%"
     return " AND ".join(conditions), params
 
 
@@ -78,6 +84,7 @@ async def list_audit_entries(
     until: Optional[str] = Query(
         None, description="ISO-8601 timestamp — return entries at or before this time"
     ),
+    path_contains: Optional[str] = Query(None, description="Substring of the request path (case-insensitive)"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -86,7 +93,7 @@ async def list_audit_entries(
 ):
     """List audit log entries for this tenant, newest first."""
     await _set_rls(db, tenant.id)
-    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until)
+    where_clause, params = _filters(tenant, actor_user_id, entity_type, entity_id, action, method, since, until, path_contains)
 
     count_result = await db.execute(
         text(f"SELECT COUNT(*) FROM audit_log WHERE {where_clause}"),

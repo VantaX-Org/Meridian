@@ -33,6 +33,8 @@ export interface AuditListParams {
   method?: string;
   since?: string;
   until?: string;
+  /** Substring of the request path, for entities with no UUID/numeric id. */
+  path_contains?: string;
   limit?: number;
   offset?: number;
 }
