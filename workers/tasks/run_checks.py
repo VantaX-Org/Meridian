@@ -10,6 +10,7 @@ import pandas as pd
 import yaml
 
 from celery import Task
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
@@ -225,6 +226,7 @@ _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 # boolean, not a count, and the Redis transport does not set it reliably.
 _MAX_LOST = 2
 _LOST_ERROR = "checks worker ran out of memory twice; aborted"
+_TIME_LIMIT_ERROR = f"checks exceeded the time limit of {_CHECKS_LIMIT}s; aborted"
 _DELIVERY_TTL = 2 * 24 * 3600
 
 
@@ -301,6 +303,10 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
                     _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
                     return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
                 return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
+            except SoftTimeLimitExceeded:  # the hard limit follows and runs no handler: fail the version now
+                logger.error(f"run_checks {task_id} for version_id={version_id}: {_TIME_LIMIT_ERROR}")
+                _mark_failed(engine, tenant_id, version_id, _TIME_LIMIT_ERROR)
+                raise
             finally:
                 _clear_deliveries(task_id)
         finally:
@@ -1063,6 +1069,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
 
         return {"version_id": version_id, "status": "complete", "findings_count": len(all_results)}
 
+    except SoftTimeLimitExceeded:
+        raise  # run_checks marks the version failed with the time-limit reason
     except Exception as e:
         # Step 12: On failure, update status
         logger.error(f"run_checks failed: {traceback.format_exc()}")

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 import pandas as pd
+from celery.exceptions import SoftTimeLimitExceeded
 from pydantic import BaseModel, PrivateAttr
 
 # Exact SAP primary key fields — highest priority.
@@ -244,6 +245,8 @@ class BaseCheck(ABC):
             return None
         try:
             ev = self.evaluate(df)
+        except SoftTimeLimitExceeded:  # the task's time limit ends the run, never one rule
+            raise
         except Exception as e:  # rule-level error is visible, never silent
             return self._error(df, str(e))
         if ev is None:
