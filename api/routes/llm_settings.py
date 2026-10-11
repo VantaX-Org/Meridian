@@ -384,7 +384,9 @@ async def test_llm_connection_endpoint(
                 {"role": "system", "content": "You are a test assistant."},
                 {"role": "user", "content": "Reply with only the word READY."},
             ],
-            timeout_seconds=30,
+            # Bundled Ollama runs on CPU and may first have to load the
+            # model from disk; 30s fails a healthy install.
+            timeout_seconds=max(30, body.request_timeout or 0) if body.provider == "ollama" else 30,
         )
 
         if content and "READY" in content.upper():

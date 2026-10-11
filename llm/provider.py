@@ -129,7 +129,15 @@ def build_llm_from_config(
             temperature=temperature,
             num_predict=max_tokens or 4096,
             format="json",
-            request_timeout=request_timeout or 90,
+            # Thinking models (qwen3.x) otherwise spend minutes reasoning on
+            # CPU before the first answer token.
+            reasoning=False,
+            # Keep the weights resident; a cold load of a multi-GB model on
+            # CPU costs more than the generation itself.
+            keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "24h"),
+            # ChatOllama has no request_timeout field; it forwards
+            # client_kwargs to the httpx client.
+            client_kwargs={"timeout": request_timeout or 90},
         )
 
     if provider == "ollama_cloud":

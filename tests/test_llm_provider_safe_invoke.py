@@ -116,3 +116,12 @@ def test_build_llm_from_config_none_returns_noop():
 
     llm = build_llm_from_config(provider="none")
     assert isinstance(llm, _NoopLLM)
+
+
+def test_bundled_ollama_disables_thinking_and_applies_timeout() -> None:
+    from llm.provider import build_llm_from_config
+
+    llm = build_llm_from_config(provider="ollama", model="m", request_timeout=300)
+    assert llm.reasoning is False
+    assert llm.keep_alive
+    assert llm.client_kwargs == {"timeout": 300}
