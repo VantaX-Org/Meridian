@@ -333,6 +333,46 @@ async def grants_for(db: AsyncSession, user_id: str, tenant_id: uuid.UUID,
     return grants
 
 
+def scope_from_path(request: Request) -> Scope:
+    """Scope of a request from its path/query params: system_id, module (or object_type).
+
+    A version_id with no system_id is resolved to its system by require_permission (one lookup,
+    cached on request.state). Anything unresolved stays None, which only tenant-wide grants cover,
+    so a scoped grant fails closed rather than open."""
+    def param(*names: str) -> str | None:
+        for n in names:
+            v = request.path_params.get(n) or request.query_params.get(n)
+            if v:
+                return str(v)
+        return None
+
+    sid = param("system_id")
+    try:
+        system_id = uuid.UUID(sid) if sid else None
+    except ValueError:
+        system_id = None
+    request.state.scope_version_id = param("version_id") if system_id is None else None
+    return Scope(system_id, param("module", "object_type"))
+
+
+async def _version_system(request: Request, db: AsyncSession, tenant_id: uuid.UUID) -> uuid.UUID | None:
+    vid = getattr(request.state, "scope_version_id", None)
+    if not vid:
+        return None
+    try:
+        vid = str(uuid.UUID(vid))
+    except ValueError:
+        return None
+    await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant_id)}'"))
+    # analysis_versions has no system_id column: the extraction stamps it into metadata ('upload' for files).
+    row = (await db.execute(text("SELECT metadata->>'system_id' FROM analysis_versions "
+                                 "WHERE id = :v AND tenant_id = :t"), {"v": vid, "t": str(tenant_id)})).fetchone()
+    try:
+        return uuid.UUID(row[0]) if row and row[0] else None
+    except ValueError:
+        return None
+
+
 async def _grants_allow(grants: list[Grant], action: str, scope: Scope,
                         tenant_id: uuid.UUID, db: AsyncSession) -> bool:
     for role, s in grants:
@@ -375,6 +415,10 @@ def require_permission(
         uid = getattr(request.state, "local_user_id", None)
         dev = dev_role_override(request) is not None
         req_scope = scope(request) if scope else None
+        if req_scope is not None and req_scope.system_id is None and not dev:
+            vsys = await _version_system(request, db, tenant.id)
+            if vsys:
+                req_scope = Scope(vsys, req_scope.module)
 
         if req_scope is None:
             if has_permission(role, action):
@@ -385,12 +429,15 @@ def require_permission(
                           if g[1] == Scope()]
                 if await _grants_allow(grants, action, Scope(), tenant.id, db):
                     return role
-        elif dev:
+        elif dev or not uid:
+            # No grants to resolve (dev header / auth off): the tenant-wide legacy check.
             if has_permission(role, action):
                 return role
-        elif uid:
-            grants = await grants_for(db, uid, tenant.id, fallback_role=role)
-            if await _grants_allow(grants, action, req_scope, tenant.id, db):
+        else:
+            # users.role always counts tenant-wide, exactly as the unscoped check; grants narrow nothing
+            # and widen only at the scopes they cover.
+            if await _grants_allow(await user_grants(db, tenant.id, uid, role), action, req_scope,
+                                   tenant.id, db):
                 return role
 
         if resource is None and req_scope is None:

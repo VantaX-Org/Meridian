@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import Tenant, get_db, get_tenant
 from api.routes.record_issues import _row, _rls, _where
 from api.services import remediation
-from api.services.rbac import current_user_id, current_user_label, require_permission
+from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/remediation", tags=["remediation"])
 
@@ -87,7 +87,7 @@ async def create_batch(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("apply")),
+    _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Batch from a filtered set of open record issues (same filters as the work list)."""
     f = body.filter
@@ -133,7 +133,7 @@ async def create_batch_from_cleaning(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("apply")),
+    _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Draft batch from approved cleaning items. Still needs a second person's approval before export."""
     await _rls(db, tenant)
@@ -157,7 +157,7 @@ async def create_batch_from_simulation(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("apply")),
+    _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Draft batch from a finished simulation's record fixes (Redis, 24 h)."""
     from api.services.task_progress import _redis_client
@@ -181,7 +181,7 @@ async def create_batch_from_simulation(
 async def list_batches(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _rls(db, tenant)
     rows = await db.execute(text("""
@@ -200,7 +200,7 @@ async def list_batches(
 async def monitor_status(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Per system with a pinned baseline: its newest run compared with that baseline."""
     from api.services import monitor
@@ -213,7 +213,7 @@ async def get_batch(
     batch_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     return {"batch": await _batch(db, tenant, batch_id), "items": await _items(db, batch_id)}
 
@@ -224,7 +224,7 @@ async def batch_events(
     item_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Per-record audit trail (all items, or one)."""
     await _batch(db, tenant, batch_id)
@@ -243,7 +243,7 @@ async def update_item(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("apply")),
+    _perm: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Steward enters (or clears) the proposed value. Draft batches only."""
     if (await _batch(db, tenant, batch_id))["status"] != "draft":
@@ -271,7 +271,7 @@ async def accept_high_confidence(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("approve")),
+    _perm: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     """Accept every high-confidence rule proposal in a draft batch. Four eyes: not the batch creator."""
     b = await _batch(db, tenant, batch_id)
@@ -295,7 +295,7 @@ async def approve_batch(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("approve")),
+    _perm: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     """Four eyes: the approver must not be the person who built the batch."""
     b = await _batch(db, tenant, batch_id)
@@ -333,7 +333,7 @@ async def export_batch(
                                    description="mdg_cr_json only: the change-request type"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("export")),
+    _perm: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Approved batch as a load file. Items without a proposed value are left out."""
     b = await _batch(db, tenant, batch_id)
@@ -413,7 +413,7 @@ async def batch_diff_route(
     batch_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Before/after per record, grouped — what this batch actually changes."""
     await _batch(db, tenant, batch_id)
@@ -425,7 +425,7 @@ async def batch_packages(
     batch_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _perm: str = Depends(require_permission("view")),
+    _perm: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Audit trail of every file exported for this batch: format, sha256, who, when."""
     await _batch(db, tenant, batch_id)

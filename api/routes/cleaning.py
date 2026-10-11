@@ -14,7 +14,7 @@ from sqlalchemy import func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import current_user_id, current_user_label, require_permission
+from api.services.rbac import current_user_id, current_user_label, require_permission, scope_from_path
 
 logger = logging.getLogger("meridian.cleaning")
 
@@ -235,7 +235,7 @@ async def approve_cleaning_item(
     body: ApproveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -270,7 +270,7 @@ async def approve_cleaning_item(
 # ── POST /api/v1/cleaning/reject/{id} ────────────────────────────────────────
 
 
-@router.post("/cleaning/reject/{item_id}", dependencies=[Depends(require_permission("approve"))])
+@router.post("/cleaning/reject/{item_id}", dependencies=[Depends(require_permission("approve", scope=scope_from_path))])
 async def reject_cleaning_item(
     item_id: str,
     body: RejectBody,
@@ -310,7 +310,7 @@ async def bulk_approve(
     body: BulkApproveBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -357,7 +357,7 @@ async def apply_cleaning_item(
     body: ApplyBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("apply")),
+    _role: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -414,7 +414,7 @@ async def rollback_cleaning_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("apply")),
+    _role: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -463,7 +463,7 @@ async def rollback_cleaning_item(
 async def get_cleaning_export_options(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Return the object types and statuses actually present in this tenant's
     cleaning queue, along with row counts. Used by the export modal to build
@@ -515,7 +515,7 @@ async def export_cleaning_data(
     ),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     valid_formats = ("csv", "lsmw", "bapi", "idoc", "sf_csv", "xlsx")
     if export_format not in valid_formats:
@@ -680,7 +680,7 @@ async def list_cleaning_audit(
     per_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
 
@@ -774,7 +774,7 @@ async def list_dedup_candidates(
 # ── POST /api/v1/dedup/preview ────────────────────────────────────────────────
 
 
-@router.post("/dedup/preview", dependencies=[Depends(require_permission("mdm.read"))])
+@router.post("/dedup/preview", dependencies=[Depends(require_permission("mdm.read", scope=scope_from_path))])
 async def dedup_preview(
     body: DedupPreviewBody,
     db: AsyncSession = Depends(get_db),
@@ -821,7 +821,7 @@ async def dedup_preview(
 # ── POST /api/v1/dedup/merge ─────────────────────────────────────────────────
 
 
-@router.post("/dedup/merge", dependencies=[Depends(require_permission("approve"))])
+@router.post("/dedup/merge", dependencies=[Depends(require_permission("approve", scope=scope_from_path))])
 async def dedup_merge(
     body: DedupMergeBody,
     db: AsyncSession = Depends(get_db),

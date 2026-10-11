@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook, csv_response
-from api.services.rbac import current_user_id, require_permission
+from api.services.rbac import current_user_id, require_permission, scope_from_path
 
 router = APIRouter(prefix="/api/v1/migration", tags=["migration"])
 
@@ -155,7 +155,7 @@ async def start_migration(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     if body.mode not in _VALID_MODES:
         raise HTTPException(status_code=400, detail=f"Unknown mode: {body.mode}")
@@ -223,7 +223,7 @@ async def list_runs(
     mode: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     where = "tenant_id = :tid"
@@ -252,7 +252,7 @@ async def get_run(
     run_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     """Run header, per-module verdicts and gap counts by type/severity."""
     await _set_rls(db, tenant.id)
@@ -300,7 +300,7 @@ async def run_records(
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     run = (await db.execute(text("SELECT id FROM migration_runs WHERE id = :rid AND tenant_id = :t"),
@@ -322,7 +322,7 @@ async def dry_run_report(
     fmt: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Summary + per-rule + failing-record export for one s4_dry_run run."""
     import asyncio
@@ -430,7 +430,7 @@ async def _check_systems(db: AsyncSession, tenant_id: uuid.UUID, src: Optional[u
 async def list_waves(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     rows = await db.execute(text(f"""
@@ -458,7 +458,7 @@ async def create_wave(
     body: WaveCreate,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     await _check_systems(db, tenant.id, body.source_system_id, body.target_system_id)
@@ -485,7 +485,7 @@ async def update_wave(
     body: WaveUpdate,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     current = await _load_wave(db, tenant.id, wave_id)
@@ -515,7 +515,7 @@ async def delete_wave(
     wave_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     await _load_wave(db, tenant.id, wave_id)
@@ -530,7 +530,7 @@ async def run_wave(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     w = await _load_wave(db, tenant.id, wave_id)
@@ -546,7 +546,7 @@ async def wave_cockpit(
     wave_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     from api.services.migration.cockpit import load_cockpit
 
@@ -560,7 +560,7 @@ async def signoff_wave(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("approve")),
+    _role: str = Depends(require_permission("approve", scope=scope_from_path)),
 ):
     import json
 
@@ -608,7 +608,7 @@ async def wave_report(
     fmt: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     import asyncio
 
@@ -641,7 +641,7 @@ async def realignment_report(
     fmt: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     import asyncio
 
@@ -676,7 +676,7 @@ async def blocker_fix_batch(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("apply")),
+    _role: str = Depends(require_permission("apply", scope=scope_from_path)),
 ):
     """Draft a cleaning batch for the open DQ issues on the records one blocker affects.
     Migration and DQ share the record-key format (checks/base.record_keys), so (module, record_key) joins."""
@@ -759,7 +759,7 @@ async def run_findings(
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("view")),
+    _role: str = Depends(require_permission("view", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     where, params = _findings_where(run_id, module, gap_type, severity, grounded, search)
@@ -785,7 +785,7 @@ async def export_findings(
     severity: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Every gap of a run (the remediation work list), as CSV or XLSX."""
     await _set_rls(db, tenant.id)
@@ -819,7 +819,7 @@ async def value_candidates(
     target_field: str,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     """Distinct source values that still need a target value mapping (with record counts)."""
     await _set_rls(db, tenant.id)
@@ -841,7 +841,7 @@ async def export_migration(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("export")),
+    _role: str = Depends(require_permission("export", scope=scope_from_path)),
 ):
     """Target load files (one sheet/CSV per target table) for records without blocking gaps."""
     if export_format not in ("csv", "xlsx"):
@@ -929,7 +929,7 @@ async def get_field_map(
     source_system_type: str = Query("ecc"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     """Mappings with source and target field definitions side by side."""
     from sap.ddic import dictionary_for_system
@@ -964,7 +964,7 @@ async def create_field_map(
     body: FieldMapCreate,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     r = await db.execute(
@@ -992,7 +992,7 @@ async def update_field_map(
     body: FieldMapUpdate,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     sets, params = [], {"id": mapping_id}
@@ -1017,7 +1017,7 @@ async def delete_field_map(
     mapping_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     await db.execute(text("DELETE FROM transfer_field_mappings WHERE id = :id"), {"id": mapping_id})
@@ -1030,7 +1030,7 @@ async def seed_field_map(
     body: SeedBody,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     """Seed the map from the source data actually held: identity where the target
     has the field, plus the SAP-standard conversions (CVI business partner, SD
@@ -1078,7 +1078,7 @@ async def get_value_map(
     target_field: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     where, params = "module = :m AND status = 'confirmed'", {"m": module}
@@ -1097,7 +1097,7 @@ async def upsert_value_map(
     request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     for e in body.entries:
@@ -1122,7 +1122,7 @@ async def delete_value_map(
     entry_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("analyse")),
+    _role: str = Depends(require_permission("analyse", scope=scope_from_path)),
 ):
     await _set_rls(db, tenant.id)
     await db.execute(text("DELETE FROM transfer_value_mappings WHERE id = :id"), {"id": entry_id})

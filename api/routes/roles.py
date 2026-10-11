@@ -8,6 +8,7 @@ Escalation guards (every write path routes through them):
   admin-equivalent role (either key, or any role holding licence/admin, i.e. manage_system).
 """
 
+import json
 import re
 import uuid
 from dataclasses import dataclass
@@ -421,6 +422,52 @@ async def delete_grant(user_id: uuid.UUID, grant_id: uuid.UUID, request: Request
                       None)
     await db.commit()
     return GrantDeleted(id=str(grant_id), status="deleted")
+
+
+class ConvertBody(BaseModel):
+    confirm: bool = False
+
+
+class ConvertOut(BaseModel):
+    converted: list[str]            # object types that became (data_owner, null, module) grants
+    kept: list[str]                 # explicit denials: a grant cannot express them, so they stay in JSONB
+    cleared: bool                   # users.permissions set to NULL (only on confirm, nothing kept)
+    confirmed: bool
+
+
+@router.post("/users/{user_id}/object-approvals/convert",
+             dependencies=[Depends(require_permission("manage_users"))])
+async def convert_object_approvals(user_id: uuid.UUID, body: ConvertBody, request: Request,
+                                   db: AsyncSession = Depends(get_db),
+                                   tenant: Tenant = Depends(get_tenant)) -> ConvertOut:
+    """Legacy users.permissions JSONB -> module grants (rbac.md §3.4 step 4). Without `confirm` it only
+    previews. On confirm each approve=true entry becomes a (data_owner, null, module) grant through
+    insert_grant (ceiling, no self, admin gate), and the JSONB is cleared only after every grant exists.
+    An approve=false entry is a denial that a grant cannot express; clearing it would widen the user, so it
+    is kept and the JSONB is rewritten to just those."""
+    await _rls(db, tenant)
+    row = (await db.execute(text("SELECT permissions FROM users WHERE id = :u AND tenant_id = :t FOR UPDATE"),
+                            {"u": str(user_id), "t": str(tenant.id)})).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    perms = row[0] if isinstance(row[0], dict) else {}
+    allow = sorted(k for k, v in perms.items() if isinstance(v, dict) and v.get("approve", True))
+    keep = {k: v for k, v in perms.items() if k not in allow}
+    if any(not re.fullmatch(r"[a-z0-9_]+", k) for k in allow):
+        raise HTTPException(status_code=422, detail="Object approvals hold a key that is not a module name")
+    if not body.confirm:
+        return ConvertOut(converted=allow, kept=sorted(keep), cleared=False, confirmed=False)
+    caller = await resolve_caller(db, tenant, request, Scope())
+    forbid_self(caller, user_id)
+    for module in allow:
+        await insert_grant(db, tenant, request, str(user_id), "data_owner", None, module)
+    cleared = not keep
+    await db.execute(text("UPDATE users SET permissions = CAST(:p AS jsonb) WHERE id = :u AND tenant_id = :t"),
+                     {"p": None if cleared else json.dumps(keep), "u": str(user_id), "t": str(tenant.id)})
+    await write_audit(db, tenant.id, request, "grant.create", "user", str(user_id), {"permissions": perms},
+                      {"converted": allow, "kept": sorted(keep)})
+    await db.commit()
+    return ConvertOut(converted=allow, kept=sorted(keep), cleared=cleared, confirmed=True)
 
 
 @router.get("/users/{user_id}/effective", dependencies=[Depends(require_permission("view"))])
