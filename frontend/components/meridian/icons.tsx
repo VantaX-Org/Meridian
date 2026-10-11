@@ -3,38 +3,18 @@ import type { SVGProps } from "react";
 type IconProps = { size?: number; className?: string; style?: React.CSSProperties } & SVGProps<SVGSVGElement>;
 
 /**
- * The meridian M: a square tile in the accent colour with an M whose centre
- * vertex continues as a plumb line past the baseline — the line is the
- * meridian, the letterform is the product. Reads as "a square with an M"
- * from 16px up. Same geometry as the favicon, the XLSX cover and the PDF
- * cover (frontend/public/brand).
- *
- * `variant="tile"` (default) draws the accent tile behind the mark —
- * `aria-hidden` it when the visible word "Meridian" sits next to it.
- * `variant="mono"` omits the tile and strokes in `currentColor`, for the
- * one large brand moment on the sign-in page.
+ * The Meridian mark (spec §4): a 270-degree gauge arc crossed by the meridian
+ * line, two strokes of one weight, no fill. Same geometry as logo-mark.svg.
+ * `two-tone` (default): arc in the accent, meridian in ink. `mono`: both in
+ * `currentColor`. Never place on a tile.
  */
-export function MeridianMark({ size = 32, variant = "tile", className, style, ...rest }: IconProps & { variant?: "tile" | "mono" }) {
+export function MeridianMark({ size = 32, variant = "two-tone", className, style, ...rest }: IconProps & { variant?: "two-tone" | "mono" }) {
+  const mono = variant === "mono";
+  const stroke = { fill: "none", strokeWidth: 3, strokeLinecap: "round" as const };
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      className={className}
-      style={style}
-      aria-hidden="true"
-      {...rest}
-    >
-      {variant === "tile" ? <rect width="32" height="32" rx="6" fill="var(--m-accent)" /> : null}
-      <path
-        d="M 7.5 24 V 8.5 M 24.5 24 V 8.5 M 7.5 8.5 L 16 17 L 24.5 8.5 M 16 17 V 25.5"
-        fill="none"
-        stroke={variant === "mono" ? "currentColor" : "var(--m-sheet)"}
-        strokeWidth={3.25}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 32 32" className={className} style={style} aria-hidden="true" {...rest}>
+      <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke={mono ? "currentColor" : "var(--m-accent)"} {...stroke} />
+      <path d="M16 3V29" stroke={mono ? "currentColor" : "var(--m-ink)"} {...stroke} />
     </svg>
   );
 }

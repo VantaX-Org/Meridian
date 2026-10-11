@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: "Meridian",
   description: "SAP master-data quality, scored and routed to the people who fix it",
   icons: { icon: "/icon.svg", apple: "/apple-icon.png" },
+  openGraph: { images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }] },
   manifest: "/manifest.webmanifest",
 };
 

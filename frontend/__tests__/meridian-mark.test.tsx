@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { MeridianMark } from "../components/meridian/icons";
 
 describe("MeridianMark", () => {
-  it("renders the tile variant without any literal hex colours", () => {
+  it("renders the two-tone variant without any literal hex colours", () => {
     const { container } = render(<MeridianMark />);
     expect(container.innerHTML).not.toContain("#");
   });
