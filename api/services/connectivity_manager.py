@@ -605,8 +605,11 @@ class ConnectivityManager:
                 join = [p for p in ("userId", "personIdExternal") if p not in props
                         and (model is None or p in model[0])] if len(by_entity) > 1 else []
                 expand = sorted({p.split("/")[0] for p in sel.values() if "/" in p})
+                # a to-many locale navigation is read in the record's own default language
+                lang = {s for nav in expand if model is not None and "defaultLanguage" in model[0]
+                        and "locale" in (model[1].get(nav) or ()) for s in (f"{nav}/locale", "defaultLanguage")}
                 try:
-                    df = connector.read_entity_set(ent, select=sorted(set(sel.values()) | set(join)), **history,
+                    df = connector.read_entity_set(ent, select=sorted(set(sel.values()) | set(join) | lang), **history,
                                                    **({"expand": expand} if expand else {}))
                 except Exception as e:
                     if _not_found(e):

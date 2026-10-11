@@ -504,3 +504,10 @@ def test_sf_navigation_property_missing_on_the_target_type_is_unavailable(monkey
     sel = next(s for e, s in conn.calls if e == "JobRequisition")
     assert "jobReqLocale/jobTitle" not in sel
     assert cov["JOBREQUISITION"]["status"] == "live" and "TITLE" in cov["JOBREQUISITION"]["unavailable_fields"]
+
+
+def test_sf_locale_navigation_reads_the_default_language_with_its_locale(monkeypatch):
+    conn = _ReqTenant(["jobTitle", "locale"], {"JobRequisition": [{"jobReqId": 7}]})
+    _sf(conn, ["recruiting_onboarding"], monkeypatch)
+    sel = next(s for e, s in conn.calls if e == "JobRequisition")
+    assert {"jobReqLocale/jobTitle", "jobReqLocale/locale", "defaultLanguage"} <= set(sel)

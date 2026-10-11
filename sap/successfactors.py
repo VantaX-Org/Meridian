@@ -205,8 +205,9 @@ class SuccessFactorsConnector(CloudSAPConnector):
             from_date:  OData fromDate for effective-dated entities. None = as of today
                         (current record only); "1900-01-01" = full history.
             expand:     Navigation properties for $expand. Their selected properties
-                        ("nav/prop" in ``select``) come back as "nav/prop" columns, from
-                        the first related record.
+                        ("nav/prop" in ``select``) come back as "nav/prop" columns: from the
+                        related record in the row's defaultLanguage when both that and
+                        "nav/locale" are selected, else the first non-blank one.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -251,11 +252,15 @@ class SuccessFactorsConnector(CloudSAPConnector):
                 for nav in expand or ():
                     rel = rec.pop(nav, None) or {}
                     rel = rel.get("results", [rel]) if isinstance(rel, dict) else []
-                    # ponytail: a to-many navigation (e.g. one locale per language) keeps its first record
-                    first = rel[0] if rel else {}
+                    # ponytail: a to-many navigation (one locale per language) gives one value per row: the
+                    # record's defaultLanguage locale first, else the first non-blank; rows per locale if needed
+                    lang = rec.get("defaultLanguage")
+                    if lang:
+                        rel = sorted(rel, key=lambda r: r.get("locale") != lang)
                     for s in select or ():
                         if s.startswith(f"{nav}/"):
-                            rec[s] = first.get(s.split("/", 1)[1])
+                            k = s.split("/", 1)[1]
+                            rec[s] = next((r[k] for r in rel if r.get(k) is not None and str(r[k]).strip()), None)
                 for k, v in rec.items():
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
