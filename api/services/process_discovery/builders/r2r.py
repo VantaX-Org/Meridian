@@ -7,7 +7,7 @@ from typing import Iterator, Optional
 
 from api.services.process_discovery.events import (
     ActivityMap, BuildContext, EventRow, Frames, Stamp, dyn, event, master_data_events, norm_key, rows, sap_date, sap_day,
-    sap_ts,
+    sap_ts, sorted_rows,
 )
 
 A = ActivityMap
@@ -69,7 +69,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     bkpf = frames.get("BKPF", ["BUKRS", "BELNR", "GJAHR", "BLART", "BSTAT", "CPUDT", "CPUTM", "USNAM", "TCODE",
                                "STBLG", "STJAH", "AWTYP"])
     # BKPF is read for PTP (AWTYP RMRP) and R2R; the extraction merges both reads, the window applies here.
-    docs = {(r["BUKRS"], r["BELNR"], r["GJAHR"]): r for r in rows(bkpf)
+    docs = {(r["BUKRS"], r["BELNR"], r["GJAHR"]): r for r in sorted_rows(bkpf)
             if (d := sap_date(r["CPUDT"])) is not None and d >= since}
 
     def ev(m: ActivityMap, key: tuple[str, str, str], when: Optional[Stamp], table: str, user: str = "",

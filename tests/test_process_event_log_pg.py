@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 import subprocess
 import uuid
+from typing import Iterator
 
 import pytest
+from sqlalchemy.engine import Connection, Engine
 
 _ROLE = "meridian_pd_app"
 pg = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
@@ -21,7 +23,7 @@ def _alembic(*args: str) -> None:
 
 
 @pytest.fixture(scope="module")
-def engines() -> tuple:
+def engines() -> Iterator[tuple[Engine, Engine]]:
     from urllib.parse import urlparse, urlunparse
 
     from sqlalchemy import create_engine, text
@@ -51,7 +53,7 @@ def engines() -> tuple:
     owner.dispose()
 
 
-def _tenant_and_system(owner: object) -> tuple[str, str]:
+def _tenant_and_system(owner: Engine) -> tuple[str, str]:
     from sqlalchemy import text
 
     tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
@@ -61,7 +63,7 @@ def _tenant_and_system(owner: object) -> tuple[str, str]:
     return tid, sid
 
 
-def _run(c: object, tid: str, sid: str) -> str:
+def _run(c: Connection, tid: str, sid: str) -> str:
     from sqlalchemy import text
 
     return str(c.execute(text(
@@ -70,7 +72,7 @@ def _run(c: object, tid: str, sid: str) -> str:
 
 
 @pg
-def test_rls_isolates_all_three_tables(engines: tuple) -> None:
+def test_rls_isolates_all_three_tables(engines: tuple[Engine, Engine]) -> None:
     from sqlalchemy import text
 
     owner, app = engines
@@ -104,7 +106,7 @@ def test_rls_isolates_all_three_tables(engines: tuple) -> None:
 
 
 @pg
-def test_deleting_a_run_cascades(engines: tuple) -> None:
+def test_deleting_a_run_cascades(engines: tuple[Engine, Engine]) -> None:
     from sqlalchemy import text
 
     owner, app = engines
@@ -121,8 +123,8 @@ def test_deleting_a_run_cascades(engines: tuple) -> None:
 
 
 @pg
-def test_timezone_column_and_downgrade(engines: tuple) -> None:
-    from sqlalchemy import create_engine, inspect
+def test_timezone_column_and_downgrade(engines: tuple[Engine, Engine]) -> None:
+    from sqlalchemy import create_engine, inspect, text
 
     owner, _ = engines
     cols = {c["name"] for c in inspect(owner).get_columns("sap_systems")}
@@ -138,10 +140,12 @@ def test_timezone_column_and_downgrade(engines: tuple) -> None:
     finally:
         eng.dispose()
         _alembic("upgrade", "head")
+        with owner.begin() as c:  # the downgrade dropped the tables, so their grants went with them
+            c.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {_ROLE}"))
 
 
 @pg
-def test_with_check_blocks_cross_tenant_insert(engines: tuple) -> None:
+def test_with_check_blocks_cross_tenant_insert(engines: tuple[Engine, Engine]) -> None:
     from sqlalchemy import exc, text
 
     owner, app = engines

@@ -254,6 +254,46 @@ def test_r2r_window_from_overrides_default():
         "1000/0100000011/2026", "1000/0100000013/2026", "1000/0100000014/2026"}
 
 
+@pytest.mark.parametrize("bad", ["00000000", ""])
+def test_null_dates_drop_the_event(bad):
+    t = r2r_tables()
+    t["BKPF"] = t["BKPF"].assign(CPUDT=bad)
+    assert not [e for e in run("R2R", t) if e.case_type == "fi_doc"]
+    t = ptp_tables()
+    t["EKKO"] = t["EKKO"].assign(AEDAT=bad)
+    assert not by(run("PTP", t), "CREATE_PO_ITEM")
+
+
+def _dup(t, name, **diff):
+    """Append a second row for the first key of ``name`` that differs in ``diff``."""
+    t[name] = pd.concat([t[name], t[name].iloc[[0]].assign(**diff)], ignore_index=True)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_duplicate_keys_give_identical_output_for_any_row_order(seed):
+    def tables(l1):
+        t = FIXTURES[l1]()
+        if l1 == "R2R":
+            _dup(t, "BKPF", USNAM="GL9", TCODE="FB01")
+            _dup(t, "BSAS", AUGDT="20260101", AUGBL="0100000001")
+        elif l1 == "PTP":
+            _dup(t, "EKPO", WERKS="2000")
+            _dup(t, "RBKP", USNAM="ZZ9")
+            _dup(t, "BSAK", AUGDT="20260301", AUGBL="1500000009")
+        else:
+            _dup(t, "VBAP", WERKS="2000")
+            _dup(t, "LIKP", ERNAM="ZZ9")
+            _dup(t, "VBRK", ERNAM="ZZ9")
+            _dup(t, "BSAD", AUGDT="20260301", AUGBL="1400000009")
+        return t
+
+    for l1 in FIXTURES:
+        base = tables(l1)
+        first = run(l1, base)
+        shuffled = {k: v.sample(frac=1, random_state=seed) for k, v in base.items()}
+        assert run(l1, shuffled) == first
+
+
 def test_missing_tables_yield_no_events():
     for mod in (ptp, otc, r2r):
         assert collect(mod.build, MemoryFrames({}), BuildContext("t1", "ecc", RUN)) == []

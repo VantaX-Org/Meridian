@@ -7,7 +7,7 @@ from typing import Iterable, Iterator, Optional
 
 from api.services.process_discovery.events import (
     ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, event, master_data_events, rows,
-    sap_day, sap_ts, value_attr,
+    sap_day, sap_ts, sorted_rows, value_attr, earliest_clearing,
 )
 
 A = ActivityMap
@@ -59,7 +59,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     vbap = frames.get("VBAP", ["VBELN", "POSNR", "ERDAT", "ERZET", "ERNAM", "PSTYV", "WERKS"])
     head: dict[str, dict[str, str]] = {}
     by_so: dict[str, list[str]] = defaultdict(list)
-    for r in rows(vbap.merge(vbak, on="VBELN", how="inner")):
+    for r in sorted_rows(vbap.merge(vbak, on="VBELN", how="inner")):
         case = f"{r['VBELN']}/{r['POSNR']}"
         head[case] = r
         by_so[r["VBELN"]].append(case)
@@ -91,7 +91,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
             if case in head:
                 yield ev(_VBAP_FIELD.get(fname, "CHANGE_SCHEDULE"), case, when, "CDPOS", r["USERNAME"])
 
-    likp = {r["VBELN"]: r for r in rows(frames.get("LIKP", ["VBELN", "ERDAT", "ERZET", "ERNAM", "LFART",
+    likp = {r["VBELN"]: r for r in sorted_rows(frames.get("LIKP", ["VBELN", "ERDAT", "ERZET", "ERNAM", "LFART",
                                                             "WADAT_IST"]))}
     for r in rows(frames.get("LIPS", ["VBELN", "POSNR", "VGBEL", "VGPOS"])):
         case, d = f"{r['VGBEL']}/{r['VGPOS']}", likp.get(r["VBELN"])
@@ -102,11 +102,10 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
         if d["WADAT_IST"]:
             yield ev("GOODS_ISSUE", case, sap_day(ctx, d["WADAT_IST"]), "LIKP", refs=ref, attrs=attrs)
 
-    vbrk = {r["VBELN"]: r for r in rows(frames.get(
+    vbrk = {r["VBELN"]: r for r in sorted_rows(frames.get(
         "VBRK", ["VBELN", "ERDAT", "ERZET", "ERNAM", "FKART", "BUKRS", "BELNR", "GJAHR", "FKSTO", "SFAKN"]))}
-    clearing: dict[tuple[str, str, str], dict[str, str]] = {}
-    for r in rows(frames.get("BSAD", ["BUKRS", "BELNR", "GJAHR", "AUGDT", "AUGBL"])):
-        clearing.setdefault((r["BUKRS"], r["BELNR"], r["GJAHR"]), r)
+    clearing = earliest_clearing(frames.get("BSAD", ["BUKRS", "BELNR", "GJAHR", "AUGDT", "AUGBL"]),
+                                 ["BUKRS", "BELNR", "GJAHR"])
     for r in rows(frames.get("VBRP", ["VBELN", "POSNR", "AUBEL", "AUPOS"])):
         case, b = f"{r['AUBEL']}/{r['AUPOS']}", vbrk.get(r["VBELN"])
         if case not in head or b is None:

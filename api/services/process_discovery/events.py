@@ -318,6 +318,21 @@ def rows(df: pd.DataFrame) -> Iterator[dict[str, str]]:
     return iter(df.to_dict("records"))  # type: ignore[arg-type]
 
 
+def sorted_rows(df: pd.DataFrame) -> Iterator[dict[str, str]]:
+    """Rows in full-column order, so a dict built from them (last row wins) does not depend on input order."""
+    return rows(df.sort_values(list(df.columns), kind="stable"))
+
+
+def earliest_clearing(df: pd.DataFrame, keys: Sequence[str]) -> dict[tuple[str, ...], dict[str, str]]:
+    """Per ``keys``, the clearing row with the minimum (AUGDT, AUGBL) among rows with a usable AUGDT."""
+    ok = df.loc[pd.Series([sap_date(v) is not None for v in df["AUGDT"]], index=df.index, dtype=bool)]
+    rest = [c for c in df.columns if c not in ("AUGDT", "AUGBL")]
+    out: dict[tuple[str, ...], dict[str, str]] = {}
+    for r in rows(ok.sort_values(["AUGDT", "AUGBL", *rest], kind="stable")):
+        out.setdefault(tuple(r[k] for k in keys), r)
+    return out
+
+
 def master_data_events(frames: Frames, ctx: BuildContext, cls: str, create: ActivityMap,
                        changes: Sequence[tuple[ActivityMap, str, str]]) -> Iterator[Optional[EventRow]]:
     """Master-data stream keyed by CDHDR OBJECTID (KRED, DEBI, SACH, ANLA, KOSTL, KSTAR, STUE, EQUI).

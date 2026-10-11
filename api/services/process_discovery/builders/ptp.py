@@ -7,7 +7,7 @@ from typing import Iterable, Iterator, Optional
 
 from api.services.process_discovery.events import (
     ActivityMap, BuildContext, EventRow, Frames, Stamp, cd_changes, cd_stamp, event, master_data_events, rows,
-    sap_day, sap_ts, value_attr,
+    sap_day, sap_ts, sorted_rows, value_attr, earliest_clearing,
 )
 
 A = ActivityMap
@@ -62,7 +62,7 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     head: dict[str, dict[str, str]] = {}
     by_po: dict[str, list[str]] = defaultdict(list)
     by_pr: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for r in rows(items):
+    for r in sorted_rows(items):
         case = f"{r['EBELN']}/{r['EBELP']}"
         head[case] = r
         by_po[r["EBELN"]].append(case)
@@ -110,13 +110,12 @@ def build(frames: Frames, ctx: BuildContext) -> Iterator[Optional[EventRow]]:
     # History: one row per (item, event type, document); EKBE repeats account-assignment lines.
     ekbe = frames.get("EKBE", ["EBELN", "EBELP", "VGABE", "GJAHR", "BELNR", "BWART", "SHKZG", "CPUDT", "CPUTM",
                                "ERNAM"]).drop_duplicates(["EBELN", "EBELP", "VGABE", "GJAHR", "BELNR"])
-    rbkp = {(r["BELNR"], r["GJAHR"]): r for r in rows(frames.get(
+    rbkp = {(r["BELNR"], r["GJAHR"]): r for r in sorted_rows(frames.get(
         "RBKP", ["BELNR", "GJAHR", "CPUDT", "CPUTM", "USNAM", "ZLSPR", "RBSTAT"]))}
     bkpf = frames.get("BKPF", ["BUKRS", "BELNR", "GJAHR", "AWTYP", "AWKEY"])
-    fi_of = {r["AWKEY"]: r for r in rows(bkpf[bkpf["AWTYP"] == "RMRP"])}
-    clearing: dict[tuple[str, str, str], dict[str, str]] = {}
-    for r in rows(frames.get("BSAK", ["BUKRS", "BELNR", "GJAHR", "AUGDT", "AUGBL"])):
-        clearing.setdefault((r["BUKRS"], r["BELNR"], r["GJAHR"]), r)
+    fi_of = {r["AWKEY"]: r for r in sorted_rows(bkpf[bkpf["AWTYP"] == "RMRP"])}
+    clearing = earliest_clearing(frames.get("BSAK", ["BUKRS", "BELNR", "GJAHR", "AUGDT", "AUGBL"]),
+                                 ["BUKRS", "BELNR", "GJAHR"])
     for r in rows(ekbe):
         case = f"{r['EBELN']}/{r['EBELP']}"
         if case not in head or r["VGABE"] not in ("1", "2") or r["SHKZG"] not in ("S", "H"):
