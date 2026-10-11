@@ -68,7 +68,7 @@ def test_scoring_tier_rescore_and_module_weights():
                           "uniqueness": 0, "validity": 0, "module_weights": {"fi_gl": 3, "bad": -1},
                           "thresholds": {"pass": 95}, "notification_config": {"email": "x"}})
     assert cfg["dimension_weights"]["completeness"] == 0.5 and cfg["module_weights"] == {"fi_gl": 3.0}
-    assert cfg["thresholds"] == {"pass": 95.0, "warn": 75.0}
+    assert cfg["thresholds"] == {"target": 95.0, "warning": 75.0, "critical": 60.0}  # legacy "pass" maps to target
 
     stored = {"composite_score": 80.0, "critical_count": 0, "total_checks": 10, "capped": False,
               "dimension_scores": {"completeness": 100.0, "accuracy": 60.0},
@@ -80,6 +80,6 @@ def test_scoring_tier_rescore_and_module_weights():
 
     a = {"composite_score": 90.0, "total_checks": 10, "dimension_scores": {}}
     b = {"composite_score": 60.0, "total_checks": 10, "dimension_scores": {}}
-    assert composite_dqs([{"fi_gl": a, "mm": b}])["composite"] == 75.0
-    out = composite_dqs([{"fi_gl": a, "mm": b}], {"module_weights": {"fi_gl": 3}})
+    assert composite_dqs([{"fi_gl": a, "mm": b}], scoring={})["composite"] == 75.0
+    out = composite_dqs([{"fi_gl": a, "mm": b}], scoring={"module_weights": {"fi_gl": 3}})
     assert out["composite"] == 82.5 and out["tier"] == "warn"

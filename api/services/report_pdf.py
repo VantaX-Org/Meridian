@@ -206,7 +206,8 @@ def _render_pdf(session: Session, report_json: dict, supplementary: dict, versio
         raise ReportNotAssembled(f"Version {version_id} not found")
     tenant_name = session.execute(text("SELECT name FROM tenants WHERE id = :t"), {"t": tenant_id}).scalar() or ""
     ctx = pdf_reports.executive_context(report_json, supplementary, data["version"], data["findings"],
-                                        tenant_name=tenant_name, system=data["system"])
+                                        tenant_name=tenant_name, system=data["system"],
+                                        scoring=pdf_reports.load_scoring(session, tenant_id))
     return pdf_reports.render("executive_report.html", ctx)
 
 

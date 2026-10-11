@@ -202,6 +202,8 @@ export interface InstrumentPanelData {
   criticals?: number;
   trendPoints: ChartPoint[];
   dimensionPoints: ChartPoint[];
+  /** Dimensions no module measured in this run; listed under the bar instead of drawn at 100. */
+  unmeasured?: string[];
   heatmapCells: HeatmapCell[];
   heatmapRows: string[];
   heatmapCols: string[];
@@ -238,6 +240,7 @@ export function InstrumentPanel({
   criticals,
   trendPoints,
   dimensionPoints,
+  unmeasured = [],
   heatmapCells,
   heatmapRows,
   heatmapCols,
@@ -304,6 +307,11 @@ export function InstrumentPanel({
                 draw
                 label="Score by dimension"
               />
+            )}
+            {unmeasured.length > 0 && (
+              <p className="mt-2 text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+                Not measured: {unmeasured.join(", ")}
+              </p>
             )}
           </div>
         </div>

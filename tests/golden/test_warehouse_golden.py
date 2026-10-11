@@ -8,7 +8,7 @@ exactly where it was put, and nowhere else.
 Dates that freshness rules judge are relative to today, so the datasets do not
 age; everything else is fixed."""
 
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import yaml
@@ -23,7 +23,7 @@ D = get_dictionary("s4hana")
 
 def _day(days_ago: int) -> str:
     """SAP DATS, ``days_ago`` days before today."""
-    return (date.today() - timedelta(days=days_ago)).strftime("%Y%m%d")
+    return (datetime.now(timezone.utc).date() - timedelta(days=days_ago)).strftime("%Y%m%d")
 
 
 def _stamp(days_ago: int, hhmmss: str = "101500") -> str:

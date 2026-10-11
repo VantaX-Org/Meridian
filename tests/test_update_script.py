@@ -42,7 +42,8 @@ def _setup(tmp: Path, new_update_sh: bool) -> tuple[Path, dict]:
     bundle = tmp / "bundle"
     (bundle / "docker/nginx").mkdir(parents=True)
     (bundle / "scripts").mkdir()
-    for f in ("docker-compose.customer.yml", "docker-compose.updater.yml", "Dockerfile.rfc"):
+    for f in ("docker-compose.customer.yml", "docker-compose.customer.ollama.yml", "docker-compose.updater.yml",
+              "Dockerfile.rfc"):
         shutil.copy(REPO / "docker" / f, bundle / "docker" / f)
     for f in ("meridian.conf", "nginx.conf"):
         shutil.copy(REPO / "docker/nginx" / f, bundle / "docker/nginx" / f)
@@ -131,3 +132,24 @@ def test_root_update_sh_runs_the_real_update_from_any_directory(tmp_path):
     assert r.returncode == 0, r.stdout + r.stderr
     calls = Path(env["CALLS"]).read_text()
     assert "storage_migration" in calls and (host / ".storage-migrated").exists()
+
+
+def test_ollama_overlay_reresolved_with_installed_tag_and_recreated_once(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    resolved = host / "docker/docker-compose.customer.ollama.resolved.yml"
+    resolved.write_text("services:\n  ollama:\n    image: ghcr.io/vantax-org/meridian-ollama:qwen3-5-9b\n")
+    calls = _run(host, env)
+    text = resolved.read_text()
+    assert "meridian-ollama:qwen3-5-9b" in text and "{{MODEL_TAG}}" not in text
+    assert 'OLLAMA_MAX_LOADED_MODELS: "1"' in text
+    assert sum("up -d --no-deps ollama" in c for c in calls) == 1
+    calls_before = len(calls)
+    calls = _run(host, env)  # unchanged overlay: no second recreate
+    assert not any("ollama" in c for c in calls[calls_before:])
+
+
+def test_install_without_ollama_overlay_leaves_ollama_alone(tmp_path):
+    host, env = _setup(tmp_path, new_update_sh=False)
+    calls = _run(host, env)
+    assert not any("ollama" in c for c in calls)
+    assert not (host / "docker/docker-compose.customer.ollama.resolved.yml").exists()

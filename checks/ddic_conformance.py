@@ -11,9 +11,10 @@ standard) says what each field may contain:
   fixed_value value not in the domain's fixed values (DD07L)
   check_table value not in the check table's live configuration values
 
-One result per (table, kind): population = populated cells of the checked
-fields, failing = cells that violate; record keys identify every failing
-record, details break the violations down per field. Blank cells are out of
+One result per (table, kind): population = records with any checked field
+populated, failing = records with any violating cell; record keys identify
+every failing record, details break the violations down per field (cell
+counts stay in details). Blank cells are out of
 scope (null detection is null_check's job). Fields a module rule already checks
 against their allowed values (``value_checked``) are not value-checked again,
 and a cell a specific rule already reports on that record (``reported``:
@@ -86,6 +87,9 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
     row_keys = record_keys(kdf, keys) if reported else None
     cells = {k: 0 for k in _KINDS}
     failing_rows = {k: pd.Series(False, index=kdf.index) for k in _KINDS}
+    # one result per table and kind, counted in records: a record is in scope when any
+    # field judged for that kind is populated, and fails when any of them fails
+    scope_rows = {k: pd.Series(False, index=kdf.index) for k in _KINDS}
     per_field: dict[str, dict[str, int]] = {k: {} for k in _KINDS}
     check_tables: dict[str, str] = {}  # field → live check table its values were judged against
     for col in df.columns:
@@ -109,6 +113,7 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             if reported and col in reported:
                 bad &= ~row_keys.isin(reported[col])
             cells[kind] += int(populated.sum())
+            scope_rows[kind] |= populated
             n = int(bad.sum())
             if n:
                 per_field[kind][f.name] = n
@@ -123,25 +128,28 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             continue
         affected_cells = sum(per_field[kind].values())
         rows = failing_rows[kind]
+        total, affected = int(scope_rows[kind].sum()), int(rows.sum())
         fk = record_keys(kdf[rows], keys) if rows.any() else pd.Series(dtype="string")
         shown = [f"{table}.{fld}" for fld in per_field[kind] if f"{table}.{fld}" in df.columns]
         sample = df[list(dict.fromkeys(keys + shown))].loc[kdf[rows].head(10).index]
-        results.append(CheckResult(
+        result = CheckResult(
             check_id=f"DDIC-{table}-{kind.upper()}",
             module=module,
             field=f"{table}.*",
             severity=severity,
             dimension="validity",
-            passed=affected_cells == 0,
-            affected_count=affected_cells,
-            total_count=cells[kind],
-            pass_rate=pass_rate_of(cells[kind], affected_cells),
+            passed=affected == 0,
+            affected_count=affected,
+            total_count=total,
+            pass_rate=pass_rate_of(total, affected),
             message=f"{message} ({table})",
             details=safe_json({
                 "kind": kind,
                 "table": table,
                 "fields_failing": per_field[kind],
-                "failing_record_count": int(rows.sum()),
+                "failing_record_count": affected,
+                "cells": cells[kind],
+                "affected_cells": affected_cells,
                 "record_key_fields": keys,
                 "baseline": "live_config" if kind == "check_table" or "live" in definition else "sap_standard",
                 "definition_provenance": definition,
@@ -156,5 +164,7 @@ def run_conformance(table: str, df: pd.DataFrame, dictionary: Dictionary, module
             }),
             failing_record_keys=[str(k) for k in fk.head(MAX_FAILING_KEYS)],
             grain=table,
-        ))
+        )
+        result._all_failing_keys = fk
+        results.append(result)
     return results

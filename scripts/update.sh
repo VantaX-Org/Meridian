@@ -162,6 +162,25 @@ place() {  # place <src> <dest> <mode> — keeps a .bak of a locally changed fil
     mkdir -p "$(dirname "$2")" && install -m "$3" "$1" "$2"  # not install -D: GNU-only
 }
 
+# Tier 2 installs run Ollama from a resolved copy of the overlay (the model tag
+# substituted in at deploy time). Re-resolve it from the new release, keeping
+# the installed model tag, and recreate only the ollama container when its
+# definition changed. Installs without a resolved overlay are left alone.
+sync_ollama_overlay() {  # sync_ollama_overlay <stage> <compose_dir>
+    local template="$1/docker/docker-compose.customer.ollama.yml"
+    local resolved="$2/docker-compose.customer.ollama.resolved.yml" tag
+    [[ -f "$template" && -f "$resolved" ]] || return 0
+    tag=$(sed -n 's|.*image: *ghcr.io/vantax-org/meridian-ollama:||p' "$resolved" | head -1)
+    [[ -n "$tag" ]] || { warn "Could not read the Ollama model tag — keeping the current Ollama overlay"; return 0; }
+    place "$template" "$2/docker-compose.customer.ollama.yml" 0644
+    sed "s|{{MODEL_TAG}}|${tag}|g" "$template" > "$resolved.new"
+    if cmp -s "$resolved.new" "$resolved"; then rm -f "$resolved.new"; return 0; fi
+    mv "$resolved.new" "$resolved"
+    docker compose -f "$COMPOSE_FILE" -f "$resolved" up -d --no-deps ollama >/dev/null \
+        && info "Ollama settings updated from the new release" \
+        || warn "Ollama overlay updated but the container was not recreated — run: docker compose -f $COMPOSE_FILE -f $resolved up -d ollama"
+}
+
 sync_deployment_files() {
     [[ -n "${MERIDIAN_UPDATE_REEXEC:-}" ]] && return 0
     local stage cid compose_dir changed_self=false
@@ -180,6 +199,7 @@ sync_deployment_files() {
     place "$stage/docker/Dockerfile.rfc" "$compose_dir/Dockerfile.rfc" 0644
     place "$stage/docker/nginx/meridian.conf" "$compose_dir/nginx/meridian.conf" 0644
     place "$stage/docker/nginx/nginx.conf" "$compose_dir/nginx/nginx.conf" 0644
+    sync_ollama_overlay "$stage" "$compose_dir"
     for f in "$stage"/scripts/*.sh; do
         name=$(basename "$f")
         [[ "$name" == "update.sh" ]] && ! cmp -s "$f" scripts/update.sh && changed_self=true

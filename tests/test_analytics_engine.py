@@ -62,8 +62,9 @@ def test_sprint_projects_dqs_through_the_scoring_engine():
     assert with_crit["dqs_now"] is not None and with_crit["dqs_projected"] is not None
     assert with_crit["dqs_projected"] > with_crit["dqs_now"]
     with_high = next(s for s in sprints if s["critical_cleared"] == 0)
-    # fixing the high finding alone leaves the critical cap at 85 in place: the projection says so
-    assert with_high["records_fixed"] == 400 and with_high["dqs_projected"] == with_high["dqs_now"] == 85.0
+    # the high finding's severity multiplier already pulls the score below the cap; fixing it alone
+    # lifts the score until the critical cap at 85 binds: the projection says so
+    assert with_high["records_fixed"] == 400 and with_high["dqs_now"] < with_high["dqs_projected"] == 85.0
 
 
 def test_project_dqs_handles_an_empty_set():

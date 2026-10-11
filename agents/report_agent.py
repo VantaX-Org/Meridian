@@ -111,11 +111,11 @@ def report_node(state: AgentState) -> dict:
 
     # Overall DQS
     module_composites = {
-        mod: dqs_scores.get(mod, {}).get("composite_score", 0.0)
+        mod: dqs_scores.get(mod, {}).get("composite_score")  # None = not measured
         for mod in module_names
     }
-    all_scores = list(module_composites.values())
-    overall_composite = round(sum(all_scores) / len(all_scores), 2) if all_scores else 0.0
+    all_scores = [s for s in module_composites.values() if s is not None]
+    overall_composite = round(sum(all_scores) / len(all_scores), 2) if all_scores else None
 
     # Findings by severity
     findings_by_severity = _count_findings_by_severity(findings)
@@ -132,7 +132,7 @@ def report_node(state: AgentState) -> dict:
 
         modules_detail.append({
             "name": mod,
-            "dqs_score": mod_dqs.get("composite_score", 0.0),
+            "dqs_score": mod_dqs.get("composite_score"),
             "readiness_status": mod_readiness.get("status", "no-go"),
             "readiness_score": mod_readiness.get("score", 0.0),
             "critical_count": mod_dqs.get("critical_count", 0),

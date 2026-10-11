@@ -53,33 +53,56 @@ async def _latest_version_ids(db: AsyncSession, tenant: Tenant) -> list[uuid.UUI
     """), {"tid": str(tenant.id)})).scalars().all())
 
 
-def composite_dqs(summaries: list[dict], scoring: dict | None = None) -> dict:
-    """One DQS over several modules/versions: module scores weighted by the number of
-    checks behind them times the tenant's module weight (``scoring`` = the raw
-    ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}). Pure — tested directly."""
-    from api.services.scoring import scoring_config, tier
+def composite_dqs(summaries: list[dict], *, scoring: dict | None) -> dict:
+    """One DQS over several modules/versions: module scores weighted by the tenant's
+    module weight (default 1); a module with no executed rule (composite None) is not measured
+    and does not weigh in; a dimension averages only the modules that measured it
+    (``scoring`` = the raw ``tenants.dqs_weights``; ``dqs_summary`` = {module: DQSResult}).
+    ``legacy`` is the pre-calibration roll-up (check-count weights, every module's
+    dimension). Pure — tested directly."""
+    from api.services.scoring import DEFAULT_WEIGHTS, LOW_CONFIDENCE_COVERAGE, scoring_config, tier
     cfg = scoring_config(scoring)
     mods: dict[str, dict] = {}
     for s in summaries:
         for module, r in (s or {}).items():
             if isinstance(r, dict) and r.get("composite_score") is not None:
                 mods[module] = r
-    weight = {m: cfg["module_weights"].get(m, 1.0) * max(1, int(r.get("total_checks") or 1)) for m, r in mods.items()}
+    weight = {m: cfg["module_weights"].get(m, 1.0) for m in mods}
     total = sum(weight.values())
     if not total:
-        return {"composite": None, "dimension_scores": {}, "modules": {}}
+        return {"composite": None, "dimension_scores": {}, "modules": {}, "thresholds": cfg["thresholds"]}
     dims: dict[str, float] = {}
-    for d in ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"):
-        have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})]
-        if have:
-            w = sum(weight[m] for m, _ in have)
-            if w:
-                dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
+    for d in DEFAULT_WEIGHTS:
+        # stored before coverage was recorded: the module counts as having measured it
+        have = [(m, r["dimension_scores"][d]) for m, r in mods.items() if d in (r.get("dimension_scores") or {})
+                and (r.get("dimension_coverage") or {}).get(d, 1)]
+        w = sum(weight[m] for m, _ in have)
+        if w:
+            dims[d] = round(sum(v * weight[m] for m, v in have) / w, 2)
     composite = round(sum(r["composite_score"] * weight[m] for m, r in mods.items()) / total, 2)
+    executed = sum(int(r.get("total_checks") or 0) for r in mods.values())
+    attempted = executed + sum(int(r.get("skipped_checks") or 0) + int(r.get("errored_checks") or 0)
+                               for r in mods.values())
+    coverage = round(executed / attempted, 4) if attempted else None
     return {"composite": composite, "tier": tier(composite, cfg["thresholds"]),
             "dimension_scores": dims,
             "modules": {m: round(float(r["composite_score"]), 2) for m, r in mods.items()},
-            "capped": any(r.get("capped") for r in mods.values())}
+            "capped": any(r.get("capped") for r in mods.values()),
+            "coverage": coverage,
+            "low_confidence": coverage is not None and coverage < LOW_CONFIDENCE_COVERAGE,
+            "thresholds": cfg["thresholds"],
+            "legacy": _legacy_composite(mods, cfg)}
+
+
+def _legacy_composite(mods: dict[str, dict], cfg: dict) -> dict | None:
+    """The pre-calibration roll-up over each module's stored ``legacy`` score."""
+    legacy = {m: {**r, **r["legacy"]} for m, r in mods.items() if isinstance(r.get("legacy"), dict)}
+    weight = {m: cfg["module_weights"].get(m, 1.0) * max(1, int(r.get("total_checks") or 1)) for m, r in legacy.items()}
+    total = sum(weight.values())
+    if not total:
+        return None
+    composite = round(sum(r["composite_score"] * weight[m] for m, r in legacy.items()) / total, 2)
+    return {"composite": composite, "modules": {m: r["composite_score"] for m, r in legacy.items()}}
 
 
 async def _scoring_raw(db: AsyncSession, tenant: Tenant) -> dict:
@@ -145,7 +168,7 @@ async def config_aware_score(
     result = score(findings, config, system_type)
     return {"version_id": vid, "system_type": system_type,
             "config_load": {"load_id": load[0], "system_type": load[2], "loaded_at": load[4]} if load else None,
-            "existing_dqs": composite_dqs(summaries, await _scoring_raw(db, tenant)), **result}
+            "existing_dqs": composite_dqs(summaries, scoring=await _scoring_raw(db, tenant)), **result}
 
 
 @router.get("/findings/rules/{check_id}/applicability", response_model=RuleApplicability)
@@ -197,7 +220,7 @@ async def aggregate_findings(
     if not ids:
         return {"version_ids": [], "total": 0, "affected_records": 0,
                 "severity": {"critical": 0, "high": 0, "medium": 0, "low": 0}, "by_module": [], "by_dimension": [], "avg_pass_rate": None,
-                "dqs": composite_dqs([]), "previous_dqs": None}
+                "dqs": composite_dqs([], scoring=await _scoring_raw(db, tenant)), "previous_dqs": None}
     p = {"ids": [str(i) for i in ids]}
     narrow = {k: v for k, v in (("module", module), ("severity", severity), ("dimension", dimension),
                                 ("check_id", check_id)) if v}
@@ -245,7 +268,7 @@ async def aggregate_findings(
         ) x ORDER BY lineage, run_at DESC
     """), {**p, "tid": str(tenant.id)})).scalars().all()
     scoring = await _scoring_raw(db, tenant)
-    prev = composite_dqs(list(previous), scoring)
+    prev = composite_dqs(list(previous), scoring=scoring)
     overall = _avg({"_pass": [pair for d in by_dim.values() for pair in d["_pass"]]})
     return {
         "version_ids": p["ids"],
@@ -257,7 +280,7 @@ async def aggregate_findings(
         "by_dimension": sorted((_avg(d) for d in by_dim.values()), key=lambda d: d["dimension"]),
         "cost_at_risk": round(sum(m["cost_at_risk"] for m in by_module.values()), 2),
         "avg_pass_rate": overall["avg_pass_rate"],
-        "dqs": composite_dqs(list(summaries), scoring),
+        "dqs": composite_dqs(list(summaries), scoring=scoring),
         "previous_dqs": prev["composite"],
     }
 
@@ -282,8 +305,8 @@ async def score_history(
     out = []
     for r in rows:
         summary = r["dqs_summary"] or {}
-        then = composite_dqs([summary], r["scoring"])
-        now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], current)
+        then = composite_dqs([summary], scoring=r["scoring"])
+        now = composite_dqs([{m: rescore(v, current) for m, v in summary.items() if isinstance(v, dict)}], scoring=current)
         out.append({"version_id": str(r["id"]), "run_at": r["run_at"].isoformat() if r["run_at"] else None,
                     "system_id": r["system_id"], "scoring_recorded": r["scoring"] is not None,
                     "at_the_time": {"composite": then["composite"], "tier": then.get("tier"), "scoring": r["scoring"]},

@@ -173,6 +173,8 @@ rules:
   field: EKPO.MENGE
   check_class: null_check
   applies_when:
+    EKPO.BSTYP:
+    - F
     EKPO.PSTYP:
       not_in:
       - '1'

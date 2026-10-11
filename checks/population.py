@@ -70,8 +70,18 @@ def _status_values(x: dict, frames) -> set[str]:
     return set(t.loc[mask, f"{spec['table']}.{spec['column']}"].astype("string").str.strip())
 
 
-def exclude(frame: pd.DataFrame, rules: list[dict], frames=None) -> tuple[pd.DataFrame, dict[str, int]]:
-    """Drop excluded records; count each once, under its first reason."""
+def _stripped(frame: pd.DataFrame, col: str, norm: dict[str, pd.Series] | None) -> pd.Series:
+    if norm is None:
+        return frame[col].astype("string").str.strip().fillna("")
+    if col not in norm:
+        norm[col] = frame[col].astype("string").str.strip().fillna("")
+    return norm[col]
+
+
+def exclude(frame: pd.DataFrame, rules: list[dict], frames=None, norm: dict[str, pd.Series] | None = None
+            ) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Drop excluded records; count each once, under its first reason. ``norm`` memoizes the
+    stripped string form of a column across rules (valid while ``frame`` keeps the same rows)."""
     if not rules:
         return frame, {}
     out = pd.Series(False, index=frame.index)
@@ -80,7 +90,7 @@ def exclude(frame: pd.DataFrame, rules: list[dict], frames=None) -> tuple[pd.Dat
         cols = x.get("fields") or [x["field"]]
         if any(c not in frame.columns for c in cols):
             continue
-        parts = [frame[c].astype("string").str.strip().fillna("") for c in cols]
+        parts = [_stripped(frame, c, norm) for c in cols]
         v = parts[0]
         for p in parts[1:]:  # composite key, e.g. material type | industry sector
             v = v + "|" + p

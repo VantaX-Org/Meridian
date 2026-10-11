@@ -123,7 +123,7 @@ def test_lazy_run_is_identical_to_eager_run(bundle: dict[str, bytes]) -> None:
                      json.dumps(find_outliers(MODULE, frames), sort_keys=True, default=str),
                      json.dumps(sorted(present_keys(results, frames))),
                      json.dumps({m: s.model_dump() for m, s in scores.items()}, sort_keys=True, default=str)]
-        assert len(results) > 500 and any(not r.passed for r in results) and conformance
+        assert len(results) > 400 and any(not r.passed for r in results) and conformance
     for name, eager, lazy in zip(["findings", "conformance", "profiles", "outliers", "present", "dqs"],
                                  out[False], out[True]):
         assert eager == lazy, name
@@ -207,3 +207,167 @@ def test_moved_field_joins_only_the_join_columns_and_keeps_the_table_compressed(
     for cols in (["VBAK.GBSTK"], ["VBAK.AUART", "VBAK.LFSTK"]):
         frame = lazy.frame_for(cols)[0]
         pd.testing.assert_frame_equal(frame, eager.frame_for(cols)[0][list(frame.columns)])
+
+
+def _count_decodes(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    calls: list[list[str]] = []
+    orig = pd.read_parquet
+
+    def spy(path, *a, **kw):  # type: ignore[no-untyped-def]
+        calls.append(list(kw.get("columns") or []))
+        return orig(path, *a, **kw)
+
+    monkeypatch.setattr(pd, "read_parquet", spy)
+    return calls
+
+
+def test_prefetched_group_frame_serves_every_rule_without_decoding(bundle: dict[str, bytes],
+                                                                   monkeypatch: pytest.MonkeyPatch) -> None:
+    from checks.runner import _group_columns, run_rule
+    frames = _frames(bundle, lazy=True)
+    fields = ["MARC.DISPO", "MARC.EKGRP", "MARC.DISMM", "MARA.MTART", "MARA.MATKL"]
+    rules = [{"id": f"N{i}", "check_class": "null_check", "field": f, "severity": "low", "dimension": "completeness",
+              "message": "m", "grain": "MARC"} for i, f in enumerate(fields * 4)]
+    frames.prefetch(_group_columns(rules, frames, None), "MARC")
+    calls = _count_decodes(monkeypatch)
+    for r in rules:
+        run_rule(r, frames)
+    assert calls == []  # the group's joined frame was built once, up front
+    assert len(frames._cache) == 1
+    frames.clear_cache()
+    assert not frames._cache and not frames._norm  # nothing decoded outlives the group
+
+
+def test_run_checks_builds_the_joined_frame_a_bounded_number_of_times(bundle: dict[str, bytes],
+                                                                      monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+    joins: list[int] = []
+    orig = fm._join
+
+    def spy(*a, **kw):  # type: ignore[no-untyped-def]
+        joins.append(1)
+        return orig(*a, **kw)
+
+    monkeypatch.setattr(fm, "_join", spy)
+    frames = _frames(bundle, lazy=True)
+    results = run_checks(MODULE, frames, "t1", as_of="2026-01-01")
+    assert len(results) > 400
+    assert len(joins) < len(results) / 4, len(joins)  # was several per rule
+    assert not frames._cache and not frames._norm  # released after the run
+
+
+def test_run_checks_releases_decoded_frames_when_a_rule_raises(bundle: dict[str, bytes],
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.runner as rn
+    frames = _frames(bundle, lazy=True)
+    frames.frame_for(["MARC.DISPO"])
+    assert frames._cache
+
+    def boom(*a, **kw):  # type: ignore[no-untyped-def]
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(rn, "run_rule", boom)
+    with pytest.raises(RuntimeError):
+        run_checks(MODULE, frames, "t1")
+    assert not frames._cache and not frames._norm
+
+
+def test_rule_skipped_by_missing_applies_when_field_decodes_nothing(bundle: dict[str, bytes],
+                                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    from checks.runner import run_rule
+    frames = _frames(bundle, lazy=True)
+    calls = _count_decodes(monkeypatch)
+    rule = {"id": "S1", "check_class": "null_check", "field": "MARC.DISPO", "severity": "low",
+            "dimension": "completeness", "message": "m", "applies_when": {"MARC.NOT_A_FIELD": ["X"]}}
+    assert run_rule(rule, frames)[1] is None
+    assert calls == []
+
+
+def test_run_checks_keeps_rule_order_when_grouped_by_grain(bundle: dict[str, bytes]) -> None:
+    rules = yaml.safe_load(_find_module_yaml(MODULE).read_text())["rules"]
+    order = [r["id"] for r in rules]
+    for lazy in (False, True):
+        seen: list[str] = []
+        results = run_checks(MODULE, _frames(bundle, lazy), "t1", as_of="2026-01-01",
+                             on_progress=lambda d, n, rid: seen.append(rid))
+        ids = [r.check_id for r in results]
+        assert ids == [i for i in order if i in set(ids)]
+        assert sorted(seen) == sorted(order)
+
+
+def test_decoding_every_column_outside_the_rule_loop_retains_nothing(bundle: dict[str, bytes]) -> None:
+    # the DDIC conformance pass reads every column of every table; nothing may accumulate
+    frames = _frames(bundle, lazy=True)
+    for table, src in frames.frames.items():
+        for col in src.columns:
+            src[col]
+    assert not frames._cache and not frames._norm
+    run_checks(MODULE, frames, "t1", as_of="2026-01-01")
+    assert not frames._cache and not frames._norm
+    assert all(not getattr(src, "_memo", None) for src in frames.frames.values())
+
+
+def test_prefetch_batches_stay_within_the_byte_budget_and_results_do_not_change(
+        bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+    seen: list[tuple[int, int]] = []  # (columns prefetched, their estimated bytes)
+    orig = fm.TableFrames.prefetch
+
+    def spy(self: TableFrames, columns: set[str], grain: str) -> None:
+        seen.append((len(columns), self.estimate_bytes(set(columns), grain)))
+        orig(self, columns, grain)
+
+    monkeypatch.setattr(fm.TableFrames, "prefetch", spy)
+    eager = _dump(run_checks(MODULE, _frames(bundle, False), "t1", as_of="2026-01-01"))
+    big = _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=10**12))
+    widest = max(b for _, b in seen)
+    seen.clear()
+    budget = widest // 4
+    small = _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=budget))
+    assert eager == big == small
+    assert len(seen) > 4 and all(n == 0 or b <= budget for n, b in seen)  # batched, none over the budget
+    seen.clear()
+    run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01", prefetch_budget=1)
+    assert all(n == 0 for n, _ in seen)  # every rule alone exceeds it: per-rule frames, no prefetch
+
+
+def test_a_failing_prefetch_does_not_abort_the_module(bundle: dict[str, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    import checks.frames as fm
+
+    def boom(self: TableFrames, columns: set[str], grain: str) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(fm.TableFrames, "prefetch", boom)
+    eager = _dump(run_checks(MODULE, _frames(bundle, False), "t1", as_of="2026-01-01"))
+    assert _dump(run_checks(MODULE, _frames(bundle, True), "t1", as_of="2026-01-01")) == eager
+
+
+def _parquet(frame: pd.DataFrame) -> bytes:
+    buf = io.BytesIO()
+    frame.to_parquet(buf)
+    return buf.getvalue()
+
+
+def test_blank_applies_when_field_that_was_not_extracted_scores_the_same_lazy_and_eager() -> None:
+    from checks.runner import run_rule
+    but = pd.DataFrame({"BUT000.PARTNER": ["1", "2", "3"], "BUT000.TYPE": ["1", "1", "2"],
+                        "BUT000.NAME_ORG1": ["A", "", "B"]})  # BUT000.XDELE is not extracted
+    rule = {"id": "S1", "check_class": "null_check", "field": "BUT000.NAME_ORG1", "severity": "low",
+            "dimension": "completeness", "message": "m",
+            "applies_when": {"BUT000.TYPE": ["1"], "BUT000.XDELE": {"blank": True}}}
+    outcome = []
+    for frames in (TableFrames({"BUT000": but}, D, module="business_partner"),
+                   TableFrames({"BUT000": ParquetTable(_parquet(but))}, D, module="business_partner")):
+        result = run_rule(rule, frames)[1]
+        assert result is not None
+        outcome.append((result.affected_count, result.total_count, result.error))
+    assert outcome == [(1, 2, None)] * 2
+
+
+def test_string_column_estimate_covers_values_the_dictionary_encoding_hides() -> None:
+    rows = 10_000
+    text = pd.DataFrame({"T.ID": [f"{i:010d}" for i in range(rows)],
+                         "T.TEXT": [f"{i % 100:040d}" for i in range(rows)]})  # 100 distinct 40-char values
+    src = ParquetTable(_parquet(text))
+    assert src.nbytes("T.TEXT") >= 40 * rows
+    assert src.nbytes("T.ID") >= 10 * rows

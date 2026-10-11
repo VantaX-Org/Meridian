@@ -153,12 +153,17 @@ class Dictionary:
                     check_field=fk.get((f["name"], check_table)) or (bundle_f.check_field if bundle_f else None),
                     conversion_exit=f.get("conversion_exit"), lowercase=bool(f.get("lowercase")),
                     fixed_values=fixed, provenance=provenance,
+                    source=f.get("source") or (bundle_f.source if bundle_f else None),
+                    picklist=f.get("picklist") or (bundle_f.picklist if bundle_f else None),
                 )
             tables[name] = Table(
                 name=name, description=raw.get("description", ""), fields=fields,
                 keys=tuple(n for n, f in fields.items() if f.key and n not in _CLIENT_FIELDS),
                 category=raw.get("category") or "TRANSP", delivery_class=raw.get("delivery_class") or None,
-                foreign_keys=tuple(raw.get("foreign_keys", [])), provenance=provenance,
+                foreign_keys=tuple(raw.get("foreign_keys", [])),
+                # cloud metadata refines a canonical table; it stays canonical so its extractor still reads it
+                provenance=base.provenance if base and base.provenance.startswith("canonical:") else provenance,
+                note=base.note if base else None,
             )
         return Dictionary(release=self.release, tables=tables)
 

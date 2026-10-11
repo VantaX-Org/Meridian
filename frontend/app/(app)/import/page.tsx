@@ -21,7 +21,7 @@ const TERMINAL = new Set(["complete", "agents_complete", "ai_enriched", "failed"
 type Job = { versionId: string; status: "queued" | "processing" | "completed" | "failed"; percent: number; step: string; error: string | null };
 
 function versionDqs(v: Version): number | null {
-  const scores = Object.values(v.dqs_summary ?? {}).map((m) => m.composite_score);
+  const scores = Object.values(v.dqs_summary ?? {}).flatMap((m) => (m.composite_score == null ? [] : [m.composite_score]));
   return scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
 }
 const versionTone = (s: string): PillTone => (s === "failed" || s === "agents_failed" ? "no-go" : TERMINAL.has(s) ? "go" : "at-risk");

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -28,7 +28,7 @@ const drill = (o: ObjectSummary, run: string, n: number | string) => (
   <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
 );
 
-const makeColumns = (run: string): ColumnDef<ObjectSummary>[] => [
+const makeColumns = (run: string, bands?: ScoreBands): ColumnDef<ObjectSummary>[] => [
   { accessorKey: "label", header: "Object" },
   {
     accessorKey: "composite_score",
@@ -38,7 +38,7 @@ const makeColumns = (run: string): ColumnDef<ObjectSummary>[] => [
       if (score == null) return "—";
       return (
         <span className="inline-flex items-center gap-2">
-          <ScoreRing score={score} size={24} />
+          <ScoreRing score={score} size={24} bands={bands} />
           {drill(row.original, run, score)}
         </span>
       );
@@ -111,7 +111,7 @@ export default function ObjectsPage() {
   const rawVerdict = search.get("verdict");
   const verdict = rawVerdict === "ready" || rawVerdict === "not_ready" ? rawVerdict : null;
   const shownObjs = verdict ? objs.filter((o) => (o.readiness === "pass") === (verdict === "ready")) : objs;
-  const columns = makeColumns(run); // React Compiler memoizes on run
+  const columns = makeColumns(run, data?.thresholds); // React Compiler memoizes on run and thresholds
   const hero = objs.length > 0 && (
     <div className="flex flex-wrap gap-6">
       <Stat label="Objects" value={objs.length} />

@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from api.services.scoring import critical_over_tolerance, readiness_status
+
 logger = logging.getLogger("meridian.services.deterministic_report")
 
 
@@ -307,15 +309,8 @@ def detect_cross_finding_patterns(findings: list[dict]) -> list[dict]:
 # 5. Readiness
 # ---------------------------------------------------------------------------
 
-def compute_readiness_status(composite_score: float, critical_count: int) -> str:
-    """Determine go / no-go / conditional from DQS composite and critical count."""
-    if critical_count > 0:
-        return "no-go"
-    if composite_score >= 90:
-        return "go"
-    if composite_score >= 70:
-        return "conditional"
-    return "no-go"
+# go / conditional / no-go from the one band set (api/services/scoring.py)
+compute_readiness_status = readiness_status
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +323,7 @@ def generate_deterministic_report(
     module_names: list[str],
     findings: list[dict],
     dqs_scores: dict[str, Any],
+    thresholds: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Generate the complete report from check results — no LLM needed.
 
@@ -350,9 +346,8 @@ def generate_deterministic_report(
     readiness_scores: dict[str, dict] = {}
     for module in module_names:
         mod_dqs = dqs_scores.get(module, {})
-        composite = mod_dqs.get("composite_score", 0.0)
-        critical_count = mod_dqs.get("critical_count", 0)
-        status = compute_readiness_status(composite, critical_count)
+        composite = mod_dqs.get("composite_score")  # None = not measured
+        status = compute_readiness_status(composite, critical_over_tolerance(mod_dqs), thresholds)
         readiness_scores[module] = {
             "score": composite,
             "status": status,
@@ -385,7 +380,7 @@ def generate_deterministic_report(
         "overall_dqs": {
             "composite": overall_score,
             "by_module": {
-                m: dqs_scores.get(m, {}).get("composite_score", 0)
+                m: dqs_scores.get(m, {}).get("composite_score")
                 for m in module_names
             },
         },
@@ -394,7 +389,7 @@ def generate_deterministic_report(
         "modules": [
             {
                 "name": mod,
-                "dqs_score": dqs_scores.get(mod, {}).get("composite_score", 0),
+                "dqs_score": dqs_scores.get(mod, {}).get("composite_score"),
                 "readiness": readiness_scores.get(mod, {}),
                 "findings": [f for f in prioritised if f.get("module") == mod],
                 "config_deviations": [
@@ -444,11 +439,18 @@ def _compute_overall_status(readiness_scores: dict[str, dict]) -> str:
     return "conditional"
 
 
-def _compute_overall_score(readiness_scores: dict[str, dict]) -> float:
-    if not readiness_scores:
-        return 0.0
-    scores = [v.get("score", 0.0) for v in readiness_scores.values()]
-    return round(sum(scores) / len(scores), 1)
+def _mean(scores: list[float | None]) -> float | None:
+    """Mean of the measured scores; None when nothing was measured."""
+    measured = [s for s in scores if s is not None]
+    return round(sum(measured) / len(measured), 1) if measured else None
+
+
+def _pct(score: float | None) -> str:
+    return "not measured" if score is None else f"{score:.1f}%"
+
+
+def _compute_overall_score(readiness_scores: dict[str, dict]) -> float | None:
+    return _mean([v.get("score") for v in readiness_scores.values()])
 
 
 def _count_by_severity(findings: list[dict]) -> dict[str, int]:
@@ -474,10 +476,7 @@ def _generate_deterministic_summary(
     finding_count: int,
     status: str,
 ) -> str:
-    avg_score = (
-        sum(dqs_scores.get(m, {}).get("composite_score", 0) for m in modules)
-        / max(len(modules), 1)
-    )
+    avg_score = _pct(_mean([dqs_scores.get(m, {}).get("composite_score") for m in modules]))
     critical_count = sum(
         dqs_scores.get(m, {}).get("critical_count", 0) for m in modules
     )
@@ -485,39 +484,40 @@ def _generate_deterministic_summary(
     if status == "go":
         return (
             f"Data quality assessment of {len(modules)} module(s) shows strong "
-            f"readiness with an average DQS of {avg_score:.1f}%. All modules "
+            f"readiness with an average DQS of {avg_score}. All modules "
             f"pass migration thresholds. {finding_count} checks were evaluated "
             f"with no critical blockers."
         )
     elif status == "no-go":
         return (
             f"Data quality assessment of {len(modules)} module(s) identifies "
-            f"significant gaps with an average DQS of {avg_score:.1f}%. "
+            f"significant gaps with an average DQS of {avg_score}. "
             f"{critical_count} critical issue(s) must be resolved before "
             f"migration can proceed. See the remediation plan for priority actions."
         )
     else:
         return (
             f"Data quality assessment of {len(modules)} module(s) shows "
-            f"conditional readiness at {avg_score:.1f}% average DQS. "
+            f"conditional readiness at {avg_score} average DQS. "
             f"{critical_count} critical finding(s) require attention. "
             f"The remediation plan sequences fixes by business impact."
         )
 
 
-def _compute_migration_summary(overall_status: str, overall_score: float) -> str:
+def _compute_migration_summary(overall_status: str, overall_score: float | None) -> str:
+    score = _pct(overall_score)
     if overall_status == "go":
         return (
             f"All modules meet migration readiness thresholds with an overall "
-            f"score of {overall_score:.1f}%. Proceed with migration planning."
+            f"score of {score}. Proceed with migration planning."
         )
     elif overall_status == "no-go":
         return (
             f"Critical data quality issues block migration readiness (overall "
-            f"score: {overall_score:.1f}%). Address the remediation plan before "
+            f"score: {score}). Address the remediation plan before "
             f"proceeding."
         )
     return (
-        f"Conditional readiness at {overall_score:.1f}%. Some modules require "
+        f"Conditional readiness at {score}. Some modules require "
         f"remediation before migration can proceed."
     )

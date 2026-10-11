@@ -25,6 +25,7 @@ from agents.remediation import remediation_node
 from agents.report_agent import report_node
 from agents.state import AgentState
 from api.config import settings
+from api.services.scoring import scoring_config
 
 logger = logging.getLogger("meridian.agents.orchestrator")
 
@@ -73,6 +74,8 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
         dqs_summary = row[0] or {}
         metadata = row[1] or {}
         modules = metadata.get("modules", [])
+        scoring = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :tid"),
+                                    {"tid": tenant_id})).scalar()
 
         # Load findings — summaries only, never raw data
         # Include rule_context and value_fix_map so agents know about
@@ -133,9 +136,10 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
     for mod, scores in dqs_summary.items():
         if isinstance(scores, dict):
             dqs_scores[mod] = {
-                "composite_score": scores.get("composite_score", 0.0),
+                "composite_score": scores.get("composite_score"),  # None = no rule executed
                 "dimension_scores": scores.get("dimension_scores", {}),
                 "critical_count": scores.get("critical_count", 0),
+                "critical_breaches": scores.get("critical_breaches"),
                 "capped": scores.get("capped", False),
             }
 
@@ -145,6 +149,7 @@ async def run_graph(version_id: str, tenant_id: str) -> AgentState:
         "module_names": modules,
         "findings_summary": findings_summary,
         "dqs_scores": dqs_scores,
+        "thresholds": scoring_config(scoring)["thresholds"],
         "root_causes": [],
         "remediations": {},
         "readiness_scores": {},

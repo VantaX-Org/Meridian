@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import Any, Optional
 
 from langchain_anthropic import ChatAnthropic
@@ -129,7 +130,15 @@ def build_llm_from_config(
             temperature=temperature,
             num_predict=max_tokens or 4096,
             format="json",
-            request_timeout=request_timeout or 90,
+            # Thinking models (qwen3.x) otherwise spend minutes reasoning on
+            # CPU before the first answer token.
+            reasoning=False,
+            # Keep the weights resident; a cold load of a multi-GB model on
+            # CPU costs more than the generation itself.
+            keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "24h"),
+            # ChatOllama has no request_timeout field; it forwards
+            # client_kwargs to the httpx client.
+            client_kwargs={"timeout": request_timeout or 90},
         )
 
     if provider == "ollama_cloud":
@@ -316,6 +325,25 @@ def _bind_max_tokens(llm, max_tokens: int):
         return llm
 
 
+_THINK_BLOCK = re.compile(r"^.*?</think>\s*", re.DOTALL)
+
+
+def _answer_text(response: object) -> str | list[str | dict[str, object]]:
+    """Response text with any leaked reasoning removed.
+
+    Thinking models served by older Ollama builds ignore think=false and put
+    their reasoning, closed by </think>, in front of the answer, which breaks
+    JSON parsing downstream.
+    """
+    content = getattr(response, "content", None)
+    if content is None:
+        return str(response)
+    if not isinstance(content, str):
+        return content
+    text = content
+    return _THINK_BLOCK.sub("", text, count=1) if "</think>" in text else text
+
+
 def safe_invoke(llm, messages, *, timeout_seconds: int = 90, max_tokens: int | None = None) -> str | None:
     """Invoke the LLM with a hard timeout. Returns content string or None.
 
@@ -338,7 +366,7 @@ def safe_invoke(llm, messages, *, timeout_seconds: int = 90, max_tokens: int | N
 
     def _call():
         response = llm.invoke(messages)
-        return response.content
+        return _answer_text(response)
 
     # Not a `with` block: ThreadPoolExecutor.__exit__ unconditionally calls
     # shutdown(wait=True), which blocks until every submitted task finishes —
@@ -402,7 +430,7 @@ def safe_invoke_batch(
             return idx, None
         try:
             response = llm.invoke(prompt)
-            content = response.content if hasattr(response, "content") else str(response)
+            content = _answer_text(response)
             _record_llm_success()
             return idx, content
         except Exception as e:
@@ -456,7 +484,7 @@ async def safe_ainvoke(llm, messages, *, timeout_seconds: int = 60) -> str | Non
 
     def _call() -> str:
         response = llm.invoke(messages)
-        return response.content if hasattr(response, "content") else str(response)
+        return _answer_text(response)
 
     try:
         result = await asyncio.wait_for(

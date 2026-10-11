@@ -25,7 +25,7 @@ describe("charts onPointClick contract", () => {
     ];
     render(<Heatmap rows={["material_master"]} cols={["FI", "MM", "SD"]} cells={cells} onPointClick={onPointClick} />);
     expect(screen.getByLabelText("material_master FI: go")).toBeEnabled();
-    expect(screen.getByLabelText("material_master SD: no data")).toBeDisabled();
+    expect(screen.getByLabelText("material_master SD: not measured")).toBeDisabled();
     fireEvent.click(screen.getByLabelText("material_master MM: no-go"));
     expect(onPointClick).toHaveBeenCalledTimes(1);
     expect(onPointClick).toHaveBeenCalledWith(cells[1]);

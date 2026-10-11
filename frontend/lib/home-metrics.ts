@@ -2,33 +2,41 @@
 import type { Version } from "@/types/api";
 import type { ObjectSummary } from "@/lib/api/v1/objects";
 import { round1, formatDate, formatModuleName } from "@/lib/format";
+import { DEFAULT_SCORE_BANDS, type ScoreBands } from "@/design/primitives/ScoreRing";
 
 export const DIMENSIONS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 export type DimensionKey = (typeof DIMENSIONS)[number];
 
 export type Readiness = "go" | "at-risk" | "no-go";
 
-/** The same thresholds as `ScoreRing`: >=85 go, >=60 at-risk, else no-go. */
-export function readinessOf(score: number): Readiness {
-  return score >= 85 ? "go" : score >= 60 ? "at-risk" : "no-go";
+/** The same bands as `ScoreRing`: >= target go, >= warning at-risk, else no-go. */
+export function readinessOf(score: number, bands: ScoreBands = DEFAULT_SCORE_BANDS): Readiness {
+  return score >= bands.target ? "go" : score >= bands.warning ? "at-risk" : "no-go";
 }
 
-/** Mean `composite_score` across every module scored in this run, or null if none are. */
+/** Mean `composite_score` across every module measured in this run, or null if none are. */
 export function runDqs(v: Version): number | null {
-  const scores = Object.values(v.dqs_summary ?? {}).map((m) => m.composite_score);
+  const scores = Object.values(v.dqs_summary ?? {}).flatMap((m) => (m.composite_score == null ? [] : [m.composite_score]));
   if (scores.length === 0) return null;
   return round1(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
-/** Mean of each of the six dimensions across every module scored in this run, or null if none are. */
-export function runDimensions(v: Version): Record<DimensionKey, number> | null {
+/** Mean of each dimension across the modules that measured it in this run (null: not measured), or null with no modules. */
+export function runDimensions(v: Version): Record<DimensionKey, number | null> | null {
   const modules = Object.values(v.dqs_summary ?? {});
   if (modules.length === 0) return null;
-  const out = {} as Record<DimensionKey, number>;
+  const out = {} as Record<DimensionKey, number | null>;
   for (const dim of DIMENSIONS) {
-    out[dim] = round1(modules.reduce((sum, m) => sum + m.dimension_scores[dim], 0) / modules.length);
+    const scores = modules.filter((m) => m.dimension_coverage?.[dim] !== 0).map((m) => m.dimension_scores[dim]);
+    out[dim] = scores.length ? round1(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   }
   return out;
+}
+
+/** The dimensions no module measured in this run, as display names. */
+export function unmeasuredDimensions(v: Version): string[] {
+  const dims = runDimensions(v);
+  return dims ? DIMENSIONS.filter((d) => dims[d] == null).map(formatModuleName) : [];
 }
 
 export interface TrendPoint {
@@ -37,13 +45,13 @@ export interface TrendPoint {
   runId: string;
 }
 
-/** Finished runs (those with at least one scored module), oldest first, as chart points. */
+/** Finished runs (those with at least one measured module), oldest first, as chart points. */
 export function trend(versions: Version[]): TrendPoint[] {
   return versions
-    .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
+    .filter((v) => runDqs(v) != null)
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
-    .map((v) => ({ x: formatDate(v.run_at, "date"), y: runDqs(v) ?? 0, runId: v.id }));
+    .map((v) => ({ x: formatDate(v.run_at, "date"), y: runDqs(v)!, runId: v.id }));
 }
 
 /** Change from the previous finished run to the latest one, or null with fewer than two finished runs. */
@@ -97,7 +105,10 @@ export function dimensionBarPoints(v: Version, weights: Readonly<Record<Dimensio
   if (!dims) return [];
   const total = DIMENSIONS.reduce((n, d) => n + weights[d], 0);
   const label = (d: DimensionKey) => (total > 0 ? `${formatModuleName(d)} · ${Math.round((weights[d] / total) * 100)}%` : formatModuleName(d));
-  return DIMENSIONS.map((d) => ({ x: label(d), y: dims[d], dimension: d }));
+  return DIMENSIONS.flatMap((d) => {
+    const y = dims[d];
+    return y == null ? [] : [{ x: label(d), y, dimension: d }];
+  });
 }
 
 export interface HeatmapCell {
@@ -107,13 +118,14 @@ export interface HeatmapCell {
 }
 
 /** One cell per object x dimension, from this run's `dqs_summary` (spec 7.1 "Object readiness grid"). */
-export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version): HeatmapCell[] {
+export function dimensionHeatmapCells(objects: ObjectSummary[], v: Version, bands?: ScoreBands): HeatmapCell[] {
   const cells: HeatmapCell[] = [];
   for (const obj of objects) {
     const summary = v.dqs_summary?.[obj.module];
     if (!summary) continue;
     for (const dim of DIMENSIONS) {
-      cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim]) });
+      if (summary.dimension_coverage?.[dim] === 0) continue; // not measured: the grid shows an empty cell
+      cells.push({ row: obj.label, col: formatModuleName(dim), value: readinessOf(summary.dimension_scores[dim], bands) });
     }
   }
   return cells;
@@ -130,10 +142,10 @@ export function worstObjectsFirst(objects: ObjectSummary[]): ObjectSummary[] {
 /** One object's `composite_score` across every finished run it appears in, oldest first. */
 export function objectTrend(versions: Version[], module: string): { x: string; y: number }[] {
   return versions
-    .filter((v) => v.dqs_summary?.[module])
+    .filter((v) => v.dqs_summary?.[module]?.composite_score != null)
     .slice()
     .sort((a, b) => new Date(a.run_at).getTime() - new Date(b.run_at).getTime())
-    .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score }));
+    .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score! }));
 }
 
 /**
@@ -144,7 +156,7 @@ export function objectTrend(versions: Version[], module: string): { x: string; y
  * ("... capped at 70"); the API has no field for it.
  */
 export function runCap(v: Version): { cap: number; criticals: number } | null {
-  const mods = Object.values(v.dqs_summary ?? {});
+  const mods = Object.values(v.dqs_summary ?? {}).filter((m) => m.composite_score != null); // as runDqs: measured modules only
   if (mods.length === 0 || !mods.every((m) => m.capped)) return null;
   const caps = mods.map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1]));
   if (!caps.every((n) => Number.isFinite(n) && n === caps[0])) return null;

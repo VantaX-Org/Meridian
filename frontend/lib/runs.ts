@@ -2,7 +2,7 @@ import type { Version } from "@/types/api";
 
 /** Mean of the module composite scores, or null when the run carries no scores. */
 export function overallDqs(version: Version): number | null {
-  const scores = Object.values(version.dqs_summary ?? {}).map((s) => s.composite_score);
+  const scores = Object.values(version.dqs_summary ?? {}).flatMap((s) => (s.composite_score == null ? [] : [s.composite_score]));
   if (scores.length === 0) return null;
   return scores.reduce((a, b) => a + b, 0) / scores.length;
 }

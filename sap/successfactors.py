@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 # Rate-limit and pagination defaults
 # ---------------------------------------------------------------------------
 
-_DEFAULT_PAGE_SIZE = 1000
 _RATE_LIMIT_BACKOFF_SECONDS = 2.0
 _MAX_RETRIES = 3
 
@@ -222,9 +221,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
             params["fromDate"] = from_date
         if top > 0:
             params["$top"] = str(top)
-        else:
-            # Use page size for server-driven pagination
-            params["$top"] = str(_DEFAULT_PAGE_SIZE)
+        # no $top otherwise: SF reads $top as a client limit and then returns no __next,
+        # so an unlimited read relies on server-driven pages (1000 rows each)
 
         url = f"/odata/v2/{entity_set}"
         all_records: list[dict[str, Any]] = []

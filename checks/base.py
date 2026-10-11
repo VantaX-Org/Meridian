@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 # Exact SAP primary key fields — highest priority.
 SAP_PRIMARY_KEYS = [
@@ -88,6 +88,10 @@ class CheckResult(BaseModel):
     # Cost of poor data quality (checks/cost.py): amount at risk and how it was computed.
     cost_at_risk: Optional[float] = None
     cost_formula: Optional[str] = None
+    # Every failing record's key string, uncapped, for the worker's clean-record count
+    # (api/services/scoring.CleanRecords). Not serialised; checks.runner.run_checks
+    # hands it to on_result and then drops it.
+    _all_failing_keys: Optional[pd.Series] = PrivateAttr(default=None)
 
 
 # Record-level output cap per check. Beyond this the count stays exact but the
@@ -291,7 +295,7 @@ class BaseCheck(ABC):
         from checks.cost import price
         cost, formula = price(self.rule.get("_cost"), affected, failing_df)
 
-        return CheckResult(
+        result = CheckResult(
             check_id=self.rule["id"],
             module=self.rule.get("module", ""),
             field=field,
@@ -309,6 +313,8 @@ class BaseCheck(ABC):
             cost_at_risk=cost,
             cost_formula=formula,
         )
+        result._all_failing_keys = all_keys
+        return result
 
     def _error(self, df: pd.DataFrame, error: str) -> CheckResult:
         return CheckResult(

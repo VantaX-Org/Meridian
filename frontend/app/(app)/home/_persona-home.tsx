@@ -21,7 +21,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  runCap, cappedReason, dimensionBarPoints, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
+  runCap, cappedReason, dimensionBarPoints, unmeasuredDimensions, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
@@ -124,10 +124,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const runCapInfo = runCap(latest);
   const dqs = runDqs(latest);
 
-  const scoredObjects = objects
-    .filter((o) => latest.dqs_summary?.[o.module])
-    .slice()
-    .sort((a, b) => (a.composite_score ?? 0) - (b.composite_score ?? 0));
+  const scoredObjects = worstObjectsFirst(objects.filter((o) => latest.dqs_summary?.[o.module]));
   const heatmapRows = scoredObjects.map((o) => o.label);
   const heatmapCols = DIMENSIONS.map((d) => formatModuleName(d));
 
@@ -147,7 +144,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       criticals={runCapInfo?.criticals}
       trendPoints={trendPoints}
       dimensionPoints={dimensionBarPoints(latest, settingsQ.data?.dqs_weights ?? undefined)}
-      heatmapCells={dimensionHeatmapCells(scoredObjects, latest)}
+      unmeasured={unmeasuredDimensions(latest)}
+      heatmapCells={dimensionHeatmapCells(scoredObjects, latest, objectsQ.data?.thresholds)}
       heatmapRows={heatmapRows}
       heatmapCols={heatmapCols}
       versionId={latest.id}

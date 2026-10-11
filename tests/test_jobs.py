@@ -148,20 +148,21 @@ def test_registry_is_silent_without_redis(monkeypatch):
     assert jobs.get_job("t", "j") is None and jobs.list_jobs("t") == []
 
 
-def test_composite_dqs_weights_modules_by_their_checks():
+def test_composite_dqs_weights_modules_by_module_weight():
     from api.routes.findings import composite_dqs
 
     ap = {"composite_score": 90.0, "total_checks": 30, "capped": False,
           "dimension_scores": {"completeness": 95.0, "accuracy": 85.0}}
     mm = {"composite_score": 60.0, "total_checks": 10, "capped": True,
           "dimension_scores": {"completeness": 55.0, "validity": 70.0}}
-    out = composite_dqs([{"accounts_payable": ap}, {"material_master": mm}])
-    assert out["composite"] == 82.5                      # (90·30 + 60·10) / 40
-    assert out["dimension_scores"]["completeness"] == 85.0  # (95·30 + 55·10) / 40
+    out = composite_dqs([{"accounts_payable": ap}, {"material_master": mm}], scoring={})
+    # modules weigh by module weight (default 1), not by how many rules they run
+    assert out["composite"] == 75.0                      # (90 + 60) / 2
+    assert out["dimension_scores"]["completeness"] == 75.0  # (95 + 55) / 2
     assert out["dimension_scores"]["validity"] == 70.0      # only MM measures it
     assert out["modules"] == {"accounts_payable": 90.0, "material_master": 60.0} and out["capped"]
-    assert composite_dqs([]) == {"composite": None, "dimension_scores": {}, "modules": {}}
-    assert composite_dqs([None, {}])["composite"] is None
+    assert composite_dqs([], scoring={})["composite"] is None and composite_dqs([], scoring={})["modules"] == {}
+    assert composite_dqs([None, {}], scoring={})["composite"] is None
 
 
 def test_findings_check_class_resolved_from_rule_yaml():

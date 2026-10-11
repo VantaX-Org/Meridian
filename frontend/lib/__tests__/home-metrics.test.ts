@@ -12,6 +12,7 @@ import {
   runDqs,
   severityTotals,
   trend,
+  unmeasuredDimensions,
   worstObjectsFirst,
 } from "../home-metrics";
 
@@ -42,11 +43,13 @@ function version(id: string, runAt: string, scores: Record<string, number>, over
 }
 
 describe("home-metrics", () => {
-  it("readinessOf applies the ScoreRing thresholds", () => {
+  it("readinessOf applies the ScoreRing bands (target 90, warning 75 by default)", () => {
     expect(readinessOf(90)).toBe("go");
-    expect(readinessOf(85)).toBe("go");
-    expect(readinessOf(70)).toBe("at-risk");
-    expect(readinessOf(59)).toBe("no-go");
+    expect(readinessOf(85)).toBe("at-risk");
+    expect(readinessOf(75)).toBe("at-risk");
+    expect(readinessOf(74)).toBe("no-go");
+    expect(readinessOf(85, { target: 85, warning: 60, critical: 50 })).toBe("go");
+    expect(readinessOf(70, { target: 85, warning: 60, critical: 50 })).toBe("at-risk");
   });
 
   it("runDqs averages composite_score across modules, or null with none", () => {
@@ -57,6 +60,20 @@ describe("home-metrics", () => {
   it("runDimensions averages each dimension across modules, or null with none", () => {
     expect(runDimensions(version("v1", "2026-01-01", { material_master: 80, business_partner: 90 }))).toEqual(dims(85));
     expect(runDimensions(version("v1", "2026-01-01", {}))).toBeNull();
+  });
+
+  it("runDimensions skips dimensions a module did not measure and nulls those no module measured", () => {
+    const v = version("v1", "2026-01-01", { material_master: 80, business_partner: 90 });
+    v.dqs_summary!.material_master.dimension_coverage = { accuracy: 0, timeliness: 0 };
+    v.dqs_summary!.business_partner.dimension_coverage = { timeliness: 0 };
+    v.dqs_summary!.business_partner.composite_score = null;
+    const d = runDimensions(v)!;
+    expect(d.accuracy).toBe(90); // material master's placeholder 100 is not averaged in
+    expect(d.completeness).toBe(85);
+    expect(d.timeliness).toBeNull();
+    expect(unmeasuredDimensions(v)).toEqual(["Timeliness"]);
+    expect(dimensionBarPoints(v).map((p) => p.dimension)).not.toContain("timeliness");
+    expect(runDqs(v)).toBe(80); // the unmeasured module is not counted as 0 or 100
   });
 
   it("trend keeps only finished versions, oldest first", () => {

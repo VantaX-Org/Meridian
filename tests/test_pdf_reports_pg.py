@@ -162,9 +162,9 @@ def test_summary_section_shows_previous_run_delta(app_engine):
         v1 = load_version(s, a, v["v1"])
         v2 = load_version(s, a, v["v2"])
         upload = load_version(s, a, v["upload"])
-        assert load_previous_dqs(s, a, v1) is None  # nothing earlier in this lineage
-        assert load_previous_dqs(s, a, v2) == pytest.approx(composite_dqs([v1["dqs_summary"]])["composite"])
-        assert load_previous_dqs(s, a, upload) is None  # upload lineage has only itself so far
+        assert load_previous_dqs(s, a, v1, {}) is None  # nothing earlier in this lineage
+        assert load_previous_dqs(s, a, v2, {}) == pytest.approx(composite_dqs([v1["dqs_summary"]], scoring={})["composite"])
+        assert load_previous_dqs(s, a, upload, {}) is None  # upload lineage has only itself so far
 
         from api.services.pdf_reports import build
         pdf = build(s, a, "analysis", v["v2"])
