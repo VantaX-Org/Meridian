@@ -233,6 +233,21 @@ export async function getDdicFields(fields: string[]): Promise<DdicField[]> {
   return data.fields;
 }
 
+export interface RuleDraft {
+  id: string;
+  domain: string;
+  proposed_rule: Record<string, unknown>;
+  rationale: string | null;
+  status: string;
+  created_at: string;
+}
+
+/** Saved AI-assisted rule drafts for this tenant. */
+export async function getRuleDrafts(): Promise<RuleDraft[]> {
+  const { data } = await apiClient.get<{ items: RuleDraft[] }>("/api/v1/rule-authoring/drafts");
+  return data.items;
+}
+
 export interface RuleVersion {
   rule_id: string;
   version: number;

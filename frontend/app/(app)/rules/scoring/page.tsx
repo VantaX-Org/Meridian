@@ -10,7 +10,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Select, Skeleton } from "@/design";
+import { Button, ErrorState, Field, Radar, ScoreRing, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
 import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
@@ -132,7 +132,11 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       <section className="flex gap-6">
         <div className="flex flex-col gap-1">
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Score now</span>
-          <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : current === null ? "—" : current.toFixed(1)}</span>
+          {current === null ? (
+            <span className="text-[18px] font-semibold">{agg.isLoading ? "–" : "—"}</span>
+          ) : (
+            <ScoreRing score={current} size={96} />
+          )}
           <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{capped ? "A severity cap is in force." : current === null ? "No analysis has run yet." : "From the latest run."}</span>
         </div>
         <div className="flex flex-col gap-1">
@@ -151,6 +155,10 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
         </div>
       </section>
       )}
+
+      {Object.keys(scores).length > 0 ? (
+        <Radar label="Latest score per dimension" data={DIMS.filter((d) => scores[d] != null).map((d) => ({ x: d[0].toUpperCase() + d.slice(1), y: scores[d] }))} />
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[13px] font-semibold">Dimension weights</h2>

@@ -185,7 +185,15 @@ export default function RulePage() {
     onError: (e) => toast.error((e as Error).message || "Not saved"),
   });
 
-  if (isLoading) return <Skeleton height={320} />;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 p-6" aria-busy="true">
+        <Skeleton height={120} />
+        <Skeleton height={96} />
+        <Skeleton height={320} />
+      </div>
+    );
+  }
   if (isError && isAxiosError(error) && error.response?.status === 404) {
     return (
       <EmptyState
@@ -216,7 +224,7 @@ export default function RulePage() {
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Object</dt><dd>{formatModuleName(data.module)}</dd></div>
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>System</dt><dd>{labelOf(data.category)}</dd></div>
         <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Source</dt><dd>{labelOf(SOURCE_LABEL[data.source] ?? data.source)}{data.source_yaml ? `, ${data.source_yaml}` : ""}</dd></div>
-        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Last run</dt><dd>{data.last_pass_rate != null ? `${(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %` : "not run yet"}</dd></div>
+        <div className="flex justify-between"><dt style={{ color: "var(--m-ink-3)" }}>Last run</dt><dd>{data.last_pass_rate != null ? <DrillLink object={data.module} ruleId={checkId}>{(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %</DrillLink> : "not run yet"}</dd></div>
       </dl>
 
       {data.tags?.length ? <div className="flex flex-wrap gap-1">{data.tags.map((t) => <Pill key={t} tone="neutral">{t}</Pill>)}</div> : null}
@@ -230,9 +238,10 @@ export default function RulePage() {
         <div className="flex gap-6">
           <Stat
             label="Last pass rate"
+            href={buildDrillHref({ object: data.module, ruleId: checkId })}
             value={data.last_pass_rate != null ? `${(data.last_pass_rate * (data.last_pass_rate <= 1 ? 100 : 1)).toFixed(1)} %` : "—"}
           />
-          <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} />
+          <Stat label="Last run" value={formatDate(data.last_run_at, "datetime")} href={buildDrillHref({ object: data.module, ruleId: checkId })} />
         </div>
         {history.isLoading ? (
           <Skeleton height={120} />
