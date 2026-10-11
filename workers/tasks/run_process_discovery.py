@@ -34,7 +34,7 @@ from api.services.process_discovery.generate import generate, reference_model, w
 from api.services.process_discovery.mining import MiningResult, Scope, mine, store_variants
 from api.services.task_progress import _redis_client
 from sap.process_definitions import reference_document
-from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
+from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.process_discovery")
@@ -48,8 +48,11 @@ WAIT_COUNTDOWN = 300
 MIN_CASES = 50              # spec §10: below this the DFG is anecdotes, not a process
 EVENT_DAYS = 730            # retention: 24 months of events
 KEEP_RUNS = 20              # retention: runs kept per (system, l1)
-# Longest chain: the extraction, the wait for another extraction, then discover_process (time_limit 7500), plus slack.
-LOCK_TTL = EXTRACT_TIME_LIMIT + WAIT_RETRIES * WAIT_COUNTDOWN + 7500 + 600
+# Longest chain: run_extraction waiting for the config sync (retries x countdown), the extraction itself
+# (hard limit EXTRACT_TIME_LIMIT + 60), the wait for another extraction, then discover_process (time_limit 7500),
+# plus slack for queue latency.
+LOCK_TTL = (CONFIG_WAIT_SECONDS * CONFIG_WAIT_RETRIES + EXTRACT_TIME_LIMIT + 60
+            + WAIT_RETRIES * WAIT_COUNTDOWN + 7500 + 600)
 PURPOSE = "process_discovery"  # analysis_versions.metadata.purpose of the extraction a chain makes
 EXCLUSIVE_KINDS = ("extraction", "config_sync")
 LIVE = frozenset({"live", "delta", "delta_fallback"})
@@ -106,13 +109,19 @@ def cleanup_extraction(session: Session, tenant_id: str, version_id: str) -> Non
         from api.config import settings
         from api.services.storage import get_minio_client
 
-        client = get_minio_client()
-        for obj in list(client.list_objects(settings.minio_bucket_uploads,
-                                            prefix=f"staging/{tenant_id}/{version_id}/", recursive=True)):
-            client.remove_object(settings.minio_bucket_uploads, obj.object_name)
-        session.execute(text("DELETE FROM analysis_versions WHERE id = :v AND tenant_id = :t "
-                             "AND metadata->>'purpose' = :p"), {"v": version_id, "t": tenant_id, "p": PURPOSE})
+        deleted = session.execute(text("DELETE FROM analysis_versions WHERE id = :v AND tenant_id = :t "
+                                       "AND metadata->>'purpose' = :p RETURNING id"),
+                                  {"v": version_id, "t": tenant_id, "p": PURPOSE}).first()
+        # a version row that is still there is not ours (no purpose): its dataset files are not ours to remove
+        foreign = deleted is None and session.execute(
+            text("SELECT 1 FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+            {"v": version_id, "t": tenant_id}).first() is not None
         session.commit()
+        if not foreign:
+            client = get_minio_client()
+            for obj in list(client.list_objects(settings.minio_bucket_uploads,
+                                                prefix=f"staging/{tenant_id}/{version_id}/", recursive=True)):
+                client.remove_object(settings.minio_bucket_uploads, obj.object_name)
     except Exception:  # best effort: a leftover is cosmetic, a failure here must not fail the run
         session.rollback()
         logger.exception("process discovery cleanup of extraction %s failed", version_id)

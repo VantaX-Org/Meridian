@@ -15,7 +15,36 @@ PRIMARY_CASE_TYPE: dict[str, str] = {
 }
 
 # Extraction module per L1 (sap/extraction_plan.py PROCESS_EVENT_MODULES / PROCESS_EVENT_CLOUD_MODULES).
+# An internal extraction name: no licence tier lists it, so never check a licence against it (see licence_modules).
 MODULE_OF: dict[str, str] = {l1: f"process_events_{l1.lower()}" for l1 in L1S}
+
+# Registry keys that are internal extractions, not entitlements.
+_NOT_LICENSABLE = frozenset({"process_discovery", "proven_cost", "interface_health"})
+# Event tables the registry does not extract under their home DQ module (R2R reads BKPF/BSAS, PP reads AFKO,
+# PM reads QMEL, WH reads LTAK, MDG reads USMD*), so the registry lookup alone misses the home module.
+_DOMAIN_HOME: dict[str, str] = {"R2R": "fi_gl", "PP": "production_planning", "PM": "plant_maintenance",
+                                "WH": "ewms_transfer_orders", "MDG": "mdg_master_data"}
+# Tables shared by every L1 event log; they say nothing about which domain is being read.
+_SHARED_TABLES = frozenset({"CDHDR", "CDPOS", "USR02", "T001W"})
+
+
+def licence_modules(l1: str, system_type: str) -> tuple[str, ...]:
+    """The DQ modules whose source tables ``l1``'s event log extracts, as licence tiers name them.
+
+    A tenant needs at least one of them to run ``l1``. Derived from the extraction registry: cloud L1s from
+    their source-module column, ABAP L1s from the event tables that some DQ module also extracts.
+    """
+    from sap.extraction_plan import PROCESS_EVENTS_DATA
+    from sap.extraction_registry import _PROCESS_EVENT_CLOUD, SYSTEM_EXTRACTIONS
+
+    key = MODULE_OF[l1]
+    if key in _PROCESS_EVENT_CLOUD:
+        return tuple(sorted({row[1] for row in _PROCESS_EVENT_CLOUD[key][1]}))
+    tables = set(PROCESS_EVENTS_DATA.get(key, {})) - _SHARED_TABLES
+    registry = SYSTEM_EXTRACTIONS.get("ewm" if system_type == "ewm" else "ecc", {})
+    found = {m for m, targets in registry.items()
+             if m not in _NOT_LICENSABLE and tables & {t.source for t in targets}}
+    return tuple(sorted(found | ({_DOMAIN_HOME[l1]} if l1 in _DOMAIN_HOME else set())))
 
 # Spec §8.2 / §1: the L1s a system type can discover.
 L1S_BY_SYSTEM: dict[str, tuple[str, ...]] = {

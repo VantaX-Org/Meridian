@@ -35,7 +35,7 @@ from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
 from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_counts
-from api.services.process_discovery import L1S, L1S_BY_SYSTEM, MODULE_OF, primary_case_type, reason
+from api.services.process_discovery import L1S, L1S_BY_SYSTEM, MODULE_OF, licence_modules, primary_case_type, reason
 from api.services.process_discovery.builders import builder
 from api.services.process_discovery.events import DEFAULT_TZ
 from api.services.process_discovery.filters import ProcessFilter, case_filter_sql
@@ -399,8 +399,13 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
     system_id = _id(system_id)
     system_type, tz = await _system(db, tenant, system_id)
     # the entitlement boundary for module data entering the system, as on /extract: only the L1s that extract
-    enforce_licensed_modules(request, sorted({MODULE_OF[l1] for l1 in body.l1s
-                                              if l1 in L1S_BY_SYSTEM.get(system_type, ())}))
+    # an L1 runs when the tenant holds any DQ module whose tables its event log reads
+    licensed = getattr(request.state, "licensed_modules", None)
+    if licensed is not None and "*" not in licensed:
+        for l1 in body.l1s:
+            mods = licence_modules(l1, system_type) if l1 in L1S_BY_SYSTEM.get(system_type, ()) else ()
+            if mods and not any(m in licensed for m in mods):
+                enforce_licensed_modules(request, list(mods))
     client = _redis_client()
     if client is None:
         raise HTTPException(status_code=503, detail="Job queue unavailable")

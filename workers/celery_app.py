@@ -8,6 +8,8 @@ broker_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
 # large object takes hours over RFC_READ_TABLE. Lives here so task modules can
 # read it without importing each other.
 EXTRACT_TIME_LIMIT = int(os.getenv("MERIDIAN_EXTRACT_TIME_LIMIT", "21600"))
+# run_extraction retries this long for the system's config sync (it waits before it extracts)
+CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
 
 celery_app = Celery(
     "meridian",

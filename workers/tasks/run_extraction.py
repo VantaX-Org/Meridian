@@ -21,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.services import jobs
-from workers.celery_app import EXTRACT_TIME_LIMIT, celery_app
+from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT, celery_app
 from workers.db import get_sync_engine, tenant_session
 
 logger = logging.getLogger("meridian.workers.extraction")
@@ -107,7 +107,6 @@ def baseline_loader(prefix: str) -> Callable[[str], "Optional[pd.DataFrame]"]:
     return load
 
 
-CONFIG_WAIT_SECONDS, CONFIG_WAIT_RETRIES = 30, 50
 
 
 def wait_for_config(task: Task, session: Session, system_id: str) -> str:

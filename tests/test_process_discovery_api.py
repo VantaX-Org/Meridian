@@ -199,6 +199,14 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert r.json()["job_id"] is None and rpd.lock_key(tid, sid) not in redis.data
             assert len(FakeChain.calls) == 1
 
+            # a tenant licensed for a module the PTP event log reads (EKKO is mm_purchasing's) gets past the check
+            r = await c.post(f"{BASE}/systems/{sid}/runs", json={"l1s": ["PTP"]},
+                             headers={**h, "X-Test-Licensed": "mm_purchasing,business_partner"})
+            assert r.status_code == 200, r.text
+            assert len(FakeChain.calls) == 2
+            redis.delete(rpd.lock_key(tid, sid))
+            FakeChain.calls.pop()
+
             # stored views
             model = (await c.get(f"{BASE}/runs/{rid}/model", headers=viewer)).json()
             assert model["source"] == "discovered" and [x["id"] for x in model["l1"]] == ["PTP"]
@@ -224,6 +232,10 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert v["case_type"] == "po_item" and v["total"] == len(v["items"]) > 0
             vf = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer, params=f)).json()
             assert [x["hash"] for x in vf["items"]] == [x["hash"] for x in v["items"]]
+            # sample case ids are SAP document keys: only a caller who may export sees them
+            assert not any(x["sample_case_ids"] for x in v["items"])
+            vh = (await c.get(f"{BASE}/runs/{rid}/variants", headers=h)).json()
+            assert any(x["sample_case_ids"] for x in vh["items"])
             conf = (await c.get(f"{BASE}/runs/{rid}/conformance", headers=viewer)).json()
             assert conf["case_type"] == "po_item" and conf["steps"]
 
@@ -321,3 +333,73 @@ def test_discovery_extraction_is_not_a_data_quality_version(app_engine, monkeypa
             assert (await c.post(f"/api/v1/versions/{mine}/analyse", headers=h)).status_code == 409
 
     asyncio.run(scenario())
+
+
+@pg
+def test_system_scoped_process_analyst_grant(app_engine, monkeypatch):  # noqa: F811
+    """A process_analyst grant on one system opens that system's and its runs' routes, and no other system's."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from api.config import settings
+    from api.deps import Tenant, get_db, get_tenant
+    from api.routes import process_discovery as route
+
+    monkeypatch.delenv("MERIDIAN_DEV_ROLE_HEADER", raising=False)
+    monkeypatch.setattr(settings, "auth_mode", "local")
+    redis = FakeRedis()
+    monkeypatch.setattr(route, "_redis_client", lambda: redis)
+    monkeypatch.setattr(route, "_insert_audit_row", lambda row: None)
+    monkeypatch.setattr(route, "chain", FakeChain)
+    monkeypatch.setattr(route.jobs, "start_job", lambda *a, **k: None)
+    monkeypatch.setattr(route.jobs, "update_job", lambda *a, **k: None)
+    FakeChain.calls = []
+
+    owner, app_eng = app_engine
+    tid, mine, other, uid = (str(uuid.uuid4()) for _ in range(4))
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :n)"), {"t": tid, "n": f"PDS-{tid[:8]}"})
+        c.execute(text("INSERT INTO users (id, tenant_id, email, name, role, is_active) "
+                       "VALUES (:u, :t, :e, 'u', 'viewer', true)"), {"u": uid, "t": tid, "e": f"{uid[:8]}@example.test"})
+        runs = {}
+        for sid in (mine, other):
+            c.execute(text("INSERT INTO sap_systems (id, tenant_id, name, system_type) VALUES (:s, :t, 'S', 'ecc')"),
+                      {"s": sid, "t": tid})
+            runs[sid] = str(c.execute(text(
+                "INSERT INTO process_discovery_runs (tenant_id, system_id, l1, mode, status) "
+                "VALUES (:t, :s, 'PTP', 'full', 'completed') RETURNING id"), {"t": tid, "s": sid}).scalar())
+        c.execute(text("INSERT INTO user_role_scopes (tenant_id, user_id, role_key, system_id) "
+                       "VALUES (:t, :u, 'process_analyst', :s)"), {"t": tid, "u": uid, "s": mine})
+    aeng = create_async_engine(app_eng.url.set(drivername="postgresql+asyncpg"))
+    factory = async_sessionmaker(aeng, expire_on_commit=False)
+
+    async def _db():
+        async with factory() as sess:
+            yield sess
+
+    api = FastAPI()
+    api.include_router(route.router)
+
+    @api.middleware("http")
+    async def _user(request, call_next):  # what the auth middleware sets
+        request.state.local_user_id = uid
+        return await call_next(request)
+    api.dependency_overrides[get_db] = _db
+    api.dependency_overrides[get_tenant] = lambda: Tenant(uuid.UUID(tid), "D", [])
+
+    async def scenario():
+        async with AsyncClient(transport=ASGITransport(app=api), base_url="http://t") as c:
+            start = {"json": {"l1s": ["SFX"]}}  # reference-only: no lock, no chain
+            assert (await c.get(f"{BASE}/systems/{mine}/catalogue")).status_code == 200
+            assert (await c.post(f"{BASE}/systems/{mine}/runs", **start)).status_code == 200
+            assert (await c.get(f"{BASE}/runs/{runs[mine]}")).status_code == 200
+            assert (await c.get(f"{BASE}/runs/{runs[mine]}/cases")).status_code == 200  # export_process
+            assert (await c.get(f"{BASE}/systems/{other}/catalogue")).status_code == 200  # users.role viewer sees all
+            assert (await c.post(f"{BASE}/systems/{other}/runs", **start)).status_code == 403
+            assert (await c.get(f"{BASE}/runs/{runs[other]}/cases")).status_code == 403
+            assert (await c.get(f"{BASE}/runs/{runs[other]}/export/signavio")).status_code == 403
+
+    asyncio.run(scenario())
+    asyncio.run(aeng.dispose())

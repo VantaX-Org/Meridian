@@ -67,9 +67,27 @@ def test_release_lock_leaves_another_owners_lock(monkeypatch) -> None:
 
 
 def test_lock_outlives_the_longest_chain() -> None:
-    from workers.celery_app import EXTRACT_TIME_LIMIT
+    from workers.celery_app import CONFIG_WAIT_RETRIES, CONFIG_WAIT_SECONDS, EXTRACT_TIME_LIMIT
+    
+    chain = (CONFIG_WAIT_SECONDS * CONFIG_WAIT_RETRIES + EXTRACT_TIME_LIMIT + 60  # config wait + extract hard limit
+             + rpd.WAIT_RETRIES * rpd.WAIT_COUNTDOWN + 7500)  # wait for another extraction + discover
+    assert rpd.LOCK_TTL > chain
 
-    assert rpd.LOCK_TTL > EXTRACT_TIME_LIMIT + 60 + rpd.WAIT_RETRIES * rpd.WAIT_COUNTDOWN + 7500  # extract + wait + discover
+
+def test_every_sourced_l1_is_licensed_through_real_dq_modules() -> None:
+    from api.services.process_discovery import L1S_BY_SYSTEM, licence_modules
+
+    tier = {"material_master", "mm_purchasing", "sd_sales_orders", "fi_gl", "production_planning", "plant_maintenance",
+            "quality_management", "project_system", "hcm", "employee_central", "mdg_master_data",
+            "recruiting_onboarding", "ariba_supplier", "concur_expense", "ewms_transfer_orders"}
+    for system_type, l1s in L1S_BY_SYSTEM.items():
+        for l1 in l1s:
+            mods = licence_modules(l1, system_type)
+            assert mods and not any(m.startswith("process_events_") for m in mods), (system_type, l1)
+    assert "mm_purchasing" in licence_modules("PTP", "ecc") and "sd_sales_orders" in licence_modules("OTC", "ecc")
+    assert licence_modules("WH", "ewm") == ("ewms_transfer_orders",)
+    assert set(licence_modules("SFX", "successfactors")) == {"employee_central", "recruiting_onboarding", "time_attendance"}
+    assert set(licence_modules("PTP", "ecc")) <= tier
 
 
 def test_reason_per_system_type() -> None:
@@ -403,17 +421,62 @@ def test_cleanup_removes_only_the_discovery_extraction(engine, app, monkeypatch)
                        "VALUES (:v, :t, 'extracted', CAST(:m AS jsonb))"),
                   {"v": mine, "t": tid, "m": json.dumps({"dataset_path": "mem", "purpose": rpd.PURPOSE})})
     removed = []
-    objs = [SimpleNamespace(object_name=f"staging/{tid}/{mine}/EKKO.parquet")]
-    fake = SimpleNamespace(list_objects=lambda bucket, prefix, recursive: objs if prefix.endswith(f"{mine}/") else [],
-                           remove_object=lambda bucket, name: removed.append(name))
+    gone = str(uuid.uuid4())  # no version row at all: its files are orphans
+    # every prefix has objects, so removal is decided by the guard and not by an empty listing
+    fake = SimpleNamespace(
+        list_objects=lambda bucket, prefix, recursive: [SimpleNamespace(object_name=f"{prefix}EKKO.parquet")],
+        remove_object=lambda bucket, name: removed.append(name))
     monkeypatch.setattr("api.services.storage.get_minio_client", lambda: fake)
     s = tenant_session(app, tid)
-    rpd.cleanup_extraction(s, tid, mine)
     rpd.cleanup_extraction(s, tid, plain)
+    assert removed == []  # a plain download keeps its row and its files
+    rpd.cleanup_extraction(s, tid, mine)
+    rpd.cleanup_extraction(s, tid, gone)
     s.close()
     with engine.connect() as c:
         left = {str(r[0]) for r in c.execute(text("SELECT id FROM analysis_versions WHERE tenant_id = :t"), {"t": tid})}
-    assert left == {plain} and removed == [objs[0].object_name]
+    assert left == {plain}
+    assert removed == [f"staging/{tid}/{mine}/EKKO.parquet", f"staging/{tid}/{gone}/EKKO.parquet"]
+
+
+@pg
+@pytest.mark.parametrize("purpose", [None, rpd.PURPOSE])
+def test_run_extraction_purpose_skips_only_the_data_quality_side_effects(engine, app, monkeypatch, purpose) -> None:
+    """purpose marks the version and skips the module map and table profiles; with no purpose both are written."""
+    import pandas as pd
+    from sqlalchemy import text
+
+    from workers.tasks import run_extraction as rx
+
+    tid, sid, _, _ = _seed(engine, [], dataset=False)
+
+    class Manager:
+        def __init__(self, session, tenant_id) -> None:
+            pass
+
+        def extract(self, system_id, modules, scope=None, progress=None, sink=None, delta=None):
+            sink("MARA", pd.DataFrame({"MATNR": ["1", "2"], "MTART": ["FERT", "ROH"]}), {"modules": modules})
+            return {}, [{"table": "MARA", "rows": 2, "status": "live", "complete": True}]
+
+    monkeypatch.setattr("api.services.connectivity_manager.ConnectivityManager", Manager)
+    monkeypatch.setattr("api.services.storage.upload_file", lambda *a, **k: None)
+    monkeypatch.setattr("api.services.task_progress.publish_progress", lambda *a, **k: None)
+    monkeypatch.setattr(rx, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(rx, "wait_for_config", lambda *a, **k: "loaded")
+    for name in ("start_job", "update_job", "finish_job"):
+        monkeypatch.setattr(rx.jobs, name, lambda *a, **k: None)
+    monkeypatch.setattr(rx.jobs, "get_job", lambda *a, **k: None)
+    vid = str(uuid.uuid4())
+    out = rx.run_extraction(tid, sid, ["material_master"], include_config=False, analyse=False, version_id=vid,
+                            purpose=purpose)
+    assert out["status"] == "success"
+    with engine.connect() as c:
+        meta = c.execute(text("SELECT metadata FROM analysis_versions WHERE id = :v"), {"v": vid}).scalar()
+        mapped = c.execute(text("SELECT count(*) FROM system_module_map WHERE system_id = :s"), {"s": sid}).scalar()
+        profiled = c.execute(text("SELECT count(*) FROM table_profiles WHERE version_id = :v"), {"v": vid}).scalar()
+    assert meta.get("purpose") == purpose and ("purpose" in meta) is (purpose is not None)
+    assert meta["dataset_path"] == f"staging/{tid}/{vid}/" and meta["row_count"] == 2
+    assert (mapped, profiled) == ((0, 0) if purpose else (1, 1))
 
 
 @pg
