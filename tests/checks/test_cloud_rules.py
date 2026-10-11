@@ -469,6 +469,13 @@ def test_sf_other_400_is_failed_with_the_error_body_in_the_detail(monkeypatch):
     assert "[COE0001]Something else" in cov["EMPEMPLOYMENT←EmpEmployment"]["detail"]
 
 
+def test_a_400_whose_body_mentions_404_stays_failed(monkeypatch):
+    from api.services.connectivity_manager import _not_found
+
+    err = _http_error(400, "https://sf.example.test/odata/v2/Benefit", "[COE0003]no 404 here")
+    assert not _not_found(err)
+
+
 def _http_error(code: int, url: str, body: str = "") -> SAPConnectorError:
     import httpx
     req = httpx.Request("GET", url)

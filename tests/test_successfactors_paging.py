@@ -112,3 +112,45 @@ def test_failed_request_carries_the_sf_error_body_first_and_truncated():
     msg = str(ei.value)
     assert msg.startswith("SuccessFactors request failed: [COE0003]Bad property expression: EmpJob/operation")
     assert "400 Bad Request" in msg and msg.index("::") < 400
+
+
+def _err(handler, **params):
+    import pytest
+    from sap.base import SAPConnectorError
+
+    c = _connector(handler)
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic", **params)
+    with pytest.raises(SAPConnectorError) as ei:
+        c.read_entity_set("EmpJob")
+    return ei.value
+
+
+def test_error_body_masks_password_client_secret_and_token():
+    c_body = {"error": {"message": {"value": "echo pw-1 cs-2 tok-3 Bearer abc.def"}}}
+    c = _connector(lambda r: httpx.Response(400, json=c_body))
+    c._params = CloudConnectionParams(base_url=BASE, company_id="co", auth_type="basic",
+                                      password="pw-1", client_secret="cs-2")
+    c._access_token = "tok-3"
+    import pytest
+    from sap.base import SAPConnectorError
+    with pytest.raises(SAPConnectorError) as ei:
+        c.read_entity_set("EmpJob")
+    msg = str(ei.value)
+    assert all(x not in msg for x in ("pw-1", "cs-2", "tok-3", "abc.def")) and "****" in msg
+
+
+def test_error_body_json_unescapes_and_reads_error_message_value():
+    from sap.successfactors import error_body
+
+    body = {"error": {"code": "x", "innererror": {"value": "wrong"},
+                      "message": {"lang": "en", "value": 'bad "quoted" prop'}}}
+    assert error_body(httpx.Response(400, json=body)) == 'bad "quoted" prop'
+
+
+def test_error_body_html_gives_content_type_and_short_snippet():
+    from sap.successfactors import error_body
+
+    r = httpx.Response(502, text="<html><body>\n  <h1>Bad   gateway</h1>" + "x" * 500 + "</body></html>",
+                       headers={"content-type": "text/html"})
+    out = error_body(r)
+    assert out.startswith("[text/html] Bad gateway") and len(out) < 130 and "<" not in out

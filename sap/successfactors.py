@@ -21,6 +21,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -376,6 +377,13 @@ class SuccessFactorsConnector(CloudSAPConnector):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _mask(self, text: str) -> str:
+        """Mask every secret this connector holds (password, client secret, bearer token) in ``text``."""
+        prm = self._params
+        for secret in (prm.password if prm else "", prm.client_secret if prm else "", self._access_token or ""):
+            text = self._mask_secret(text, secret)
+        return re.sub(r"(?i)(bearer\s+)[\w.~+/=-]+", r"\1****", text)
+
     def _ensure_connected(self) -> None:
         """Raise if connect() has not been called."""
         if not self._client:
@@ -447,8 +455,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
             except httpx.HTTPStatusError as exc:
                 last_exc = exc
-                safe_msg = self._mask_secret(str(exc), self._params.password if self._params else "")
-                safe_msg = self._mask_secret(safe_msg, self._params.client_secret if self._params else "")
+                safe_msg = self._mask(str(exc))
                 if exc.response.status_code in (500, 502, 503, 504) and attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
@@ -463,15 +470,14 @@ class SuccessFactorsConnector(CloudSAPConnector):
                     continue
                 body = error_body(exc.response)
                 if body:
-                    safe_msg = f"{self._mask_secret(body, self._params.password if self._params else '')} :: {safe_msg}"
+                    safe_msg = f"{self._mask(body)} :: {safe_msg}"
                 raise SAPConnectorError(
                     f"SuccessFactors request failed: {safe_msg}"
                 ) from exc
 
             except httpx.HTTPError as exc:
                 last_exc = exc
-                safe_msg = self._mask_secret(str(exc), self._params.password if self._params else "")
-                safe_msg = self._mask_secret(safe_msg, self._params.client_secret if self._params else "")
+                safe_msg = self._mask(str(exc))
                 if attempt < retries:
                     wait = _RATE_LIMIT_BACKOFF_SECONDS * attempt
                     logger.warning(
@@ -493,12 +499,22 @@ class SuccessFactorsConnector(CloudSAPConnector):
 
 
 def error_body(resp: httpx.Response, limit: int = 300) -> str:
-    """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated."""
+    """The SF error message of a failed response ('[COE0003]Bad property expression: ...'), truncated.
+    A body that is not SF's JSON/XML error (an HTML or proxy page) gives its content-type and a short snippet."""
+    text = resp.text or ""
     try:
-        m = re.search(r'"value"\s*:\s*"((?:[^"\\]|\\.)*)"', resp.text) or re.search(r"<message[^>]*>([^<]+)", resp.text)
-        return (m.group(1) if m else resp.text).strip()[:limit]
-    except Exception:
-        return ""
+        err = json.loads(text).get("error", {})
+        msg = err.get("message")
+        msg = msg.get("value") if isinstance(msg, dict) else msg
+        if isinstance(msg, str) and msg.strip():
+            return msg.strip()[:limit]
+    except (ValueError, AttributeError):
+        pass
+    m = re.search(r"<message[^>]*>([^<]+)", text)
+    if m:
+        return m.group(1).strip()[:limit]
+    snippet = re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", text)).strip()[:100]
+    return f"[{resp.headers.get('content-type', 'unknown content-type')}] {snippet}".strip()
 
 
 def entity_model(edmx: str, entity: str) -> tuple[set[str], dict[str, set[str] | None]] | None:

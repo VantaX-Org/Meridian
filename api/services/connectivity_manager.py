@@ -628,7 +628,7 @@ class ConnectivityManager:
                             break
                         except Exception as e:
                             bad = _bad_property(e, ent)
-                            drop = [p for p, path in sel.items() if path == bad or p == bad]
+                            drop = [p for p, path in sel.items() if path == bad]
                             if not drop or len(sel) == len(drop):
                                 raise
                             for p in drop:
