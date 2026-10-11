@@ -4,6 +4,7 @@ import {
 } from "@/design";
 
 import { ExportDemo } from "./export-demo";
+import { GalleryMore } from "./gallery-more";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export default function DesignGalleryPage() {
           <div className="flex gap-4 items-center">
             <ExportDemo />
           </div>
+          <GalleryMore />
         </section>
       ))}
     </div>
