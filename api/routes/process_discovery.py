@@ -39,8 +39,9 @@ from api.services.process_discovery.builders import builder
 from api.services.process_discovery.events import DEFAULT_TZ
 from api.services.process_discovery.filters import ProcessFilter, case_filter_sql
 from api.services.process_discovery.generate import EDGE_THRESHOLD, generate, reference_model
-from api.services.process_discovery.mining import (CACHE_TTL, CASE_TYPES_SQL, CaseTypeResult, MiningResult, Scope,
-                                                   Variant, cache_key, mine_case_type)
+from api.services.process_discovery.mining import END as MINED_END
+from api.services.process_discovery.mining import (CACHE_TTL, CASE_TYPES_SQL, OTHER_HASH, CaseTypeResult, MiningResult,
+                                                   Scope, Variant, cache_key, mine_case_type)
 from api.services.process_model_validator import validate_document
 from api.services.rbac import require_permission
 from api.services.task_progress import _redis_client
@@ -191,6 +192,7 @@ class DfgEdge(BaseModel):
     source: str
     target: str
     count: int
+    median_seconds: float | None = None
 
 
 class DfgResponse(BaseModel):
@@ -528,9 +530,28 @@ def _check_level(level: Optional[int], actual: int, parent_id: str) -> None:
         raise HTTPException(status_code=422, detail=f"Children of {parent_id} are level {actual}")
 
 
+def _edges(parent: Parent, kids: Sequence[Child], all_edges: bool) -> list[DfgEdge]:
+    """As-is edges between ``kids`` with their median wait: pruned by ``landscape_counts`` (the export's edges) or,
+    with ``all_edges``, every mined edge (the flow view's "All edges" toggle, spec 7.3). L4 parents have none."""
+    if isinstance(parent, L4):
+        return []
+    seen = [k for k in kids if not isinstance(k, L5) and k.discovery is not None and k.discovery.observed]
+
+    def end(target: str) -> str:
+        return "END" if target == MINED_END else target
+
+    wait = {(k.id, end(e.target)): e.median_seconds for k in seen if k.discovery for e in k.discovery.edges}
+    if all_edges:
+        raw = [("START", k.id, k.discovery.entry_count) for k in seen if k.discovery and k.discovery.entry_count]
+        raw += [(k.id, end(e.target), e.count) for k in seen if k.discovery for e in k.discovery.edges]
+    else:
+        raw = landscape_counts(parent, seen) or []
+    return [DfgEdge(source=s, target=t, count=n, median_seconds=wait.get((s, t))) for s, t, n in raw]
+
+
 @router.get("/runs/{run_id}/dfg", dependencies=VIEW, response_model=DfgResponse)
 async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, ge=2, le=5),
-              node_id: Optional[str] = None, tenant: Tenant = Depends(get_tenant),
+              node_id: Optional[str] = None, all_edges: bool = False, tenant: Tenant = Depends(get_tenant),
               db: AsyncSession = Depends(get_db)) -> DfgResponse:
     """Nodes and as-is edges between the children of ``node_id`` (default: the L1), pruned as in the export,
     so the flow view and the Signavio file draw the same edges. Edges exist for L1-L3 parents; the flow
@@ -538,7 +559,7 @@ async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, 
     run = await _run(db, tenant, run_id)
     flt, _ = _filter(request, run)
     client = _redis_client() if flt != ProcessFilter() else None
-    key = f"{cache_key(_scope(tenant, run), flt, run.id)}:{node_id or ''}"
+    key = f"{cache_key(_scope(tenant, run), flt, run.id)}:{node_id or ''}:{int(all_edges)}"
     if client is not None and (hit := client.get(key)):
         cached = DfgResponse.model_validate_json(hit)
         _check_level(level, cached.level, cached.node.id)  # a cache hit must not skip the level validation
@@ -546,9 +567,8 @@ async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, 
     doc = await _document(db, tenant, run, flt)
     lvl, parent, kids = _children(doc, node_id)
     _check_level(level, lvl, parent.id)
-    edges = [] if isinstance(parent, L4) else landscape_counts(parent, [k for k in kids if not isinstance(k, L5)]) or []
     out = DfgResponse(level=lvl, node=_stats(parent), nodes=[_stats(k) for k in kids],
-                      edges=[DfgEdge(source=s, target=t, count=n) for s, t, n in edges], edge_threshold=EDGE_THRESHOLD)
+                      edges=_edges(parent, kids, all_edges), edge_threshold=EDGE_THRESHOLD)
     if client is not None:
         client.setex(key, CACHE_TTL, out.model_dump_json())
     return out
@@ -570,8 +590,8 @@ async def variants(run_id: str, request: Request, limit: int = Query(50, ge=1, l
             SELECT variant_hash AS hash, activities, case_count, share, median_seconds, p90_seconds, fitness,
                    sample_case_ids, count(*) OVER () AS total
             FROM process_discovery_variants WHERE tenant_id = :t AND run_id = :r AND case_type = :ct
-            ORDER BY case_count DESC, variant_hash LIMIT :n OFFSET :o"""),
-            {"t": str(tenant.id), "r": run.id, "ct": ct, "n": limit, "o": offset})).fetchall()
+            ORDER BY variant_hash = :other, case_count DESC, variant_hash LIMIT :n OFFSET :o"""),
+            {"t": str(tenant.id), "r": run.id, "ct": ct, "n": limit, "o": offset, "other": OTHER_HASH})).fetchall()
         return VariantPage(case_type=ct, total=rows[0].total if rows else 0,
                            items=[VariantOut.model_validate(dict(r._mapping)) for r in rows])
     mined = (await _mine(db, tenant, run, flt, ct)).stored()

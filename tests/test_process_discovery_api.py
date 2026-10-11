@@ -188,6 +188,9 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             g = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer)).json()
             assert g["level"] == 2 and g["node"]["id"] == "PTP" and g["cached"] is False
             assert g["edges"] and {e["source"] for e in g["edges"]} >= {"START"}
+            assert all("median_seconds" in e for e in g["edges"])
+            every = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params={"all_edges": "true"})).json()
+            assert {(e["source"], e["target"]) for e in g["edges"]} <= {(e["source"], e["target"]) for e in every["edges"]}
             f = {"doc_type": "NB"}
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["cached"] is False
             assert (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()["cached"] is True
@@ -199,6 +202,15 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert [x["hash"] for x in vf["items"]] == [x["hash"] for x in v["items"]]
             conf = (await c.get(f"{BASE}/runs/{rid}/conformance", headers=viewer)).json()
             assert conf["case_type"] == "po_item" and conf["steps"]
+
+            # the Other bucket sorts last whatever its count
+            with owner.begin() as oc:
+                oc.execute(text("""INSERT INTO process_discovery_variants
+                    (run_id, tenant_id, case_type, variant_hash, activities, case_count, share, sample_case_ids)
+                    VALUES (:r, :t, 'po_item', :h, ARRAY['__OTHER__'], 999, 0.5, ARRAY[]::text[])"""),
+                           {"r": rid, "t": str(tid), "h": "0" * 32})
+            tail = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer, params={"limit": 500})).json()["items"][-1]
+            assert tail["hash"] == "0" * 32 and tail["activities"] == ["__OTHER__"]
 
             # case explorer and export need export_process
             assert (await c.get(f"{BASE}/runs/{rid}/cases", headers=viewer)).status_code == 403

@@ -158,6 +158,9 @@ export const queryKeys = {
   processCatalogue: (systemId: string) => ["process", "catalogue", systemId] as const,
   processRuns: (systemId: string) => ["process", "runs", systemId] as const,
   processRun: (runId: string) => ["process", "run", runId] as const,
+  /** One mined view of a run (dfg, variants, conformance, cases, case, model) under the URL filters. */
+  processRunView: (runId: string, view: string, params: Record<string, unknown> = {}) =>
+    ["process", "run", runId, view, params] as const,
 };
 
 /** The entity-prefix strings a job's `touches` array may contain. */

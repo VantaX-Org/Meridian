@@ -5,7 +5,7 @@
  * (process-discovery spec §7.3): the `?system=` choice, the L1 card grid,
  * the runs table and the InsightHeader sentences.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -200,3 +200,20 @@ export function headline(rows: CatalogueRow[]) {
     automation: autoCases ? auto.reduce((n, r) => n + (r.automation_rate as number) * (r.cases as number), 0) / autoCases : null,
   };
 }
+
+/** Spec 7.5: every chart has a DataTable alternative behind "View as table". */
+export function ViewAsTable({ chart, table }: { chart: ReactNode; table: ReactNode }) {
+  const [asTable, setAsTable] = useState(false);
+  return (
+    <div className="grid gap-2">
+      <div className="flex justify-end">
+        <Button variant="ghost" aria-pressed={asTable} onClick={() => setAsTable((v) => !v)}>
+          {asTable ? "View as chart" : "View as table"}
+        </Button>
+      </div>
+      {asTable ? table : chart}
+    </div>
+  );
+}
+
+export const fmtShare = (s: number | null | undefined) => (s == null ? "—" : `${Math.round(s * 1000) / 10}%`);

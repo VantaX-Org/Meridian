@@ -95,7 +95,7 @@ export interface StartRunsBody {
 }
 
 /** URL filters the mined views accept (api/services/process_discovery/filters.py `ProcessFilter.from_query`). */
-export type ProcessFilterParams = Record<string, string>;
+export type ProcessFilterParams = Record<string, string | number | boolean | undefined>;
 
 export interface NodeStats {
   id: string;
@@ -112,7 +112,8 @@ export interface Dfg {
   level: number;
   node: NodeStats;
   nodes: NodeStats[];
-  edges: { source: string; target: string; count: number }[];
+  /** START and END are pseudo-nodes; `median_seconds` is the median wait on the edge (null from START). */
+  edges: { source: string; target: string; count: number; median_seconds: number | null }[];
   edge_threshold: number;
   cached: boolean;
 }
@@ -175,7 +176,7 @@ export async function getRun(runId: string): Promise<DiscoveryRunDetail> {
 export async function getRunModel(runId: string): Promise<ProcessModelDocument> {
   return (await apiClient.get<ProcessModelDocument>(`${BASE}/runs/${runId}/model`)).data;
 }
-export async function getDfg(runId: string, params: ProcessFilterParams & { node_id?: string }): Promise<Dfg> {
+export async function getDfg(runId: string, params: ProcessFilterParams & { node_id?: string; all_edges?: boolean }): Promise<Dfg> {
   return (await apiClient.get<Dfg>(`${BASE}/runs/${runId}/dfg`, { params })).data;
 }
 export async function getVariants(runId: string, params: ProcessFilterParams & { limit?: number; offset?: number }): Promise<Page<VariantRow>> {

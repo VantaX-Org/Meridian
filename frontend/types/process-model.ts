@@ -36,7 +36,32 @@ export interface Diagram {
   flows: Flow[];
 }
 
-export interface L5 {
+/** api/models/process_model.py `Source`: where a node came from. */
+export type NodeSource = "template" | "config" | "discovered";
+
+/** api/models/process_model.py `DiscoveryEdge`: as-is flow to a sibling, or "__END__". */
+export interface DiscoveryEdge { target: string; count: number; median_seconds: number | null }
+
+/** api/models/process_model.py `DiscoveryStats`: mined counts of one node, on discovered models only. */
+export interface DiscoveryStats {
+  case_count: number;
+  share: number;
+  event_count: number;
+  median_seconds: number | null;
+  p90_seconds: number | null;
+  rework_rate: number | null;
+  automation_rate: number | null;
+  fitness: number | null;
+  observed: boolean;
+  case_type: string | null;
+  edges: DiscoveryEdge[];
+  entry_count: number;
+}
+
+/** Optional on every level: absent on models stored before process discovery. */
+interface Discovered { source?: NodeSource; discovery?: DiscoveryStats | null }
+
+export interface L5 extends Discovered {
   id: string;
   name: string;
   description: string;
@@ -55,7 +80,7 @@ export interface VariantRef {
   classification: Classification;
 }
 
-export interface L4 {
+export interface L4 extends Discovered {
   id: string;
   name: string;
   description: string;
@@ -67,9 +92,9 @@ export interface L4 {
   variants: VariantRef[];
 }
 
-export interface L3 { id: string; name: string; description: string; order: number; l4: L4[] }
-export interface L2 { id: string; name: string; description: string; order: number; l3: L3[] }
-export interface L1 { id: string; name: string; description: string; order: number; modules: string[]; l2: L2[] }
+export interface L3 extends Discovered { id: string; name: string; description: string; order: number; l4: L4[] }
+export interface L2 extends Discovered { id: string; name: string; description: string; order: number; l3: L3[] }
+export interface L1 extends Discovered { id: string; name: string; description: string; order: number; modules: string[]; l2: L2[] }
 
 export interface ProcessModelDocument {
   schema_version: 1;

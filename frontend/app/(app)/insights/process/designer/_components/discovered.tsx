@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Button, Mono } from "@/design";
 import type { ProcessVariant } from "@/types/process-model";
 import { addChild, newId, type Doc } from "./doc";
@@ -8,6 +9,13 @@ import { addChild, newId, type Doc } from "./doc";
 const NAMES: Record<string, string> = {
   PTP_MFG: "Plan to Produce", MTO: "Make to Order", RTR: "Record to Report", HTR: "Hire to Retire", STC: "Service to Cash",
 };
+
+/**
+ * Detector process_id (api/models/config_intelligence.py) to the process-discovery L1 that mines it.
+ * PTP_MFG and MTO come from AUFK order categories 10 and 30 (variant_discovery.py), i.e. the PP and PM L1s.
+ * STC has no discovery L1.
+ */
+const AS_IS_L1: Record<string, string> = { OTC: "OTC", PTP: "PTP", HTR: "HTR", RTR: "R2R", PTP_MFG: "PP", MTO: "PM" };
 
 export interface Group { process_id: string; tables: string[]; count: number }
 
@@ -63,6 +71,10 @@ export function Discovered({ variants, onCreate }: { variants: ProcessVariant[];
               </span>
             </div>
             <Button variant="ghost" onClick={() => onCreate(g)}>Create L1 from discovered</Button>
+            {AS_IS_L1[g.process_id] && (
+              // Without ?run= the drill opens the latest completed run of that L1.
+              <Button variant="ghost" render={<Link href={`/process/${AS_IS_L1[g.process_id]}`}>Open as-is model</Link>} />
+            )}
           </li>
         ))}
       </ul>
