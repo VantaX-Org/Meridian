@@ -4,7 +4,7 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, DataTable, DrillLink, ExportMenu, Pill, ReportPage, Stat, Waterfall, type PillTone } from "@/design";
+import { Button, Card, DataTable, DrillLink, ExportMenu, Pill, ReportPage, Skeleton, Stat, Waterfall, type PillTone } from "@/design";
 import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
@@ -80,6 +80,18 @@ export default function ExecPage() {
       charts={<Waterfall data={data?.waterfall ?? []} />}
       tables={
         <div className="flex flex-col gap-6">
+          {(roi.isLoading || roi.isError) && (
+            <Card title="Return on investment">
+              {roi.isLoading ? (
+                <Skeleton height={48} />
+              ) : (
+                <div className="flex items-center gap-3 text-[13px]" role="alert">
+                  <span>Return on investment did not load. {apiErrorMessage(roi.error)}</span>
+                  <Button variant="secondary" onClick={() => void roi.refetch()}>Retry</Button>
+                </div>
+              )}
+            </Card>
+          )}
           {roi.data && (
             <Card title="Return on investment">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

@@ -9,12 +9,13 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Select } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
-  getAnalysisReportUrl, getCleaningReportUrl, getExecutiveReportUrl, getExtractionReportUrl,
+  getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExecutiveReportUrl, getExtractionReportUrl,
   getReportDownloadUrl, getReportJsonExportUrl,
 } from "@/lib/api/reports";
 import { formatDate } from "@/lib/format";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
+import { usePermissions } from "@/lib/permissions";
 
 interface ReportRow {
   id: string;
@@ -31,6 +32,7 @@ const REPORTS: ReportRow[] = [
   { id: "analysis", name: "Analysis report", about: "Scores, findings and rule results.", format: "PDF", url: getAnalysisReportUrl, file: "analysis.pdf" },
   { id: "extraction", name: "Extraction report", about: "Tables read from the source system and their coverage.", format: "PDF", url: getExtractionReportUrl, file: "extraction.pdf" },
   { id: "cleaning", name: "Cleaning and fixes", about: "Cleaning work across the organisation for this run.", format: "PDF", url: (v) => getCleaningReportUrl(v), file: "cleaning.pdf" },
+  { id: "compare", name: "Run comparison", about: "This run against the baseline or previous run.", format: "PDF", url: (v) => getComparisonReportUrl(v), file: "compare.pdf" },
   { id: "full", name: "Full report", about: "The stored run report.", format: "PDF", url: getReportDownloadUrl, file: "report.pdf" },
   { id: "json", name: "Run data", about: "Run results as JSON.", format: "JSON", url: getReportJsonExportUrl, file: "report.json" },
   { id: "object", name: "Object report", about: "One object's rules and fields. Open it from the object page.", format: "PDF", url: null, file: "" },
@@ -38,6 +40,7 @@ const REPORTS: ReportRow[] = [
 ];
 
 export default function ReportsPage() {
+  const { can } = usePermissions();
   const [picked, setPicked] = useState("");
   const versions = useQuery({ queryKey: ["versions", "reports"], queryFn: () => getVersions({ limit: 25 }) });
   const runs = (versions.data?.versions ?? []).filter((v) => v.status === "complete" || v.status === "agents_complete" || v.status === "ai_enriched");
@@ -52,6 +55,7 @@ export default function ReportsPage() {
       header: "",
       cell: ({ row }) => {
         const r = row.original;
+        if (r.url && !can("export")) return <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role.</span>;
         return r.url ? (
           <Button variant="secondary" onClick={() => void downloadAuthenticated(r.url!(versionId), `${r.id}_${versionId}.${r.format.toLowerCase()}`)}>Download</Button>
         ) : (

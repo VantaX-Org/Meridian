@@ -75,10 +75,9 @@ export interface NextFix {
   dqs_after: number;
 }
 
-export interface SimulationResult {
+export interface SimulationCompleted {
   simulation_id: string;
-  status: "completed" | "failed";
-  error?: string;
+  status: "completed";
   version_id: string;
   modules: string[];
   fixes: { groups: number; cells_changed: number; by_field: Record<string, number>; unmatched_records: number; tables: string[] };
@@ -95,6 +94,15 @@ export interface SimulationResult {
   records: { resolved: number; introduced: number };
   best_next_fixes?: NextFix[];
 }
+
+/** The worker writes only these three fields when a run fails. */
+export interface SimulationFailed {
+  simulation_id: string;
+  status: "failed";
+  error: string;
+}
+
+export type SimulationResult = SimulationCompleted | SimulationFailed;
 
 /** While queued or running the API returns the job instead of a result. */
 export interface SimulationPending {

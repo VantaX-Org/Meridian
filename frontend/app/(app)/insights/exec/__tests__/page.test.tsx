@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as analyticsApi from "@/lib/api/analytics";
 import * as downloadApi from "@/lib/api/download";
 import ExecPage from "../page";
 
@@ -68,5 +69,12 @@ describe("ExecPage", () => {
 
     await waitFor(() => expect(screen.getByText(/recovered after retry/i)).toBeInTheDocument());
     expect(getExec).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows an inline error with retry when the ROI request fails", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ version_id: "v1", narrative: "n", readiness_cells: [{ module: "material_master", wave: "wave_1", verdict: "go", blocker_count: 0, dqs: 91, score: 100, records_blocked: 0 }], waterfall: [], impact_rows: [], owner_rows: [] });
+    vi.spyOn(analyticsApi, "getRoi").mockRejectedValue(new Error("roi down"));
+    renderWithQuery(<ExecPage />);
+    expect(await screen.findByText(/return on investment did not load/i)).toBeInTheDocument();
   });
 });

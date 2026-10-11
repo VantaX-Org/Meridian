@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, EmptyState, ReportPage, ScoreRing, Select, Stat, Waterfall } from "@/design";
+import { Button, Card, EmptyState, ErrorState, ReportPage, ScoreRing, Select, Stat, Waterfall } from "@/design";
 import { createSimulation, getSimulation, isSimulationResult } from "@/lib/api/simulation";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -29,8 +29,10 @@ export default function WhatIfPage() {
     enabled: !!simId,
     refetchInterval: (q) => (q.state.data && isSimulationResult(q.state.data) ? false : 2000),
   });
-  const result = sim.data && isSimulationResult(sim.data) ? sim.data : null;
-  const running = !!simId && !result && !sim.isError;
+  const final = sim.data && isSimulationResult(sim.data) ? sim.data : null;
+  const result = final && final.status === "completed" ? final : null;
+  const failed = final && final.status === "failed" ? final : null;
+  const running = !!simId && !final && !sim.isError;
 
   const controls = (
     <div className="flex gap-2">
@@ -62,6 +64,10 @@ export default function WhatIfPage() {
               />
             </Card>
           </>
+        ) : failed ? (
+          <ErrorState message={failed.error} onRetry={() => run.mutate()} />
+        ) : sim.isError ? (
+          <ErrorState message="This simulation has expired. Run it again." onRetry={() => run.mutate()} />
         ) : (
           <EmptyState title={running ? "Simulating." : "No simulation yet."} detail={running ? "Applying every rule fix to a copy of the data." : "Pick a run and press Run simulation. Nothing is written to your system."} ghost="ring" />
         )
