@@ -135,8 +135,7 @@ describe("RunDetailPage", () => {
     await waitFor(() => expect(screen.getByRole("tab", { name: "Objects" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("tab", { name: "Objects" }));
     await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Material Master"));
-    expect(push).toHaveBeenCalledWith("/objects/material_master?run=v2");
+    expect(screen.getByRole("link", { name: "Material Master" })).toHaveAttribute("href", "/objects/material_master?run=v2");
   });
 
   it("renders a sparkline trend column on the objects tab from the per-module score history", async () => {

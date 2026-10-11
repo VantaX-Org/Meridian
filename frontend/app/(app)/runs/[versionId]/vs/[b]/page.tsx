@@ -250,9 +250,9 @@ export default function CompareRunsPage() {
           >
             <h2 className="text-[15px] font-semibold">{formatModuleName(name)}</h2>
             <div className="flex gap-6">
-              <Stat label="Before" value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
-              <Stat label="After" value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
-              <Stat label="Change" value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
+              <Stat label="Before" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v1_score.toFixed(1)}</span>} />
+              <Stat label="After" href={`/objects/${name}?run=${versionId}`} value={<span className="tabular-nums">{d.v2_score.toFixed(1)}</span>} />
+              <Stat label="Change" href={`/objects/${name}?run=${versionId}`} value={<Delta value={roundedDelta(d.v1_score, d.v2_score)} />} />
             </div>
             <Bar data={barData} />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

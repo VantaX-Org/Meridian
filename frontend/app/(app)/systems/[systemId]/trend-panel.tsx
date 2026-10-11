@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
+import { DrillLink, EmptyState, ErrorState, Pill, Skeleton, Sparkline } from "@/design";
 import { getTrends, type TrendFlag } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -52,7 +52,7 @@ export function TrendPanel({ systemId }: { systemId: string }) {
               return (
                 <tr key={s.object}>
                   <td className={td} style={tdStyle}>{formatModuleName(s.object)}</td>
-                  <td className={td} style={tdStyle}>{s.dqs == null ? "—" : s.dqs.toFixed(1)}</td>
+                  <td className={td} style={tdStyle}>{s.dqs == null ? "—" : <DrillLink href={`/objects/${s.object}`}>{s.dqs.toFixed(1)}</DrillLink>}</td>
                   <td className={td} style={tdStyle}>
                     {s.dqs_delta == null ? "—" : <span style={{ color: deltaColor(s.dqs_delta) }}>{signed(s.dqs_delta)}</span>}
                   </td>

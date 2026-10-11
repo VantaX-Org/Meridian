@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Mono, Pill } from "@/design";
+import { Button, DataTable, DrillLink, EmptyState, Mono, Pill } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
 import { createBlockerFixBatch, getMigrationFindings } from "@/lib/api/migration";
@@ -39,7 +39,9 @@ export function BlockersTab({ waveId, runId, blockers }: { waveId: string; runId
     { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field ?? "—"}</Mono> },
     { id: "sev", header: "Severity", cell: ({ row }) => (
         <Pill tone={row.original.severity === "critical" ? "no-go" : "at-risk"}>{formatModuleName(row.original.severity)}</Pill>) },
-    { id: "records", header: "Records", cell: ({ row }) => row.original.records.toLocaleString() },
+    { id: "records", header: "Records", cell: ({ row }) => (
+        <DrillLink href={`/objects/${row.original.module}?run=${runId}&tab=records`}>{row.original.records.toLocaleString()}</DrillLink>
+      ) },
     { id: "fix", header: "", cell: ({ row }) => can("apply") ? (
         <Button variant="secondary" disabled={fix.isPending}
                 onClick={(e) => { e.stopPropagation(); fix.mutate(row.original); }}>Create fix batch</Button>

@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, Select, Skeleton, Stat, Tabs,
+  Bar, Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
@@ -61,8 +61,8 @@ function runColumns(): ColumnDef<SystemVersion>[] {
       ),
     },
     { id: "status", header: "Status", cell: ({ row }) => <Pill>{labelOf(row.original.status)}</Pill> },
-    { id: "objects", header: "Objects", cell: ({ row }) => row.original.objects.length },
-    { id: "rows", header: "Rows", cell: ({ row }) => sumRecords(row.original).toLocaleString() },
+    { id: "objects", header: "Objects", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}?tab=objects`}>{row.original.objects.length}</DrillLink> },
+    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/runs/${row.original.id}`}>{sumRecords(row.original).toLocaleString()}</DrillLink> },
     { id: "analysed", header: "Analysed", cell: ({ row }) => when(row.original.analysed_at) },
     {
       id: "dqs",
@@ -70,9 +70,7 @@ function runColumns(): ColumnDef<SystemVersion>[] {
       cell: ({ row }) => {
         const d = meanDqs(row.original);
         return d === null ? "—" : (
-          <Link href={findingsHref(row.original.id)} className="underline">
-            {d.toFixed(1)}
-          </Link>
+          <DrillLink href={findingsHref(row.original.id)}>{d.toFixed(1)}</DrillLink>
         );
       },
     },
@@ -121,7 +119,15 @@ export default function SystemPage() {
     onError: (e) => toast.error((e as Error).message || "Analysis refused"),
   });
 
-  if (systemsQ.isLoading) return <Skeleton height={240} />;
+  if (systemsQ.isLoading) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true">
+        <Skeleton height={56} />
+        <div className="grid grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={88} />)}</div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (systemsQ.isError || !system) {
     return (
       <ErrorState
@@ -174,10 +180,14 @@ export default function SystemPage() {
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} />
-        <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} />
-        <Stat label="Latest DQS" value={dqs === null ? "—" : dqs.toFixed(1)} />
-        <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} />
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} href={`/systems/${systemId}?tab=health`} />
+        <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        <Stat
+          label="Latest DQS"
+          value={dqs === null ? "—" : <span className="inline-flex items-center gap-2"><ScoreRing score={dqs} size={48} />{dqs.toFixed(1)}</span>}
+          href={latest ? findingsHref(latest.id) : undefined}
+        />
+        <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} href={latest ? findingsHref(latest.id) : undefined} />
       </div>
 
       <Tabs
@@ -317,7 +327,7 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       cell: ({ row }) => <Link href={`/objects/${row.original.module}`} className="underline">{formatModuleName(row.original.module)}</Link>,
     },
     { id: "enabled", header: "Enabled", cell: ({ row }) => (row.original.enabled ? "Yes" : "No") },
-    { id: "rows", header: "Rows", cell: ({ row }) => row.original.row_count.toLocaleString() },
+    { id: "rows", header: "Rows", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}`}>{row.original.row_count.toLocaleString()}</DrillLink> },
     { id: "synced", header: "Last synced", cell: ({ row }) => when(row.original.last_synced_at) },
     { id: "config", header: "Configuration", cell: () => cfgLabel },
     {
@@ -325,7 +335,9 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       header: "DQS",
       cell: ({ row }) => {
         const d = latest?.dqs?.[row.original.module];
-        return typeof d === "number" ? d.toFixed(1) : "—";
+        return typeof d === "number" && latest ? (
+          <DrillLink href={findingsHref(latest.id, row.original.module)}>{d.toFixed(1)}</DrillLink>
+        ) : "—";
       },
     },
     {

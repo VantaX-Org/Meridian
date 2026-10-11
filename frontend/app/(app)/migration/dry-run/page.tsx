@@ -77,6 +77,7 @@ export default function DryRunPage() {
 
   const state = isLoading ? "loading" : isError ? "error" : undefined;
 
+  const srcHref = run?.source_version_id ? `/runs/${run.source_version_id}` : undefined;
   const moduleBadges = run
     ? Object.entries(run.gap_summary ?? {}).map(([module, summary]) => {
         const verdict = FROM_ENGINE[summary.verdict];
@@ -98,8 +99,8 @@ export default function DryRunPage() {
       charts={
         <div className="flex flex-wrap items-center gap-3">
           {moduleBadges}
-          {run && <Stat label="Blocked" value={run.records_blocked} />}
-          {run && <Stat label="Total" value={run.records_total} />}
+          {run && <Stat label="Blocked" value={run.records_blocked} href={srcHref} />}
+          {run && <Stat label="Total" value={run.records_total} href={srcHref} />}
           <Button variant="secondary" render={<a href={dryRunExportUrl(runId, "xlsx")} />}>
             Export Excel
           </Button>

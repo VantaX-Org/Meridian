@@ -9,7 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
-  Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
+  DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -80,11 +80,18 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
   const modules = history.data?.modules ?? {};
 
   const columns: ColumnDef<ObjectSummary>[] = [
-    { id: "module", header: "Object", accessorFn: (o) => formatModuleName(o.module) },
+    {
+      id: "module",
+      header: "Object",
+      accessorFn: (o) => formatModuleName(o.module),
+      cell: ({ row }) => <DrillLink object={row.original.module} run={versionId}>{formatModuleName(row.original.module)}</DrillLink>,
+    },
     {
       id: "composite",
       header: "Composite score",
-      cell: ({ row }) => (row.original.composite_score == null ? "—" : row.original.composite_score.toFixed(1)),
+      cell: ({ row }) => (row.original.composite_score == null ? "—" : (
+        <DrillLink object={row.original.module} run={versionId}>{row.original.composite_score.toFixed(1)}</DrillLink>
+      )),
     },
     {
       id: "readiness",
@@ -92,8 +99,16 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
       cell: ({ row }) =>
         row.original.readiness ? <Pill tone={READINESS_TONE[row.original.readiness] ?? "neutral"}>{labelOf(row.original.readiness)}</Pill> : "—",
     },
-    { accessorKey: "failing_checks", header: "Failing checks" },
-    { accessorKey: "affected_records", header: "Affected records" },
+    {
+      accessorKey: "failing_checks",
+      header: "Failing checks",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.failing_checks}</DrillLink>,
+    },
+    {
+      accessorKey: "affected_records",
+      header: "Affected records",
+      cell: ({ row }) => <DrillLink href={`/runs/${versionId}?tab=findings&module=${row.original.module}`}>{row.original.affected_records}</DrillLink>,
+    },
     {
       id: "trend",
       header: "Trend",
@@ -132,7 +147,14 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
     enabled: systemId != null,
   });
 
-  if (aggregate.isLoading) return <Skeleton height={240} />;
+  if (aggregate.isLoading) {
+    return (
+      <div className="flex flex-col gap-4" aria-busy="true">
+        <div className="flex gap-4">{[0, 1, 2].map((i) => <Skeleton key={i} width={160} height={88} />)}</div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   if (aggregate.isError || !aggregate.data) {
     return <ErrorState message={errorText(aggregate.error)} onRetry={() => aggregate.refetch()} />;
   }
@@ -163,11 +185,12 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         <Stat
           label="Composite score"
           value={composite != null ? composite.toFixed(1) : "—"}
+          href={`/runs/${versionId}?tab=objects`}
           delta={delta != null ? <span>vs previous run: <span style={{ color: delta >= 0 ? "var(--m-pass)" : "var(--m-critical)" }}>{delta > 0 ? "+" : ""}{delta.toFixed(1)}</span></span> : undefined}
         />
-        <Stat label="Affected records" value={a.affected_records.toLocaleString()} />
-        <Stat label="Findings" value={a.total.toLocaleString()} />
-        {a.cost_at_risk != null ? <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} /> : null}
+        <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+        <Stat label="Findings" value={a.total.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+        {a.cost_at_risk != null ? <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} /> : null}
       </div>
       <section className="flex flex-col gap-2">
         <h2 className="text-[13px] font-semibold">Score by dimension</h2>
@@ -242,6 +265,11 @@ function FindingsTab({ versionId }: { versionId: string }) {
       id: "affected",
       header: "Affected",
       accessorFn: (f) => `${f.affected_count.toLocaleString()} of ${f.total_count.toLocaleString()}`,
+      cell: ({ row }) => (
+        <DrillLink href={`/objects/${row.original.module}?run=${versionId}&tab=records&check_id=${row.original.check_id}`}>
+          {row.original.affected_count.toLocaleString()} of {row.original.total_count.toLocaleString()}
+        </DrillLink>
+      ),
     },
   ];
 

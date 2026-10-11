@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, DataTable, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, SeverityDot,
+  Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, SeverityDot,
   Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
@@ -77,11 +77,23 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     },
     { accessorKey: "check_id", header: "Check" },
     { accessorKey: "dimension", header: "Dimension", cell: ({ row }) => row.original.dimension ?? "—" },
-    { accessorKey: "affected_count", header: "Affected" },
+    {
+      accessorKey: "affected_count",
+      header: "Affected",
+      cell: ({ row }) => (
+        <DrillLink href={`/objects/${object}?run=${run}&tab=records&check_id=${row.original.check_id}`}>
+          {row.original.affected_count}
+        </DrillLink>
+      ),
+    },
     {
       accessorKey: "pass_rate",
       header: "Pass rate",
-      cell: ({ row }) => (row.original.pass_rate == null ? "—" : `${Math.round(row.original.pass_rate * 100)}%`),
+      cell: ({ row }) => (row.original.pass_rate == null ? "—" : (
+        <DrillLink href={`/objects/${object}?run=${run}&tab=rules&check_id=${row.original.check_id}`}>
+          {Math.round(row.original.pass_rate * 100)}%
+        </DrillLink>
+      )),
     },
     {
       id: "trend",
@@ -106,6 +118,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     return (
       <EmptyState
         title="No results for this object in this run."
+        ghost="ring"
         detail="The run did not include this object's module."
         action={<Button render={<Link href={`/objects?run=${run}`}>All objects</Link>} />}
       />
@@ -140,7 +153,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
     enabled: !!run,
   });
 
-  if (isLoading) return <Skeleton height={240} />;
+  if (isLoading) return <Skeleton height={320} />;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data) return null;
 
@@ -153,9 +166,9 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-6">
-        <Stat label="Composite score" value={data.composite_score != null ? String(data.composite_score) : "—"} />
-        <Stat label="Failing checks" value={String(data.failing_checks)} />
-        <Stat label="Affected records" value={String(data.affected_records)} />
+        <Stat label="Composite score" value={data.composite_score != null ? String(data.composite_score) : "—"} href={`/objects/${object}?run=${run}&tab=rules`} />
+        <Stat label="Failing checks" value={String(data.failing_checks)} href={`/objects/${object}?run=${run}&tab=rules`} />
+        <Stat label="Affected records" value={String(data.affected_records)} href={`/objects/${object}?run=${run}&tab=records`} />
       </div>
       {dimensionPoints.length === 0 ? (
         <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No dimension scores for this object in this run.</p>
