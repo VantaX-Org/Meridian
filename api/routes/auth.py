@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from api.services.rbac import PERMISSIONS, permissions_for, require_permission
+from api.services.rbac import PERMISSIONS, PERSONA_ROLES, home_for, permissions_for, require_permission
 from api.deps import get_sync_engine_or_create
 from api.services.local_auth import (
     create_access_token,
@@ -47,6 +47,7 @@ class UserResponse(BaseModel):
     name: str
     role: str
     permissions: list[str] = []
+    home: str = "/home/lead"
 
 
 class LoginResponse(BaseModel):
@@ -187,7 +188,7 @@ def login(body: LoginRequest, response: Response):
         return LoginResponse(
             token=token,
             user=UserResponse(id=user_id, email=row[1], name=row[2], role=row[3],
-                              permissions=permissions_for(row[3])),
+                              permissions=permissions_for(row[3]), home=home_for(row[3])),
             must_change_password=must_change,
         )
 
@@ -195,7 +196,7 @@ def login(body: LoginRequest, response: Response):
 @router.get("/roles", dependencies=[Depends(require_permission("view"))])
 async def role_matrix() -> dict[str, list[str]]:
     """The permission matrix itself (api/services/rbac.py) — the UI never keeps a copy."""
-    return {role: permissions_for(role) for role in PERMISSIONS}
+    return {role: permissions_for(role) for role in (*PERMISSIONS, *PERSONA_ROLES)}
 
 
 @router.get("/me", response_model=MeResponse)
@@ -240,7 +241,7 @@ def me(request: Request):
 
         return MeResponse(
             user=UserResponse(id=str(row[0]), email=row[1], name=row[2], role=row[3],
-                              permissions=permissions_for(row[3])),
+                              permissions=permissions_for(row[3]), home=home_for(row[3])),
             must_change_password=bool(row[5]) if len(row) > 5 else False,
         )
 

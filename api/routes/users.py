@@ -3,13 +3,14 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
-from api.services.rbac import require_permission, VALID_ROLES
+from api.routes.roles import insert_grant
+from api.services.rbac import current_user_id, require_permission, VALID_ROLES
 from workers.tasks.send_user_invitation import send_invitation_email
 
 router = APIRouter(prefix="/api/v1", tags=["users"])
@@ -28,10 +29,20 @@ class UpdateUserBody(BaseModel):
     is_active: Optional[bool] = None
 
 
+class InviteGrant(BaseModel):
+    role_key: str
+    system_id: Optional[uuid.UUID] = None
+    module: Optional[str] = None
+
+
 class InviteUserBody(BaseModel):
     email: str
     name: str = ""
     role: str = "analyst"
+    # Scoped grants. When given, `role` is ignored: users.role (the tenant-wide
+    # fallback every legacy guard reads) becomes the first unscoped grant's role,
+    # else viewer, so a scoped grant never widens into a tenant-wide one.
+    grants: list[InviteGrant] = Field(default_factory=list)
 
 
 # ── GET /api/v1/users ────────────────────────────────────────────────────────
@@ -97,6 +108,13 @@ async def update_user(
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    old_role = None
+    if body.role is not None:
+        old = await db.execute(text("SELECT role FROM users WHERE id = :uid AND tenant_id = :tid"),
+                               {"uid": user_id, "tid": str(tenant.id)})
+        old_row = old.fetchone()
+        old_role = old_row[0] if old_row else None
+
     set_clause = ", ".join(updates)
     result = await db.execute(
         text(f"UPDATE users SET {set_clause} WHERE id = :uid AND tenant_id = :tid RETURNING id"),
@@ -104,6 +122,14 @@ async def update_user(
     )
     if not result.fetchone():
         raise HTTPException(status_code=404, detail="User not found")
+
+    if body.role is not None and old_role and old_role != body.role:
+        # The unscoped grant mirrors users.role; a stale one would keep the old (maybe higher) role alive.
+        await db.execute(
+            text("UPDATE user_role_scopes SET role_key = :new WHERE tenant_id = :tid AND user_id = :uid "
+                 "AND role_key = :old AND system_id IS NULL AND module IS NULL"),
+            {"new": body.role, "old": old_role, "uid": user_id, "tid": str(tenant.id)},
+        )
 
     await db.commit()
 
@@ -121,14 +147,17 @@ async def update_user(
 @router.post("/users/invite", status_code=200)
 async def invite_user(
     body: InviteUserBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
 ):
     await _set_rls(db, tenant.id)
 
-    if body.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Invalid role: {body.role}")
+    role = (next((g.role_key for g in body.grants if g.system_id is None and g.module is None), "viewer")
+            if body.grants else body.role)
+    if not body.grants and role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
 
     # Emails are case-insensitive by convention everywhere else in the auth
     # flow (login, forgot-password) — normalise on write so every row is
@@ -154,9 +183,16 @@ async def invite_user(
             "tid": str(tenant.id),
             "email": email,
             "name": body.name or email.split("@")[0],
-            "role": body.role,
+            "role": role,
         },
     )
+    # insert_grant validates each role key (built-in or custom) and system; a bad one aborts the invite.
+    try:
+        for g in body.grants or [InviteGrant(role_key=role)]:
+            await insert_grant(db, tenant.id, new_id, g.role_key, g.system_id, g.module, current_user_id(request))
+    except HTTPException:
+        await db.rollback()
+        raise
     await db.commit()
 
     # Generate the invite acceptance token — a signed JWT the user redeems on
@@ -187,7 +223,7 @@ async def invite_user(
             tenant_id=str(tenant.id),
             recipient_email=email,
             recipient_name=body.name or email.split("@")[0],
-            role=body.role,
+            role=role,
             invite_token=invite_token,
         )
     except Exception as e:
@@ -195,7 +231,7 @@ async def invite_user(
         import logging
         logging.getLogger("meridian.users").error(f"Failed to queue invitation email: {e}")
 
-    return {"id": new_id, "email": body.email, "role": body.role, "status": "invited"}
+    return {"id": new_id, "email": body.email, "role": role, "status": "invited"}
 
 
 # ── DELETE /api/v1/users/{id} ───────────────────────────────────────────────

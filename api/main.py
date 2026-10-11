@@ -38,6 +38,8 @@ from api.routes.analytics import router as analytics_router
 from api.routes.contracts import router as contracts_router
 from api.routes.notifications import router as notifications_router
 from api.routes.users import router as users_router
+from api.routes.roles import router as roles_router
+from api.routes.me import router as me_router
 from api.routes.systems import router as systems_router
 from api.routes.master_records import router as master_records_router
 from api.routes.merge_explain import router as merge_explain_router
@@ -305,6 +307,8 @@ app.include_router(analytics_router)
 app.include_router(contracts_router)
 app.include_router(notifications_router)
 app.include_router(users_router)
+app.include_router(roles_router)
+app.include_router(me_router)
 app.include_router(systems_router)
 app.include_router(master_records_router)
 app.include_router(merge_explain_router)
