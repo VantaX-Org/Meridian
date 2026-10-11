@@ -5,7 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button, DataTable, ExplorerPage, Pill, Sparkline, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, Pill, Sparkline, Stat, type PillTone } from "@/design";
+import { NumLink } from "@/components/num-link";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { getWaves, runWave, startMigration } from "@/lib/api/migration";
@@ -63,7 +64,7 @@ export default function MigrationPage() {
     },
     {
       id: "score", header: "Readiness",
-      cell: ({ row }) => (row.original.last_score == null ? "—" : `${row.original.last_score.toFixed(1)}%`),
+      cell: ({ row }) => (row.original.last_score == null ? "—" : <NumLink href={`/migration/${row.original.id}`}>{`${row.original.last_score.toFixed(1)}%`}</NumLink>),
     },
     {
       id: "trend", header: "Trend",
@@ -92,10 +93,22 @@ export default function MigrationPage() {
   ];
 
   const data = waves.data ?? [];
+  const verdictOf = (w: MigrationWave) => (w.last_verdict ? FROM_ENGINE[w.last_verdict] : null);
+  const goCount = data.filter((w) => verdictOf(w) === "go").length;
+  const blocked = data.filter((w) => verdictOf(w) === "no_go" || verdictOf(w) === "at_risk");
+  const noGoCount = blocked.length;
+  const firstBlocked = blocked[0];
   const createButton = can("analyse") ? <Button onClick={() => setCreating(true)}>Create wave</Button> : undefined;
   return (
     <>
       <ExplorerPage
+        summary={data.length > 0 ? (
+          <div className="flex flex-wrap gap-6">
+            <Stat label="Waves" value={data.length} />
+            <Stat label="Go" value={goCount} tone="go" />
+            <Stat label="Not go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} hint={noGoCount > 0 ? <NumLink href={`/migration/${firstBlocked?.id}`}>{`Open ${firstBlocked?.name}`}</NumLink> : undefined} />
+          </div>
+        ) : undefined}
         filterBar={<div className="flex justify-end">{createButton}</div>}
         table={<DataTable columns={columns} data={data} getRowId={(w) => w.id}
                           onRowClick={(w) => router.push(`/migration/${w.id}`)} />}
