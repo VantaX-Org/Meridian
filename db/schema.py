@@ -2108,3 +2108,21 @@ class RecordFix(Base):
         Index("ix_record_fixes_version_status", "version_id", "status"),
         Index("ix_record_fixes_tenant", "tenant_id"),
     )
+
+
+class InsightFeedback(Base):
+    """Thumbs up/down on the AI summary in the insight header."""
+    __tablename__ = "insight_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
+    surface = Column(Text, nullable=False)
+    run_id = Column(Text, nullable=True)
+    vote = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+    __table_args__ = (
+        CheckConstraint("vote IN ('up', 'down')", name="ck_insight_feedback_vote"),
+        Index("ix_insight_feedback_tenant", "tenant_id", "created_at"),
+    )
