@@ -33,7 +33,8 @@ export function Button({ className, variant, size, style, render, pending, child
       className: clsx(classes, render.props.className),
       style: { ...style, ...render.props.style },
       children: render.props.children ?? content,
-    });
+      ...(pending ? { "aria-busy": true, "aria-disabled": true } : {}),
+    } as Partial<RenderProps>);
   }
   return (
     <button className={classes} style={style} disabled={disabled || pending} aria-busy={pending || undefined} {...props}>

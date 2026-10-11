@@ -3,7 +3,7 @@
 import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 import { Field as BaseField } from "@base-ui/react/field";
 
-type ControlProps = { id?: string };
+type ControlProps = { id?: string; "aria-invalid"?: boolean; "aria-describedby"?: string };
 
 export function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   const generatedId = useId();
@@ -12,7 +12,7 @@ export function Field({ label, children, error }: { label: string; children: Rea
   const control = isValidElement<ControlProps>(children) && typeof children.type === "string" ? children : undefined;
   const controlId = control ? control.props.id ?? generatedId : undefined;
   const content = control
-    ? cloneElement<ControlProps>(control as ReactElement<ControlProps>, { id: controlId })
+    ? cloneElement<ControlProps>(control as ReactElement<ControlProps>, { id: controlId, ...(error ? { "aria-invalid": true, "aria-describedby": `${controlId}-error` } : {}) })
     : children;
   return (
     <BaseField.Root className="flex flex-col gap-1.5">
@@ -21,7 +21,7 @@ export function Field({ label, children, error }: { label: string; children: Rea
       </BaseField.Label>
       {content}
       {error && (
-        <BaseField.Error className="m-field-error">
+        <BaseField.Error id={controlId ? `${controlId}-error` : undefined} className="m-field-error">
           {error}
         </BaseField.Error>
       )}

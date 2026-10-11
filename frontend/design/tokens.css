@@ -269,7 +269,6 @@
 @keyframes m-spin    { to { transform: rotate(360deg); } }
 @keyframes m-meridian-sweep { from { background-position: -100% 0; } to { background-position: 200% 0; } }
 
-@keyframes m-spin { to { transform: rotate(360deg); } }
 .m-motion-spin    { animation: m-spin var(--m-motion-shimmer) linear infinite; }
 .m-motion-slide   { transition: transform var(--m-motion-slow) var(--m-motion-ease), width var(--m-motion-slow) var(--m-motion-ease); }
 .m-motion-width   { transition: width var(--m-motion-slow) var(--m-motion-ease); }
@@ -315,6 +314,6 @@
     --m-motion-rise-y: 0px;
   }
   .m-motion-rise, .m-motion-scale-in, .m-motion-slide-in-right, .m-motion-draw, .m-motion-stagger > *,
-  .m-skeleton-sweep, .m-meridian-live, .m-spin { animation: none; }
+  .m-skeleton-sweep, .m-meridian-live, .m-spin, .m-motion-spin { animation: none; }
   .m-motion-width, .m-motion-fade, .m-motion-colors { transition: none; }
 }

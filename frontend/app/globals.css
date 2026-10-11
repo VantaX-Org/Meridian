@@ -217,7 +217,9 @@
   .m-btn-secondary:hover { background: var(--m-sheet-raised); border-color: var(--m-ink-3); }
   .m-btn-ghost { background: transparent; color: var(--m-ink-2); }
   .m-btn-ghost:hover { background: var(--m-sheet-raised); color: var(--m-ink); }
-  .m-btn-danger { background: var(--m-critical); color: var(--m-sheet); }
+  .m-btn-danger { background: var(--m-critical); color: var(--m-ink-on-accent); }
+  .m-btn-danger:hover { background: var(--m-critical-ink); }
+  .m-btn-danger:active { background: var(--m-critical-ink); }
   .m-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; }
 
   .m-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: var(--m-control-h); height: var(--m-control-h); border-radius: var(--m-radius-control); background: transparent; color: var(--m-ink-2); cursor: pointer; }
@@ -232,6 +234,7 @@
   .m-popup { background: var(--m-sheet); border-radius: var(--m-radius-sheet); padding: 4px; box-shadow: var(--m-elev-2); }
   .m-popup-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: var(--m-control-h); padding: 0 10px; border-radius: var(--m-radius-control); font-size: var(--m-text-body); cursor: pointer; color: var(--m-ink); }
   .m-popup-item[data-highlighted] { background: var(--m-sheet-raised); }
+  .m-popup-item:focus-visible { outline: none; box-shadow: var(--m-elev-focus); }
   .m-popup-item[data-selected] { background: var(--m-accent-soft); color: var(--m-accent-ink); }
 
   .m-field-label { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; color: var(--m-ink-2); }
@@ -263,7 +266,8 @@
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }
   .m-tab-count { margin-left: 6px; }
   .m-tab-indicator { position: absolute; left: 0; bottom: -1px; height: 2px; border-radius: 1px; background: var(--m-accent); }
+  .m-tab:focus-visible { outline: none; box-shadow: var(--m-elev-focus); border-radius: var(--m-radius-control); }
 
-  .m-mono { font-family: var(--m-font-mono); color: var(--m-ink); }
-  .m-mono-inline { font-size: var(--m-text-meta); line-height: var(--m-leading-meta); background: var(--m-sheet-sunken); padding: 1px 4px; border-radius: 4px; }
+  .m-mono { font-family: var(--m-font-mono); }
+  .m-mono-inline { color: var(--m-ink); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); background: var(--m-sheet-sunken); padding: 1px 4px; border-radius: 4px; }
 }

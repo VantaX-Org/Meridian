@@ -30,7 +30,7 @@ export function Tabs({
             className="m-tab m-motion-colors"
           >
             {item.label}
-            {item.count !== undefined && <span className="m-tab-count"><Badge count={Math.max(item.count, 1)} tone="neutral" /></span>}
+            {item.count !== undefined && item.count > 0 && <span className="m-tab-count"><Badge count={item.count} tone="neutral" /></span>}
           </BaseTabs.Tab>
         ))}
         <BaseTabs.Indicator
