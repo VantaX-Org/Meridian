@@ -21,6 +21,11 @@ describe("entityTabs", () => {
     expect(all).toEqual(["related", "history", "audit", "export"]);
     expect(entityTabs({ entityType: "rules", entityId: "1", skip: ["history"] }).map((t) => t.value)).not.toContain("history");
   });
+
+  it("leaves out the Export tab when canExport is false", () => {
+    const v = entityTabs({ entityType: "rules", entityId: "1", canExport: false }).map((t) => t.value);
+    expect(v).toEqual(["related", "history", "audit"]);
+  });
 });
 
 describe("EntityTabs", () => {

@@ -11,6 +11,7 @@ import { Tabs, type TabItem } from "../primitives/Tabs";
 import { EmptyState } from "../primitives/EmptyState";
 import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
+import { usePermissionsContext } from "../../lib/permissions";
 import { ExportMenu, type ExportOption } from "../primitives/ExportMenu";
 
 /** The five tabs every detail page carries, in this order. */
@@ -29,6 +30,8 @@ export interface EntityTabsOptions {
   audit?: ReactNode;
   /** Export options for this entity. Omit for the designed empty state. */
   exportOptions?: ExportOption[];
+  /** False leaves the Export tab out (rbac.md §5: exports are for roles holding `export`). Omitted means shown. */
+  canExport?: boolean;
   /**
    * Request-path fragment that the audit rows of this entity carry, for nested resources
    * (e.g. `/migration/waves/<id>`) where the audit middleware records no entity_id.
@@ -78,7 +81,7 @@ export function AuditTab({ entityType, entityId, auditPath }: { entityType: stri
 }
 
 /** Related, History, Audit and Export tab items. Append to a page's own tabs after its Overview. */
-export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, audit, skip = [] }: EntityTabsOptions): TabItem[] {
+export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, audit, canExport = true, skip = [] }: EntityTabsOptions): TabItem[] {
   const items: TabItem[] = [
     {
       value: "related", label: "Related",
@@ -96,12 +99,14 @@ export function entityTabs({ entityType, entityId, related, history, exportOptio
         : <EmptyState title="Nothing to export here" detail="There is no export for this record yet. Use the Audit tab to export its audit trail." ghost="table" />,
     },
   ];
-  return items.filter((i) => !skip.includes(i.value as EntityTabValue));
+  return items.filter((i) => !skip.includes(i.value as EntityTabValue) && (canExport || i.value !== "export"));
 }
 
 /** Overview/Related/History/Audit/Export tab set for detail pages that have no tabs of their own. */
 export function EntityTabs({ overview, extraTabs = [], ...opts }: EntityTabsOptions & { overview: ReactNode; extraTabs?: TabItem[] }) {
-  const [rest0, ...rest] = entityTabs(opts);
+  const perms = usePermissionsContext();
+  // no provider (tests, public pages) keeps the tab; inside one, the export grant decides
+  const [rest0, ...rest] = entityTabs({ canExport: perms ? perms.can("export") : true, ...opts });
   const items: TabItem[] = [{ value: "overview", label: "Overview", content: overview }, ...(rest0 ? [rest0] : []), ...extraTabs, ...rest];
   return <Tabs items={items} />;
 }

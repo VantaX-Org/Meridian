@@ -421,7 +421,7 @@ export default function RunDetailPage() {
               />
             ),
           },
-          ...entityTabs({ entityType: "versions", entityId: versionId, exportOptions }),
+          ...entityTabs({ entityType: "versions", entityId: versionId, exportOptions, canExport: can("export") }),
         ]}
       />
     </div>

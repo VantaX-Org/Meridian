@@ -14,6 +14,7 @@ import {
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
+import { useRole } from "@/hooks/use-role";
 import { exportObject, getObject, type ObjectRule } from "@/lib/api/v1/objects";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getObjectReportUrl } from "@/lib/api/reports";
@@ -342,6 +343,7 @@ export default function ObjectDetailPage() {
   const params = useParams<{ object: string }>();
   const search = useSearchParams();
   const router = useRouter();
+  const { can } = useRole();
   const object = params.object;
   const run = search.get("run") ?? "";
   const tab = search.get("tab") ?? "overview";
@@ -407,7 +409,7 @@ export default function ObjectDetailPage() {
               <EmptyState title="Open the rules tab and choose a rule to see its failing records." />
             ),
           },
-          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined }),
+          ...entityTabs({ entityType: "objects", entityId: object, auditPath: `/objects/${object}`, exportOptions: data ? exportOptions : undefined, canExport: can("export") }),
         ]}
       />
     </div>

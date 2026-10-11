@@ -141,7 +141,7 @@ export default function WaveCockpitPage() {
               <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
           { value: "downloads", label: "Downloads", content: downloads },
-          ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}`, exportOptions }),
+          ...entityTabs({ entityType: "migration", entityId: waveId, auditPath: `/migration/waves/${waveId}`, exportOptions, canExport: can("export") }),
         ]}
       />
     </div>

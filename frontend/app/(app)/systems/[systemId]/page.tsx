@@ -232,7 +232,7 @@ export default function SystemPage() {
             ),
           },
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
-          ...entityTabs({ entityType: "systems", entityId: systemId }),
+          ...entityTabs({ entityType: "systems", entityId: systemId, canExport: can("export") }),
         ]}
       />
 
