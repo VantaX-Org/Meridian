@@ -125,3 +125,11 @@ def test_bundled_ollama_disables_thinking_and_applies_timeout() -> None:
     assert llm.reasoning is False
     assert llm.keep_alive
     assert llm.client_kwargs == {"timeout": 300}
+
+
+def test_safe_invoke_strips_leaked_reasoning() -> None:
+    class _Thinker:
+        def invoke(self, messages: object) -> _FakeResponse:
+            return _FakeResponse('<think>\nhmm\n</think>\n\n{"ok": true}')
+
+    assert safe_invoke(_Thinker(), [], timeout_seconds=5) == '{"ok": true}'
