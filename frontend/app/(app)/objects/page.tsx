@@ -108,7 +108,7 @@ export default function ObjectsPage() {
   const columns = makeColumns(run); // React Compiler memoizes on run
   const hero = objs.length > 0 && (
     <div className="flex flex-wrap gap-6">
-      <Stat label="Objects" value={objs.length} href={`/objects/${objs[0].module}?run=${run}`} />
+      <Stat label="Objects" value={objs.length} />
       <Stat label="Ready" value={ready} tone="go" href={firstReady ? `/objects/${firstReady.module}?run=${run}` : undefined} />
       <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} href={firstNotReady ? `/objects/${firstNotReady.module}?run=${run}&tab=rules` : undefined} />
     </div>

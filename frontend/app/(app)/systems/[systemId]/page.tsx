@@ -1,10 +1,8 @@
 "use client";
 
 /**
- * One system: Overview, Objects, Runs, Health, Pilot tabs. @/design's Tabs
- * is uncontrolled, so the ?tab= deep link is read once (useSearchParams)
- * and passed as defaultValue — enough to land `/systems/:id/pilot`'s
- * redirect to `?tab=pilot` on the right tab; no live two-way sync.
+ * One system: Overview, Objects, Runs, Health, Pilot tabs. The active tab is
+ * controlled from the ?tab= search param, so Stat links and redirects switch it.
  * Edit via a Drawer.
  */
 
@@ -191,7 +189,7 @@ export default function SystemPage() {
       </div>
 
       <Tabs
-        defaultValue={initialTab}
+        value={initialTab}
         onValueChange={(tab) => {
           const params = new URLSearchParams(searchParams.toString());
           params.set("tab", tab);

@@ -112,7 +112,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
     },
   ];
 
-  if (isLoading) return <Skeleton height={320} />;
+  if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data || data.rules.length === 0) {
     return (
@@ -153,7 +153,7 @@ function OverviewTab({ object, run }: { object: string; run: string }) {
     enabled: !!run,
   });
 
-  if (isLoading) return <Skeleton height={320} />;
+  if (isLoading) return <div aria-busy="true"><Skeleton height={320} /></div>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={() => refetch()} />;
   if (!data) return null;
 

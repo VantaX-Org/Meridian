@@ -192,4 +192,10 @@ describe("RunDetailPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
     await waitFor(() => expect(screen.getByText("mm_missing_desc")).toBeInTheDocument());
   });
+
+  it("shows a loading skeleton while the run loads", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+  });
 });

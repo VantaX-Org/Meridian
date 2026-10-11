@@ -85,4 +85,18 @@ describe("WaveCockpitPage", () => {
     expect(dl).toHaveBeenCalledWith("r2", "xlsx");
     expect(dl).toHaveBeenCalledWith("r2", "pdf");
   });
+
+  it("selects the tab named by ?tab=", async () => {
+    search = new URLSearchParams("tab=blockers");
+    vi.spyOn(migrationApi, "getWaveCockpit").mockResolvedValue(COCKPIT);
+    renderWithQuery(<WaveCockpitPage />);
+    expect(await screen.findByRole("tab", { name: "Blockers", selected: true })).toBeInTheDocument();
+  });
+
+  it("shows a loading skeleton while the cockpit loads", () => {
+    search = new URLSearchParams();
+    vi.spyOn(migrationApi, "getWaveCockpit").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<WaveCockpitPage />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
 });

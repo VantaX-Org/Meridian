@@ -256,4 +256,10 @@ describe("ObjectDetailPage", () => {
     expect(screen.getByText("MARA.MTART")).toBeInTheDocument();
     expect(screen.getByText("MARA.MTART")).toHaveStyle({ fontFamily: "var(--m-font-mono)" });
   });
+
+  it("shows a loading skeleton while the object loads", async () => {
+    vi.spyOn(objectsApi, "getObject").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<ObjectDetailPage />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+  });
 });

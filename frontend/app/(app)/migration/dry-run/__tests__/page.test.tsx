@@ -105,4 +105,11 @@ describe("DryRunPage", () => {
     await waitFor(() => expect(screen.getByText(/no-go/i)).toBeInTheDocument());
     expect(getMigrationRun).toHaveBeenCalledTimes(2);
   });
+
+  it("shows the loading skeleton while the run loads", () => {
+    vi.spyOn(migrationApi, "getMigrationRun").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(migrationApi, "getDryRunRecords").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<DryRunPage />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
 });

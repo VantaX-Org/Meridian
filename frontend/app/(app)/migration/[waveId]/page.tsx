@@ -111,7 +111,7 @@ export default function WaveCockpitPage() {
       </div>
       {c.objects.length ? <Bar label="Objects by readiness verdict" height={120} data={funnel} /> : null}
       <Tabs
-        defaultValue={searchParams.get("tab") ?? "objects"}
+        value={searchParams.get("tab") ?? "objects"}
         onValueChange={(v) => router.replace(`/migration/${waveId}?tab=${v}`)}
         items={[
           { value: "objects", label: "Objects", content: c.objects.length ? (

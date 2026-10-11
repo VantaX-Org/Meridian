@@ -4,7 +4,7 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, Mono, Pill, ReportPage, Stat } from "@/design";
+import { Button, DataTable, Mono, Pill, ReportPage, Skeleton, Stat } from "@/design";
 import { getDryRunRecords, getMigrationRun, dryRunExportUrl, type DryRunRecord } from "@/lib/api/migration";
 import { VERDICT_LABEL, VERDICT_TONE } from "@/app/(app)/migration/page";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -76,6 +76,19 @@ export default function DryRunPage() {
   const rows = recordsQuery.data?.rows ?? [];
 
   const state = isLoading ? "loading" : isError ? "error" : undefined;
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto flex w-full flex-col gap-6" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }} aria-busy="true">
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton height={88} />
+          <Skeleton height={88} />
+          <Skeleton height={88} />
+        </div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
 
   const srcHref = run?.source_version_id ? `/runs/${run.source_version_id}` : undefined;
   const moduleBadges = run

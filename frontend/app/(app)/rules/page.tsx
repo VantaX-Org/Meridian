@@ -86,6 +86,7 @@ export default function RulesPage() {
   const [source, setSource] = useUrlState("source", "");
   const [table, setTable] = useUrlState("table", "");
   const [view, setView] = useUrlState("view", "");
+  const [state, setState] = useUrlState("state", "");
   const [search, setSearch] = useState("");
   const [authoring, setAuthoring] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -123,11 +124,12 @@ export default function RulesPage() {
     source: (r) => !source || r.source === source,
     table: (r) => !table || tableOf(r) === table,
     view: (r) => !view || inView(r, module, view),
+    state: (r) => !state || r.enabled === (state === "enabled"),
   };
   const passing = (r: Rule) => matches(r, search) && Object.values(tests).every((t) => t(r));
   const visible = rules.filter(passing);
-  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || category !== "all");
-  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setCategory("all"); };
+  const filtered = !!(search || module || check || dimension || severity || auth || source || table || view || state || category !== "all");
+  const clearFilters = () => { setSearch(""); setModule(""); setCheck(""); setDimension(""); setSeverity(""); setAuth(""); setSource(""); setTable(""); setView(""); setState(""); setCategory("all"); };
 
   const selected = selectedId ? rules.find((r) => r.id === selectedId) ?? null : null;
   const totals = useMemo(() => {
@@ -247,6 +249,7 @@ export default function RulesPage() {
         <Select value={auth} onValueChange={setAuth} placeholder="All authorities"
           options={[{ value: "", label: "All authorities" }, { value: "shipped", label: "SAP standard (shipped)" }, { value: "customer", label: "Customer configured" }]} />
       </Field>
+      {facetSelect("State", state, setState, ["enabled", "disabled"], labelOf, "All states")}
       {facetSelect("Source", source, setSource, facets.sources, (v) => labelOf(SOURCE_LABEL[v] ?? v), "All sources")}
       {facetSelect("Object", module, setModule, facets.modules, formatModuleName, "All objects")}
       {facetSelect("Table", table, setTable, facets.tables, (v) => v, "All tables")}
@@ -263,9 +266,9 @@ export default function RulesPage() {
   const summaryRow = (
     <div className="flex flex-col gap-2">
       <div className="flex gap-6">
-        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} href="/rules/dictionary" />
-        <Stat label="Enabled" value={totals.enabled.toLocaleString()} href="/rules/scoring" />
-        <Stat label="Disabled" value={totals.disabled.toLocaleString()} href="/rules/drafts" delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
+        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} href="/rules" />
+        <Stat label="Enabled" value={totals.enabled.toLocaleString()} href="/rules?state=enabled" />
+        <Stat label="Disabled" value={totals.disabled.toLocaleString()} href="/rules?state=disabled" delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
       </div>
       {!canManage ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</p> : null}
     </div>

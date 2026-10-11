@@ -13,6 +13,7 @@ import SystemPage from "../page";
 let tab: string | null = null;
 vi.mock("next/navigation", () => ({
   useParams: () => ({ systemId: "s1" }),
+  usePathname: () => "/systems/s1",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => ({ get: (k: string) => (k === "tab" ? tab : null), toString: () => (tab ? `tab=${tab}` : "") }),
 }));
@@ -76,5 +77,18 @@ describe("system detail page", () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Pilot", selected: true })).toBeInTheDocument());
+  });
+
+  it("selects the tab named by a Stat href (?tab=health)", async () => {
+    tab = "health";
+    mockHappyPath();
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Health", selected: true })).toBeInTheDocument());
+  });
+
+  it("shows a loading skeleton while the system loads", () => {
+    vi.spyOn(connectivityApi, "getSystems").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<SystemPage />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 });

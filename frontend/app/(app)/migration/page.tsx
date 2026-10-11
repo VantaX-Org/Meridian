@@ -104,7 +104,7 @@ export default function MigrationPage() {
       <ExplorerPage
         summary={data.length > 0 ? (
           <div className="flex flex-wrap gap-6">
-            <Stat label="Waves" value={data.length} href={`/migration/${data[0].id}`} />
+            <Stat label="Waves" value={data.length} />
             <Stat label="Go" value={goCount} tone="go" href={firstGo ? `/migration/${firstGo.id}` : undefined} />
             <Stat label="At risk" value={atRiskCount} tone={atRiskCount > 0 ? "at-risk" : undefined} href={firstAtRisk ? `/migration/${firstAtRisk.id}` : undefined} />
             <Stat label="No go" value={noGoCount} tone={noGoCount > 0 ? "no-go" : undefined} href={firstNoGo ? `/migration/${firstNoGo.id}` : undefined} />

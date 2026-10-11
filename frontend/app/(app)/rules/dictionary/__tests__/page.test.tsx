@@ -15,4 +15,18 @@ describe("rules dictionary page", () => {
     await userEvent.type(screen.getByLabelText("Fields"), "MARA.MATNR");
     expect(await screen.findByText("MARA.MATNR")).toBeInTheDocument();
   });
+
+  it("hints at tokens that are not TABLE.FIELD", async () => {
+    vi.spyOn(api, "getDdicFields").mockResolvedValue([]);
+    renderWithQuery(<RuleDictionaryPage />);
+    await userEvent.type(screen.getByLabelText("Fields"), "MATNR");
+    expect(screen.getByText("Not TABLE.FIELD, skipped: MATNR")).toBeInTheDocument();
+  });
+
+  it("shows a loading skeleton while the lookup runs", async () => {
+    vi.spyOn(api, "getDdicFields").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<RuleDictionaryPage />);
+    await userEvent.type(screen.getByLabelText("Fields"), "MARA.MATNR");
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull();
+  });
 });

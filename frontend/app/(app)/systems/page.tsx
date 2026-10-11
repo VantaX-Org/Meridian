@@ -217,7 +217,7 @@ export default function SystemsPage() {
         <div className="flex flex-wrap items-center gap-6">
           {systems.length > 0 ? (
             <>
-              <Stat label="Systems" value={systems.length} href={`/systems/${systems[0].id}`} />
+              <Stat label="Systems" value={systems.length} />
               <Stat
                 label="Healthy"
                 value={systems.filter((s) => s.health_status === "healthy").length}

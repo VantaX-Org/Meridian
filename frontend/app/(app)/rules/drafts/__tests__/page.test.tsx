@@ -10,4 +10,10 @@ describe("rules drafts page", () => {
     renderWithQuery(<RuleDraftsPage />);
     expect(await screen.findByText("No drafts.")).toBeInTheDocument();
   });
+
+  it("shows a loading skeleton while drafts load", () => {
+    vi.spyOn(api, "getRuleDrafts").mockReturnValue(new Promise(() => {}));
+    const { container } = renderWithQuery(<RuleDraftsPage />);
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull();
+  });
 });

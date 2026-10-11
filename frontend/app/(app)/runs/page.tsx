@@ -111,7 +111,7 @@ export default function RunsPage() {
   const summary = rows.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-6">
-        <Stat label="Runs" value={rows.length} href={`/runs/${rows[0].id}`} />
+        <Stat label="Runs" value={rows.length} />
         <Stat
           label="Latest DQS"
           value={latest && latestDqs !== null ? <DrillLink href={`/runs/${latest.id}`}>{latestDqs.toFixed(1)}</DrillLink> : "—"}
