@@ -149,3 +149,13 @@ export async function getPrescriptiveAnalytics(params?: {
   );
   return data;
 }
+
+/** GET /health/llm (api/routes/health.py). Any failure reads as "model off", never as an error. */
+export async function getLlmHealth(): Promise<{ llm_available: boolean; reason?: string }> {
+  try {
+    const { data } = await apiClient.get<{ llm_available: boolean; reason?: string }>("/health/llm");
+    return { llm_available: data.llm_available === true, reason: data.reason };
+  } catch {
+    return { llm_available: false, reason: "unreachable" };
+  }
+}

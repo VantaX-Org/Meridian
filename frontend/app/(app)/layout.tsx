@@ -12,10 +12,13 @@ import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
 import { flattenNav, resolveNavHref } from "@/lib/nav";
 import { getVersions } from "@/lib/api/versions";
+import { getSystems } from "@/lib/api/connectivity";
+import { getObjects } from "@/lib/api/v1/objects";
 import { isNotFound } from "@/lib/error";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne } from "@/hooks/use-day-one";
+import { RouteInsight } from "@/components/insight/route-insight";
 
 const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 
@@ -23,7 +26,13 @@ function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
   const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: resolveNavHref(item.href, role) })));
-  return <CommandPalette items={items} />;
+  const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const objectsQ = useQuery({ queryKey: queryKeys.objects("latest"), queryFn: () => getObjects("latest") });
+  const grammar = {
+    objects: (objectsQ.data?.objects ?? []).map((o) => ({ module: o.module, label: o.label })),
+    systems: [...new Set((systemsQ.data ?? []).map((s) => s.environment))],
+  };
+  return <CommandPalette items={items} grammar={grammar} />;
 }
 
 function RunSelectorSlot() {
@@ -98,6 +107,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             userMenu={<ThemeToggle />}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
+            <Suspense fallback={null}><RouteInsight /></Suspense>
             {children}
           </main>
         </div>

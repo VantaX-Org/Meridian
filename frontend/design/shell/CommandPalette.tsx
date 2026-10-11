@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
 
 const noSubscribe = () => () => {};
 const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
@@ -13,8 +14,10 @@ export interface CommandItem {
   href: string;
 }
 
-export function CommandPalette({ items }: { items: CommandItem[] }) {
+export function CommandPalette({ items, grammar }: { items: CommandItem[]; grammar?: GrammarContext }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const parsed = grammar && query.trim() ? parsePalette(query, grammar) : null;
   // Server snapshot is "not Mac", so SSR and hydration agree; the client reads the real platform.
   const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
   const router = useRouter();
@@ -50,9 +53,28 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
           {isMac ? "⌘K" : "Ctrl+K"}
         </kbd>
       </button>
-      <Command.Dialog open={open} onOpenChange={setOpen} label="Command palette">
-        <Command.Input placeholder="Jump to..." />
+      <Command.Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }} label="Command palette">
+        <Command.Input placeholder="Jump to..." value={query} onValueChange={setQuery} />
+        {parsed && parsed.chips.length > 0 && (
+          <div className="flex flex-wrap gap-1 px-3 py-2" aria-label="Parsed filters">
+            {parsed.chips.map((c) => (
+              <span key={`${c.kind}:${c.value}`} className="rounded-full px-2 text-[12px]" style={{ background: "var(--m-accent-soft)", color: "var(--m-accent-ink)" }}>{c.label}</span>
+            ))}
+          </div>
+        )}
         <Command.List>
+          {parsed?.href && (
+            <Command.Item
+              forceMount
+              value={`__grammar__ ${query}`}
+              onSelect={() => {
+                router.push(parsed.href as string);
+                setOpen(false);
+              }}
+            >
+              {parsed.chips.length > 0 ? "Open filtered view" : `Search for "${query.trim()}"`}
+            </Command.Item>
+          )}
           <Command.Empty>No results.</Command.Empty>
           {items.map((item) => (
             <Command.Item

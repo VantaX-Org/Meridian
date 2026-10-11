@@ -12,12 +12,15 @@ export function Line({
   height = 240,
   draw = false,
   dqsThreshold,
+  annotations,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
   height?: number;
   draw?: boolean;
   dqsThreshold?: number;
+  /** Vertical markers at an x value, e.g. a rule change or a run that moved the score. */
+  annotations?: { x: string | number; label: string; kind?: "change" | "event" }[];
 }) {
   const animate = draw && !reducedMotion();
   return (
@@ -30,6 +33,15 @@ export function Line({
         {dqsThreshold !== undefined && (
           <ReferenceLine y={dqsThreshold} stroke={chartTheme.axis} strokeDasharray="4 4" />
         )}
+        {annotations?.map((a) => (
+          <ReferenceLine
+            key={`${a.x}-${a.label}`}
+            x={a.x}
+            stroke={a.kind === "event" ? chartTheme.high : chartTheme.axis}
+            strokeDasharray="2 3"
+            label={{ value: a.label, position: "insideTopRight", fontSize: 11, fill: chartTheme.axis }}
+          />
+        ))}
         <RLine
           type="monotone"
           dataKey="y"
