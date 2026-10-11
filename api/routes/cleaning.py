@@ -345,8 +345,9 @@ async def bulk_approve(
     approved = result.fetchall()
     approved_ids = [str(r[0]) for r in approved]
     # One audit row per item, like the single approve route, so a batch's trail covers bulk approvals.
+    actor = current_user_label()
     for r in approved:
-        await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], metadata={"bulk": True})
+        await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], actor_name=actor, metadata={"bulk": True})
     await db.commit()
 
     return {"approved_count": len(approved_ids), "skipped_count": 0}

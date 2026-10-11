@@ -503,6 +503,27 @@ def require_permission(
     return _check
 
 
+def require_any_permission(*actions: str):
+    """Dependency factory: pass when the user holds ANY of `actions` (tenant-wide)."""
+    checks = [require_permission(a) for a in actions]
+
+    async def _check(
+        request: Request,
+        tenant: Tenant = Depends(get_tenant),
+        db: AsyncSession = Depends(get_db),
+    ) -> str:
+        last: HTTPException | None = None
+        for c in checks:
+            try:
+                return await c(request, tenant, db)
+            except HTTPException as exc:
+                last = exc
+        assert last is not None
+        raise last
+
+    return _check
+
+
 # ── Effective permissions + audit (shared by /me and /roles routes) ──────────
 
 BUILTIN_NAMES: dict[str, str] = {

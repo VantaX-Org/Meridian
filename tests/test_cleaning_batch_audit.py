@@ -55,6 +55,7 @@ def test_bulk_approve_writes_one_audit_row_per_approved_item(monkeypatch) -> Non
     assert r.status_code == 200 and r.json()["approved_count"] == 2
     inserts = [p for sql, p in db.calls if "INSERT INTO cleaning_audit" in sql]
     assert [p["queue_id"] for p in inserts] == [str(i) for i in ids]
+    assert all(p["actor_name"] for p in inserts)
     assert all(p["action"] == "approved" and p["tenant_id"] == str(TENANT.id) for p in inserts)
 
 

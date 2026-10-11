@@ -55,3 +55,10 @@ def test_every_mutating_route_is_guarded():
                 if (path.name, route) not in _UNGUARDED_OK:
                     unguarded.append(f"{path.name} {d.func.attr.upper()} {route}")
     assert unguarded == []
+
+
+def test_audit_reads_accept_view_audit_or_manage_users():
+    src = (ROOT / "api" / "routes" / "audit.py").read_text()
+    assert src.count('require_any_permission("view_audit", "manage_users")') == 4
+    assert 'require_permission("manage_users")' not in src
+    assert has_permission("auditor", "view_audit") and not has_permission("auditor", "manage_users")

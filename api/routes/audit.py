@@ -24,7 +24,7 @@ from api.services.branded_xlsx import (
     xlsx_filename,
     xlsx_response,
 )
-from api.services.rbac import require_permission
+from api.services.rbac import require_any_permission, require_permission
 
 router = APIRouter(prefix="/api/v1", tags=["audit"])
 
@@ -102,7 +102,7 @@ async def list_audit_entries(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """List audit log entries for this tenant, newest first."""
     await _set_rls(db, tenant.id)
@@ -152,7 +152,7 @@ async def export_audit_entries(
     format: Literal["csv", "xlsx"] = Query("csv"),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """Audit log as CSV or XLSX for auditors and SIEM import, oldest first, same filters as /audit.
     Capped at 100,000 rows; narrow with since/until for longer histories."""
@@ -197,7 +197,7 @@ async def export_audit_entries(
 async def audit_summary(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ):
     """Counts grouped by action + entity_type for the last 30 days.
     Used by the Admin overview tile."""
@@ -256,7 +256,7 @@ async def list_llm_audit(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
-    _role: str = Depends(require_permission("manage_users")),
+    _role: str = Depends(require_any_permission("view_audit", "manage_users")),
 ) -> LlmAuditOut:
     """LLM call audit (llm_audit_log, newest first, paged) plus a per-service
     summary of the persistent decision cache. Prompt text is never stored, only hashes."""
