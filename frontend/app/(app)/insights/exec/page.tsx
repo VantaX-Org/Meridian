@@ -4,7 +4,8 @@
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, ExportMenu, Pill, ReportPage, Waterfall, type PillTone } from "@/design";
+import { Card, DataTable, DrillLink, ExportMenu, Pill, ReportPage, Stat, Waterfall, type PillTone } from "@/design";
+import { getRoi } from "@/lib/api/analytics";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getExec, type ImpactRow, type OwnerCardResponse, type ReadinessCell } from "@/lib/api/insights";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -55,6 +56,7 @@ export default function ExecPage() {
     queryFn: () => getExec({ version_id: run }),
   });
 
+  const roi = useQuery({ queryKey: ["roi"], queryFn: getRoi });
   const state: "loading" | "empty" | "error" | undefined = isLoading || dayOne.status === "loading"
     ? "loading"
     : isListFailure({ isError, error })
@@ -78,6 +80,16 @@ export default function ExecPage() {
       charts={<Waterfall data={data?.waterfall ?? []} />}
       tables={
         <div className="flex flex-col gap-6">
+          {roi.data && (
+            <Card title="Return on investment">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Stat label="ROI multiple" value={`${roi.data.roi.roi_multiple}x`} />
+                <Stat label="Payback" value={`${roi.data.roi.payback_months} months`} />
+                <Stat label="Risk mitigated" value={roi.data.roi.risk_mitigated.toLocaleString()} />
+                <Stat label="Annual subscription" value={roi.data.roi.subscription_annual.toLocaleString()} />
+              </div>
+            </Card>
+          )}
           <DataTable columns={readinessColumns} data={data?.readiness_cells ?? []} getRowId={(row) => `${row.module}-${row.wave}`} />
           <DataTable columns={impactColumns} data={data?.impact_rows ?? []} getRowId={(row) => row.feature} />
           <DataTable columns={ownerColumns} data={data?.owner_rows ?? []} getRowId={(row) => row.owner} />

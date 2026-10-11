@@ -13,10 +13,10 @@ import { toast } from "sonner";
 import { Button, ErrorState, Field, Radar, ScoreRing, Select, Skeleton } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getSettings, saveNotificationSettings, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
+import { getCostModel, getSettings, saveNotificationSettings, updateCostModel, savePlannerConfig, updateAlertThresholds, updateDqsWeights } from "@/lib/api/settings";
 import { formatModuleName } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
-import type { AlertThresholds, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
+import type { AlertThresholds, CostModel, DimensionScores, PlannerConfig, TenantSettings } from "@/types/api";
 
 const DIMS = ["completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity"] as const;
 type Dim = (typeof DIMS)[number];
@@ -305,6 +305,36 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
           {write ? <div><Button type="submit" disabled={saveNotify.isPending}>Save notifications</Button></div> : null}
         </form>
       </section>
+      <CostModelCard write={write} />
     </div>
+  );
+}
+
+/** Cost per blocked record by severity. Feeds value-at-risk on the insight pages. */
+function CostModelCard({ write }: { write: boolean }) {
+  const q = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
+  const [draft, setDraft] = useState<Record<string, number>>({});
+  const m = useMutation({
+    mutationFn: () => updateCostModel({ ...(q.data as CostModel), severity: { ...q.data?.severity, ...draft } }),
+    onSuccess: () => { toast.success("Cost model saved"); setDraft({}); void q.refetch(); },
+    onError: () => toast.error("Cost model not saved."),
+  });
+  if (q.isError) return <ErrorState message="The cost model could not be read." onRetry={() => void q.refetch()} />;
+  if (!q.data) return <Skeleton height={64} />;
+  const sev = { ...q.data.severity, ...draft };
+  return (
+    <section className="flex flex-col gap-3">
+      <strong className="text-[15px]">Cost model ({q.data.currency})</strong>
+      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
+      {Object.keys(sev).length === 0 && <p className="text-[13px]">No severity costs set yet.</p>}
+      <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+        {Object.entries(sev).map(([k, v]) => (
+          <Field key={k} label={k}>
+            <input className="m-input" type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
+          </Field>
+        ))}
+        {write && Object.keys(sev).length > 0 && <Button type="submit" disabled={m.isPending}>Save cost model</Button>}
+      </form>
+    </section>
   );
 }

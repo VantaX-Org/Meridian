@@ -55,6 +55,7 @@ export const test = base.extend<{ app: Page }>({
     await mockFix(page);
     await mockExtraction(page);
     await mockUnrecorded(page);
+    await mockGapRoutes(page);
     // Not in the recording (wave 16); the recorded user is an admin. Specs override it per role.
     await page.route(/\/api\/v1\/me\/permissions/, (r) => r.fulfill(json(permissionsPayload("admin"))));
     await provide(page);
@@ -273,6 +274,24 @@ async function mockUnrecorded(page: Page) {
     blockers: [{ module: OBJECT_SUMMARY.module, label: OBJECT_SUMMARY.label, gap_type: "target_mandatory", field: "MARA.MTART",
       severity: "critical", records: OBJECT_SUMMARY.affected_records, gaps: 1 }],
   })));
+}
+
+/** Wave 18b gap-route endpoints that are not in the recording: empty but well-formed bodies. */
+async function mockGapRoutes(page: Page) {
+  const get = (re: RegExp, body: unknown) => page.route(re, (r) => (r.request().method() === "GET" ? r.fulfill(json(body)) : r.fallback()));
+  await get(/\/api\/v1\/analytics\/operational(\?.*)?$/, {
+    kpis: { throughput: 0, automation_rate: 0, mttr_hours: 0, sla_compliance_pct: 0, rejection_rate: 0, rollback_rate: 0, items_in_flight: 0, avg_queue_age_hours: 0 },
+    bottlenecks: [], capacity: { needed: 0, current: 0, surplus_deficit: 0, recommendation: "" },
+  });
+  await get(/\/api\/v1\/analytics\/(sprints|bottlenecks)(\?.*)?$/, { sprints: [], bottlenecks: [] });
+  await get(/\/api\/v1\/analytics\/roi(\?.*)?$/, { roi: { subscription_annual: 0, risk_mitigated: 0, roi_multiple: 0, payback_months: 0 }, cost_avoidance_history: [] });
+  await get(/\/api\/v1\/analytics\/mdm-health(\?.*)?$/, { data: [], days: 56 });
+  await get(/\/api\/v1\/audit\/llm(\?.*)?$/, { entries: [], total: 0, limit: 50, offset: 0, cache: [] });
+  await get(/\/api\/v1\/survivorship-rules(\?.*)?$/, { rules: [], total: 0 });
+  await get(/\/api\/v1\/alert-channels(\?.*)?$/, { channels: [] });
+  await get(/\/api\/v1\/settings\/cost-model(\?.*)?$/, { currency: "ZAR", severity: { critical: 100 }, modules: {}, rules: {}, features: {} });
+  await get(/\/api\/v1\/rule-authoring\/drafts(\?.*)?$/, { items: [] });
+  await get(/\/api\/v1\/jobs(\?.*)?$/, { jobs: [] });
 }
 
 export { expect };

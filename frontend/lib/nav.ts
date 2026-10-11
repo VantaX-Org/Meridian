@@ -101,6 +101,9 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
   // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
   // licence/view (it is in NO_VIEW), and the steward reaches Settings through manage_rules alone.
+  { href: "/admin/notifications", requires: req("rules", "admin"), label: "Notifications", icon: ChevronRight, anyOf: ["manage_settings"], keywords: "alerts channels slack teams email webhook digest" },
+  { href: "/admin/jobs", requires: req("analysis", "view"), label: "Jobs", icon: ChevronRight, anyOf: ["view"], keywords: "history extraction analysis uploads running failed" },
+  { href: "/admin/reference", requires: req("systems", "view"), label: "Reference data", icon: ChevronRight, anyOf: ["view"], keywords: "postal codes bic directory lists" },
   { href: "/admin/licence", requires: [req("licence", "view"), req("licence", "admin"), req("rules", "edit")], label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
@@ -145,7 +148,11 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     group: "Fix",
     anyOf: ["approve", "apply"],
     items: [
-      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches" },
+      { href: "/fix", requires: req("fixes", "view"), label: "Fix", icon: Eraser, anyOf: ["approve", "apply"], badgeKey: "fix", keywords: "cleaning corrections proposals apply batches",
+        children: [
+          { href: "/fix/what-if", requires: req("fixes", "view"), label: "What-if", icon: Eraser, anyOf: ["approve", "apply"], keywords: "simulation simulate score before after" },
+        ],
+      },
     ],
   },
   {
@@ -183,6 +190,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { href: "/insights/owners", requires: req("reports", "view"), label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
           { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
           { href: "/insights/exec", requires: req("reports", "view"), label: "Executive summary", icon: BarChart3, keywords: "exec report narrative pdf" },
+          { href: "/insights/operations", requires: req("reports", "view"), label: "Operations", icon: BarChart3, keywords: "operational team sprints bottlenecks capacity" },
+          { href: "/insights/reports", requires: req("reports", "view"), label: "Report library", icon: BarChart3, keywords: "reports pdf download export" },
           { href: "/insights/forecast", requires: req("reports", "view"), label: "Forecast", icon: BarChart3, keywords: "predictive dqs forecast" },
           { href: "/insights/process", requires: req("reports", "view"), label: "Process readiness", icon: BarChart3, keywords: "l1 l5 business process ptp otc process map" },
           { href: "/insights/process/designer", requires: req("reports", "view"), label: "Process designer", icon: BarChart3, keywords: "designer bpmn model edit l1 l5" },
@@ -195,6 +204,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     group: "MDM",
     items: [
+      { href: "/mdm", requires: req("mdm", "view"), label: "Overview", icon: DatabaseIcon, keywords: "mdm health score trend" },
+      { href: "/mdm/survivorship", requires: req("mdm", "view"), label: "Survivorship", icon: Sliders, keywords: "survivorship rules golden source precedence" },
       { href: "/mdm/golden", requires: req("mdm", "view"), label: "Golden records", icon: DatabaseIcon, keywords: "master mdm" },
       { href: "/mdm/glossary", requires: req("glossary", "view"), label: "Glossary", icon: BookIcon, keywords: "terms business" },
       { href: "/mdm/match-rules", requires: req("mdm", "view"), label: "Match rules", icon: Sliders, keywords: "tuning constraints" },
@@ -211,6 +222,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         keywords: "rules checks catalogue yaml contracts scoring alerts",
         children: [
           { href: "/rules/contracts", requires: req("contracts", "view"), label: "Contracts", icon: ContractIcon, licenceKey: "contracts", keywords: "data contracts sla" },
+          { href: "/rules/drafts", requires: req("rules", "edit"), label: "Drafts", icon: ListChecks, anyOf: ["manage_rules"], keywords: "rule authoring draft" },
+          { href: "/rules/dictionary", requires: req("rules", "view"), label: "Data dictionary", icon: BookIcon, anyOf: ["view"], keywords: "ddic fields dictionary" },
           { href: "/rules/scoring", requires: req("rules", "view"), label: "Scoring and alerts", icon: Sliders, anyOf: ["view"], keywords: "weights thresholds" },
         ],
       },
@@ -223,6 +236,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit")],
     items: [
       { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
+      { href: "/admin/audit", requires: [req("audit", "view"), req("users", "admin")], label: "Audit log", icon: UserCog, anyOf: ["view_audit", "manage_users"], keywords: "audit log ai decisions role changes" },
       { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
     ],
   },

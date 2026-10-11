@@ -159,3 +159,103 @@ export async function getLlmHealth(): Promise<{ llm_available: boolean; reason?:
     return { llm_available: false, reason: "unreachable" };
   }
 }
+
+/* ─── Operations (api/routes/analytics.py: operational, sprints, bottlenecks, capacity, roi, mdm-health) ─── */
+
+export interface OperationalKpis {
+  throughput: number;
+  automation_rate: number;
+  mttr_hours: number;
+  sla_compliance_pct: number;
+  rejection_rate: number;
+  rollback_rate: number;
+  items_in_flight: number;
+  avg_queue_age_hours: number;
+}
+
+export interface Bottleneck {
+  stage: string;
+  count: number;
+  avg_age_hours: number;
+  recommendation: string;
+}
+
+export interface CapacityPlan {
+  needed: number;
+  current: number;
+  surplus_deficit: number;
+  recommendation: string;
+}
+
+export interface OperationalResponse {
+  kpis: OperationalKpis;
+  bottlenecks: Bottleneck[];
+  capacity: CapacityPlan;
+}
+
+export interface TeamPerformance {
+  user_id: string;
+  summary: {
+    total_processed: number;
+    total_approved: number;
+    total_rejected: number;
+    total_review_hours: number;
+    approval_rate: number;
+    avg_review_hours: number;
+  };
+}
+
+export interface SprintPlan {
+  sprint_number: number;
+  name: string;
+  total_effort_hours: number;
+  records_fixed: number;
+  critical_cleared: number;
+  estimated_cost: number | null;
+  currency: string;
+  dqs_now: number | null;
+  dqs_projected: number | null;
+}
+
+export interface RoiResponse {
+  roi: RoiSummary;
+  cost_avoidance_history: { period: string; amount?: number }[];
+}
+
+export interface MdmHealthPoint {
+  snapshot_date: string;
+  mdm_health_score: number;
+  golden_record_coverage_pct: number;
+  avg_match_confidence: number;
+  steward_sla_compliance_pct: number;
+  source_consistency_pct: number;
+  backlog_count: number;
+}
+
+export async function getOperational(): Promise<OperationalResponse> {
+  return (await apiClient.get<OperationalResponse>("/api/v1/analytics/operational")).data;
+}
+
+export async function getTeamPerformance(userId: string): Promise<TeamPerformance> {
+  return (await apiClient.get<TeamPerformance>(`/api/v1/analytics/operational/team/${encodeURIComponent(userId)}`)).data;
+}
+
+export async function getSprints(maxHours = 40): Promise<{ sprints: SprintPlan[]; total_actions: number }> {
+  return (await apiClient.get("/api/v1/analytics/sprints", { params: { max_hours: maxHours } })).data;
+}
+
+export async function getBottlenecks(): Promise<{ bottlenecks: Bottleneck[]; total_queue_size: number }> {
+  return (await apiClient.get("/api/v1/analytics/bottlenecks")).data;
+}
+
+export async function getCapacity(): Promise<CapacityPlan> {
+  return (await apiClient.get<CapacityPlan>("/api/v1/analytics/capacity")).data;
+}
+
+export async function getRoi(): Promise<RoiResponse> {
+  return (await apiClient.get<RoiResponse>("/api/v1/analytics/roi")).data;
+}
+
+export async function getMdmHealth(days = 56): Promise<{ data: MdmHealthPoint[]; days: number }> {
+  return (await apiClient.get("/api/v1/analytics/mdm-health", { params: { days } })).data;
+}
