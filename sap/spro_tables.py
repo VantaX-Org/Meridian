@@ -54,7 +54,7 @@ SPRO_REGISTRY: dict[str, list[SPROEntry]] = {
         },
         {
             "table": "T001",
-            "fields": ["BUKRS", "BUTXT", "WAERS", "LAND1", "KTOPL"],
+            "fields": ["BUKRS", "BUTXT", "WAERS", "LAND1", "KTOPL", "SPRAS"],
             "description": "Company codes",
             "config_context": (
                 "Defines the organisational units for which independent financial statements "
@@ -238,7 +238,7 @@ SPRO_REGISTRY: dict[str, list[SPROEntry]] = {
         },
         {
             "table": "T006",
-            "fields": ["MSEHI", "MSEHL"],
+            "fields": ["MSEHI", "MSEHL", "DIMID"],
             "description": "Units of measure",
             "config_context": (
                 "Defines base and alternative units of measure with conversion factors. "

@@ -249,14 +249,14 @@ def test_sf_boolean_fields_lowercased_like_rest_extractor(monkeypatch):
     monkeypatch.setattr(sd, "latest_snapshot_id", lambda *_: None)
     conn = _Fake({
         "EmpJob": [{"userId": "U1", "startDate": "2024-01-01", "seqNumber": 1}],
-        "EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "isPrimary": True}],
+        "EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "okToRehire": True}],
         "PerPhone": [{"personIdExternal": "P1", "isPrimary": False}],
     })
     cm = object.__new__(ConnectivityManager)
     cm.session = None
     frames, _ = ConnectivityManager._extract_successfactors(
         cm, conn, ["employee_central"], dictionary_for_system("successfactors"), None)
-    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.IS_PRIMARY"].tolist() == ["true"]
+    assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.OK_TO_REHIRE"].tolist() == ["true"]
     assert frames["PERPHONE"]["PERPHONE.IS_PRIMARY"].tolist() == ["false"]
 
 
@@ -392,13 +392,13 @@ def test_sf_join_key_only_selected_when_the_entity_has_it(monkeypatch):
 
 
 def test_sf_property_the_tenant_lacks_is_unavailable_not_a_failed_read(monkeypatch):
-    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},  # neither has isPrimary
+    conn = _Tenant({"EmpEmployment": (_EMP, ()), "EmpJob": (_JOB, ())},  # neither has okToRehire
                    {"EmpEmployment": [{"userId": "U1", "personIdExternal": "P1", "startDate": "2020-01-01"}],
                     "EmpJob": [{"userId": "U1", "company": "C1"}]})
     frames, cov = _sf(conn, ["employee_central"], monkeypatch)
     emp = cov["EMPEMPLOYMENT"]
-    assert emp["status"] == "live" and "IS_PRIMARY" in emp["unavailable_fields"]
-    assert "EMPEMPLOYMENT.IS_PRIMARY" not in frames["EMPEMPLOYMENT"].columns  # absent, like overlay gaps
+    assert emp["status"] == "live" and "OK_TO_REHIRE" in emp["unavailable_fields"]
+    assert "EMPEMPLOYMENT.OK_TO_REHIRE" not in frames["EMPEMPLOYMENT"].columns  # absent, like overlay gaps
     assert frames["EMPEMPLOYMENT"]["EMPEMPLOYMENT.START_DATE"].tolist() == ["2020-01-01"]
 
 
