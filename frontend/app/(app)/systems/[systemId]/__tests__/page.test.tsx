@@ -1,5 +1,5 @@
-import { screen, waitFor } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach } from "vitest";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as systemObjectsApi from "@/lib/api/system-objects";
@@ -90,5 +90,60 @@ describe("system detail page", () => {
     vi.spyOn(connectivityApi, "getSystems").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<SystemPage />);
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
+  describe("after starting an extraction", () => {
+    beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it("polls for the started job, then gives up after the deadline when it never reports", async () => {
+      mockHappyPath();
+      const versions = vi.spyOn(systemObjectsApi, "getSystemVersions");
+      vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({
+        system_type: "ecc",
+        objects: [{ object: "material_master", tables: ["MARA"], config_tables: [], scope_filters: [], date_window: [], last_download: null }],
+      });
+      vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
+      renderWithQuery(<SystemPage />);
+      fireEvent.click(await screen.findByText("Extract now"));
+      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(screen.getByText("Extract 1 object"));
+      fireEvent.click(await screen.findByText("Confirm"));
+      await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+      const during = versions.mock.calls.length;
+      expect(during).toBeGreaterThan(2); // still polling: no progress for dl-9 yet
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(110_000); }); // past the 120 s deadline
+      const after = versions.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(40_000); });
+      expect(versions.mock.calls.length).toBe(after); // polling stopped
+    });
+
+    it("stops polling as soon as the awaited job reports a terminal status, before the deadline", async () => {
+      mockHappyPath();
+      const versions = vi.spyOn(systemObjectsApi, "getSystemVersions");
+      vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({
+        system_type: "ecc",
+        objects: [{ object: "material_master", tables: ["MARA"], config_tables: [], scope_filters: [], date_window: [], last_download: null }],
+      });
+      vi.spyOn(systemObjectsApi, "startDownload").mockResolvedValue({ job_id: "dl-9", status: "queued" });
+      renderWithQuery(<SystemPage />);
+      fireEvent.click(await screen.findByText("Extract now"));
+      fireEvent.click(await screen.findByText("Material Master"));
+      fireEvent.click(screen.getByText("Extract 1 object"));
+      versions.mockResolvedValue({
+        versions: [],
+        download: { status: "complete", job_id: "dl-9", started_at: "2026-01-01T10:00:00Z", label: null, objects: [] },
+      });
+      fireEvent.click(await screen.findByText("Confirm"));
+      await waitFor(() => expect(systemObjectsApi.startDownload).toHaveBeenCalled());
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+      const settled = versions.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000); }); // well inside the 120 s deadline
+      expect(versions.mock.calls.length).toBe(settled);
+    });
   });
 });

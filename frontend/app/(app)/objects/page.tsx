@@ -8,6 +8,8 @@ import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { downloadAuthenticated } from "@/lib/api/download";
+import { getAnalysisReportUrl } from "@/lib/api/reports";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -104,7 +106,17 @@ export default function ObjectsPage() {
         };
   }
 
-  const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
+  const reportRun = data?.run_id; // no run yet: there is no report to download
+  const exportOptions = [
+    { format: "xlsx" as const, run: () => exportObjects(run) },
+    ...(reportRun
+      ? [{
+          format: "pdf" as const,
+          label: "Analysis report (PDF)",
+          run: () => downloadAuthenticated(getAnalysisReportUrl(reportRun), `meridian-analysis-${reportRun}.pdf`),
+        }]
+      : []),
+  ];
 
   const objs = objects;
   const ready = objs.filter((o) => o.readiness === "pass").length;

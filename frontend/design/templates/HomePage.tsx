@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
-import { DEFAULT_SCORE_BANDS, ScoreRing } from "../primitives/ScoreRing";
+import { DEFAULT_SCORE_BANDS, ScoreRing, type ScoreBands } from "../primitives/ScoreRing";
 import { Pill } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
@@ -208,6 +208,8 @@ export interface InstrumentPanelData {
   heatmapRows: string[];
   heatmapCols: string[];
   versionId: string;
+  /** The tenant's configured DQS thresholds; defaults apply until they load. */
+  bands?: ScoreBands;
   onTrendPointClick?: (point: ChartPoint) => void;
   onHeatmapCellClick?: (cell: HeatmapCell) => void;
 }
@@ -245,6 +247,7 @@ export function InstrumentPanel({
   heatmapRows,
   heatmapCols,
   versionId,
+  bands = DEFAULT_SCORE_BANDS,
   onTrendPointClick,
   onHeatmapCellClick,
 }: InstrumentPanelData) {
@@ -263,6 +266,7 @@ export function InstrumentPanel({
                 size={160}
                 cap={cap ?? undefined}
                 criticals={criticals}
+                bands={bands}
               />
             ) : (
               <Placeholder>No score for this run.</Placeholder>
@@ -291,7 +295,7 @@ export function InstrumentPanel({
                 onPointClick={onTrendPointClick}
                 height={200}
                 draw
-                dqsThreshold={DEFAULT_SCORE_BANDS.target}
+                dqsThreshold={bands.target}
                 label="DQS over runs"
               />
             )}
@@ -303,7 +307,7 @@ export function InstrumentPanel({
               <Bar
                 data={dimensionPoints}
                 height={200}
-                dqsThreshold={DEFAULT_SCORE_BANDS.critical}
+                dqsThreshold={bands.critical}
                 draw
                 label="Score by dimension"
               />

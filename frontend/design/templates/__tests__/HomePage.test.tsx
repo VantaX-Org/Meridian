@@ -111,6 +111,22 @@ describe("HomePage fresh install vs data", () => {
     expect(container.querySelector('[data-ghost="ring"]')).toBeNull();
   });
 
+  it("colours the ring by the tenant's DQS bands, not the defaults", () => {
+    const stroke = (bands?: { target: number; warning: number; critical: number }) => {
+      const { container, unmount } = render(
+        <InstrumentPanel
+          dqs={80} delta={null} severity={{ critical: 0, high: 0, medium: 0, low: 0 }} bands={bands}
+          trendPoints={[]} dimensionPoints={[]} heatmapCells={[]} heatmapRows={[]} heatmapCols={[]} versionId="v1"
+        />,
+      );
+      const value = container.querySelector("[data-value]")?.getAttribute("stroke");
+      unmount();
+      return value;
+    };
+    const byDefault = stroke(); // 80 is below the default target of 90
+    expect(stroke({ target: 75, warning: 60, critical: 40 })).not.toBe(byDefault);
+  });
+
   it("loading shows skeletons only", () => {
     render(<HomePage persona="lead" state="loading" />);
     expect(screen.getByTestId("home-loading")).toBeInTheDocument();

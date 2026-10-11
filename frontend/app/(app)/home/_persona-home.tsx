@@ -145,6 +145,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       trendPoints={trendPoints}
       dimensionPoints={dimensionBarPoints(latest, settingsQ.data?.dqs_weights ?? undefined)}
       unmeasured={unmeasuredDimensions(latest)}
+      bands={objectsQ.data?.thresholds}
       heatmapCells={dimensionHeatmapCells(scoredObjects, latest, objectsQ.data?.thresholds)}
       heatmapRows={heatmapRows}
       heatmapCols={heatmapCols}

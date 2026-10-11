@@ -66,14 +66,33 @@ describe("home-metrics", () => {
     const v = version("v1", "2026-01-01", { material_master: 80, business_partner: 90 });
     v.dqs_summary!.material_master.dimension_coverage = { accuracy: 0, timeliness: 0 };
     v.dqs_summary!.business_partner.dimension_coverage = { timeliness: 0 };
-    v.dqs_summary!.business_partner.composite_score = null;
     const d = runDimensions(v)!;
-    expect(d.accuracy).toBe(90); // material master's placeholder 100 is not averaged in
+    expect(d.accuracy).toBe(90); // material master's placeholder is not averaged in
     expect(d.completeness).toBe(85);
     expect(d.timeliness).toBeNull();
     expect(unmeasuredDimensions(v)).toEqual(["Timeliness"]);
     expect(dimensionBarPoints(v).map((p) => p.dimension)).not.toContain("timeliness");
-    expect(runDqs(v)).toBe(80); // the unmeasured module is not counted as 0 or 100
+  });
+
+  it("runDimensions ignores modules with no composite_score, as runDqs does", () => {
+    const v = version("v1", "2026-01-01", { material_master: 80, business_partner: 0 });
+    v.dqs_summary!.business_partner.composite_score = null;
+    expect(runDqs(v)).toBe(80);
+    expect(runDimensions(v)).toEqual(dims(80)); // not dragged to 40 by the unmeasured module's zeros
+    const none = version("v2", "2026-01-01", { business_partner: 0 });
+    none.dqs_summary!.business_partner.composite_score = null;
+    expect(runDimensions(none)).toBeNull();
+  });
+
+  it("runDimensions keeps a module with measured dimensions but no composite (every measured dimension weighted 0)", () => {
+    const v = version("v1", "2026-01-01", { material_master: 60 });
+    const m = v.dqs_summary!.material_master;
+    m.composite_score = null;
+    m.dimension_coverage = { completeness: 5, accuracy: 0, consistency: 0, timeliness: 0, uniqueness: 0, validity: 0 };
+    expect(runDqs(v)).toBeNull();
+    const d = runDimensions(v)!;
+    expect(d.completeness).toBe(60);
+    expect(d.accuracy).toBeNull();
   });
 
   it("trend keeps only finished versions, oldest first", () => {
