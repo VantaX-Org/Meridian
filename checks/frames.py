@@ -331,7 +331,10 @@ class TableFrames:
     def estimate_bytes(self, columns: set[str], grain: str, stripped: dict[str, int] | None = None) -> int:
         """Decoded bytes of the joined frame ``frame_for`` builds at ``grain`` for ``columns``, from
         parquet metadata. Every column is held once per grain row; ``stripped`` ones once more per
-        normalised copy rules keep (``{column: copies}``). Each decoded table, then the join, holds no more than this."""
+        normalised copy rules keep (``{column: copies}``). Each decoded table, then the join, holds no more than this.
+        A grain not in the extract decodes nothing (0): its rules are not evaluable."""
+        if grain not in self.frames:
+            return 0
         rows = len(self.frames[grain])
         wanted = self._wanted(columns, grain)
         total = 0

@@ -371,3 +371,15 @@ def test_string_column_estimate_covers_values_the_dictionary_encoding_hides() ->
     src = ParquetTable(_parquet(text))
     assert src.nbytes("T.TEXT") >= 40 * rows
     assert src.nbytes("T.ID") >= 10 * rows
+
+
+def test_table_never_extracted_skips_its_rules_instead_of_crashing_the_run(bundle: dict[str, bytes]) -> None:
+    """A rule's grain table that extraction did not deliver (entity not in the tenant) leaves its
+    rules not evaluable, lazy or eager, like a field that is not in the extract."""
+    partial = {t: b for t, b in bundle.items() if t != "MARC"}
+    frames = _frames(partial, True)
+    assert frames.estimate_bytes({"MARC.WERKS"}, "MARC") == 0
+    stats: dict[str, int] = {}
+    lazy = _dump(run_checks(MODULE, frames, "t1", as_of="2026-01-01", stats=stats))
+    assert lazy == _dump(run_checks(MODULE, _frames(partial, False), "t1", as_of="2026-01-01"))
+    assert stats.get("not_evaluable", 0) > 0
