@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase } from "lucide-react";
+import { Activity } from "lucide-react";
 import { useJobs, useJobStream } from "../../hooks/use-jobs";
 import { onJobTrayOpen } from "../../lib/job-tray-bus";
 import { IconButton } from "../primitives/IconButton";
-import { Badge } from "../primitives/Badge";
 import { Drawer } from "../primitives/Drawer";
 import { JobProgress } from "./JobProgress";
 
@@ -18,21 +17,37 @@ export function JobTray() {
   return (
     <>
       <div style={{ position: "relative" }}>
-        <IconButton aria-label="Jobs" onClick={() => setOpen(true)}>
-          <Briefcase size={18} />
+        <IconButton aria-label={active.length > 0 ? `Jobs, ${active.length} running` : "Jobs"} onClick={() => setOpen(true)}>
+          <Activity size={16} aria-hidden />
         </IconButton>
         {active.length > 0 && (
-          <span style={{ position: "absolute", top: -4, right: -4 }}>
-            <Badge count={active.length} />
-          </span>
+          <span
+            aria-hidden="true"
+            className="absolute rounded-full"
+            style={{ top: 4, right: 4, width: 6, height: 6, background: "var(--m-accent)" }}
+          />
         )}
       </div>
       <Drawer open={open} onOpenChange={setOpen} title="Jobs">
-        {jobs.length === 0 && <p style={{ color: "var(--m-ink-3)" }}>No jobs yet.</p>}
-        <ul className="flex flex-col gap-2">
+        {jobs.length === 0 && <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>No jobs yet.</p>}
+        <ul className="flex flex-col gap-4">
           {jobs.map((job) => (
-            <li key={job.id} className="text-[13px]" style={{ color: "var(--m-ink)" }}>
-              {job.label} — {job.status} ({job.percent}%)
+            <li key={job.id} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>{job.label}</span>
+                <span className="m-numeric text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.percent}%</span>
+              </div>
+              <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.status}</span>
+              <div
+                role="progressbar"
+                aria-label={`${job.label} progress`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={job.percent}
+                style={{ height: 4, borderRadius: "var(--m-radius-pill)", background: "var(--m-sheet-sunken)", overflow: "hidden" }}
+              >
+                <div style={{ width: `${Math.min(100, Math.max(0, job.percent))}%`, height: "100%", background: "var(--m-accent)" }} />
+              </div>
               {job.status === "running" && <JobProgress job={job} />}
             </li>
           ))}

@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Pill, Rail, Skeleton, TopBar, CommandPalette, RunSelector, type RunOption } from "@/design";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
+import { useJobs } from "@/hooks/use-jobs";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useVisibleNav } from "@/hooks/use-nav";
 import { useRole } from "@/hooks/use-role";
@@ -84,6 +85,12 @@ function RunSelectorSlot() {
   return <RunSelector runs={runs} />;
 }
 
+/** The brand hairline at the top of the content column; animates only while a job runs. */
+function MeridianLine() {
+  const { active } = useJobs();
+  return <div aria-hidden="true" className={active.length > 0 ? "m-meridian-live shrink-0" : "m-meridian-line shrink-0"} style={{ height: 1 }} />;
+}
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
@@ -92,10 +99,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden">
+          <MeridianLine />
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}
-            userMenu={<ThemeToggle />}
+            userMenu={<UserMenu />}
           />
           <main className="flex-1 overflow-auto" style={{ background: "var(--m-canvas)" }}>
             {children}

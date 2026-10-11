@@ -5,7 +5,7 @@ import type { KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, PanelLeft } from "lucide-react";
 import { getShellCounts } from "../../lib/api/shell";
 import { getSystems } from "../../lib/api/connectivity";
 import { queryKeys } from "../../lib/query-keys";
@@ -21,7 +21,7 @@ const RAIL_KEY = "meridian:rail:open";
 const FLYOUT_PANEL_ID = "rail-flyout-panel";
 const RAIL_WIDTH_EXPANDED = 240;
 const RAIL_WIDTH_COLLAPSED = 56;
-const ICON_SIZE = 20;
+const ICON_SIZE = 16;
 
 /** Worst system health across all connected systems, for the Systems item's pip. Null when there are no systems at all. */
 function worstHealth(systems: readonly { health_status: string }[] | undefined): "critical" | "high" | "pass" | null {
@@ -116,8 +116,12 @@ export function Rail() {
   }, [activeItemHref]);
 
   useEffect(() => {
-     
-    const stored = window.sessionStorage.getItem(RAIL_KEY);
+    let stored: string | null = null;
+    try {
+      stored = window.sessionStorage.getItem(RAIL_KEY);
+    } catch {
+      /* storage blocked: fall through to the width default */
+    }
     if (stored === "collapsed" || stored === "expanded") setExpanded(stored === "expanded");
     else setExpanded(window.innerWidth >= 1280);
   }, []);
@@ -138,7 +142,11 @@ export function Rail() {
   const toggle = () => {
     setExpanded((prev) => {
       const next = !prev;
-      window.sessionStorage.setItem(RAIL_KEY, next ? "expanded" : "collapsed");
+      try {
+        window.sessionStorage.setItem(RAIL_KEY, next ? "expanded" : "collapsed");
+      } catch {
+        /* storage blocked: the toggle still works for this session */
+      }
       return next;
     });
     closeFlyout();
@@ -238,7 +246,7 @@ export function Rail() {
     const isOpen = openParents.has(item.href);
     const showPip = item.href === "/systems" && healthTone !== null;
     const iconSpan = (
-      <span className="relative inline-flex shrink-0" style={{ color: active ? "var(--m-accent)" : "var(--m-ink-2)" }}>
+      <span className="relative inline-flex shrink-0" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
         <item.icon size={ICON_SIZE} />
         {showPip && healthTone && <HealthPip tone={healthTone} />}
         {!expanded && !showPip && count > 0 && (
@@ -254,14 +262,14 @@ export function Rail() {
     const label = (
       <>
         {showPip && expanded ? <Tooltip label={systemsTooltipLabel ?? item.label} side="right" render={<span />}>{iconSpan}</Tooltip> : iconSpan}
-        {expanded && <span className="flex-1 truncate">{item.label}</span>}
+        {expanded && <span className="flex-1 truncate" style={depth === 1 ? { fontSize: 12, lineHeight: "16px" } : undefined}>{item.label}</span>}
         {expanded && count > 0 && (
           <span key={count} className="m-motion-rise">
             <Badge count={count} />
           </span>
         )}
         {expanded && item.shortcut && (
-          <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
+          <span className="text-[12px] leading-[16px]" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
             {item.shortcut}
           </span>
         )}
@@ -271,13 +279,12 @@ export function Rail() {
     const childrenId = `rail-children-${item.href}`;
     const showChevronButton = hasChildren && expanded;
 
-    const rowWrapperClassName =
-      "m-motion-fade group flex items-center rounded border-l-[3px] hover:bg-[var(--m-sheet-raised)]";
+    const rowWrapperClassName = "m-motion-colors group relative flex items-center hover:bg-[var(--m-rail-hover)]";
     const rowWrapperStyle = {
       height: depth === 0 ? 32 : 28,
-      marginLeft: expanded && depth === 1 ? 20 : 0,
-      background: active ? "var(--m-accent-soft)" : "transparent",
-      borderLeftColor: active ? "var(--m-accent)" : "transparent",
+      margin: "0 8px",
+      borderRadius: "var(--m-radius-control)",
+      background: active ? "var(--m-accent-soft)" : undefined,
     };
 
     const link = (
@@ -299,9 +306,12 @@ export function Rail() {
           if (!expanded) openFlyout(item.href, e.currentTarget);
         }}
         onMouseLeave={() => closeFlyout()}
-        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full focus-visible:outline-2 focus-visible:outline-[var(--m-accent)] focus-visible:-outline-offset-2"
+        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full text-[13px] leading-[18px] hover:!text-[var(--m-ink)]"
         style={{
-          color: active ? "var(--m-accent)" : "var(--m-ink)",
+          color: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
+          fontWeight: active ? 600 : 500,
+          paddingLeft: expanded && depth === 1 ? 28 : undefined,
+          borderRadius: "var(--m-radius-control)",
           justifyContent: expanded ? "flex-start" : "center",
         }}
       >
@@ -329,6 +339,13 @@ export function Rail() {
 
     const row = (
       <div className={rowWrapperClassName} style={rowWrapperStyle}>
+        {active && (
+          <span
+            aria-hidden="true"
+            className="absolute"
+            style={{ left: -8, top: "50%", width: 2, height: 16, marginTop: -8, borderRadius: 1, background: "var(--m-accent)" }}
+          />
+        )}
         {link}
         {chevronButton}
       </div>
@@ -339,7 +356,7 @@ export function Rail() {
         <li key={item.href}>
           {row}
           {hasChildren && isOpen && (
-            <ul id={childrenId} className="m-motion-fade flex flex-col gap-0.5 mt-0.5">
+            <ul id={childrenId} className="m-motion-fade flex flex-col mt-0.5">
               {item.children!.map((child) => (
                 renderRow(child, 1)
               ))}
@@ -364,36 +381,50 @@ export function Rail() {
       ref={navRef}
       aria-label="Main"
       className="m-motion-width flex flex-col h-full overflow-y-auto shrink-0"
-      style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-sheet)", borderRight: "1px solid var(--m-line)" }}
+      style={{ width: expanded ? RAIL_WIDTH_EXPANDED : RAIL_WIDTH_COLLAPSED, background: "var(--m-rail)", borderRight: "1px solid var(--m-rail-edge)" }}
     >
-      <Link href={withRun(resolveNavHref("/home/lead", role))} className="flex items-center gap-2 h-12 px-3 font-semibold" style={{ color: "var(--m-ink)" }}>
-        <MeridianMark size={20} aria-hidden />
+      <Link
+        href={withRun(resolveNavHref("/home/lead", role))}
+        className="flex items-center gap-2 shrink-0 font-semibold"
+        style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
+      >
+        <MeridianMark size={22} variant="two-tone" aria-hidden />
         {expanded && <span className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
       </Link>
 
-      <div data-testid="rail-nav-items" className="flex-1 flex flex-col gap-3 px-2 py-2">
+      <div data-testid="rail-nav-items" className="flex-1 flex flex-col pb-2">
         {groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
-            {expanded && (
-              <p className="px-2 mb-0.5 text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+            {expanded ? (
+              <p className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)", padding: "20px 16px 6px" }}>
                 {group.group}
               </p>
+            ) : (
+              <div aria-hidden="true" style={{ height: 8, margin: "4px 0" }}>
+                <div style={{ width: 24, height: 1, margin: "4px auto", background: "var(--m-line)" }} />
+              </div>
             )}
             <ul className="flex flex-col gap-0.5">{group.items.map((item) => renderRow(item, 0))}</ul>
           </div>
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={expanded ? "Collapse navigation" : "Expand navigation"}
-        className="flex items-center gap-2 h-10 px-3 border-t"
-        style={{ borderColor: "var(--m-line)", color: "var(--m-ink-2)" }}
+      <Tooltip
+        label={expanded ? "Collapse [" : "Expand ["}
+        side="right"
+        render={
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={expanded ? "Collapse navigation" : "Expand navigation"}
+            className="m-motion-colors flex items-center gap-2 shrink-0 hover:bg-[var(--m-rail-hover)]"
+            style={{ height: 40, margin: "0 8px 8px", padding: "0 8px", borderRadius: "var(--m-radius-control)", color: "var(--m-ink-2)", justifyContent: expanded ? "flex-start" : "center" }}
+          />
+        }
       >
-        {expanded ? <PanelLeftClose size={ICON_SIZE} /> : <PanelLeftOpen size={ICON_SIZE} />}
-        {expanded && <span className="text-[12px]">Collapse</span>}
-      </button>
+        <PanelLeft size={ICON_SIZE} style={{ color: "var(--m-ink-3)" }} aria-hidden />
+        {expanded && <span className="text-[13px] leading-[18px] font-medium">Collapse</span>}
+      </Tooltip>
 
       {!expanded && flyoutItem && flyoutRect && (
         // Disclosure panel, not a menu: plain links you can Tab through, not an
@@ -415,18 +446,22 @@ export function Rail() {
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeFlyout(true);
           }}
-          className="m-motion-fade fixed z-50 rounded border shadow-sm py-1 min-w-[200px]"
-          style={{ top: flyoutRect.top, left: flyoutRect.left, borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
+          className="m-motion-scale-in m-elev-2 fixed z-50 min-w-[200px]"
+          style={{ top: flyoutRect.top, left: flyoutRect.left, padding: 6, borderRadius: "var(--m-radius-sheet)", background: "var(--m-sheet)" }}
         >
-          <p className="px-3 py-1 text-[12px]" style={{ color: "var(--m-ink-3)" }}>
+          <p className="px-2 py-1 text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)" }}>
             {flyoutItem.label}
           </p>
           {(flyoutItem.children?.length ? flyoutItem.children : [flyoutItem]).map((child) => (
             <Link
               key={child.href}
               href={withRun(resolveNavHref(child.href, role))}
-              className="block px-3 py-1.5 text-[13px]"
-              style={{ color: child.href === activeItemHref ? "var(--m-accent)" : "var(--m-ink)" }}
+              className="m-motion-colors flex items-center h-8 px-2 text-[13px] leading-[18px] font-medium hover:bg-[var(--m-rail-hover)]"
+              style={{
+                borderRadius: "var(--m-radius-control)",
+                background: child.href === activeItemHref ? "var(--m-accent-soft)" : undefined,
+                color: child.href === activeItemHref ? "var(--m-accent-ink)" : "var(--m-ink-2)",
+              }}
             >
               {child.label}
             </Link>

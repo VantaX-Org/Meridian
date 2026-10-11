@@ -7,13 +7,13 @@ import { Suspense, type ReactNode } from "react";
 export function TopBar({ runSelector, commandPalette, userMenu }: { runSelector?: ReactNode; commandPalette?: ReactNode; userMenu?: ReactNode }) {
   return (
     <header
-      className="flex items-center justify-between gap-2 px-3 md:px-6 h-12 border-b"
-      style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}
+      className="m-glass sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2"
+      style={{ height: "var(--m-topbar-h)", padding: "0 24px" }}
     >
       <Suspense fallback={null}>
         <Breadcrumb />
       </Suspense>
-      <div className="flex shrink-0 items-center gap-2 md:gap-3 whitespace-nowrap">
+      <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
         <Suspense fallback={null}>{runSelector}</Suspense>
         {commandPalette}
         <JobTray />

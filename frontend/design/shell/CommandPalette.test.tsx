@@ -23,11 +23,11 @@ describe("CommandPalette", () => {
     try {
       render(<CommandPalette items={[{ label: "Material master", href: "/objects/material_master" }]} />);
 
-      expect(screen.queryByPlaceholderText("Jump to...")).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("Type a page, object, check ID or record key")).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-      expect(screen.getByPlaceholderText("Jump to...")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Type a page, object, check ID or record key")).toBeInTheDocument();
     } finally {
       (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = originalRO;
       HTMLElement.prototype.scrollIntoView = originalScrollIntoView as () => void;

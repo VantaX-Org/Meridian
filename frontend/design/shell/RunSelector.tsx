@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { History } from "lucide-react";
 import { Select } from "../primitives/Select";
 
 export interface RunOption {
@@ -21,13 +22,17 @@ export function RunSelector({ runs }: { runs: RunOption[] }) {
   };
 
   return (
-    <label className="flex items-center gap-2 text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>
-      Run
+    <label
+      className="flex items-center gap-2 px-2 text-[12px] leading-[16px] border"
+      style={{ height: "var(--m-control-h)", borderColor: "var(--m-line-strong)", background: "var(--m-sheet)", borderRadius: "var(--m-radius-control)", color: "var(--m-ink-3)" }}
+    >
+      <History size={14} aria-hidden className="lg:hidden" />
+      <span className="max-lg:sr-only">Run</span>
       <Select
         value={current}
         onValueChange={onChange}
         options={runs.map((r) => ({ value: r.id, label: r.label }))}
-        className="flex w-[220px] h-8 items-center justify-between gap-2 rounded border px-3 text-[13px]"
+        className="flex h-full items-center justify-between gap-2 border-0 bg-transparent text-[13px] leading-[18px] font-medium max-lg:w-4 max-lg:[&>span]:hidden lg:w-[160px] xl:w-[200px]"
       />
     </label>
   );
