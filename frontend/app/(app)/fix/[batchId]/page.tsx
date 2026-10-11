@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill } from "@/design";
+import { Button, DataTable, EntityTabs, ExplorerPage, ExportMenu, Mono, Pill } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
@@ -84,6 +84,7 @@ export default function BatchPage() {
   ];
 
   return (
+    <EntityTabs entityType="remediation" entityId={batchId} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
@@ -135,5 +136,6 @@ export default function BatchPage() {
       }
       table={<DataTable columns={columns} data={items} getRowId={(row) => row.id} />}
     />
+    } />
   );
 }

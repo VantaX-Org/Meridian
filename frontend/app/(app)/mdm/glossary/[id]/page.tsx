@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, EmptyState, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -94,6 +94,7 @@ export default function GlossaryTermPage() {
 
   return (
     <RecordPage recordKey={term.business_name} object={term.domain} status={status}>
+      <EntityTabs entityType="glossary" entityId={id} overview={<>
       <section className="flex items-center gap-2">
         <Pill tone={term.status === "active" ? "go" : term.status === "under_review" ? "at-risk" : "no-go"}>
           {term.status.replace("_", " ")}
@@ -240,6 +241,7 @@ export default function GlossaryTermPage() {
           </table>
         )}
       </section>
+      </>} />
     </RecordPage>
   );
 }

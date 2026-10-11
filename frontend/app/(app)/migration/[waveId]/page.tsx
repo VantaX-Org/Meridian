@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs } from "@/design";
+import { Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, Line, Pill, Skeleton, Stat, Tabs, entityTabs } from "@/design";
 import { GatedPrimary } from "@/components/gated-primary";
 import { useRole } from "@/hooks/use-role";
 import { apiErrorMessage } from "@/lib/error";
@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { WaveObject } from "@/types/api";
 import { STAGE_LABEL } from "../create-wave-dialog";
-import { VERDICT_LABEL, VERDICT_TONE } from "../page";
+import { VERDICT_LABEL, VERDICT_TONE } from "@/lib/migration-verdict";
 import { BlockersTab } from "./blockers-tab";
 import { MappingTab } from "./mapping-tab";
 import { S4Tab } from "./s4-tab";
@@ -123,6 +123,7 @@ export default function WaveCockpitPage() {
               <MappingTab modules={w.modules} destType={c.dest_system_type} />) },
           { value: "s4", label: "S/4 areas", content: <S4Tab versionId={c.source_version_id} /> },
           { value: "downloads", label: "Downloads", content: downloads },
+          ...entityTabs({ entityType: "migration", entityId: waveId }),
         ]}
       />
     </div>

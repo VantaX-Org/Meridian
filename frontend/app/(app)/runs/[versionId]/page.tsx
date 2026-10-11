@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
+  entityTabs,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -418,6 +419,7 @@ export default function RunDetailPage() {
               />
             ),
           },
+          ...entityTabs({ entityType: "versions", entityId: versionId }),
         ]}
       />
     </div>

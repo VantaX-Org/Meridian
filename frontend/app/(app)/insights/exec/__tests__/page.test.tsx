@@ -38,7 +38,7 @@ describe("ExecPage", () => {
     renderWithQuery(<ExecPage />);
 
     expect(await screen.findByText(/readiness improved three points/i)).toBeInTheDocument();
-    const exportButton = await screen.findByRole("button", { name: /export/i });
+    const exportButton = await screen.findByRole("button", { name: /^export$/i });
     fireEvent.click(exportButton);
     await waitFor(() => expect(download).toHaveBeenCalledWith("/api/v1/reports/executive/v1.pdf", "executive_v1.pdf"));
   });

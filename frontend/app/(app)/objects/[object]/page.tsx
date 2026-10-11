@@ -9,6 +9,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pager, Pill, SeverityDot,
   Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
+  entityTabs,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
@@ -406,6 +407,7 @@ export default function ObjectDetailPage() {
               <EmptyState title="Open the rules tab and choose a rule to see its failing records." />
             ),
           },
+          ...entityTabs({ entityType: "objects", entityId: object, exportOptions: data ? exportOptions : undefined }),
         ]}
       />
     </div>

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
   Bar, Button, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Line, Mono, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
+  entityTabs,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
 import { ConfigComparePanel } from "./config-compare-panel";
@@ -231,6 +232,7 @@ export default function SystemPage() {
             ),
           },
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
+          ...entityTabs({ entityType: "systems", entityId: systemId }),
         ]}
       />
 

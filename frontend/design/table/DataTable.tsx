@@ -213,7 +213,7 @@ export function DataTable<T>({
           </button>
           {(!perms || perms.can("export")) && (
             <Menu
-              trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Export</button>}
+              trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Export table</button>}
               items={allExport.map((o) => ({
                 label: o.label ?? (o.format === "csv" ? "CSV" : o.format === "xlsx" ? "Excel (.xlsx)" : "PDF"),
                 onSelect: () => void o.run().then(

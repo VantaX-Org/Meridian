@@ -8,7 +8,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
 import {
-  Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Line, Mono, Pill, Skeleton, Stat,
+  Button, DataTable, DrillLink, EmptyState, EntityTabs, ErrorState, ExportMenu, Line, Mono, Pill, Skeleton, Stat,
   buildDrillHref,
 } from "@/design";
 import { exportRuleHistory, getRule, getRuleHistory, updateRule } from "@/lib/api/rules";
@@ -218,6 +218,21 @@ export default function RulePage() {
         </div>
         <ExportMenu options={[{ format: "xlsx", run: () => exportRuleHistory(ruleId, "xlsx") }]} />
       </header>
+      <EntityTabs entityType="rules" entityId={data.id}
+        history={history.data && history.data.runs.length > 0 ? (
+          <DataTable
+            columns={[
+              { accessorKey: "run_at", header: "Run", cell: (i) => formatDate(i.getValue<string>(), "datetime") },
+              { accessorKey: "module", header: "Object" },
+              { accessorKey: "pass_rate", header: "Pass rate", meta: { numeric: true }, cell: (i) => { const v = i.getValue<number | null>(); return v == null ? "—" : `${(v * (v <= 1 ? 100 : 1)).toFixed(1)} %`; } },
+            ]}
+            data={history.data.runs}
+            getRowId={(r) => r.version_id}
+            tableId="rule-history"
+            height={320}
+          />
+        ) : undefined}
+        overview={<>
       {data.description ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{data.description}</p> : null}
 
       <dl className="flex flex-col gap-1 text-[13px]">
@@ -286,6 +301,7 @@ export default function RulePage() {
       <p className="text-[13px]">
         <DrillLink object={data.module} ruleId={checkId}>See failing records</DrillLink>
       </p>
+      </>} />
     </div>
   );
 }
