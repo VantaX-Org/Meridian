@@ -16,6 +16,7 @@
  */
 
 import Link from "next/link";
+import { NumLink } from "@/components/num-link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -183,7 +184,7 @@ export default function RulesPage() {
   );
   const coverageColumns = useMemo<ColumnDef<(typeof coverageRows)[number]>[]>(() => [
     { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "total", header: "Total", cell: ({ row }) => row.original.total.toLocaleString() },
+    { id: "total", header: "Total", cell: ({ row }) => <NumLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.total.toLocaleString()}</NumLink> },
     { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? (row.original.aware.applicable - row.original.aware.by_default).toLocaleString() : "—" },
     { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? row.original.aware.by_default.toLocaleString() : "—" },
     {
@@ -193,14 +194,14 @@ export default function RulesPage() {
         if (!a) return "—";
         if (a.not_applicable === 0) return "–";
         const reason = a.not_applicable_reasons[0]?.reason;
-        return reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString();
+        return <NumLink href={`/objects/${row.original.module}?tab=rules`}>{reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString()}</NumLink>;
       },
     },
     {
       id: "pass", header: "Passing applicable",
       cell: ({ row }) => {
         const a = row.original.aware;
-        return !a || a.applicable === 0 ? "—" : `${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`;
+        return !a || a.applicable === 0 ? "—" : <NumLink href={`/objects/${row.original.module}?tab=rules`}>{`${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`}</NumLink>;
       },
     },
   ], []);

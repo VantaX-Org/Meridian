@@ -122,6 +122,10 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
       </header>
       {!write ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Read only. Changing these settings needs the manage_settings permission.</p> : null}
 
+      {!agg.isError && !agg.isLoading && current === null ? (
+        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Save weights; the preview uses the latest findings once a run completes.</p>
+      ) : null}
+
       {agg.isError ? (
         <ErrorState message={(agg.error as Error).message || "The latest findings could not be read."} onRetry={() => agg.refetch()} />
       ) : (

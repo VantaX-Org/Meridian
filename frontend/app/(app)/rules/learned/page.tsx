@@ -83,7 +83,7 @@ export default function LearnedRulesPage() {
         </div>
       }
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No learned rules here yet. They appear after the next analysis." }}
+      emptyProps={{ title: "No learned rules yet. Mining runs after the second analysis." }}
       errorProps={{
         message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),
