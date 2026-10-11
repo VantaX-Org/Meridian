@@ -104,10 +104,10 @@ rules:
     CSKS.DATBI: *id001
   severity: medium
   dimension: completeness
-  message: Profit centre is mandatory on a cost centre
+  message: Cost centre has no profit centre
   why_it_matters: The profit centre is the derivation target for profit-centre accounting. Costs posted without one land on
     the dummy profit centre.
-  rule_authority: sap_hard_constraint
+  rule_authority: best_practice
   sap_impact: Profit-centre reports understate costs, and the dummy profit centre fills up.
   fix_map:
     __blank__: Assign the profit centre in KS02 (Basic data).
@@ -1782,15 +1782,15 @@ rules:
     - '99991231'
   severity: medium
   dimension: completeness
-  message: Current cost centre has no description
+  message: Current cost centre description is blank in a maintained language
   why_it_matters: The short text (CSKT.KTEXT) is what every cost centre report, drop-down and search help shows
     instead of the bare number. KS01 requires it; a blank text means the text record was loaded without it or was
     deleted on its own after the cost centre was created.
   rule_authority: sap_hard_constraint
   sap_impact: Cost centre selection lists, KSB1 and S_ALR_87013611 show the cost centre with a blank name.
   fix_map:
-    __other__: Enter the short and long text in KS02 (Basic data) for the English language.
-  record_fix_template: 'Cost centre {CSKT.KOSTL} in controlling area {CSKT.KOKRS}: no description.'
+    __other__: Enter the short and long text in KS02 (Basic data) for the language of the blank text row.
+  record_fix_template: 'Cost centre {CSKT.KOSTL} in controlling area {CSKT.KOKRS}: description is blank for language {CSKT.SPRAS}.'
 
 - id: CO095
   field: CSLA.LSTAR

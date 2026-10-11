@@ -321,6 +321,8 @@ rules:
       - KAN
       - TAE
       - TATX
+      - TAP
+      - RENN
   severity: high
   dimension: completeness
   message: "Item net value missing \u2014 order line has no financial value"
@@ -1112,7 +1114,7 @@ rules:
   applies_when:
     VBAK.VBTYP: [C]
     VBAP.PSTYV:
-      not_in: [TATX, TANN, KBN, KAN, TAE]
+      not_in: [TATX, TANN, KBN, KAN, TAE, TAP]
     VBAP.UEPOS:
       blank: true
   severity: high

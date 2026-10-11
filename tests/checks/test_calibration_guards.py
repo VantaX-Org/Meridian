@@ -29,7 +29,7 @@ def test_mm604_unmaintained_weight_and_float_noise_do_not_fire():
     assert fire("material_master", "MM604", {"MARA": mara}) == (1, 4)
 
 
-def test_mm878_skips_subcontracting_and_pipeline_info_records():
+def test_mm878_skips_consignment_and_pipeline_info_records():
     eine = frame("EINE", INFNR=["1", "2", "3"], EKORG=["1000"] * 3, ESOKZ=["0", "2", "P"], APLFZ=["0", "0", "0"])
     assert fire("material_master", "MM878", {"EINE": eine})[0] == 1
 
@@ -47,5 +47,22 @@ def test_pur013_zero_quantity_fires_on_standard_po_only():
 
 
 def test_sdso018_zero_value_free_of_charge_item_is_valid():
-    vbap = frame("VBAP", VBELN=["1", "1"], POSNR=["10", "20"], PSTYV=["TAN", "TANN"], NETWR=["0", "0"])
+    vbap = frame("VBAP", VBELN=["1"] * 4, POSNR=["10", "20", "30", "40"], PSTYV=["TAN", "TANN", "TAP", "RENN"],
+                 NETWR=["0"] * 4)
     assert fire("sd_sales_orders", "SDSO018", {"VBAP": vbap}) == (1, 1)
+
+
+def test_mm500_skips_special_procurement_but_checks_customer_types():
+    # Z-copies of FERT (M1, M4) are checked; M2 is produced in another plant (SOBSL 80) and is out of scope.
+    mara = frame("MARA", MATNR=["M1", "M2", "M3", "M4"], MTART=["ZFER", "FERT", "FERT", "ZFER"])
+    marc = frame("MARC", MATNR=["M1", "M2", "M3", "M4"], WERKS=["1000"] * 4, BESKZ=["E"] * 4,
+                 SOBSL=["", "80", "", ""], DISMM=["PD"] * 4)
+    mast = frame("MAST", MATNR=["M3", "M4"], WERKS=["1000", "1000"], STLAN=["1", "1"])
+    assert fire("material_master", "MM500", {"MARA": mara, "MARC": marc, "MAST": mast}) == (1, 3)
+
+
+def test_co094_fires_on_internal_language_code():
+    # SPRAS arrives as the 1-character internal code; the old 'EN' filter matched no row.
+    cskt = frame("CSKT", KOKRS=["1000"] * 3, KOSTL=["C1", "C2", "C3"], SPRAS=["E", "E", ""],
+                 DATBI=["99991231"] * 3, KTEXT=["", "Admin", ""])
+    assert fire("controlling", "CO094", {"CSKT": cskt}) == (1, 2)

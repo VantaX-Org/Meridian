@@ -6493,11 +6493,10 @@ rules:
   field: MARC.MATNR
   check_class: exists_check
   applies_when:
-    MARA.MTART:
-    - FERT
-    - HALB
     MARC.BESKZ:
     - E
+    MARC.SOBSL:
+      blank: true
     MARC.DISMM:
       populated: true
       not_in:
@@ -6523,11 +6522,10 @@ rules:
   field: MARC.MATNR
   check_class: exists_check
   applies_when:
-    MARA.MTART:
-    - FERT
-    - HALB
     MARC.BESKZ:
     - E
+    MARC.SOBSL:
+      blank: true
     MARC.DISMM:
       populated: true
       not_in:
