@@ -27,6 +27,8 @@ def test_large_target_is_not_materialised_as_python_objects() -> None:
                          "MARC.WERKS": ["1000"] * n}, dtype="string")
     grain = pd.DataFrame({"EINA.MATNR": [f"{i:018d}" for i in range(0, 4000, 2)],
                           "EINE.WERKS": ["1000", "2000"] * 1000}, dtype="string")
+    # tracemalloc sees only the Python heap, not Arrow's native buffers, so the bound below proves
+    # the target keys never become per-key Python objects; it does not measure total memory.
     tracemalloc.start()
     try:
         resolved = _with_targets(RULE, _frames(marc))

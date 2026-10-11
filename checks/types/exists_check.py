@@ -29,7 +29,7 @@ def _arrow_keys(df: pd.DataFrame, cols: list[str]) -> pa.Array | pa.ChunkedArray
     return pa.array(key_of(df, cols)).cast(pa.large_string())
 
 
-def target_keys(df: pd.DataFrame, cols: list[str]) -> pa.Array:
+def target_keys(df: pd.DataFrame, cols: list[str]) -> pa.Array | pa.ChunkedArray:
     """The distinct keys of a target table as one Arrow array. A Python set (or
     ``Series.isin`` over one) costs a Python object per key: gigabytes on a
     multi-million-row target, where the Arrow hash lookup stays in native buffers."""
