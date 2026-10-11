@@ -86,11 +86,18 @@ export interface DimensionBarPoint {
   dimension: DimensionKey;
 }
 
+/** Backend defaults (api/services/scoring.py DEFAULT_WEIGHTS), used until the tenant's own weights load. */
+export const DEFAULT_DIMENSION_WEIGHTS: Readonly<Record<DimensionKey, number>> = {
+  completeness: 0.25, accuracy: 0.25, consistency: 0.2, timeliness: 0.1, uniqueness: 0.1, validity: 0.1,
+};
+
 /** The six-dimension bar chart's points for this run (spec 7.1 "Six dimensions"). */
-export function dimensionBarPoints(v: Version): DimensionBarPoint[] {
+export function dimensionBarPoints(v: Version, weights: Readonly<Record<DimensionKey, number>> = DEFAULT_DIMENSION_WEIGHTS): DimensionBarPoint[] {
   const dims = runDimensions(v);
   if (!dims) return [];
-  return DIMENSIONS.map((d) => ({ x: formatModuleName(d), y: dims[d], dimension: d }));
+  const total = DIMENSIONS.reduce((n, d) => n + weights[d], 0);
+  const label = (d: DimensionKey) => (total > 0 ? `${formatModuleName(d)} · ${Math.round((weights[d] / total) * 100)}%` : formatModuleName(d));
+  return DIMENSIONS.map((d) => ({ x: label(d), y: dims[d], dimension: d }));
 }
 
 export interface HeatmapCell {
@@ -129,11 +136,16 @@ export function objectTrend(versions: Version[], module: string): { x: string; y
     .map((v) => ({ x: formatDate(v.run_at, "date"), y: v.dqs_summary![module].composite_score }));
 }
 
-/** The lowest cap a capped module reports ("... capped at 70"), or null when none is capped or none names a number. */
-export function capValue(v: Version): number | null {
-  const caps = Object.values(v.dqs_summary ?? {})
-    .filter((m) => m.capped)
-    .map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1]))
-    .filter((n) => Number.isFinite(n));
-  return caps.length ? Math.min(...caps) : null;
+/**
+ * The cap on the run-wide DQS, or null. `runDqs` is a mean of per-module scores that are already capped, so a cap
+ * is only a run-level cap when EVERY scored module is capped; one capped module among healthy ones moves the mean
+ * only partly, and drawing its cap on the ring would misstate the headline. `criticals` sums the capped modules'
+ * critical counts (all of them here). The cap number is read from the reason text ("... capped at 70"); the API has no field for it.
+ */
+export function runCap(v: Version): { cap: number; criticals: number } | null {
+  const mods = Object.values(v.dqs_summary ?? {});
+  if (mods.length === 0 || !mods.every((m) => m.capped)) return null;
+  const caps = mods.map((m) => Number(/capped at (\d+)/.exec(m.cap_reason ?? "")?.[1])).filter((n) => Number.isFinite(n));
+  if (caps.length === 0) return null;
+  return { cap: Math.min(...caps), criticals: mods.reduce((n, m) => n + m.critical_count, 0) };
 }

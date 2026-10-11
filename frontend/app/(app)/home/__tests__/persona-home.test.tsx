@@ -97,7 +97,7 @@ describe("PersonaHomePage header actions (T20)", () => {
 
     renderWithQuery(<LeadHomePage />);
 
-    await waitFor(() => expect(screen.getByText(/analysed yet|objects are not ready/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/no analysis yet|analysed yet|objects are not ready/i)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
   });
 });

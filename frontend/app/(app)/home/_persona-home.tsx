@@ -10,6 +10,7 @@ import {
 import { getObjects } from "@/lib/api/v1/objects";
 import { getVersions } from "@/lib/api/versions";
 import { getShellCounts } from "@/lib/api/shell";
+import { getSettings } from "@/lib/api/settings";
 import { getSystems } from "@/lib/api/connectivity";
 import { getConfigLandscape } from "@/lib/api/config-load";
 import { getExecutiveReportUrl } from "@/lib/api/reports";
@@ -19,7 +20,7 @@ import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
 import {
-  capValue, cappedReason, dimensionBarPoints, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
+  runCap, cappedReason, dimensionBarPoints, dimensionHeatmapCells, objectTrend, runDqs, delta as runDelta, trend,
   worstObjectsFirst, DIMENSIONS,
 } from "@/lib/home-metrics";
 import { formatDate, formatModuleName, relativeTime } from "@/lib/format";
@@ -60,6 +61,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const versionsQ = useQuery({ queryKey: queryKeys.run("list"), queryFn: () => getVersions() });
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
+  const settingsQ = useQuery({ queryKey: queryKeys.scoringSettings(), queryFn: getSettings });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
 
   const loading = dayOne.status === "loading" || objectsQ.isLoading;
@@ -116,6 +118,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   }
   const previous = finished[1];
   const trendPoints = trend(versions);
+  const runCapInfo = runCap(latest);
   const dqs = runDqs(latest);
 
   const scoredObjects = objects
@@ -137,9 +140,10 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         }),
         { critical: 0, high: 0, medium: 0, low: 0 },
       )}
-      cap={capValue(latest)}
+      cap={runCapInfo?.cap}
+      criticals={runCapInfo?.criticals}
       trendPoints={trendPoints}
-      dimensionPoints={dimensionBarPoints(latest)}
+      dimensionPoints={dimensionBarPoints(latest, settingsQ.data?.dqs_weights ?? undefined)}
       heatmapCells={dimensionHeatmapCells(scoredObjects, latest)}
       heatmapRows={heatmapRows}
       heatmapCols={heatmapCols}

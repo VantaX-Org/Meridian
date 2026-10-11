@@ -67,11 +67,25 @@ describe("HomePage data state", () => {
 
 describe("HomePage fresh install vs data", () => {
   it("fresh install shows the stepper card, a ghost ring and the Situation sentence", () => {
-    const { container } = render(<HomePage persona="lead" state="no-data" journey={{ systemsConnected: false, configLoaded: false, extracted: false, complete: false, step: null }} />);
+    const { container } = render(<HomePage persona="lead" state="no-data" verdict={{ sentence1: "Zero modules scored." }} journey={{ systemsConnected: false, configLoaded: false, extracted: false, complete: false, step: null }} />);
     expect(screen.getByText("Get to your first score")).toBeInTheDocument();
     expect(container.querySelector('[data-ghost="ring"]')).not.toBeNull();
     expect(screen.getByTestId("home-verdict")).toHaveTextContent("No analysis yet. Connect a system and run the first extraction.");
+    expect(screen.queryByText("Zero modules scored.")).toBeNull();
     expect(container.querySelector("[role=img][aria-label^=Score]")).toBeNull();
+    expect(screen.getByText("Preview").closest("[aria-hidden]")).toBeNull();
+  });
+
+  it("hero shows placeholders when trend, dimensions and score are missing", () => {
+    render(
+      <HomePage
+        persona="lead" state="data" verdict={{ sentence1: "x" }}
+        panel={<InstrumentPanel dqs={null} delta={null} severity={{ critical: 0, high: 0, medium: 0, low: 0 }} trendPoints={[]} dimensionPoints={[]} heatmapCells={[]} heatmapRows={[]} heatmapCols={[]} versionId="v1" />}
+      />,
+    );
+    expect(screen.getByText("No score for this run.")).toBeInTheDocument();
+    expect(screen.getByText("Trend appears after the second run.")).toBeInTheDocument();
+    expect(screen.getByText("No dimension scores for this run.")).toBeInTheDocument();
   });
 
   it("with data the verdict is serif and the hero has a 160 ring with its cap", () => {
@@ -83,7 +97,7 @@ describe("HomePage fresh install vs data", () => {
         run={{ id: "v1", label: "Run 1", runAt: "2026-01-01" }}
         panel={
           <InstrumentPanel
-            dqs={70} delta={null} cap={70} severity={{ critical: 3, high: 0, medium: 0, low: 0 }}
+            dqs={70} delta={null} cap={70} criticals={3} severity={{ critical: 3, high: 0, medium: 0, low: 0 }}
             trendPoints={[]} dimensionPoints={[]} heatmapCells={[]} heatmapRows={[]} heatmapCols={[]} versionId="v1"
           />
         }

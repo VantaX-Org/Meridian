@@ -7,6 +7,7 @@ import {
   dimensionHeatmapCells,
   objectTrend,
   readinessOf,
+  runCap,
   runDimensions,
   runDqs,
   severityTotals,
@@ -92,7 +93,7 @@ describe("home-metrics", () => {
   it("dimensionBarPoints labels each of the six dimensions", () => {
     const points = dimensionBarPoints(version("v1", "2026-01-01", { a: 80 }));
     expect(points).toHaveLength(6);
-    expect(points[0]).toEqual({ x: "Completeness", y: 80, dimension: "completeness" });
+    expect(points[0]).toEqual({ x: "Completeness · 25%", y: 80, dimension: "completeness" });
   });
 
   it("dimensionHeatmapCells builds one cell per object x dimension for modules present in the run", () => {
@@ -121,5 +122,37 @@ describe("home-metrics", () => {
       { x: "1 Jan 2026", y: 70 },
       { x: "2 Jan 2026", y: 85 },
     ]);
+  });
+});
+
+describe("runCap", () => {
+  const capped = (v: Version, modules: string[], reason: string, criticals: number): Version => {
+    for (const m of modules) Object.assign(v.dqs_summary![m], { capped: true, cap_reason: reason, critical_count: criticals });
+    return v;
+  };
+
+  it("is null when only some modules are capped (the run DQS is a mean)", () => {
+    const v = capped(version("v1", "2026-01-01", { a: 90, b: 95 }), ["a"], "3 critical failures — score capped at 70", 3);
+    expect(runCap(v)).toBeNull();
+  });
+
+  it("is the lowest cap with summed criticals when every module is capped", () => {
+    const v = version("v1", "2026-01-01", { a: 70, b: 85 });
+    capped(v, ["a"], "3 critical failures — score capped at 70", 3);
+    capped(v, ["b"], "1 critical failure — score capped at 85", 1);
+    expect(runCap(v)).toEqual({ cap: 70, criticals: 4 });
+  });
+
+  it("is null with no modules or no parsable cap", () => {
+    expect(runCap(version("v1", "2026-01-01", {}))).toBeNull();
+    expect(runCap(capped(version("v1", "2026-01-01", { a: 70 }), ["a"], "capped", 1))).toBeNull();
+  });
+});
+
+describe("dimensionBarPoints weights", () => {
+  it("labels each dimension with its weight share, from defaults or tenant weights", () => {
+    const v = version("v1", "2026-01-01", { a: 80 });
+    expect(dimensionBarPoints(v).map((p) => p.x)).toContain("Completeness · 25%");
+    expect(dimensionBarPoints(v, { completeness: 1, accuracy: 1, consistency: 1, timeliness: 1, uniqueness: 1, validity: 1 })[0].x).toMatch(/17%$/);
   });
 });
