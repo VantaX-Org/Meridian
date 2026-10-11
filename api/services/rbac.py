@@ -22,7 +22,7 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import Connection, text
+from sqlalchemy import Connection, Row, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -333,44 +333,75 @@ async def grants_for(db: AsyncSession, user_id: str, tenant_id: uuid.UUID,
     return grants
 
 
+def _as_uuid(v: Optional[str]) -> Optional[uuid.UUID]:
+    try:
+        return uuid.UUID(str(v)) if v else None
+    except ValueError:
+        return None
+
+
 def scope_from_path(request: Request) -> Scope:
-    """Scope of a request from its path/query params: system_id, module (or object_type).
+    """Scope of a request from its PATH params only: system_id, and object_type (wins) or module.
 
-    A version_id with no system_id is resolved to its system by require_permission (one lookup,
-    cached on request.state). Anything unresolved stays None, which only tenant-wide grants cover,
-    so a scoped grant fails closed rather than open."""
-    def param(*names: str) -> str | None:
-        for n in names:
-            v = request.path_params.get(n) or request.query_params.get(n)
-            if v:
-                return str(v)
-        return None
-
-    sid = param("system_id")
-    try:
-        system_id = uuid.UUID(sid) if sid else None
-    except ValueError:
-        system_id = None
-    request.state.scope_version_id = param("version_id") if system_id is None else None
-    return Scope(system_id, param("module", "object_type"))
+    Query strings never decide authorization: the caller controls them. A version_id or an item id in
+    the path is resolved server-side by require_permission (_resolve_scope). Anything unresolved stays
+    None, which only tenant-wide grants cover, so a scoped grant fails closed rather than open."""
+    pp = request.path_params
+    request.state.scope_version_id = pp.get("version_id")
+    module = pp.get("object_type") or pp.get("module")
+    return Scope(_as_uuid(pp.get("system_id")), str(module) if module else None)
 
 
-async def _version_system(request: Request, db: AsyncSession, tenant_id: uuid.UUID) -> uuid.UUID | None:
-    vid = getattr(request.state, "scope_version_id", None)
-    if not vid:
-        return None
-    try:
-        vid = str(uuid.UUID(vid))
-    except ValueError:
-        return None
+async def _row(db: AsyncSession, sql: str, item: str, tenant_id: uuid.UUID) -> Optional[Row]:
     await db.execute(text(f"SET LOCAL app.tenant_id = '{str(tenant_id)}'"))
-    # analysis_versions has no system_id column: the extraction stamps it into metadata ('upload' for files).
-    row = (await db.execute(text("SELECT metadata->>'system_id' FROM analysis_versions "
-                                 "WHERE id = :v AND tenant_id = :t"), {"v": vid, "t": str(tenant_id)})).fetchone()
-    try:
-        return uuid.UUID(row[0]) if row and row[0] else None
-    except ValueError:
-        return None
+    return (await db.execute(text(sql), {"i": item, "t": str(tenant_id)})).fetchone()
+
+
+async def _resolve_scope(request: Request, db: AsyncSession, tenant_id: uuid.UUID, base: Scope) -> Scope:
+    """Refine the path scope from the resource the handler acts on, read from the database.
+
+    Never trusts the caller: a path version/item id is looked up (tenant-filtered); a connectivity body
+    system_id is the value the handler uses. When two sources disagree, or the target spans two systems,
+    the result is Scope() so only tenant-wide grants pass. Unknown resources also stay at Scope()."""
+    pp, path = request.path_params, request.url.path
+    system, module = base.system_id, base.module
+    vid = _as_uuid(request.state.scope_version_id) if getattr(request.state, "scope_version_id", None) else None
+    if getattr(request.state, "scope_version_id", None) and not vid:
+        return Scope()
+    sids: list[Optional[uuid.UUID]] = []
+    # metadata.system_id is stamped server-side by the extraction worker ('upload' for files) and no
+    # route writes it from client input (pinned by test_version_metadata_system_id_not_client_writable).
+    vsql = "SELECT metadata->>'system_id' FROM analysis_versions WHERE id = :i AND tenant_id = :t"
+    if vid:
+        r = await _row(db, vsql, str(vid), tenant_id)
+        sids.append(_as_uuid(r[0]) if r else None)
+    item = _as_uuid(pp.get("item_id"))
+    if item and "/cleaning/" in path:
+        r = await _row(db, "SELECT object_type, version_id FROM cleaning_queue WHERE id = :i AND tenant_id = :t",
+                       str(item), tenant_id)
+        if not r:
+            return Scope()
+        module = module or r[0]
+        if r[1]:
+            v = await _row(db, vsql, str(r[1]), tenant_id)
+            sids.append(_as_uuid(v[0]) if v else None)
+    elif "/migration/" in path and (pp.get("wave_id") or pp.get("run_id")):
+        sql = ("SELECT source_system_id, target_system_id FROM migration_waves WHERE id = :i AND tenant_id = :t"
+               if pp.get("wave_id") else
+               "SELECT source_system_id, dest_system_id FROM migration_runs WHERE id = :i AND tenant_id = :t")
+        r = await _row(db, sql, str(_as_uuid(pp.get("wave_id") or pp.get("run_id")) or ""), tenant_id)
+        if not r or not r[0] or (r[1] and r[1] != r[0]):
+            return Scope()
+        sids.append(r[0])
+    elif "/connectivity/" in path and request.method == "POST" and not system:
+        try:
+            body = await request.json()
+        except ValueError:
+            return Scope()
+        sids.append(_as_uuid(body.get("system_id")) if isinstance(body, dict) else None)
+    if any(x is None for x in sids) or len(set(sids + ([system] if system else []))) > 1:
+        return Scope(None, module)
+    return Scope(sids[0] if sids else system, module)
 
 
 async def _grants_allow(grants: list[Grant], action: str, scope: Scope,
@@ -415,10 +446,8 @@ def require_permission(
         uid = getattr(request.state, "local_user_id", None)
         dev = dev_role_override(request) is not None
         req_scope = scope(request) if scope else None
-        if req_scope is not None and req_scope.system_id is None and not dev:
-            vsys = await _version_system(request, db, tenant.id)
-            if vsys:
-                req_scope = Scope(vsys, req_scope.module)
+        if scope is scope_from_path and not dev and uid:  # the only resolver that reads a request
+            req_scope = await _resolve_scope(request, db, tenant.id, req_scope)
 
         if req_scope is None:
             if has_permission(role, action):

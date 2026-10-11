@@ -151,7 +151,7 @@ async def decide_access_request(
     if before.status != "open":
         raise HTTPException(status_code=409, detail="Already decided")
     actor = current_user_id(request)
-    from api.routes.roles import _as_uuid  # local: avoids an import cycle with roles
+    from api.services.rbac import _as_uuid
     if actor and _as_uuid(actor) == uuid.UUID(before.user_id):  # UUIDs, so a hyphenless id cannot slip by
         raise HTTPException(status_code=403, detail="You cannot decide your own access request")
     if body.decision == "granted" and body.role_key:

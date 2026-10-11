@@ -23,9 +23,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
 from api.services.rbac import (
+    _as_uuid,
     ACTIONS, BUILTIN_NAMES, PERMISSIONS, PERSONA_ALIAS, PERSONA_ROLES, RESOURCES, VALID_ROLES,
     EffectivePermissions, Scope, _get_user_role, actions_for, current_user_id, dev_role_override,
-    effective_actions, effective_permissions, legacy_actions_for_pairs, permissions_for,
+    effective_actions, effective_permissions, has_permission, legacy_actions_for_pairs, permissions_for,
     require_permission,
     resource_matrix, user_grants, write_audit,
 )
@@ -153,13 +154,6 @@ async def resolve_caller(db: AsyncSession, tenant: Tenant, request: Request, sco
     keys = {k for k, s in await user_grants(db, tenant.id, grant_uid, role) if s == Scope()}
     actions = await effective_actions(db, tenant.id, grant_uid, role, scope)
     return Caller(uid, frozenset(actions), bool(keys & _PLATFORM_ADMIN))
-
-
-def _as_uuid(v: Optional[str]) -> Optional[uuid.UUID]:
-    try:
-        return uuid.UUID(str(v)) if v else None
-    except ValueError:
-        return None
 
 
 def _forbid_above(caller: Caller, actions: set[str], pairs: set[tuple[str, str]],
@@ -429,9 +423,10 @@ class ConvertBody(BaseModel):
 
 
 class ConvertOut(BaseModel):
-    converted: list[str]            # object types that became (data_owner, null, module) grants
+    converted: list[str]            # object types that became a module grant of the user's own role
+    skipped: list[str]              # approve=true on a role without approve: a grant would widen, so it stays
     kept: list[str]                 # explicit denials: a grant cannot express them, so they stay in JSONB
-    cleared: bool                   # users.permissions set to NULL (only on confirm, nothing kept)
+    cleared: bool                   # users.permissions set to NULL (only on confirm, nothing left)
     confirmed: bool
 
 
@@ -440,34 +435,42 @@ class ConvertOut(BaseModel):
 async def convert_object_approvals(user_id: uuid.UUID, body: ConvertBody, request: Request,
                                    db: AsyncSession = Depends(get_db),
                                    tenant: Tenant = Depends(get_tenant)) -> ConvertOut:
-    """Legacy users.permissions JSONB -> module grants (rbac.md §3.4 step 4). Without `confirm` it only
-    previews. On confirm each approve=true entry becomes a (data_owner, null, module) grant through
-    insert_grant (ceiling, no self, admin gate), and the JSONB is cleared only after every grant exists.
-    An approve=false entry is a denial that a grant cannot express; clearing it would widen the user, so it
-    is kept and the JSONB is rewritten to just those."""
+    """Legacy users.permissions JSONB -> module grants (rbac.md §3.4 step 4), never widening (§3.2).
+    Without `confirm` it only previews. approve=true on a user whose own role already holds approve
+    becomes a (that role, null, module) grant: same actions, so it adds nothing. approve=true on a role
+    without approve would be a widening, so it is skipped and stays. approve=false is a denial a grant
+    cannot express, so it stays. The JSONB keeps the skipped and denied entries and is rewritten only
+    after every grant exists; with nothing to convert, confirm writes nothing."""
     await _rls(db, tenant)
-    row = (await db.execute(text("SELECT permissions FROM users WHERE id = :u AND tenant_id = :t FOR UPDATE"),
+    row = (await db.execute(text("SELECT permissions, role FROM users WHERE id = :u AND tenant_id = :t FOR UPDATE"),
                             {"u": str(user_id), "t": str(tenant.id)})).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    perms = row[0] if isinstance(row[0], dict) else {}
-    allow = sorted(k for k, v in perms.items() if isinstance(v, dict) and v.get("approve", True))
+    if row[0] is not None and not isinstance(row[0], dict):
+        raise HTTPException(status_code=422, detail="users.permissions is not an object; fix it by hand")
+    perms: dict[str, object] = row[0] or {}
+    urole = row[1]
+    yes = sorted(k for k, v in perms.items() if isinstance(v, dict) and v.get("approve", True))
+    can = has_permission(urole, "approve")
+    allow, skipped = (yes, []) if can else ([], yes)
     keep = {k: v for k, v in perms.items() if k not in allow}
     if any(not re.fullmatch(r"[a-z0-9_]+", k) for k in allow):
         raise HTTPException(status_code=422, detail="Object approvals hold a key that is not a module name")
-    if not body.confirm:
-        return ConvertOut(converted=allow, kept=sorted(keep), cleared=False, confirmed=False)
+    out = ConvertOut(converted=allow, skipped=skipped, kept=sorted(set(keep) - set(skipped)),
+                     cleared=False, confirmed=body.confirm)
+    if not body.confirm or not allow:
+        return out
     caller = await resolve_caller(db, tenant, request, Scope())
     forbid_self(caller, user_id)
     for module in allow:
-        await insert_grant(db, tenant, request, str(user_id), "data_owner", None, module)
-    cleared = not keep
+        await insert_grant(db, tenant, request, str(user_id), urole, None, module)
+    out.cleared = not keep
     await db.execute(text("UPDATE users SET permissions = CAST(:p AS jsonb) WHERE id = :u AND tenant_id = :t"),
-                     {"p": None if cleared else json.dumps(keep), "u": str(user_id), "t": str(tenant.id)})
+                     {"p": None if out.cleared else json.dumps(keep), "u": str(user_id), "t": str(tenant.id)})
     await write_audit(db, tenant.id, request, "grant.create", "user", str(user_id), {"permissions": perms},
                       {"converted": allow, "kept": sorted(keep)})
     await db.commit()
-    return ConvertOut(converted=allow, kept=sorted(keep), cleared=cleared, confirmed=True)
+    return out
 
 
 @router.get("/users/{user_id}/effective", dependencies=[Depends(require_permission("view"))])

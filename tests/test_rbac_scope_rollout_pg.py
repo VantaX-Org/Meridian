@@ -52,7 +52,8 @@ def _serve(owner: Engine, monkeypatch: pytest.MonkeyPatch, tid: str,
     from starlette.responses import Response
 
     from api.deps import Tenant, get_db, get_tenant
-    from api.routes import connectivity, objects, roles, systems, versions
+    from api.routes import (cleaning, connectivity, findings, master_records, migration, objects, remediation,
+                            roles, stewardship, systems, versions)
     monkeypatch.delenv("MERIDIAN_DEV_ROLE_HEADER", raising=False)
     from types import SimpleNamespace
 
@@ -71,7 +72,8 @@ def _serve(owner: Engine, monkeypatch: pytest.MonkeyPatch, tid: str,
         return await call_next(request)
 
     api = FastAPI()
-    for r in (systems.router, connectivity.router, objects.router, versions.router, roles.router):
+    for r in (systems.router, connectivity.router, objects.router, versions.router, roles.router, cleaning.router,
+              findings.router, master_records.router, migration.router, remediation.router, stewardship.router):
         api.include_router(r)
     api.add_middleware(BaseHTTPMiddleware, dispatch=_as_user)
     api.dependency_overrides[get_db] = _db
@@ -150,13 +152,16 @@ def test_tenant_wide_legacy_roles_unchanged(owner: Engine, monkeypatch: pytest.M
 
 
 def test_convert_object_approvals(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-    tid, u = _tenant(owner, {"admin": "admin", "ua": "viewer", "t1": "viewer", "t2": "viewer", "t3": "viewer"})
+    tid, u = _tenant(owner, {"admin": "admin", "ua": "viewer", "t1": "steward", "t2": "viewer", "t3": "steward",
+                             "t4": "steward", "t5": "steward"})
     _seed_custom(owner, tid, "custom:user-admin", {("users", "admin")})
     _grant(owner, tid, u["ua"], "custom:user-admin")
     for name, perms in (("t1", '{"material_master": {"approve": true}, "fi_gl": {"approve": false}}'),
                         ("t2", '{"material_master": {"approve": true}}'),
                         ("admin", '{"material_master": {"approve": true}}'),
-                        ("t3", '{"material_master": {"approve": true}}')):
+                        ("t3", '{"material_master": {"approve": true}}'),
+                        ("t4", '{"material_master": {"approve": true}}'),
+                        ("t5", '["not", "an", "object"]')):
         with owner.begin() as c:
             c.execute(text("UPDATE users SET permissions = CAST(:p AS jsonb) WHERE id = :u"),
                       {"p": perms, "u": u[name]})
@@ -168,7 +173,12 @@ def test_convert_object_approvals(owner: Engine, monkeypatch: pytest.MonkeyPatch
     def grants(name: str) -> list[tuple[str, str | None]]:
         with owner.connect() as c:
             return sorted((r[0], r[1]) for r in c.execute(
-                text("SELECT role_key, module FROM user_role_scopes WHERE user_id = :u"), {"u": u[name]}))
+                text("SELECT role_key, module FROM user_role_scopes WHERE user_id = :u AND module IS NOT NULL"),
+                {"u": u[name]}))
+
+    def audits() -> int:
+        with owner.connect() as c:
+            return int(c.execute(text("SELECT count(*) FROM audit_log WHERE tenant_id = :t"), {"t": tid}).scalar() or 0)
 
     async def scenario(c: AsyncClient) -> None:
         def url(name: str) -> str:
@@ -183,20 +193,115 @@ def test_convert_object_approvals(owner: Engine, monkeypatch: pytest.MonkeyPatch
         r = await c.post(url("admin"), json={"confirm": True}, headers=as_admin)
         assert r.status_code == 403, r.text
         assert grants("admin") == [] and stored("admin") is not None
-        # ceiling: a users-only admin cannot hand out data_owner; nothing is written, JSONB survives
+        # ceiling: a users-only admin cannot hand out steward rights; nothing is written, JSONB survives
         r = await c.post(url("t3"), json={"confirm": True}, headers=as_ua)
         assert r.status_code == 403, r.text
         assert grants("t3") == [] and stored("t3") is not None
-        # the admin gate on the dependency: a plain viewer is refused
-        r = await c.post(url("t2"), json={"confirm": True}, headers={"x-test-uid": u["t1"]})
+        # the admin gate on the dependency: a plain steward is refused
+        r = await c.post(url("t4"), json={"confirm": True}, headers={"x-test-uid": u["t1"]})
         assert r.status_code == 403
-        # confirm: grants first, JSONB cleared once nothing is left to keep
+        # a viewer is never widened: approve=true on a role without approve is skipped, no grant, JSONB kept
+        before = audits()
         r = await c.post(url("t2"), json={"confirm": True}, headers=as_admin)
+        assert r.status_code == 200 and r.json()["converted"] == [] and r.json()["skipped"] == [MM], r.text
+        assert grants("t2") == [] and stored("t2") == {MM: {"approve": True}} and audits() == before
+        # a non-object JSONB is a 422 and is left alone
+        r = await c.post(url("t5"), json={"confirm": True}, headers=as_admin)
+        assert r.status_code == 422 and stored("t5") == ["not", "an", "object"]
+        # confirm: the user's own role as a module grant (no new actions), JSONB cleared after the grant
+        r = await c.post(url("t4"), json={"confirm": True}, headers=as_admin)
         assert r.status_code == 200 and r.json()["cleared"] is True, r.text
-        assert grants("t2") == [("data_owner", MM)] and stored("t2") is None
+        assert grants("t4") == [("steward", MM)] and stored("t4") is None
+        # re-confirm with nothing left: no UPDATE, no audit row, no extra grant
+        before = audits()
+        r = await c.post(url("t4"), json={"confirm": True}, headers=as_admin)
+        assert r.status_code == 200 and r.json()["converted"] == [], r.text
+        assert audits() == before and grants("t4") == [("steward", MM)]
         # a denial cannot be a grant: it stays, so the user is never widened
         r = await c.post(url("t1"), json={"confirm": True}, headers=as_admin)
         assert r.json()["kept"] == [FI] and r.json()["cleared"] is False, r.text
-        assert grants("t1") == [("data_owner", MM)] and stored("t1") == {FI: {"approve": False}}
+        assert grants("t1") == [("steward", MM)] and stored("t1") == {FI: {"approve": False}}
+        before = audits()
+        r = await c.post(url("t1"), json={"confirm": True}, headers=as_admin)
+        assert audits() == before and stored("t1") == {FI: {"approve": False}}
+
+    _serve(owner, monkeypatch, tid, scenario)
+
+
+def test_spoofed_hints_never_widen(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Query strings and bodies never decide scope: a grant on system A / module FI gets 403 on B / MM
+    through every one of the ten route groups, with or without a spoofed hint."""
+    tid, u = _tenant(owner, {"stw": "viewer", "mod": "viewer"})
+    sys_a, sys_b = _system(owner, tid), _system(owner, tid)
+    ver_a, ver_b = _version(owner, tid, sys_a), _version(owner, tid, sys_b)
+    _scoped_grant(owner, tid, u["stw"], "steward", sys_a, None)
+    _scoped_grant(owner, tid, u["mod"], "steward", None, FI)
+    item_a, item_b, wave_a, wave_b = (str(uuid.uuid4()) for _ in range(4))
+    with owner.begin() as c:
+        for item, ver in ((item_a, ver_a), (item_b, ver_b)):
+            c.execute(text("INSERT INTO cleaning_queue (id, tenant_id, object_type, record_key, version_id) "
+                           "VALUES (:i, :t, :o, 'k', :v)"), {"i": item, "t": tid, "o": MM, "v": ver})
+        for wave, sysid in ((wave_a, sys_a), (wave_b, sys_b)):
+            c.execute(text("INSERT INTO migration_waves (id, tenant_id, name, source_system_id) "
+                           "VALUES (:i, :t, 'w-' || :i, :s)"), {"i": wave, "t": tid, "s": sysid})
+    rnd = str(uuid.uuid4())
+    A = f"system_id={sys_a}"
+    refused = [  # (method, path, json body) each as the system-A user, spoofing ?system_id=A
+        ("POST", f"/api/v1/systems/{sys_b}/sync?{A}", None),
+        ("POST", f"/api/v1/connectivity/extract?{A}", {"system_id": sys_b, "modules": [MM]}),
+        ("POST", f"/api/v1/connectivity/config-load?{A}", {"system_id": sys_b}),
+        ("GET", f"/api/v1/objects/{MM}/export?{A}", None),
+        ("GET", f"/api/v1/findings/export?{A}&version_id={ver_b}", None),
+        ("POST", f"/api/v1/versions/{ver_b}/baseline?{A}", None),
+        ("POST", f"/api/v1/versions/archive?{A}", None),
+        ("POST", f"/api/v1/migration/waves/{wave_b}/signoff?{A}", None),
+        ("POST", f"/api/v1/cleaning/approve/{item_b}?{A}", {}),
+        ("POST", f"/api/v1/remediation/batches/{rnd}/approve?{A}", None),
+        ("POST", f"/api/v1/master-records/{rnd}/writeback?{A}", None),
+        ("PUT", f"/api/v1/stewardship/{rnd}/resolve?{A}", {}),
+    ]
+    allowed = [
+        ("POST", f"/api/v1/systems/{sys_a}/sync", None),
+        ("POST", f"/api/v1/versions/{ver_a}/baseline", None),
+        ("POST", f"/api/v1/migration/waves/{wave_a}/signoff", None),
+        ("POST", f"/api/v1/cleaning/approve/{item_a}", {}),
+        ("POST", f"/api/v1/connectivity/health-check/{sys_a}", None),
+    ]
+
+    async def scenario(c: AsyncClient) -> None:
+        for who, rows, want_403 in (("stw", refused, True), ("stw", allowed, False)):
+            for method, path, body in rows:
+                r = await c.request(method, path, json=body, headers={"x-test-uid": u[who]})
+                assert (r.status_code == 403) == want_403, (method, path, r.status_code, r.text[:120])
+        # module grant FI: spoofed ?module=FI / ?object_type=FI on an MM item or route stays refused
+        h = {"x-test-uid": u["mod"]}
+        for method, path, body in (("POST", f"/api/v1/cleaning/approve/{item_a}?module={FI}&object_type={FI}", {}),
+                                   ("GET", f"/api/v1/objects/{MM}/export?module={FI}", None)):
+            r = await c.request(method, path, json=body, headers=h)
+            assert r.status_code == 403, (path, r.status_code)
+        # a version whose metadata names system B, with a hint naming A, is refused on analyse too
+        r = await c.post(f"/api/v1/versions/{ver_b}/analyse?{A}", headers={"x-test-uid": u["stw"]})
+        assert r.status_code == 403
+        # the path wins over the query on a system route
+        r = await c.post(f"/api/v1/systems/{sys_b}/sync?{A}", headers={"x-test-uid": u["stw"]})
+        assert r.status_code == 403
+
+    _serve(owner, monkeypatch, tid, scenario)
+
+
+def test_version_metadata_system_id_not_client_writable(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The version-to-system lookup trusts metadata.system_id, so no client call may write it."""
+    tid, u = _tenant(owner, {"adm": "admin"})
+    sys_a, sys_b = _system(owner, tid), _system(owner, tid)
+    ver = _version(owner, tid, sys_b)
+
+    async def scenario(c: AsyncClient) -> None:
+        r = await c.patch(f"/api/v1/versions/{ver}", headers={"x-test-uid": u["adm"]},
+                          json={"label": "x", "metadata": {"system_id": sys_a}, "system_id": sys_a})
+        assert r.status_code < 500, r.text
+        with owner.connect() as cx:
+            got = cx.execute(text("SELECT metadata->>'system_id' FROM analysis_versions WHERE id = :v"),
+                             {"v": ver}).scalar()
+        assert got == sys_b
 
     _serve(owner, monkeypatch, tid, scenario)
