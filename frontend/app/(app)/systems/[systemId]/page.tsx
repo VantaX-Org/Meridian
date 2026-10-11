@@ -18,7 +18,8 @@ import {
   entityTabs,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
-import { ConfigComparePanel } from "./config-compare-panel";
+import { ConfigurationTab } from "./config-tab";
+import { CustomObjectsTab } from "./custom-objects-tab";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
 import { TrendPanel } from "./trend-panel";
 import { getSystemModules, getSystems, testConnection } from "@/lib/api/connectivity";
@@ -231,6 +232,8 @@ export default function SystemPage() {
               <Health id={systemId} system={system} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} />
             ),
           },
+          { value: "config", label: "Configuration", content: <ConfigurationTab systemId={systemId} canPropose={can("trigger_sync")} /> },
+          { value: "custom", label: "Custom objects", content: <CustomObjectsTab /> },
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
           ...entityTabs({ entityType: "systems", entityId: systemId, canExport: can("export") }),
         ]}
@@ -494,7 +497,6 @@ function Health({ id, system, canSync, canManage, onChanged }: {
       </div>
 
       <ConfigLoadPanel systemId={id} systemType={system.system_type} canLoad={canSync} />
-      <ConfigComparePanel systemId={id} canPropose={canSync} />
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 

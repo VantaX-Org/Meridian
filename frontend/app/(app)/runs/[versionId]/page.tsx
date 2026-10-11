@@ -22,6 +22,7 @@ import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/obje
 import { exportRunSteps, getRunSteps, type RunStep } from "@/lib/api/v1/runs";
 import { getVersion, getVersions, pinBaseline } from "@/lib/api/versions";
 import { DIMENSIONS, formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { ConfigMatchesTab } from "./config-matches-tab";
 import { queryKeys } from "@/lib/query-keys";
 import { baselineRunId, previousRunId } from "@/lib/runs";
 import type { Finding } from "@/types/api";
@@ -407,6 +408,7 @@ export default function RunDetailPage() {
           { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} systemId={systemId} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} systemId={systemId} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} /> },
+          { value: "config", label: "Config matches", content: <ConfigMatchesTab versionId={versionId} /> },
           {
             value: "steps",
             label: "Steps",

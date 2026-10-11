@@ -36,6 +36,7 @@ import { apiErrorMessage, isNotFound } from "@/lib/error";
 import { formatModuleName, labelOf } from "@/lib/format";
 import { inboxKeyHandler } from "@/lib/inbox-keys";
 import { queryKeys } from "@/lib/query-keys";
+import { ApprovalsPanel, IssuesPanel, SapMonitorPanel } from "./inbox-panels";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import type { Exception, ExceptionRule, ExceptionStatus, Severity, StewardshipQueueItem, StewardshipStatus } from "@/types/api";
 
@@ -45,7 +46,10 @@ const LIVE: StewardshipStatus[] = ["open", "in_progress", "escalated"];
 const STATUS_TONE: Record<StewardshipStatus, PillTone> = { open: "neutral", in_progress: "at-risk", escalated: "no-go", resolved: "go" };
 const SEVERITY_TONE: Record<Severity, PillTone> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", warning: "at-risk" };
 const EXC_STATUS_TONE: Record<ExceptionStatus, PillTone> = { open: "neutral", investigating: "at-risk", pending_approval: "at-risk", resolved: "go", verified: "go", closed: "neutral" };
-const KINDS = [{ value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }];
+const KINDS = [
+  { value: "task", label: "Tasks" }, { value: "exception", label: "Exceptions" }, { value: "issues", label: "Issues" },
+  { value: "sap", label: "SAP monitor" }, { value: "approvals", label: "Approvals" },
+];
 const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
   { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
@@ -366,13 +370,19 @@ export default function InboxPage() {
 
   const kindToggle = (
     <div className="flex flex-wrap gap-2">
-      {KINDS.map((k) => (
+      {KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => (
         <Button key={k.value} variant={kind === k.value ? "primary" : "secondary"} onClick={() => setKind(k.value)}>
           {k.label}
         </Button>
       ))}
     </div>
   );
+
+  if (kind === "issues" || kind === "sap" || kind === "approvals") {
+    // These views own their data; the hooks above already ran, so returning early is safe.
+    const Panel = kind === "issues" ? IssuesPanel : kind === "sap" ? SapMonitorPanel : ApprovalsPanel;
+    return <ExplorerPage filterBar={kindToggle} table={<Panel />} />;
+  }
 
   return (
     <ExplorerPage

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { usePathname, useSearchParams } from "next/navigation";
 import { InsightHeader } from "@/design";
 import { useRole } from "@/hooks/use-role";
@@ -8,7 +9,7 @@ import { useDayOne } from "@/hooks/use-day-one";
 import { getLlmHealth } from "@/lib/api/analytics";
 import { getSystems } from "@/lib/api/connectivity";
 import { getFindingsAggregate } from "@/lib/api/findings";
-import { getExec } from "@/lib/api/insights";
+import { getExec, submitInsightFeedback } from "@/lib/api/insights";
 import { getWaves } from "@/lib/api/migration";
 import { getMetrics } from "@/lib/api/stewardship";
 import { getVersions } from "@/lib/api/versions";
@@ -70,6 +71,11 @@ export function RouteInsight() {
           runId,
           loading: execQ.isLoading && llmOn,
           adminHref: isAdmin && llmQ.data?.llm_available === false ? "/admin/ai" : undefined,
+          onFeedback: (vote) =>
+            submitInsightFeedback({ surface: section, run_id: runId, vote }).then(
+              () => toast.success("Thanks, feedback recorded."),
+              () => toast.error("Could not record feedback."),
+            ),
         } : undefined}
       />
     </div>
