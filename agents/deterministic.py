@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 from typing import TypedDict
 
+from agents.numeric import count_of, mean_or
 from agents.state import AgentState
 
 logger = logging.getLogger("meridian.agents.deterministic")
@@ -86,11 +87,10 @@ def run_deterministic_analyst(findings_summary: list[dict]) -> list[RootCause]:
         finding_ids = [f.get("check_id", "") for f in group_findings]
         
         # Sum affected count
-        total_affected = sum(f.get("affected_count", 0) for f in group_findings)
+        total_affected = sum(count_of(f, "affected_count") for f in group_findings)
         
         # Average pass rate
-        pass_rates = [f.get("pass_rate", 0) for f in group_findings]
-        avg_pass_rate = sum(pass_rates) / len(pass_rates) if pass_rates else 0
+        avg_pass_rate = mean_or((f.get("pass_rate") for f in group_findings), 0)
         
         # Determine worst severity in group
         max_severity = "low"

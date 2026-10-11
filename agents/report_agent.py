@@ -9,6 +9,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from agents.numeric import measured_mean
 from agents.prompts import REPORT_EXECUTIVE_SUMMARY_PROMPT
 from agents.state import AgentState
 from llm.provider import get_llm_safe, safe_invoke
@@ -34,11 +35,9 @@ def _compute_overall_status(readiness_scores: dict) -> str:
 
 
 def _compute_overall_score(readiness_scores: dict) -> float:
-    """Average of module readiness scores."""
-    scores = [m["score"] for m in readiness_scores.values() if m.get("score") is not None]
-    if not scores:
-        return 0.0
-    return round(sum(scores) / len(scores), 2)
+    """Average of module readiness scores; modules with no evaluated checks (None) are excluded."""
+    mean = measured_mean(m.get("score") for m in readiness_scores.values())
+    return 0.0 if mean is None else round(mean, 2)
 
 
 def _compute_migration_summary(overall_status: str, overall_score: float) -> str:
@@ -114,8 +113,8 @@ def report_node(state: AgentState) -> dict:
         mod: dqs_scores.get(mod, {}).get("composite_score")  # None = not measured
         for mod in module_names
     }
-    all_scores = [s for s in module_composites.values() if s is not None]
-    overall_composite = round(sum(all_scores) / len(all_scores), 2) if all_scores else None
+    mean_composite = measured_mean(module_composites.values())
+    overall_composite = None if mean_composite is None else round(mean_composite, 2)
 
     # Findings by severity
     findings_by_severity = _count_findings_by_severity(findings)
@@ -134,8 +133,8 @@ def report_node(state: AgentState) -> dict:
             "name": mod,
             "dqs_score": mod_dqs.get("composite_score"),
             "readiness_status": mod_readiness.get("status", "no-go"),
-            "readiness_score": mod_readiness.get("score", 0.0),
-            "critical_count": mod_dqs.get("critical_count", 0),
+            "readiness_score": mod_readiness.get("score"),  # None = not measured
+            "critical_count": mod_dqs.get("critical_count") or 0,
             "root_causes": mod_rcs,
             "remediations": mod_rems,
             "blockers": mod_readiness.get("blockers", []),
