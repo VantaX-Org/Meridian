@@ -18,6 +18,7 @@ import {
   entityTabs,
 } from "@/design";
 import { HEALTH_LABEL, latestDqs } from "../_health";
+import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
 import { ConfigLoadButton, ConfigLoadPanel, configStatus, hasNoConfig, useConfigLoad } from "./config-load-panel";
@@ -190,7 +191,7 @@ export default function SystemPage() {
         <Stat label="Objects" value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
         <Stat
           label="Latest DQS"
-          value={dqs === null ? "—" : <span className="inline-flex items-center gap-2"><ScoreRing score={dqs} size={48} />{dqs.toFixed(1)}</span>}
+          value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
           href={latest ? findingsHref(latest.id) : undefined}
         />
         <Stat label="Open findings" value={latest ? aggQ.data?.total ?? "…" : "—"} href={latest ? findingsHref(latest.id) : undefined} />

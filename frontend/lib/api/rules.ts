@@ -323,3 +323,36 @@ export async function getRuleHistoryBatch(params: {
   );
   return data;
 }
+
+export interface RuleSuppression {
+  id: string;
+  check_id: string;
+  record_key: string | null;
+  reason: string;
+  expires_at: string;
+  created_by: string | null;
+  created_at: string;
+  active: boolean;
+}
+
+export async function getRuleSuppressions(includeExpired = false): Promise<{ suppressions: RuleSuppression[] }> {
+  const { data } = await apiClient.get<{ suppressions: RuleSuppression[] }>("/api/v1/rule-suppressions", { params: { include_expired: includeExpired } });
+  return data;
+}
+
+export async function endRuleSuppression(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/rule-suppressions/${id}`);
+}
+
+export interface RuleFeedbackRow {
+  check_id: string;
+  flagged: number;
+  false_positive: number;
+  real: number;
+  false_positive_rate: number | null;
+}
+
+export async function getRuleFeedback(): Promise<{ rules: RuleFeedbackRow[] }> {
+  const { data } = await apiClient.get<{ rules: RuleFeedbackRow[] }>("/api/v1/rule-feedback");
+  return data;
+}

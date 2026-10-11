@@ -34,6 +34,9 @@ import { checkClassLabel, DIMENSIONS, formatModuleName, formatDate, labelOf } fr
 import { MM_VIEWS } from "@/lib/material-views";
 import { queryKeys } from "@/lib/query-keys";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
+import { Tabs } from "@/design";
+import { oneOf } from "@/hooks/use-url-state";
+import { FeedbackPanel, SuppressionsPanel } from "./rule-panels";
 
 const CATEGORY_LABEL: Record<string, string> = { ecc: "ECC", successfactors: "SuccessFactors", warehouse: "Warehouse" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
@@ -73,7 +76,7 @@ async function getAllRules(category?: string): Promise<Rule[]> {
   }
 }
 
-export default function RulesPage() {
+function RulesAll() {
   const qc = useQueryClient();
   const canManage = useRole().can("manage_rules");
   const dayOne = useDayOne();
@@ -490,5 +493,21 @@ function AuthorDrawer({ open, onClose, modules }: { open: boolean; onClose: () =
         </div>
       </div>
     </Drawer>
+  );
+}
+
+export default function RulesPage() {
+  const [tabRaw, setTab] = useUrlState("tab", "all");
+  const tab = oneOf(tabRaw, ["all", "suppressions", "feedback"], "all");
+  return (
+    <Tabs
+      value={tab}
+      onValueChange={setTab}
+      items={[
+        { value: "all", label: "All", content: <RulesAll /> },
+        { value: "suppressions", label: "Suppressions", content: <SuppressionsPanel /> },
+        { value: "feedback", label: "Feedback", content: <FeedbackPanel /> },
+      ]}
+    />
   );
 }

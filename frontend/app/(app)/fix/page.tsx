@@ -12,6 +12,7 @@ import { labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { BatchesTab } from "./batches-tab";
+import { DedupTab, MonitorTab } from "./monitor-dedup-tabs";
 
 const columns: ColumnDef<CleaningBatchSummary>[] = [
   { accessorKey: "batch_id", header: "Batch", cell: ({ row }) => <Mono>{row.original.batch_id}</Mono> },
@@ -76,7 +77,7 @@ function CleaningQueueTab() {
 
 export default function FixPage() {
   const [tabRaw, setTab] = useUrlState("tab", "cleaning");
-  const tab = oneOf(tabRaw, ["cleaning", "batches"], "cleaning");
+  const tab = oneOf(tabRaw, ["cleaning", "batches", "monitor", "dedup"], "cleaning");
 
   return (
     <Tabs
@@ -85,6 +86,8 @@ export default function FixPage() {
       items={[
         { value: "cleaning", label: "Cleaning queue", content: <CleaningQueueTab /> },
         { value: "batches", label: "Batches", content: <BatchesTab /> },
+        { value: "monitor", label: "Monitor", content: <MonitorTab /> },
+        { value: "dedup", label: "Dedup", content: <DedupTab /> },
       ]}
     />
   );

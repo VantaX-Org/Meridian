@@ -10,8 +10,10 @@ import { toast } from "sonner";
 import {
   Bar, Button, DataTable, EmptyState, ErrorState, ExplorerPage, ExportMenu, FindingDrawer, Line, Pill, ReportPage,
   DrillLink, Select, SeverityDot, Skeleton, Sparkline, Stat, Tabs, isSeverity, type PillTone,
-  entityTabs,
+  entityTabs, NextActions, Pareto,
 } from "@/design";
+import { DqsScore } from "@/components/insight/dqs-score";
+import { getPrescriptiveAnalytics } from "@/lib/api/analytics";
 import { useRole } from "@/hooks/use-role";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { isListFailure } from "@/lib/error";
@@ -143,6 +145,7 @@ function ObjectsTab({ versionId, systemId }: { versionId: string; systemId?: str
 function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: string }) {
   const router = useRouter();
   const aggregate = useQuery({ queryKey: queryKeys.findingsAggregate(versionId), queryFn: () => getFindingsAggregate(versionId) });
+  const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
   const history = useQuery({
     queryKey: queryKeys.scoreHistory(systemId),
     queryFn: () => getScoreHistory({ system_id: systemId, limit: 20 }),
@@ -176,6 +179,21 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
   }));
 
   const historyRows = [...(history.data?.history ?? [])].reverse();
+  const points = historyRows.map((h) => ({ x: formatDate(h.run_at, "date"), y: h.at_the_time.composite ?? 0, runId: h.version_id }));
+  // Mark this run, and any run whose composite fell 5 points or more from the one before it.
+  const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
+    if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
+    return i > 0 && points[i - 1].y - p.y >= 5 ? [{ x: p.x, label: "Score fell", kind: "change" as const }] : [];
+  });
+  const paretoData = a.by_module.map((m) => ({ x: formatModuleName(m.module), y: m.findings, object: m.module }));
+  const next = (prescriptive.data?.actions ?? []).slice(0, 5).map((act) => ({
+    id: act.id,
+    title: act.title,
+    impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
+    verb: act.type === "finding" ? "Open finding" : act.type === "cleaning" ? "Open cleaning" : "Open exception",
+    href: act.type === "finding" ? `/runs/${versionId}?tab=findings${act.module ? `&module=${act.module}` : ""}` : "/inbox",
+    why: `Ranked by impact points per hour of effort (${act.value_per_hour.toFixed(1)}), ${act.severity} severity.`,
+  }));
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -183,7 +201,8 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         The composite score for this run is {composite != null ? composite.toFixed(1) : "not scored"}.
         {a.dqs.capped ? " The score is capped by a critical finding." : ""}
       </p>
-      <div className="flex flex-wrap gap-8">
+      <div className="flex flex-wrap items-center gap-8">
+        <DqsScore agg={a} versionId={versionId} size={64} />
         <Stat
           label="Composite score"
           value={composite != null ? composite.toFixed(1) : "—"}
@@ -202,6 +221,14 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
         />
       </section>
       <section className="flex flex-col gap-2">
+        <h2 className="text-[13px] font-semibold">Where the findings concentrate</h2>
+        <Pareto data={paretoData} onPointClick={(p) => router.push(`/runs/${versionId}?tab=findings&module=${p.object ?? ""}`)} />
+      </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[13px] font-semibold">Next actions</h2>
+        {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
+      </section>
+      <section className="flex flex-col gap-2">
         <h2 className="text-[13px] font-semibold">Composite over runs</h2>
         {history.isLoading ? (
           <Skeleton height={120} />
@@ -209,11 +236,8 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
           <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No score history for this system yet.</p>
         ) : (
           <Line
-            data={historyRows.map((h) => ({
-              x: formatDate(h.run_at, "date"),
-              y: h.at_the_time.composite ?? 0,
-              runId: h.version_id,
-            }))}
+            data={points}
+            annotations={annotations}
             onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)}
           />
         )}

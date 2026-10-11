@@ -49,6 +49,7 @@ export function RouteInsight() {
     critical: agg?.severity.critical ?? 0,
     total: agg?.total ?? 0,
     affected: agg?.affected_records ?? 0,
+    costAtRisk: agg?.cost_at_risk,
     worst: worst ? { module: worst.module, label: formatModuleName(worst.module), findings: worst.findings, critical: worst.critical } : undefined,
     systems: (systemsQ.data ?? []).length,
     waves: (wavesQ.data ?? []).length,

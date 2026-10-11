@@ -116,7 +116,7 @@ function findingCols(): ColumnDef<AlignmentFinding, unknown>[] {
 }
 
 function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string }) {
-  const cols = useMemo(findingCols, []);
+  const cols = useMemo(() => findingCols(), []);
   if (rows.length === 0) return <EmptyState title="Nothing found." />;
   return (
     <DataTable columns={cols} data={rows} getRowId={(f) => `${f.check_id}/${f.module}/${f.title}`} height={380} exportName={name}

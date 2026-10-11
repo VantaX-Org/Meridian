@@ -1,0 +1,22 @@
+import { screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderWithQuery } from "@/__tests__/render";
+import * as findings from "@/lib/api/findings";
+import * as settings from "@/lib/api/settings";
+import type { FindingsAggregate } from "@/lib/api/findings";
+import { DqsScore } from "../dqs-score";
+
+afterEach(() => vi.restoreAllMocks());
+
+const agg = {
+  dqs: { composite: 82, dimension_scores: { completeness: 90, validity: 70 }, tier: "warn" },
+} as unknown as FindingsAggregate;
+
+describe("DqsScore", () => {
+  it("opens an explainer once tenant weights load", async () => {
+    vi.spyOn(settings, "getSettings").mockResolvedValue({ dqs_weights: { completeness: 0.5, validity: 0.5 } } as Awaited<ReturnType<typeof settings.getSettings>>);
+    vi.spyOn(findings, "getFindings").mockResolvedValue({ findings: [], total: 0, filters_applied: {} });
+    renderWithQuery(<DqsScore agg={agg} versionId="v1" />);
+    expect(await screen.findByRole("button", { name: /explain score 82/i })).toBeInTheDocument();
+  });
+});

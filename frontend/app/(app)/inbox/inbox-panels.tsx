@@ -41,7 +41,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
   return (
     <div className="flex flex-col gap-3 text-[13px]">
       <p>{issue.message ?? "No message."}</p>
-      <p style={note}><Mono>{issue.record_key}</Mono>{issue.field ? <> · field {issue.field}</> : null}</p>
+      <p style={note}><Mono>{issue.record_key}</Mono>{issue.field ? <>, field {issue.field}</> : null}</p>
       {q.isLoading ? <Skeleton height={80} /> : q.error ? <p style={note}>{apiErrorMessage(q.error)}</p> : (
         <ol className="flex flex-col gap-2">
           {(q.data?.events ?? []).length === 0 ? <li style={note}>No activity yet.</li> : null}
@@ -49,7 +49,7 @@ function IssueThread({ issue }: { issue: RecordIssue }) {
             <li key={`${e.created_at}-${i}`} className="border-l-2 pl-3" style={{ borderColor: "var(--m-line)" }}>
               <span className="font-medium">{labelOf(e.action)}</span>
               {e.to_value ? <> to {labelOf(e.to_value)}</> : null}
-              <span style={note}> · {e.user_label ?? "System"} · {relativeTime(e.created_at)}</span>
+              <span style={note}> by {e.user_label ?? "System"}, {relativeTime(e.created_at)}</span>
               {e.note ? <p>{e.note}</p> : null}
             </li>
           ))}

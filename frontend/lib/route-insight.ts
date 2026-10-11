@@ -11,6 +11,8 @@ export interface InsightFacts {
   critical: number;
   total: number;
   affected: number;
+  /** findings/aggregate cost_at_risk, when the tenant has a cost rate configured */
+  costAtRisk?: number;
   worst?: { module: string; label: string; findings: number; critical: number };
   systems: number;
   waves: number;
@@ -107,6 +109,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
         ? "No critical findings, so the score is not capped."
         : "No findings in this run.";
 
+  const risk = f.costAtRisk != null && f.costAtRisk > 0 ? ` About ${n(Math.round(f.costAtRisk))} is at risk.` : "";
   const next =
     worst && f.total > 0
       ? {
@@ -119,7 +122,7 @@ export function buildInsight(section: Section, f: InsightFacts): Omit<InsightHea
   return {
     situation: { sentence: situation, href: f.runId ? `/runs/${f.runId}` : "/runs", tone: tone(dqs) },
     changed: { sentence: changed, href: "/runs", tone: delta === null || delta === 0 ? "neutral" : delta > 0 ? "go" : "no-go" },
-    why: { sentence: why, href: `/objects${q(f.runId)}${f.critical > 0 ? `${f.runId ? "&" : "?"}severity=critical` : ""}`, tone: f.critical > 0 ? "no-go" : "neutral" },
+    why: { sentence: why + risk, href: `/objects${q(f.runId)}${f.critical > 0 ? `${f.runId ? "&" : "?"}severity=critical` : ""}`, tone: f.critical > 0 ? "no-go" : "neutral" },
     next,
   };
 }
