@@ -33,7 +33,7 @@ from api.middleware.audit import _insert_audit_row
 from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
-from api.services.bpmn_export import BpmnExportError, export_node, export_zip, landscape_edges
+from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_edges
 from api.services.process_discovery import L1S, L1S_BY_SYSTEM, MODULE_OF, primary_case_type, reason
 from api.services.process_discovery.builders import builder
 from api.services.process_discovery.events import DEFAULT_TZ
@@ -596,7 +596,7 @@ async def _export(request: Request, tenant: Tenant, db: AsyncSession, run_id: st
         return _invalid(result.errors)
     now = datetime.now(timezone.utc)
     filters = json.loads(flt.model_dump_json())
-    meta = {"model_id": None, "name": f"{run.l1} as-is", "version_no": 1,
+    meta: ExportMeta = {"model_id": None, "name": f"{run.l1} as-is", "version_no": 1,
             "exported_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "app_version": request.app.version,
             "discovery": {"run_id": run.id, "edge_threshold": EDGE_THRESHOLD,
                           "window": {"from": str(run.window_from) if run.window_from else None,

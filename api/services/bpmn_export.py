@@ -42,6 +42,34 @@ class DiscoveryMeta(TypedDict, total=False):
     run_id: str
     window: _Window
     edge_threshold: float
+    filters: dict[str, object]  # the run's filter spec, JSON-serialisable
+
+
+class ExportMeta(TypedDict, total=False):
+    """The ``meta`` argument of ``export_zip``; ``name``, ``version_no`` and ``exported_at`` are always given."""
+    model_id: Optional[str]
+    name: str
+    version_no: int
+    exported_at: str
+    app_version: str
+    discovery: DiscoveryMeta
+
+
+class _BuildMeta(ExportMeta):
+    _pos: int  # position of the node among its siblings, set per file
+
+
+class OverlayActivity(TypedDict, total=False):
+    dq_status: Optional[str]
+    pass_rate: Optional[float]
+    affected_count: int
+    check_ids: list[str]
+
+
+class Overlay(TypedDict):
+    """Per-activity data-quality overlay of an analysed dataset version."""
+    version_id: str
+    activities: dict[str, OverlayActivity]
 
 
 _ZIP_TIME = (2020, 1, 1, 0, 0, 0)  # fixed, so two exports differ only in manifest exported_at
@@ -101,7 +129,7 @@ def _read_extras(cls: Any, attrs: dict[str, str], prefix: str = "") -> dict[str,
 # ----------------------------------------------------------------------------- building
 
 
-def _definitions(meta: dict[str, Any]) -> ET.Element:
+def _definitions(meta: ExportMeta) -> ET.Element:
     return ET.Element(_q(BPMN, "definitions"), {
         "id": "D_MERIDIAN", "targetNamespace": MER, "exporter": "Meridian",
         "exporterVersion": str(meta.get("app_version", "")),
@@ -179,7 +207,7 @@ def _count_meta(flow_el: ET.Element, label: Optional[str]) -> None:
              {"metaKey": "meridian_edge_count", "metaValue": m.group(1).replace(",", "")})
 
 
-def _landscape(level: int, node: _Parent, children: Sequence[_Child], meta: dict[str, Any],
+def _landscape(level: int, node: _Parent, children: Sequence[_Child], meta: _BuildMeta,
                edges: Optional[list[tuple[str, str, str]]] = None) -> bytes:
     pid = f"L{level}_{node.id}"
     defs = _definitions(meta)
@@ -190,7 +218,7 @@ def _landscape(level: int, node: _Parent, children: Sequence[_Child], meta: dict
                                   "description": node.description or None, **_extras(node)})
     for m in node.modules if isinstance(node, L1) else []:
         _sub(lv, MER, "module", {"name": m})
-    kids = sorted(children, key=lambda c: (c.order, c.id))
+    kids = [c for _, c in sorted(enumerate(children), key=lambda ic: (ic[1].order, ic[0]))]  # ties keep document order
     keys = ["START", *[c.id for c in kids], "END"]
     elems: list[tuple[str, str, ET.Element]] = []
     start = _sub(proc, BPMN, "startEvent", {"id": "E_START", "name": "Start"})
@@ -253,7 +281,7 @@ def _field_line(f: FieldRef) -> str:
     return f"{f.field} ({', '.join(notes)})" if notes else f.field
 
 
-def _dq_line(dq: dict[str, Any]) -> str:
+def _dq_line(dq: OverlayActivity) -> str:
     word = _STATUS_WORD.get(dq["dq_status"], dq["dq_status"])
     n = int(dq.get("affected_count") or 0)
     checks = ", ".join(dq.get("check_ids") or [])
@@ -261,7 +289,7 @@ def _dq_line(dq: dict[str, Any]) -> str:
     return f"Data quality: {word} ({detail})" if detail else f"Data quality: {word}"
 
 
-def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dict[str, Any]]) -> ET.Element:
+def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[Overlay]) -> ET.Element:
     el = _sub(proc, BPMN, "task", {"id": f"A_{act.id}", "name": act.name})
     lines = [act.description]
     if act.tcode:
@@ -295,7 +323,7 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dic
     if dq and dq.get("dq_status"):
         _sub(ext, MER, "dq", {"status": dq["dq_status"],
                               "passRate": f"{dq['pass_rate']:.1f}" if dq.get("pass_rate") is not None else None,
-                              "affected": int(dq.get("affected_count") or 0), "versionId": overlay.get("version_id")})
+                              "affected": int(dq.get("affected_count") or 0), "versionId": overlay["version_id"] if overlay else None})
     if d is not None:
         _sub(ext, MER, "discovery", {
             "caseCount": d.case_count, "share": d.share, "medianSeconds": d.median_seconds,
@@ -314,7 +342,7 @@ def _task(proc: ET.Element, node: Node, act: L5, pos: int, overlay: Optional[dic
     return el
 
 
-def _l4_file(l4: L4, meta: dict[str, Any], overlay: Optional[dict[str, Any]]) -> bytes:
+def _l4_file(l4: L4, meta: _BuildMeta, overlay: Optional[Overlay]) -> bytes:
     pid = f"L4_{l4.id}"
     defs = _definitions(meta)
     proc = _sub(defs, BPMN, "process", {"id": pid, "name": l4.name, "isExecutable": "false"})
@@ -368,15 +396,20 @@ def _l4_file(l4: L4, meta: dict[str, Any], overlay: Optional[dict[str, Any]]) ->
     return _xml(defs)
 
 
+def _build_meta(meta: ExportMeta, pos: int) -> _BuildMeta:
+    out: _BuildMeta = {**meta, "_pos": pos}
+    return out
+
+
 def _xml(defs: ET.Element) -> bytes:
     ET.indent(defs, space="  ")
     return ET.tostring(defs, encoding="utf-8", xml_declaration=True)
 
 
-_Plan = tuple[int, Union[L1, L2, L3, L4], Optional[str], int, Callable[[dict[str, Any]], bytes]]
+_Plan = tuple[int, Union[L1, L2, L3, L4], Optional[str], int, Callable[[_BuildMeta], bytes]]
 
 
-def _file_plan(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]) -> list[_Plan]:
+def _file_plan(document: ProcessModelDocument, overlay: Optional[Overlay]) -> list[_Plan]:
     """Every L1-L4 file as (level, node, parent id, position, builder), in document order."""
     plan: list[_Plan] = []
     for i1, l1 in enumerate(document.l1):
@@ -391,7 +424,7 @@ def _file_plan(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
     return plan
 
 
-def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]], meta: dict[str, Any]) -> bytes:
+def export_zip(document: ProcessModelDocument, overlay: Optional[Overlay], meta: ExportMeta) -> bytes:
     """``overlay`` = {"version_id": str, "activities": {l5_id: {dq_status, pass_rate, affected_count, check_ids?}}} or None.
 
     ``meta`` = {model_id, name, version_no, exported_at, app_version}. Raises BpmnExportError when the generated
@@ -404,7 +437,7 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
 
     for level, node, parent, pos, data_fn in _file_plan(document, overlay):
         name = f"L{level}_{node.id}.bpmn"
-        files[name] = data_fn({**meta, "_pos": pos})
+        files[name] = data_fn(_build_meta(meta, pos))
         levels.append({"level": level, "id": node.id, "name": node.name, "file": name,
                        "parent": parent, "order": node.order})
     for l1 in document.l1:
@@ -426,7 +459,8 @@ def export_zip(document: ProcessModelDocument, overlay: Optional[dict[str, Any]]
         "levels": levels, "activities": activities,
     }
     if meta.get("discovery"):
-        manifest["discovery"] = meta["discovery"]  # optional; import_zip ignores it (spec 5.2)
+        # optional; import_zip ignores it (spec 5.2). Keys sorted at every level: output must not depend on caller order.
+        manifest["discovery"] = json.loads(json.dumps(meta["discovery"], sort_keys=True))
     errors = validate_package(files, manifest)
     if errors:
         raise BpmnExportError(errors)
@@ -471,16 +505,17 @@ def _discovery_readme(document: ProcessModelDocument, disc: DiscoveryMeta) -> st
         "1. Open the target folder.\n"
         "2. Choose Import, then BPMN 2.0 (.bpmn), and upload the files from the zip. Start with L1_<L1>.bpmn,\n"
         "   then the remaining files.\n"
-        "3. Signavio links each callActivity to the imported model whose process id equals its calledElement.\n")
+        "3. Each callActivity's calledElement is the process id of the exported file it refers to. Signavio may\n"
+        "   not link them on import: confirm the links after import and set any missing ones by hand.\n")
 
 
-def export_node(document: ProcessModelDocument, node_id: str, overlay: Optional[dict[str, Any]],
-                meta: dict[str, Any]) -> tuple[str, bytes]:
+def export_node(document: ProcessModelDocument, node_id: str, overlay: Optional[Overlay],
+                meta: ExportMeta) -> tuple[str, bytes]:
     """One ``L{level}_{id}.bpmn`` for an L1-L4 node, byte-identical to the same file in ``export_zip``.
     Raises KeyError when the node is not in the document."""
     for level, node, _parent, pos, fn in _file_plan(document, overlay):
         if node.id == node_id:
-            return f"L{level}_{node.id}.bpmn", fn({**meta, "_pos": pos})
+            return f"L{level}_{node.id}.bpmn", fn(_build_meta(meta, pos))
     raise KeyError(node_id)
 
 
