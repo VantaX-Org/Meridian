@@ -303,6 +303,10 @@ def get_dictionary(release: str = "ecc6") -> Dictionary:
     tables = {t.name: t for t in (_abap_table(p, "ecc6") for p in sorted((_ROOT / "ecc6" / "tables").glob("*.json")))}
     if release == "s4hana":
         tables = _apply_s4_delta(tables)
+        # S/4-only tables (MATDOC); never an ECC table copied here. Domains resolve from ecc6/domains.
+        for p in sorted((_ROOT / "s4hana" / "tables").glob("*.json")):
+            t = _abap_table(p, "ecc6")
+            tables[t.name] = t
     for t in _canonical_tables():
         tables[t.name] = t  # an explicitly declared canonical view wins over a same-named ABAP object
     return Dictionary(release=release, tables=tables)

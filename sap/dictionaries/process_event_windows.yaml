@@ -1,0 +1,93 @@
+# Process-discovery windows (spec §1.2, §1.3). Read only for tables whose every planning module is a
+# process-event module; DQ tables keep extraction_windows.yaml.
+#
+# Root table:  {field, months, slice_months, where?, suffix?, max_slice_rows?, split_by?, modules?}
+#   one `FIELD >= lo AND FIELD < hi` slice per `slice_months` calendar months from the window start;
+#   `suffix` is appended to DEC15 timestamps (YYYYMMDDhhmmss); `modules: {m: {months?, where?}}`
+#   overrides per process-event module, and a slice ORs the `where` of every module covering it.
+# Via table:   {via, also_via?, in_field?, group_field?, where?, modules?}
+#   read by IN-lists of the parent's keys (sap/extraction_plan.via_filters); `group_field` adds
+#   `FIELD = '<value>' AND` so the IN-list hits a key prefix.
+EKKO: {field: AEDAT, months: 24, slice_months: 1}
+EKPO: {via: EKKO}
+EBAN: {field: ERDAT, months: 24, slice_months: 1}
+EKBE: {via: EKPO}
+RBKP: {field: CPUDT, months: 24, slice_months: 1}
+BKPF:
+  field: CPUDT
+  months: 12
+  slice_months: 1
+  modules:
+    process_events_ptp: {months: 24, where: "AWTYP = 'RMRP'"}
+BSAK: {via: BKPF, in_field: BELNR, group_field: BUKRS}
+BSAS: {via: BKPF, in_field: BELNR, group_field: BUKRS}
+CDHDR:
+  field: UDATE
+  months: 24
+  slice_months: 1
+  modules:
+    process_events_ptp: {where: "OBJECTCLAS IN ('EINKBELEG','BANF','KRED')"}
+    process_events_otc: {where: "OBJECTCLAS IN ('VERKBELEG','DEBI')"}
+    process_events_r2r: {where: "OBJECTCLAS IN ('SACH','ANLA','KOSTL','KSTAR')"}
+    process_events_pp: {where: "OBJECTCLAS IN ('STUE','ORDER')"}
+    process_events_pm: {where: "OBJECTCLAS IN ('QMEL','EQUI','ORDER')"}
+CDPOS:
+  via: CDHDR
+  in_field: OBJECTID
+  group_field: OBJECTCLAS
+  modules:
+    process_events_ptp: {where: "(OBJECTCLAS = 'KRED' OR FNAME IN ('FRGZU','FRGKE','MENGE','NETPR','EINDT','LOEKZ','KEY'))"}  # vendor keeps every FNAME
+    process_events_otc: {where: "(OBJECTCLAS = 'DEBI' OR FNAME IN ('LIFSK','FAKSK','NETWR','KWMENG','EDATU','ABGRU','KEY'))"}  # customer keeps every FNAME
+    process_events_r2r: {}                       # master-data changes keep every FNAME
+    process_events_pp: {}
+    process_events_pm: {where: "(OBJECTCLAS = 'EQUI' OR FNAME IN ('PRIOK','KEY'))"}  # equipment keeps every FNAME
+VBAK: {field: ERDAT, months: 24, slice_months: 1}
+VBAP: {via: VBAK}
+LIKP: {field: ERDAT, months: 24, slice_months: 1}
+LIPS: {via: LIKP}
+VBRK: {field: ERDAT, months: 24, slice_months: 1}
+VBRP: {via: VBRK}
+BSAD: {via: VBRK, in_field: BELNR, group_field: BUKRS}
+AUFK:
+  field: ERDAT
+  months: 24
+  slice_months: 1
+  modules:
+    process_events_r2r: {where: "AUTYP = '01'"}
+    process_events_pp: {where: "AUTYP = '10'"}
+    process_events_pm: {where: "AUTYP = '30'"}
+AFKO: {via: AUFK}
+AFIH: {via: AUFK}
+JCDS: {via: AUFK, also_via: [PRPS]}
+MKPF: {field: CPUDT, months: 24, slice_months: 1}
+MSEG:
+  via: MKPF
+  modules:
+    process_events_pp: {where: "BWART IN ('101','102','261','262')"}
+    process_events_pm: {where: "BWART IN ('261','262')"}
+MATDOC:
+  field: BUDAT
+  months: 24
+  slice_months: 1
+  max_slice_rows: 30000
+  split_by: {WERKS: T001W}
+  modules:
+    process_events_pp: {where: "RECORD_TYPE = 'MDOC' AND BWART IN ('101','102','261','262')"}
+    process_events_pm: {where: "RECORD_TYPE = 'MDOC' AND BWART IN ('261','262')"}
+QMEL: {field: QMDAT, months: 24, slice_months: 1}
+QMFE: {via: QMEL}
+QMSM: {via: QMEL}
+QALS: {field: ENSTEHDAT, months: 24, slice_months: 1}
+QAVE: {via: QALS}
+PROJ: {field: ERDAT, months: 36, slice_months: 1}
+PRPS: {via: PROJ}
+LTAK: {field: BDATU, months: 12, slice_months: 1}
+LTAP: {via: LTAK}
+/SCWM/ORDIM_C: {field: CONFIRMED_AT, months: 12, slice_months: 1, suffix: "000000"}
+PA0000: {field: AEDTM, months: 24, slice_months: 1}
+PA0001: {field: AEDTM, months: 24, slice_months: 1}
+PA0002: {field: AEDTM, months: 24, slice_months: 1}
+PA0008: {field: AEDTM, months: 24, slice_months: 1}
+HRP1000: {field: AEDTM, months: 24, slice_months: 1}
+HRP1001: {field: AEDTM, months: 24, slice_months: 1}
+USMD120C: {field: USMD_CREATED_AT, months: 24, slice_months: 1, suffix: "000000"}
