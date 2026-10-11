@@ -21,12 +21,16 @@ def _alembic(*args: str) -> None:
 
 
 @pytest.fixture(scope="module")
-def engines():
+def engines() -> tuple:
     from urllib.parse import urlparse, urlunparse
 
     from sqlalchemy import create_engine, text
 
     url = os.environ["MERIDIAN_TEST_DB_URL"]
+    u = urlparse(url)
+    resolved_port = u.port or 5432
+    if resolved_port == 5432:
+        pytest.skip("refusing to run migrations against port 5432")
     _alembic("upgrade", "head")
     owner = create_engine(url)
     with owner.begin() as c:
@@ -37,8 +41,7 @@ def engines():
         c.execute(text(f"GRANT USAGE ON SCHEMA public TO {_ROLE}"))
         c.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {_ROLE}"))
         c.execute(text(f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {_ROLE}"))
-    u = urlparse(url)
-    app = create_engine(urlunparse((u.scheme, f"{_ROLE}:pw@{u.hostname}:{u.port or 5432}",
+    app = create_engine(urlunparse((u.scheme, f"{_ROLE}:pw@{u.hostname}:{resolved_port}",
                                     u.path, u.params, u.query, u.fragment)))
     yield owner, app
     app.dispose()
@@ -48,7 +51,7 @@ def engines():
     owner.dispose()
 
 
-def _tenant_and_system(owner) -> tuple[str, str]:
+def _tenant_and_system(owner: object) -> tuple[str, str]:
     from sqlalchemy import text
 
     tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
@@ -58,7 +61,7 @@ def _tenant_and_system(owner) -> tuple[str, str]:
     return tid, sid
 
 
-def _run(c, tid: str, sid: str) -> str:
+def _run(c: object, tid: str, sid: str) -> str:
     from sqlalchemy import text
 
     return str(c.execute(text(
@@ -67,10 +70,15 @@ def _run(c, tid: str, sid: str) -> str:
 
 
 @pg
-def test_rls_isolates_all_three_tables(engines) -> None:
+def test_rls_isolates_all_three_tables(engines: tuple) -> None:
     from sqlalchemy import text
 
     owner, app = engines
+    # Verify app role does not bypass RLS
+    with app.begin() as c:
+        bypass_rls = c.execute(text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")).scalar()
+        assert bypass_rls is False, f"App role should have rolbypassrls = false, got {bypass_rls}"
+
     a, sa = _tenant_and_system(owner)
     b, _ = _tenant_and_system(owner)
     with app.begin() as c:
@@ -96,7 +104,7 @@ def test_rls_isolates_all_three_tables(engines) -> None:
 
 
 @pg
-def test_deleting_a_run_cascades(engines) -> None:
+def test_deleting_a_run_cascades(engines: tuple) -> None:
     from sqlalchemy import text
 
     owner, app = engines
@@ -113,7 +121,7 @@ def test_deleting_a_run_cascades(engines) -> None:
 
 
 @pg
-def test_timezone_column_and_downgrade(engines) -> None:
+def test_timezone_column_and_downgrade(engines: tuple) -> None:
     from sqlalchemy import create_engine, inspect
 
     owner, _ = engines
@@ -130,3 +138,25 @@ def test_timezone_column_and_downgrade(engines) -> None:
     finally:
         eng.dispose()
         _alembic("upgrade", "head")
+
+
+@pg
+def test_with_check_blocks_cross_tenant_insert(engines: tuple) -> None:
+    from sqlalchemy import exc, text
+
+    owner, app = engines
+    a, sa = _tenant_and_system(owner)
+    b, sb = _tenant_and_system(owner)
+
+    # Create a run in tenant A
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": a})
+        rid_a = _run(c, a, sa)
+
+    # Try to insert a row with tenant A data while tenant_id is set to B (should fail)
+    with app.begin() as c:
+        c.execute(text("SET LOCAL app.tenant_id = :t"), {"t": b})
+        with pytest.raises((exc.DBAPIError, exc.ProgrammingError)):
+            c.execute(text(
+                "INSERT INTO process_discovery_runs (tenant_id, system_id, l1, mode, status) "
+                "VALUES (:t, :s, 'PTP', 'full', 'queued')"), {"t": a, "s": sa})
