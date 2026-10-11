@@ -24,7 +24,7 @@ from api.services.branded_xlsx import (
     xlsx_response,
 )
 from api.services.rbac import require_permission
-from api.services.scoring import scoring_config, tier
+from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config, tier
 
 router = APIRouter(prefix="/api/v1/objects", tags=["objects"])
 
@@ -46,6 +46,8 @@ class ObjectSummaryOut(BaseModel):
 class ObjectsListOut(BaseModel):
     run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
+    # the tenant's DQS bands {target, warning, critical}, for the score rings
+    thresholds: dict[str, float] = DEFAULT_THRESHOLDS
 
 
 # Finished runs, as api/routes/versions.py's _DONE minus 'failed': run_agents.py and
@@ -113,7 +115,7 @@ async def list_objects(run: str = Query(..., alias="run"),
             "failing_checks": failing,
             "affected_records": affected,
         })
-    return {"run_id": run_id, "objects": objects}
+    return {"run_id": run_id, "objects": objects, "thresholds": thresholds}
 
 
 _OBJECTS_EXPORT_COLUMNS = [
@@ -183,7 +185,8 @@ async def get_object(module: str, run: uuid.UUID = Query(..., alias="run"),
         "label": _label(module),
         "composite_score": score,
         "readiness": tier(score, thresholds) if score is not None else None,
-        "dimension_scores": mod_summary.get("dimension_scores") or {},
+        "dimension_scores": {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
+                             if (mod_summary.get("dimension_coverage") or {}).get(d) != 0},  # coverage 0: not measured
         "rules": [
             {"check_id": r[0], "severity": r[1], "dimension": r[2], "affected_count": r[3],
              "total_count": r[4], "pass_rate": float(r[5]) if r[5] is not None else None}

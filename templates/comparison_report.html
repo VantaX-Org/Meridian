@@ -67,7 +67,7 @@
 <thead><tr><th>Module</th><th class="r">DQS earlier</th><th class="r">DQS later</th><th class="r">Change (points)</th></tr></thead>
 <tbody>
 {% for m in modules %}
-<tr><td>{{ m.name | module }}{% if m.v1 is none %}<span class="sub">Not in the earlier run</span>{% elif m.v2 is none %}<span class="sub">Not in the later run</span>{% endif %}</td>
+<tr><td>{{ m.name | module }}{% if m.v1 is none %}<span class="sub">Not measured in the earlier run</span>{% elif m.v2 is none %}<span class="sub">Not measured in the later run</span>{% endif %}</td>
     <td class="r">{{ m.v1 | n(1) }}</td><td class="r">{{ m.v2 | n(1) }}</td><td class="r">{{ delta(m.change, ' pts') }}</td></tr>
 {% endfor %}
 </tbody>

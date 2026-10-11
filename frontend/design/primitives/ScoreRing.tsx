@@ -1,10 +1,18 @@
 import { mColor } from "../tokens";
 
-export function ScoreRing({ score, size = 48 }: { score: number; size?: number }) {
+/** DQS bands; the API's tenant thresholds (`/api/v1/objects` `thresholds`) override these defaults. */
+export interface ScoreBands {
+  target: number;
+  warning: number;
+  critical: number;
+}
+export const DEFAULT_SCORE_BANDS: ScoreBands = { target: 90, warning: 75, critical: 60 };
+
+export function ScoreRing({ score, size = 48, bands = DEFAULT_SCORE_BANDS }: { score: number; size?: number; bands?: ScoreBands }) {
   const r = size / 2 - 4;
   const circumference = 2 * Math.PI * r;
   const offset = circumference * (1 - Math.min(100, Math.max(0, score)) / 100);
-  const color = score >= 85 ? mColor.pass : score >= 60 ? mColor.medium : mColor.critical;
+  const color = score >= bands.target ? mColor.pass : score >= bands.warning ? mColor.medium : mColor.critical;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score ${score}`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--m-line)" strokeWidth={4} />

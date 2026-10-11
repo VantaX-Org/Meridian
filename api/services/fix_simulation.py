@@ -233,7 +233,8 @@ def dqs_summary(results: list[CheckResult], weights: dict | None) -> dict:
     """{composite, dimension_scores, modules, capped} with the tenant's DQS weights."""
     from api.routes.findings import composite_dqs
     from api.services.scoring import score_all_modules
-    return composite_dqs([{m: r.model_dump() for m, r in score_all_modules(results, weights).items()}])
+    return composite_dqs([{m: r.model_dump() for m, r in score_all_modules(results, weights).items()}],
+                         scoring=weights or {})
 
 
 def _delta(b: Optional[float], a: Optional[float]) -> Optional[float]:

@@ -1,11 +1,11 @@
 // frontend/app/(app)/objects/page.tsx
 "use client";
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -22,7 +22,7 @@ const READINESS_TONE: Record<"pass" | "warn" | "fail", PillTone> = {
   fail: "no-go",
 };
 
-const columns: ColumnDef<ObjectSummary>[] = [
+const columnsFor = (bands?: ScoreBands): ColumnDef<ObjectSummary>[] => [
   { accessorKey: "label", header: "Object" },
   {
     accessorKey: "composite_score",
@@ -32,7 +32,7 @@ const columns: ColumnDef<ObjectSummary>[] = [
       if (score == null) return "—";
       return (
         <span className="inline-flex items-center gap-2">
-          <ScoreRing score={score} size={24} />
+          <ScoreRing score={score} size={24} bands={bands} />
           <span>{score}</span>
         </span>
       );
@@ -92,6 +92,7 @@ export default function ObjectsPage() {
         };
   }
 
+  const columns = useMemo(() => columnsFor(data?.thresholds), [data?.thresholds]);
   const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
 
   return (

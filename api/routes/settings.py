@@ -6,11 +6,12 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.services.rbac import require_permission
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_db, get_tenant, Tenant as TenantDep
+from api.services.scoring import DEFAULT_THRESHOLDS, scoring_config
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
@@ -34,7 +35,7 @@ class AlertThresholds(BaseModel):
     module_floors: dict[str, Annotated[float, Field(ge=0, le=100)]] = Field(default_factory=dict)
     # readiness grid (api/services/insights_readiness.py): DQS floor for a module/wave cell
     # to read "ready", and the tenant's wave -> [module] grouping for that grid.
-    readiness_dqs_threshold: int = Field(70, ge=0, le=100)
+    readiness_dqs_threshold: int = Field(int(DEFAULT_THRESHOLDS["warning"]), ge=0, le=100)
     readiness_waves: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -196,27 +197,31 @@ async def save_planner_config(
 # scored under (analysis_versions.metadata.scoring) for GET /api/v1/scores/history.
 
 class ScoringThresholds(BaseModel):
-    pass_: float = Field(90.0, alias="pass", ge=0, le=100)
-    warn: float = Field(75.0, ge=0, le=100)
-
-    model_config = {"populate_by_name": True}
+    """The one DQS band set (api/services/scoring.py). ``pass``/``warn`` are the
+    pre-calibration names of target/warning, still accepted."""
+    target: float = Field(DEFAULT_THRESHOLDS["target"], ge=0, le=100, validation_alias=AliasChoices("target", "pass"))
+    warning: float = Field(DEFAULT_THRESHOLDS["warning"], ge=0, le=100, validation_alias=AliasChoices("warning", "warn"))
+    critical: float = Field(DEFAULT_THRESHOLDS["critical"], ge=0, le=100)
 
 
 class ScoringConfig(BaseModel):
     dimension_weights: DimensionWeights
     module_weights: dict[str, float] = {}
     thresholds: ScoringThresholds = ScoringThresholds()
+    # per-severity rule weight and failure-rate multiplier, and the critical-cap tolerance;
+    # unset keys keep the defaults in api/services/scoring.py
+    severity_weights: dict[str, Annotated[float, Field(gt=0)]] = {}  # 0 would leave a dimension with no denominator
+    severity_multipliers: dict[str, Annotated[float, Field(ge=1)]] = {}
+    critical_tolerance: dict[str, Annotated[float, Field(ge=0)]] = {}
 
 
 @router.get("/scoring", dependencies=[Depends(require_permission("view"))])
 async def get_scoring(db: AsyncSession = Depends(get_db), tenant: TenantDep = Depends(get_tenant)):
     """The effective scoring config: dimension weights normalised to 1, module weights
     (unlisted modules weigh 1) and thresholds, with the defaults filled in."""
-    from api.services.scoring import DEFAULT_THRESHOLDS, DEFAULT_WEIGHTS, scoring_config
     raw = (await db.execute(text("SELECT dqs_weights FROM tenants WHERE id = :tid"),
                             {"tid": str(tenant.id)})).scalar() or {}
-    return {**scoring_config(raw),
-            "defaults": {"dimension_weights": DEFAULT_WEIGHTS, "module_weights": {}, "thresholds": DEFAULT_THRESHOLDS}}
+    return {**scoring_config(raw), "defaults": scoring_config({})}
 
 
 @router.put("/scoring", dependencies=[Depends(require_permission("manage_settings"))])
@@ -229,13 +234,16 @@ async def put_scoring(body: ScoringConfig, db: AsyncSession = Depends(get_db),
         raise HTTPException(status_code=422, detail=f"Dimension weights must be >= 0 and sum to 100, got {sum(w.values())}")
     if any(v < 0 for v in body.module_weights.values()):
         raise HTTPException(status_code=422, detail="Module weights must be >= 0")
-    if body.thresholds.warn > body.thresholds.pass_:
-        raise HTTPException(status_code=422, detail="The warn threshold must not exceed the pass threshold")
+    t = body.thresholds
+    if not t.critical <= t.warning <= t.target:
+        raise HTTPException(status_code=422, detail="Thresholds must satisfy critical <= warning <= target")
     await db.execute(text(f"SET app.tenant_id = \'{str(tenant.id)}\'"))
     await db.execute(
         text("UPDATE tenants SET dqs_weights = COALESCE(dqs_weights, '{}'::jsonb) || CAST(:w AS jsonb) WHERE id = :tid"),
         {"w": json.dumps({**w, "module_weights": body.module_weights,
-                          "thresholds": body.thresholds.model_dump(by_alias=True)}), "tid": str(tenant.id)},
+                          "thresholds": t.model_dump(),
+                          **body.model_dump(include={"severity_weights", "severity_multipliers",
+                                                     "critical_tolerance"})}), "tid": str(tenant.id)},
     )
     await db.commit()
     return {"status": "ok"}

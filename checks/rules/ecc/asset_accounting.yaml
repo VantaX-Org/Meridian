@@ -165,7 +165,7 @@ rules:
 - id: AA011
   field: ANLZ.PRCTR
   check_class: null_check
-  severity: high
+  severity: medium
   dimension: completeness
   applies_when:
     ANLZ.KOSTL:

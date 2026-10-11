@@ -136,6 +136,8 @@ export interface InstrumentPanelData {
   severity: SeverityTotals;
   trendPoints: ChartPoint[];
   dimensionPoints: ChartPoint[];
+  /** Dimensions no module measured in this run; listed under the bar instead of drawn at 100. */
+  unmeasured?: string[];
   heatmapCells: HeatmapCell[];
   heatmapRows: string[];
   heatmapCols: string[];
@@ -148,7 +150,7 @@ const SEVERITY_ORDER: (keyof SeverityTotals)[] = ["critical", "high", "medium", 
 
 /** Spec 7.1's instrument panel: Hero DQS, DQS-over-runs, six dimensions, object readiness grid. */
 export function InstrumentPanel({
-  dqs, delta: dqsDelta, previousLabel, severity, trendPoints, dimensionPoints, heatmapCells, heatmapRows, heatmapCols,
+  dqs, delta: dqsDelta, previousLabel, severity, trendPoints, dimensionPoints, unmeasured = [], heatmapCells, heatmapRows, heatmapCols,
   versionId, onTrendPointClick, onHeatmapCellClick,
 }: InstrumentPanelData) {
   return (
@@ -171,6 +173,9 @@ export function InstrumentPanel({
       {trendPoints.length > 0 && <Line data={trendPoints} onPointClick={onTrendPointClick} height={160} draw />}
 
       {dimensionPoints.length > 0 && <Bar data={dimensionPoints} height={200} dqsThreshold={60} draw />}
+      {unmeasured.length > 0 && (
+        <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Not measured: {unmeasured.join(", ")}</p>
+      )}
 
       {heatmapCells.length > 0 && (
         <Heatmap rows={heatmapRows} cols={heatmapCols} cells={heatmapCells} onPointClick={onHeatmapCellClick} cellSize={24} draw />

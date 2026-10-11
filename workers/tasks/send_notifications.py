@@ -110,8 +110,7 @@ def _load_version_data(session: Session, version_id: str, tenant_id: str) -> dic
     report_json = row[2] or {}
 
     # Compute overall DQS
-    scores = [m.get("composite_score", 0) for m in dqs_summary.values()] if isinstance(dqs_summary, dict) else []
-    overall_dqs = round(sum(scores) / len(scores), 1) if scores else 0
+    overall_dqs = _overall(dqs_summary)
 
     return {
         "dqs_summary": dqs_summary,
@@ -202,7 +201,8 @@ def _build_email_content(config: dict, version_data: dict, trigger: str) -> tupl
     """Build subject and HTML body for notification email."""
     tenant_name = config.get("tenant_name", "Meridian")
     critical_count = version_data.get("critical_count", 0)
-    overall_dqs = version_data.get("overall_dqs", 0)
+    overall_dqs = version_data.get("overall_dqs")
+    overall_dqs = "Not measured" if overall_dqs is None else overall_dqs
 
     if trigger == "critical_found":
         subject = f"Meridian DQ Alert — {critical_count} Critical findings"
@@ -406,7 +406,8 @@ def _send_teams_card(config: dict, version_data: dict):
                         {
                             "type": "FactSet",
                             "facts": [
-                                {"title": "Overall DQS", "value": str(version_data.get("overall_dqs", 0))},
+                                {"title": "Overall DQS", "value": str(version_data.get("overall_dqs") if version_data.get("overall_dqs") is not None
+                                                              else "Not measured")},
                                 {"title": "Critical findings", "value": str(version_data.get("critical_count", 0))},
                                 {"title": "Readiness status", "value": readiness.get("overall_status", "unknown")},
                             ],
@@ -592,7 +593,8 @@ def _channels(session: Session, where: str, params: dict | None = None) -> list[
 
 
 def _overall(dqs_summary) -> float | None:
-    scores = [m.get("composite_score", 0) for m in dqs_summary.values()] if isinstance(dqs_summary, dict) else []
+    scores = ([m.get("composite_score") for m in dqs_summary.values() if m.get("composite_score") is not None]
+              if isinstance(dqs_summary, dict) else [])
     return round(sum(scores) / len(scores), 1) if scores else None
 
 

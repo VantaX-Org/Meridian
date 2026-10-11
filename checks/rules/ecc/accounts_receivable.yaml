@@ -417,6 +417,7 @@ rules:
   - id: AR019
     field: KNKK.KLIMK
     check_class: null_check
+    zero_is_blank: false  # KLIMK 0 is a deliberate zero credit allowance (cash / prepayment customers)
     severity: medium
     dimension: completeness
     message: Credit limit missing — customer has effectively unlimited credit exposure
