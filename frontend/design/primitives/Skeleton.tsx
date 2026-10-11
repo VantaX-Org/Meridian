@@ -8,7 +8,7 @@ export function Skeleton({ width = "100%", height = 16 }: { width?: number | str
         overflow: "hidden",
         width,
         height,
-        background: "var(--m-line)",
+        background: "var(--m-sheet-sunken)",
         borderRadius: "var(--m-radius-control)",
       }}
     >

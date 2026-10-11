@@ -3,6 +3,7 @@
 // frontend/design/charts/Bar.tsx
 import { BarChart, Bar as RBar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { chartTheme, type ChartPoint } from "./theme";
+import { ChartTooltip } from "./Tooltip";
 import { mMotion, reducedMotion } from "../tokens";
 
 export function Bar({
@@ -21,13 +22,15 @@ export function Bar({
   const animate = draw && !reducedMotion();
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" barSize={20} barGap={8}>
-        <CartesianGrid stroke={chartTheme.grid} horizontal={false} />
-        <XAxis type="number" stroke={chartTheme.axis} fontSize={12} />
-        <YAxis type="category" dataKey="x" stroke={chartTheme.axis} fontSize={12} />
-        <Tooltip />
+      <BarChart data={data} layout="vertical" barSize={20} barCategoryGap="40%">
+        <CartesianGrid stroke={chartTheme.grid} strokeDasharray="none" horizontal={false} />
+        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <YAxis type="category" dataKey="x" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <Tooltip content={<ChartTooltip />} cursor={false} />
         <RBar
           dataKey="y"
+          radius={[0, 3, 3, 0]}
+          activeBar={{ fill: chartTheme.accentHover }}
           onClick={(_, index) => onPointClick?.(data[index])}
           isAnimationActive={animate}
           animationDuration={mMotion.draw}

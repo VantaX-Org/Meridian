@@ -13,7 +13,7 @@ export default function LicenceErrorPage() {
       <div className={authActionsClass}>
         <Button variant="secondary" className="h-10 flex-1"
           render={<a href="https://meridian-hq.vantax.co.za" target="_blank" rel="noopener noreferrer">Open Meridian HQ</a>} />
-        <Button className="h-10 flex-1" onClick={() => window.location.assign("/")}>Retry</Button>
+        <Button className="h-10 flex-1" onClick={() => window.location.replace(window.location.origin)}>Retry</Button>
       </div>
     </AuthFrame>
   );

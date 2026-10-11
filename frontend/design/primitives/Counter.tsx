@@ -12,11 +12,12 @@ export function Counter({
   value,
   versionId,
   decimals = 0,
-  size = 72,
+  size,
 }: {
   value: number | null;
   versionId?: string;
   decimals?: 0 | 1;
+  /** Pixel size override; defaults to the hero token (56/60). */
   size?: number;
 }) {
   // Start at 0 (not `value`) so the first paint never flashes the final
@@ -57,12 +58,16 @@ export function Counter({
     return () => cancelAnimationFrame(raf);
   }, [value, versionId]);
 
+  const type = {
+    fontSize: size ?? "var(--m-text-hero)",
+    lineHeight: size ? undefined : "var(--m-leading-hero)",
+    letterSpacing: "var(--m-tracking-tight)",
+    fontWeight: 600,
+  };
+
   if (value === null) {
     return (
-      <span
-        aria-label="No data"
-        style={{ fontSize: size, fontWeight: 600, color: "var(--m-ink-3)", fontVariantNumeric: "tabular-nums" }}
-      >
+      <span aria-label="No data" className="m-numeric" style={{ ...type, color: "var(--m-ink-3)" }}>
         —
       </span>
     );
@@ -71,7 +76,8 @@ export function Counter({
   return (
     <span
       aria-label={value.toFixed(decimals)}
-      style={{ fontSize: size, fontWeight: 600, color: "var(--m-ink)", fontVariantNumeric: "tabular-nums" }}
+      className="m-numeric"
+      style={{ ...type, color: "var(--m-ink)" }}
     >
       {display.toFixed(decimals)}
     </span>

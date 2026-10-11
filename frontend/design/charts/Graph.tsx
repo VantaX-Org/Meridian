@@ -104,13 +104,15 @@ export function Graph(props: {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onNodeClick?: (id: string) => void;
+  /** Id of the master (golden) node, drawn larger in `--m-ink`; defaults to the largest cluster node. */
+  masterId?: string;
   width?: number;
   height?: number;
 }) {
   const { nodes, edges, onNodeClick, width = 600, height = 400 } = props;
+  const masterId = props.masterId ?? [...nodes].sort((a, b) => b.size - a.size)[0]?.id;
   const points = useMemo(() => layoutGraph(nodes, edges, { width, height }), [nodes, edges, width, height]);
   const byId = useMemo(() => new Map(points.map((p) => [p.id, p])), [points]);
-  const sizeById = useMemo(() => new Map(nodes.map((n) => [n.id, n.size])), [nodes]);
 
   return (
     <svg width={width} height={height} role="img" aria-label="Duplicate cluster graph">
@@ -120,9 +122,9 @@ export function Graph(props: {
         if (!a || !b) return null;
         return (
           <g key={`${e.source}-${e.target}-${i}`}>
-            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--m-line)" />
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--m-line-strong)" strokeWidth={Math.min(3, Math.max(1, Math.round((e.weight ?? 0.34) * 3)))} />
             {e.label && (
-              <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} fontSize={10}>
+              <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-3)">
                 {e.label}
               </text>
             )}
@@ -131,8 +133,8 @@ export function Graph(props: {
       })}
       {points.map((p) => (
         <g key={p.id} onClick={() => onNodeClick?.(p.id)} style={{ cursor: onNodeClick ? "pointer" : "default" }}>
-          <circle cx={p.x} cy={p.y} r={4 + Math.sqrt(sizeById.get(p.id) ?? 1)} fill="var(--m-accent)" />
-          <text x={p.x} y={p.y - 8} fontSize={10} textAnchor="middle">
+          <circle cx={p.x} cy={p.y} r={p.id === masterId ? 6 : 4} fill={p.id === masterId ? "var(--m-ink)" : "var(--m-viz-1)"} />
+          <text x={p.x} y={p.y - 10} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-2)" textAnchor="middle">
             {p.id}
           </text>
         </g>

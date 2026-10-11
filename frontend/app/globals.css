@@ -245,6 +245,9 @@
   .m-card-sm { padding: 12px; }
   .m-card-lg { padding: 24px; }
 
+  .m-stat { background: var(--m-sheet); border-radius: var(--m-radius-tile); padding: 16px 20px; min-width: 160px; box-shadow: var(--m-elev-1); }
+  .m-stat-link:hover { box-shadow: var(--m-elev-2); }
+
   .m-pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--m-radius-pill); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); font-weight: 500; }
   .m-pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .m-pill-neutral { background: var(--m-sheet-raised); color: var(--m-ink-2); border: 1px solid var(--m-line); }
@@ -263,10 +266,10 @@
   .m-tabs-list { position: relative; display: flex; border-bottom: 1px solid var(--m-line); }
   .m-tab { height: 36px; padding: 0 2px; margin-right: 20px; font-size: var(--m-text-body); line-height: var(--m-leading-body); font-weight: 500; color: var(--m-ink-3); cursor: pointer; }
   .m-tab:hover { color: var(--m-ink); }
+  .m-tab:focus-visible { outline: none; box-shadow: var(--m-elev-focus); border-radius: var(--m-radius-control); }
   .m-tab[data-selected] { color: var(--m-ink); font-weight: 600; }
   .m-tab-count { margin-left: 6px; }
   .m-tab-indicator { position: absolute; left: 0; bottom: -1px; height: 2px; border-radius: 1px; background: var(--m-accent); }
-  .m-tab:focus-visible { outline: none; box-shadow: var(--m-elev-focus); border-radius: var(--m-radius-control); }
 
   .m-mono { font-family: var(--m-font-mono); }
   .m-mono-inline { color: var(--m-ink); font-size: var(--m-text-meta); line-height: var(--m-leading-meta); background: var(--m-sheet-sunken); padding: 1px 4px; border-radius: 4px; }

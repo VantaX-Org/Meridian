@@ -5,6 +5,7 @@ import type { DotItemDotProps } from "recharts";
 import {
   RadarChart, Radar as RRadar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip,
 } from "recharts";
+import { ChartTooltip } from "./Tooltip";
 import { chartTheme, type ChartPoint } from "./theme";
 
 export function Radar({ data, onPointClick }: { data: ChartPoint[]; onPointClick?: (point: ChartPoint) => void }) {
@@ -12,14 +13,13 @@ export function Radar({ data, onPointClick }: { data: ChartPoint[]; onPointClick
     <ResponsiveContainer width="100%" height={280}>
       <RadarChart data={data}>
         <PolarGrid stroke={chartTheme.grid} />
-        <PolarAngleAxis dataKey="x" stroke={chartTheme.axis} fontSize={12} />
-        <PolarRadiusAxis stroke={chartTheme.axis} fontSize={12} />
-        <Tooltip />
+        <PolarAngleAxis dataKey="x" tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <PolarRadiusAxis axisLine={false} tickLine={false} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+        <Tooltip content={<ChartTooltip />} />
         <RRadar
           dataKey="y"
           stroke={chartTheme.series[0]}
-          fill={chartTheme.series[0]}
-          fillOpacity={0.2}
+          fill={chartTheme.area}
           dot={(dotProps: DotItemDotProps) => (
             <circle
               key={dotProps.index}

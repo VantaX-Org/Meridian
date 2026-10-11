@@ -73,3 +73,29 @@ describe("Waterfall", () => {
     }
   });
 });
+
+import { ChartTooltip } from "./Tooltip";
+import { chartTheme } from "./theme";
+
+describe("chart tooltip and theme", () => {
+  it("chartTheme exposes the new tokens", () => {
+    expect(chartTheme.area).toBe("var(--m-viz-area)");
+    expect(chartTheme.tooltipBg).toBe("var(--m-viz-tooltip-bg)");
+    expect(chartTheme.threshold).toBe("var(--m-ink-2)");
+  });
+
+  it("ChartTooltip renders label and numeric value, nothing when inactive", () => {
+    const { container, rerender } = render(<ChartTooltip active payload={[{ name: "DQS", value: 91 }]} label="Run 3" />);
+    expect(screen.getByText("Run 3")).toBeInTheDocument();
+    expect(screen.getByText("91")).toHaveClass("m-numeric");
+    rerender(<ChartTooltip active={false} payload={[{ value: 1 }]} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("Heatmap cells use the soft tone with a centred dot", () => {
+    render(<Heatmap rows={["a"]} cols={["b"]} cells={[{ row: "a", col: "b", value: "at-risk" }]} />);
+    const btn = screen.getByLabelText("a b: at-risk");
+    expect(btn.style.background).toContain("--m-at-risk-soft");
+    expect(btn.querySelector("span")?.getAttribute("style")).toContain("--m-at-risk");
+  });
+});
