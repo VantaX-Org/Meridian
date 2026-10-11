@@ -32,7 +32,7 @@ export function RunSelector({ runs }: { runs: RunOption[] }) {
         value={current}
         onValueChange={onChange}
         options={runs.map((r) => ({ value: r.id, label: r.label }))}
-        className="flex h-full items-center justify-between gap-2 border-0 bg-transparent text-[13px] leading-[18px] font-medium max-lg:w-4 max-lg:[&>span]:hidden lg:w-[160px] xl:w-[200px]"
+        className="flex h-full items-center justify-between gap-2 border-0 bg-transparent text-[13px] leading-[18px] font-medium max-lg:w-4 max-lg:[&>span]:hidden lg:w-[160px] xl:w-[240px]"
       />
     </label>
   );

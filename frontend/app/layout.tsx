@@ -35,7 +35,15 @@ export default function RootLayout({
   return (
     <AuthProvider>
       {/* Font variables sit on <html> so tokens.css (:root) can resolve --m-font-*-loaded. */}
-      <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
+      <html lang="en" suppressHydrationWarning className={`${sans.variable} ${display.variable} ${mono.variable}`}>
+        <head>
+          {/* Sets data-theme before first paint; keys match hooks/use-theme.ts. "system" leaves it to prefers-color-scheme in tokens.css, but is resolved here too so dark users never flash light. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `try{var t=localStorage.getItem("aurora:theme")||"light";if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`,
+            }}
+          />
+        </head>
         <body className="font-sans antialiased">
           <Providers>
             {children}

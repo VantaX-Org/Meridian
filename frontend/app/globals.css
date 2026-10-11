@@ -163,7 +163,7 @@
   [cmdk-overlay] { position: fixed; inset: 0; z-index: 50; }
   [cmdk-dialog] {
     box-shadow: var(--m-elev-3);
-    position: fixed; z-index: 51; top: 15vh; left: 50%; transform: translateX(-50%);
+    position: fixed; z-index: 51; top: 15vh; left: 0; right: 0; margin-inline: auto;
     width: min(640px, calc(100vw - 32px)); overflow: hidden;
     background: var(--m-sheet); border-radius: var(--m-radius-sheet); color: var(--m-ink);
   }

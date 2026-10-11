@@ -23,7 +23,15 @@ const FINISHED = new Set(["complete", "agents_complete", "ai_enriched"]);
 function CommandPaletteSlot() {
   const groups = useVisibleNav();
   const { role } = useRole();
-  const items = groups.flatMap((g) => flattenNav(g.items).map((item) => ({ label: item.label, href: resolveNavHref(item.href, role) })));
+  const items = groups.flatMap((g) =>
+    flattenNav(g.items).map((item) => ({
+      label: item.label,
+      href: resolveNavHref(item.href, role),
+      group: g.group,
+      icon: <item.icon size={16} aria-hidden />,
+      shortcut: item.shortcut,
+    })),
+  );
   return <CommandPalette items={items} />;
 }
 

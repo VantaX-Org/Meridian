@@ -8,6 +8,11 @@ import { Search } from "lucide-react";
 const noSubscribe = () => () => {};
 const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
 const DEFAULT_GROUP = "Pages";
+// SAP identifiers (check IDs like MM-001, TABLE.FIELD, run IDs like run_ab12) render in the mono face, spec 5.5.
+const SAP_ID = /\b([A-Z]{2,}-\d+|[A-Z][A-Z0-9_]+\.[A-Z][A-Z0-9_]+|run_[a-z0-9]+)\b/g;
+function withMono(label: string): ReactNode[] {
+  return label.split(SAP_ID).map((part, i) => (i % 2 ? <span key={i} className="m-mono">{part}</span> : part));
+}
 
 export interface CommandItem {
   label: string;
@@ -80,7 +85,7 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
                     }}
                   >
                     {item.icon}
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className="flex-1 truncate">{withMono(item.label)}</span>
                     {item.shortcut && <kbd className="m-kbd">{item.shortcut}</kbd>}
                   </Command.Item>
                 ))}

@@ -1,10 +1,17 @@
 "use client";
 
 import { Menu } from "@base-ui/react/menu";
-import { LogOut } from "lucide-react";
+import { Check, LogOut } from "lucide-react";
 import { Mono, Pill } from "@/design";
 import { useAuth } from "@/context/auth-context";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Monitor, Moon, Sun } from "lucide-react";
+import { useAuroraPrefs, type Theme } from "@/hooks/use-theme";
+
+const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "system", label: "System", icon: Monitor },
+  { value: "dark", label: "Dark", icon: Moon },
+];
 
 function initials(name: string, email: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -15,6 +22,7 @@ function initials(name: string, email: string): string {
 /** Top-bar account menu: identity, theme control, sign out. */
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useAuroraPrefs();
   if (!user) return null;
   return (
     <Menu.Root>
@@ -34,10 +42,22 @@ export function UserMenu() {
               <span><Pill tone="neutral">{user.role}</Pill></span>
             </div>
             <div role="separator" style={{ height: 1, margin: "4px 0", background: "var(--m-line)" }} />
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>Theme</span>
-              <ThemeToggle />
-            </div>
+            <div className="px-3 pt-2 text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>Theme</div>
+            <Menu.RadioGroup value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+              {THEMES.map(({ value, label, icon: Icon }) => (
+                <Menu.RadioItem
+                  key={value}
+                  value={value}
+                  closeOnClick={false}
+                  className="m-motion-colors flex cursor-pointer items-center gap-2 px-3 text-[13px] leading-[18px] data-[highlighted]:bg-[var(--m-sheet-raised)]"
+                  style={{ height: 32, color: "var(--m-ink)", borderRadius: "var(--m-radius-control)" }}
+                >
+                  <Icon size={14} aria-hidden style={{ color: "var(--m-ink-3)" }} />
+                  <span className="flex-1">{label}</span>
+                  <Menu.RadioItemIndicator><Check size={14} aria-hidden style={{ color: "var(--m-accent)" }} /></Menu.RadioItemIndicator>
+                </Menu.RadioItem>
+              ))}
+            </Menu.RadioGroup>
             <div role="separator" style={{ height: 1, margin: "4px 0", background: "var(--m-line)" }} />
             <Menu.Item
               onClick={logout}

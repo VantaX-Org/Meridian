@@ -37,7 +37,7 @@ export function JobTray() {
                 <span className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>{job.label}</span>
                 <span className="m-numeric text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.percent}%</span>
               </div>
-              <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.status}</span>
+              {job.status !== "running" && <span className="text-[12px] leading-[16px]" style={{ color: "var(--m-ink-3)" }}>{job.status}</span>}
               <div
                 role="progressbar"
                 aria-label={`${job.label} progress`}
