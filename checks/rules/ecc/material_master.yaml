@@ -106,7 +106,7 @@ rules:
 - id: MM007
   field: MARA.MATKL
   check_class: null_check
-  severity: high
+  severity: medium
   dimension: completeness
   message: Material group is required for reporting and procurement
   why_it_matters: Material group (MATKL) is used for spend analysis, procurement reporting, and automatic source determination.
@@ -1228,6 +1228,11 @@ rules:
 - id: MM104
   field: MARC.PERKZ
   check_class: null_check
+  applies_when:
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
   severity: low
   dimension: completeness
   message: Period indicator is missing
@@ -1277,7 +1282,7 @@ rules:
 - id: MM132
   field: MVKE.KTGRM
   check_class: null_check
-  severity: medium
+  severity: low
   dimension: completeness
   message: Account assignment group is missing
   why_it_matters: Account assignment group (MVKE.KTGRM) is not maintained. This field supports downstream processes and reporting
@@ -2965,7 +2970,7 @@ rules:
   field: MARC.XCHPF
   check_class: cross_field_check
   fail_when: '`MARC.XCHPF`.fillna('''') != `MARA.XCHPF`.fillna('''')'
-  severity: medium
+  severity: low
   dimension: consistency
   message: Batch management flag differs between client level and plant level
   why_it_matters: At the standard batch level (material or client), MM02 keeps MARC-XCHPF equal to MARA-XCHPF. A
@@ -2980,7 +2985,7 @@ rules:
     steps:
     - op: copy
       from: MARA.XCHPF
-    confidence: medium
+    confidence: low
 - id: MM234
   field: MARC.PLIFZ
   check_class: cross_field_check
@@ -3146,6 +3151,15 @@ rules:
 - id: MM305
   field: MARC.WERKS
   check_class: exists_check
+  applies_when:
+    MARA.MTART:
+      not_in:
+      - NLAG
+      - UNBW
+      - DIEN
+      - LEIH
+      - PIPE
+      - INTR
   fields:
   - MARC.MATNR
   - MARC.WERKS
@@ -3247,7 +3261,7 @@ rules:
   field: MLAN.TAXM1
   check_class: null_check
   grain: MLAN
-  severity: high
+  severity: medium
   dimension: completeness
   message: Material tax classification 1 (TAXM1) is blank
   why_it_matters: TAXM1 is the first tax classification SD reads for the tax condition of the departure country.
@@ -3261,7 +3275,7 @@ rules:
   field: MLAN.TAXIM
   check_class: null_check
   grain: MLAN
-  severity: medium
+  severity: low
   dimension: completeness
   message: Tax indicator for material (purchasing, TAXIM) is blank
   why_it_matters: TAXIM is the tax indicator the purchase order proposes for the material; it is checked against TMKM1.
@@ -4716,7 +4730,7 @@ rules:
     MARC.BESKZ:
     - F
   fail_when: '`MARC.DZEIT` > 0'
-  severity: medium
+  severity: low
   dimension: consistency
   message: In-house production time is set for an externally procured material
   why_it_matters: The in-house production time (DZEIT) is read for in-house production (procurement type E). A value on an
@@ -4806,7 +4820,7 @@ rules:
     MARC.BESKZ:
     - E
     - X
-  severity: medium
+  severity: low
   dimension: completeness
   message: Production scheduling profile is missing though the material is produced in-house
   why_it_matters: The production scheduling profile sets release, scheduling and confirmation defaults for production orders.
@@ -5634,12 +5648,13 @@ rules:
   target_when:
     SPRAS:
     - E
-  severity: high
+  severity: low
   dimension: completeness
   message: Material has no English description
   why_it_matters: SAP shows the description in the logon language and falls back to nothing when that language has no text.
-    English is the language the integration, EDI and reporting layers read, so a material without an English text appears
-    blank there.
+    Where English is the language integration, EDI and reporting layers read, a material without an English text appears
+    blank there. A system whose master language is not English is valid without English texts, so this is a low-severity
+    hint; a material with no description in any language is MM306.
   rule_authority: best_practice
   sap_impact: Search help, purchase orders, outbound documents and interfaces show a blank material text.
   fix_map:
@@ -5830,7 +5845,7 @@ rules:
   check_class: cross_field_check
   grain: MCH1
   fail_when: '`MARA.XCHPF`.isna()'
-  severity: high
+  severity: medium
   dimension: consistency
   message: Batch exists for a material that is not batch managed
   why_it_matters: Batches are created only for materials with the batch management indicator. A batch under a material without
@@ -6478,8 +6493,15 @@ rules:
   field: MARC.MATNR
   check_class: exists_check
   applies_when:
+    MARA.MTART:
+    - FERT
+    - HALB
     MARC.BESKZ:
     - E
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
   fields:
   - MARC.MATNR
   - MARC.WERKS
@@ -6501,8 +6523,15 @@ rules:
   field: MARC.MATNR
   check_class: exists_check
   applies_when:
+    MARA.MTART:
+    - FERT
+    - HALB
     MARC.BESKZ:
     - E
+    MARC.DISMM:
+      populated: true
+      not_in:
+      - ND
   fields:
   - MARC.MATNR
   - MARC.WERKS
@@ -7761,7 +7790,7 @@ rules:
 - id: MM604
   field: MARA.NTGEW
   check_class: cross_field_check
-  fail_when: (`MARA.MEINS` == `MARA.GEWEI`) & `MARA.NTGEW`.notna() & (`MARA.NTGEW` != 1)
+  fail_when: (`MARA.MEINS` == `MARA.GEWEI`) & (`MARA.NTGEW` > 0) & ((`MARA.NTGEW` - 1).abs() > 0.0005)
   severity: high
   dimension: accuracy
   message: Net weight of a weight-based material is not 1 in its own unit
@@ -9877,7 +9906,8 @@ rules:
   target_fields:
   - MATNR
   - WERKS
-  severity: high
+  severity: low
+  baseline: s4_target
   dimension: consistency
   message: In-house produced material has no production version
   why_it_matters: S/4HANA selects BOM and routing only through production versions (MKAL); selection by order quantity or
@@ -12811,8 +12841,13 @@ rules:
   field: EINE.APLFZ
   check_class: cross_field_check
   grain: EINE
+  applies_when:
+    EINE.ESOKZ:
+      not_in:
+      - '2'
+      - P
   fail_when: ~(`EINE.APLFZ`.fillna(0) > 0)
-  severity: medium
+  severity: low
   dimension: completeness
   message: Info record has no planned delivery time
   why_it_matters: The planned delivery time (APLFZ) in the info record overrides the material's and drives MRP dates for this

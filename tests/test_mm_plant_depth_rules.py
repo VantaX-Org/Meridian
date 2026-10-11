@@ -160,7 +160,7 @@ def test_set_fix_clears_the_finding(rid, field, value):
 
 
 def test_retrofitted_auto_fix():
-    expected = {"MM233": "medium", "MM380": "medium", "MM399": "medium", "MM397": "medium", "MM379": "high",
+    expected = {"MM233": "low", "MM380": "medium", "MM399": "medium", "MM397": "medium", "MM379": "high",
                 "MM394": "medium", "MM391": "medium", "MM393": "low", "MM094": "medium", "MM496": "medium"}
     assert {rid: RULES[rid]["auto_fix"]["confidence"] for rid in expected} == expected
     assert RULES["MM233"]["auto_fix"]["steps"] == [{"op": "copy", "from": "MARA.XCHPF"}]

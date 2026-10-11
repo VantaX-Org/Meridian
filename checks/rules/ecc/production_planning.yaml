@@ -1128,7 +1128,7 @@ rules:
     MARC.BESKZ: [E]
     MARC.SOBSL: {blank: true}
     MARC.DISMM: {populated: true, not_in: [ND]}
-  severity: high
+  severity: medium
   dimension: completeness
   message: In-house-produced material has no routing in the plant
   why_it_matters: MRP plans in-house production for the material; without a routing, orders have no operations,
@@ -1156,7 +1156,7 @@ rules:
     MARC.BESKZ: [E]
     MARC.SOBSL: {blank: true}
     MARC.DISMM: {populated: true, not_in: [ND]}
-  severity: high
+  severity: medium
   dimension: completeness
   message: In-house-produced material has no production BOM in the plant
   why_it_matters: Without a production or universal BOM, MRP creates no dependent requirements for components and

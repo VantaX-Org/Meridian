@@ -102,7 +102,7 @@ rules:
   check_class: null_check
   applies_when:
     CSKS.DATBI: *id001
-  severity: high
+  severity: medium
   dimension: completeness
   message: Profit centre is mandatory on a cost centre
   why_it_matters: The profit centre is the derivation target for profit-centre accounting. Costs posted without one land on
@@ -1777,7 +1777,7 @@ rules:
   check_class: null_check
   applies_when:
     CSKT.SPRAS:
-    - EN
+      populated: true
     CSKT.DATBI:
     - '99991231'
   severity: medium

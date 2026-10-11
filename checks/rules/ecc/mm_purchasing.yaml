@@ -172,8 +172,9 @@ rules:
 - id: PUR013
   field: EKPO.MENGE
   check_class: null_check
-  zero_is_blank: false  # outline agreements (EKKO.BSTYP K/L) carry the target quantity in KTMNG, MENGE stays 0
   applies_when:
+    EKPO.BSTYP:
+    - F
     EKPO.PSTYP:
       not_in:
       - '1'

@@ -395,7 +395,7 @@ rules:
     - X
     PRPS.LOEVM:
       blank: true
-  severity: high
+  severity: medium
   dimension: completeness
   message: Account assignment element has no profit centre
   why_it_matters: Costs and revenues post to the profit centre of the account assignment element. Without one they land on
@@ -838,7 +838,7 @@ rules:
   field: AUFK.PRCTR
   check_class: null_check
   applies_when: *id001
-  severity: medium
+  severity: low
   dimension: completeness
   message: Active internal order has no profit centre
   why_it_matters: The profit centre of the order receives its costs in profit centre accounting. Without it costs fall on
@@ -2007,7 +2007,7 @@ rules:
   applies_when:
     PROJ.LOEVM:
       blank: true
-  severity: medium
+  severity: low
   dimension: completeness
   message: Active project definition has no profit centre
   why_it_matters: New WBS elements take the profit centre from the project definition. A project without a profit centre
