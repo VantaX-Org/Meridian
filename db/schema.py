@@ -23,6 +23,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -678,6 +679,7 @@ class SAPSystem(Base):
     # Source/target pairing (migration 075)
     role = Column(Text, nullable=False, server_default="source")  # source | target
     target_system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="SET NULL"), nullable=True)
+    timezone = Column(Text, nullable=True)  # IANA zone for SAP dates (migration 079); NULL = Africa/Johannesburg
 
     credentials = relationship("SystemCredential", back_populates="system", cascade="all, delete-orphan")
     sync_profiles = relationship("SyncProfile", back_populates="system", cascade="all, delete-orphan")
@@ -1059,6 +1061,89 @@ class ProcessModelVersion(Base):
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
 
     __table_args__ = (UniqueConstraint("model_id", "version_no", name="uq_process_model_versions"),)
+
+
+PD_STATUSES: tuple[str, ...] = ("queued", "waiting", "extracting", "building", "mining", "completed", "failed")
+PD_COVERAGE: tuple[str, ...] = ("discovered", "partial", "reference")
+
+
+class ProcessDiscoveryRun(Base):
+    """One process-discovery run per (system, L1) — migration 079, spec §2.1."""
+    __tablename__ = "process_discovery_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    system_id = Column(UUID(as_uuid=True), ForeignKey("sap_systems.id", ondelete="CASCADE"), nullable=False)
+    l1 = Column(String(8), nullable=False)
+    mode = Column(String(12), nullable=False)
+    status = Column(String(16), nullable=False)
+    coverage = Column(String(12), nullable=False, server_default="reference")
+    window_from = Column(Date, nullable=True)
+    window_to = Column(Date, nullable=True)
+    watermark = Column(DateTime(timezone=True), nullable=True)
+    extraction_version_id = Column(UUID(as_uuid=True), nullable=True)  # analysis_versions.id, no FK (spec §2.1)
+    job_id = Column(String(64), nullable=True)
+    filters = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    stats = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    model = Column(JSONB, nullable=True)
+    error = Column(Text, nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_pdr_tenant_system_l1", "tenant_id", "system_id", "l1", text("started_at DESC")),
+    )
+
+
+class ProcessEvent(Base):
+    """One event in a case — migration 079, spec §2.1. HTR/SFX case_id and resource are hashed."""
+    __tablename__ = "process_events"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False)
+    system_id = Column(UUID(as_uuid=True), nullable=False)
+    l1 = Column(String(8), nullable=False)
+    case_type = Column(String(32), nullable=False)
+    case_id = Column(String(160), nullable=False)
+    activity = Column(String(64), nullable=False)
+    l5_id = Column(String(120), nullable=True)
+    ts = Column(DateTime(timezone=True), nullable=False)
+    ts_precision = Column(String(6), nullable=False)
+    seq = Column(SmallInteger, nullable=False, server_default="0")
+    resource = Column(String(64), nullable=True)
+    automated = Column(Boolean, nullable=True)
+    doc_type = Column(String(16), nullable=True)
+    org = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    object_refs = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    attributes = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    source_table = Column(String(40), nullable=False)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("process_discovery_runs.id", ondelete="CASCADE"), nullable=False)
+
+    __table_args__ = (
+        Index("ix_pe_case", "tenant_id", "system_id", "l1", "case_type", "case_id", "ts", "seq", "id"),
+        Index("ix_pe_activity", "tenant_id", "system_id", "l1", "activity"),
+        Index("ix_pe_ts", "tenant_id", "system_id", "l1", "ts"),
+        Index("ix_pe_run", "run_id"),
+    )
+
+
+class ProcessDiscoveryVariant(Base):
+    """Mined variant per (run, case type) — migration 079. Spec calls it process_variants; renamed (clash)."""
+    __tablename__ = "process_discovery_variants"
+
+    run_id = Column(UUID(as_uuid=True), ForeignKey("process_discovery_runs.id", ondelete="CASCADE"),
+                    primary_key=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False)
+    case_type = Column(String(32), primary_key=True)
+    variant_hash = Column(String(32), primary_key=True)  # char(32) in DDL
+    activities = Column(ARRAY(Text), nullable=False)
+    case_count = Column(Integer, nullable=False)
+    share = Column(Numeric(7, 6), nullable=False)
+    median_seconds = Column(BigInteger, nullable=True)
+    p90_seconds = Column(BigInteger, nullable=True)
+    fitness = Column(Numeric(5, 4), nullable=True)
+    sample_case_ids = Column(ARRAY(Text), nullable=False)
 
 
 class ProcessVariant(Base):
