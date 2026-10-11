@@ -31,7 +31,7 @@ describe("MigrationPage", () => {
     });
     renderWithQuery(<MigrationPage />);
     expect(await screen.findByText("Wave 1")).toBeInTheDocument();
-    expect(screen.getByText("At risk")).toBeInTheDocument();
+    expect(screen.getAllByText("At risk")[0]).toBeInTheDocument();
     expect(screen.getByText("97.0%")).toBeInTheDocument();
     expect(screen.getByText("Mock 1")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Run now" }));

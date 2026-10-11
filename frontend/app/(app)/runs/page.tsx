@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Mono, Pill, Sparkline, Stat, type PillTone } from "@/design";
-import { NumLink } from "@/components/num-link";
+import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, emptyExportOptions, Mono, Pill, Sparkline, Stat, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -47,7 +46,7 @@ function makeColumns(systemName: Map<string, string>, allVersions: Version[]): C
       header: "DQS",
       cell: ({ row }) => {
         const dqs = overallDqs(row.original);
-        return dqs === null ? "—" : <NumLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</NumLink>;
+        return dqs === null ? "—" : <DrillLink href={`/runs/${row.original.id}`}>{dqs.toFixed(1)}</DrillLink>;
       },
     },
     {
@@ -105,18 +104,20 @@ export default function RunsPage() {
   const latest = rows[0];
   const latestDqs = latest ? overallDqs(latest) : null;
   const prevId = latest ? previousRunId(latest, allVersions) : null;
-  const prevDqs = prevId ? overallDqs(allVersions.find((v) => v.id === prevId) ?? latest) : null;
+  const prevRun = prevId ? allVersions.find((v) => v.id === prevId) : undefined;
+  const prevDqs = prevRun ? overallDqs(prevRun) : null;
+  const failedRun = rows.find((v) => statusTone(v.status) === "no-go");
   const delta = latestDqs !== null && prevDqs !== null ? latestDqs - prevDqs : null;
   const summary = rows.length > 0 && (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-6">
-        <Stat label="Runs" value={rows.length} />
+        <Stat label="Runs" value={rows.length} href={`/runs/${rows[0].id}`} />
         <Stat
           label="Latest DQS"
-          value={latest && latestDqs !== null ? <NumLink href={`/runs/${latest.id}`}>{latestDqs.toFixed(1)}</NumLink> : "—"}
-          hint={delta !== null && prevId ? <NumLink href={`/runs/${latest.id}/vs/${prevId}`}>{`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} vs previous`}</NumLink> : "No earlier run to compare with"}
+          value={latest && latestDqs !== null ? <DrillLink href={`/runs/${latest.id}`}>{latestDqs.toFixed(1)}</DrillLink> : "—"}
+          hint={delta !== null && prevId && latest ? <DrillLink href={`/runs/${latest.id}/vs/${prevId}`}>{`${delta >= 0 ? "+" : ""}${delta.toFixed(1)} vs previous`}</DrillLink> : "No earlier run to compare with"}
         />
-        <Stat label="Failed" value={rows.filter((v) => statusTone(v.status) === "no-go").length} tone={rows.some((v) => statusTone(v.status) === "no-go") ? "no-go" : undefined} />
+        <Stat label="Failed" value={rows.filter((v) => statusTone(v.status) === "no-go").length} tone={rows.some((v) => statusTone(v.status) === "no-go") ? "no-go" : undefined} href={failedRun ? `/runs/${failedRun.id}` : undefined} />
       </div>
       {series.length > 0 && (
     <div className="flex flex-wrap items-center gap-3">

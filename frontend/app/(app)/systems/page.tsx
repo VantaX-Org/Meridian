@@ -6,8 +6,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
-import { NumLink } from "@/components/num-link";
+import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
@@ -141,7 +140,7 @@ export default function SystemsPage() {
         const t = d.trend;
         return (
           <span className="inline-flex items-center gap-1">
-            <NumLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</NumLink>
+            <DrillLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</DrillLink>
             {t != null && Math.abs(t) >= 0.05 ? (
               <span
                 className="inline-flex items-center text-[12px]"
@@ -216,13 +215,18 @@ export default function SystemsPage() {
       }
       summary={
         <div className="flex flex-wrap items-center gap-6">
-          <Stat label="Systems" value={systems.length} href={configFilter ? "?" : undefined} />
-          <Stat
-            label="Healthy"
-            value={systems.filter((s) => s.health_status === "healthy").length}
-            tone={systems.some((s) => s.health_status !== "healthy") ? "at-risk" : "go"}
-            hint={`${systems.filter((s) => s.health_status !== "healthy").length} need attention`}
-          />
+          {systems.length > 0 ? (
+            <>
+              <Stat label="Systems" value={systems.length} href={`/systems/${systems[0].id}`} />
+              <Stat
+                label="Healthy"
+                value={systems.filter((s) => s.health_status === "healthy").length}
+                tone={systems.some((s) => s.health_status !== "healthy") ? "at-risk" : "go"}
+                hint={`${systems.filter((s) => s.health_status !== "healthy").length} need attention`}
+                href={`/systems/${(systems.find((s) => s.health_status !== "healthy") ?? systems[0]).id}`}
+              />
+            </>
+          ) : null}
           {configQ.data ? (
             <Stat
               label="Configuration loaded"

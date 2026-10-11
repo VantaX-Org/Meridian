@@ -5,8 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
-import { NumLink } from "@/components/num-link";
+import { DrillLink, Button, DataTable, EmptyState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -93,8 +92,8 @@ export default function ImportPage() {
       cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="underline">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>,
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
-    { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <NumLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</NumLink> : "") },
-    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <NumLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</NumLink>; } },
+    { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <DrillLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</DrillLink> : "") },
+    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <DrillLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</DrillLink>; } },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={versionTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
   ], []);
@@ -120,8 +119,8 @@ export default function ImportPage() {
       {versions.length > 0 ? (
         <div className="flex gap-6">
           <Stat label="Files imported" value={versions.length} href="/runs" />
-          <Stat label="Records imported" value={rowsImported.toLocaleString()} href={`/runs/${versions[0].id}`} />
-          <Stat label="Last import" value={versions[0] ? relativeTime(versions[0].run_at) : "—"} />
+          <Stat label="Records imported" value={rowsImported.toLocaleString()} href="/runs" />
+          <Stat label="Last import" value={versions[0] ? relativeTime(versions[0].run_at) : "—"} href={`/runs/${versions[0].id}`} />
         </div>
       ) : null}
 

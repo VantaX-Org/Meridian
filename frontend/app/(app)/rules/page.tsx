@@ -16,13 +16,12 @@
  */
 
 import Link from "next/link";
-import { NumLink } from "@/components/num-link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Mono, Pill, Select, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -184,9 +183,9 @@ export default function RulesPage() {
   );
   const coverageColumns = useMemo<ColumnDef<(typeof coverageRows)[number]>[]>(() => [
     { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.module) },
-    { id: "total", header: "Total", cell: ({ row }) => <NumLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.total.toLocaleString()}</NumLink> },
-    { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? (row.original.aware.applicable - row.original.aware.by_default).toLocaleString() : "—" },
-    { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? row.original.aware.by_default.toLocaleString() : "—" },
+    { id: "total", header: "Total", cell: ({ row }) => <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.total.toLocaleString()}</DrillLink> },
+    { id: "configured", header: "Configured", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{(row.original.aware.applicable - row.original.aware.by_default).toLocaleString()}</DrillLink> : "—" },
+    { id: "default", header: "Applies by default", cell: ({ row }) => row.original.aware ? <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{row.original.aware.by_default.toLocaleString()}</DrillLink> : "—" },
     {
       id: "na", header: "Does not apply",
       cell: ({ row }) => {
@@ -194,14 +193,14 @@ export default function RulesPage() {
         if (!a) return "—";
         if (a.not_applicable === 0) return "–";
         const reason = a.not_applicable_reasons[0]?.reason;
-        return <NumLink href={`/objects/${row.original.module}?tab=rules`}>{reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString()}</NumLink>;
+        return <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{reason ? <span title={reason}>{a.not_applicable.toLocaleString()}</span> : a.not_applicable.toLocaleString()}</DrillLink>;
       },
     },
     {
       id: "pass", header: "Passing applicable",
       cell: ({ row }) => {
         const a = row.original.aware;
-        return !a || a.applicable === 0 ? "—" : <NumLink href={`/objects/${row.original.module}?tab=rules`}>{`${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`}</NumLink>;
+        return !a || a.applicable === 0 ? "—" : <DrillLink href={`/objects/${row.original.module}?tab=rules`}>{`${a.passes.toLocaleString()} of ${a.applicable.toLocaleString()}`}</DrillLink>;
       },
     },
   ], []);
@@ -264,9 +263,9 @@ export default function RulesPage() {
   const summaryRow = (
     <div className="flex flex-col gap-2">
       <div className="flex gap-6">
-        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} />
-        <Stat label="Enabled" value={totals.enabled.toLocaleString()} />
-        <Stat label="Disabled" value={totals.disabled.toLocaleString()} delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
+        <Stat label="Rules" value={(summary.isLoading ? rules.length : totals.yaml + totals.other || rules.length).toLocaleString()} href="/rules/dictionary" />
+        <Stat label="Enabled" value={totals.enabled.toLocaleString()} href="/rules/scoring" />
+        <Stat label="Disabled" value={totals.disabled.toLocaleString()} href="/rules/drafts" delta={totals.disabled ? "Skipped by analyses" : "Every rule is active"} />
       </div>
       {!canManage ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Enabling, disabling or writing a rule needs the manage-rules permission; the library is read-only for you.</p> : null}
     </div>
@@ -305,6 +304,7 @@ export default function RulesPage() {
       ) : (
         <EmptyState
           title="No rules loaded."
+          detail="Built-in rules ship with Meridian. If this list is empty, check HQ sync in settings."
           action={<Button render={<Link href="/admin/settings">Open settings</Link>} />}
         />
       )}

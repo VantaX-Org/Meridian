@@ -2,10 +2,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Field, emptyExportOptions } from "@/design";
+import { DataTable, ExplorerPage, ExportMenu, Field, Pill, emptyExportOptions } from "@/design";
 import { getCleaningQueue } from "@/lib/api/cleaning";
 import { getGlossaryTerms } from "@/lib/api/glossary";
 import { exportFindings } from "@/lib/api/findings";
@@ -98,6 +99,7 @@ export default function SearchPage() {
     <ExplorerPage
       summary={<ExportMenu options={!q || results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       filterBar={
+        <div className="flex flex-col gap-2">
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {
@@ -110,11 +112,26 @@ export default function SearchPage() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Object, rule, glossary term, batch or run id"
-              className="rounded border px-3 py-1.5 text-[13px]"
+              className="w-full rounded border px-4 py-3 text-[16px]"
               style={{ borderColor: "var(--m-line)" }}
             />
           </Field>
         </form>
+        {q || run ? (
+          <div className="flex flex-wrap gap-2" aria-label="Parsed filters">
+            {q ? (
+              <Link href={`/search${run ? `?run=${run}` : ""}`} aria-label={`Remove text filter ${q}`}>
+                <Pill tone="neutral">Text: {q} ×</Pill>
+              </Link>
+            ) : null}
+            {run ? (
+              <Link href={`/search${q ? `?q=${encodeURIComponent(q)}` : ""}`} aria-label={`Remove run filter ${run}`}>
+                <Pill tone="neutral">Run: {run} ×</Pill>
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+        </div>
       }
       table={
         <DataTable

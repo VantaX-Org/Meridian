@@ -1,7 +1,7 @@
 // frontend/app/(app)/objects/page.tsx
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -22,11 +22,9 @@ const READINESS_TONE: Record<"pass" | "warn" | "fail", PillTone> = {
   fail: "no-go",
 };
 
-/** Number cells drill to the object's rules tab; the wrapper keeps the row click from also firing. */
+/** Number cells drill to the object's rules tab. */
 const drill = (o: ObjectSummary, run: string, n: number | string) => (
-  <span onClick={(e) => e.stopPropagation()}>
-    <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
-  </span>
+  <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
 );
 
 const makeColumns = (run: string): ColumnDef<ObjectSummary>[] => [
@@ -105,11 +103,14 @@ export default function ObjectsPage() {
 
   const objs = data?.objects ?? [];
   const ready = objs.filter((o) => o.readiness === "pass").length;
+  const firstReady = objs.find((o) => o.readiness === "pass");
+  const firstNotReady = objs.find((o) => o.readiness !== "pass");
+  const columns = makeColumns(run); // React Compiler memoizes on run
   const hero = objs.length > 0 && (
     <div className="flex flex-wrap gap-6">
-      <Stat label="Objects" value={objs.length} />
-      <Stat label="Ready" value={ready} tone="go" />
-      <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} />
+      <Stat label="Objects" value={objs.length} href={`/objects/${objs[0].module}?run=${run}`} />
+      <Stat label="Ready" value={ready} tone="go" href={firstReady ? `/objects/${firstReady.module}?run=${run}` : undefined} />
+      <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} href={firstNotReady ? `/objects/${firstNotReady.module}?run=${run}&tab=rules` : undefined} />
     </div>
   );
 
@@ -119,7 +120,7 @@ export default function ObjectsPage() {
       toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
         <DataTable
-          columns={makeColumns(run)}
+          columns={columns}
           data={data?.objects ?? []}
           getRowId={(row) => row.module}
           onRowClick={(row) => router.push(`/objects/${row.module}?run=${run}&tab=rules`)}
