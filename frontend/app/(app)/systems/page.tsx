@@ -6,7 +6,8 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { Button, DataTable, ExplorerPage, ExportMenu, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { Button, DataTable, ExplorerPage, ExportMenu, Mono, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { NumLink } from "@/components/num-link";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems, testConnection } from "@/lib/api/connectivity";
@@ -121,7 +122,7 @@ export default function SystemsPage() {
   });
 
   const columns: ColumnDef<SAPSystemExtended>[] = [
-    { accessorKey: "name", header: "System" },
+    { accessorKey: "name", header: "System", cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
     { accessorKey: "system_type", header: "Type" },
     { accessorKey: "role", header: "Role", cell: ({ row }) => <Pill tone="neutral">{row.original.role === "target" ? "Target" : "Source"}</Pill> },
     {
@@ -140,7 +141,7 @@ export default function SystemsPage() {
         const t = d.trend;
         return (
           <span className="inline-flex items-center gap-1">
-            {d.dqs.toFixed(1)}
+            <NumLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</NumLink>
             {t != null && Math.abs(t) >= 0.05 ? (
               <span
                 className="inline-flex items-center text-[12px]"
@@ -214,7 +215,14 @@ export default function SystemsPage() {
         ) : undefined
       }
       summary={
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-6">
+          <Stat label="Systems" value={systems.length} href={configFilter ? "?" : undefined} />
+          <Stat
+            label="Healthy"
+            value={systems.filter((s) => s.health_status === "healthy").length}
+            tone={systems.some((s) => s.health_status !== "healthy") ? "at-risk" : "go"}
+            hint={`${systems.filter((s) => s.health_status !== "healthy").length} need attention`}
+          />
           {configQ.data ? (
             <Stat
               label="Configuration loaded"
@@ -241,8 +249,8 @@ export default function SystemsPage() {
       }
       state={state}
       emptyProps={{
-        title: "No systems connected.",
-        detail: "Connect a SAP system, or import a file if you have an export.",
+        title: "No systems yet. Connect your first SAP system to start measuring.",
+        detail: "Or import a file if you have an export.",
         ghost: "table",
       }}
       errorProps={{ message: apiErrorMessage(error), onRetry: () => refetch() }}
