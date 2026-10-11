@@ -96,7 +96,7 @@ export default function SearchPage() {
 
   return (
     <ExplorerPage
-      summary={<ExportMenu options={results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
+      summary={<ExportMenu options={!q || results.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       filterBar={
         <form
           className="flex items-end gap-2"
@@ -124,11 +124,12 @@ export default function SearchPage() {
           onRowClick={(r) => router.push(r.href)}
         />
       }
-      state={loading ? "loading" : failedQuery ? "error" : q && results.length === 0 ? "empty" : undefined}
-      emptyProps={{
-        title: `No results for "${q}"`,
-        detail: "Search matches object names, rule ids, glossary terms, batch ids, run ids and record keys.",
-      }}
+      state={loading ? "loading" : failedQuery ? "error" : !q || results.length === 0 ? "empty" : undefined}
+      emptyProps={
+        q
+          ? { title: "Nothing matches.", detail: `No results for "${q}". Search matches object names, rule ids, glossary terms, batch ids, run ids and record keys.` }
+          : { title: "Search objects, records, checks and rules.", detail: "Type a name, rule id, batch id or run id above.", ghost: "table" }
+      }
       errorProps={{
         message: apiErrorMessage(failedQuery?.error),
         onRetry: refetchAll,

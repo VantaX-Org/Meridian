@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, EmptyState, Mono, Pill, Stat, type PillTone } from "@/design";
+import { Button, DataTable, EmptyState, Mono, Pill, Skeleton, Stat, type PillTone } from "@/design";
+import { NumLink } from "@/components/num-link";
 import { useRole } from "@/hooks/use-role";
 import { getSystems } from "@/lib/api/connectivity";
 import { matchColumns, pollAnalysisStatus, uploadFile, type MatchResponse } from "@/lib/api/upload";
@@ -92,8 +93,8 @@ export default function ImportPage() {
       cell: ({ row }) => <Link href={`/runs/${row.original.id}`} className="underline">{row.original.metadata?.file_name ?? row.original.label ?? row.original.id.slice(0, 8)}</Link>,
     },
     { id: "modules", header: "Objects", cell: ({ row }) => (row.original.metadata?.modules ?? []).map(formatModuleName).join(", ") },
-    { id: "rows", header: "Records", cell: ({ row }) => row.original.metadata?.row_count?.toLocaleString() ?? "" },
-    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : d.toFixed(1); } },
+    { id: "rows", header: "Records", cell: ({ row }) => (row.original.metadata?.row_count != null ? <NumLink href={`/runs/${row.original.id}`}>{row.original.metadata.row_count.toLocaleString()}</NumLink> : "") },
+    { id: "dqs", header: "Score", cell: ({ row }) => { const d = versionDqs(row.original); return d === null ? "" : <NumLink href={`/runs/${row.original.id}`}>{d.toFixed(1)}</NumLink>; } },
     { id: "status", header: "Status", cell: ({ row }) => <Pill tone={versionTone(row.original.status)}>{labelOf(row.original.status)}</Pill> },
     { id: "when", header: "Imported", cell: ({ row }) => relativeTime(row.original.run_at) },
   ], []);
@@ -105,7 +106,7 @@ export default function ImportPage() {
     : file ? formatSize(file.size) : "";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
         Drop an extract, check how its columns map to standard SAP fields, then run the analysis. Every import becomes a version.
       </p>
@@ -118,8 +119,8 @@ export default function ImportPage() {
       ) : null}
       {versions.length > 0 ? (
         <div className="flex gap-6">
-          <Stat label="Files imported" value={versions.length} />
-          <Stat label="Records imported" value={rowsImported.toLocaleString()} />
+          <Stat label="Files imported" value={versions.length} href="/runs" />
+          <Stat label="Records imported" value={rowsImported.toLocaleString()} href={`/runs/${versions[0].id}`} />
           <Stat label="Last import" value={versions[0] ? relativeTime(versions[0].run_at) : "—"} />
         </div>
       ) : null}
@@ -210,12 +211,16 @@ export default function ImportPage() {
 
       <div className="flex flex-col gap-2">
         <strong>Recent imports</strong>
-        {versions.length || recent.isLoading ? (
+        {recent.isLoading ? (
+          <div className="flex flex-col gap-1" aria-busy="true">
+            {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} height={36} />)}
+          </div>
+        ) : versions.length ? (
           <DataTable columns={columns} data={versions} getRowId={(v) => v.id} />
         ) : (
           <EmptyState
             title="No imports yet."
-            detail="Drop a CSV, XLSX, JSON or Parquet export here to create a run."
+            detail="Drop a CSV, XLSX, JSON or Parquet export above to create a run."
             action={
               canUpload ? (
                 <Button variant="secondary" onClick={() => inputRef.current?.click()}>
