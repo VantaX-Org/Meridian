@@ -24,6 +24,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -192,6 +193,7 @@ class SuccessFactorsConnector(CloudSAPConnector):
         filter_expr: str | None = None,
         top: int = 0,
         from_date: str | None = None,
+        expand: list[str] | None = None,
     ) -> pd.DataFrame:
         """Read an OData V2 entity set with pagination and rate-limit handling.
 
@@ -202,6 +204,9 @@ class SuccessFactorsConnector(CloudSAPConnector):
             top:        Maximum rows to return. 0 = no limit (all pages).
             from_date:  OData fromDate for effective-dated entities. None = as of today
                         (current record only); "1900-01-01" = full history.
+            expand:     Navigation properties for $expand. Their selected properties
+                        ("nav/prop" in ``select``) come back as "nav/prop" columns, from
+                        the first related record.
 
         Returns:
             pd.DataFrame with the entity set data.
@@ -215,6 +220,8 @@ class SuccessFactorsConnector(CloudSAPConnector):
         params: dict[str, str] = {"$format": "json"}
         if select:
             params["$select"] = ",".join(select)
+        if expand:
+            params["$expand"] = ",".join(expand)
         if filter_expr:
             params["$filter"] = filter_expr
         if from_date:
@@ -241,6 +248,14 @@ class SuccessFactorsConnector(CloudSAPConnector):
             # Strip OData metadata; OData V2 dates arrive as /Date(ms)/ — make them ISO
             for rec in results:
                 rec.pop("__metadata", None)
+                for nav in expand or ():
+                    rel = rec.pop(nav, None) or {}
+                    rel = rel.get("results", [rel]) if isinstance(rel, dict) else []
+                    # ponytail: a to-many navigation (e.g. one locale per language) keeps its first record
+                    first = rel[0] if rel else {}
+                    for s in select or ():
+                        if s.startswith(f"{nav}/"):
+                            rec[s] = first.get(s.split("/", 1)[1])
                 for k, v in rec.items():
                     if isinstance(v, str) and v.startswith("/Date("):
                         rec[k] = odata_date(v)
@@ -465,3 +480,19 @@ class SuccessFactorsConnector(CloudSAPConnector):
         raise SAPConnectorError(
             f"SuccessFactors request failed after {retries} retries"
         ) from last_exc
+
+
+def entity_model(edmx: str, entity: str) -> tuple[set[str], set[str]] | None:
+    """(property names, navigation property names) of ``entity`` in an OData V2 $metadata
+    document; None if the document does not describe it."""
+    def local(el: ET.Element) -> str:
+        return el.tag.rsplit("}", 1)[-1]
+
+    root = ET.fromstring(edmx)
+    name = next((el.get("EntityType", "").rsplit(".", 1)[-1] for el in root.iter()
+                 if local(el) == "EntitySet" and el.get("Name") == entity), entity)
+    for el in root.iter():
+        if local(el) == "EntityType" and el.get("Name") == name:
+            return ({c.get("Name", "") for c in el if local(c) == "Property"},
+                    {c.get("Name", "") for c in el if local(c) == "NavigationProperty"})
+    return None
