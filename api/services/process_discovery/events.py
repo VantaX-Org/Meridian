@@ -214,7 +214,9 @@ def dec15_ts(v: str) -> Optional[Stamp]:
 
 
 def iso_ts(ctx: BuildContext, v: str, day: bool = False) -> Optional[Stamp]:
-    """Cloud dates: OData ``/Date(ms)/``, ISO date or ISO datetime (naive = UTC). ``day`` forces day precision on the local (``ctx.tz``) date, as ``sap_ts`` does."""
+    """Cloud dates: OData ``/Date(ms)/``, ISO date or ISO datetime (naive = UTC).
+
+    ``day`` forces day precision on the local (``ctx.tz``) date, as ``sap_ts`` does."""
     v = v.strip()
     if not v:
         return None

@@ -18,6 +18,7 @@ from api.services.process_discovery.mining import CaseTypeResult
 Log = tuple[Session, str, str, str]
 
 pg = pytest.mark.skipif(not os.environ.get("MERIDIAN_TEST_DB_URL"), reason="MERIDIAN_TEST_DB_URL not set")
+_ROLE = "meridian_pd_mining"
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HAPPY = ["CREATE_PO_ITEM", "GOODS_RECEIPT", "INVOICE_RECEIPT", "CLEAR_INVOICE"]
 T0 = datetime(2025, 1, 10, 8, 0, tzinfo=timezone.utc)
@@ -40,7 +41,23 @@ def log() -> Iterator[Log]:
     from workers.db import tenant_session
 
     _alembic("upgrade", "head")
-    eng = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    from urllib.parse import urlparse, urlunparse
+
+    url = os.environ["MERIDIAN_TEST_DB_URL"]
+    u = urlparse(url)
+    if (u.port or 5432) == 5432:
+        pytest.skip("refusing to run migrations against port 5432")
+    eng = create_engine(url)
+    with eng.begin() as c:  # queries run as a non-superuser that cannot bypass RLS
+        if c.execute(text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": _ROLE}).scalar():
+            c.execute(text(f"DROP OWNED BY {_ROLE} CASCADE"))
+            c.execute(text(f"DROP ROLE {_ROLE}"))
+        c.execute(text(f"CREATE ROLE {_ROLE} LOGIN PASSWORD 'pw' NOSUPERUSER NOBYPASSRLS"))
+        c.execute(text(f"GRANT USAGE ON SCHEMA public TO {_ROLE}"))
+        c.execute(text(f"GRANT ALL ON ALL TABLES IN SCHEMA public TO {_ROLE}"))
+        c.execute(text(f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {_ROLE}"))
+    app = create_engine(urlunparse((u.scheme, f"{_ROLE}:pw@{u.hostname}:{u.port}", u.path, u.params, u.query,
+                                    u.fragment)))
     tid, sid = str(uuid.uuid4()), str(uuid.uuid4())
     with eng.begin() as c:
         c.execute(text("INSERT INTO tenants (id, name) VALUES (:t, :n)"), {"t": tid, "n": f"PDM-{tid[:8]}"})
@@ -60,7 +77,8 @@ def log() -> Iterator[Log]:
     add("4500000003/00010", ["CREATE_PO_ITEM", "CHANGE_PO_QTY", "CHANGE_PO_QTY", "INVOICE_RECEIPT"], T1, "1000",
         "NB", auto=(2,), same_second=(1, 2))
     add("0000100001", ["CREATE_VENDOR"], T0, "1000", None)
-    s = tenant_session(eng, tid)
+    s = tenant_session(app, tid)
+    assert s.execute(text("SELECT rolbypassrls OR rolsuper FROM pg_roles WHERE rolname = current_user")).scalar() is False
     rid = str(s.execute(text("INSERT INTO process_discovery_runs (tenant_id, system_id, l1, mode, status) "
                              "VALUES (:t, :s, 'PTP', 'full', 'mining') RETURNING id"), {"t": tid, "s": sid}).scalar())
     s.execute(text(
@@ -71,7 +89,11 @@ def log() -> Iterator[Log]:
     s.commit()
     yield s, tid, sid, rid
     s.close()
-    eng.dispose()  # rows stay, like tests/test_process_event_log_pg.py; every test uses a fresh tenant
+    app.dispose()
+    with eng.begin() as c:  # rows stay, like tests/test_process_event_log_pg.py; every test uses a fresh tenant
+        c.execute(text(f"DROP OWNED BY {_ROLE} CASCADE"))
+        c.execute(text(f"DROP ROLE {_ROLE}"))
+    eng.dispose()
 
 
 def _mine(log: Log, **flt: object) -> CaseTypeResult:
