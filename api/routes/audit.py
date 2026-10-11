@@ -11,6 +11,7 @@ import uuid
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,7 +38,17 @@ _COLUMNS = ("id, actor_user_id, actor_email, action, entity_type, entity_id, met
 _EXPORT_MAX = 100_000
 
 
-def _filters(tenant: Tenant, actor_user_id, entity_type, entity_id, action, method, since, until, path_contains=None) -> tuple[str, dict]:
+def _filters(
+    tenant: Tenant,
+    actor_user_id: Optional[str],
+    entity_type: Optional[str],
+    entity_id: Optional[str],
+    action: Optional[str],
+    method: Optional[str],
+    since: Optional[str],
+    until: Optional[str],
+    path_contains: Optional[str] = None,
+) -> tuple[str, dict]:
     conditions = ["tenant_id = :tid"]
     params: dict = {"tid": str(tenant.id)}
     for value, clause, key in (
@@ -84,7 +95,9 @@ async def list_audit_entries(
     until: Optional[str] = Query(
         None, description="ISO-8601 timestamp — return entries at or before this time"
     ),
-    path_contains: Optional[str] = Query(None, description="Substring of the request path (case-insensitive)"),
+    path_contains: Optional[str] = Query(
+        None, max_length=200, description="Substring of the request path (case-insensitive)"
+    ),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -208,7 +221,34 @@ async def audit_summary(
     return {"summary": rows}
 
 
-@router.get("/audit/llm")
+class LlmAuditEntry(BaseModel):
+    id: str
+    service_name: str
+    called_at: Optional[str] = None
+    model_version: Optional[str] = None
+    prompt_hash: Optional[str] = None
+    token_count: Optional[int] = None
+    latency_ms: Optional[int] = None
+    success: Optional[bool] = None
+    deterministic_hit: Optional[bool] = None
+    skip_reason: Optional[str] = None
+
+
+class LlmCacheSummary(BaseModel):
+    service_name: str
+    decisions: int
+    deterministic: int
+
+
+class LlmAuditOut(BaseModel):
+    entries: list[LlmAuditEntry]
+    total: int
+    limit: int
+    offset: int
+    cache: list[LlmCacheSummary]
+
+
+@router.get("/audit/llm", response_model=LlmAuditOut)
 async def list_llm_audit(
     service_name: Optional[str] = Query(None),
     success: Optional[bool] = Query(None),
@@ -217,7 +257,7 @@ async def list_llm_audit(
     db: AsyncSession = Depends(get_db),
     tenant: Tenant = Depends(get_tenant),
     _role: str = Depends(require_permission("manage_users")),
-):
+) -> LlmAuditOut:
     """LLM call audit (llm_audit_log, newest first, paged) plus a per-service
     summary of the persistent decision cache. Prompt text is never stored, only hashes."""
     await _set_rls(db, tenant.id)
@@ -263,4 +303,7 @@ async def list_llm_audit(
         {"tid": str(tenant.id)},
     )
     cache_summary = [dict(r._mapping) for r in cache.fetchall()]
-    return {"entries": entries, "total": total, "limit": limit, "offset": offset, "cache": cache_summary}
+    return LlmAuditOut(
+        entries=[LlmAuditEntry(**e) for e in entries], total=total, limit=limit, offset=offset,
+        cache=[LlmCacheSummary(**c) for c in cache_summary],
+    )
