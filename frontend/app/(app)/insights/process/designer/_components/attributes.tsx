@@ -141,10 +141,14 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
                     {finding ? <>{" "}<Link className="ui-link" href={finding}>Open finding</Link></> : null}
                   </span>
                 </div>
-                <label className="ui-note">
-                  <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
-                    onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
-                </label>
+                {p.canDesign === false ? (
+                  <span className="ui-note">{f.mandatory ? "Mandatory" : "Optional"}</span>
+                ) : (
+                  <label className="ui-note">
+                    <input type="checkbox" checked={f.mandatory} disabled={!p.editable}
+                      onChange={(e) => set(act.fields.map((x) => (x === f ? { ...x, mandatory: e.target.checked } : x)))} /> Mandatory
+                  </label>
+                )}
                 {p.canDesign !== false ? <Button variant="ghost" disabled={!p.editable} aria-label={`Remove ${f.field}`}
                   onClick={() => set(act.fields.filter((x) => x !== f))}>Remove</Button> : null}
               </li>

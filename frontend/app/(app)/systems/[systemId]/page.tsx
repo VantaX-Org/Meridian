@@ -87,6 +87,7 @@ export default function SystemPage() {
   const qc = useQueryClient();
   const { can } = useRole();
   const [editOpen, setEditOpen] = useState(false);
+  const [extractOpen, setExtractOpen] = useState(false);
   const initialTab = searchParams.get("tab") ?? "overview";
 
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -147,7 +148,7 @@ export default function SystemPage() {
         </div>
         <div className="flex gap-2">
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
-            render={<Link href={`/systems/${systemId}?tab=objects`}>Extract now</Link>}>
+            onClick={() => setExtractOpen(true)}>
             Extract now
           </GatedPrimary>
           {can("analyse") ? (
@@ -224,6 +225,12 @@ export default function SystemPage() {
           { value: "pilot", label: "Pilot", content: <PilotTab id={systemId} /> },
         ]}
       />
+
+      {can("trigger_sync") ? (
+        <Drawer open={extractOpen} onOpenChange={setExtractOpen} title={`Extract from ${system.name}`}>
+          <ScopePicker id={systemId} onDownloaded={() => { setExtractOpen(false); refresh(); }} />
+        </Drawer>
+      ) : null}
 
       <Drawer open={editOpen} onOpenChange={setEditOpen} title={`Edit ${system.name}`}>
         <EditForm

@@ -112,12 +112,13 @@ describe("BatchesTab", () => {
     expect(await screen.findByRole("button", { name: /^Approve batch/ })).toBeDisabled();
   });
 
-  it("disables export without the matching permission", async () => {
+  it("hides export without the matching permission", async () => {
     can = false;
     vi.spyOn(remediationApi, "getBatch").mockResolvedValue(detail({ status: "approved" }));
     renderWithQuery(<BatchesTab />);
     await userEvent.click(await screen.findByText("AP001 batch"));
-    expect(await screen.findByRole("button", { name: "Export batch" })).toBeDisabled();
+    expect(await screen.findByText("Approved by")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export batch" })).toBeNull();
   });
 
   it("defaults the batch list sort to created_at:desc, as #411 did", async () => {

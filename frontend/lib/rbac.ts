@@ -4,7 +4,6 @@
  * build /me/permissions payloads from it too.
  */
 import type { AccessDenied } from "./api/client";
-import type { RequestTarget } from "../components/request-access-dialog";
 
 // ── Port of api/services/rbac.py (RESOURCES, ACTIONS, _NO_VIEW, LEGACY_ACTION_MAP, resource_matrix) ──
 // Used to turn a 403's legacy action into a requestable (resource, action) pair, and by the nav
@@ -53,6 +52,16 @@ export function resourceMatrix(actions: Iterable<string>): Record<string, Record
     }
   }
   return Object.fromEntries(RESOURCES.map((r) => [r, Object.fromEntries(ACTIONS.map((a) => [a, granted.has(`${r}/${a}`)]))]));
+}
+
+/** What the user asks for: a (resource, action) pair, optionally at one system and/or module. */
+export interface RequestTarget {
+  resource: string;
+  action: string;
+  system_id?: string | null;
+  module?: string | null;
+  /** Shown instead of the raw system id when the caller knows it. */
+  systemLabel?: string;
 }
 
 /** A 403 names a legacy action (and sometimes a resource); the access-request API wants a (resource, action) pair. */

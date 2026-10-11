@@ -6,16 +6,7 @@ import { toast } from "sonner";
 import { Button, Dialog, Mono } from "@/design";
 import { createAccessRequest } from "@/lib/api/me";
 import { apiErrorMessage } from "@/lib/error";
-
-/** What the user asks for: a (resource, action) pair, optionally at one system and/or module. */
-export interface RequestTarget {
-  resource: string;
-  action: string;
-  system_id?: string | null;
-  module?: string | null;
-  /** Shown instead of the raw system id when the caller knows it. */
-  systemLabel?: string;
-}
+import type { RequestTarget } from "@/lib/rbac";
 
 const field = "w-full rounded-md border px-2 py-1 text-[13px]";
 const fieldStyle = { borderColor: "var(--m-line)", color: "var(--m-ink)" };

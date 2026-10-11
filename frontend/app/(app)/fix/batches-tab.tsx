@@ -352,11 +352,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
     : !canApprove
       ? "Approving needs the approve permission."
       : undefined;
-  const exportTitle = isCreator
-    ? "The batch creator cannot export it. Ask a second person to export."
-    : !canExport
-      ? "Exporting needs the export permission."
-      : undefined;
+  const exportTitle = isCreator ? "The batch creator cannot export it. Ask a second person to export." : undefined;
   const crTypeMissing = format === "mdg_cr_json" && crType.trim() === "";
 
   return (
@@ -422,8 +418,8 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
               Approve batch
             </GatedPrimary>
           ) : null}
-          {batch.status === "approved" ? (
-            <Button disabled={!canExport || isCreator} title={exportTitle} onClick={() => setAsk("export")}>
+          {batch.status === "approved" && canExport ? (
+            <Button disabled={isCreator} title={exportTitle} onClick={() => setAsk("export")}>
               Export batch
             </Button>
           ) : null}

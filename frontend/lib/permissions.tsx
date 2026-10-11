@@ -17,8 +17,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useQuery } from "@tanstack/react-query";
 import { getMyPermissions, type EffectivePermissions, type ScopeQuery, type ScopeRef } from "@/lib/api/me";
 import { onAccessDenied } from "@/lib/api/client";
-import { requestTargetFor } from "@/lib/rbac";
-import { RequestAccessDialog, type RequestTarget } from "@/components/request-access-dialog";
+import { requestTargetFor, type RequestTarget } from "@/lib/rbac";
+import { RequestAccessDialog } from "@/components/request-access-dialog";
 
 export { RESOURCES, ACTIONS, LEGACY_ACTION_MAP, resourceMatrix, requestTargetFor } from "@/lib/rbac";
 

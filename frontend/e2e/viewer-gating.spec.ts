@@ -15,7 +15,8 @@ import { LEGACY_PERMISSIONS, permissionsPayload } from "./fixtures/legacy-permis
 
 const NAV_SOURCE = fs.readFileSync(path.join(__dirname, "..", "lib", "nav.ts"), "utf8");
 const NAV_HREFS = [...NAV_SOURCE.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-const PATHS = [...new Set([...NAV_HREFS, ...ROUTES.map((r) => r.path)])];
+// /fix?tab=batches covers the batch-level Export, which lives off the default tab.
+const PATHS = [...new Set([...NAV_HREFS, ...ROUTES.map((r) => r.path), "/fix?tab=batches"])];
 
 const MUTATING = /^(approve|reject|write ?back|sign off|extract now|apply|accept|assign|merge|delete|remove|create|new|add|upload|import|run|re-run|rerun|sync|test|save|edit|discover|start|generate|invite|promote|publish|retry|resolve|dismiss|claim|export|bulk|deactivate|revoke|grant|decline)\b/i;
 const PRIMARY = /^(approve|write back|sign off|extract now)\b/i;
@@ -78,5 +79,8 @@ test("an admin sees the Test and Extract now controls", async ({ app }) => {
   await app.goto("/systems", { waitUntil: "load" });
   await expect(app.getByRole("button", { name: "Test" }).first()).toBeEnabled({ timeout: 20_000 });
   await app.goto("/systems/s1", { waitUntil: "load" });
-  await expect(app.getByRole("link", { name: "Extract now" })).toBeVisible({ timeout: 20_000 });
+  const extract = app.getByRole("button", { name: "Extract now", exact: true });
+  await expect(extract).toBeEnabled({ timeout: 20_000 });
+  await extract.click();
+  await expect(app.getByText("Extract objects into a new run")).toBeVisible();
 });

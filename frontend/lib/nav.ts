@@ -57,8 +57,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: NavIcon;
-  /** Shown only when /me/permissions.resources grants this pair (and `anyOf` passes). */
-  requires: Requirement;
+  /** Shown only when /me/permissions.resources grants this pair, or one of these pairs (and `anyOf` passes). */
+  requires: Requirement | readonly Requirement[];
   /** Shown when the user holds at least one of these permissions. */
   anyOf?: readonly string[];
   /** Licence manifest menu key (enabled_menu_items). */
@@ -96,7 +96,9 @@ export const SETTINGS_ITEMS: readonly NavItem[] = [
   { href: "/admin/triage", requires: req("rules", "edit"), label: "Triage", icon: ChevronRight, anyOf: ["manage_rules", "manage_settings"], keywords: "teams assignment rules sla business hours holidays" },
   { href: "/admin/mappings", requires: req("extraction", "edit"), label: "Field mapping", icon: ChevronRight, anyOf: ["manage_field_mappings"], licenceKey: "field_mapping", keywords: "sap fields columns" },
   { href: "/admin/ai", requires: req("llm", "admin"), label: "AI settings", icon: ChevronRight, anyOf: ["manage_llm"], keywords: "ollama model provider llm" },
-  { href: "/admin/licence", requires: req("systems", "view"), label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
+  // rules/edit is here only so the legacy steward keeps Settings › Licence: no legacy role is granted
+  // licence/view (it is in NO_VIEW), and the steward reaches Settings through manage_rules alone.
+  { href: "/admin/licence", requires: [req("licence", "view"), req("licence", "admin"), req("rules", "edit")], label: "Licence", icon: ChevronRight, anyOf: ["view"], licenceKey: "licence", keywords: "seats modules tier" },
 ];
 
 /** The home route for this role's persona. Steward gets its own page; every
@@ -221,12 +223,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   },
   {
     group: "Admin",
-    // rbac.md §5: users ★ | llm ★ | licence V | audit V. rules/edit and extraction/edit are added so a
-    // steward keeps Settings › Triage and Licence, and a field-mapping holder keeps Field mapping, as today.
-    requiresAny: [
-      req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"),
-      req("rules", "edit"), req("extraction", "edit"),
-    ],
+    // rbac.md §5: users ★ | llm ★ | licence V | audit V.
+    // rules/edit keeps the legacy steward's Admin › Settings nav.
+    requiresAny: [req("users", "admin"), req("llm", "admin"), req("licence", "view"), req("audit", "view"), req("rules", "edit")],
     items: [
       { href: "/admin/users", requires: req("users", "admin"), label: "Users and audit", icon: UserCog, anyOf: ["manage_users"], keywords: "admin users roles audit" },
       { href: "/admin/settings", requires: req("rules", "view"), label: "Settings", icon: SettingsIcon, anyOf: SETTINGS_PERMISSIONS, keywords: "preferences config", children: SETTINGS_ITEMS },
@@ -288,7 +287,8 @@ export function allowed(anyOf: readonly string[] | undefined, can: NavGate["can"
 
 export function isItemVisible(item: NavItem, gate: NavGate): boolean {
   if (item.licenceKey && !gate.isMenuItemEnabled(item.licenceKey)) return false;
-  if (gate.has && !gate.has(item.requires.resource, item.requires.action)) return false;
+  const has = gate.has;
+  if (has && ![item.requires].flat().some((r) => has(r.resource, r.action))) return false;
   return allowed(item.anyOf, gate.can);
 }
 
