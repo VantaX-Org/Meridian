@@ -25,6 +25,8 @@ export interface EntityTabsOptions {
   related?: ReactNode;
   /** The entity's change history, when the API has an endpoint for it. Omit for the designed empty state. */
   history?: ReactNode;
+  /** Replaces the generic Audit tab for entities whose trail lives in their own log (e.g. cleaning batches). */
+  audit?: ReactNode;
   /** Export options for this entity. Omit for the designed empty state. */
   exportOptions?: ExportOption[];
   /**
@@ -76,7 +78,7 @@ export function AuditTab({ entityType, entityId, auditPath }: { entityType: stri
 }
 
 /** Related, History, Audit and Export tab items. Append to a page's own tabs after its Overview. */
-export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, skip = [] }: EntityTabsOptions): TabItem[] {
+export function entityTabs({ entityType, entityId, related, history, exportOptions, auditPath, audit, skip = [] }: EntityTabsOptions): TabItem[] {
   const items: TabItem[] = [
     {
       value: "related", label: "Related",
@@ -86,7 +88,7 @@ export function entityTabs({ entityType, entityId, related, history, exportOptio
       value: "history", label: "History",
       content: history ?? <EmptyState title="No history to show" detail="This record does not keep a change history of its own. The Audit tab lists every logged action against it." ghost="chart" />,
     },
-    { value: "audit", label: "Audit", content: <AuditTab entityType={entityType} entityId={entityId} auditPath={auditPath} /> },
+    { value: "audit", label: "Audit", content: audit ?? <AuditTab entityType={entityType} entityId={entityId} auditPath={auditPath} /> },
     {
       value: "export", label: "Export",
       content: exportOptions && exportOptions.length > 0

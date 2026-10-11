@@ -338,11 +338,15 @@ async def bulk_approve(
                 ORDER BY priority DESC
                 LIMIT :max_count
             )
-            RETURNING cq.id
+            RETURNING cq.id, cq.record_key, cq.object_type
         """),
         {**params, "approver": current_user_id()},
     )
-    approved_ids = [str(r[0]) for r in result.fetchall()]
+    approved = result.fetchall()
+    approved_ids = [str(r[0]) for r in approved]
+    # One audit row per item, like the single approve route, so a batch's trail covers bulk approvals.
+    for r in approved:
+        await _create_audit(db, tenant.id, str(r[0]), "approved", r[1], r[2], metadata={"bulk": True})
     await db.commit()
 
     return {"approved_count": len(approved_ids), "skipped_count": 0}
@@ -675,6 +679,7 @@ async def get_cleaning_metrics(
 @router.get("/cleaning/audit")
 async def list_cleaning_audit(
     queue_id: Optional[str] = None,
+    batch_id: Optional[uuid.UUID] = Query(None, description="Only rows for items of this cleaning-queue batch"),
     action: Optional[str] = None,
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
@@ -690,6 +695,11 @@ async def list_cleaning_audit(
     if queue_id:
         where_clauses.append("queue_id = :qid")
         params["qid"] = queue_id
+    if batch_id:
+        where_clauses.append(
+            "queue_id IN (SELECT id FROM cleaning_queue WHERE batch_id = :bid AND tenant_id = :tid)"
+        )
+        params["bid"] = str(batch_id)
     if action:
         where_clauses.append("action = :act")
         params["act"] = action

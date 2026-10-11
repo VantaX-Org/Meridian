@@ -118,6 +118,7 @@ export async function getCleaningMetrics(period_type?: string): Promise<Cleaning
 
 export async function getCleaningAudit(params: {
   queue_id?: string;
+  batch_id?: string;
   action?: string;
   page?: number;
   per_page?: number;

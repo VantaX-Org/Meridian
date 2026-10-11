@@ -6,22 +6,45 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EntityTabs, ExplorerPage, ExportMenu, Mono, Pill, type ExportOption } from "@/design";
+import { Button, DataTable, EmptyState, EntityTabs, ErrorState, ExplorerPage, Skeleton, ExportMenu, Mono, Pill, type ExportOption } from "@/design";
 import {
   approveCleaning,
   bulkApprove,
   downloadCleaningExport,
+  getCleaningAudit,
   getCleaningQueue,
   rejectCleaning,
+  type AuditEntry,
   type CleaningQueueItem,
 } from "@/lib/api/cleaning";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getCleaningReportUrl } from "@/lib/api/reports";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
-import { labelOf } from "@/lib/format";
+import { formatDate, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import { GatedPrimary } from "@/components/gated-primary";
+
+const AUDIT_COLUMNS: ColumnDef<AuditEntry>[] = [
+  { accessorKey: "created_at", header: "When", cell: (i) => formatDate(i.getValue<string>(), "datetime") },
+  { accessorKey: "actor_name", header: "Who" },
+  { accessorKey: "action", header: "Action", cell: (i) => labelOf(i.getValue<string>()) },
+  { accessorKey: "record_key", header: "Record", meta: { mono: true } },
+];
+
+/** Every approve, reject, apply and rollback on this batch's items, from the cleaning audit log. */
+function BatchAudit({ batchId }: { batchId: string }) {
+  const q = useQuery({
+    queryKey: ["cleaning-audit", "batch", batchId],
+    queryFn: () => getCleaningAudit({ batch_id: batchId, per_page: 100 }),
+    retry: false,
+  });
+  if (q.isLoading) return <Skeleton height={120} />;
+  if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
+  const rows = q.data?.items ?? [];
+  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals, rejections and applied fixes on this batch are logged here." ghost="list" />;
+  return <DataTable columns={AUDIT_COLUMNS} data={rows} getRowId={(r) => r.id} tableId="batch-audit" exportName="batch-audit" height={360} />;
+}
 
 // Same bulk-approve confidence threshold as the legacy cleaning surface used (85%).
 const HIGH_CONFIDENCE = 0.85;
@@ -111,7 +134,7 @@ export default function BatchPage() {
   ];
 
   return (
-    <EntityTabs entityType="cleaning" entityId={batchId} auditPath={batchId} exportOptions={exportOptions} overview={
+    <EntityTabs entityType="cleaning" entityId={batchId} audit={<BatchAudit batchId={batchId} />} exportOptions={exportOptions} overview={
     <ExplorerPage
       state={isLoading ? "loading" : isListFailure({ isError, error }) ? "error" : items.length === 0 ? "empty" : undefined}
       emptyProps={{
