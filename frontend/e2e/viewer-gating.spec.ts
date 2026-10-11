@@ -53,6 +53,12 @@ test.describe("viewer gating", () => {
     await expect(app.getByRole("dialog", { name: "Request access" })).toBeVisible();
   });
 
+  test("Users and audit shows the manage_users notice instead of the user list", async ({ app }) => {
+    await app.goto("/admin/users", { waitUntil: "load" });
+    await expect(app.getByText(/needs the manage_users permission/)).toBeVisible({ timeout: 20_000 });
+    await expect(app.getByRole("button", { name: "Invite user" })).toHaveCount(0);
+  });
+
   for (const href of PATHS) {
     test(`no mutating control on ${href}`, async ({ app }) => {
       await app.goto(href, { waitUntil: "load" });

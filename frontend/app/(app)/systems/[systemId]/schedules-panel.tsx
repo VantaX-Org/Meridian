@@ -38,7 +38,9 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
   return (
     <div className="flex gap-2">
       <div style={{ width: 200 }}>
-        <Select label="Schedule" options={PRESETS} value={custom ? CUSTOM : value}
+        <Select
+          label="Schedule"
+          options={PRESETS} value={custom ? CUSTOM : value}
           onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
       </div>
       {custom && (
@@ -107,7 +109,9 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
                   </td>
                   <td className={td} style={tdStyle}>
                     {canManage
-                      ? <Select label="Extraction mode" value={p.extraction_mode ?? "full"} options={MODES}
+                      ? <Select
+                          label="Extraction mode"
+                          value={p.extraction_mode ?? "full"} options={MODES}
                           onValueChange={(v) => update.mutate({ p, body: { extraction_mode: v === "delta" ? "delta" : "full" } })} />
                       : <span>{modeLabel(p.extraction_mode)}</span>}
                   </td>
@@ -134,7 +138,9 @@ export function SchedulesPanel({ id, canManage }: { id: string; canManage: boole
         {canManage && addable.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <div style={{ width: 220 }}>
-              <Select label="Schedule an object" placeholder="Schedule an object…" value={adding}
+              <Select
+                label="Schedule an object"
+                placeholder="Schedule an object…" value={adding}
                 options={addable.map((o) => ({ value: o.object, label: formatModuleName(o.object) }))} onValueChange={setAdding} />
             </div>
             <CronPicker value={cron} onChange={setCron} />

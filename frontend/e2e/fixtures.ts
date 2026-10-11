@@ -29,7 +29,10 @@ function harFor(origin: string): string {
   const out = path.join(__dirname, "..", "test-results", `api.${origin.replace(/\W+/g, "_")}.har`);
   if (!fs.existsSync(out)) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, fs.readFileSync(HAR, "utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    // write then rename: a parallel worker must never read a half-written copy
+    const tmp = `${out}.${process.pid}`;
+    fs.writeFileSync(tmp, fs.readFileSync(HAR, "utf8").replaceAll("http://localhost:3000/", `${origin}/`));
+    fs.renameSync(tmp, out);
   }
   return out;
 }

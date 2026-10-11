@@ -269,7 +269,9 @@ function Patterns() {
   }
   return (
     <div className="flex flex-col gap-6">
-      <Select label="Pattern type" placeholder="All types" value={type} onValueChange={setType}
+      <Select
+        label="Pattern type"
+        placeholder="All types" value={type} onValueChange={setType}
         options={["anomaly", "drift", "duplicate", "pii"].map((t) => ({ value: t, label: formatModuleName(t) }))} />
       <DataTableWithMaybeEmpty columns={columns} data={list} getRowId={(p) => p.id} loading={patterns.isLoading} empty="No patterns mined yet." />
     </div>

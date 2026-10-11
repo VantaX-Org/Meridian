@@ -138,7 +138,9 @@ export function ConfigTab({ id, tables }: { id: string; tables: { table: string;
   return (
     <div className="flex flex-col gap-3">
       <DeviationPanel id={id} />
-      <Select label="Configuration table" value={open} onValueChange={setOpen}
+      <Select
+        label="Configuration table"
+        value={open} onValueChange={setOpen}
         options={tables.map((t) => ({ value: t.table, label: `${t.table}, ${t.rows} rows, ${t.source}` }))} />
       {data && (
         <>

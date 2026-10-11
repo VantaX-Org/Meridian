@@ -165,4 +165,97 @@ export async function mockRoutes12(page: Page) {
     ],
     total: 2, limit: 100, offset: 0,
   });
+  await get(/\/api\/v1\/exceptions\/billing(\?.*)?$/, {
+    period: "2026-10", tier1_count: 412, tier2_count: 96, tier3_count: 18, tier4_count: 3,
+    tier1_amount: 412, tier2_amount: 480, tier3_amount: 360, tier4_amount: 150, base_fee: 2500, total_amount: 3902, stripe_invoice_id: null,
+  });
+  await get(/\/api\/v1\/field-mappings(\?.*)?$/, {
+    mappings: [
+      { id: "fm1", module: "accounts_payable", standard_field: "LFA1.STCD1", standard_label: "Tax number 1", customer_field: "LFA1.STCD1", customer_label: "VAT number", data_type: "CHAR16", is_mapped: true, notes: null, updated_at: AT },
+      { id: "fm2", module: "accounts_payable", standard_field: "LFB1.ZTERM", standard_label: "Payment terms", customer_field: null, customer_label: null, data_type: "CHAR4", is_mapped: false, notes: "Confirm with the finance lead", updated_at: AT },
+    ],
+    total: 2, self_service_enabled: true,
+  });
+  await get(/\/api\/v1\/systems\/s1\/reference$/, [
+    { kind: "postal_codes", records: 18240, countries: ["DE", "GB", "ZA"] },
+    { kind: "bic", records: 0, countries: [] },
+  ]);
+  await get(/\/api\/v1\/triage\/settings$/, {
+    timezone: "Europe/Berlin", work_days: [1, 2, 3, 4, 5], work_start: "08:00:00", work_end: "17:00:00", holidays: ["2026-12-25"], fallback_user_id: null,
+  });
+
+  // Insights.
+  await get(/\/api\/v1\/insights\/proven-cost(\?.*)?$/, {
+    version_id: RUN, currency: "EUR", total: 48250, value_at_risk_total: 126400,
+    rows: [
+      {
+        metric: "duplicate_payment", label: "Duplicate payments", amount: 31800, currency: "EUR", by_currency: { EUR: 31800 }, documents: 4, check_ids: ["AP017"],
+        items: [{ doc_key: "BELNR=5100000321|GJAHR=2026", master_key: "LIFNR=100004", amount: 12400, detail: "Same amount and reference paid twice", check_ids: ["AP017"] }],
+      },
+      { metric: "late_po", label: "Late purchase orders", amount: 16450, currency: "EUR", by_currency: { EUR: 16450 }, documents: 11, check_ids: ["MM551"], items: [] },
+    ],
+  });
+  const ref = (id: string, label: string) => ({ id, label });
+  await get(/\/api\/v1\/lineage\/model$/, {
+    model_version: 3, node_counts: { field: 84, check: 212, step: 31, process: 9, kpi: 6 }, edge_count: 640,
+    kpis: [ref("kpi:dpo", "Days payable outstanding")], processes: [ref("process:p2p", "Procure to pay")], features: [ref("feature:payrun", "Automatic payment run")], warnings: [],
+  });
+  await get(/\/api\/v1\/lineage\/graph(\?.*)?$/, {
+    start: "LFB1.ZTERM", model_version: 3,
+    nodes: [
+      { id: "LFB1.ZTERM", type: "field", label: "Payment terms", depth: 0, definition: "Terms of payment key for the vendor in a company code." },
+      { id: "AP017", type: "check", label: "Payment terms are set", depth: -1 },
+      { id: "step:F110", type: "step", label: "Payment run", depth: 1, tcode: "F110" },
+      { id: "kpi:dpo", type: "kpi", label: "Days payable outstanding", depth: 2 },
+    ],
+    edges: [
+      { source: "AP017", target: "LFB1.ZTERM", rel: "checks", origin: "rule" },
+      { source: "LFB1.ZTERM", target: "step:F110", rel: "feeds", origin: "model", impact_type: "degraded" },
+      { source: "step:F110", target: "kpi:dpo", rel: "drives", origin: "model" },
+    ],
+    paths_to_kpis: [["LFB1.ZTERM", "step:F110", "kpi:dpo"]],
+  });
+  const impact = (id: string, type: "kpi" | "process" | "feature", label: string, hops: number) => ({
+    id, type, label, findings: 3, check_ids: ["AP017", "XREC001"], records_affected: 42, max_records: 30, worst_severity: "critical", worst_impact: "degraded", min_hops: hops, cost_at_risk: null,
+  });
+  await get(new RegExp(`/api/v1/lineage/impact/${RUN}$`), {
+    version_id: RUN, model_version: 3, cost_available: false,
+    kpis: [impact("kpi:dpo", "kpi", "Days payable outstanding", 2)], processes: [impact("process:p2p", "process", "Procure to pay", 1)],
+    features: [impact("feature:payrun", "feature", "Automatic payment run", 1)], unmapped_checks: [],
+  });
+  const rel = (id: string, from_key: string, to_key: string, active: boolean) => ({
+    id, from_domain: "accounts_payable", from_key, to_domain: "accounts_receivable", to_key, relationship_type: "vendor_is_customer",
+    sap_link_table: "LFA1.KUNNR", discovered_at: AT, active, ai_inferred: false, ai_confidence: null, impact_score: 0.6,
+  });
+  await get(/\/api\/v1\/relationships(\?.*)?$/, { relationships: [rel("rl1", "V7", "C7", true), rel("rl2", "V9", "C12", false)], total: 2 });
+  await get(/\/api\/v1\/mining\/summary(\?.*)?$/, {
+    window_days: 30, total_patterns: 14, new_anomalies: 3, stable_patterns: 11, coverage_pct: 62.5, runs_total: 8, cost_usd: 4.2,
+  });
+
+  // Migration dry run and system trends.
+  await get(new RegExp(`/api/v1/migration/runs/${RUN}$`), {
+    run: {
+      id: RUN, mode: "s4_dry_run", source_system_id: "s1", dest_system_id: null, source_version_id: RUN, target_release: "2023", target_connected: false,
+      modules: ["accounts_payable"], status: "analysed", readiness_verdict: "conditional", readiness_score: 91.2, critical_count: 2,
+      records_total: 1240, records_blocked: 6, error_detail: null, created_at: AT, completed_at: AT,
+      gap_summary: { accounts_payable: { records: 1240, blocked_records: 6, score: 91.2, verdict: "conditional", gaps: { target_mandatory: 4, length_truncation: 2 }, source_tables: ["LFA1", "LFB1"] } },
+    },
+    gap_breakdown: [{ module: "accounts_payable", gap_type: "target_mandatory", severity: "high", grounded: false, n: 4, records: 4, fields: 1 }],
+    structural_critical: 0,
+  });
+  await get(new RegExp(`/api/v1/migration/runs/${RUN}/records(\\?.*)?$`), {
+    total: 2,
+    rows: [
+      { module: "accounts_payable", source_table: "LFB1", record_key: "LIFNR=100004|BUKRS=1000", status: "load_fail", reasons: ["Payment terms are mandatory in the target"] },
+      { module: "accounts_payable", source_table: "LFA1", record_key: "LIFNR=100009", status: "load_fail", reasons: ["Name is longer than the target field"] },
+    ],
+  });
+  const point = (version_id: string, run_at: string, dqs: number, failing: number) => ({
+    version_id, run_at, label: null, baseline: false, dqs, dimensions: { completeness: dqs }, records: 1240, failing_records: failing,
+    failing_checks: 4, issues_opened: 1, issues_resolved: 2, scope: {}, rule_set: null, comparable: true, flags: [],
+  });
+  await get(/\/api\/v1\/systems\/s1\/trends(\?.*)?$/, {
+    summary: [{ object: "LFA1", points: 2, dqs: 82.4, dqs_delta: 3.1, failing_records: 6, failing_records_delta: -2, comparable: true, flags: [], vs_baseline: null }],
+    series: { LFA1: [point(PREV, "2026-09-25T05:09:17Z", 79.3, 8), point(RUN, "2026-10-02T05:09:17Z", 82.4, 6)] },
+  });
 }

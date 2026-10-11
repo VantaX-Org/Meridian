@@ -294,7 +294,9 @@ function ReadinessView() {
           <Select label="Process" value={l1.l1_id} options={processes.map((p) => ({ value: p.l1_id, label: p.l1_name }))} onValueChange={setL1} />
         ) : null}
         {(systems.data?.length ?? 0) > 1 ? (
-          <Select label="System" value={systemChoice}
+          <Select
+            label="System"
+            value={systemChoice}
             options={[{ value: "all", label: "All systems" }, ...(systems.data ?? []).map((s) => ({ value: s.id, label: s.name }))]}
             onValueChange={setSystem} />
         ) : null}

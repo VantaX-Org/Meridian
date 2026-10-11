@@ -2,6 +2,7 @@
 
 import { Select as BaseSelect } from "@base-ui/react/select";
 import { ChevronDown, Check } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 export interface SelectOption {
   value: string;
@@ -11,14 +12,29 @@ export interface SelectOption {
 /**
  * A combobox takes its accessible name from a label, never from the value or
  * placeholder it shows. Inside a Field or a wrapping <label> the name is wired
- * already; anywhere else pass `label`.
+ * already; anywhere else pass `label`. Development builds warn when none of
+ * the three name the trigger.
  */
 export function Select({
   value, onValueChange, options, placeholder, label, className,
 }: { value: string; onValueChange: (v: string) => void; options: SelectOption[]; placeholder?: string; label?: string; className?: string }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    // after a tick: a Field wires aria-labelledby on the render after its label registers
+    const t = setTimeout(() => {
+      const el = trigger.current;
+      if (!el) return;
+      const named = el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby") || el.closest("label")
+        || (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`));
+      if (!named) console.warn("Select has no accessible name: pass `label` or wrap it in a Field or <label>.", el);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <BaseSelect.Root value={value} onValueChange={(v) => onValueChange(v ?? "")} items={options}>
       <BaseSelect.Trigger
+        ref={trigger}
         aria-label={label}
         className={className ?? "m-input inline-flex items-center justify-between gap-2 min-w-[160px]"}
       >

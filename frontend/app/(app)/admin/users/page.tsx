@@ -285,7 +285,7 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
           </p>
           {/* ponytail: this reason is a client-side confirmation gate only, same as the
               legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+          <textarea aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           <div className="flex gap-2">
             <Button
               variant="secondary"

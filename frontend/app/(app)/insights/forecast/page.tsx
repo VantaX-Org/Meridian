@@ -109,7 +109,8 @@ export default function ForecastPage() {
         charts={
           <div className="flex flex-col gap-3">
             {forecasts.length > 0 && (
-              <Select label="Object"
+              <Select
+                label="Object"
                 value={selected?.module_id ?? ""}
                 onValueChange={setModuleId}
                 options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}

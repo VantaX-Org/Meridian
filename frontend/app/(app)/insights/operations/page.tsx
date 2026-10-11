@@ -36,7 +36,8 @@ function TeamCard() {
   return (
     <Card title="Team member">
       <div className="flex flex-col gap-3">
-        <Select label="Team member"
+        <Select
+          label="Team member"
           value={userId}
           onValueChange={setUserId}
           placeholder="Choose a team member"

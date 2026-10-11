@@ -207,7 +207,9 @@ function Editor(p: EditorProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select label="Process model" value={model}
+          <Select
+            label="Process model"
+            value={model}
             options={[{ value: "reference", label: "Reference model" }, ...p.models.map((m) => ({ value: m.id, label: m.name }))]}
             onValueChange={(m) => !dirty && go({ model: m, v: null, attr: null, node: null })} />
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
