@@ -91,7 +91,7 @@ export default function AdminAuditPage() {
         items={[
           { value: "log", label: "Audit log", content: <AuditTable params={{}} empty="No audit activity recorded yet." /> },
           { value: "ai", label: "AI audit", content: <LlmAudit /> },
-          { value: "roles", label: "Role changes", content: <AuditTable params={{ path_contains: "/users", method: "PUT" }} empty="No role changes recorded." /> },
+          { value: "roles", label: "User changes", content: <AuditTable params={{ path_contains: "/users", method: "PUT" }} empty="No user changes recorded." /> },
         ]}
       />
     </div>

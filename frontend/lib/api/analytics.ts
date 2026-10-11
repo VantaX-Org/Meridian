@@ -244,14 +244,6 @@ export async function getSprints(maxHours = 40): Promise<{ sprints: SprintPlan[]
   return (await apiClient.get("/api/v1/analytics/sprints", { params: { max_hours: maxHours } })).data;
 }
 
-export async function getBottlenecks(): Promise<{ bottlenecks: Bottleneck[]; total_queue_size: number }> {
-  return (await apiClient.get("/api/v1/analytics/bottlenecks")).data;
-}
-
-export async function getCapacity(): Promise<CapacityPlan> {
-  return (await apiClient.get<CapacityPlan>("/api/v1/analytics/capacity")).data;
-}
-
 export async function getRoi(): Promise<RoiResponse> {
   return (await apiClient.get<RoiResponse>("/api/v1/analytics/roi")).data;
 }

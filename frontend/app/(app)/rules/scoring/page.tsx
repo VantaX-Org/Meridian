@@ -310,14 +310,16 @@ function ScoringForm({ initial }: { initial: TenantSettings }) {
   );
 }
 
+const COST_LABELS: Record<string, string> = { critical: "Critical finding cost", high: "High finding cost", medium: "Medium finding cost", low: "Low finding cost", info: "Info finding cost" };
+
 /** Cost per blocked record by severity. Feeds value-at-risk on the insight pages. */
 function CostModelCard({ write }: { write: boolean }) {
   const q = useQuery({ queryKey: ["cost-model"], queryFn: getCostModel });
   const [draft, setDraft] = useState<Record<string, number>>({});
   const m = useMutation({
-    mutationFn: () => updateCostModel({ ...(q.data as CostModel), severity: { ...q.data?.severity, ...draft } }),
+    mutationFn: (base: CostModel) => updateCostModel({ ...base, severity: { ...base.severity, ...draft } }),
     onSuccess: () => { toast.success("Cost model saved"); setDraft({}); void q.refetch(); },
-    onError: () => toast.error("Cost model not saved."),
+    onError: (e) => toast.error((e as Error).message || "Cost model not saved"),
   });
   if (q.isError) return <ErrorState message="The cost model could not be read." onRetry={() => void q.refetch()} />;
   if (!q.data) return <Skeleton height={64} />;
@@ -327,9 +329,9 @@ function CostModelCard({ write }: { write: boolean }) {
       <strong className="text-[15px]">Cost model ({q.data.currency})</strong>
       <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>What one blocked record costs, by severity.</p>
       {Object.keys(sev).length === 0 && <p className="text-[13px]">No severity costs set yet.</p>}
-      <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+      <form className="flex flex-wrap gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(q.data); }}>
         {Object.entries(sev).map(([k, v]) => (
-          <Field key={k} label={k}>
+          <Field key={k} label={COST_LABELS[k] ?? `${formatModuleName(k)} finding cost`}>
             <input className="m-input" type="number" min={0} value={v} disabled={!write} onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value) })} />
           </Field>
         ))}

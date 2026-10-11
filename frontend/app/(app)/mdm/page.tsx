@@ -31,9 +31,9 @@ export default function MdmOverviewPage() {
       table={
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-[auto_1fr]">
-            <Card title="MDM health">{m && <ScoreRing score={m.mdm_health_score} size={120} />}</Card>
+            <Card title="MDM health">{m ? <ScoreRing score={m.mdm_health_score} size={120} /> : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No current snapshot yet.</p>}</Card>
             <Card title="Health over time">
-              <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" />
+              {points.length === 0 ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No history yet.</p> : <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" />}
             </Card>
           </div>
           {m && (

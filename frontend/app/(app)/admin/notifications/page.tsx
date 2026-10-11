@@ -1,17 +1,17 @@
 "use client";
 
-/** Admin › Notifications: outbound alert channels and the digest settings. */
+/** Admin › Notifications: outbound alert channels. Digest email and schedule live in Rules › Scoring. */
 
 import { useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, Dialog, ExplorerPage, Field, Pill, Select } from "@/design";
+import { Button, DataTable, Dialog, ExplorerPage, Field, Pill, Select } from "@/design";
 import {
   createAlertChannel, deleteAlertChannel, getAlertChannels, testAlertChannel,
   type AlertChannel, type AlertChannelKind, type AlertDigest,
 } from "@/lib/api/notifications";
-import { getSettings, saveNotificationSettings } from "@/lib/api/settings";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
 
@@ -50,45 +50,12 @@ function AddChannel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: b
   );
 }
 
-function DigestSettings({ canEdit }: { canEdit: boolean }) {
-  const s = useQuery({ queryKey: ["settings"], queryFn: getSettings });
-  const [draft, setDraft] = useState<Partial<NonNullable<ReturnType<typeof initial>>>>({});
-  const base = initial(s.data?.notification_config);
-  const cfg = { ...base, ...draft };
-  const m = useMutation({
-    mutationFn: () => saveNotificationSettings(cfg),
-    onSuccess: () => toast.success("Digest settings saved"),
-    onError: (e) => toast.error(`Not saved. ${apiErrorMessage(e)}`),
-  });
-  const box = (key: "daily_digest" | "weekly_summary" | "monthly_report", label: string) => (
-    <label className="flex items-center gap-2 text-[13px]">
-      <input type="checkbox" disabled={!canEdit} checked={cfg[key]} onChange={(e) => setDraft({ ...draft, [key]: e.target.checked })} />
-      <span>{label}</span>
-    </label>
-  );
-  return (
-    <Card title="Digests">
-      <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-        <Field label="Digest email"><input className="m-input" disabled={!canEdit} value={cfg.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field>
-        <Field label="Teams webhook"><input className="m-input" disabled={!canEdit} value={cfg.teams_webhook} onChange={(e) => setDraft({ ...draft, teams_webhook: e.target.value })} /></Field>
-        {box("daily_digest", "Daily digest")}
-        {box("weekly_summary", "Weekly summary")}
-        {box("monthly_report", "Monthly report")}
-        {canEdit && <div><Button type="submit" pending={m.isPending}>Save digests</Button></div>}
-      </form>
-    </Card>
-  );
-}
-
-function initial(c: { email: string; teams_webhook: string; daily_digest: boolean; weekly_summary: boolean; monthly_report: boolean } | null | undefined) {
-  return c ?? { email: "", teams_webhook: "", daily_digest: false, weekly_summary: false, monthly_report: false };
-}
-
 export default function NotificationsAdminPage() {
   const qc = useQueryClient();
   const { has } = usePermissions();
   const canEdit = has("rules", "admin");
   const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<AlertChannel | null>(null);
   const q = useQuery({ queryKey: ["alert-channels"], queryFn: getAlertChannels });
   const test = useMutation({
     mutationFn: testAlertChannel,
@@ -111,7 +78,7 @@ export default function NotificationsAdminPage() {
       cell: ({ row }: { row: { original: AlertChannel } }) => (
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => test.mutate(row.original.id)}>Send test</Button>
-          <Button variant="secondary" onClick={() => del.mutate(row.original.id)}>Remove</Button>
+          <Button variant="secondary" onClick={() => setRemoving(row.original)}>Remove</Button>
         </div>
       ),
     } satisfies ColumnDef<AlertChannel>] : []),
@@ -121,13 +88,20 @@ export default function NotificationsAdminPage() {
     <>
       <ExplorerPage
         toolbarEnd={canEdit ? <Button onClick={() => setAdding(true)}>Add channel</Button> : undefined}
-        summary={<DigestSettings canEdit={canEdit} />}
+        summary={<p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Digest email and the report schedule are set in <Link className="underline" href="/rules/scoring">Rules › Scoring</Link>.</p>}
         state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
         emptyProps={{ title: "No alert channels.", detail: "Add email, Slack, Teams or a webhook to send critical alerts and digests." }}
         errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
         table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
       />
       <AddChannel open={adding} onOpenChange={setAdding} />
+      <Dialog open={!!removing} onOpenChange={(o) => { if (!o) setRemoving(null); }} title={`Remove ${removing?.kind ?? ""} channel?`} destructive>
+        <p className="text-[13px]">{removing?.target} stops receiving alerts and digests.</p>
+        <div className="mt-4 flex gap-2">
+          <Button pending={del.isPending} onClick={() => removing && del.mutate(removing.id, { onSettled: () => setRemoving(null) })}>Remove channel</Button>
+          <Button variant="secondary" onClick={() => setRemoving(null)}>Keep channel</Button>
+        </div>
+      </Dialog>
     </>
   );
 }
