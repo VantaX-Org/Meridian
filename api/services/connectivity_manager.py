@@ -573,6 +573,7 @@ class ConnectivityManager:
             history = {"from_date": "1900-01-01"} if "all records" in (t.note or "") else {}
             merged = None
             absent: list[str] = []
+            failed = False
             for ent, props in by_entity.items():
                 if ent not in models:
                     models[ent] = self._sf_entity_model(connector, ent)
@@ -607,6 +608,7 @@ class ConnectivityManager:
                         coverage.append({"table": f"{table}←{ent}", "status": "not_in_system", "entity": ent,
                                          "detail": str(e)[:300]})
                     else:
+                        failed = True
                         coverage.append({"table": f"{table}←{ent}", "status": "failed", "detail": str(e)[:300]})
                     continue
                 out = pd.DataFrame(index=df.index)
@@ -624,9 +626,11 @@ class ConnectivityManager:
                     merged = merged.merge(out.drop_duplicates(subset=on) if on else out,
                                           how="left", on=on) if on else merged
             if merged is None:
-                if absent and len(absent) == len(by_entity):
+                if not failed:  # every entity absent, or none has a property the dictionary maps
                     coverage.append({"table": table, "status": "not_in_system", "entities": sorted(by_entity),
-                                     "detail": "; ".join(absent)[:300]})
+                                     "unavailable_fields": sorted(unavailable),
+                                     "detail": ("; ".join(absent) if len(absent) == len(by_entity)
+                                                else "no dictionary property in tenant $metadata")[:300]})
                 continue
             merged = merged.drop(columns=[c for c in merged.columns if c.startswith("__")])
             # BOOLEAN fields arrive as Python bool from OData V2 JSON; astype("string") would give

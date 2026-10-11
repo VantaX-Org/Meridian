@@ -429,3 +429,15 @@ def test_sf_read_404_without_metadata_is_not_in_system(monkeypatch):
     frames, cov = _sf(_NoMeta({}, {}), ["benefits"], monkeypatch)
     assert cov["BENEFITENROLLMENT"]["status"] == "not_in_system"
     assert not any(c["status"] == "failed" for c in cov.values())
+
+
+@pytest.mark.parametrize("model", [
+    {"BenefitEnrollment": (["externalCode"], ()), "Benefit": (["externalCode"], ())},  # no mapped property
+    {"BenefitEnrollment": (["externalCode"], ())},  # one entity absent, the other has no mapped property
+])
+def test_sf_table_with_no_dictionary_property_in_tenant_still_gets_a_coverage_row(monkeypatch, model):
+    frames, cov = _sf(_Tenant(model, {}), ["benefits"], monkeypatch)
+    assert "BENEFITENROLLMENT" not in frames
+    row = cov["BENEFITENROLLMENT"]
+    assert row["status"] == "not_in_system" and "PLAN_ID" in row["unavailable_fields"]
+    assert not any(c["status"] == "failed" for c in cov.values())
