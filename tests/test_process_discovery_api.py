@@ -142,6 +142,34 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert ptp_new["status"] == "queued" and ptp_new["mode"] == "incremental"
             assert ptp_new["window_from"] == want_from.isoformat()
 
+            # the catalogue keeps the latest COMPLETED run's data and reports the queued run separately
+            ptp = {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()}["PTP"]
+            assert ptp["last_run"]["id"] == rid and ptp["last_run"]["status"] == "completed"
+            assert ptp["coverage"] == "partial" and ptp["failed"] is None
+            assert ptp["in_progress"]["id"] == started_ids[0] and ptp["in_progress"]["status"] == "queued"
+
+            # a failing stage stores a fixed message: raw exception text (SQL, paths) never reaches the API
+            leak = 'relation "process_events" does not exist; SELECT secret FROM pg_shadow'
+
+            def boom(*_a):
+                raise RuntimeError(leak)
+
+            monkeypatch.setattr(rpd, "collect", boom)
+
+            sess = tenant_session(owner, tid)
+            assert rpd.discover(sess, tid, sid, [started_ids[0]], vid, frames_for=_frames,
+                                today=date(2026, 10, 11)) == {started_ids[0]: "failed"}
+            sess.close()
+            bodies = [(await c.get(f"{BASE}/runs/{started_ids[0]}", headers=viewer)).text,
+                      (await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer)).text,
+                      (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).text]
+            for body in bodies:
+                assert "SELECT" not in body and "pg_shadow" not in body and "process_events" not in body
+            assert (await c.get(f"{BASE}/runs/{started_ids[0]}", headers=viewer)).json()["error"] == rpd.BUILD_ERROR
+            ptp = {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()}["PTP"]
+            assert ptp["in_progress"] is None and ptp["failed"]["error"] == rpd.BUILD_ERROR
+            assert ptp["last_run"]["id"] == rid  # a failed newer run does not replace the completed one
+
             r = await c.post(f"{BASE}/systems/{sid}/runs", headers=h, json={"l1s": ["SFX"]})
             assert r.json()["job_id"] is None and rpd.lock_key(tid, sid) not in redis.data
             assert len(FakeChain.calls) == 1
@@ -193,6 +221,19 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert x.headers["content-type"].startswith("application/xml") and b"<bpmn:definitions" in x.content
             assert audit[-1]["before_json"]["node_id"] == "PTP" and len(audit) == 2
             assert (await c.get(f"{BASE}/runs/{rid}/export/bpmn/NOPE", headers=h)).status_code == 404
+
+            # broker down: the lock is released, the queued runs fail, and the caller gets a 503
+            class DownChain(FakeChain):
+                def apply_async(self, link_error=None):
+                    raise ConnectionError("amqp://user:secret@broker refused")
+
+            monkeypatch.setattr(route, "chain", DownChain)
+            r = await c.post(f"{BASE}/systems/{sid}/runs", headers=h, json={"l1s": ["PTP"]})
+            assert r.status_code == 503 and "secret" not in r.text
+            assert rpd.lock_key(tid, sid) not in redis.data
+            latest = (await c.get(f"{BASE}/systems/{sid}/runs", headers=viewer, params={"l1": "PTP"})).json()[0]
+            assert latest["status"] == "failed" and latest["error"] == route.DISPATCH_ERROR
+            monkeypatch.setattr(route, "chain", FakeChain)
 
             # Redis down: no lock, no run
             monkeypatch.setattr(route, "_redis_client", lambda: None)

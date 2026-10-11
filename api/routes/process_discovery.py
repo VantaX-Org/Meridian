@@ -33,7 +33,7 @@ from api.middleware.audit import _insert_audit_row
 from api.models.process_model import L1, L2, L3, L4, L5, ProcessModelDocument
 from api.routes.process_designer import _invalid, _reference, _rls
 from api.services import jobs
-from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_edges
+from api.services.bpmn_export import BpmnExportError, ExportMeta, export_node, export_zip, landscape_counts
 from api.services.process_discovery import L1S, L1S_BY_SYSTEM, MODULE_OF, primary_case_type, reason
 from api.services.process_discovery.builders import builder
 from api.services.process_discovery.events import DEFAULT_TZ
@@ -47,6 +47,7 @@ from api.services.task_progress import _redis_client
 from sap.process_definitions import reference_document
 
 logger = logging.getLogger("meridian.process_discovery")
+DISPATCH_ERROR = "Could not queue the discovery job"
 router = APIRouter(prefix="/api/v1/process-discovery", tags=["process-discovery"])
 
 VIEW = [Depends(require_permission("view"))]
@@ -143,12 +144,22 @@ class LastRun(BaseModel):
     fitness: Optional[float]
 
 
+class RunRef(BaseModel):
+    """A run newer than the last completed one (in flight, or failed): shown beside the last good result."""
+    id: str
+    status: str
+    job_id: Optional[str] = None
+    error: Optional[str] = None
+
+
 class CatalogueEntry(BaseModel):
     l1: str
     name: str
     coverage: str
     reason: Optional[str]
     last_run: Optional[LastRun]
+    in_progress: Optional[RunRef] = None  # the active run, so the UI can say "refreshing" over the last result
+    failed: Optional[RunRef] = None       # the newest run, when it failed after the last completed one
     sources: list[SourceTable]
 
 
@@ -328,24 +339,32 @@ async def _document(db: AsyncSession, tenant: Tenant, run: RunRecord, flt: Proce
 async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
                     db: AsyncSession = Depends(get_db)) -> list[CatalogueEntry]:
     system_type, _ = await _system(db, tenant, _id(system_id))
-    rows = (await db.execute(text(f"""
+    params = {"t": str(tenant.id), "s": _id(system_id)}
+    # Latest completed run per L1 is the data; the newest run of any status only tells whether it is refreshing.
+    done = {r.l1: _summary(r) for r in (await db.execute(text(f"""
         SELECT DISTINCT ON (l1) {RUN_COLS} FROM process_discovery_runs
-        WHERE tenant_id = :t AND system_id = :s ORDER BY l1, started_at DESC, id DESC"""),
-        {"t": str(tenant.id), "s": _id(system_id)})).fetchall()
-    last = {r.l1: _summary(r) for r in rows}
+        WHERE tenant_id = :t AND system_id = :s AND status = 'completed'
+        ORDER BY l1, started_at DESC, id DESC"""), params)).fetchall()}
+    newest = {r.l1: _summary(r) for r in (await db.execute(text(f"""
+        SELECT DISTINCT ON (l1) {RUN_COLS} FROM process_discovery_runs
+        WHERE tenant_id = :t AND system_id = :s ORDER BY l1, started_at DESC, id DESC"""), params)).fetchall()}
     names = {x.id: x.name for x in reference_document().l1}
     out: list[CatalogueEntry] = []
     for l1 in L1S:
-        r = last.get(l1)
+        r, n = done.get(l1), newest.get(l1)
         stats = RunStats.model_validate(r.stats) if r else RunStats()
+        ref = None if n is None or n.status == "completed" else RunRef(
+            id=n.id, status=n.status, job_id=n.job_id, error=n.error)
         out.append(CatalogueEntry(
             l1=l1, name=names.get(l1, l1),
-            coverage=r.coverage if r and r.status == "completed" else "reference",
+            coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
             last_run=None if r is None else LastRun(
                 id=r.id, status=r.status, finished_at=r.finished_at,
                 cases=stats.case_types.get(primary_case_type(l1, system_type)),
                 fitness=stats.conformance.fitness),
+            in_progress=ref if ref and ref.status != "failed" else None,
+            failed=ref if ref and ref.status == "failed" else None,
             sources=[SourceTable(table=t, rows=v.rows, partial=v.partial) for t, v in sorted(stats.tables.items())]))
     return out
 
@@ -414,14 +433,28 @@ async def start_runs(system_id: str, body: RunRequest, request: Request, tenant:
         return RunStarted(job_id=None, run_ids=run_ids)
     starts = [w for w in window.values() if w]
     scope = {"date_from": min(starts).isoformat(), "date_to": today.isoformat()} if starts else None
-    jobs.start_job(tid, job_id, "process_discovery", f"Process discovery: {', '.join(sourced)}",
-                   system_id=system_id, run_ids=queued, version_id=version_id)
-    jobs.update_job(tid, job_id, stage="extraction", percent=0, message="Extracting event tables")
-    chain(run_extraction.si(tid, system_id, [MODULE_OF[l1] for l1 in sourced], include_config=False,
-                            sync_type="data", scope=scope, analyse=False, label="Process discovery",
-                            version_id=version_id),
-          discover_process.si(tid, system_id, queued, version_id)).apply_async(
-        link_error=abort_runs.si(tid, system_id, queued))
+    try:
+        jobs.start_job(tid, job_id, "process_discovery", f"Process discovery: {', '.join(sourced)}",
+                       system_id=system_id, run_ids=queued, version_id=version_id)
+        jobs.update_job(tid, job_id, stage="extraction", percent=0, message="Extracting event tables")
+        chain(run_extraction.si(tid, system_id, [MODULE_OF[l1] for l1 in sourced], include_config=False,
+                                sync_type="data", scope=scope, analyse=False, label="Process discovery",
+                                version_id=version_id),
+              discover_process.si(tid, system_id, queued, version_id)).apply_async(
+            link_error=abort_runs.si(tid, system_id, queued))
+    except Exception:  # broker down: free the lock and fail the queued runs so the UI is not stuck
+        logger.exception("Process discovery dispatch failed for %s", job_id)
+        release_lock(tid, system_id)
+        await _rls(db, tenant)
+        await db.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
+                              "WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND status = 'queued'"),
+                         {"e": DISPATCH_ERROR, "t": tid, "ids": queued})
+        await db.commit()
+        try:
+            jobs.finish_job(tid, job_id, "failed", error=DISPATCH_ERROR)
+        except Exception:
+            logger.exception("Could not close job %s", job_id)
+        raise HTTPException(status_code=503, detail="Job queue unavailable")
     return RunStarted(job_id=job_id, run_ids=run_ids)
 
 
@@ -476,6 +509,11 @@ def _stats(node: Union[Parent, Child]) -> NodeStats:
                      median_seconds=d.median_seconds if d else None, fitness=d.fitness if d else None)
 
 
+def _check_level(level: Optional[int], actual: int, parent_id: str) -> None:
+    if level is not None and level != actual:
+        raise HTTPException(status_code=422, detail=f"Children of {parent_id} are level {actual}")
+
+
 @router.get("/runs/{run_id}/dfg", dependencies=VIEW, response_model=DfgResponse)
 async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, ge=2, le=5),
               node_id: Optional[str] = None, tenant: Tenant = Depends(get_tenant),
@@ -488,15 +526,15 @@ async def dfg(run_id: str, request: Request, level: Optional[int] = Query(None, 
     client = _redis_client() if flt != ProcessFilter() else None
     key = f"{cache_key(_scope(tenant, run), flt, run.id)}:{node_id or ''}"
     if client is not None and (hit := client.get(key)):
-        return DfgResponse.model_validate_json(hit).model_copy(update={"cached": True})
+        cached = DfgResponse.model_validate_json(hit)
+        _check_level(level, cached.level, cached.node.id)  # a cache hit must not skip the level validation
+        return cached.model_copy(update={"cached": True})
     doc = await _document(db, tenant, run, flt)
     lvl, parent, kids = _children(doc, node_id)
-    if level is not None and level != lvl:
-        raise HTTPException(status_code=422, detail=f"Children of {parent.id} are level {lvl}")
-    edges = [] if isinstance(parent, L4) else landscape_edges(parent, [k for k in kids if not isinstance(k, L5)]) or []
+    _check_level(level, lvl, parent.id)
+    edges = [] if isinstance(parent, L4) else landscape_counts(parent, [k for k in kids if not isinstance(k, L5)]) or []
     out = DfgResponse(level=lvl, node=_stats(parent), nodes=[_stats(k) for k in kids],
-                      edges=[DfgEdge(source=s, target=t, count=int(lbl.split()[0].replace(",", "")))
-                             for s, t, lbl in edges], edge_threshold=EDGE_THRESHOLD)
+                      edges=[DfgEdge(source=s, target=t, count=n) for s, t, n in edges], edge_threshold=EDGE_THRESHOLD)
     if client is not None:
         client.setex(key, CACHE_TTL, out.model_dump_json())
     return out

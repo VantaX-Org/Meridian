@@ -182,9 +182,9 @@ def _wire(process: ET.Element, flows: list[tuple[str, str, str]], eid_of: dict[s
                     _sub(el, BPMN, "outgoing", text=f"F_{fid}")
 
 
-def landscape_edges(node: _Parent, children: Sequence[_Child]) -> Optional[list[tuple[str, str, str]]]:
-    """As-is flows between ``children`` (spec 5.2): ``(source, target, label)`` with ``START`` / ``END`` for the
-    events, pruned like the L4 diagram. None when ``node`` was not mined, so the linear chain is kept."""
+def landscape_counts(node: _Parent, children: Sequence[_Child]) -> Optional[list[tuple[str, str, int]]]:
+    """As-is flows between ``children`` (spec 5.2): ``(source, target, case count)`` with ``START`` / ``END`` for
+    the events, pruned like the L4 diagram. None when ``node`` was not mined, so the linear chain is kept."""
     d = node.discovery
     if d is None or not d.observed:
         return None
@@ -197,7 +197,13 @@ def landscape_edges(node: _Parent, children: Sequence[_Child]) -> Optional[list[
             if t == "END" or t in ids:
                 cand.append((c.id, t, e.count))
     cand.sort()  # total order: output must not depend on the input order
-    return [(s, t, f"{n:,} cases") for s, t, n in keep_edges(cand, d.case_count, ["START"], EDGE_THRESHOLD)]
+    return keep_edges(cand, d.case_count, ["START"], EDGE_THRESHOLD)
+
+
+def landscape_edges(node: _Parent, children: Sequence[_Child]) -> Optional[list[tuple[str, str, str]]]:
+    """``landscape_counts`` with each count as the ``"1,234 cases"`` label the diagram draws."""
+    kept = landscape_counts(node, children)
+    return None if kept is None else [(s, t, f"{n:,} cases") for s, t, n in kept]
 
 
 def _count_meta(flow_el: ET.Element, label: Optional[str]) -> None:

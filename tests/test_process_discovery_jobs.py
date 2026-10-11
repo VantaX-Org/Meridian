@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import uuid
 from datetime import date, datetime, timezone
+from types import SimpleNamespace
+from urllib.parse import urlparse
 
 import pytest
 from celery.exceptions import Retry
@@ -67,6 +68,7 @@ class _FakeSession:
 
     def execute(self, stmt, params=None):
         self.sql.append((str(stmt), params or {}))
+        return SimpleNamespace(rowcount=1)
 
     def commit(self) -> None: ...
     def rollback(self) -> None: ...
@@ -108,16 +110,24 @@ def test_gives_up_after_two_hours(monkeypatch) -> None:
 
 
 @pytest.fixture(scope="module")
-def engine():
-    from sqlalchemy import create_engine
+def engine(app_engine):  # noqa: F811
+    """The owner engine, for seeding and assertions. Port 5432 is a shared database and is never used."""
+    if (urlparse(os.environ["MERIDIAN_TEST_DB_URL"]).port or 5432) == 5432:
+        pytest.skip("refusing to run migrations against port 5432")
+    return app_engine[0]
 
-    url = os.environ["MERIDIAN_TEST_DB_URL"]
-    r = subprocess.run(["alembic", "upgrade", "head"], cwd=_ROOT, capture_output=True, text=True,
-                       env={**os.environ, "DATABASE_URL_MIGRATE": url, "PYTHONPATH": _ROOT})
-    assert r.returncode == 0, r.stderr
-    eng = create_engine(url)
-    yield eng
-    eng.dispose()
+
+@pytest.fixture(scope="module")
+def app(app_engine):  # noqa: F811
+    """The NOBYPASSRLS application role: the job's tenant sessions run as this, so RLS is really enforced."""
+    from sqlalchemy import text
+
+    with app_engine[0].begin() as c:  # process_events has a bigserial id; the shared fixture grants tables only
+        c.execute(text(f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {app_engine[1].url.username}"))
+    with app_engine[1].connect() as c:
+        assert c.execute(text("SELECT NOT (rolbypassrls OR rolsuper) FROM pg_roles "
+                              "WHERE rolname = current_user")).scalar() is True
+    return app_engine[1]
 
 
 COVERAGE = [{"table": t, "rows": 1, "status": "live"} for t in
@@ -161,14 +171,14 @@ def _run(eng, rid: str):
 
 
 @pg
-def test_discover_builds_mines_and_stores_the_model(engine) -> None:
+def test_discover_builds_mines_and_stores_the_model(engine, app) -> None:
     from sqlalchemy import text
 
     from workers.db import tenant_session
 
     tid, sid, vid, (rid,) = _seed(engine, [("PTP", "full", None)])
     stages = []
-    s = tenant_session(engine, tid)
+    s = tenant_session(app, tid)
     out = rpd.discover(s, tid, sid, [rid], vid, frames_for=_frames, today=date(2026, 10, 11),
                        progress=lambda stage, pct, msg: stages.append((stage, pct)))
     s.close()
@@ -188,13 +198,13 @@ def test_discover_builds_mines_and_stores_the_model(engine) -> None:
 
 
 @pg
-def test_incremental_keeps_history_before_the_window(engine) -> None:
+def test_incremental_keeps_history_before_the_window(engine, app) -> None:
     from sqlalchemy import text
 
     from workers.db import tenant_session
 
     tid, sid, vid, (full,) = _seed(engine, [("PTP", "full", None)])
-    s = tenant_session(engine, tid)
+    s = tenant_session(app, tid)
     rpd.discover(s, tid, sid, [full], vid, frames_for=_frames, today=date(2026, 10, 11))
     with engine.begin() as c:
         inc = str(c.execute(text(
@@ -215,11 +225,11 @@ def test_incremental_keeps_history_before_the_window(engine) -> None:
 
 
 @pg
-def test_memory_failure_fails_only_that_l1(engine) -> None:
+def test_memory_failure_fails_only_that_l1(engine, app) -> None:
     from workers.db import tenant_session
 
     tid, sid, vid, (otc, ptp) = _seed(engine, [("OTC", "full", None), ("PTP", "full", None)])
-    s = tenant_session(engine, tid)
+    s = tenant_session(app, tid)
     guard = rpd.MemoryGuard(rss=lambda: 3 * GiB)  # checked only after an insert batch; OTC has no rows
     out = rpd.discover(s, tid, sid, [otc, ptp], vid, frames_for=_frames, guard=guard, today=date(2026, 10, 11))
     s.close()
@@ -229,11 +239,11 @@ def test_memory_failure_fails_only_that_l1(engine) -> None:
 
 
 @pg
-def test_no_dataset_fails_every_run(engine) -> None:
+def test_no_dataset_fails_every_run(engine, app) -> None:
     from workers.db import tenant_session
 
     tid, sid, _, ids = _seed(engine, [("PTP", "full", None), ("R2R", "full", None)], dataset=False)
-    s = tenant_session(engine, tid)
+    s = tenant_session(app, tid)
     assert rpd.discover(s, tid, sid, ids, None, frames_for=_frames) == {i: "failed" for i in ids}
     s.close()
     assert {_run(engine, i).error for i in ids} == {rpd.NO_DATA_ERROR}
@@ -290,3 +300,49 @@ def test_prune_keeps_recent_runs_and_runs_with_events(app_engine, monkeypatch) -
         assert c.execute(text("SELECT count(*) FROM process_events WHERE system_id = :s"),
                          {"s": other_sid}).scalar() == 1
     assert other_ids
+
+
+def _status(eng, rid: str) -> tuple[str, str | None]:
+    r = _run(eng, rid)
+    return r.status, r.error
+
+
+@pg
+def test_abort_runs_fails_only_pending_runs_and_keeps_a_real_failure(engine, app, monkeypatch) -> None:
+    from sqlalchemy import text
+
+    tid, sid, _, (real, pending) = _seed(engine, [("PTP", "full", None), ("R2R", "full", None)])
+    with engine.begin() as c:  # the stage that raised has already recorded its own failure
+        c.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e WHERE id = :r"),
+                  {"e": rpd.MEMORY_ERROR, "r": real})
+    released, finished = [], []
+    monkeypatch.setattr(rpd, "get_sync_engine", lambda: app)
+    monkeypatch.setattr(rpd, "release_lock", lambda t, s: released.append(s))
+    monkeypatch.setattr(rpd.jobs, "finish_job", lambda t, j, status="completed", **k: finished.append((status, k)))
+    rpd.abort_runs.run(tid, sid, [real, pending])
+    assert _status(engine, real) == ("failed", rpd.MEMORY_ERROR)
+    assert _status(engine, pending) == ("failed", rpd.EXTRACTION_ERROR)
+    assert finished == [("failed", {"error": rpd.EXTRACTION_ERROR})] and released == [sid]
+    finished.clear()
+    rpd.abort_runs.run(tid, sid, [real, pending])  # nothing pending: the recorded failures and the job stay
+    assert _status(engine, real) == ("failed", rpd.MEMORY_ERROR)
+    assert _status(engine, pending) == ("failed", rpd.EXTRACTION_ERROR)
+    assert finished == [] and released == [sid, sid]
+
+
+@pg
+def test_stage_failure_stores_a_fixed_message_not_the_exception(engine, app, caplog, monkeypatch) -> None:
+    from workers.db import tenant_session
+
+    leak = 'relation "process_events" does not exist; SELECT secret FROM pg_shadow'
+
+    def boom(*_a):
+        raise RuntimeError(leak)
+
+    monkeypatch.setattr(rpd, "collect", boom)
+    tid, sid, vid, (rid,) = _seed(engine, [("PTP", "full", None)])
+    s = tenant_session(app, tid)
+    assert rpd.discover(s, tid, sid, [rid], vid, frames_for=_frames, today=date(2026, 10, 11)) == {rid: "failed"}
+    s.close()
+    assert _status(engine, rid) == ("failed", rpd.BUILD_ERROR)
+    assert leak in caplog.text  # the detail is logged, not stored

@@ -271,7 +271,8 @@ def _diagram(l4: L4, cases: int) -> Diagram:
         src = gw(s, "O") if outdeg[s] > 1 else s
         dst = gw(t, "I") if t != e_id and indeg[t] > 1 else t
         link(src, dst, f"{n:,} cases")
-    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a in acts if a not in [x for x, _ in seen]]
+    observed = {a.id for a, _ in seen}
+    nodes += [Node(id=f"{a.id}-T", type="task", activity_id=a.id) for a in acts if a.id not in observed]
     return Diagram(nodes=nodes, flows=flows)
 
 

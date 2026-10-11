@@ -55,6 +55,11 @@ LIVE = frozenset({"live", "delta", "delta_fallback"})
 WAIT_ERROR = "Extraction on this system still running after 2 hours."
 NO_DATA_ERROR = "Extraction produced no data"
 MEMORY_ERROR = "Memory budget exceeded; narrow the period."
+# Fixed per-stage messages: exception text can carry SQL and bound parameters, so it is logged, never stored.
+BUILD_ERROR = "Event log build failed"
+MINE_ERROR = "Discovery failed"
+GENERATE_ERROR = "Generation failed"
+EXTRACTION_ERROR = "Extraction failed"
 
 INSERT_EVENT_SQL = text("""
 INSERT INTO process_events (tenant_id, system_id, l1, case_type, case_id, activity, l5_id, ts, ts_precision, seq,
@@ -238,12 +243,21 @@ def _set(session: Session, tenant_id: str, run_ids: Sequence[str], **cols: Optio
                     {"ids": list(run_ids), "t": tenant_id, **cols})
 
 
-def _fail(session: Session, tenant_id: str, run_ids: Sequence[str], error: str) -> None:
+def _fail(session: Session, tenant_id: str, run_ids: Sequence[str], error: str, *, pending_only: bool = False) -> int:
+    """Marks the runs failed and returns how many changed. ``pending_only`` leaves runs a stage already failed or
+    advanced alone, so a late error callback cannot overwrite the real failure."""
     session.rollback()
-    session.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
-                         "WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND status <> 'completed'"),
-                    {"ids": list(run_ids), "e": error[:500], "t": tenant_id})
+    keep = "status IN ('queued', 'waiting', 'extracting')" if pending_only else "status <> 'completed'"
+    n = session.execute(text("UPDATE process_discovery_runs SET status = 'failed', error = :e, finished_at = now() "
+                             f"WHERE tenant_id = :t AND id = ANY(CAST(:ids AS uuid[])) AND {keep}"),
+                        {"ids": list(run_ids), "e": error[:500], "t": tenant_id}).rowcount
     session.commit()
+    return n
+
+
+def _stage_error(e: Exception, fallback: str) -> str:
+    """The memory budget message is ours and actionable; anything else is replaced by the stage's fixed message."""
+    return str(e) if isinstance(e, MemoryBudgetExceeded) else fallback
 
 
 def discover(session: Session, tenant_id: str, system_id: str, run_ids: Sequence[str], version_id: Optional[str],
@@ -291,7 +305,7 @@ def discover(session: Session, tenant_id: str, system_id: str, run_ids: Sequence
         except Exception as e:
             logger.exception("process discovery build %s %s failed", system_id, run.l1)
             run.failed = True
-            _fail(session, tenant_id, [run.id], str(e) or e.__class__.__name__)
+            _fail(session, tenant_id, [run.id], _stage_error(e, BUILD_ERROR))
 
     live = [r for r in runs if not r.failed]
     for i, run in enumerate(live):  # 80-95
@@ -311,7 +325,7 @@ def discover(session: Session, tenant_id: str, system_id: str, run_ids: Sequence
         except Exception as e:
             logger.exception("process discovery mining %s %s failed", system_id, run.l1)
             run.failed = True
-            _fail(session, tenant_id, [run.id], str(e) or e.__class__.__name__)
+            _fail(session, tenant_id, [run.id], _stage_error(e, MINE_ERROR))
 
     base = base_document(session, tenant_id)
     live = [r for r in runs if not r.failed]
@@ -341,7 +355,7 @@ def discover(session: Session, tenant_id: str, system_id: str, run_ids: Sequence
         except Exception as e:
             logger.exception("process discovery generation %s %s failed", system_id, run.l1)
             run.failed = True
-            _fail(session, tenant_id, [run.id], str(e) or e.__class__.__name__)
+            _fail(session, tenant_id, [run.id], _stage_error(e, GENERATE_ERROR))
     return {r.id: "failed" if r.failed else "completed" for r in runs}
 
 
@@ -386,11 +400,12 @@ def discover_process(self: Task, tenant_id: str, system_id: str, run_ids: list[s
         _fail(session, tenant_id, run_ids, "Timed out")
         jobs.finish_job(tenant_id, job_id, "failed", error="Timed out")
         return {r: "failed" for r in run_ids}
-    except Exception as e:
+    except Exception:
         if keep_lock:  # the Retry exception
             raise
-        _fail(session, tenant_id, run_ids, str(e) or e.__class__.__name__)
-        jobs.finish_job(tenant_id, job_id, "failed", error=str(e) or e.__class__.__name__)
+        logger.exception("process discovery job %s failed", job_id)
+        _fail(session, tenant_id, run_ids, MINE_ERROR)
+        jobs.finish_job(tenant_id, job_id, "failed", error=MINE_ERROR)
         raise
     finally:
         session.close()
@@ -400,14 +415,15 @@ def discover_process(self: Task, tenant_id: str, system_id: str, run_ids: list[s
 
 @celery_app.task(name="workers.tasks.run_process_discovery.abort_runs", soft_time_limit=300, time_limit=360)
 def abort_runs(tenant_id: str, system_id: str, run_ids: list[str]) -> None:
-    """Chain error callback: the extraction raised, so ``discover_process`` never runs. Fails the runs, finishes
-    the job and frees the lock (otherwise held for the full 6-hour TTL)."""
+    """Chain error callback: the extraction raised, so ``discover_process`` never runs. Fails the runs still
+    waiting for it, finishes the job and frees the lock (otherwise held for the full 6-hour TTL). When no run is
+    pending a stage has already recorded the real failure, which this must not overwrite."""
     session = tenant_session(get_sync_engine(), tenant_id)
     try:
-        _fail(session, tenant_id, run_ids, "Extraction failed")
+        if _fail(session, tenant_id, run_ids, EXTRACTION_ERROR, pending_only=True):
+            jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error=EXTRACTION_ERROR)
     finally:
         session.close()
-        jobs.finish_job(tenant_id, job_id_of(run_ids), "failed", error="Extraction failed")
         release_lock(tenant_id, system_id)
 
 
