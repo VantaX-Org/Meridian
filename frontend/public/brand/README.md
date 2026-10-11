@@ -12,7 +12,7 @@ meridian; the letterform is the product.
   signatures and the PDF cover when printed in black. Used at large size
   (96px) on the sign-in brand panel.
 - `wordmark-light.svg` / `wordmark-dark.svg` / `wordmark-mono.svg` — mark +
-  "Meridian" set in Public Sans 600, for places that cannot load the web
+  "MERIDIAN" drawn as monoline strokes, for places that cannot load the web
   font (PDF cover, OpenGraph image, email).
 - `brand.json` — the four brand colours as data, for files where a raw hex
   literal would fail `lint:tokens` (`app/manifest` inputs, rasterisation).

@@ -1,5 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 164 32" width="164" height="32" role="img" aria-label="Meridian">
-  <rect width="32" height="32" rx="6" fill="#8C9BEA"/>
-  <path d="M 7.5 24 V 8.5 M 24.5 24 V 8.5 M 7.5 8.5 L 16 17 L 24.5 8.5 M 16 17 V 25.5" fill="none" stroke="#0F1417" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="44" y="22" font-family="Public Sans, system-ui, sans-serif" font-size="20" font-weight="600" fill="#E8EDF0" letter-spacing="-0.2">Meridian</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="172" height="32" viewBox="0 0 172 32" fill="none" role="img" aria-label="Meridian">
+  <title>Meridian lockup, dark backgrounds</title>
+  <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="#F4F3EF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M16 3V29" stroke="#8DA3FF" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(44 0)">
+    <g stroke="#F4F3EF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 25V7L9 18L16 7V25"/>
+      <path d="M33 7H21V25H33M21 16H31"/>
+      <path d="M38 25V7H46A4.5 4.5 0 0 1 46 16H38M45 16L51 25"/>
+      <path d="M63 7V25H69A9 9 0 0 0 69 7Z"/>
+      <path d="M90 25L97 7L104 25M93 19H101"/>
+      <path d="M109 25V7L122 25V7"/>
+    </g>
+    <g stroke="#8DA3FF" stroke-width="2.4" stroke-linecap="round">
+      <path d="M56 7V25"/>
+      <path d="M83 7V25"/>
+    </g>
+  </g>
 </svg>

@@ -377,7 +377,7 @@ Geometry (32-unit grid, used by every asset):
 
 - Arc: centre (16,16), radius 10, stroke 3, round caps, gap of 70° centred on 12 o'clock. Path: `M21.74 7.81 A10 10 0 1 1 10.26 7.81`.
 - Meridian: `M16 3 V29`, stroke 3, round caps.
-- Two-tone: arc in `--m-accent`, meridian in `--m-ink` (light) or `#EDEDF0` (dark). Mono: both in one colour.
+- Two-tone: arc in `--m-ink`, meridian in `--m-accent` (light) or arc `#EDEDF0`, meridian `#8DA3FF` (dark). Mono: both in one colour.
 
 Files delivered beside this spec: `logo-mark.svg`, `logo-wordmark.svg`, `logo-lockup.svg`, `logo-lockup-dark.svg`, `favicon.svg`, `apple-icon.svg`, `og-image.svg`.
 
