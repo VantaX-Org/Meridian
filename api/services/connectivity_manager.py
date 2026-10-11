@@ -16,6 +16,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+import httpx
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -39,7 +40,10 @@ CLOUD_SYSTEM_TYPES = ("successfactors", "concur", "ariba", "s4hana_cloud", "btp"
 
 
 def _not_found(e: Exception) -> bool:
-    """An OData 404: the entity is not enabled in this tenant."""
+    """An OData 404: the entity is not enabled in this tenant. The HTTP status decides when the
+    error carries one; the message (which includes the URL) is only a fallback."""
+    if isinstance(e.__cause__, httpx.HTTPStatusError):
+        return e.__cause__.response.status_code == 404
     return bool(re.search(r"\b404\b|is not found", str(e)))
 
 

@@ -441,3 +441,21 @@ def test_sf_table_with_no_dictionary_property_in_tenant_still_gets_a_coverage_ro
     row = cov["BENEFITENROLLMENT"]
     assert row["status"] == "not_in_system" and "PLAN_ID" in row["unavailable_fields"]
     assert not any(c["status"] == "failed" for c in cov.values())
+
+
+def _http_error(code: int, url: str) -> SAPConnectorError:
+    import httpx
+    req = httpx.Request("GET", url)
+    cause = httpx.HTTPStatusError(f"Client error '{code}' for url '{url}'", request=req,
+                                  response=httpx.Response(code, request=req))
+    err = SAPConnectorError(f"SuccessFactors request failed: {cause}")
+    err.__cause__ = cause
+    return err
+
+
+def test_not_found_trusts_the_http_status_over_the_message_text():
+    from api.services.connectivity_manager import _not_found
+
+    assert _not_found(_http_error(404, "https://sf.example.test/odata/v2/Benefit"))
+    assert not _not_found(_http_error(400, "https://sf.example.test/odata/v2/Benefit?$filter=code eq '404'"))
+    assert _not_found(SAPConnectorError("Client error '404 Not Found'"))  # no HTTP cause: message fallback
