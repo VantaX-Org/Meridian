@@ -33,7 +33,7 @@ _ACCENT = ACCENT
 _LINE = "E4E2DB"
 _WASH = "FAF9F6"
 _INK = "141519"
-_INK3 = "6F717B"
+_INK3 = "6A6C76"
 _NAVY = "0F1430"
 _WHITE = "FFFFFF"
 
@@ -48,7 +48,7 @@ FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 MAX_SHEET_TITLE = 31
 ROW_CAP = 100_000
 
-_MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-dark.png"  # reversed, sits on the navy band
+_MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "brand" / "mark-light.png"  # anchored at B2, a white cell
 _COVER_BAND_ROWS = 40
 
 ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono", "raw"]
@@ -312,8 +312,8 @@ def _write_cover_sheet(
         if note:
             # Guarded once on the whole cell below; the note is mid-string here.
             text += f". {note}"
-        link = ws.cell(row=row_idx, column=2, value=sheet_title)
-        link.hyperlink = f"#'{sheet_title}'!A1"
+        link = ws.cell(row=row_idx, column=2, value=guard_formula_cell(sheet_title))
+        link.hyperlink = "#'" + sheet_title.replace("'", "''") + "'!A1"
         link.font = link_font
         ws.cell(row=row_idx, column=3, value=guard_formula_cell(text)).font = Font(color=_INK)
         row_idx += 1

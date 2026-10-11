@@ -261,7 +261,7 @@ disagree, follow DESIGN.md.
   `[data-theme="dark"]`.
 - **Accent**: one indigo accent, `--m-accent`, for selection, focus and
   links only. Hue means defect state. No gradients, glass or backdrop blur.
-- **Type**: Public Sans for UI, JetBrains Mono for SAP identifiers only
+- **Type**: Instrument Sans for UI (Instrument Serif for cover titles), JetBrains Mono for SAP identifiers only
   (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
   loaded with `next/font`. Numbers use tabular figures. Sentence case.
 - **Tokens**: `frontend/design/tokens.css` defines every `--m-*` token.

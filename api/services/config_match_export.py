@@ -19,7 +19,7 @@ from api.services.branded_xlsx import ColumnSpec, SheetSpec, build_workbook
 _CLASSIFICATION_FILL = {
     "data_error": "FCEBE9",
     "config_deviation": "FBF1DB",
-    "ambiguous": "FDEEE3",
+    "ambiguous": "FBF1DB",
 }
 
 _CLASSIFICATION_COL = ColumnSpec("classification", "Classification", fill_by_value=_CLASSIFICATION_FILL)

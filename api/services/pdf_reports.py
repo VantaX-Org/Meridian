@@ -157,9 +157,9 @@ def render(template: str, ctx: dict) -> bytes:
 
 # ── inline SVG charts (no JS) ────────────────────────────────────────────────
 
-_ACCENT, _TRACK, _INK, _MUTED = "#2B4BE0", "#E4E2DB", "#141519", "#6F717B"
-_UP, _DOWN = "#1E7A46", "#B3261E"
-_HIGH, _MED = "#C65A00", "#8A6A00"
+_ACCENT, _TRACK, _INK, _MUTED = "#2B4BE0", "#E4E2DB", "#141519", "#6A6C76"
+_UP, _DOWN = "#157A3C", "#B42318"
+_HIGH, _MED = "#BA4A0B", "#946200"
 
 
 def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, unit: str = "",

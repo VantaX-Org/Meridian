@@ -48,8 +48,34 @@ def test_score_ring_only_with_dqs():
 
 def test_css_tokens_and_fonts():
     css = (Path(pr.TEMPLATE_DIR) / "assets" / "report.css").read_text()
-    for token in ("#141519", "#4A4C55", "#6F717B", "#E4E2DB", "#FAF9F6", "#2B4BE0", "#157A3C", "#946200", "#BA4A0B", "#B42318"):
+    for token in ("#141519", "#4A4C55", "#6A6C76", "#E4E2DB", "#FAF9F6", "#2B4BE0", "#157A3C", "#946200", "#BA4A0B", "#B42318"):
         assert token in css
     assert "Instrument Sans" in css and "Instrument Serif" in css and "Public Sans" not in css
     for f in ("InstrumentSans-400", "InstrumentSans-500", "InstrumentSans-600", "InstrumentSerif-400"):
         assert (Path(pr.TEMPLATE_DIR) / "assets" / "fonts" / f"{f}.woff2").exists()
+
+
+def _ring_html(score, capped):
+    from scripts.render_report_previews import contexts
+
+    template, ctx = contexts()["analysis"]
+    ctx = {**ctx, "overall": {**ctx["overall"], "composite": score, "capped": capped}}
+    return pr._env().get_template(template).render(**ctx)
+
+
+def test_cover_ring_is_270_degree_arc_banded_with_cap_value():
+    html = _ring_html(85, True)
+    assert html.count("A44 44 0 1 1 18.89 18.89") == 2 and "<circle" not in html.split("cover-ring")[1].split("</svg>")[0]
+    assert "#EFEDE8" in html and "ring-meridian" in html
+    assert "stroke=\"#946200\"" in html  # 85 is in the medium band
+    assert "Capped at 85" in html
+    assert "Capped at 95" not in _ring_html(95, False) and 'stroke="#157A3C"' in _ring_html(95, False)
+    assert 'stroke="#B42318"' in _ring_html(40, False)
+
+
+def test_status_marks_are_shapes_and_header_mark_is_5mm():
+    css = (Path(pr.TEMPLATE_DIR) / "assets" / "report.css").read_text()
+    assert ".st.ok::before { background: transparent" in css and "rotate(45deg)" in css
+    assert ".st.bad::before { background: var(--bad); border-radius: 0" in css
+    assert 'width="5mm" height="5mm"' in (Path(pr.TEMPLATE_DIR) / "assets" / "brand" / "mark-mono.svg").read_text()
+    assert (Path(pr.TEMPLATE_DIR) / "assets" / "fonts" / "OFL.txt").exists()

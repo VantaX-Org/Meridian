@@ -244,3 +244,16 @@ def test_data_sheet_wash_alternation_and_status_tint():
     assert ws.freeze_panes == "A2" and ws.auto_filter.ref
     assert "FAF9F6" not in str(ws["A2"].fill.fgColor.rgb) and "FAF9F6" in str(ws["A3"].fill.fgColor.rgb)
     assert "FCEBE9" in str(ws["A5"].fill.fgColor.rgb) and "8E1B12" in str(ws["A5"].font.color.rgb)
+
+
+def test_cover_sheet_list_guards_formula_titles_and_escapes_apostrophes():
+    from api.services import branded_xlsx as bx
+
+    wb = _load(build_workbook(tenant_name="T", run_label="R", run_id="r", title="X",
+                              sheets=[SheetSpec(title="=SUM(1)", columns=[ColumnSpec("v", "V")], rows=[]),
+                                      SheetSpec(title="It's", columns=[ColumnSpec("v", "V")], rows=[])]))
+    cells = [c for row in wb["Cover"].iter_rows() for c in row if c.hyperlink]
+    assert cells and all(c.data_type != "f" for c in cells)
+    assert any(c.value == "'=SUM(1)" for c in cells)
+    assert any(c.hyperlink.target == "#'It''s'!A1" for c in cells)
+    assert bx._MARK_PATH.name == "mark-light.png"  # anchored on the white B2 cell
