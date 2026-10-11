@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, emptyExportOptions, type PillTone } from "@/design";
+import { DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, SeverityDot, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { exportObjects, getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -22,7 +22,14 @@ const READINESS_TONE: Record<"pass" | "warn" | "fail", PillTone> = {
   fail: "no-go",
 };
 
-const columns: ColumnDef<ObjectSummary>[] = [
+/** Number cells drill to the object's rules tab; the wrapper keeps the row click from also firing. */
+const drill = (o: ObjectSummary, run: string, n: number | string) => (
+  <span onClick={(e) => e.stopPropagation()}>
+    <DrillLink object={o.module} run={run === "latest" ? undefined : run} filters={{ tab: "rules" }}>{n}</DrillLink>
+  </span>
+);
+
+const makeColumns = (run: string): ColumnDef<ObjectSummary>[] => [
   { accessorKey: "label", header: "Object" },
   {
     accessorKey: "composite_score",
@@ -33,7 +40,7 @@ const columns: ColumnDef<ObjectSummary>[] = [
       return (
         <span className="inline-flex items-center gap-2">
           <ScoreRing score={score} size={24} />
-          <span>{score}</span>
+          {drill(row.original, run, score)}
         </span>
       );
     },
@@ -53,11 +60,11 @@ const columns: ColumnDef<ObjectSummary>[] = [
     cell: ({ row }) => (
       <span className="inline-flex items-center gap-1">
         <SeverityDot severity={row.original.failing_checks > 0 ? "high" : "pass"} />
-        {row.original.failing_checks}
+        {drill(row.original, run, row.original.failing_checks)}
       </span>
     ),
   },
-  { accessorKey: "affected_records", header: "Affected records" },
+  { accessorKey: "affected_records", header: "Affected records", cell: ({ row }) => drill(row.original, run, row.original.affected_records) },
 ];
 
 export default function ObjectsPage() {
@@ -72,8 +79,9 @@ export default function ObjectsPage() {
   });
 
   let state: "loading" | "empty" | "error" | undefined;
-  let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = {
-    title: "No objects analysed yet.",
+  let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table"; summary?: string } = {
+    title: "No objects measured yet.",
+    summary: "Objects appear after the first analysis.",
     ghost: "table",
   };
   if (isLoading || dayOne.status === "loading") {
@@ -85,7 +93,8 @@ export default function ObjectsPage() {
     emptyProps = data.run_id
       ? { title: "No objects for this run. This run has no analysed objects yet.", ghost: "table" }
       : {
-          title: "No objects analysed yet.",
+          title: "No objects measured yet.",
+          summary: "Objects appear after the first analysis.",
           detail: dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
           action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
           ghost: "table",
@@ -94,12 +103,23 @@ export default function ObjectsPage() {
 
   const exportOptions = [{ format: "xlsx" as const, run: () => exportObjects(run) }];
 
+  const objs = data?.objects ?? [];
+  const ready = objs.filter((o) => o.readiness === "pass").length;
+  const hero = objs.length > 0 && (
+    <div className="flex flex-wrap gap-6">
+      <Stat label="Objects" value={objs.length} />
+      <Stat label="Ready" value={ready} tone="go" />
+      <Stat label="Not ready" value={objs.length - ready} tone={objs.length - ready > 0 ? "no-go" : "go"} hint={`${objs.reduce((a, o) => a + o.failing_checks, 0)} failing checks`} />
+    </div>
+  );
+
   return (
     <ExplorerPage
+      summary={hero || undefined}
       toolbarEnd={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
       table={
         <DataTable
-          columns={columns}
+          columns={makeColumns(run)}
           data={data?.objects ?? []}
           getRowId={(row) => row.module}
           onRowClick={(row) => router.push(`/objects/${row.module}?run=${run}&tab=rules`)}

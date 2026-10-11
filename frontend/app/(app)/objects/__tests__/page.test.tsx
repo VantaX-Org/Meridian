@@ -32,7 +32,8 @@ describe("ObjectsPage", () => {
     });
     renderWithQuery(<ObjectsPage />);
     await waitFor(() => expect(screen.getByText("Material Master")).toBeInTheDocument());
-    expect(screen.getByText("72.5")).toBeInTheDocument();
+    expect(screen.getByText("72.5").closest("a")).toHaveAttribute("href", "/objects/material_master?run=v1&tab=rules");
+    expect(screen.getByText("Not ready")).toBeInTheDocument();
   });
 
   it("shows an empty state when the run has no objects", async () => {
@@ -54,7 +55,8 @@ describe("ObjectsPage", () => {
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ total: 0, loaded: 0, counts: {}, systems: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("No objects analysed yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No objects measured yet.")).toBeInTheDocument());
+    expect(screen.getByText("Objects appear after the first analysis.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect a system" })).toBeInTheDocument();
     currentSearch = "run=v1";
   });
