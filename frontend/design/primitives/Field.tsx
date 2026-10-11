@@ -20,8 +20,9 @@ export function Field({ label, children, error }: { label: string; children: Rea
         {label}
       </BaseField.Label>
       {content}
+      {/* match: the caller decides validity; Base UI otherwise only shows errors for its own Field.Control */}
       {error && (
-        <BaseField.Error id={controlId ? `${controlId}-error` : undefined} className="m-field-error">
+        <BaseField.Error match id={controlId ? `${controlId}-error` : undefined} className="m-field-error">
           {error}
         </BaseField.Error>
       )}

@@ -122,8 +122,8 @@ export default function WaveCockpitPage() {
         ) : null}
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Verdict" value={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>} href={`/migration/${waveId}?tab=objects`} />
-        <Stat label="Readiness" href={`/migration/${waveId}?tab=objects`} value={pct(c.score)} delta={`minimum ${w.min_readiness}%`} />
+        <Stat label="Verdict" value={<Pill tone={VERDICT_TONE[c.verdict]}>{VERDICT_LABEL[c.verdict]}</Pill>} href={`/migration/${waveId}?tab=overview`} />
+        <Stat label="Readiness" href={`/migration/${waveId}?tab=overview`} value={pct(c.score)} delta={`minimum ${w.min_readiness}%`} />
         <Stat label="Records blocked" href={`/migration/${waveId}?tab=blockers`} value={c.records_blocked.toLocaleString()}
               delta={`of ${c.records_total.toLocaleString()}`} />
         <Stat label="Trend" href={run ? `/runs/${run}` : undefined} value={<Line data={c.trend.map((p) => ({ x: formatDate(p.completed_at, "date"), y: p.score }))} />} />

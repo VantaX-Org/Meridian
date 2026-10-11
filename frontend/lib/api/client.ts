@@ -61,7 +61,8 @@ function instrument(client: AxiosInstance): AxiosInstance {
     (response) => response,
     (error) => {
       if (typeof window !== "undefined" && error.response) {
-        if (error.response.status === 401) {
+        // a 401 from the login call means wrong credentials, not an expired session: let the form show it
+        if (error.response.status === 401 && !String(error.config?.url ?? "").endsWith("/api/v1/auth/login")) {
           localStorage.removeItem(TOKEN_KEY);
           window.location.href = new URL("/sign-in", window.location.origin).href;
           return Promise.reject(error);

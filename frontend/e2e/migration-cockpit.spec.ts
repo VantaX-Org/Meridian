@@ -7,7 +7,7 @@ test("a wave opens its cockpit and lists its blockers", async ({ app }) => {
   await expect(row).toBeVisible();
   await row.click();
   await expect(app).toHaveURL(/\/migration\/[^/]+$/);
-  await expect(app.getByRole("tab", { name: "Objects" })).toBeVisible();
+  await expect(app.getByRole("tab", { name: "Overview" })).toBeVisible();
   await app.getByRole("tab", { name: "Blockers" }).click();
   await expect(app).toHaveURL(/tab=blockers/);
 });

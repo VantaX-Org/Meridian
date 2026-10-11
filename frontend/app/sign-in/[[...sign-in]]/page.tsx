@@ -104,7 +104,7 @@ export default function SignInPage() {
         <div className={`${authActionsClass} justify-end`}>
           <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password?</Link>
         </div>
-        <Button type="submit" aria-busy={loading} disabled={loading || invalid} className="h-10 w-full">
+        <Button type="submit" aria-busy={loading} disabled={loading} className="h-10 w-full">
           {loading ? <><AuthSpinner /> Signing in…</> : "Sign in"}
         </Button>
       </form>
