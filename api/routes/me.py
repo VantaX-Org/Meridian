@@ -151,7 +151,8 @@ async def decide_access_request(
     if before.status != "open":
         raise HTTPException(status_code=409, detail="Already decided")
     actor = current_user_id(request)
-    if actor and str(actor).lower() == before.user_id:
+    from api.routes.roles import _as_uuid  # local: avoids an import cycle with roles
+    if actor and _as_uuid(actor) == uuid.UUID(before.user_id):  # UUIDs, so a hyphenless id cannot slip by
         raise HTTPException(status_code=403, detail="You cannot decide your own access request")
     if body.decision == "granted" and body.role_key:
         # The role must confer what was asked for; insert_grant then applies the caller ceiling.

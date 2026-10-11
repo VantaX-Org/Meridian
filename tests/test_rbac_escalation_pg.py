@@ -399,3 +399,18 @@ def test_rereview_bypasses(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> No
         assert r.status_code == 403, ("self deactivate", r.text)
 
     _serve(owner, monkeypatch, tid, scenario)
+
+
+def test_decide_own_request_hyphenless_id(owner: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    tid, u = _tenant(owner, {"padmin": "platform_admin"})
+    _grant(owner, tid, u["padmin"], "platform_admin")
+
+    async def scenario(c: AsyncClient) -> None:
+        hdr = {"x-test-uid": u["padmin"].replace("-", "")}
+        r = await c.post("/api/v1/access-requests", json={"resource": "users", "action": "admin"}, headers=hdr)
+        assert r.status_code == 201, r.text
+        r = await c.post(f"/api/v1/access-requests/{r.json()['id']}/decide",
+                         json={"decision": "declined"}, headers=hdr)
+        assert r.status_code == 403, r.text
+
+    _serve(owner, monkeypatch, tid, scenario)
