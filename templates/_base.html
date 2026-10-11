@@ -10,7 +10,7 @@
 @page {
     /* ponytail: WeasyPrint has no element()/running(); the mono mark is a file
        url() written into the margin-box content, same asset family as the cover. */
-    @top-left { content: url("assets/brand/mark-mono.svg") {{ ("  Meridian") | css_str }}; }
+    @top-left { content: "Meridian"; background: url("assets/brand/mark-mono.svg") no-repeat left bottom 2.1mm; background-size: 5mm 5mm; padding-left: 7mm; }
     @top-right { content: {{ title | css_str }}; }
     @bottom-left { content: {{ ("Generated " ~ generated_sast ~ ((" · " ~ ns.run_id[:8]) if ns.run_id else "")) | css_str }}; }
     @bottom-center { content: "Confidential \2014  stays inside your network"; }
