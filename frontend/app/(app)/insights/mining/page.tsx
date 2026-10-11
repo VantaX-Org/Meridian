@@ -1,5 +1,4 @@
 "use client";
-import { oneOf, useUrlState } from "@/hooks/use-url-state";
 
 /**
  * Insights → Mining: entity relationships, mined field dependencies, and
@@ -25,6 +24,7 @@ import { oneOf, useUrlState } from "@/hooks/use-url-state";
  *   real legacy component never calls either, so this port doesn't either.
  */
 
+import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";

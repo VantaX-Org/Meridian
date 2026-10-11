@@ -27,7 +27,7 @@ export default function ProcessDesigner() {
   const sp = useSearchParams();
   const model = sp.get("model") ?? "reference";
   const vRaw = sp.get("v");
-  const v = vRaw && /^\d+$/.test(vRaw) ? vRaw : null;
+  const v = vRaw && /^[1-9]\d{0,5}$/.test(vRaw) ? vRaw : null;
   const overlayOn = sp.get("overlay") !== "none";
   const reference = model === "reference";
 

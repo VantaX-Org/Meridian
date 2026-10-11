@@ -50,6 +50,10 @@ const VIEWS = [
   { value: "all", label: "All open" }, { value: "mine", label: "Mine" }, { value: "unassigned", label: "Unassigned" },
   { value: "breached", label: "SLA breached" }, { value: "today", label: "Due today" }, { value: "escalated", label: "Escalated" },
 ];
+const VIEW_BANNER: Record<string, string> = {
+  mine: "tasks assigned to me", unassigned: "unassigned tasks", breached: "tasks with a breached SLA",
+  today: "tasks due today", escalated: "escalated tasks", all: "all tasks",
+};
 /** Stands in for "no due date" so those tasks sort last. */
 const NO_DUE = Number.MAX_SAFE_INTEGER;
 const BULK_CONFIDENCE = 0.85;
@@ -454,7 +458,7 @@ export default function InboxPage() {
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
             <Notice action={<Button variant="ghost" onClick={() => { setView("all"); setType("all"); }}>Show all</Button>}>
-              Showing {[view !== "all" ? VIEWS.find((v) => v.value === view)?.label.toLowerCase() : null, type !== "all" ? `${labelOf(type).toLowerCase()} tasks` : null].filter(Boolean).join(", ")} only.
+              Showing {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only.
             </Notice>
           )}
           {isExceptions && canManageRules && (

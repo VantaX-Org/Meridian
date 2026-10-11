@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, SeverityDot,
+  Bar, Button, DataTable, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Notice, Pager, Pill, SeverityDot,
   Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
@@ -45,6 +45,13 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dimension = searchParams.get("dimension");
+  // Blocking = critical or high severity (the same rule the migration export uses). Only "true" filters.
+  const blocking = searchParams.get("blocking") === "true";
+  const showAll = () => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("blocking");
+    router.replace(`/objects/${object}?${next.toString()}`, { scroll: false });
+  };
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.object(object, run),
     queryFn: () => getObject(object, run),
@@ -54,6 +61,7 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   const rulesRanked = data
     ? [...data.rules]
         .filter((r) => !dimension || r.dimension === dimension)
+        .filter((r) => !blocking || r.severity === "critical" || r.severity === "high")
         .sort((a, b) => b.affected_count - a.affected_count)
     : [];
   const batch = useQuery({
@@ -124,7 +132,13 @@ function RulesTab({ object, run }: { object: string; run: string }) {
       />
     );
   }
+  const banner = blocking ? (
+    <Notice action={<Button variant="ghost" onClick={showAll}>Show all</Button>}>Showing blocking rules only.</Notice>
+  ) : null;
   if (rulesRanked.length === 0) {
+    if (blocking && !dimension) {
+      return <div className="flex flex-col gap-3">{banner}<EmptyState title="No blocking rules for this object." detail="No critical or high severity check is failing here." /></div>;
+    }
     return (
       <EmptyState
         title={`No ${dimension} checks for this object.`}
@@ -136,12 +150,15 @@ function RulesTab({ object, run }: { object: string; run: string }) {
   if (batch.isError) return <ErrorState message={apiErrorMessage(batch.error)} onRetry={() => batch.refetch()} />;
 
   return (
-    <DataTable
-      columns={columns}
-      data={rulesRanked}
-      getRowId={(row) => row.check_id}
-      onRowClick={(row) => router.push(`/objects/${object}?run=${run}&tab=records&check_id=${row.check_id}`)}
-    />
+    <div className="flex flex-col gap-3">
+      {banner}
+      <DataTable
+        columns={columns}
+        data={rulesRanked}
+        getRowId={(row) => row.check_id}
+        onRowClick={(row) => router.push(`/objects/${object}?run=${run}&tab=records&check_id=${row.check_id}`)}
+      />
+    </div>
   );
 }
 

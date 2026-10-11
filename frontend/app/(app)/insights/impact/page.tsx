@@ -44,7 +44,7 @@ const impactColumns: ColumnDef<ImpactRow>[] = [
     accessorKey: "feature",
     header: "Feature",
     cell: ({ row }) => (
-      <DrillLink object={row.original.feature} filters={{ causing_rules: row.original.causing_rules.join(",") }}>
+      <DrillLink object={row.original.feature}>
         {row.original.feature}
       </DrillLink>
     ),

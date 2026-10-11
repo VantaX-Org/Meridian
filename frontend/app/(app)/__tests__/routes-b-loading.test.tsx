@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
-  useDayOne: () => ({ status: "loading", step: null }),
+  useDayOne: () => ({ status: "ready", step: null }),
   DayOneAction: () => null,
 }));
 vi.mock("@/context/auth-context", () => ({ useAuth: () => ({ user: { id: "u1", role: "admin" } }) }));
@@ -24,7 +24,7 @@ beforeAll(() => {
   for (const c of [apiClient, longApiClient, uploadApiClient]) c.defaults.adapter = never;
 });
 
-// Every wave 10 route. Each must show a designed loading state while its data is pending.
+// useDayOne is "ready" above so a skeleton can only come from a pending query. Every wave 10 route. Each must show a designed loading state while its data is pending.
 const ROUTES: ReadonlyArray<readonly [string, () => Promise<{ default: ComponentType }>]> = [
   ["/insights", () => import("../insights/page")],
   ["/insights/readiness", () => import("../insights/readiness/page")],
