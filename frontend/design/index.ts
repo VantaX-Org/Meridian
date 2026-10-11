@@ -25,6 +25,8 @@ export * from "./primitives/Delta";
 export * from "./primitives/Stat";
 export * from "./primitives/SeverityDot";
 export * from "./primitives/ScoreRing";
+export * from "./primitives/AiSummary";
+export * from "./primitives/ScoreExplainer";
 
 export * from "./table/DataTable";
 export * from "./table/columns";
@@ -39,6 +41,8 @@ export * from "./charts/Radar";
 export * from "./charts/Heatmap";
 export * from "./charts/Sparkline";
 export * from "./charts/Graph";
+export * from "./charts/Funnel";
+export * from "./charts/Pareto";
 
 export * from "./templates/HomePage";
 export * from "./templates/JourneyStepper";
@@ -47,6 +51,8 @@ export * from "./templates/ExplorerPage";
 export * from "./templates/RecordPage";
 export * from "./templates/ReportPage";
 export * from "./templates/FindingDrawer";
+export * from "./templates/InsightHeader";
+export * from "./templates/NextActions";
 
 export * from "./shell/Rail";
 export * from "./shell/TopBar";

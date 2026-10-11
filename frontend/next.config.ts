@@ -109,6 +109,11 @@ const nextConfig: NextConfig = {
         source: "/health",
         destination: `${apiUrl}/health`,
       },
+      {
+        // LLM reachability probe used by the insight header
+        source: "/health/llm",
+        destination: `${apiUrl}/health/llm`,
+      },
     ];
   },
 };

@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
 
 const noSubscribe = () => () => {};
 const readIsMac = () => /Mac|iPhone|iPad/.test(navigator.platform);
@@ -25,8 +26,10 @@ export interface CommandItem {
   shortcut?: string;
 }
 
-export function CommandPalette({ items }: { items: CommandItem[] }) {
+export function CommandPalette({ items, grammar }: { items: CommandItem[]; grammar?: GrammarContext }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const parsed = grammar && query.trim() ? parsePalette(query, grammar) : null;
   // Server snapshot is "not Mac", so SSR and hydration agree; the client reads the real platform.
   const isMac = useSyncExternalStore(noSubscribe, readIsMac, () => false);
   const router = useRouter();
@@ -65,13 +68,32 @@ export function CommandPalette({ items }: { items: CommandItem[] }) {
       </button>
       <Command.Dialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }}
         label="Command palette"
         overlayClassName="m-scrim-glass"
         contentClassName="m-motion-scale-in"
       >
-        <Command.Input placeholder="Type a page, object, check ID or record key" />
+        <Command.Input placeholder="Type a page, object, check ID or record key" value={query} onValueChange={setQuery} />
+        {parsed && parsed.chips.length > 0 && (
+          <div className="flex flex-wrap gap-1 px-3 py-2" aria-label="Parsed filters">
+            {parsed.chips.map((c) => (
+              <span key={`${c.kind}:${c.value}`} className="rounded-full px-2 text-[12px]" style={{ background: "var(--m-accent-soft)", color: "var(--m-accent-ink)" }}>{c.label}</span>
+            ))}
+          </div>
+        )}
         <Command.List>
+          {parsed?.href && (
+            <Command.Item
+              forceMount
+              value={`__grammar__ ${query}`}
+              onSelect={() => {
+                router.push(parsed.href as string);
+                setOpen(false);
+              }}
+            >
+              {parsed.chips.length > 0 ? "Open filtered view" : `Search for "${query.trim()}"`}
+            </Command.Item>
+          )}
           <Command.Empty>Nothing matches. Try a check ID like <span style={{ fontFamily: "var(--m-font-mono)" }}>MM-001</span> or a material number.</Command.Empty>
           {[...groups].map(([group, list]) => (
               <Command.Group key={group} heading={group}>

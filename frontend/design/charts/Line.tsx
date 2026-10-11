@@ -14,6 +14,7 @@ export function Line({
   draw = false,
   dqsThreshold,
   label,
+  annotations,
 }: {
   data: ChartPoint[];
   onPointClick?: (point: ChartPoint) => void;
@@ -22,6 +23,8 @@ export function Line({
   dqsThreshold?: number;
   /** Names the chart for assistive tech; the data points are appended. */
   label?: string;
+  /** Vertical markers at an x value, e.g. a rule change or a run that moved the score. */
+  annotations?: { x: string | number; label: string; kind?: "change" | "event" }[];
 }) {
   const animate = draw && !reducedMotion();
   return (
@@ -41,6 +44,15 @@ export function Line({
           />
         )}
         <Area type="monotone" dataKey="y" stroke="none" fill={chartTheme.area} isAnimationActive={false} activeDot={false} legendType="none" tooltipType="none" />
+        {annotations?.map((a) => (
+          <ReferenceLine
+            key={`${a.x}-${a.label}`}
+            x={a.x}
+            stroke={a.kind === "event" ? chartTheme.high : chartTheme.axis}
+            strokeDasharray="2 3"
+            label={{ value: a.label, position: "insideTopRight", fontSize: 11, fill: chartTheme.axis }}
+          />
+        ))}
         <RLine
           type="monotone"
           dataKey="y"
