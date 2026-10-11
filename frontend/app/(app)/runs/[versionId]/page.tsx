@@ -139,7 +139,7 @@ function SummaryTab({ versionId, systemId }: { versionId: string; systemId?: str
 
   const a = aggregate.data;
   if (a.total === 0) {
-    return <EmptyState title="No findings were produced for this run. Open the steps tab to see what ran." />;
+    return <EmptyState title="No findings were produced for this run. Open Steps to see what ran." />;
   }
 
   const composite = a.dqs.composite;

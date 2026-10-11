@@ -121,7 +121,7 @@ describe("RunDetailPage", () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     renderWithQuery(<RunDetailPage />);
     await waitFor(() =>
-      expect(screen.getByText("No findings were produced for this run. Open the steps tab to see what ran.")).toBeInTheDocument(),
+      expect(screen.getByText("No findings were produced for this run. Open Steps to see what ran.")).toBeInTheDocument(),
     );
   });
 

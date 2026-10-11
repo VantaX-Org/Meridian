@@ -64,7 +64,7 @@ describe("RunsPage", () => {
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-    expect(screen.getByText("74.8")).toBeInTheDocument();
+    expect(screen.getAllByText("74.8").length).toBeGreaterThan(1); // hero tile and table cell, both drill to the run
     expect(screen.getByRole("button", { name: /ECC Prod/ })).toBeInTheDocument();
   });
 
