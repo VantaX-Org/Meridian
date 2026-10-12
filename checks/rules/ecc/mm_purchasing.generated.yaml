@@ -6,7 +6,7 @@ module: mm_purchasing
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXV00353
+- id: DXV00181
   enabled: false
   field: EBAN.BSTYP
   check_class: domain_value_check
@@ -30,7 +30,7 @@ rules:
   fix_map:
     __other__: 'EBAN.BSTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EBAN.BSTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXV00354
+- id: DXV00182
   enabled: false
   field: EBAN.BSAKZ
   check_class: domain_value_check
@@ -48,7 +48,7 @@ rules:
   fix_map:
     __other__: 'EBAN.BSAKZ ''{invalid_value}'' is not in domain BSAKZ. Set it to one of: R, T.'
   record_fix_template: 'EBAN.BSAKZ is {actual_value}; expected one of: R, T.'
-- id: DXV00355
+- id: DXV00183
   enabled: false
   field: EBAN.STATU
   check_class: domain_value_check
@@ -70,7 +70,7 @@ rules:
   fix_map:
     __other__: 'EBAN.STATU ''{invalid_value}'' is not in domain BANST. Set it to one of: A, B, K, L, N, S.'
   record_fix_template: 'EBAN.STATU is {actual_value}; expected one of: A, B, K, L, N, S.'
-- id: DXV00356
+- id: DXV00184
   enabled: false
   field: EBAN.ESTKZ
   check_class: domain_value_check
@@ -97,7 +97,7 @@ rules:
   fix_map:
     __other__: 'EBAN.ESTKZ ''{invalid_value}'' is not in domain ESTKZ. Set it to one of: A, B, D, F, G, M, R, U, V, Y.'
   record_fix_template: 'EBAN.ESTKZ is {actual_value}; expected one of: A, B, D, F, G, M, R, U, V, Y.'
-- id: DXR00847
+- id: DXR00587
   enabled: false
   field: EBAN.RESWK
   check_class: referential_check
@@ -114,7 +114,7 @@ rules:
     __other__: EBAN.RESWK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.RESWK points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00357
+- id: DXV00185
   enabled: false
   field: EBAN.KZVBR
   check_class: domain_value_check
@@ -133,7 +133,7 @@ rules:
   fix_map:
     __other__: 'EBAN.KZVBR ''{invalid_value}'' is not in domain KZVBR. Set it to one of: A, E, P, V.'
   record_fix_template: 'EBAN.KZVBR is {actual_value}; expected one of: A, E, P, V.'
-- id: DXV00358
+- id: DXV00186
   enabled: false
   field: EBAN.VRTKZ
   check_class: domain_value_check
@@ -151,7 +151,7 @@ rules:
   fix_map:
     __other__: 'EBAN.VRTKZ ''{invalid_value}'' is not in domain VRTKZ. Set it to one of: 1, 2.'
   record_fix_template: 'EBAN.VRTKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXV00359
+- id: DXV00187
   enabled: false
   field: EBAN.TWRKZ
   check_class: domain_value_check
@@ -169,7 +169,7 @@ rules:
   fix_map:
     __other__: 'EBAN.TWRKZ ''{invalid_value}'' is not in domain TWRKZ. Set it to one of: 1, 2.'
   record_fix_template: 'EBAN.TWRKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXV00360
+- id: DXV00188
   enabled: false
   field: EBAN.VRTYP
   check_class: domain_value_check
@@ -193,7 +193,7 @@ rules:
   fix_map:
     __other__: 'EBAN.VRTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EBAN.VRTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXR00848
+- id: DXR00588
   enabled: false
   field: EBAN.KTPNR
   check_class: referential_check
@@ -210,7 +210,7 @@ rules:
     __other__: EBAN.KTPNR '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.KTPNR points at a check table EKPO.EBELP entry that does not exist.
-- id: DXR00849
+- id: DXR00589
   enabled: false
   field: EBAN.EBELN
   check_class: referential_check
@@ -227,7 +227,7 @@ rules:
     __other__: EBAN.EBELN '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.EBELN points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00850
+- id: DXR00590
   enabled: false
   field: EBAN.BMEIN
   check_class: referential_check
@@ -244,7 +244,7 @@ rules:
     __other__: EBAN.BMEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.BMEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00361
+- id: DXV00189
   enabled: false
   field: EBAN.KANBA
   check_class: domain_value_check
@@ -261,7 +261,7 @@ rules:
   fix_map:
     __other__: 'EBAN.KANBA ''{invalid_value}'' is not in domain KBNKZ. Set it to one of: X, Y.'
   record_fix_template: 'EBAN.KANBA is {actual_value}; expected one of: X, Y.'
-- id: DXV00362
+- id: DXV00190
   enabled: false
   field: EBAN.BPUEB
   check_class: domain_value_check
@@ -279,7 +279,7 @@ rules:
   fix_map:
     __other__: 'EBAN.BPUEB ''{invalid_value}'' is not in domain BPUEB. Set it to one of: 1, 2.'
   record_fix_template: 'EBAN.BPUEB is {actual_value}; expected one of: 1, 2.'
-- id: DXV00363
+- id: DXV00191
   enabled: false
   field: EBAN.KZKFG
   check_class: domain_value_check
@@ -297,7 +297,7 @@ rules:
   fix_map:
     __other__: 'EBAN.KZKFG ''{invalid_value}'' is not in domain KZCUH. Set it to one of: 1, 2.'
   record_fix_template: 'EBAN.KZKFG is {actual_value}; expected one of: 1, 2.'
-- id: DXV00364
+- id: DXV00192
   enabled: false
   field: EBAN.ATTYP
   check_class: domain_value_check
@@ -323,7 +323,7 @@ rules:
     __other__: 'EBAN.ATTYP ''{invalid_value}'' is not in domain ATTYP. Set it to one of: 00, 01, 02, 10, 11, 12, 20, 21, 22,
       30.'
   record_fix_template: 'EBAN.ATTYP is {actual_value}; expected one of: 00, 01, 02, 10, 11, 12, 20, 21, 22, 30.'
-- id: DXR00851
+- id: DXR00591
   enabled: false
   field: EBAN.ADRNR
   check_class: referential_check
@@ -339,7 +339,7 @@ rules:
   fix_map:
     __other__: EBAN.ADRNR is not defined in the check table ADRC.ADDRNUMBER. Correct it there or add the missing entry.
   record_fix_template: EBAN.ADRNR points at a check table ADRC.ADDRNUMBER entry that does not exist.
-- id: DXR00852
+- id: DXR00592
   enabled: false
   field: EBAN.ADRN2
   check_class: referential_check
@@ -356,7 +356,7 @@ rules:
     __other__: EBAN.ADRN2 '{invalid_value}' is not defined in the check table ADRC.ADDRNUMBER. Correct it there or add the
       missing entry.
   record_fix_template: EBAN.ADRN2 points at a check table ADRC.ADDRNUMBER entry that does not exist.
-- id: DXR00853
+- id: DXR00593
   enabled: false
   field: EBAN.EMLIF
   check_class: referential_check
@@ -373,7 +373,7 @@ rules:
     __other__: EBAN.EMLIF '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.EMLIF points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXV00365
+- id: DXV00193
   enabled: false
   field: EBAN.KZBWS
   check_class: domain_value_check
@@ -391,7 +391,7 @@ rules:
   fix_map:
     __other__: 'EBAN.KZBWS ''{invalid_value}'' is not in domain KZBWS. Set it to one of: A, M.'
   record_fix_template: 'EBAN.KZBWS is {actual_value}; expected one of: A, M.'
-- id: DXR00854
+- id: DXR00594
   enabled: false
   field: EBAN.WAERS
   check_class: referential_check
@@ -408,7 +408,7 @@ rules:
     __other__: EBAN.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00366
+- id: DXV00194
   enabled: false
   field: EBAN.KZFME
   check_class: domain_value_check
@@ -426,7 +426,7 @@ rules:
   fix_map:
     __other__: 'EBAN.KZFME ''{invalid_value}'' is not in domain KZWSO. Set it to one of: A, B.'
   record_fix_template: 'EBAN.KZFME is {actual_value}; expected one of: A, B.'
-- id: DXR00855
+- id: DXR00595
   enabled: false
   field: EBAN.SPRAS
   check_class: referential_check
@@ -443,7 +443,7 @@ rules:
     __other__: EBAN.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00856
+- id: DXR00596
   enabled: false
   field: EBAN.MFRNR
   check_class: referential_check
@@ -460,7 +460,7 @@ rules:
     __other__: EBAN.MFRNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EBAN.MFRNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00857
+- id: DXR00597
   enabled: false
   field: EBKN.SAKTO
   check_class: referential_check
@@ -477,7 +477,7 @@ rules:
     __other__: EBKN.SAKTO '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.SAKTO points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00858
+- id: DXR00598
   enabled: false
   field: EBKN.GSBER
   check_class: referential_check
@@ -494,7 +494,7 @@ rules:
     __other__: EBKN.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR00859
+- id: DXR00599
   enabled: false
   field: EBKN.KOSTL
   check_class: referential_check
@@ -511,7 +511,7 @@ rules:
     __other__: EBKN.KOSTL '{invalid_value}' is not defined in the check table CSKS.KOSTL. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.KOSTL points at a check table CSKS.KOSTL entry that does not exist.
-- id: DXR00860
+- id: DXR00600
   enabled: false
   field: EBKN.VBELN
   check_class: referential_check
@@ -528,7 +528,7 @@ rules:
     __other__: EBKN.VBELN '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.VBELN points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR00861
+- id: DXR00601
   enabled: false
   field: EBKN.VBELP
   check_class: referential_check
@@ -545,7 +545,7 @@ rules:
     __other__: EBKN.VBELP '{invalid_value}' is not defined in the check table VBUP.POSNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.VBELP points at a check table VBUP.POSNR entry that does not exist.
-- id: DXR00862
+- id: DXR00602
   enabled: false
   field: EBKN.VETEN
   check_class: referential_check
@@ -562,7 +562,7 @@ rules:
     __other__: EBKN.VETEN '{invalid_value}' is not defined in the check table VBEP.ETENR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.VETEN points at a check table VBEP.ETENR entry that does not exist.
-- id: DXR00863
+- id: DXR00603
   enabled: false
   field: EBKN.ANLN1
   check_class: referential_check
@@ -579,7 +579,7 @@ rules:
     __other__: EBKN.ANLN1 '{invalid_value}' is not defined in the check table ANLH.ANLN1. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.ANLN1 points at a check table ANLH.ANLN1 entry that does not exist.
-- id: DXR00864
+- id: DXR00604
   enabled: false
   field: EBKN.ANLN2
   check_class: referential_check
@@ -596,7 +596,7 @@ rules:
     __other__: EBKN.ANLN2 '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.ANLN2 points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR00865
+- id: DXR00605
   enabled: false
   field: EBKN.AUFNR
   check_class: referential_check
@@ -613,7 +613,7 @@ rules:
     __other__: EBKN.AUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.AUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR00866
+- id: DXR00606
   enabled: false
   field: EBKN.KOKRS
   check_class: referential_check
@@ -630,7 +630,7 @@ rules:
     __other__: EBKN.KOKRS '{invalid_value}' is not defined in the check table TKA01.KOKRS. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.KOKRS points at a check table TKA01.KOKRS entry that does not exist.
-- id: DXR00867
+- id: DXR00607
   enabled: false
   field: EBKN.PS_PSP_PNR
   check_class: referential_check
@@ -647,7 +647,7 @@ rules:
     __other__: EBKN.PS_PSP_PNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the
       missing entry.
   record_fix_template: EBKN.PS_PSP_PNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR00868
+- id: DXR00608
   enabled: false
   field: EBKN.NPLNR
   check_class: referential_check
@@ -664,7 +664,7 @@ rules:
     __other__: EBKN.NPLNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.NPLNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR00869
+- id: DXR00609
   enabled: false
   field: EBKN.VPTNR
   check_class: referential_check
@@ -681,7 +681,7 @@ rules:
     __other__: EBKN.VPTNR '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.VPTNR points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR00870
+- id: DXR00610
   enabled: false
   field: EBKN.FIPOS
   check_class: referential_check
@@ -698,7 +698,7 @@ rules:
     __other__: EBKN.FIPOS '{invalid_value}' is not defined in the check table FMFPO.FIPOS. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.FIPOS points at a check table FMFPO.FIPOS entry that does not exist.
-- id: DXR00871
+- id: DXR00611
   enabled: false
   field: EBKN.LSTAR
   check_class: referential_check
@@ -715,7 +715,7 @@ rules:
     __other__: EBKN.LSTAR '{invalid_value}' is not defined in the check table CSLA.LSTAR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.LSTAR points at a check table CSLA.LSTAR entry that does not exist.
-- id: DXR00872
+- id: DXR00612
   enabled: false
   field: EBKN.PRZNR
   check_class: referential_check
@@ -732,7 +732,7 @@ rules:
     __other__: EBKN.PRZNR '{invalid_value}' is not defined in the check table CBPR.PRZNR. Correct it there or add the missing
       entry.
   record_fix_template: EBKN.PRZNR points at a check table CBPR.PRZNR entry that does not exist.
-- id: DXR00873
+- id: DXR00613
   enabled: false
   field: EINA.URZLA
   check_class: referential_check
@@ -749,7 +749,7 @@ rules:
     __other__: EINA.URZLA '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: EINA.URZLA points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00874
+- id: DXR00614
   enabled: false
   field: EINA.URZTP
   check_class: referential_check
@@ -766,7 +766,7 @@ rules:
     __other__: EINA.URZTP '{invalid_value}' is not defined in the check table T069.URZTP. Correct it there or add the missing
       entry.
   record_fix_template: EINA.URZTP points at a check table T069.URZTP entry that does not exist.
-- id: DXR00875
+- id: DXR00615
   enabled: false
   field: EINA.LMEIN
   check_class: referential_check
@@ -783,7 +783,7 @@ rules:
     __other__: EINA.LMEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EINA.LMEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00876
+- id: DXR00616
   enabled: false
   field: EINA.REGIO
   check_class: referential_check
@@ -800,7 +800,7 @@ rules:
     __other__: EINA.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: EINA.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXV00367
+- id: DXV00195
   enabled: false
   field: EINA.VABME
   check_class: domain_value_check
@@ -818,7 +818,7 @@ rules:
   fix_map:
     __other__: 'EINA.VABME ''{invalid_value}'' is not in domain VABME. Set it to one of: 1, 2.'
   record_fix_template: 'EINA.VABME is {actual_value}; expected one of: 1, 2.'
-- id: DXR00877
+- id: DXR00617
   enabled: false
   field: EINA.LTSNR
   check_class: referential_check
@@ -835,7 +835,7 @@ rules:
     __other__: EINA.LTSNR '{invalid_value}' is not defined in the check table WYT1.LTSNR. Correct it there or add the missing
       entry.
   record_fix_template: EINA.LTSNR points at a check table WYT1.LTSNR entry that does not exist.
-- id: DXR00878
+- id: DXR00618
   enabled: false
   field: EINA.RUECK
   check_class: referential_check
@@ -852,7 +852,7 @@ rules:
     __other__: EINA.RUECK '{invalid_value}' is not defined in the check table TWRV.RUECV. Correct it there or add the missing
       entry.
   record_fix_template: EINA.RUECK points at a check table TWRV.RUECV entry that does not exist.
-- id: DXR00879
+- id: DXR00619
   enabled: false
   field: EINA.KOLIF
   check_class: referential_check
@@ -869,7 +869,7 @@ rules:
     __other__: EINA.KOLIF '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EINA.KOLIF points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00880
+- id: DXR00620
   enabled: false
   field: EINA.PUNEI
   check_class: referential_check
@@ -886,7 +886,7 @@ rules:
     __other__: EINA.PUNEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EINA.PUNEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00881
+- id: DXR00621
   enabled: false
   field: EINE.ANFNR
   check_class: referential_check
@@ -903,7 +903,7 @@ rules:
     __other__: EINE.ANFNR '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EINE.ANFNR points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00882
+- id: DXR00622
   enabled: false
   field: EINE.ANFPS
   check_class: referential_check
@@ -920,7 +920,7 @@ rules:
     __other__: EINE.ANFPS '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EINE.ANFPS points at a check table EKPO.EBELP entry that does not exist.
-- id: DXV00368
+- id: DXV00196
   enabled: false
   field: EINE.BSTYP
   check_class: domain_value_check
@@ -944,7 +944,7 @@ rules:
   fix_map:
     __other__: 'EINE.BSTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EINE.BSTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXR00883
+- id: DXR00623
   enabled: false
   field: EINE.EBELN
   check_class: referential_check
@@ -961,7 +961,7 @@ rules:
     __other__: EINE.EBELN '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EINE.EBELN points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00884
+- id: DXR00624
   enabled: false
   field: EINE.EBELP
   check_class: referential_check
@@ -978,7 +978,7 @@ rules:
     __other__: EINE.EBELP '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EINE.EBELP points at a check table EKPO.EBELP entry that does not exist.
-- id: DXR00885
+- id: DXR00625
   enabled: false
   field: EINE.BPRME
   check_class: referential_check
@@ -995,7 +995,7 @@ rules:
     __other__: EINE.BPRME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EINE.BPRME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00886
+- id: DXR00626
   enabled: false
   field: EINE.BWTAR
   check_class: referential_check
@@ -1012,7 +1012,7 @@ rules:
     __other__: EINE.BWTAR '{invalid_value}' is not defined in the check table T149D.BWTAR. Correct it there or add the missing
       entry.
   record_fix_template: EINE.BWTAR points at a check table T149D.BWTAR entry that does not exist.
-- id: DXR00887
+- id: DXR00627
   enabled: false
   field: EINE.EVERS
   check_class: referential_check
@@ -1029,7 +1029,7 @@ rules:
     __other__: EINE.EVERS '{invalid_value}' is not defined in the check table T027A.EVERS. Correct it there or add the missing
       entry.
   record_fix_template: EINE.EVERS points at a check table T027A.EVERS entry that does not exist.
-- id: DXR00888
+- id: DXR00628
   enabled: false
   field: EINE.EXPRF
   check_class: referential_check
@@ -1046,7 +1046,7 @@ rules:
     __other__: EINE.EXPRF '{invalid_value}' is not defined in the check table T616.EXPRF. Correct it there or add the missing
       entry.
   record_fix_template: EINE.EXPRF points at a check table T616.EXPRF entry that does not exist.
-- id: DXR00889
+- id: DXR00629
   enabled: false
   field: EINE.BSTAE
   check_class: referential_check
@@ -1063,7 +1063,7 @@ rules:
     __other__: EINE.BSTAE '{invalid_value}' is not defined in the check table T163L.BSTAE. Correct it there or add the missing
       entry.
   record_fix_template: EINE.BSTAE points at a check table T163L.BSTAE entry that does not exist.
-- id: DXV00369
+- id: DXV00197
   enabled: false
   field: EINE.MEPRF
   check_class: domain_value_check
@@ -1084,7 +1084,7 @@ rules:
   fix_map:
     __other__: 'EINE.MEPRF ''{invalid_value}'' is not in domain MEPRF. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'EINE.MEPRF is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00890
+- id: DXR00630
   enabled: false
   field: EINE.RDPRF
   check_class: referential_check
@@ -1101,7 +1101,7 @@ rules:
     __other__: EINE.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: EINE.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXR00891
+- id: DXR00631
   enabled: false
   field: EINE.MEGRU
   check_class: referential_check
@@ -1118,7 +1118,7 @@ rules:
     __other__: EINE.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
       entry.
   record_fix_template: EINE.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
-- id: DXR00892
+- id: DXR00632
   enabled: false
   field: EINE.J_1BNBM
   check_class: referential_check
@@ -1135,7 +1135,7 @@ rules:
     __other__: EINE.J_1BNBM '{invalid_value}' is not defined in the check table T604F.STEUC. Correct it there or add the missing
       entry.
   record_fix_template: EINE.J_1BNBM points at a check table T604F.STEUC entry that does not exist.
-- id: DXV00370
+- id: DXV00198
   enabled: false
   field: EINE.IPRKZ
   check_class: domain_value_check
@@ -1154,7 +1154,7 @@ rules:
   fix_map:
     __other__: 'EINE.IPRKZ ''{invalid_value}'' is not in domain DATTP. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EINE.IPRKZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00371
+- id: DXV00199
   enabled: false
   field: EINE.VENDOR_RMA_REQ
   check_class: domain_value_check
@@ -1172,7 +1172,7 @@ rules:
   fix_map:
     __other__: 'EINE.VENDOR_RMA_REQ ''{invalid_value}'' is not in domain MSR_VRMA_REQ_EINE. Set it to one of: V, X.'
   record_fix_template: 'EINE.VENDOR_RMA_REQ is {actual_value}; expected one of: V, X.'
-- id: DXV00372
+- id: DXV00200
   enabled: false
   field: EINE.DIFF_INVOICE
   check_class: domain_value_check
@@ -1190,7 +1190,7 @@ rules:
   fix_map:
     __other__: 'EINE.DIFF_INVOICE ''{invalid_value}'' is not in domain DIFF_INVOICE. Set it to one of: 01, 02.'
   record_fix_template: 'EINE.DIFF_INVOICE is {actual_value}; expected one of: 01, 02.'
-- id: DXR00893
+- id: DXR00633
   enabled: false
   field: EINE.TRANSPORT_CHAIN
   check_class: referential_check
@@ -1207,7 +1207,7 @@ rules:
     __other__: EINE.TRANSPORT_CHAIN '{invalid_value}' is not defined in the check table WRF_PSCD_TCHAINH.TC_ID. Correct it
       there or add the missing entry.
   record_fix_template: EINE.TRANSPORT_CHAIN points at a check table WRF_PSCD_TCHAINH.TC_ID entry that does not exist.
-- id: DXR00894
+- id: DXR00634
   enabled: false
   field: EKAB.MEINS
   check_class: referential_check
@@ -1224,7 +1224,7 @@ rules:
     __other__: EKAB.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKAB.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00895
+- id: DXR00635
   enabled: false
   field: EKAB.WAERS
   check_class: referential_check
@@ -1241,7 +1241,7 @@ rules:
     __other__: EKAB.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: EKAB.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR00896
+- id: DXR00636
   enabled: false
   field: EKAB.BUKRS
   check_class: referential_check
@@ -1258,7 +1258,7 @@ rules:
     __other__: EKAB.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: EKAB.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXR00897
+- id: DXR00637
   enabled: false
   field: EKAB.WERKS
   check_class: referential_check
@@ -1274,7 +1274,7 @@ rules:
     __other__: EKAB.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: EKAB.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR00898
+- id: DXR00638
   enabled: false
   field: EKAB.EKORG
   check_class: referential_check
@@ -1291,7 +1291,7 @@ rules:
     __other__: EKAB.EKORG '{invalid_value}' is not defined in the check table T024E.EKORG. Correct it there or add the missing
       entry.
   record_fix_template: EKAB.EKORG points at a check table T024E.EKORG entry that does not exist.
-- id: DXV00373
+- id: DXV00201
   enabled: false
   field: EKAB.BSTYP
   check_class: domain_value_check
@@ -1315,7 +1315,7 @@ rules:
   fix_map:
     __other__: 'EKAB.BSTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EKAB.BSTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXV00374
+- id: DXV00202
   enabled: false
   field: EKAB.MEMORYTYPE
   check_class: domain_value_check
@@ -1333,7 +1333,7 @@ rules:
   fix_map:
     __other__: 'EKAB.MEMORYTYPE ''{invalid_value}'' is not in domain MM_MEMORYTYPE. Set it to one of: H, P.'
   record_fix_template: 'EKAB.MEMORYTYPE is {actual_value}; expected one of: H, P.'
-- id: DXR00899
+- id: DXR00639
   enabled: false
   field: EKBE.BEWTP
   check_class: referential_check
@@ -1350,7 +1350,7 @@ rules:
     __other__: EKBE.BEWTP '{invalid_value}' is not defined in the check table T163B.BEWTP. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.BEWTP points at a check table T163B.BEWTP entry that does not exist.
-- id: DXR00900
+- id: DXR00640
   enabled: false
   field: EKBE.BWART
   check_class: referential_check
@@ -1367,7 +1367,7 @@ rules:
     __other__: EKBE.BWART '{invalid_value}' is not defined in the check table T156.BWART. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.BWART points at a check table T156.BWART entry that does not exist.
-- id: DXR00901
+- id: DXR00641
   enabled: false
   field: EKBE.WAERS
   check_class: referential_check
@@ -1384,7 +1384,7 @@ rules:
     __other__: EKBE.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00375
+- id: DXV00203
   enabled: false
   field: EKBE.SHKZG
   check_class: domain_value_check
@@ -1402,7 +1402,7 @@ rules:
   fix_map:
     __other__: 'EKBE.SHKZG ''{invalid_value}'' is not in domain SHKZG. Set it to one of: H, S.'
   record_fix_template: 'EKBE.SHKZG is {actual_value}; expected one of: H, S.'
-- id: DXR00902
+- id: DXR00642
   enabled: false
   field: EKBE.BWTAR
   check_class: referential_check
@@ -1419,7 +1419,7 @@ rules:
     __other__: EKBE.BWTAR '{invalid_value}' is not defined in the check table T149D.BWTAR. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.BWTAR points at a check table T149D.BWTAR entry that does not exist.
-- id: DXR00903
+- id: DXR00643
   enabled: false
   field: EKBE.GRUND
   check_class: referential_check
@@ -1436,7 +1436,7 @@ rules:
     __other__: EKBE.GRUND '{invalid_value}' is not defined in the check table T157D.GRUND. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.GRUND points at a check table T157D.GRUND entry that does not exist.
-- id: DXR00904
+- id: DXR00644
   enabled: false
   field: EKBE.EVERE
   check_class: referential_check
@@ -1453,7 +1453,7 @@ rules:
     __other__: EKBE.EVERE '{invalid_value}' is not defined in the check table T027C.EVERE. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.EVERE points at a check table T027C.EVERE entry that does not exist.
-- id: DXR00905
+- id: DXR00645
   enabled: false
   field: EKBE.LSMEH
   check_class: referential_check
@@ -1470,7 +1470,7 @@ rules:
     __other__: EKBE.LSMEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.LSMEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00906
+- id: DXR00646
   enabled: false
   field: EKBE.EMATN
   check_class: referential_check
@@ -1487,7 +1487,7 @@ rules:
     __other__: EKBE.EMATN '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.EMATN points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00907
+- id: DXR00647
   enabled: false
   field: EKBE.HSWAE
   check_class: referential_check
@@ -1504,7 +1504,7 @@ rules:
     __other__: EKBE.HSWAE '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: EKBE.HSWAE points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00376
+- id: DXV00204
   enabled: false
   field: EKBE.INV_ITEM_ORIGIN
   check_class: domain_value_check
@@ -1522,7 +1522,7 @@ rules:
   fix_map:
     __other__: 'EKBE.INV_ITEM_ORIGIN ''{invalid_value}'' is not in domain INV_ITM_ORIGIN. Set it to one of: A, B.'
   record_fix_template: 'EKBE.INV_ITEM_ORIGIN is {actual_value}; expected one of: A, B.'
-- id: DXV00377
+- id: DXV00205
   enabled: false
   field: EKBE.ET_UPD
   check_class: domain_value_check
@@ -1541,7 +1541,7 @@ rules:
   fix_map:
     __other__: 'EKBE.ET_UPD ''{invalid_value}'' is not in domain ET_UPD1. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKBE.ET_UPD is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00908
+- id: DXR00648
   enabled: false
   field: EKET.BNFPO
   check_class: referential_check
@@ -1558,7 +1558,7 @@ rules:
     __other__: EKET.BNFPO '{invalid_value}' is not defined in the check table EBAN.BNFPO. Correct it there or add the missing
       entry.
   record_fix_template: EKET.BNFPO points at a check table EBAN.BNFPO entry that does not exist.
-- id: DXV00378
+- id: DXV00206
   enabled: false
   field: EKET.ESTKZ
   check_class: domain_value_check
@@ -1585,7 +1585,7 @@ rules:
   fix_map:
     __other__: 'EKET.ESTKZ ''{invalid_value}'' is not in domain ESTKZ. Set it to one of: A, B, D, F, G, M, R, U, V, Y.'
   record_fix_template: 'EKET.ESTKZ is {actual_value}; expected one of: A, B, D, F, G, M, R, U, V, Y.'
-- id: DXV00379
+- id: DXV00207
   enabled: false
   field: EKET.ABART
   check_class: domain_value_check
@@ -1608,7 +1608,7 @@ rules:
   fix_map:
     __other__: 'EKET.ABART ''{invalid_value}'' is not in domain ABART. Set it to one of: 1, 2, 3, 4, 5, 6, 7.'
   record_fix_template: 'EKET.ABART is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7.'
-- id: DXR00909
+- id: DXR00649
   enabled: false
   field: EKET.AULWE
   check_class: referential_check
@@ -1625,7 +1625,7 @@ rules:
     __other__: EKET.AULWE '{invalid_value}' is not defined in the check table VALW.AULWE. Correct it there or add the missing
       entry.
   record_fix_template: EKET.AULWE points at a check table VALW.AULWE entry that does not exist.
-- id: DXV00380
+- id: DXV00208
   enabled: false
   field: EKET.OTB_STATUS
   check_class: domain_value_check
@@ -1643,7 +1643,7 @@ rules:
   fix_map:
     __other__: 'EKET.OTB_STATUS ''{invalid_value}'' is not in domain WRF_POTB_STATUS. Set it to one of: 1, 2.'
   record_fix_template: 'EKET.OTB_STATUS is {actual_value}; expected one of: 1, 2.'
-- id: DXV00381
+- id: DXV00209
   enabled: false
   field: EKET.OTB_REASON
   check_class: domain_value_check
@@ -1670,7 +1670,7 @@ rules:
     __other__: 'EKET.OTB_REASON ''{invalid_value}'' is not in domain WRF_POTB_STATUS_REASON. Set it to one of: 001, 002, 005,
       006, 007, 008, 009, 010, 011.'
   record_fix_template: 'EKET.OTB_REASON is {actual_value}; expected one of: 001, 002, 005, 006, 007, 008, 009, 010, 011.'
-- id: DXV00382
+- id: DXV00210
   enabled: false
   field: EKET.CHECK_TYPE
   check_class: domain_value_check
@@ -1689,7 +1689,7 @@ rules:
   fix_map:
     __other__: 'EKET.CHECK_TYPE ''{invalid_value}'' is not in domain WRF_BUDG_OTB_CHECK. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKET.CHECK_TYPE is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00910
+- id: DXR00650
   enabled: false
   field: EKKN.KOSTL
   check_class: referential_check
@@ -1706,7 +1706,7 @@ rules:
     __other__: EKKN.KOSTL '{invalid_value}' is not defined in the check table CSKS.KOSTL. Correct it there or add the missing
       entry.
   record_fix_template: EKKN.KOSTL points at a check table CSKS.KOSTL entry that does not exist.
-- id: DXR00911
+- id: DXR00651
   enabled: false
   field: EKKN.AUFNR
   check_class: referential_check
@@ -1723,7 +1723,7 @@ rules:
     __other__: EKKN.AUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: EKKN.AUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR00912
+- id: DXR00652
   enabled: false
   field: EKKN.KOKRS
   check_class: referential_check
@@ -1740,7 +1740,7 @@ rules:
     __other__: EKKN.KOKRS '{invalid_value}' is not defined in the check table TKA01.KOKRS. Correct it there or add the missing
       entry.
   record_fix_template: EKKN.KOKRS points at a check table TKA01.KOKRS entry that does not exist.
-- id: DXR00913
+- id: DXR00653
   enabled: false
   field: EKKN.PS_PSP_PNR
   check_class: referential_check
@@ -1757,7 +1757,7 @@ rules:
     __other__: EKKN.PS_PSP_PNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the
       missing entry.
   record_fix_template: EKKN.PS_PSP_PNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR00914
+- id: DXR00654
   enabled: false
   field: EKKN.NPLNR
   check_class: referential_check
@@ -1774,7 +1774,7 @@ rules:
     __other__: EKKN.NPLNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: EKKN.NPLNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR00915
+- id: DXR00655
   enabled: false
   field: EKKN.FIPOS
   check_class: referential_check
@@ -1791,7 +1791,7 @@ rules:
     __other__: EKKN.FIPOS '{invalid_value}' is not defined in the check table FMFPO.FIPOS. Correct it there or add the missing
       entry.
   record_fix_template: EKKN.FIPOS points at a check table FMFPO.FIPOS entry that does not exist.
-- id: DXV00383
+- id: DXV00211
   enabled: false
   field: EKKO.BSAKZ
   check_class: domain_value_check
@@ -1809,7 +1809,7 @@ rules:
   fix_map:
     __other__: 'EKKO.BSAKZ ''{invalid_value}'' is not in domain BSAKZ. Set it to one of: R, T.'
   record_fix_template: 'EKKO.BSAKZ is {actual_value}; expected one of: R, T.'
-- id: DXV00384
+- id: DXV00212
   enabled: false
   field: EKKO.STATU
   check_class: domain_value_check
@@ -1838,7 +1838,7 @@ rules:
     __other__: 'EKKO.STATU ''{invalid_value}'' is not in domain ESTAK. Set it to one of: A, B, C, D, E, F, G, H, I, J, S,
       X.'
   record_fix_template: 'EKKO.STATU is {actual_value}; expected one of: A, B, C, D, E, F, G, H, I, J, S, X.'
-- id: DXR00916
+- id: DXR00656
   enabled: false
   field: EKKO.LPONR
   check_class: referential_check
@@ -1855,7 +1855,7 @@ rules:
     __other__: EKKO.LPONR '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.LPONR points at a check table EKPO.EBELP entry that does not exist.
-- id: DXR00917
+- id: DXR00657
   enabled: false
   field: EKKO.SPRAS
   check_class: referential_check
@@ -1872,7 +1872,7 @@ rules:
     __other__: EKKO.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00918
+- id: DXR00658
   enabled: false
   field: EKKO.AUSNR
   check_class: referential_check
@@ -1889,7 +1889,7 @@ rules:
     __other__: EKKO.AUSNR '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.AUSNR points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00919
+- id: DXR00659
   enabled: false
   field: EKKO.KONNR
   check_class: referential_check
@@ -1906,7 +1906,7 @@ rules:
     __other__: EKKO.KONNR '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.KONNR points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00920
+- id: DXR00660
   enabled: false
   field: EKKO.LBLIF
   check_class: referential_check
@@ -1923,7 +1923,7 @@ rules:
     __other__: EKKO.LBLIF '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.LBLIF points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00921
+- id: DXR00661
   enabled: false
   field: EKKO.KALSM
   check_class: referential_check
@@ -1940,7 +1940,7 @@ rules:
     __other__: EKKO.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.KALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR00922
+- id: DXR00662
   enabled: false
   field: EKKO.LANDS
   check_class: referential_check
@@ -1957,7 +1957,7 @@ rules:
     __other__: EKKO.LANDS '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: EKKO.LANDS points at a check table T005.LAND1 entry that does not exist.
-- id: DXV00385
+- id: DXV00213
   enabled: false
   field: EKPO.STATU
   check_class: domain_value_check
@@ -1976,7 +1976,7 @@ rules:
   fix_map:
     __other__: 'EKPO.STATU ''{invalid_value}'' is not in domain ASTAT. Set it to one of: A, F, V, W.'
   record_fix_template: 'EKPO.STATU is {actual_value}; expected one of: A, F, V, W.'
-- id: DXR00923
+- id: DXR00663
   enabled: false
   field: EKPO.BUKRS
   check_class: referential_check
@@ -1993,7 +1993,7 @@ rules:
     __other__: EKPO.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXV00386
+- id: DXV00214
   enabled: false
   field: EKPO.INSMK
   check_class: domain_value_check
@@ -2010,7 +2010,7 @@ rules:
   fix_map:
     __other__: 'EKPO.INSMK ''{invalid_value}'' is not in domain INSMK. Set it to one of: S, X.'
   record_fix_template: 'EKPO.INSMK is {actual_value}; expected one of: S, X.'
-- id: DXV00387
+- id: DXV00215
   enabled: false
   field: EKPO.SPINF
   check_class: domain_value_check
@@ -2029,7 +2029,7 @@ rules:
   fix_map:
     __other__: 'EKPO.SPINF ''{invalid_value}'' is not in domain SPINF. Set it to one of: A, B, C.'
   record_fix_template: 'EKPO.SPINF is {actual_value}; expected one of: A, B, C.'
-- id: DXV00388
+- id: DXV00216
   enabled: false
   field: EKPO.KZVBR
   check_class: domain_value_check
@@ -2048,7 +2048,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZVBR ''{invalid_value}'' is not in domain KZVBR. Set it to one of: A, E, P, V.'
   record_fix_template: 'EKPO.KZVBR is {actual_value}; expected one of: A, E, P, V.'
-- id: DXV00389
+- id: DXV00217
   enabled: false
   field: EKPO.VRTKZ
   check_class: domain_value_check
@@ -2066,7 +2066,7 @@ rules:
   fix_map:
     __other__: 'EKPO.VRTKZ ''{invalid_value}'' is not in domain VRTKZ. Set it to one of: 1, 2.'
   record_fix_template: 'EKPO.VRTKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXV00390
+- id: DXV00218
   enabled: false
   field: EKPO.TWRKZ
   check_class: domain_value_check
@@ -2084,7 +2084,7 @@ rules:
   fix_map:
     __other__: 'EKPO.TWRKZ ''{invalid_value}'' is not in domain TWRKZ. Set it to one of: 1, 2.'
   record_fix_template: 'EKPO.TWRKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXR00924
+- id: DXR00664
   enabled: false
   field: EKPO.KTPNR
   check_class: referential_check
@@ -2101,7 +2101,7 @@ rules:
     __other__: EKPO.KTPNR '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.KTPNR points at a check table EKPO.EBELP entry that does not exist.
-- id: DXV00391
+- id: DXV00219
   enabled: false
   field: EKPO.KZSTU
   check_class: domain_value_check
@@ -2119,7 +2119,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZSTU ''{invalid_value}'' is not in domain KZFIX. Set it to one of: 1, 2.'
   record_fix_template: 'EKPO.KZSTU is {actual_value}; expected one of: 1, 2.'
-- id: DXR00925
+- id: DXR00665
   enabled: false
   field: EKPO.LMEIN
   check_class: referential_check
@@ -2136,7 +2136,7 @@ rules:
     __other__: EKPO.LMEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.LMEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00392
+- id: DXV00220
   enabled: false
   field: EKPO.BSTYP
   check_class: domain_value_check
@@ -2160,7 +2160,7 @@ rules:
   fix_map:
     __other__: 'EKPO.BSTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EKPO.BSTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXR00926
+- id: DXR00666
   enabled: false
   field: EKPO.ADRNR
   check_class: referential_check
@@ -2176,7 +2176,7 @@ rules:
   fix_map:
     __other__: EKPO.ADRNR is not defined in the check table ADRC.ADDRNUMBER. Correct it there or add the missing entry.
   record_fix_template: EKPO.ADRNR points at a check table ADRC.ADDRNUMBER entry that does not exist.
-- id: DXR00927
+- id: DXR00667
   enabled: false
   field: EKPO.GEWEI
   check_class: referential_check
@@ -2193,7 +2193,7 @@ rules:
     __other__: EKPO.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00928
+- id: DXR00668
   enabled: false
   field: EKPO.TXJCD
   check_class: referential_check
@@ -2210,7 +2210,7 @@ rules:
     __other__: EKPO.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXV00393
+- id: DXV00221
   enabled: false
   field: EKPO.ETDRK
   check_class: domain_value_check
@@ -2229,7 +2229,7 @@ rules:
   fix_map:
     __other__: 'EKPO.ETDRK ''{invalid_value}'' is not in domain ETDRK. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKPO.ETDRK is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00929
+- id: DXR00669
   enabled: false
   field: EKPO.FIPOS
   check_class: referential_check
@@ -2246,7 +2246,7 @@ rules:
     __other__: EKPO.FIPOS '{invalid_value}' is not defined in the check table FMFPO.FIPOS. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.FIPOS points at a check table FMFPO.FIPOS entry that does not exist.
-- id: DXV00394
+- id: DXV00222
   enabled: false
   field: EKPO.MEPRF
   check_class: domain_value_check
@@ -2267,7 +2267,7 @@ rules:
   fix_map:
     __other__: 'EKPO.MEPRF ''{invalid_value}'' is not in domain MEPRF. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'EKPO.MEPRF is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00930
+- id: DXR00670
   enabled: false
   field: EKPO.VOLEH
   check_class: referential_check
@@ -2284,7 +2284,7 @@ rules:
     __other__: EKPO.VOLEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.VOLEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00931
+- id: DXR00671
   enabled: false
   field: EKPO.KOLIF
   check_class: referential_check
@@ -2301,7 +2301,7 @@ rules:
     __other__: EKPO.KOLIF '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.KOLIF points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00932
+- id: DXR00672
   enabled: false
   field: EKPO.UEBPO
   check_class: referential_check
@@ -2318,7 +2318,7 @@ rules:
     __other__: EKPO.UEBPO '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.UEBPO points at a check table EKPO.EBELP entry that does not exist.
-- id: DXV00395
+- id: DXV00223
   enabled: false
   field: EKPO.ATTYP
   check_class: domain_value_check
@@ -2344,7 +2344,7 @@ rules:
     __other__: 'EKPO.ATTYP ''{invalid_value}'' is not in domain ATTYP. Set it to one of: 00, 01, 02, 10, 11, 12, 20, 21, 22,
       30.'
   record_fix_template: 'EKPO.ATTYP is {actual_value}; expected one of: 00, 01, 02, 10, 11, 12, 20, 21, 22, 30.'
-- id: DXV00396
+- id: DXV00224
   enabled: false
   field: EKPO.KANBA
   check_class: domain_value_check
@@ -2361,7 +2361,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KANBA ''{invalid_value}'' is not in domain KBNKZ. Set it to one of: X, Y.'
   record_fix_template: 'EKPO.KANBA is {actual_value}; expected one of: X, Y.'
-- id: DXR00933
+- id: DXR00673
   enabled: false
   field: EKPO.ADRN2
   check_class: referential_check
@@ -2378,7 +2378,7 @@ rules:
     __other__: EKPO.ADRN2 '{invalid_value}' is not defined in the check table ADRC.ADDRNUMBER. Correct it there or add the
       missing entry.
   record_fix_template: EKPO.ADRN2 points at a check table ADRC.ADDRNUMBER entry that does not exist.
-- id: DXR00934
+- id: DXR00674
   enabled: false
   field: EKPO.PUNEI
   check_class: referential_check
@@ -2395,7 +2395,7 @@ rules:
     __other__: EKPO.PUNEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.PUNEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00935
+- id: DXR00675
   enabled: false
   field: EKPO.ANFNR
   check_class: referential_check
@@ -2412,7 +2412,7 @@ rules:
     __other__: EKPO.ANFNR '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.ANFNR points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00936
+- id: DXR00676
   enabled: false
   field: EKPO.ANFPS
   check_class: referential_check
@@ -2429,7 +2429,7 @@ rules:
     __other__: EKPO.ANFPS '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.ANFPS points at a check table EKPO.EBELP entry that does not exist.
-- id: DXV00397
+- id: DXV00225
   enabled: false
   field: EKPO.KZKFG
   check_class: domain_value_check
@@ -2447,7 +2447,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZKFG ''{invalid_value}'' is not in domain KZCUH. Set it to one of: 1, 2.'
   record_fix_template: 'EKPO.KZKFG is {actual_value}; expected one of: 1, 2.'
-- id: DXV00398
+- id: DXV00226
   enabled: false
   field: EKPO.AUREL
   check_class: domain_value_check
@@ -2468,7 +2468,7 @@ rules:
   fix_map:
     __other__: 'EKPO.AUREL ''{invalid_value}'' is not in domain AUREL. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'EKPO.AUREL is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXV00399
+- id: DXV00227
   enabled: false
   field: EKPO.NRFHG
   check_class: domain_value_check
@@ -2487,7 +2487,7 @@ rules:
   fix_map:
     __other__: 'EKPO.NRFHG ''{invalid_value}'' is not in domain NRFHG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKPO.NRFHG is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00400
+- id: DXV00228
   enabled: false
   field: EKPO.J_1BMATUSE
   check_class: domain_value_check
@@ -2507,7 +2507,7 @@ rules:
   fix_map:
     __other__: 'EKPO.J_1BMATUSE ''{invalid_value}'' is not in domain J_1BMATUSE. Set it to one of: 0, 1, 2, 3.'
   record_fix_template: 'EKPO.J_1BMATUSE is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00401
+- id: DXV00229
   enabled: false
   field: EKPO.J_1BMATORG
   check_class: domain_value_check
@@ -2526,7 +2526,7 @@ rules:
   fix_map:
     __other__: 'EKPO.J_1BMATORG ''{invalid_value}'' is not in domain J_1BMATORG. Set it to one of: 0, 1, 2.'
   record_fix_template: 'EKPO.J_1BMATORG is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXV00402
+- id: DXV00230
   enabled: false
   field: EKPO.J_1BINDUST
   check_class: domain_value_check
@@ -2546,7 +2546,7 @@ rules:
   fix_map:
     __other__: 'EKPO.J_1BINDUST ''{invalid_value}'' is not in domain J_1BINDUS3. Set it to one of: 00, 01, 02, 03.'
   record_fix_template: 'EKPO.J_1BINDUST is {actual_value}; expected one of: 00, 01, 02, 03.'
-- id: DXV00403
+- id: DXV00231
   enabled: false
   field: EKPO.KZBWS
   check_class: domain_value_check
@@ -2564,7 +2564,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZBWS ''{invalid_value}'' is not in domain KZBWS. Set it to one of: A, M.'
   record_fix_template: 'EKPO.KZBWS is {actual_value}; expected one of: A, M.'
-- id: DXV00404
+- id: DXV00232
   enabled: false
   field: EKPO.KZTLF
   check_class: domain_value_check
@@ -2582,7 +2582,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZTLF ''{invalid_value}'' is not in domain KZTUL. Set it to one of: A, B.'
   record_fix_template: 'EKPO.KZTLF is {actual_value}; expected one of: A, B.'
-- id: DXV00405
+- id: DXV00233
   enabled: false
   field: EKPO.KZFME
   check_class: domain_value_check
@@ -2600,7 +2600,7 @@ rules:
   fix_map:
     __other__: 'EKPO.KZFME ''{invalid_value}'' is not in domain KZWSO. Set it to one of: A, B.'
   record_fix_template: 'EKPO.KZFME is {actual_value}; expected one of: A, B.'
-- id: DXR00937
+- id: DXR00677
   enabled: false
   field: EKPO.MFRNR
   check_class: referential_check
@@ -2617,7 +2617,7 @@ rules:
     __other__: EKPO.MFRNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: EKPO.MFRNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXV00406
+- id: DXV00234
   enabled: false
   field: EKPO.IPRKZ
   check_class: domain_value_check
@@ -2636,7 +2636,7 @@ rules:
   fix_map:
     __other__: 'EKPO.IPRKZ ''{invalid_value}'' is not in domain DATTP. Set it to one of: 1, 2, 3.'
   record_fix_template: 'EKPO.IPRKZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00938
+- id: DXR00678
   enabled: false
   field: EORD.EMATN
   check_class: referential_check
@@ -2653,7 +2653,7 @@ rules:
     __other__: EORD.EMATN '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: EORD.EMATN points at a check table MARA.MATNR entry that does not exist.
-- id: DXV00407
+- id: DXV00235
   enabled: false
   field: EORD.VRTYP
   check_class: domain_value_check
@@ -2677,7 +2677,7 @@ rules:
   fix_map:
     __other__: 'EORD.VRTYP ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'EORD.VRTYP is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXV00408
+- id: DXV00236
   enabled: false
   field: EORD.EORTP
   check_class: domain_value_check
@@ -2695,7 +2695,7 @@ rules:
   fix_map:
     __other__: 'EORD.EORTP ''{invalid_value}'' is not in domain EORTP. Set it to one of: 0, 2.'
   record_fix_template: 'EORD.EORTP is {actual_value}; expected one of: 0, 2.'
-- id: DXV00409
+- id: DXV00237
   enabled: false
   field: EORD.AUTET
   check_class: domain_value_check
@@ -2713,7 +2713,7 @@ rules:
   fix_map:
     __other__: 'EORD.AUTET ''{invalid_value}'' is not in domain AUTET. Set it to one of: 1, 2.'
   record_fix_template: 'EORD.AUTET is {actual_value}; expected one of: 1, 2.'
-- id: DXR00939
+- id: DXR00679
   enabled: false
   field: EORD.MEINS
   check_class: referential_check
@@ -2730,7 +2730,7 @@ rules:
     __other__: EORD.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: EORD.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00940
+- id: DXR00680
   enabled: false
   field: EORD.LOGSY
   check_class: referential_check
@@ -2747,7 +2747,7 @@ rules:
     __other__: EORD.LOGSY '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the missing
       entry.
   record_fix_template: EORD.LOGSY points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXV00410
+- id: DXV00238
   enabled: false
   field: EQUP.BESKZ
   check_class: domain_value_check
@@ -2764,7 +2764,7 @@ rules:
   fix_map:
     __other__: 'EQUP.BESKZ ''{invalid_value}'' is not in domain QBESK. Set it to one of: E, F.'
   record_fix_template: 'EQUP.BESKZ is {actual_value}; expected one of: E, F.'
-- id: DXV00411
+- id: DXV00239
   enabled: false
   field: EQUP.SOBES
   check_class: domain_value_check
@@ -2787,7 +2787,7 @@ rules:
   fix_map:
     __other__: 'EQUP.SOBES ''{invalid_value}'' is not in domain SOBES. Set it to one of: 0, 2, 3, 7, 9, E, P.'
   record_fix_template: 'EQUP.SOBES is {actual_value}; expected one of: 0, 2, 3, 7, 9, E, P.'
-- id: DXR00941
+- id: DXR00681
   enabled: false
   field: EQUP.VERID
   check_class: referential_check
@@ -2804,7 +2804,7 @@ rules:
     __other__: EQUP.VERID '{invalid_value}' is not defined in the check table MKAL.VERID. Correct it there or add the missing
       entry.
   record_fix_template: EQUP.VERID points at a check table MKAL.VERID entry that does not exist.
-- id: DXR00942
+- id: DXR00682
   enabled: false
   field: EQUP.RDPRF
   check_class: referential_check
@@ -2821,7 +2821,7 @@ rules:
     __other__: EQUP.RDPRF '{invalid_value}' is not defined in the check table RDPR.RDPRF. Correct it there or add the missing
       entry.
   record_fix_template: EQUP.RDPRF points at a check table RDPR.RDPRF entry that does not exist.
-- id: DXV00412
+- id: DXV00240
   enabled: false
   field: EQUP.ABPER
   check_class: domain_value_check
@@ -2840,7 +2840,7 @@ rules:
   fix_map:
     __other__: 'EQUP.ABPER ''{invalid_value}'' is not in domain RWPER. Set it to one of: K, M, W.'
   record_fix_template: 'EQUP.ABPER is {actual_value}; expected one of: K, M, W.'
-- id: DXR00943
+- id: DXR00683
   enabled: false
   field: EQUP.EMATN
   check_class: referential_check
@@ -2857,7 +2857,7 @@ rules:
     __other__: EQUP.EMATN '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: EQUP.EMATN points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00944
+- id: DXR00684
   enabled: false
   field: RBKP.TCODE
   check_class: referential_check
@@ -2874,7 +2874,7 @@ rules:
     __other__: RBKP.TCODE '{invalid_value}' is not defined in the check table TSTC.TCODE. Correct it there or add the missing
       entry.
   record_fix_template: RBKP.TCODE points at a check table TSTC.TCODE entry that does not exist.
-- id: DXV00413
+- id: DXV00241
   enabled: false
   field: RBKP.VGART
   check_class: domain_value_check
@@ -2900,7 +2900,7 @@ rules:
   fix_map:
     __other__: 'RBKP.VGART ''{invalid_value}'' is not in domain M8VGA. Set it to one of: BL, KP, MI, ML, PF, PR, RD, RP, RS.'
   record_fix_template: 'RBKP.VGART is {actual_value}; expected one of: BL, KP, MI, ML, PF, PR, RD, RP, RS.'
-- id: DXR00945
+- id: DXR00685
   enabled: false
   field: RBKP.BUKRS
   check_class: referential_check
@@ -2917,7 +2917,7 @@ rules:
     __other__: RBKP.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: RBKP.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXR00946
+- id: DXR00686
   enabled: false
   field: RBKP.LIFNR
   check_class: referential_check
@@ -2934,7 +2934,7 @@ rules:
     __other__: RBKP.LIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: RBKP.LIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00947
+- id: DXR00687
   enabled: false
   field: RBKP.WAERS
   check_class: referential_check
@@ -2951,7 +2951,7 @@ rules:
     __other__: RBKP.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: RBKP.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00414
+- id: DXV00242
   enabled: false
   field: RBKP.XRECH
   check_class: domain_value_check
@@ -2969,7 +2969,7 @@ rules:
   fix_map:
     __other__: 'RBKP.XRECH ''{invalid_value}'' is not in domain XRADI. Set it to one of: ., X.'
   record_fix_template: 'RBKP.XRECH is {actual_value}; expected one of: ., X.'
-- id: DXV00415
+- id: DXV00243
   enabled: false
   field: RBKP.IVTYP
   check_class: domain_value_check
@@ -2995,7 +2995,7 @@ rules:
   fix_map:
     __other__: 'RBKP.IVTYP ''{invalid_value}'' is not in domain IVTYP. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
   record_fix_template: 'RBKP.IVTYP is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
-- id: DXV00416
+- id: DXV00244
   enabled: false
   field: RBKP.REPART
   check_class: domain_value_check
@@ -3014,7 +3014,7 @@ rules:
   fix_map:
     __other__: 'RBKP.REPART ''{invalid_value}'' is not in domain REPART. Set it to one of: 1, 2, 3.'
   record_fix_template: 'RBKP.REPART is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00417
+- id: DXV00245
   enabled: false
   field: RBKP.RBSTAT
   check_class: domain_value_check
@@ -3035,7 +3035,7 @@ rules:
   fix_map:
     __other__: 'RBKP.RBSTAT ''{invalid_value}'' is not in domain RBSTAT. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'RBKP.RBSTAT is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00948
+- id: DXR00688
   enabled: false
   field: RBKP.LANDL
   check_class: referential_check
@@ -3052,7 +3052,7 @@ rules:
     __other__: RBKP.LANDL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: RBKP.LANDL points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00949
+- id: DXR00689
   enabled: false
   field: RSEG.EBELN
   check_class: referential_check
@@ -3069,7 +3069,7 @@ rules:
     __other__: RSEG.EBELN '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.EBELN points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR00950
+- id: DXR00690
   enabled: false
   field: RSEG.MATNR
   check_class: referential_check
@@ -3086,7 +3086,7 @@ rules:
     __other__: RSEG.MATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.MATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR00951
+- id: DXR00691
   enabled: false
   field: RSEG.BWKEY
   check_class: referential_check
@@ -3103,7 +3103,7 @@ rules:
     __other__: RSEG.BWKEY '{invalid_value}' is not defined in the check table T001K.BWKEY. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BWKEY points at a check table T001K.BWKEY entry that does not exist.
-- id: DXR00952
+- id: DXR00692
   enabled: false
   field: RSEG.BWTAR
   check_class: referential_check
@@ -3120,7 +3120,7 @@ rules:
     __other__: RSEG.BWTAR '{invalid_value}' is not defined in the check table T149D.BWTAR. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BWTAR points at a check table T149D.BWTAR entry that does not exist.
-- id: DXR00953
+- id: DXR00693
   enabled: false
   field: RSEG.BUKRS
   check_class: referential_check
@@ -3137,7 +3137,7 @@ rules:
     __other__: RSEG.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXR00954
+- id: DXR00694
   enabled: false
   field: RSEG.WERKS
   check_class: referential_check
@@ -3153,7 +3153,7 @@ rules:
     __other__: RSEG.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00418
+- id: DXV00246
   enabled: false
   field: RSEG.SHKZG
   check_class: domain_value_check
@@ -3171,7 +3171,7 @@ rules:
   fix_map:
     __other__: 'RSEG.SHKZG ''{invalid_value}'' is not in domain SHKZG. Set it to one of: H, S.'
   record_fix_template: 'RSEG.SHKZG is {actual_value}; expected one of: H, S.'
-- id: DXR00955
+- id: DXR00695
   enabled: false
   field: RSEG.TXJCD
   check_class: referential_check
@@ -3188,7 +3188,7 @@ rules:
     __other__: RSEG.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXR00956
+- id: DXR00696
   enabled: false
   field: RSEG.BSTME
   check_class: referential_check
@@ -3205,7 +3205,7 @@ rules:
     __other__: RSEG.BSTME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BSTME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00957
+- id: DXR00697
   enabled: false
   field: RSEG.BPRME
   check_class: referential_check
@@ -3222,7 +3222,7 @@ rules:
     __other__: RSEG.BPRME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BPRME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00958
+- id: DXR00698
   enabled: false
   field: RSEG.MEINS
   check_class: referential_check
@@ -3239,7 +3239,7 @@ rules:
     __other__: RSEG.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00959
+- id: DXR00699
   enabled: false
   field: RSEG.PSTYP
   check_class: referential_check
@@ -3256,7 +3256,7 @@ rules:
     __other__: RSEG.PSTYP '{invalid_value}' is not defined in the check table T163.PSTYP. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.PSTYP points at a check table T163.PSTYP entry that does not exist.
-- id: DXR00960
+- id: DXR00700
   enabled: false
   field: RSEG.KNTTP
   check_class: referential_check
@@ -3273,7 +3273,7 @@ rules:
     __other__: RSEG.KNTTP '{invalid_value}' is not defined in the check table T163K.KNTTP. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.KNTTP points at a check table T163K.KNTTP entry that does not exist.
-- id: DXR00961
+- id: DXR00701
   enabled: false
   field: RSEG.BKLAS
   check_class: referential_check
@@ -3290,7 +3290,7 @@ rules:
     __other__: RSEG.BKLAS '{invalid_value}' is not defined in the check table T025.BKLAS. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.BKLAS points at a check table T025.BKLAS entry that does not exist.
-- id: DXV00419
+- id: DXV00247
   enabled: false
   field: RSEG.LFEHL
   check_class: domain_value_check
@@ -3311,7 +3311,7 @@ rules:
   fix_map:
     __other__: 'RSEG.LFEHL ''{invalid_value}'' is not in domain LFEHL. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'RSEG.LFEHL is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00962
+- id: DXR00702
   enabled: false
   field: RSEG.GRICD
   check_class: referential_check
@@ -3328,7 +3328,7 @@ rules:
     __other__: RSEG.GRICD '{invalid_value}' is not defined in the check table J_1AGICD.J_1AGICD. Correct it there or add the
       missing entry.
   record_fix_template: RSEG.GRICD points at a check table J_1AGICD.J_1AGICD entry that does not exist.
-- id: DXR00963
+- id: DXR00703
   enabled: false
   field: RSEG.GRIRG
   check_class: referential_check
@@ -3345,7 +3345,7 @@ rules:
     __other__: RSEG.GRIRG '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: RSEG.GRIRG points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00964
+- id: DXR00704
   enabled: false
   field: RSEG.GITYP
   check_class: referential_check
@@ -3362,7 +3362,7 @@ rules:
     __other__: RSEG.GITYP '{invalid_value}' is not defined in the check table J_1ADTYP.J_1ADTYP. Correct it there or add the
       missing entry.
   record_fix_template: RSEG.GITYP points at a check table J_1ADTYP.J_1ADTYP entry that does not exist.
-- id: DXV00420
+- id: DXV00248
   enabled: false
   field: RSEG.KZMEK
   check_class: domain_value_check
@@ -3380,7 +3380,7 @@ rules:
   fix_map:
     __other__: 'RSEG.KZMEK ''{invalid_value}'' is not in domain KZMEKORR. Set it to one of: 1, 2.'
   record_fix_template: 'RSEG.KZMEK is {actual_value}; expected one of: 1, 2.'
-- id: DXV00421
+- id: DXV00249
   enabled: false
   field: RSEG.INV_ITM_ORIGIN
   check_class: domain_value_check
@@ -3398,585 +3398,3 @@ rules:
   fix_map:
     __other__: 'RSEG.INV_ITM_ORIGIN ''{invalid_value}'' is not in domain INV_ITM_ORIGIN. Set it to one of: A, B.'
   record_fix_template: 'RSEG.INV_ITM_ORIGIN is {actual_value}; expected one of: A, B.'
-- id: DXR00965
-  enabled: false
-  field: T024E.BUKRS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Company Code must exist in the check table T001.BUKRS
-  why_it_matters: BUKRS (Company Code) is defined in the SAP Data Dictionary with check table T001.BUKRS on domain BUKRS.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BUKRS resolve it through check table T001.BUKRS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024E.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
-      entry.
-  record_fix_template: T024E.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXR00966
-  enabled: false
-  field: T024E.MKALS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Calculation Schema for Market Price must exist in the check table T683.KALSM
-  why_it_matters: MKALS (Calculation Schema for Market Price) is defined in the SAP Data Dictionary with check table T683.KALSM
-    on domain KALSM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MKALS resolve it through check table T683.KALSM; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024E.MKALS '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
-      entry.
-  record_fix_template: T024E.MKALS points at a check table T683.KALSM entry that does not exist.
-- id: DXV00422
-  enabled: false
-  field: T161.BSAKZ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Control indicator for purchasing document type must be a value of domain BSAKZ (e.g. R, T)
-  why_it_matters: Domain BSAKZ fixes the permitted values of BSAKZ (Control indicator for purchasing document type) in the
-    SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the
-    programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: BSAKZ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - R
-  - T
-  fix_map:
-    __other__: 'T161.BSAKZ ''{invalid_value}'' is not in domain BSAKZ. Set it to one of: R, T.'
-  record_fix_template: 'T161.BSAKZ is {actual_value}; expected one of: R, T.'
-- id: DXR00967
-  enabled: false
-  field: T161.BREFN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Field Selection Key must exist in the check table T162.FLREF
-  why_it_matters: BREFN (Field Selection Key) is defined in the SAP Data Dictionary with check table T162.FLREF on domain
-    BREFN. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BREFN resolve it through check table T162.FLREF; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.BREFN '{invalid_value}' is not defined in the check table T162.FLREF. Correct it there or add the missing
-      entry.
-  record_fix_template: T161.BREFN points at a check table T162.FLREF entry that does not exist.
-- id: DXR00968
-  enabled: false
-  field: T161.REFBA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reference document type must exist in the check table T161.BSART
-  why_it_matters: REFBA (Reference document type) is defined in the SAP Data Dictionary with check table T161.BSART on domain
-    BSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REFBA resolve it through check table T161.BSART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.REFBA '{invalid_value}' is not defined in the check table T161.BSART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161.REFBA points at a check table T161.BSART entry that does not exist.
-- id: DXR00969
-  enabled: false
-  field: T161.STAFO
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Update group for statistics update must exist in the check table TMCB.STAFO
-  why_it_matters: STAFO (Update group for statistics update) is defined in the SAP Data Dictionary with check table TMCB.STAFO
-    on domain STAFO. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STAFO resolve it through check table TMCB.STAFO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.STAFO '{invalid_value}' is not defined in the check table TMCB.STAFO. Correct it there or add the missing
-      entry.
-  record_fix_template: T161.STAFO points at a check table TMCB.STAFO entry that does not exist.
-- id: DXR00970
-  enabled: false
-  field: T161.PARGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Partner Determination Procedure must exist in the check table TVPG.PARGR
-  why_it_matters: PARGR (Partner Determination Procedure) is defined in the SAP Data Dictionary with check table TVPG.PARGR
-    on domain PARGR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PARGR resolve it through check table TVPG.PARGR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.PARGR '{invalid_value}' is not defined in the check table TVPG.PARGR. Correct it there or add the missing
-      entry.
-  record_fix_template: T161.PARGR points at a check table TVPG.PARGR entry that does not exist.
-- id: DXR00971
-  enabled: false
-  field: T161.HITYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Hierarchy category: vendor hierarchy must exist in the check table TLHIT.HITYP'
-  why_it_matters: 'HITYP (Hierarchy category: vendor hierarchy) is defined in the SAP Data Dictionary with check table TLHIT.HITYP
-    on domain HITYP_LH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HITYP resolve it through check table TLHIT.HITYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.HITYP '{invalid_value}' is not defined in the check table TLHIT.HITYP. Correct it there or add the missing
-      entry.
-  record_fix_template: T161.HITYP points at a check table TLHIT.HITYP entry that does not exist.
-- id: DXR00972
-  enabled: false
-  field: T161.AR_OBJECT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Document type must exist in the check table TOADV.AR_OBJECT
-  why_it_matters: AR_OBJECT (Document type) is defined in the SAP Data Dictionary with check table TOADV.AR_OBJECT on domain
-    SADC10_DV. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AR_OBJECT resolve it through check table TOADV.AR_OBJECT; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.AR_OBJECT '{invalid_value}' is not defined in the check table TOADV.AR_OBJECT. Correct it there or add
-      the missing entry.
-  record_fix_template: T161.AR_OBJECT points at a check table TOADV.AR_OBJECT entry that does not exist.
-- id: DXV00423
-  enabled: false
-  field: T161.OICSEGI
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Quantity schedule creation permitted must be a value of domain OIA_CSEGI (e.g. 0, 1, 2, 3, 4, 5)
-  why_it_matters: Domain OIA_CSEGI fixes the permitted values of OICSEGI (Quantity schedule creation permitted) in the SAP
-    Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: OICSEGI will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  - '4'
-  - '5'
-  fix_map:
-    __other__: 'T161.OICSEGI ''{invalid_value}'' is not in domain OIA_CSEGI. Set it to one of: 0, 1, 2, 3, 4, 5.'
-  record_fix_template: 'T161.OICSEGI is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5.'
-- id: DXV00424
-  enabled: false
-  field: T161.OIRFQREQ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Precedence for RFQ or default requisition for TDP PO must be a value of domain OIH_RFQREQ (e.g. 1, 2)
-  why_it_matters: Domain OIH_RFQREQ fixes the permitted values of OIRFQREQ (Precedence for RFQ or default requisition for
-    TDP PO) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: OIRFQREQ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'T161.OIRFQREQ ''{invalid_value}'' is not in domain OIH_RFQREQ. Set it to one of: 1, 2.'
-  record_fix_template: 'T161.OIRFQREQ is {actual_value}; expected one of: 1, 2.'
-- id: DXV00425
-  enabled: false
-  field: T161.XLOKZ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Cross-System Transit must be a value of domain XLOKZ (e.g. 1, 2)
-  why_it_matters: Domain XLOKZ fixes the permitted values of XLOKZ (Cross-System Transit) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the
-    field.
-  rule_authority: sap_hard_constraint
-  sap_impact: XLOKZ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'T161.XLOKZ ''{invalid_value}'' is not in domain XLOKZ. Set it to one of: 1, 2.'
-  record_fix_template: 'T161.XLOKZ is {actual_value}; expected one of: 1, 2.'
-- id: DXR00973
-  enabled: false
-  field: T161.RDP_PROFILE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Risk Distribution Plan Profile must exist in the check table L2TC_RDP_PROFILE.PROFILE
-  why_it_matters: RDP_PROFILE (Risk Distribution Plan Profile) is defined in the SAP Data Dictionary with check table L2TC_RDP_PROFILE.PROFILE
-    on domain LOGTRM_RDP_PROFILE. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RDP_PROFILE resolve it through check table L2TC_RDP_PROFILE.PROFILE; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.RDP_PROFILE '{invalid_value}' is not defined in the check table L2TC_RDP_PROFILE.PROFILE. Correct it there
-      or add the missing entry.
-  record_fix_template: T161.RDP_PROFILE points at a check table L2TC_RDP_PROFILE.PROFILE entry that does not exist.
-- id: DXR00974
-  enabled: false
-  field: T161.TOLSL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Tolerance Key for Overdraw Tolerance must exist in the check table TME_TOLS.TOLSL
-  why_it_matters: TOLSL (Tolerance Key for Overdraw Tolerance) is defined in the SAP Data Dictionary with check table TME_TOLS.TOLSL
-    on domain METOLSL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TOLSL resolve it through check table TME_TOLS.TOLSL; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161.TOLSL '{invalid_value}' is not defined in the check table TME_TOLS.TOLSL. Correct it there or add the
-      missing entry.
-  record_fix_template: T161.TOLSL points at a check table TME_TOLS.TOLSL entry that does not exist.
-- id: DXR00975
-  enabled: false
-  field: T161V.LFART
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type must exist in the check table TVLK.LFART
-  why_it_matters: LFART (Delivery Type) is defined in the SAP Data Dictionary with check table TVLK.LFART on domain LFART.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFART resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFART '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFART points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00976
-  enabled: false
-  field: T161V.PRREG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Checking rule for the availability check must exist in the check table T441R.PRREG
-  why_it_matters: PRREG (Checking rule for the availability check) is defined in the SAP Data Dictionary with check table
-    T441R.PRREG on domain PRREG. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PRREG resolve it through check table T441R.PRREG; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.PRREG '{invalid_value}' is not defined in the check table T441R.PRREG. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.PRREG points at a check table T441R.PRREG entry that does not exist.
-- id: DXR00977
-  enabled: false
-  field: T161V.LFRET
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Returns to Vendors must exist in the check table TVLK.LFART
-  why_it_matters: LFRET (Delivery Type for Returns to Vendors) is defined in the SAP Data Dictionary with check table TVLK.LFART
-    on domain LFART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFRET resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFRET '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFRET points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00978
-  enabled: false
-  field: T161V.LBLFA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Materials Provided to Subcontractor must exist in the check table TVLK.LFART
-  why_it_matters: LBLFA (Delivery Type for Materials Provided to Subcontractor) is defined in the SAP Data Dictionary with
-    check table TVLK.LFART on domain LFART. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LBLFA resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LBLFA '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LBLFA points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00979
-  enabled: false
-  field: T161V.LFRFL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery type for store returns must exist in the check table TVLK.LFART
-  why_it_matters: LFRFL (Delivery type for store returns) is defined in the SAP Data Dictionary with check table TVLK.LFART
-    on domain LFART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFRFL resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFRFL '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFRFL points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00980
-  enabled: false
-  field: T161V.LFART1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Stock Transfers Within a Company Code must exist in the check table TVLK.LFART
-  why_it_matters: LFART1 (Delivery Type for Stock Transfers Within a Company Code) is defined in the SAP Data Dictionary with
-    check table TVLK.LFART on domain LFART. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFART1 resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFART1 '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFART1 points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00981
-  enabled: false
-  field: T161V.LFART2
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Stock Transfers Between Two Company Codes must exist in the check table TVLK.LFART
-  why_it_matters: LFART2 (Delivery Type for Stock Transfers Between Two Company Codes) is defined in the SAP Data Dictionary
-    with check table TVLK.LFART on domain LFART. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFART2 resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFART2 '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFART2 points at a check table TVLK.LFART entry that does not exist.
-- id: DXR00982
-  enabled: false
-  field: T161V.LFCON
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Transfers to Consignment Stock must exist in the check table TVLK.LFART
-  why_it_matters: LFCON (Delivery Type for Transfers to Consignment Stock) is defined in the SAP Data Dictionary with check
-    table TVLK.LFART on domain LFART. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LFCON resolve it through check table TVLK.LFART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.LFCON '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the missing
-      entry.
-  record_fix_template: T161V.LFCON points at a check table TVLK.LFART entry that does not exist.
-- id: DXV00426
-  enabled: false
-  field: T161V.REVFE
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Rule for Adoption of ATP Results in Purchasing must be a value of domain REVFE (e.g. A, B, C, D, E, U)
-  why_it_matters: Domain REVFE fixes the permitted values of REVFE (Rule for Adoption of ATP Results in Purchasing) in the
-    SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the
-    programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: REVFE will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - B
-  - C
-  - D
-  - E
-  - U
-  fix_map:
-    __other__: 'T161V.REVFE ''{invalid_value}'' is not in domain REVFE. Set it to one of: A, B, C, D, E, U.'
-  record_fix_template: 'T161V.REVFE is {actual_value}; expected one of: A, B, C, D, E, U.'
-- id: DXR00983
-  enabled: false
-  field: T161V.REQPRF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'ATP: Profile at Requirement Level for APO must exist in the check table TREQPRF.REQPRF'
-  why_it_matters: 'REQPRF (ATP: Profile at Requirement Level for APO) is defined in the SAP Data Dictionary with check table
-    TREQPRF.REQPRF on domain APOREQPRF. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REQPRF resolve it through check table TREQPRF.REQPRF; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.REQPRF '{invalid_value}' is not defined in the check table TREQPRF.REQPRF. Correct it there or add the
-      missing entry.
-  record_fix_template: T161V.REQPRF points at a check table TREQPRF.REQPRF entry that does not exist.
-- id: DXR00984
-  enabled: false
-  field: T161V.FLS_LFART
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Delivery Type for Outbound Delivery for Enh. Store Return must exist in the check table TVLK.LFART
-  why_it_matters: FLS_LFART (Delivery Type for Outbound Delivery for Enh. Store Return) is defined in the SAP Data Dictionary
-    with check table TVLK.LFART on domain LFART. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FLS_LFART resolve it through check table TVLK.LFART; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T161V.FLS_LFART '{invalid_value}' is not defined in the check table TVLK.LFART. Correct it there or add the
-      missing entry.
-  record_fix_template: T161V.FLS_LFART points at a check table TVLK.LFART entry that does not exist.
-- id: DXV00427
-  enabled: false
-  field: T16FV.FRGA1
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA1 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA1 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA1 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA1 is {actual_value}; expected one of: +, X.'
-- id: DXV00428
-  enabled: false
-  field: T16FV.FRGA2
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA2 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA2 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA2 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA2 is {actual_value}; expected one of: +, X.'
-- id: DXV00429
-  enabled: false
-  field: T16FV.FRGA3
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA3 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA3 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA3 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA3 is {actual_value}; expected one of: +, X.'
-- id: DXV00430
-  enabled: false
-  field: T16FV.FRGA4
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA4 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA4 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA4 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA4 is {actual_value}; expected one of: +, X.'
-- id: DXV00431
-  enabled: false
-  field: T16FV.FRGA5
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA5 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA5 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA5 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA5 is {actual_value}; expected one of: +, X.'
-- id: DXV00432
-  enabled: false
-  field: T16FV.FRGA6
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA6 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA6 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA6 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA6 is {actual_value}; expected one of: +, X.'
-- id: DXV00433
-  enabled: false
-  field: T16FV.FRGA7
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA7 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA7 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA7 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA7 is {actual_value}; expected one of: +, X.'
-- id: DXV00434
-  enabled: false
-  field: T16FV.FRGA8
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Indicator Within the Release Strategy must be a value of domain FRGAK (e.g. +, X)
-  why_it_matters: Domain FRGAK fixes the permitted values of FRGA8 (Indicator Within the Release Strategy) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: FRGA8 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - X
-  fix_map:
-    __other__: 'T16FV.FRGA8 ''{invalid_value}'' is not in domain FRGAK. Set it to one of: +, X.'
-  record_fix_template: 'T16FV.FRGA8 is {actual_value}; expected one of: +, X.'

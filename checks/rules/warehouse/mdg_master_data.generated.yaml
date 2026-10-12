@@ -6,7 +6,7 @@ module: mdg_master_data
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR02464
+- id: DXR02009
   enabled: false
   field: CDHDR.TCODE
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: CDHDR.TCODE '{invalid_value}' is not defined in the check table TSTC.TCODE. Correct it there or add the missing
       entry.
   record_fix_template: CDHDR.TCODE points at a check table TSTC.TCODE entry that does not exist.
-- id: DXV00984
+- id: DXV00646
   enabled: false
   field: CDHDR.WAS_PLANND
   check_class: domain_value_check
@@ -41,7 +41,7 @@ rules:
   fix_map:
     __other__: 'CDHDR.WAS_PLANND ''{invalid_value}'' is not in domain XFLAG. Set it to one of: ., X.'
   record_fix_template: 'CDHDR.WAS_PLANND is {actual_value}; expected one of: ., X.'
-- id: DXV00985
+- id: DXV00647
   enabled: false
   field: CDHDR.CHANGE_IND
   check_class: domain_value_check
@@ -62,7 +62,7 @@ rules:
   fix_map:
     __other__: 'CDHDR.CHANGE_IND ''{invalid_value}'' is not in domain CDCHNGIND. Set it to one of: D, E, I, J, U.'
   record_fix_template: 'CDHDR.CHANGE_IND is {actual_value}; expected one of: D, E, I, J, U.'
-- id: DXR02465
+- id: DXR02010
   enabled: false
   field: CDPOS.CUKY_OLD
   check_class: referential_check
@@ -79,7 +79,7 @@ rules:
     __other__: CDPOS.CUKY_OLD '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
       missing entry.
   record_fix_template: CDPOS.CUKY_OLD points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR02466
+- id: DXR02011
   enabled: false
   field: CDPOS.CUKY_NEW
   check_class: referential_check
@@ -96,7 +96,7 @@ rules:
     __other__: CDPOS.CUKY_NEW '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
       missing entry.
   record_fix_template: CDPOS.CUKY_NEW points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR02467
+- id: DXR02012
   enabled: false
   field: USMD110C.USMD_EDTN_TYPE
   check_class: referential_check
@@ -113,7 +113,7 @@ rules:
     __other__: USMD110C.USMD_EDTN_TYPE '{invalid_value}' is not defined in the check table USMD010C.USMD_EDTN_TYPE. Correct
       it there or add the missing entry.
   record_fix_template: USMD110C.USMD_EDTN_TYPE points at a check table USMD010C.USMD_EDTN_TYPE entry that does not exist.
-- id: DXR02468
+- id: DXR02013
   enabled: false
   field: USMD110C.USMD_MODEL
   check_class: referential_check
@@ -130,7 +130,7 @@ rules:
     __other__: USMD110C.USMD_MODEL '{invalid_value}' is not defined in the check table USMD001C.USMD_MODEL. Correct it there
       or add the missing entry.
   record_fix_template: USMD110C.USMD_MODEL points at a check table USMD001C.USMD_MODEL entry that does not exist.
-- id: DXR02469
+- id: DXR02014
   enabled: false
   field: USMD120C.USMD_EDITION
   check_class: referential_check
@@ -147,7 +147,7 @@ rules:
     __other__: USMD120C.USMD_EDITION '{invalid_value}' is not defined in the check table USMD020C.USMD_EDITION. Correct it
       there or add the missing entry.
   record_fix_template: USMD120C.USMD_EDITION points at a check table USMD020C.USMD_EDITION entry that does not exist.
-- id: DXR02470
+- id: DXR02015
   enabled: false
   field: USMD120C.USMD_PRIORITY
   check_class: referential_check
@@ -164,7 +164,7 @@ rules:
     __other__: USMD120C.USMD_PRIORITY '{invalid_value}' is not defined in the check table USMD210C.USMD_PRIORITY. Correct
       it there or add the missing entry.
   record_fix_template: USMD120C.USMD_PRIORITY points at a check table USMD210C.USMD_PRIORITY entry that does not exist.
-- id: DXR02471
+- id: DXR02016
   enabled: false
   field: USMD120C.USMD_REASON
   check_class: referential_check
@@ -181,7 +181,7 @@ rules:
     __other__: USMD120C.USMD_REASON '{invalid_value}' is not defined in the check table USMD211C.USMD_REASON. Correct it there
       or add the missing entry.
   record_fix_template: USMD120C.USMD_REASON points at a check table USMD211C.USMD_REASON entry that does not exist.
-- id: DXR02472
+- id: DXR02017
   enabled: false
   field: USMD120C.USMD_REASON_REJ
   check_class: referential_check

@@ -6,7 +6,7 @@ module: ewms_stock
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR02404
+- id: DXR01950
   enabled: false
   field: LAGP.SPGRU
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: LAGP.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXR02405
+- id: DXR01951
   enabled: false
   field: LAGP.GEWEI
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: LAGP.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02406
+- id: DXR01952
   enabled: false
   field: LAGP.BRAND
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: LAGP.BRAND '{invalid_value}' is not defined in the check table T309.BRAND. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.BRAND points at a check table T309.BRAND entry that does not exist.
-- id: DXR02407
+- id: DXR01953
   enabled: false
   field: LAGP.KOBER
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: LAGP.KOBER '{invalid_value}' is not defined in the check table T30A.KOBER. Correct it there or add the missing
       entry.
   record_fix_template: LAGP.KOBER points at a check table T30A.KOBER entry that does not exist.
-- id: DXR02408
+- id: DXR01954
   enabled: false
   field: LEIN.LETYP
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: LEIN.LETYP '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.LETYP points at a check table T307.LETYP entry that does not exist.
-- id: DXR02409
+- id: DXR01955
   enabled: false
   field: LEIN.LGTYP
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: LEIN.LGTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.LGTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR02410
+- id: DXR01956
   enabled: false
   field: LEIN.SPGRU
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: LEIN.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXV00952
+- id: DXV00614
   enabled: false
   field: LEIN.STATU
   check_class: domain_value_check
@@ -150,7 +150,7 @@ rules:
   fix_map:
     __other__: 'LEIN.STATU ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LEIN.STATU is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXR02411
+- id: DXR01957
   enabled: false
   field: LEIN.GEWEI
   check_class: referential_check
@@ -167,7 +167,7 @@ rules:
     __other__: LEIN.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02412
+- id: DXR01958
   enabled: false
   field: LEIN.REFNR
   check_class: referential_check
@@ -183,7 +183,7 @@ rules:
     __other__: LEIN.REFNR '{invalid_value}' is not defined in the check table T311.REFNR. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.REFNR points at a check table T311.REFNR entry that does not exist.
-- id: DXR02413
+- id: DXR01959
   enabled: false
   field: LEIN.UVTYP
   check_class: referential_check
@@ -200,7 +200,7 @@ rules:
     __other__: LEIN.UVTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: LEIN.UVTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR02414
+- id: DXR01960
   enabled: false
   field: LQUA.WERKS
   check_class: referential_check
@@ -216,7 +216,7 @@ rules:
     __other__: LQUA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR02415
+- id: DXR01961
   enabled: false
   field: LQUA.SPGRU
   check_class: referential_check
@@ -233,7 +233,7 @@ rules:
     __other__: LQUA.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.SPGRU points at a check table T330.SPGRU entry that does not exist.
-- id: DXR02416
+- id: DXR01962
   enabled: false
   field: LQUA.LENUM
   check_class: referential_check
@@ -250,7 +250,7 @@ rules:
     __other__: LQUA.LENUM '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.LENUM points at a check table LEIN.LENUM entry that does not exist.
-- id: DXR02417
+- id: DXR01963
   enabled: false
   field: LQUA.LGORT
   check_class: referential_check
@@ -267,20 +267,3 @@ rules:
     __other__: LQUA.LGORT '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the missing
       entry.
   record_fix_template: LQUA.LGORT points at a check table T001L.LGORT entry that does not exist.
-- id: DXR02418
-  enabled: false
-  field: T307.METYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Unit-of-measure load category according to workload criteria must exist in the check table TMET.METYP
-  why_it_matters: METYP (Unit-of-measure load category according to workload criteria) is defined in the SAP Data Dictionary
-    with check table TMET.METYP on domain MEITY. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read METYP resolve it through check table TMET.METYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T307.METYP '{invalid_value}' is not defined in the check table TMET.METYP. Correct it there or add the missing
-      entry.
-  record_fix_template: T307.METYP points at a check table TMET.METYP entry that does not exist.

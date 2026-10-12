@@ -6,7 +6,7 @@ module: fleet_management
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXV00980
+- id: DXV00642
   enabled: false
   field: FLEET.OBJECT_GRP
   check_class: domain_value_check
@@ -24,7 +24,7 @@ rules:
   fix_map:
     __other__: 'FLEET.OBJECT_GRP ''{invalid_value}'' is not in domain ITOBGROUP. Set it to one of: 01, 02.'
   record_fix_template: 'FLEET.OBJECT_GRP is {actual_value}; expected one of: 01, 02.'
-- id: DXR02441
+- id: DXR01986
   enabled: false
   field: FLEET.DIM_UNIT
   check_class: referential_check
@@ -41,7 +41,7 @@ rules:
     __other__: FLEET.DIM_UNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: FLEET.DIM_UNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02442
+- id: DXR01987
   enabled: false
   field: FLEET.PRI_CALC
   check_class: referential_check
@@ -58,7 +58,7 @@ rules:
     __other__: FLEET.PRI_CALC '{invalid_value}' is not defined in the check table T370CLC.CALC_KEY. Correct it there or add
       the missing entry.
   record_fix_template: FLEET.PRI_CALC points at a check table T370CLC.CALC_KEY entry that does not exist.
-- id: DXR02443
+- id: DXR01988
   enabled: false
   field: FLEET.FLEET_USE
   check_class: referential_check
@@ -75,7 +75,7 @@ rules:
     __other__: FLEET.FLEET_USE '{invalid_value}' is not defined in the check table T370USG.FLEET_USE. Correct it there or
       add the missing entry.
   record_fix_template: FLEET.FLEET_USE points at a check table T370USG.FLEET_USE entry that does not exist.
-- id: DXR02444
+- id: DXR01989
   enabled: false
   field: FLEET.UNIT_POWER
   check_class: referential_check
@@ -92,7 +92,7 @@ rules:
     __other__: FLEET.UNIT_POWER '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: FLEET.UNIT_POWER points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02445
+- id: DXR01990
   enabled: false
   field: FLEET.UNIT_CAP
   check_class: referential_check
@@ -109,7 +109,7 @@ rules:
     __other__: FLEET.UNIT_CAP '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: FLEET.UNIT_CAP points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02446
+- id: DXR01991
   enabled: false
   field: FLEET.FUEL_SEC
   check_class: referential_check
@@ -126,7 +126,7 @@ rules:
     __other__: FLEET.FUEL_SEC '{invalid_value}' is not defined in the check table T370FLD.FLUID_TYPE. Correct it there or
       add the missing entry.
   record_fix_template: FLEET.FUEL_SEC points at a check table T370FLD.FLUID_TYPE entry that does not exist.
-- id: DXR02447
+- id: DXR01992
   enabled: false
   field: FLEET.OIL_TYPE
   check_class: referential_check
@@ -143,7 +143,7 @@ rules:
     __other__: FLEET.OIL_TYPE '{invalid_value}' is not defined in the check table T370FLD.FLUID_TYPE. Correct it there or
       add the missing entry.
   record_fix_template: FLEET.OIL_TYPE points at a check table T370FLD.FLUID_TYPE entry that does not exist.
-- id: DXR02448
+- id: DXR01993
   enabled: false
   field: FLEET.LOAD_DIM_UNIT
   check_class: referential_check
@@ -160,7 +160,7 @@ rules:
     __other__: FLEET.LOAD_DIM_UNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add
       the missing entry.
   record_fix_template: FLEET.LOAD_DIM_UNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02449
+- id: DXR01994
   enabled: false
   field: FLEET.VOL_UNIT
   check_class: referential_check
@@ -177,7 +177,7 @@ rules:
     __other__: FLEET.VOL_UNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: FLEET.VOL_UNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02450
+- id: DXR01995
   enabled: false
   field: FLEET.SPEED_UNIT
   check_class: referential_check
@@ -194,7 +194,7 @@ rules:
     __other__: FLEET.SPEED_UNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: FLEET.SPEED_UNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02451
+- id: DXR01996
   enabled: false
   field: FLEET./DSD/RP_AHLAST_U
   check_class: referential_check
@@ -211,7 +211,7 @@ rules:
     __other__: FLEET./DSD/RP_AHLAST_U '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or
       add the missing entry.
   record_fix_template: FLEET./DSD/RP_AHLAST_U points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02452
+- id: DXR01997
   enabled: false
   field: FLEET./DSD/RP_KAPUNIT
   check_class: referential_check
@@ -228,7 +228,7 @@ rules:
     __other__: FLEET./DSD/RP_KAPUNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add
       the missing entry.
   record_fix_template: FLEET./DSD/RP_KAPUNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR02453
+- id: DXR01998
   enabled: false
   field: FLEET./VSO/M_VSO_FTYPE
   check_class: referential_check
@@ -245,7 +245,7 @@ rules:
     __other__: FLEET./VSO/M_VSO_FTYPE '{invalid_value}' is not defined in the check table /VSO/B_FLEET.VSO_FTYPE. Correct
       it there or add the missing entry.
   record_fix_template: FLEET./VSO/M_VSO_FTYPE points at a check table /VSO/B_FLEET.VSO_FTYPE entry that does not exist.
-- id: DXV00981
+- id: DXV00643
   enabled: false
   field: FLEET.IS_SI_UNIT
   check_class: domain_value_check

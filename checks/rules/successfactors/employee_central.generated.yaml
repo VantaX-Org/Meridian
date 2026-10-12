@@ -6,7 +6,7 @@ module: employee_central
 target_state: SUCCESSFACTORS
 generated: true
 rules:
-- id: DXR02288
+- id: DXR01840
   enabled: false
   field: EMPEMPLOYMENT.EVENT
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: EMPEMPLOYMENT.EVENT '{invalid_value}' is not defined in the picklist event. Correct it there or add the missing
       entry.
   record_fix_template: EMPEMPLOYMENT.EVENT points at a picklist event entry that does not exist.
-- id: DXR02289
+- id: DXR01841
   enabled: false
   field: EMPEMPLOYMENT.REGULAR_TEMP
   check_class: referential_check
@@ -39,7 +39,7 @@ rules:
     __other__: EMPEMPLOYMENT.REGULAR_TEMP '{invalid_value}' is not defined in the picklist regular-temp. Correct it there
       or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.REGULAR_TEMP points at a picklist regular-temp entry that does not exist.
-- id: DXR02290
+- id: DXR01842
   enabled: false
   field: EMPEMPLOYMENT.EMPLOYEE_CLASS
   check_class: referential_check
@@ -55,7 +55,7 @@ rules:
     __other__: EMPEMPLOYMENT.EMPLOYEE_CLASS '{invalid_value}' is not defined in the picklist employee-class. Correct it there
       or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.EMPLOYEE_CLASS points at a picklist employee-class entry that does not exist.
-- id: DXR02291
+- id: DXR01843
   enabled: false
   field: EMPEMPLOYMENT.CONTRACT_TYPE
   check_class: referential_check
@@ -71,7 +71,7 @@ rules:
     __other__: EMPEMPLOYMENT.CONTRACT_TYPE '{invalid_value}' is not defined in the picklist contractType. Correct it there
       or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.CONTRACT_TYPE points at a picklist contractType entry that does not exist.
-- id: DXR02292
+- id: DXR01844
   enabled: false
   field: EMPEMPLOYMENT.PAY_GROUP
   check_class: referential_check
@@ -88,7 +88,7 @@ rules:
     __other__: EMPEMPLOYMENT.PAY_GROUP '{invalid_value}' is not defined in the check table FOPayGroup.externalCode. Correct
       it there or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.PAY_GROUP points at a check table FOPayGroup.externalCode entry that does not exist.
-- id: DXR02293
+- id: DXR01845
   enabled: false
   field: EMPEMPLOYMENT.PAY_GRADE
   check_class: referential_check
@@ -105,7 +105,7 @@ rules:
     __other__: EMPEMPLOYMENT.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct
       it there or add the missing entry.
   record_fix_template: EMPEMPLOYMENT.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
-- id: DXR02294
+- id: DXR01846
   enabled: false
   field: EMPJOBHIST.STATUS
   check_class: referential_check
@@ -121,7 +121,7 @@ rules:
     __other__: EMPJOBHIST.STATUS '{invalid_value}' is not defined in the picklist employee-status. Correct it there or add
       the missing entry.
   record_fix_template: EMPJOBHIST.STATUS points at a picklist employee-status entry that does not exist.
-- id: DXR02295
+- id: DXR01847
   enabled: false
   field: EMPJOBHIST.EMPLOYEE_CLASS
   check_class: referential_check
@@ -137,7 +137,7 @@ rules:
     __other__: EMPJOBHIST.EMPLOYEE_CLASS '{invalid_value}' is not defined in the picklist employee-class. Correct it there
       or add the missing entry.
   record_fix_template: EMPJOBHIST.EMPLOYEE_CLASS points at a picklist employee-class entry that does not exist.
-- id: DXR02296
+- id: DXR01848
   enabled: false
   field: EMPJOBHIST.EMPLOYMENT_TYPE
   check_class: referential_check
@@ -153,7 +153,7 @@ rules:
     __other__: EMPJOBHIST.EMPLOYMENT_TYPE '{invalid_value}' is not defined in the picklist employmentType. Correct it there
       or add the missing entry.
   record_fix_template: EMPJOBHIST.EMPLOYMENT_TYPE points at a picklist employmentType entry that does not exist.
-- id: DXR02297
+- id: DXR01849
   enabled: false
   field: EMPJOBHIST.PAY_GRADE
   check_class: referential_check
@@ -170,7 +170,7 @@ rules:
     __other__: EMPJOBHIST.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct it
       there or add the missing entry.
   record_fix_template: EMPJOBHIST.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
-- id: DXR02298
+- id: DXR01850
   enabled: false
   field: EMPJOBHIST.PAY_GROUP
   check_class: referential_check
@@ -187,7 +187,7 @@ rules:
     __other__: EMPJOBHIST.PAY_GROUP '{invalid_value}' is not defined in the check table FOPayGroup.externalCode. Correct it
       there or add the missing entry.
   record_fix_template: EMPJOBHIST.PAY_GROUP points at a check table FOPayGroup.externalCode entry that does not exist.
-- id: DXR02299
+- id: DXR01851
   enabled: false
   field: FOEVENTREASON.EVENT
   check_class: referential_check
@@ -203,7 +203,7 @@ rules:
     __other__: FOEVENTREASON.EVENT '{invalid_value}' is not defined in the picklist event. Correct it there or add the missing
       entry.
   record_fix_template: FOEVENTREASON.EVENT points at a picklist event entry that does not exist.
-- id: DXR02300
+- id: DXR01852
   enabled: false
   field: POSITION.PAY_GRADE
   check_class: referential_check

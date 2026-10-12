@@ -7,7 +7,7 @@ SAP data, findings, and reports **never leave the customer boundary**.
 ## Key Features
 
 ### Data Quality Engine
-- **8,800+ validation rules** — 5,300+ hand-authored plus 3,500+ derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
+- **8,000+ validation rules** — 5,300+ hand-authored plus 2,700+ derived from the SAP DDIC, the SuccessFactors canonical schemas, and the ordering/sign invariants declared in the Ariba and Concur dictionaries (see [`scripts/generate_ddic_rules.py`](scripts/generate_ddic_rules.py)); derived rules ship disabled until a tenant enables them
 - **Record-level DQS scoring** — DAMA DMBOK composite with 6 dimensions (completeness, accuracy, consistency, timeliness, uniqueness, validity)
 - **Grain-correct check engine** — every rule evaluated at its SAP record grain (DDIC keys + join graph), exact counts, full failing-record keys
 - **LangGraph AI agents** — 6-node pipeline: analyst, config matching, config impact, remediation, readiness, report
@@ -97,15 +97,15 @@ Access: Dashboard at `http://localhost:3000`, API at `http://localhost:8000`
 
 | Category | Modules | Rules |
 |---|---|---|
-| **ECC / S/4HANA** (19) | Business Partner, Material Master, GL Accounts, AP, AR, Asset Accounting, MM Purchasing, Plant Maintenance, Production Planning, SD Customer, SD Sales Orders, Controlling, HCM, Project System, Quality Management, Banking & Tax, Interface Health, S/4HANA Readiness, S/4HANA Master Data | 6,513 |
-| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,560 |
-| **Warehouse** (9) | eWMS Stock, eWMS Transfer Orders, Batch Management, MDG, GRC Compliance, Fleet Management, Transport Management, WM Interface, Cross-System Integration | 575 |
+| **ECC / S/4HANA** (19) | Business Partner, Material Master, GL Accounts, AP, AR, Asset Accounting, MM Purchasing, Plant Maintenance, Production Planning, SD Customer, SD Sales Orders, Controlling, HCM, Project System, Quality Management, Banking & Tax, Interface Health, S/4HANA Readiness, S/4HANA Master Data | 5,727 |
+| **SuccessFactors** (9) | Employee Central, Compensation, Benefits, Payroll, Performance Goals, Succession Planning, Recruiting & Onboarding, Learning Management, Time & Attendance | 1,554 |
+| **Warehouse** (9) | eWMS Stock, eWMS Transfer Orders, Batch Management, MDG, GRC Compliance, Fleet Management, Transport Management, WM Interface, Cross-System Integration | 568 |
 | **Ariba** (4) | Supplier, Procurement, Contracts, Spend | 134 |
 | **Concur** (3) | Users, Expense, Travel | 91 |
 
 Rule counts include both hand-authored packs and the derived rules in each module's `<module>.generated.yaml` sidecar. Derived rules ship with `enabled: false` and are seeded off.
 
-**Total: 45 modules, 8,874 validation rules, 52 config impact rules**
+**Total: 45 modules, 8,075 validation rules, 52 config impact rules**
 
 ## Technology Stack
 

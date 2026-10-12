@@ -6,7 +6,7 @@ module: batch_management
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR02399
+- id: DXR01945
   enabled: false
   field: MCH1.VLWRK
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: MCH1.VLWRK '{invalid_value}' is not defined in the check table MARC.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: MCH1.VLWRK points at a check table MARC.WERKS entry that does not exist.
-- id: DXR02400
+- id: DXR01946
   enabled: false
   field: MCH1.VLMAT
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: MCH1.VLMAT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MCH1.VLMAT points at a check table MARA.MATNR entry that does not exist.
-- id: DXR02401
+- id: DXR01947
   enabled: false
   field: MCH1.HERKR
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: MCH1.HERKR '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: MCH1.HERKR points at a check table T005S.BLAND entry that does not exist.
-- id: DXR02402
+- id: DXR01948
   enabled: false
   field: MCH1.MTVER
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: MCH1.MTVER '{invalid_value}' is not defined in the check table TVFM.MTVER. Correct it there or add the missing
       entry.
   record_fix_template: MCH1.MTVER points at a check table TVFM.MTVER entry that does not exist.
-- id: DXV00951
+- id: DXV00613
   enabled: false
   field: MCHB.SPERC
   check_class: domain_value_check
@@ -92,7 +92,7 @@ rules:
   fix_map:
     __other__: 'MCHB.SPERC ''{invalid_value}'' is not in domain SPERR. Set it to one of: A, X.'
   record_fix_template: 'MCHB.SPERC is {actual_value}; expected one of: A, X.'
-- id: DXR02403
+- id: DXR01949
   enabled: false
   field: MCHB.HERKL
   check_class: referential_check

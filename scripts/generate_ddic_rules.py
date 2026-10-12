@@ -38,6 +38,7 @@ Scope policy (why a table is or is not covered):
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -133,6 +134,28 @@ def _rule_fields(rule: dict) -> list[str]:
     return list(rule.get("fields") or [])
 
 
+_CUSTOMISING = re.compile(r"^T[0-9A-Z]")
+
+
+def _is_customising(table) -> bool:
+    """True for a customer customising table (SPRO settings), which is not business data.
+
+    Deriving a data-quality rule whose *subject* is one of these is meaningless — the rows
+    are the tenant's own configuration, not records that can be wrong — and it silently
+    changes extraction: ``sap.extraction_plan.add`` flips a table to ``purpose="data"`` as
+    soon as any rule reads it as data, so a generated rule on T370T demoted it from the
+    customising read that ``checks/field_status_rules.py`` depends on.
+
+    Canonical (non-ABAP) entities are exempt: SuccessFactors' TIMESHEET is business data
+    even though its name matches the T-number pattern.
+    """
+    if str(table.provenance).startswith("canonical:"):
+        return False
+    if getattr(table, "delivery_class", None) in {"C", "G", "E", "S"}:
+        return True
+    return bool(_CUSTOMISING.match(table.name))
+
+
 CANONICAL_DIR = ROOT / "sap" / "dictionaries" / "canonical"
 
 
@@ -159,13 +182,14 @@ def expose_tables() -> dict[str, tuple[str, str]]:
     dictionary = get_dictionary("s4hana")
     owner = owned_tables()
 
-    # Every table the platform reads is in scope, except the S/4-retired ones. Canonical
-    # (non-ABAP) entities are included on purpose: SuccessFactors carries check_table and
-    # picklist metadata of its own, so the SF side derives from SF ground truth rather than
-    # being silently skipped. Entities with no such metadata (Ariba, Concur, fleet, XSYS)
-    # simply yield nothing — there is nothing to derive from.
+    # Every table the platform reads is in scope, except the S/4-retired ones and the
+    # customer's customising tables. Canonical (non-ABAP) entities are included on purpose:
+    # SuccessFactors carries check_table and picklist metadata of its own, so the SF side
+    # derives from SF ground truth rather than being silently skipped. Entities with no such
+    # metadata (Ariba, Concur, fleet, XSYS) simply yield nothing — there is nothing to derive
+    # from.
     def eligible(table) -> bool:
-        return not table.obsolete_in
+        return not table.obsolete_in and not _is_customising(table)
 
     edges: dict[str, set[str]] = defaultdict(set)
     for table in dictionary.tables.values():

@@ -6,7 +6,7 @@ module: quality_management
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR01583
+- id: DXR01219
   enabled: false
   field: PLMK.QMTB_WERKS
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: PLMK.QMTB_WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.QMTB_WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01584
+- id: DXR01220
   enabled: false
   field: PLMK.PMETHODE
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: PLMK.PMETHODE '{invalid_value}' is not defined in the check table QMTB.PMTNR. Correct it there or add the missing
       entry.
   record_fix_template: PLMK.PMETHODE points at a check table QMTB.PMTNR entry that does not exist.
-- id: DXR01585
+- id: DXR01221
   enabled: false
   field: PLMK.MASSEINHSW
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: PLMK.MASSEINHSW '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.MASSEINHSW points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01586
+- id: DXR01222
   enabled: false
   field: PLMK.PROBEMGEH
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: PLMK.PROBEMGEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.PROBEMGEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01587
+- id: DXR01223
   enabled: false
   field: PLMK.KATALGART1
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: PLMK.KATALGART1 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: PLMK.KATALGART1 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01588
+- id: DXR01224
   enabled: false
   field: PLMK.AUSWMGWRK1
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: PLMK.AUSWMGWRK1 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.AUSWMGWRK1 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01589
+- id: DXR01225
   enabled: false
   field: PLMK.KATALGART2
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: PLMK.KATALGART2 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: PLMK.KATALGART2 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01590
+- id: DXR01226
   enabled: false
   field: PLMK.AUSWMGWRK2
   check_class: referential_check
@@ -142,7 +142,7 @@ rules:
     __other__: PLMK.AUSWMGWRK2 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.AUSWMGWRK2 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01591
+- id: DXR01227
   enabled: false
   field: PLMK.KATALGART3
   check_class: referential_check
@@ -159,7 +159,7 @@ rules:
     __other__: PLMK.KATALGART3 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: PLMK.KATALGART3 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01592
+- id: DXR01228
   enabled: false
   field: PLMK.AUSWMGWRK3
   check_class: referential_check
@@ -176,7 +176,7 @@ rules:
     __other__: PLMK.AUSWMGWRK3 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.AUSWMGWRK3 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01593
+- id: DXR01229
   enabled: false
   field: PLMK.KATALGART4
   check_class: referential_check
@@ -193,7 +193,7 @@ rules:
     __other__: PLMK.KATALGART4 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: PLMK.KATALGART4 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01594
+- id: DXR01230
   enabled: false
   field: PLMK.AUSWMGWRK4
   check_class: referential_check
@@ -210,7 +210,7 @@ rules:
     __other__: PLMK.AUSWMGWRK4 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.AUSWMGWRK4 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01595
+- id: DXR01231
   enabled: false
   field: PLMK.KATALGART5
   check_class: referential_check
@@ -227,7 +227,7 @@ rules:
     __other__: PLMK.KATALGART5 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: PLMK.KATALGART5 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01596
+- id: DXR01232
   enabled: false
   field: PLMK.AUSWMGWRK5
   check_class: referential_check
@@ -244,7 +244,7 @@ rules:
     __other__: PLMK.AUSWMGWRK5 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.AUSWMGWRK5 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01597
+- id: DXR01233
   enabled: false
   field: PLMK.QERGDATH
   check_class: referential_check
@@ -261,7 +261,7 @@ rules:
     __other__: PLMK.QERGDATH '{invalid_value}' is not defined in the check table TQ73.QERGDATH. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.QERGDATH points at a check table TQ73.QERGDATH entry that does not exist.
-- id: DXR01598
+- id: DXR01234
   enabled: false
   field: PLMK.EEANTVERF
   check_class: referential_check
@@ -278,7 +278,7 @@ rules:
     __other__: PLMK.EEANTVERF '{invalid_value}' is not defined in the check table TQ72.ANTVERF. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.EEANTVERF points at a check table TQ72.ANTVERF entry that does not exist.
-- id: DXR01599
+- id: DXR01235
   enabled: false
   field: PLMK.QDYNREGEL
   check_class: referential_check
@@ -295,7 +295,7 @@ rules:
     __other__: PLMK.QDYNREGEL '{invalid_value}' is not defined in the check table QDDR.DYNREGEL. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.QDYNREGEL points at a check table QDDR.DYNREGEL entry that does not exist.
-- id: DXR01600
+- id: DXR01236
   enabled: false
   field: PLMK.SPCKRIT
   check_class: referential_check
@@ -312,7 +312,7 @@ rules:
     __other__: PLMK.SPCKRIT '{invalid_value}' is not defined in the check table QPSP.SPCKRIT. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.SPCKRIT points at a check table QPSP.SPCKRIT entry that does not exist.
-- id: DXR01601
+- id: DXR01237
   enabled: false
   field: PLMK.INPPROC
   check_class: referential_check
@@ -329,7 +329,7 @@ rules:
     __other__: PLMK.INPPROC '{invalid_value}' is not defined in the check table TQ71.INPPROC. Correct it there or add the
       missing entry.
   record_fix_template: PLMK.INPPROC points at a check table TQ71.INPPROC entry that does not exist.
-- id: DXR01602
+- id: DXR01238
   enabled: false
   field: PLMK.RES_PLAN
   check_class: referential_check
@@ -346,7 +346,7 @@ rules:
     __other__: PLMK.RES_PLAN '{invalid_value}' is not defined in the check table TQPC_RESPLAN.RES_PLAN. Correct it there or
       add the missing entry.
   record_fix_template: PLMK.RES_PLAN points at a check table TQPC_RESPLAN.RES_PLAN entry that does not exist.
-- id: DXR01603
+- id: DXR01239
   enabled: false
   field: PLMK.CTRMETH
   check_class: referential_check
@@ -363,7 +363,7 @@ rules:
     __other__: PLMK.CTRMETH '{invalid_value}' is not defined in the check table TQPC_CTRMETH.CTRMETH. Correct it there or
       add the missing entry.
   record_fix_template: PLMK.CTRMETH points at a check table TQPC_CTRMETH.CTRMETH entry that does not exist.
-- id: DXR01604
+- id: DXR01240
   enabled: false
   field: PLMK.CHAORIG
   check_class: referential_check
@@ -380,7 +380,7 @@ rules:
     __other__: PLMK.CHAORIG '{invalid_value}' is not defined in the check table TQPC_CHAORIG.CHAORIG. Correct it there or
       add the missing entry.
   record_fix_template: PLMK.CHAORIG points at a check table TQPC_CHAORIG.CHAORIG entry that does not exist.
-- id: DXR01605
+- id: DXR01241
   enabled: false
   field: QALS.WERK
   check_class: referential_check
@@ -396,7 +396,7 @@ rules:
     __other__: QALS.WERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QALS.WERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01606
+- id: DXR01242
   enabled: false
   field: QALS.OBJNR
   check_class: referential_check
@@ -413,7 +413,7 @@ rules:
     __other__: QALS.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR01607
+- id: DXR01243
   enabled: false
   field: QALS.OBTYP
   check_class: referential_check
@@ -430,7 +430,7 @@ rules:
     __other__: QALS.OBTYP '{invalid_value}' is not defined in the check table TJ03.OBTYP. Correct it there or add the missing
       entry.
   record_fix_template: QALS.OBTYP points at a check table TJ03.OBTYP entry that does not exist.
-- id: DXR01608
+- id: DXR01244
   enabled: false
   field: QALS.STSMA
   check_class: referential_check
@@ -447,7 +447,7 @@ rules:
     __other__: QALS.STSMA '{invalid_value}' is not defined in the check table TJ20.STSMA. Correct it there or add the missing
       entry.
   record_fix_template: QALS.STSMA points at a check table TJ20.STSMA entry that does not exist.
-- id: DXR01609
+- id: DXR01245
   enabled: false
   field: QALS.QMATAUTH
   check_class: referential_check
@@ -464,7 +464,7 @@ rules:
     __other__: QALS.QMATAUTH '{invalid_value}' is not defined in the check table TQ01B.QMATAUTH. Correct it there or add the
       missing entry.
   record_fix_template: QALS.QMATAUTH points at a check table TQ01B.QMATAUTH entry that does not exist.
-- id: DXV00732
+- id: DXV00471
   enabled: false
   field: QALS.STAT09
   check_class: domain_value_check
@@ -487,7 +487,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT09 ''{invalid_value}'' is not in domain BSTYP. Set it to one of: A, B, F, I, K, L, Q, W.'
   record_fix_template: 'QALS.STAT09 is {actual_value}; expected one of: A, B, F, I, K, L, Q, W.'
-- id: DXV00733
+- id: DXV00472
   enabled: false
   field: QALS.STAT18
   check_class: domain_value_check
@@ -508,7 +508,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT18 ''{invalid_value}'' is not in domain Q1WELOS. Set it to one of: 1, 2, 3, X, Y.'
   record_fix_template: 'QALS.STAT18 is {actual_value}; expected one of: 1, 2, 3, X, Y.'
-- id: DXV00734
+- id: DXV00473
   enabled: false
   field: QALS.STAT23
   check_class: domain_value_check
@@ -526,7 +526,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT23 ''{invalid_value}'' is not in domain QKZGENLOS. Set it to one of: 1, 2.'
   record_fix_template: 'QALS.STAT23 is {actual_value}; expected one of: 1, 2.'
-- id: DXR01610
+- id: DXR01246
   enabled: false
   field: QALS.DYNHEAD
   check_class: referential_check
@@ -543,7 +543,7 @@ rules:
     __other__: QALS.DYNHEAD '{invalid_value}' is not defined in the check table TQ39A.DYNLEVEL. Correct it there or add the
       missing entry.
   record_fix_template: QALS.DYNHEAD points at a check table TQ39A.DYNLEVEL entry that does not exist.
-- id: DXR01611
+- id: DXR01247
   enabled: false
   field: QALS.STPRVER
   check_class: referential_check
@@ -560,7 +560,7 @@ rules:
     __other__: QALS.STPRVER '{invalid_value}' is not defined in the check table QDSV.STICHPRVER. Correct it there or add the
       missing entry.
   record_fix_template: QALS.STPRVER points at a check table QDSV.STICHPRVER entry that does not exist.
-- id: DXR01612
+- id: DXR01248
   enabled: false
   field: QALS.EXTNUM
   check_class: referential_check
@@ -577,7 +577,7 @@ rules:
     __other__: QALS.EXTNUM '{invalid_value}' is not defined in the check table TQ12.EXTNUM. Correct it there or add the missing
       entry.
   record_fix_template: QALS.EXTNUM points at a check table TQ12.EXTNUM entry that does not exist.
-- id: DXR01613
+- id: DXR01249
   enabled: false
   field: QALS.STAFO
   check_class: referential_check
@@ -594,7 +594,7 @@ rules:
     __other__: QALS.STAFO '{invalid_value}' is not defined in the check table TMCB.STAFO. Correct it there or add the missing
       entry.
   record_fix_template: QALS.STAFO points at a check table TMCB.STAFO entry that does not exist.
-- id: DXV00735
+- id: DXV00474
   enabled: false
   field: QALS.STAT30
   check_class: domain_value_check
@@ -613,7 +613,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT30 ''{invalid_value}'' is not in domain QUNITORIGIN. Set it to one of: 1, 2, 9.'
   record_fix_template: 'QALS.STAT30 is {actual_value}; expected one of: 1, 2, 9.'
-- id: DXR01614
+- id: DXR01250
   enabled: false
   field: QALS.PLNTY
   check_class: referential_check
@@ -630,7 +630,7 @@ rules:
     __other__: QALS.PLNTY '{invalid_value}' is not defined in the check table TCA01.PLNTY. Correct it there or add the missing
       entry.
   record_fix_template: QALS.PLNTY points at a check table TCA01.PLNTY entry that does not exist.
-- id: DXR01615
+- id: DXR01251
   enabled: false
   field: QALS.PPLVERW
   check_class: referential_check
@@ -647,7 +647,7 @@ rules:
     __other__: QALS.PPLVERW '{invalid_value}' is not defined in the check table T411.VERWE. Correct it there or add the missing
       entry.
   record_fix_template: QALS.PPLVERW points at a check table T411.VERWE entry that does not exist.
-- id: DXR01616
+- id: DXR01252
   enabled: false
   field: QALS.SLWBEZ
   check_class: referential_check
@@ -664,7 +664,7 @@ rules:
     __other__: QALS.SLWBEZ '{invalid_value}' is not defined in the check table TQ79.SLWBEZ. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SLWBEZ points at a check table TQ79.SLWBEZ entry that does not exist.
-- id: DXV00736
+- id: DXV00475
   enabled: false
   field: QALS.STAT13
   check_class: domain_value_check
@@ -683,7 +683,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT13 ''{invalid_value}'' is not in domain QPPKTTYP. Set it to one of: 1, 2, 3.'
   record_fix_template: 'QALS.STAT13 is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00737
+- id: DXV00476
   enabled: false
   field: QALS.PPKZTLZU
   check_class: domain_value_check
@@ -705,7 +705,7 @@ rules:
   fix_map:
     __other__: 'QALS.PPKZTLZU ''{invalid_value}'' is not in domain QPPKZTLZU. Set it to one of: 0, 1, 2, 3, 4.'
   record_fix_template: 'QALS.PPKZTLZU is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXR01617
+- id: DXR01253
   enabled: false
   field: QALS.PRBNAVERF
   check_class: referential_check
@@ -722,7 +722,7 @@ rules:
     __other__: QALS.PRBNAVERF '{invalid_value}' is not defined in the check table QPRVK.PRZIEHVERF. Correct it there or add
       the missing entry.
   record_fix_template: QALS.PRBNAVERF points at a check table QPRVK.PRZIEHVERF entry that does not exist.
-- id: DXR01618
+- id: DXR01254
   enabled: false
   field: QALS.SELMATNR
   check_class: referential_check
@@ -739,7 +739,7 @@ rules:
     __other__: QALS.SELMATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SELMATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01619
+- id: DXR01255
   enabled: false
   field: QALS.SELWERK
   check_class: referential_check
@@ -755,7 +755,7 @@ rules:
     __other__: QALS.SELWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SELWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01620
+- id: DXR01256
   enabled: false
   field: QALS.SELLIFNR
   check_class: referential_check
@@ -772,7 +772,7 @@ rules:
     __other__: QALS.SELLIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SELLIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01621
+- id: DXR01257
   enabled: false
   field: QALS.SELHERST
   check_class: referential_check
@@ -789,7 +789,7 @@ rules:
     __other__: QALS.SELHERST '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SELHERST points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01622
+- id: DXR01258
   enabled: false
   field: QALS.SELKUNNR
   check_class: referential_check
@@ -806,7 +806,7 @@ rules:
     __other__: QALS.SELKUNNR '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SELKUNNR points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR01623
+- id: DXR01259
   enabled: false
   field: QALS.SELPPLVERW
   check_class: referential_check
@@ -823,7 +823,7 @@ rules:
     __other__: QALS.SELPPLVERW '{invalid_value}' is not defined in the check table T411.VERWE. Correct it there or add the
       missing entry.
   record_fix_template: QALS.SELPPLVERW points at a check table T411.VERWE entry that does not exist.
-- id: DXR01624
+- id: DXR01260
   enabled: false
   field: QALS.VERID
   check_class: referential_check
@@ -840,7 +840,7 @@ rules:
     __other__: QALS.VERID '{invalid_value}' is not defined in the check table MKAL.VERID. Correct it there or add the missing
       entry.
   record_fix_template: QALS.VERID points at a check table MKAL.VERID entry that does not exist.
-- id: DXR01625
+- id: DXR01261
   enabled: false
   field: QALS.SA_AUFNR
   check_class: referential_check
@@ -857,7 +857,7 @@ rules:
     __other__: QALS.SA_AUFNR '{invalid_value}' is not defined in the check table SAFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SA_AUFNR points at a check table SAFK.AUFNR entry that does not exist.
-- id: DXR01626
+- id: DXR01262
   enabled: false
   field: QALS.KUNNR
   check_class: referential_check
@@ -874,7 +874,7 @@ rules:
     __other__: QALS.KUNNR '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KUNNR points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR01627
+- id: DXR01263
   enabled: false
   field: QALS.HERSTELLER
   check_class: referential_check
@@ -891,7 +891,7 @@ rules:
     __other__: QALS.HERSTELLER '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the
       missing entry.
   record_fix_template: QALS.HERSTELLER points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01628
+- id: DXR01264
   enabled: false
   field: QALS.EMATNR
   check_class: referential_check
@@ -908,7 +908,7 @@ rules:
     __other__: QALS.EMATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.EMATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01629
+- id: DXR01265
   enabled: false
   field: QALS.LAGORTCHRG
   check_class: referential_check
@@ -925,7 +925,7 @@ rules:
     __other__: QALS.LAGORTCHRG '{invalid_value}' is not defined in the check table MCHB.LGORT. Correct it there or add the
       missing entry.
   record_fix_template: QALS.LAGORTCHRG points at a check table MCHB.LGORT entry that does not exist.
-- id: DXR01630
+- id: DXR01266
   enabled: false
   field: QALS.SOBKZ
   check_class: referential_check
@@ -942,7 +942,7 @@ rules:
     __other__: QALS.SOBKZ '{invalid_value}' is not defined in the check table T148.SOBKZ. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SOBKZ points at a check table T148.SOBKZ entry that does not exist.
-- id: DXR01631
+- id: DXR01267
   enabled: false
   field: QALS.PS_PSP_PNR
   check_class: referential_check
@@ -959,7 +959,7 @@ rules:
     __other__: QALS.PS_PSP_PNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the
       missing entry.
   record_fix_template: QALS.PS_PSP_PNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR01632
+- id: DXR01268
   enabled: false
   field: QALS.KDAUF
   check_class: referential_check
@@ -976,7 +976,7 @@ rules:
     __other__: QALS.KDAUF '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KDAUF points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01633
+- id: DXR01269
   enabled: false
   field: QALS.EKORG
   check_class: referential_check
@@ -993,7 +993,7 @@ rules:
     __other__: QALS.EKORG '{invalid_value}' is not defined in the check table T024E.EKORG. Correct it there or add the missing
       entry.
   record_fix_template: QALS.EKORG points at a check table T024E.EKORG entry that does not exist.
-- id: DXR01634
+- id: DXR01270
   enabled: false
   field: QALS.EBELP
   check_class: referential_check
@@ -1010,7 +1010,7 @@ rules:
     __other__: QALS.EBELP '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: QALS.EBELP points at a check table EKPO.EBELP entry that does not exist.
-- id: DXR01635
+- id: DXR01271
   enabled: false
   field: QALS.ETENR
   check_class: referential_check
@@ -1027,7 +1027,7 @@ rules:
     __other__: QALS.ETENR '{invalid_value}' is not defined in the check table EKET.ETENR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.ETENR points at a check table EKET.ETENR entry that does not exist.
-- id: DXR01636
+- id: DXR01272
   enabled: false
   field: QALS.BLART
   check_class: referential_check
@@ -1044,7 +1044,7 @@ rules:
     __other__: QALS.BLART '{invalid_value}' is not defined in the check table T003.BLART. Correct it there or add the missing
       entry.
   record_fix_template: QALS.BLART points at a check table T003.BLART entry that does not exist.
-- id: DXR01637
+- id: DXR01273
   enabled: false
   field: QALS.BWART
   check_class: referential_check
@@ -1061,7 +1061,7 @@ rules:
     __other__: QALS.BWART '{invalid_value}' is not defined in the check table T156.BWART. Correct it there or add the missing
       entry.
   record_fix_template: QALS.BWART points at a check table T156.BWART entry that does not exist.
-- id: DXR01638
+- id: DXR01274
   enabled: false
   field: QALS.WERKVORG
   check_class: referential_check
@@ -1078,7 +1078,7 @@ rules:
     __other__: QALS.WERKVORG '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QALS.WERKVORG points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01639
+- id: DXR01275
   enabled: false
   field: QALS.LAGORTVORG
   check_class: referential_check
@@ -1095,7 +1095,7 @@ rules:
     __other__: QALS.LAGORTVORG '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the
       missing entry.
   record_fix_template: QALS.LAGORTVORG points at a check table T001L.LGORT entry that does not exist.
-- id: DXR01640
+- id: DXR01276
   enabled: false
   field: QALS.LGNUM
   check_class: referential_check
@@ -1112,7 +1112,7 @@ rules:
     __other__: QALS.LGNUM '{invalid_value}' is not defined in the check table T300.LGNUM. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LGNUM points at a check table T300.LGNUM entry that does not exist.
-- id: DXR01641
+- id: DXR01277
   enabled: false
   field: QALS.LGTYP
   check_class: referential_check
@@ -1129,7 +1129,7 @@ rules:
     __other__: QALS.LGTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LGTYP points at a check table T301.LGTYP entry that does not exist.
-- id: DXR01642
+- id: DXR01278
   enabled: false
   field: QALS.LGPLA
   check_class: referential_check
@@ -1146,7 +1146,7 @@ rules:
     __other__: QALS.LGPLA '{invalid_value}' is not defined in the check table LAGP.LGPLA. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LGPLA points at a check table LAGP.LGPLA entry that does not exist.
-- id: DXR01643
+- id: DXR01279
   enabled: false
   field: QALS.LS_KDAUF
   check_class: referential_check
@@ -1163,7 +1163,7 @@ rules:
     __other__: QALS.LS_KDAUF '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_KDAUF points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01644
+- id: DXR01280
   enabled: false
   field: QALS.LS_VBELN
   check_class: referential_check
@@ -1180,7 +1180,7 @@ rules:
     __other__: QALS.LS_VBELN '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_VBELN points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01645
+- id: DXR01281
   enabled: false
   field: QALS.LS_POSNR
   check_class: referential_check
@@ -1197,7 +1197,7 @@ rules:
     __other__: QALS.LS_POSNR '{invalid_value}' is not defined in the check table VBUP.POSNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_POSNR points at a check table VBUP.POSNR entry that does not exist.
-- id: DXR01646
+- id: DXR01282
   enabled: false
   field: QALS.LS_ABRVW
   check_class: referential_check
@@ -1214,7 +1214,7 @@ rules:
     __other__: QALS.LS_ABRVW '{invalid_value}' is not defined in the check table TVLV.ABRVW. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_ABRVW points at a check table TVLV.ABRVW entry that does not exist.
-- id: DXR01647
+- id: DXR01283
   enabled: false
   field: QALS.LS_ROUTE
   check_class: referential_check
@@ -1230,7 +1230,7 @@ rules:
     __other__: QALS.LS_ROUTE '{invalid_value}' is not defined in the check table TVRO.ROUTE. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_ROUTE points at a check table TVRO.ROUTE entry that does not exist.
-- id: DXR01648
+- id: DXR01284
   enabled: false
   field: QALS.LS_LLAND
   check_class: referential_check
@@ -1247,7 +1247,7 @@ rules:
     __other__: QALS.LS_LLAND '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_LLAND points at a check table T005.LAND1 entry that does not exist.
-- id: DXR01649
+- id: DXR01285
   enabled: false
   field: QALS.LS_KUNAG
   check_class: referential_check
@@ -1264,7 +1264,7 @@ rules:
     __other__: QALS.LS_KUNAG '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_KUNAG points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR01650
+- id: DXR01286
   enabled: false
   field: QALS.LS_VKORG
   check_class: referential_check
@@ -1281,7 +1281,7 @@ rules:
     __other__: QALS.LS_VKORG '{invalid_value}' is not defined in the check table TVKO.VKORG. Correct it there or add the missing
       entry.
   record_fix_template: QALS.LS_VKORG points at a check table TVKO.VKORG entry that does not exist.
-- id: DXR01651
+- id: DXR01287
   enabled: false
   field: QALS.SPRACHE
   check_class: referential_check
@@ -1298,7 +1298,7 @@ rules:
     __other__: QALS.SPRACHE '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SPRACHE points at a check table T002.SPRAS entry that does not exist.
-- id: DXR01652
+- id: DXR01288
   enabled: false
   field: QALS.MENGENEINH
   check_class: referential_check
@@ -1315,7 +1315,7 @@ rules:
     __other__: QALS.MENGENEINH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QALS.MENGENEINH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01653
+- id: DXR01289
   enabled: false
   field: QALS.GEBEH
   check_class: referential_check
@@ -1332,7 +1332,7 @@ rules:
     __other__: QALS.GEBEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QALS.GEBEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00738
+- id: DXV00477
   enabled: false
   field: QALS.LVS_STIKZ
   check_class: domain_value_check
@@ -1351,7 +1351,7 @@ rules:
   fix_map:
     __other__: 'QALS.LVS_STIKZ ''{invalid_value}'' is not in domain LVS_STIKZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'QALS.LVS_STIKZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR01654
+- id: DXR01290
   enabled: false
   field: QALS.EINHPROBE
   check_class: referential_check
@@ -1368,7 +1368,7 @@ rules:
     __other__: QALS.EINHPROBE '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QALS.EINHPROBE points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01655
+- id: DXR01291
   enabled: false
   field: QALS.DYNREGEL
   check_class: referential_check
@@ -1385,7 +1385,7 @@ rules:
     __other__: QALS.DYNREGEL '{invalid_value}' is not defined in the check table QDDR.DYNREGEL. Correct it there or add the
       missing entry.
   record_fix_template: QALS.DYNREGEL points at a check table QDDR.DYNREGEL entry that does not exist.
-- id: DXV00739
+- id: DXV00478
   enabled: false
   field: QALS.STAT44
   check_class: domain_value_check
@@ -1403,7 +1403,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT44 ''{invalid_value}'' is not in domain QDYNTIME. Set it to one of: 1, X.'
   record_fix_template: 'QALS.STAT44 is {actual_value}; expected one of: 1, X.'
-- id: DXR01656
+- id: DXR01292
   enabled: false
   field: QALS.PRSTUFE
   check_class: referential_check
@@ -1420,7 +1420,7 @@ rules:
     __other__: QALS.PRSTUFE '{invalid_value}' is not defined in the check table QDPS.PRSTUFE. Correct it there or add the
       missing entry.
   record_fix_template: QALS.PRSTUFE points at a check table QDPS.PRSTUFE entry that does not exist.
-- id: DXR01657
+- id: DXR01293
   enabled: false
   field: QALS.PRSCHAERFE
   check_class: referential_check
@@ -1437,7 +1437,7 @@ rules:
     __other__: QALS.PRSCHAERFE '{invalid_value}' is not defined in the check table QDEP.PRSCHAERFE. Correct it there or add
       the missing entry.
   record_fix_template: QALS.PRSCHAERFE points at a check table QDEP.PRSCHAERFE entry that does not exist.
-- id: DXR01658
+- id: DXR01294
   enabled: false
   field: QALS.MATNRNEU
   check_class: referential_check
@@ -1454,7 +1454,7 @@ rules:
     __other__: QALS.MATNRNEU '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.MATNRNEU points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01659
+- id: DXR01295
   enabled: false
   field: QALS.CHARGNEU
   check_class: referential_check
@@ -1471,7 +1471,7 @@ rules:
     __other__: QALS.CHARGNEU '{invalid_value}' is not defined in the check table MCH1.CHARG. Correct it there or add the missing
       entry.
   record_fix_template: QALS.CHARGNEU points at a check table MCH1.CHARG entry that does not exist.
-- id: DXR01660
+- id: DXR01296
   enabled: false
   field: QALS.QKZVERF
   check_class: referential_check
@@ -1488,7 +1488,7 @@ rules:
     __other__: QALS.QKZVERF '{invalid_value}' is not defined in the check table TQ06.QKZVERF. Correct it there or add the
       missing entry.
   record_fix_template: QALS.QKZVERF points at a check table TQ06.QKZVERF entry that does not exist.
-- id: DXV00740
+- id: DXV00479
   enabled: false
   field: QALS.STAT03
   check_class: domain_value_check
@@ -1509,7 +1509,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT03 ''{invalid_value}'' is not in domain QMODUS_UD. Set it to one of: A, B, C, D, E.'
   record_fix_template: 'QALS.STAT03 is {actual_value}; expected one of: A, B, C, D, E.'
-- id: DXR01661
+- id: DXR01297
   enabled: false
   field: QALS.AUFNR_CO
   check_class: referential_check
@@ -1526,7 +1526,7 @@ rules:
     __other__: QALS.AUFNR_CO '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.AUFNR_CO points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXV00741
+- id: DXV00480
   enabled: false
   field: QALS.KZVBR
   check_class: domain_value_check
@@ -1545,7 +1545,7 @@ rules:
   fix_map:
     __other__: 'QALS.KZVBR ''{invalid_value}'' is not in domain KZVBR. Set it to one of: A, E, P, V.'
   record_fix_template: 'QALS.KZVBR is {actual_value}; expected one of: A, E, P, V.'
-- id: DXR01662
+- id: DXR01298
   enabled: false
   field: QALS.KNTTP
   check_class: referential_check
@@ -1562,7 +1562,7 @@ rules:
     __other__: QALS.KNTTP '{invalid_value}' is not defined in the check table T163K.KNTTP. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KNTTP points at a check table T163K.KNTTP entry that does not exist.
-- id: DXR01663
+- id: DXR01299
   enabled: false
   field: QALS.PSTYP
   check_class: referential_check
@@ -1579,7 +1579,7 @@ rules:
     __other__: QALS.PSTYP '{invalid_value}' is not defined in the check table T163.PSTYP. Correct it there or add the missing
       entry.
   record_fix_template: QALS.PSTYP points at a check table T163.PSTYP entry that does not exist.
-- id: DXV00742
+- id: DXV00481
   enabled: false
   field: QALS.STAT05
   check_class: domain_value_check
@@ -1608,7 +1608,7 @@ rules:
     __other__: 'QALS.STAT05 ''{invalid_value}'' is not in domain QKZQALSKNT. Set it to one of: A, B, C, D, E, F, G, H, I,
       J, K.'
   record_fix_template: 'QALS.STAT05 is {actual_value}; expected one of: A, B, C, D, E, F, G, H, I, J, K.'
-- id: DXR01664
+- id: DXR01300
   enabled: false
   field: QALS.KOSTL
   check_class: referential_check
@@ -1625,7 +1625,7 @@ rules:
     __other__: QALS.KOSTL '{invalid_value}' is not defined in the check table CSKS.KOSTL. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KOSTL points at a check table CSKS.KOSTL entry that does not exist.
-- id: DXR01665
+- id: DXR01301
   enabled: false
   field: QALS.ANLN1
   check_class: referential_check
@@ -1642,7 +1642,7 @@ rules:
     __other__: QALS.ANLN1 '{invalid_value}' is not defined in the check table ANLH.ANLN1. Correct it there or add the missing
       entry.
   record_fix_template: QALS.ANLN1 points at a check table ANLH.ANLN1 entry that does not exist.
-- id: DXR01666
+- id: DXR01302
   enabled: false
   field: QALS.ANLN2
   check_class: referential_check
@@ -1659,7 +1659,7 @@ rules:
     __other__: QALS.ANLN2 '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: QALS.ANLN2 points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR01667
+- id: DXR01303
   enabled: false
   field: QALS.KONT_PSPNR
   check_class: referential_check
@@ -1676,7 +1676,7 @@ rules:
     __other__: QALS.KONT_PSPNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the
       missing entry.
   record_fix_template: QALS.KONT_PSPNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR01668
+- id: DXR01304
   enabled: false
   field: QALS.NPLNR
   check_class: referential_check
@@ -1693,7 +1693,7 @@ rules:
     __other__: QALS.NPLNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.NPLNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR01669
+- id: DXR01305
   enabled: false
   field: QALS.KONT_KDAUF
   check_class: referential_check
@@ -1710,7 +1710,7 @@ rules:
     __other__: QALS.KONT_KDAUF '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the
       missing entry.
   record_fix_template: QALS.KONT_KDAUF points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01670
+- id: DXR01306
   enabled: false
   field: QALS.KSTRG
   check_class: referential_check
@@ -1727,7 +1727,7 @@ rules:
     __other__: QALS.KSTRG '{invalid_value}' is not defined in the check table CKPH.KSTRG. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KSTRG points at a check table CKPH.KSTRG entry that does not exist.
-- id: DXR01671
+- id: DXR01307
   enabled: false
   field: QALS.PRCTR
   check_class: referential_check
@@ -1744,7 +1744,7 @@ rules:
     __other__: QALS.PRCTR '{invalid_value}' is not defined in the check table CEPC.PRCTR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.PRCTR points at a check table CEPC.PRCTR entry that does not exist.
-- id: DXR01672
+- id: DXR01308
   enabled: false
   field: QALS.GSBER
   check_class: referential_check
@@ -1761,7 +1761,7 @@ rules:
     __other__: QALS.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
       entry.
   record_fix_template: QALS.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR01673
+- id: DXR01309
   enabled: false
   field: QALS.KONTO
   check_class: referential_check
@@ -1778,7 +1778,7 @@ rules:
     __other__: QALS.KONTO '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KONTO points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR01674
+- id: DXR01310
   enabled: false
   field: QALS.KOKRS
   check_class: referential_check
@@ -1795,7 +1795,7 @@ rules:
     __other__: QALS.KOKRS '{invalid_value}' is not defined in the check table TKA01.KOKRS. Correct it there or add the missing
       entry.
   record_fix_template: QALS.KOKRS points at a check table TKA01.KOKRS entry that does not exist.
-- id: DXR01675
+- id: DXR01311
   enabled: false
   field: QALS.BUKRS
   check_class: referential_check
@@ -1812,7 +1812,7 @@ rules:
     __other__: QALS.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: QALS.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXR01676
+- id: DXR01312
   enabled: false
   field: QALS.SERNP
   check_class: referential_check
@@ -1829,7 +1829,7 @@ rules:
     __other__: QALS.SERNP '{invalid_value}' is not defined in the check table T377P.SERAIL. Correct it there or add the missing
       entry.
   record_fix_template: QALS.SERNP points at a check table T377P.SERAIL entry that does not exist.
-- id: DXR01677
+- id: DXR01313
   enabled: false
   field: QALS.LOS_REF
   check_class: referential_check
@@ -1846,7 +1846,7 @@ rules:
     __other__: QALS.LOS_REF '{invalid_value}' is not defined in the check table QALS.PRUEFLOS. Correct it there or add the
       missing entry.
   record_fix_template: QALS.LOS_REF points at a check table QALS.PRUEFLOS entry that does not exist.
-- id: DXV00743
+- id: DXV00482
   enabled: false
   field: QALS.STAT32
   check_class: domain_value_check
@@ -1865,7 +1865,7 @@ rules:
   fix_map:
     __other__: 'QALS.STAT32 ''{invalid_value}'' is not in domain QSTABI. Set it to one of: 1, 2, 3.'
   record_fix_template: 'QALS.STAT32 is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR01678
+- id: DXR01314
   enabled: false
   field: QALS.WARPL
   check_class: referential_check
@@ -1882,7 +1882,7 @@ rules:
     __other__: QALS.WARPL '{invalid_value}' is not defined in the check table MPLA.WARPL. Correct it there or add the missing
       entry.
   record_fix_template: QALS.WARPL points at a check table MPLA.WARPL entry that does not exist.
-- id: DXR01679
+- id: DXR01315
   enabled: false
   field: QALS.STRAT
   check_class: referential_check
@@ -1899,7 +1899,7 @@ rules:
     __other__: QALS.STRAT '{invalid_value}' is not defined in the check table T351.STRAT. Correct it there or add the missing
       entry.
   record_fix_template: QALS.STRAT points at a check table T351.STRAT entry that does not exist.
-- id: DXV00744
+- id: DXV00483
   enabled: false
   field: QALS.SIGN_TYPE_RR
   check_class: domain_value_check
@@ -1918,7 +1918,7 @@ rules:
   fix_map:
     __other__: 'QALS.SIGN_TYPE_RR ''{invalid_value}'' is not in domain SIGN_TYPE. Set it to one of: A, B, C.'
   record_fix_template: 'QALS.SIGN_TYPE_RR is {actual_value}; expected one of: A, B, C.'
-- id: DXV00745
+- id: DXV00484
   enabled: false
   field: QALS.SIGN_TYPE_UD
   check_class: domain_value_check
@@ -1936,7 +1936,7 @@ rules:
   fix_map:
     __other__: 'QALS.SIGN_TYPE_UD ''{invalid_value}'' is not in domain SIGN_TYPE_SINGLE. Set it to one of: A, B.'
   record_fix_template: 'QALS.SIGN_TYPE_UD is {actual_value}; expected one of: A, B.'
-- id: DXV00746
+- id: DXV00485
   enabled: false
   field: QALS.SIGN_TYPE_SM
   check_class: domain_value_check
@@ -1954,7 +1954,7 @@ rules:
   fix_map:
     __other__: 'QALS.SIGN_TYPE_SM ''{invalid_value}'' is not in domain SIGN_TYPE_SINGLE. Set it to one of: A, B.'
   record_fix_template: 'QALS.SIGN_TYPE_SM is {actual_value}; expected one of: A, B.'
-- id: DXR01680
+- id: DXR01316
   enabled: false
   field: QAMV.SATZSTATUS
   check_class: referential_check
@@ -1971,7 +1971,7 @@ rules:
     __other__: QAMV.SATZSTATUS '{invalid_value}' is not defined in the check table TQ76.STATUS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.SATZSTATUS points at a check table TQ76.STATUS entry that does not exist.
-- id: DXV00747
+- id: DXV00486
   enabled: false
   field: QAMV.TSTICHPRKZ
   check_class: domain_value_check
@@ -1989,7 +1989,7 @@ rules:
   fix_map:
     __other__: 'QAMV.TSTICHPRKZ ''{invalid_value}'' is not in domain QKZUMFS. Set it to one of: 1, X.'
   record_fix_template: 'QAMV.TSTICHPRKZ is {actual_value}; expected one of: 1, X.'
-- id: DXV00748
+- id: DXV00487
   enabled: false
   field: QAMV.AKTPPKT
   check_class: domain_value_check
@@ -2007,7 +2007,7 @@ rules:
   fix_map:
     __other__: 'QAMV.AKTPPKT ''{invalid_value}'' is not in domain QAKTPPKT. Set it to one of: 1, 2.'
   record_fix_template: 'QAMV.AKTPPKT is {actual_value}; expected one of: 1, 2.'
-- id: DXR01681
+- id: DXR01317
   enabled: false
   field: QAMV.PPKTUNGEMK
   check_class: referential_check
@@ -2024,7 +2024,7 @@ rules:
     __other__: QAMV.PPKTUNGEMK '{invalid_value}' is not defined in the check table QASV.PROBENR. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.PPKTUNGEMK points at a check table QASV.PROBENR entry that does not exist.
-- id: DXR01682
+- id: DXR01318
   enabled: false
   field: QAMV.QMTB_WERKS
   check_class: referential_check
@@ -2041,7 +2041,7 @@ rules:
     __other__: QAMV.QMTB_WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.QMTB_WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01683
+- id: DXR01319
   enabled: false
   field: QAMV.PMETHODE
   check_class: referential_check
@@ -2058,7 +2058,7 @@ rules:
     __other__: QAMV.PMETHODE '{invalid_value}' is not defined in the check table QMTB.PMTNR. Correct it there or add the missing
       entry.
   record_fix_template: QAMV.PMETHODE points at a check table QMTB.PMTNR entry that does not exist.
-- id: DXV00749
+- id: DXV00488
   enabled: false
   field: QAMV.QPMK_REF
   check_class: domain_value_check
@@ -2084,7 +2084,7 @@ rules:
   fix_map:
     __other__: 'QAMV.QPMK_REF ''{invalid_value}'' is not in domain QKZ_REF_EE. Set it to one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
   record_fix_template: 'QAMV.QPMK_REF is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.'
-- id: DXR01684
+- id: DXR01320
   enabled: false
   field: QAMV.VERWMERKM
   check_class: referential_check
@@ -2101,7 +2101,7 @@ rules:
     __other__: QAMV.VERWMERKM '{invalid_value}' is not defined in the check table QPMK.MKMNR. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.VERWMERKM points at a check table QPMK.MKMNR entry that does not exist.
-- id: DXR01685
+- id: DXR01321
   enabled: false
   field: QAMV.MERKGEW
   check_class: referential_check
@@ -2118,7 +2118,7 @@ rules:
     __other__: QAMV.MERKGEW '{invalid_value}' is not defined in the check table TQ17A.MERKKLASSE. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.MERKGEW points at a check table TQ17A.MERKKLASSE entry that does not exist.
-- id: DXR01686
+- id: DXR01322
   enabled: false
   field: QAMV.LTEXTSPR
   check_class: referential_check
@@ -2135,7 +2135,7 @@ rules:
     __other__: QAMV.LTEXTSPR '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: QAMV.LTEXTSPR points at a check table T002.SPRAS entry that does not exist.
-- id: DXR01687
+- id: DXR01323
   enabled: false
   field: QAMV.LTXTENTSPR
   check_class: referential_check
@@ -2152,7 +2152,7 @@ rules:
     __other__: QAMV.LTXTENTSPR '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.LTXTENTSPR points at a check table T002.SPRAS entry that does not exist.
-- id: DXR01688
+- id: DXR01324
   enabled: false
   field: QAMV.PRUEFQUALI
   check_class: referential_check
@@ -2169,7 +2169,7 @@ rules:
     __other__: QAMV.PRUEFQUALI '{invalid_value}' is not defined in the check table TQ11.PRFQL. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.PRUEFQUALI points at a check table TQ11.PRFQL entry that does not exist.
-- id: DXR01689
+- id: DXR01325
   enabled: false
   field: QAMV.KATALGART1
   check_class: referential_check
@@ -2186,7 +2186,7 @@ rules:
     __other__: QAMV.KATALGART1 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.KATALGART1 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01690
+- id: DXR01326
   enabled: false
   field: QAMV.AUSWMGWRK1
   check_class: referential_check
@@ -2203,7 +2203,7 @@ rules:
     __other__: QAMV.AUSWMGWRK1 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.AUSWMGWRK1 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01691
+- id: DXR01327
   enabled: false
   field: QAMV.KATALGART2
   check_class: referential_check
@@ -2220,7 +2220,7 @@ rules:
     __other__: QAMV.KATALGART2 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.KATALGART2 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01692
+- id: DXR01328
   enabled: false
   field: QAMV.AUSWMGWRK2
   check_class: referential_check
@@ -2237,7 +2237,7 @@ rules:
     __other__: QAMV.AUSWMGWRK2 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.AUSWMGWRK2 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01693
+- id: DXR01329
   enabled: false
   field: QAMV.KATALGART3
   check_class: referential_check
@@ -2254,7 +2254,7 @@ rules:
     __other__: QAMV.KATALGART3 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.KATALGART3 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01694
+- id: DXR01330
   enabled: false
   field: QAMV.AUSWMGWRK3
   check_class: referential_check
@@ -2271,7 +2271,7 @@ rules:
     __other__: QAMV.AUSWMGWRK3 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.AUSWMGWRK3 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01695
+- id: DXR01331
   enabled: false
   field: QAMV.KATALGART4
   check_class: referential_check
@@ -2288,7 +2288,7 @@ rules:
     __other__: QAMV.KATALGART4 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.KATALGART4 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01696
+- id: DXR01332
   enabled: false
   field: QAMV.AUSWMGWRK4
   check_class: referential_check
@@ -2305,7 +2305,7 @@ rules:
     __other__: QAMV.AUSWMGWRK4 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.AUSWMGWRK4 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01697
+- id: DXR01333
   enabled: false
   field: QAMV.KATALGART5
   check_class: referential_check
@@ -2322,7 +2322,7 @@ rules:
     __other__: QAMV.KATALGART5 '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.KATALGART5 points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01698
+- id: DXR01334
   enabled: false
   field: QAMV.AUSWMGWRK5
   check_class: referential_check
@@ -2339,7 +2339,7 @@ rules:
     __other__: QAMV.AUSWMGWRK5 '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.AUSWMGWRK5 points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01699
+- id: DXR01335
   enabled: false
   field: QAMV.MASSEINHSW
   check_class: referential_check
@@ -2356,7 +2356,7 @@ rules:
     __other__: QAMV.MASSEINHSW '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.MASSEINHSW points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01700
+- id: DXR01336
   enabled: false
   field: QAMV.PRZIEHVERF
   check_class: referential_check
@@ -2373,7 +2373,7 @@ rules:
     __other__: QAMV.PRZIEHVERF '{invalid_value}' is not defined in the check table QPRVP.PRZIEHVERF. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.PRZIEHVERF points at a check table QPRVP.PRZIEHVERF entry that does not exist.
-- id: DXR01701
+- id: DXR01337
   enabled: false
   field: QAMV.LOSGEBEH
   check_class: referential_check
@@ -2390,7 +2390,7 @@ rules:
     __other__: QAMV.LOSGEBEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QAMV.LOSGEBEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01702
+- id: DXR01338
   enabled: false
   field: QAMV.STICHPRVER
   check_class: referential_check
@@ -2407,7 +2407,7 @@ rules:
     __other__: QAMV.STICHPRVER '{invalid_value}' is not defined in the check table QDSV.STICHPRVER. Correct it there or add
       the missing entry.
   record_fix_template: QAMV.STICHPRVER points at a check table QDSV.STICHPRVER entry that does not exist.
-- id: DXR01703
+- id: DXR01339
   enabled: false
   field: QAMV.ANTVERF
   check_class: referential_check
@@ -2424,7 +2424,7 @@ rules:
     __other__: QAMV.ANTVERF '{invalid_value}' is not defined in the check table TQ72.ANTVERF. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.ANTVERF points at a check table TQ72.ANTVERF entry that does not exist.
-- id: DXR01704
+- id: DXR01340
   enabled: false
   field: QAMV.BEWREGEL
   check_class: referential_check
@@ -2441,7 +2441,7 @@ rules:
     __other__: QAMV.BEWREGEL '{invalid_value}' is not defined in the check table QDFM.FBKEY. Correct it there or add the missing
       entry.
   record_fix_template: QAMV.BEWREGEL points at a check table QDFM.FBKEY entry that does not exist.
-- id: DXR01705
+- id: DXR01341
   enabled: false
   field: QAMV.PROBEMGEH
   check_class: referential_check
@@ -2458,7 +2458,7 @@ rules:
     __other__: QAMV.PROBEMGEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.PROBEMGEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01706
+- id: DXR01342
   enabled: false
   field: QAMV.MENGENEINH
   check_class: referential_check
@@ -2475,7 +2475,7 @@ rules:
     __other__: QAMV.MENGENEINH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.MENGENEINH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01707
+- id: DXR01343
   enabled: false
   field: QAMV.QDYNREGEL
   check_class: referential_check
@@ -2492,7 +2492,7 @@ rules:
     __other__: QAMV.QDYNREGEL '{invalid_value}' is not defined in the check table QDDR.DYNREGEL. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.QDYNREGEL points at a check table QDDR.DYNREGEL entry that does not exist.
-- id: DXV00750
+- id: DXV00489
   enabled: false
   field: QAMV.KZDYNAUT
   check_class: domain_value_check
@@ -2510,7 +2510,7 @@ rules:
   fix_map:
     __other__: 'QAMV.KZDYNAUT ''{invalid_value}'' is not in domain QDYNTIME. Set it to one of: 1, X.'
   record_fix_template: 'QAMV.KZDYNAUT is {actual_value}; expected one of: 1, X.'
-- id: DXV00751
+- id: DXV00490
   enabled: false
   field: QAMV.KZRAST
   check_class: domain_value_check
@@ -2529,7 +2529,7 @@ rules:
   fix_map:
     __other__: 'QAMV.KZRAST ''{invalid_value}'' is not in domain QKZRAST. Set it to one of: 1, 2, X.'
   record_fix_template: 'QAMV.KZRAST is {actual_value}; expected one of: 1, 2, X.'
-- id: DXR01708
+- id: DXR01344
   enabled: false
   field: QAMV.SPCKRIT
   check_class: referential_check
@@ -2546,7 +2546,7 @@ rules:
     __other__: QAMV.SPCKRIT '{invalid_value}' is not defined in the check table QPSP.SPCKRIT. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.SPCKRIT points at a check table QPSP.SPCKRIT entry that does not exist.
-- id: DXR01709
+- id: DXR01345
   enabled: false
   field: QAMV.QERGDATH
   check_class: referential_check
@@ -2563,7 +2563,7 @@ rules:
     __other__: QAMV.QERGDATH '{invalid_value}' is not defined in the check table TQ73.QERGDATH. Correct it there or add the
       missing entry.
   record_fix_template: QAMV.QERGDATH points at a check table TQ73.QERGDATH entry that does not exist.
-- id: DXR01710
+- id: DXR01346
   enabled: false
   field: QAVE.VKATART
   check_class: referential_check
@@ -2580,7 +2580,7 @@ rules:
     __other__: QAVE.VKATART '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QAVE.VKATART points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01711
+- id: DXR01347
   enabled: false
   field: QAVE.VWERKS
   check_class: referential_check
@@ -2596,7 +2596,7 @@ rules:
     __other__: QAVE.VWERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QAVE.VWERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01712
+- id: DXR01348
   enabled: false
   field: QAVE.VAUSWAHLMG
   check_class: referential_check
@@ -2613,7 +2613,7 @@ rules:
     __other__: QAVE.VAUSWAHLMG '{invalid_value}' is not defined in the check table QPAM.AUSWAHLMGE. Correct it there or add
       the missing entry.
   record_fix_template: QAVE.VAUSWAHLMG points at a check table QPAM.AUSWAHLMGE entry that does not exist.
-- id: DXR01713
+- id: DXR01349
   enabled: false
   field: QAVE.VCODEGRP
   check_class: referential_check
@@ -2630,7 +2630,7 @@ rules:
     __other__: QAVE.VCODEGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add
       the missing entry.
   record_fix_template: QAVE.VCODEGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01714
+- id: DXR01350
   enabled: false
   field: QAVE.VCODE
   check_class: referential_check
@@ -2647,7 +2647,7 @@ rules:
     __other__: QAVE.VCODE '{invalid_value}' is not defined in the check table QPCD.CODE. Correct it there or add the missing
       entry.
   record_fix_template: QAVE.VCODE points at a check table QPCD.CODE entry that does not exist.
-- id: DXV00752
+- id: DXV00491
   enabled: false
   field: QAVE.VBEWERTUNG
   check_class: domain_value_check
@@ -2665,7 +2665,7 @@ rules:
   fix_map:
     __other__: 'QAVE.VBEWERTUNG ''{invalid_value}'' is not in domain QBEWERTUNG. Set it to one of: A, R.'
   record_fix_template: 'QAVE.VBEWERTUNG is {actual_value}; expected one of: A, R.'
-- id: DXV00753
+- id: DXV00492
   enabled: false
   field: QAVE.DBEWERTUNG
   check_class: domain_value_check
@@ -2683,7 +2683,7 @@ rules:
   fix_map:
     __other__: 'QAVE.DBEWERTUNG ''{invalid_value}'' is not in domain QBEWERTUNG. Set it to one of: A, R.'
   record_fix_template: 'QAVE.DBEWERTUNG is {actual_value}; expected one of: A, R.'
-- id: DXR01715
+- id: DXR01351
   enabled: false
   field: QAVE.VFOLGEAKTI
   check_class: referential_check
@@ -2700,7 +2700,7 @@ rules:
     __other__: QAVE.VFOLGEAKTI '{invalid_value}' is not defined in the check table TQ07.FOLGEAKTI. Correct it there or add
       the missing entry.
   record_fix_template: QAVE.VFOLGEAKTI points at a check table TQ07.FOLGEAKTI entry that does not exist.
-- id: DXR01716
+- id: DXR01352
   enabled: false
   field: QAVE.STAFO
   check_class: referential_check
@@ -2717,7 +2717,7 @@ rules:
     __other__: QAVE.STAFO '{invalid_value}' is not defined in the check table TMCB.STAFO. Correct it there or add the missing
       entry.
   record_fix_template: QAVE.STAFO points at a check table TMCB.STAFO entry that does not exist.
-- id: DXR01717
+- id: DXR01353
   enabled: false
   field: QAVE.TEILLOS
   check_class: referential_check
@@ -2734,7 +2734,7 @@ rules:
     __other__: QAVE.TEILLOS '{invalid_value}' is not defined in the check table QALT.TEILLOS. Correct it there or add the
       missing entry.
   record_fix_template: QAVE.TEILLOS points at a check table QALT.TEILLOS entry that does not exist.
-- id: DXR01718
+- id: DXR01354
   enabled: false
   field: QINF.WERK
   check_class: referential_check
@@ -2750,7 +2750,7 @@ rules:
     __other__: QINF.WERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QINF.WERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01719
+- id: DXR01355
   enabled: false
   field: QINF.ME
   check_class: referential_check
@@ -2767,7 +2767,7 @@ rules:
     __other__: QINF.ME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QINF.ME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01720
+- id: DXR01356
   enabled: false
   field: QINF.SPRACHE
   check_class: referential_check
@@ -2784,7 +2784,7 @@ rules:
     __other__: QINF.SPRACHE '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: QINF.SPRACHE points at a check table T002.SPRAS entry that does not exist.
-- id: DXR01721
+- id: DXR01357
   enabled: false
   field: QINF.SPRAS
   check_class: referential_check
@@ -2801,7 +2801,7 @@ rules:
     __other__: QINF.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: QINF.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR01722
+- id: DXR01358
   enabled: false
   field: QINF.STSMA
   check_class: referential_check
@@ -2818,7 +2818,7 @@ rules:
     __other__: QINF.STSMA '{invalid_value}' is not defined in the check table TJ20.STSMA. Correct it there or add the missing
       entry.
   record_fix_template: QINF.STSMA points at a check table TJ20.STSMA entry that does not exist.
-- id: DXR01723
+- id: DXR01359
   enabled: false
   field: QINF.OBJNR
   check_class: referential_check
@@ -2835,7 +2835,7 @@ rules:
     __other__: QINF.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: QINF.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXV00754
+- id: DXV00493
   enabled: false
   field: QINF.CERTCONTROL
   check_class: domain_value_check
@@ -2853,7 +2853,7 @@ rules:
   fix_map:
     __other__: 'QINF.CERTCONTROL ''{invalid_value}'' is not in domain QCERTCONTROL. Set it to one of: 1, 2.'
   record_fix_template: 'QINF.CERTCONTROL is {actual_value}; expected one of: 1, 2.'
-- id: DXR01724
+- id: DXR01360
   enabled: false
   field: QMEL.ARTPR
   check_class: referential_check
@@ -2870,7 +2870,7 @@ rules:
     __other__: QMEL.ARTPR '{invalid_value}' is not defined in the check table T356A.ARTPR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.ARTPR points at a check table T356A.ARTPR entry that does not exist.
-- id: DXR01725
+- id: DXR01361
   enabled: false
   field: QMEL.PRIOK
   check_class: referential_check
@@ -2886,7 +2886,7 @@ rules:
     __other__: QMEL.PRIOK '{invalid_value}' is not defined in the check table T356.PRIOK. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.PRIOK points at a check table T356.PRIOK entry that does not exist.
-- id: DXR01726
+- id: DXR01362
   enabled: false
   field: QMEL.WAERS
   check_class: referential_check
@@ -2903,7 +2903,7 @@ rules:
     __other__: QMEL.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR01727
+- id: DXR01363
   enabled: false
   field: QMEL.VERID
   check_class: referential_check
@@ -2920,7 +2920,7 @@ rules:
     __other__: QMEL.VERID '{invalid_value}' is not defined in the check table MKAL.VERID. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VERID points at a check table MKAL.VERID entry that does not exist.
-- id: DXR01728
+- id: DXR01364
   enabled: false
   field: QMEL.RM_MATNR
   check_class: referential_check
@@ -2937,7 +2937,7 @@ rules:
     __other__: QMEL.RM_MATNR '{invalid_value}' is not defined in the check table MKAL.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.RM_MATNR points at a check table MKAL.MATNR entry that does not exist.
-- id: DXR01729
+- id: DXR01365
   enabled: false
   field: QMEL.RM_WERKS
   check_class: referential_check
@@ -2954,7 +2954,7 @@ rules:
     __other__: QMEL.RM_WERKS '{invalid_value}' is not defined in the check table MKAL.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.RM_WERKS points at a check table MKAL.WERKS entry that does not exist.
-- id: DXR01730
+- id: DXR01366
   enabled: false
   field: QMEL.SA_AUFNR
   check_class: referential_check
@@ -2971,7 +2971,7 @@ rules:
     __other__: QMEL.SA_AUFNR '{invalid_value}' is not defined in the check table SAFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.SA_AUFNR points at a check table SAFK.AUFNR entry that does not exist.
-- id: DXR01731
+- id: DXR01367
   enabled: false
   field: QMEL.MATKL
   check_class: referential_check
@@ -2988,7 +2988,7 @@ rules:
     __other__: QMEL.MATKL '{invalid_value}' is not defined in the check table T023.MATKL. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.MATKL points at a check table T023.MATKL entry that does not exist.
-- id: DXR01732
+- id: DXR01368
   enabled: false
   field: QMEL.PRDHA
   check_class: referential_check
@@ -3005,7 +3005,7 @@ rules:
     __other__: QMEL.PRDHA '{invalid_value}' is not defined in the check table T179.PRODH. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.PRDHA points at a check table T179.PRODH entry that does not exist.
-- id: DXR01733
+- id: DXR01369
   enabled: false
   field: QMEL.KUNUM
   check_class: referential_check
@@ -3022,7 +3022,7 @@ rules:
     __other__: QMEL.KUNUM '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.KUNUM points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR01734
+- id: DXR01370
   enabled: false
   field: QMEL.OBJNR
   check_class: referential_check
@@ -3039,7 +3039,7 @@ rules:
     __other__: QMEL.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR01735
+- id: DXR01371
   enabled: false
   field: QMEL.RBNR
   check_class: referential_check
@@ -3056,7 +3056,7 @@ rules:
     __other__: QMEL.RBNR '{invalid_value}' is not defined in the check table T352B.RBNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.RBNR points at a check table T352B.RBNR entry that does not exist.
-- id: DXV00755
+- id: DXV00494
   enabled: false
   field: QMEL.HERKZ
   check_class: domain_value_check
@@ -3087,7 +3087,7 @@ rules:
     __other__: 'QMEL.HERKZ ''{invalid_value}'' is not in domain HERKZ. Set it to one of: 01, 02, 03, 04, 05, 06, C1, C2, G1,
       Q1, Q2, Q3 ....'
   record_fix_template: 'QMEL.HERKZ is {actual_value}; expected one of: 01, 02, 03, 04, 05, 06, C1, C2, G1, Q1, Q2, Q3 ....'
-- id: DXR01736
+- id: DXR01372
   enabled: false
   field: QMEL.LIFNUM
   check_class: referential_check
@@ -3104,7 +3104,7 @@ rules:
     __other__: QMEL.LIFNUM '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.LIFNUM points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01737
+- id: DXR01373
   enabled: false
   field: QMEL.VBELN
   check_class: referential_check
@@ -3121,7 +3121,7 @@ rules:
     __other__: QMEL.VBELN '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VBELN points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01738
+- id: DXR01374
   enabled: false
   field: QMEL.SPART
   check_class: referential_check
@@ -3137,7 +3137,7 @@ rules:
     __other__: QMEL.SPART '{invalid_value}' is not defined in the check table TSPA.SPART. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.SPART points at a check table TSPA.SPART entry that does not exist.
-- id: DXR01739
+- id: DXR01375
   enabled: false
   field: QMEL.VKORG
   check_class: referential_check
@@ -3154,7 +3154,7 @@ rules:
     __other__: QMEL.VKORG '{invalid_value}' is not defined in the check table TVKO.VKORG. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VKORG points at a check table TVKO.VKORG entry that does not exist.
-- id: DXR01740
+- id: DXR01376
   enabled: false
   field: QMEL.VTWEG
   check_class: referential_check
@@ -3171,7 +3171,7 @@ rules:
     __other__: QMEL.VTWEG '{invalid_value}' is not defined in the check table TVTW.VTWEG. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VTWEG points at a check table TVTW.VTWEG entry that does not exist.
-- id: DXR01741
+- id: DXR01377
   enabled: false
   field: QMEL.MAWERK
   check_class: referential_check
@@ -3188,7 +3188,7 @@ rules:
     __other__: QMEL.MAWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.MAWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01742
+- id: DXR01378
   enabled: false
   field: QMEL.QMKAT
   check_class: referential_check
@@ -3205,7 +3205,7 @@ rules:
     __other__: QMEL.QMKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.QMKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01743
+- id: DXR01379
   enabled: false
   field: QMEL.QMGRP
   check_class: referential_check
@@ -3222,7 +3222,7 @@ rules:
     __other__: QMEL.QMGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.QMGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01744
+- id: DXR01380
   enabled: false
   field: QMEL.AUSWIRK
   check_class: referential_check
@@ -3239,7 +3239,7 @@ rules:
     __other__: QMEL.AUSWIRK '{invalid_value}' is not defined in the check table TQ81.AUSWIRK. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.AUSWIRK points at a check table TQ81.AUSWIRK entry that does not exist.
-- id: DXR01745
+- id: DXR01381
   enabled: false
   field: QMEL.TEILEV
   check_class: referential_check
@@ -3256,7 +3256,7 @@ rules:
     __other__: QMEL.TEILEV '{invalid_value}' is not defined in the check table TQ81V.TEILEV. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.TEILEV points at a check table TQ81V.TEILEV entry that does not exist.
-- id: DXR01746
+- id: DXR01382
   enabled: false
   field: QMEL.PRUEFLOS
   check_class: referential_check
@@ -3273,7 +3273,7 @@ rules:
     __other__: QMEL.PRUEFLOS '{invalid_value}' is not defined in the check table QALS.PRUEFLOS. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.PRUEFLOS points at a check table QALS.PRUEFLOS entry that does not exist.
-- id: DXR01747
+- id: DXR01383
   enabled: false
   field: QMEL.CHARG
   check_class: referential_check
@@ -3290,7 +3290,7 @@ rules:
     __other__: QMEL.CHARG '{invalid_value}' is not defined in the check table MCH1.CHARG. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.CHARG points at a check table MCH1.CHARG entry that does not exist.
-- id: DXR01748
+- id: DXR01384
   enabled: false
   field: QMEL.LGORTCHARG
   check_class: referential_check
@@ -3307,7 +3307,7 @@ rules:
     __other__: QMEL.LGORTCHARG '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.LGORTCHARG points at a check table T001L.LGORT entry that does not exist.
-- id: DXR01749
+- id: DXR01385
   enabled: false
   field: QMEL.HERSTELLER
   check_class: referential_check
@@ -3324,7 +3324,7 @@ rules:
     __other__: QMEL.HERSTELLER '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.HERSTELLER points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01750
+- id: DXR01386
   enabled: false
   field: QMEL.EMATNR
   check_class: referential_check
@@ -3341,7 +3341,7 @@ rules:
     __other__: QMEL.EMATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.EMATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01751
+- id: DXR01387
   enabled: false
   field: QMEL.EKORG
   check_class: referential_check
@@ -3358,7 +3358,7 @@ rules:
     __other__: QMEL.EKORG '{invalid_value}' is not defined in the check table T024E.EKORG. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.EKORG points at a check table T024E.EKORG entry that does not exist.
-- id: DXR01752
+- id: DXR01388
   enabled: false
   field: QMEL.BKGRP
   check_class: referential_check
@@ -3375,7 +3375,7 @@ rules:
     __other__: QMEL.BKGRP '{invalid_value}' is not defined in the check table T024.EKGRP. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.BKGRP points at a check table T024.EKGRP entry that does not exist.
-- id: DXR01753
+- id: DXR01389
   enabled: false
   field: QMEL.LGORTVORG
   check_class: referential_check
@@ -3392,7 +3392,7 @@ rules:
     __other__: QMEL.LGORTVORG '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.LGORTVORG points at a check table T001L.LGORT entry that does not exist.
-- id: DXR01754
+- id: DXR01390
   enabled: false
   field: QMEL.FERTAUFNR
   check_class: referential_check
@@ -3409,7 +3409,7 @@ rules:
     __other__: QMEL.FERTAUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.FERTAUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR01755
+- id: DXR01391
   enabled: false
   field: QMEL.EBELN
   check_class: referential_check
@@ -3426,7 +3426,7 @@ rules:
     __other__: QMEL.EBELN '{invalid_value}' is not defined in the check table EKKO.EBELN. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.EBELN points at a check table EKKO.EBELN entry that does not exist.
-- id: DXR01756
+- id: DXR01392
   enabled: false
   field: QMEL.EBELP
   check_class: referential_check
@@ -3443,7 +3443,7 @@ rules:
     __other__: QMEL.EBELP '{invalid_value}' is not defined in the check table EKPO.EBELP. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.EBELP points at a check table EKPO.EBELP entry that does not exist.
-- id: DXR01757
+- id: DXR01393
   enabled: false
   field: QMEL.LS_KDAUF
   check_class: referential_check
@@ -3460,7 +3460,7 @@ rules:
     __other__: QMEL.LS_KDAUF '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.LS_KDAUF points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01758
+- id: DXR01394
   enabled: false
   field: QMEL.LS_KDPOS
   check_class: referential_check
@@ -3477,7 +3477,7 @@ rules:
     __other__: QMEL.LS_KDPOS '{invalid_value}' is not defined in the check table VBUP.POSNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.LS_KDPOS points at a check table VBUP.POSNR entry that does not exist.
-- id: DXR01759
+- id: DXR01395
   enabled: false
   field: QMEL.LS_VBELN
   check_class: referential_check
@@ -3494,7 +3494,7 @@ rules:
     __other__: QMEL.LS_VBELN '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.LS_VBELN points at a check table VBUK.VBELN entry that does not exist.
-- id: DXR01760
+- id: DXR01396
   enabled: false
   field: QMEL.LS_POSNR
   check_class: referential_check
@@ -3511,7 +3511,7 @@ rules:
     __other__: QMEL.LS_POSNR '{invalid_value}' is not defined in the check table VBUP.POSNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.LS_POSNR points at a check table VBUP.POSNR entry that does not exist.
-- id: DXV00756
+- id: DXV00495
   enabled: false
   field: QMEL.CROBJTY
   check_class: domain_value_check
@@ -3531,7 +3531,7 @@ rules:
   fix_map:
     __other__: 'QMEL.CROBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'QMEL.CROBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXR01761
+- id: DXR01397
   enabled: false
   field: QMEL.ARBPL
   check_class: referential_check
@@ -3548,7 +3548,7 @@ rules:
     __other__: QMEL.ARBPL '{invalid_value}' is not defined in the check table CRID.OBJID. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.ARBPL points at a check table CRID.OBJID entry that does not exist.
-- id: DXR01762
+- id: DXR01398
   enabled: false
   field: QMEL.ARBPLWERK
   check_class: referential_check
@@ -3565,7 +3565,7 @@ rules:
     __other__: QMEL.ARBPLWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.ARBPLWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01763
+- id: DXR01399
   enabled: false
   field: QMEL.FEART
   check_class: referential_check
@@ -3582,7 +3582,7 @@ rules:
     __other__: QMEL.FEART '{invalid_value}' is not defined in the check table TQ86.FEART. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.FEART points at a check table TQ86.FEART entry that does not exist.
-- id: DXR01764
+- id: DXR01400
   enabled: false
   field: QMEL.MGEIN
   check_class: referential_check
@@ -3599,7 +3599,7 @@ rules:
     __other__: QMEL.MGEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.MGEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01765
+- id: DXR01401
   enabled: false
   field: QMEL.COAUFNR
   check_class: referential_check
@@ -3616,7 +3616,7 @@ rules:
     __other__: QMEL.COAUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.COAUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR01766
+- id: DXR01402
   enabled: false
   field: QMEL.QWRNUM
   check_class: referential_check
@@ -3633,7 +3633,7 @@ rules:
     __other__: QMEL.QWRNUM '{invalid_value}' is not defined in the check table QMEL.QMNUM. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.QWRNUM points at a check table QMEL.QMNUM entry that does not exist.
-- id: DXR01767
+- id: DXR01403
   enabled: false
   field: QMEL.VKBUR
   check_class: referential_check
@@ -3650,7 +3650,7 @@ rules:
     __other__: QMEL.VKBUR '{invalid_value}' is not defined in the check table TVKBZ.VKBUR. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VKBUR points at a check table TVKBZ.VKBUR entry that does not exist.
-- id: DXR01768
+- id: DXR01404
   enabled: false
   field: QMEL.VKGRP
   check_class: referential_check
@@ -3667,7 +3667,7 @@ rules:
     __other__: QMEL.VKGRP '{invalid_value}' is not defined in the check table TVBVK.VKGRP. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.VKGRP points at a check table TVBVK.VKGRP entry that does not exist.
-- id: DXR01769
+- id: DXR01405
   enabled: false
   field: QMEL.TSEGTP
   check_class: referential_check
@@ -3684,7 +3684,7 @@ rules:
     __other__: QMEL.TSEGTP '{invalid_value}' is not defined in the check table TTSEGTPLH.TEPL. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.TSEGTP points at a check table TTSEGTPLH.TEPL entry that does not exist.
-- id: DXR01770
+- id: DXR01406
   enabled: false
   field: QMEL.TZONSO
   check_class: referential_check
@@ -3701,7 +3701,7 @@ rules:
     __other__: QMEL.TZONSO '{invalid_value}' is not defined in the check table TTZZ.TZONE. Correct it there or add the missing
       entry.
   record_fix_template: QMEL.TZONSO points at a check table TTZZ.TZONE entry that does not exist.
-- id: DXV00757
+- id: DXV00496
   enabled: false
   field: QMEL.TZONID
   check_class: domain_value_check
@@ -3722,7 +3722,7 @@ rules:
   fix_map:
     __other__: 'QMEL.TZONID ''{invalid_value}'' is not in domain TZONSMID. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'QMEL.TZONID is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR01771
+- id: DXR01407
   enabled: false
   field: QMEL./SAPSMOSS/INSTN
   check_class: referential_check
@@ -3739,7 +3739,7 @@ rules:
     __other__: QMEL./SAPSMOSS/INSTN '{invalid_value}' is not defined in the check table /SAPSMOSS/INSTN.R3INSTN. Correct it
       there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/INSTN points at a check table /SAPSMOSS/INSTN.R3INSTN entry that does not exist.
-- id: DXR01772
+- id: DXR01408
   enabled: false
   field: QMEL./SAPSMOSS/OSSYS
   check_class: referential_check
@@ -3756,7 +3756,7 @@ rules:
     __other__: QMEL./SAPSMOSS/OSSYS '{invalid_value}' is not defined in the check table /SAPSMOSS/OSYS.OSSYS. Correct it there
       or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/OSSYS points at a check table /SAPSMOSS/OSYS.OSSYS entry that does not exist.
-- id: DXR01773
+- id: DXR01409
   enabled: false
   field: QMEL./SAPSMOSS/DBSYS
   check_class: referential_check
@@ -3773,7 +3773,7 @@ rules:
     __other__: QMEL./SAPSMOSS/DBSYS '{invalid_value}' is not defined in the check table /SAPSMOSS/DBSY.DBSYS. Correct it there
       or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/DBSYS points at a check table /SAPSMOSS/DBSY.DBSYS entry that does not exist.
-- id: DXR01774
+- id: DXR01410
   enabled: false
   field: QMEL./SAPSMOSS/REL
   check_class: referential_check
@@ -3790,7 +3790,7 @@ rules:
     __other__: QMEL./SAPSMOSS/REL '{invalid_value}' is not defined in the check table /SAPSMOSS/REL.R3REL. Correct it there
       or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/REL points at a check table /SAPSMOSS/REL.R3REL entry that does not exist.
-- id: DXR01775
+- id: DXR01411
   enabled: false
   field: QMEL./SAPSMOSS/FRONT
   check_class: referential_check
@@ -3807,7 +3807,7 @@ rules:
     __other__: QMEL./SAPSMOSS/FRONT '{invalid_value}' is not defined in the check table /SAPSMOSS/FRNT.FRONTEND. Correct it
       there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/FRONT points at a check table /SAPSMOSS/FRNT.FRONTEND entry that does not exist.
-- id: DXR01776
+- id: DXR01412
   enabled: false
   field: QMEL./SAPSMOSS/SYSTYP
   check_class: referential_check
@@ -3824,7 +3824,7 @@ rules:
     __other__: QMEL./SAPSMOSS/SYSTYP '{invalid_value}' is not defined in the check table /SAPSMOSS/SYST.R3SYSTYPE. Correct
       it there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/SYSTYP points at a check table /SAPSMOSS/SYST.R3SYSTYPE entry that does not exist.
-- id: DXR01777
+- id: DXR01413
   enabled: false
   field: QMEL./SAPSMOSS/ADDID
   check_class: referential_check
@@ -3841,7 +3841,7 @@ rules:
     __other__: QMEL./SAPSMOSS/ADDID '{invalid_value}' is not defined in the check table /SAPSMOSS/ADDID.R3ADDID. Correct it
       there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/ADDID points at a check table /SAPSMOSS/ADDID.R3ADDID entry that does not exist.
-- id: DXR01778
+- id: DXR01414
   enabled: false
   field: QMEL./SAPSMOSS/ADDREL
   check_class: referential_check
@@ -3858,7 +3858,7 @@ rules:
     __other__: QMEL./SAPSMOSS/ADDREL '{invalid_value}' is not defined in the check table /SAPSMOSS/ADDRL.R3ADDREL. Correct
       it there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/ADDREL points at a check table /SAPSMOSS/ADDRL.R3ADDREL entry that does not exist.
-- id: DXR01779
+- id: DXR01415
   enabled: false
   field: QMEL./SAPSMOSS/STATUS
   check_class: referential_check
@@ -3875,7 +3875,7 @@ rules:
     __other__: QMEL./SAPSMOSS/STATUS '{invalid_value}' is not defined in the check table /SAPSMOSS/STAT.STATUS. Correct it
       there or add the missing entry.
   record_fix_template: QMEL./SAPSMOSS/STATUS points at a check table /SAPSMOSS/STAT.STATUS entry that does not exist.
-- id: DXV00758
+- id: DXV00497
   enabled: false
   field: QMEL.CHANCE
   check_class: domain_value_check
@@ -3896,7 +3896,7 @@ rules:
   fix_map:
     __other__: 'QMEL.CHANCE ''{invalid_value}'' is not in domain PS_CHANCE. Set it to one of: 01, 02, 03, 04, 05.'
   record_fix_template: 'QMEL.CHANCE is {actual_value}; expected one of: 01, 02, 03, 04, 05.'
-- id: DXV00759
+- id: DXV00498
   enabled: false
   field: QMEL.OPPONENT
   check_class: domain_value_check
@@ -3914,7 +3914,7 @@ rules:
   fix_map:
     __other__: 'QMEL.OPPONENT ''{invalid_value}'' is not in domain OPPONENT. Set it to one of: 01, 02, 03.'
   record_fix_template: 'QMEL.OPPONENT is {actual_value}; expected one of: 01, 02, 03.'
-- id: DXR01780
+- id: DXR01416
   enabled: false
   field: QMEL.OBJNR_REAL
   check_class: referential_check
@@ -3931,7 +3931,7 @@ rules:
     __other__: QMEL.OBJNR_REAL '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.OBJNR_REAL points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR01781
+- id: DXR01417
   enabled: false
   field: QMEL.OBJNR_STAT
   check_class: referential_check
@@ -3948,7 +3948,7 @@ rules:
     __other__: QMEL.OBJNR_STAT '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the
       missing entry.
   record_fix_template: QMEL.OBJNR_STAT points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXV00760
+- id: DXV00499
   enabled: false
   field: QMEL.SHN_OBJTY
   check_class: domain_value_check
@@ -3968,7 +3968,7 @@ rules:
   fix_map:
     __other__: 'QMEL.SHN_OBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'QMEL.SHN_OBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXV00761
+- id: DXV00500
   enabled: false
   field: QMEL.SHN_ORIGIN
   check_class: domain_value_check
@@ -3986,7 +3986,7 @@ rules:
   fix_map:
     __other__: 'QMEL.SHN_ORIGIN ''{invalid_value}'' is not in domain COCF_SRN_ORIGIN. Set it to one of: 01, 02.'
   record_fix_template: 'QMEL.SHN_ORIGIN is {actual_value}; expected one of: 01, 02.'
-- id: DXR01782
+- id: DXR01418
   enabled: false
   field: QMFE.FEKAT
   check_class: referential_check
@@ -4003,7 +4003,7 @@ rules:
     __other__: QMFE.FEKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.FEKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01783
+- id: DXR01419
   enabled: false
   field: QMFE.FEGRP
   check_class: referential_check
@@ -4020,7 +4020,7 @@ rules:
     __other__: QMFE.FEGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.FEGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01784
+- id: DXR01420
   enabled: false
   field: QMFE.OTKAT
   check_class: referential_check
@@ -4037,7 +4037,7 @@ rules:
     __other__: QMFE.OTKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.OTKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01785
+- id: DXR01421
   enabled: false
   field: QMFE.OTGRP
   check_class: referential_check
@@ -4054,7 +4054,7 @@ rules:
     __other__: QMFE.OTGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.OTGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01786
+- id: DXR01422
   enabled: false
   field: QMFE.BAUTL
   check_class: referential_check
@@ -4070,7 +4070,7 @@ rules:
     __other__: QMFE.BAUTL '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.BAUTL points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01787
+- id: DXR01423
   enabled: false
   field: QMFE.FEQKLAS
   check_class: referential_check
@@ -4087,7 +4087,7 @@ rules:
     __other__: QMFE.FEQKLAS '{invalid_value}' is not defined in the check table TQ17.FEHLKLASSE. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.FEQKLAS points at a check table TQ17.FEHLKLASSE entry that does not exist.
-- id: DXR01788
+- id: DXR01424
   enabled: false
   field: QMFE.FCOAUFNR
   check_class: referential_check
@@ -4104,7 +4104,7 @@ rules:
     __other__: QMFE.FCOAUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.FCOAUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXR01789
+- id: DXR01425
   enabled: false
   field: QMFE.FMGEIN
   check_class: referential_check
@@ -4121,7 +4121,7 @@ rules:
     __other__: QMFE.FMGEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.FMGEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01790
+- id: DXR01426
   enabled: false
   field: QMFE.UNITFLBEW
   check_class: referential_check
@@ -4138,7 +4138,7 @@ rules:
     __other__: QMFE.UNITFLBEW '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.UNITFLBEW points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01791
+- id: DXR01427
   enabled: false
   field: QMFE.FEART
   check_class: referential_check
@@ -4155,7 +4155,7 @@ rules:
     __other__: QMFE.FEART '{invalid_value}' is not defined in the check table TQ86.FEART. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.FEART points at a check table TQ86.FEART entry that does not exist.
-- id: DXR01792
+- id: DXR01428
   enabled: false
   field: QMFE.PROBENR
   check_class: referential_check
@@ -4172,7 +4172,7 @@ rules:
     __other__: QMFE.PROBENR '{invalid_value}' is not defined in the check table QASV.PROBENR. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.PROBENR points at a check table QASV.PROBENR entry that does not exist.
-- id: DXR01793
+- id: DXR01429
   enabled: false
   field: QMFE.PHYNR
   check_class: referential_check
@@ -4189,7 +4189,7 @@ rules:
     __other__: QMFE.PHYNR '{invalid_value}' is not defined in the check table QPRS.PHYNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.PHYNR points at a check table QPRS.PHYNR entry that does not exist.
-- id: DXV00762
+- id: DXV00501
   enabled: false
   field: QMFE.CROBJTY
   check_class: domain_value_check
@@ -4209,7 +4209,7 @@ rules:
   fix_map:
     __other__: 'QMFE.CROBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'QMFE.CROBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXR01794
+- id: DXR01430
   enabled: false
   field: QMFE.ARBPL
   check_class: referential_check
@@ -4226,7 +4226,7 @@ rules:
     __other__: QMFE.ARBPL '{invalid_value}' is not defined in the check table CRID.OBJID. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.ARBPL points at a check table CRID.OBJID entry that does not exist.
-- id: DXR01795
+- id: DXR01431
   enabled: false
   field: QMFE.ARBPLWERK
   check_class: referential_check
@@ -4243,7 +4243,7 @@ rules:
     __other__: QMFE.ARBPLWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the
       missing entry.
   record_fix_template: QMFE.ARBPLWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01796
+- id: DXR01432
   enabled: false
   field: QMFE.MATNR
   check_class: referential_check
@@ -4260,7 +4260,7 @@ rules:
     __other__: QMFE.MATNR '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.MATNR points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01797
+- id: DXR01433
   enabled: false
   field: QMFE.WERKS
   check_class: referential_check
@@ -4276,7 +4276,7 @@ rules:
     __other__: QMFE.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXR01798
+- id: DXR01434
   enabled: false
   field: QMFE.EKORG
   check_class: referential_check
@@ -4293,7 +4293,7 @@ rules:
     __other__: QMFE.EKORG '{invalid_value}' is not defined in the check table T024E.EKORG. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.EKORG points at a check table T024E.EKORG entry that does not exist.
-- id: DXR01799
+- id: DXR01435
   enabled: false
   field: QMFE.INFNR
   check_class: referential_check
@@ -4310,7 +4310,7 @@ rules:
     __other__: QMFE.INFNR '{invalid_value}' is not defined in the check table EINA.INFNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.INFNR points at a check table EINA.INFNR entry that does not exist.
-- id: DXR01800
+- id: DXR01436
   enabled: false
   field: QMFE.KOSTL
   check_class: referential_check
@@ -4327,7 +4327,7 @@ rules:
     __other__: QMFE.KOSTL '{invalid_value}' is not defined in the check table CSKS.KOSTL. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.KOSTL points at a check table CSKS.KOSTL entry that does not exist.
-- id: DXR01801
+- id: DXR01437
   enabled: false
   field: QMFE.LSTAR
   check_class: referential_check
@@ -4344,7 +4344,7 @@ rules:
     __other__: QMFE.LSTAR '{invalid_value}' is not defined in the check table CSLA.LSTAR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.LSTAR points at a check table CSLA.LSTAR entry that does not exist.
-- id: DXR01802
+- id: DXR01438
   enabled: false
   field: QMFE.PRZNR
   check_class: referential_check
@@ -4361,7 +4361,7 @@ rules:
     __other__: QMFE.PRZNR '{invalid_value}' is not defined in the check table CBPR.PRZNR. Correct it there or add the missing
       entry.
   record_fix_template: QMFE.PRZNR points at a check table CBPR.PRZNR entry that does not exist.
-- id: DXR01803
+- id: DXR01439
   enabled: false
   field: QMSM.MNKAT
   check_class: referential_check
@@ -4378,7 +4378,7 @@ rules:
     __other__: QMSM.MNKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMSM.MNKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01804
+- id: DXR01440
   enabled: false
   field: QMSM.MNGRP
   check_class: referential_check
@@ -4395,7 +4395,7 @@ rules:
     __other__: QMSM.MNGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMSM.MNGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01805
+- id: DXR01441
   enabled: false
   field: QMSM.FOLGEACT
   check_class: referential_check
@@ -4412,7 +4412,7 @@ rules:
     __other__: QMSM.FOLGEACT '{invalid_value}' is not defined in the check table TQ07.FOLGEAKTI. Correct it there or add the
       missing entry.
   record_fix_template: QMSM.FOLGEACT points at a check table TQ07.FOLGEAKTI entry that does not exist.
-- id: DXR01806
+- id: DXR01442
   enabled: false
   field: QMSM.OBJNR
   check_class: referential_check
@@ -4429,7 +4429,7 @@ rules:
     __other__: QMSM.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR01807
+- id: DXR01443
   enabled: false
   field: QMSM.FENUM
   check_class: referential_check
@@ -4446,7 +4446,7 @@ rules:
     __other__: QMSM.FENUM '{invalid_value}' is not defined in the check table QMFE.FENUM. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.FENUM points at a check table QMFE.FENUM entry that does not exist.
-- id: DXR01808
+- id: DXR01444
   enabled: false
   field: QMSM.PARVW
   check_class: referential_check
@@ -4463,7 +4463,7 @@ rules:
     __other__: QMSM.PARVW '{invalid_value}' is not defined in the check table TPAR.PARVW. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.PARVW points at a check table TPAR.PARVW entry that does not exist.
-- id: DXR01809
+- id: DXR01445
   enabled: false
   field: QMSM.MMGEIN
   check_class: referential_check
@@ -4480,7 +4480,7 @@ rules:
     __other__: QMSM.MMGEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.MMGEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01810
+- id: DXR01446
   enabled: false
   field: QMSM.TSEGTP
   check_class: referential_check
@@ -4497,7 +4497,7 @@ rules:
     __other__: QMSM.TSEGTP '{invalid_value}' is not defined in the check table TTSEGTPLH.TEPL. Correct it there or add the
       missing entry.
   record_fix_template: QMSM.TSEGTP points at a check table TTSEGTPLH.TEPL entry that does not exist.
-- id: DXR01811
+- id: DXR01447
   enabled: false
   field: QMSM.TZONSO
   check_class: referential_check
@@ -4514,7 +4514,7 @@ rules:
     __other__: QMSM.TZONSO '{invalid_value}' is not defined in the check table TTZZ.TZONE. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.TZONSO points at a check table TTZZ.TZONE entry that does not exist.
-- id: DXR01812
+- id: DXR01448
   enabled: false
   field: QMSM.TZONSM
   check_class: referential_check
@@ -4531,7 +4531,7 @@ rules:
     __other__: QMSM.TZONSM '{invalid_value}' is not defined in the check table TTZZ.TZONE. Correct it there or add the missing
       entry.
   record_fix_template: QMSM.TZONSM points at a check table TTZZ.TZONE entry that does not exist.
-- id: DXV00763
+- id: DXV00502
   enabled: false
   field: QMSM.TZONID
   check_class: domain_value_check
@@ -4552,7 +4552,7 @@ rules:
   fix_map:
     __other__: 'QMSM.TZONID ''{invalid_value}'' is not in domain TZONSMID. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'QMSM.TZONID is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR01813
+- id: DXR01449
   enabled: false
   field: QMSM.ABC_TEMPL
   check_class: referential_check
@@ -4569,7 +4569,7 @@ rules:
     __other__: QMSM.ABC_TEMPL '{invalid_value}' is not defined in the check table COTPL.TEMPLATE. Correct it there or add
       the missing entry.
   record_fix_template: QMSM.ABC_TEMPL points at a check table COTPL.TEMPLATE entry that does not exist.
-- id: DXV00764
+- id: DXV00503
   enabled: false
   field: QMTB.LOEKZ
   check_class: domain_value_check
@@ -4590,7 +4590,7 @@ rules:
   fix_map:
     __other__: 'QMTB.LOEKZ ''{invalid_value}'' is not in domain QLOESCHKZ. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'QMTB.LOEKZ is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR01814
+- id: DXR01450
   enabled: false
   field: QMTB.PRFQL
   check_class: referential_check
@@ -4607,7 +4607,7 @@ rules:
     __other__: QMTB.PRFQL '{invalid_value}' is not defined in the check table TQ11.PRFQL. Correct it there or add the missing
       entry.
   record_fix_template: QMTB.PRFQL points at a check table TQ11.PRFQL entry that does not exist.
-- id: DXR01815
+- id: DXR01451
   enabled: false
   field: QMTB.QAUTH
   check_class: referential_check
@@ -4624,7 +4624,7 @@ rules:
     __other__: QMTB.QAUTH '{invalid_value}' is not defined in the check table TQ01D.QMASTAUTH. Correct it there or add the
       missing entry.
   record_fix_template: QMTB.QAUTH points at a check table TQ01D.QMASTAUTH entry that does not exist.
-- id: DXR01816
+- id: DXR01452
   enabled: false
   field: QMUR.URKAT
   check_class: referential_check
@@ -4641,7 +4641,7 @@ rules:
     __other__: QMUR.URKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMUR.URKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01817
+- id: DXR01453
   enabled: false
   field: QMUR.URGRP
   check_class: referential_check
@@ -4658,7 +4658,7 @@ rules:
     __other__: QMUR.URGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMUR.URGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01818
+- id: DXR01454
   enabled: false
   field: QMUR.VUKAT
   check_class: referential_check
@@ -4675,7 +4675,7 @@ rules:
     __other__: QMUR.VUKAT '{invalid_value}' is not defined in the check table TQ15.KATALOGART. Correct it there or add the
       missing entry.
   record_fix_template: QMUR.VUKAT points at a check table TQ15.KATALOGART entry that does not exist.
-- id: DXR01819
+- id: DXR01455
   enabled: false
   field: QMUR.VUGRP
   check_class: referential_check
@@ -4692,7 +4692,7 @@ rules:
     __other__: QMUR.VUGRP '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add the
       missing entry.
   record_fix_template: QMUR.VUGRP points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01820
+- id: DXR01456
   enabled: false
   field: QMUR.PARVW
   check_class: referential_check
@@ -4709,7 +4709,7 @@ rules:
     __other__: QMUR.PARVW '{invalid_value}' is not defined in the check table TPAR.PARVW. Correct it there or add the missing
       entry.
   record_fix_template: QMUR.PARVW points at a check table TPAR.PARVW entry that does not exist.
-- id: DXR01821
+- id: DXR01457
   enabled: false
   field: QMUR.URMGEIN
   check_class: referential_check
@@ -4726,7 +4726,7 @@ rules:
     __other__: QMUR.URMGEIN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: QMUR.URMGEIN points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00765
+- id: DXV00504
   enabled: false
   field: QPAC.BEWERTUNG
   check_class: domain_value_check
@@ -4744,7 +4744,7 @@ rules:
   fix_map:
     __other__: 'QPAC.BEWERTUNG ''{invalid_value}'' is not in domain QBEWERTUNG. Set it to one of: A, R.'
   record_fix_template: 'QPAC.BEWERTUNG is {actual_value}; expected one of: A, R.'
-- id: DXR01822
+- id: DXR01458
   enabled: false
   field: QPAC.FEHLKLASSE
   check_class: referential_check
@@ -4761,7 +4761,7 @@ rules:
     __other__: QPAC.FEHLKLASSE '{invalid_value}' is not defined in the check table TQ17.FEHLKLASSE. Correct it there or add
       the missing entry.
   record_fix_template: QPAC.FEHLKLASSE points at a check table TQ17.FEHLKLASSE entry that does not exist.
-- id: DXR01823
+- id: DXR01459
   enabled: false
   field: QPAC.WAEHRUNG
   check_class: referential_check
@@ -4778,7 +4778,7 @@ rules:
     __other__: QPAC.WAEHRUNG '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
       missing entry.
   record_fix_template: QPAC.WAEHRUNG points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00766
+- id: DXV00505
   enabled: false
   field: QPAC.AENDERKZ
   check_class: domain_value_check
@@ -4796,7 +4796,7 @@ rules:
   fix_map:
     __other__: 'QPAC.AENDERKZ ''{invalid_value}'' is not in domain Q1LZEITMK. Set it to one of: 1, X.'
   record_fix_template: 'QPAC.AENDERKZ is {actual_value}; expected one of: 1, X.'
-- id: DXR01824
+- id: DXR01460
   enabled: false
   field: QPAC.FOLGEAKTI
   check_class: referential_check
@@ -4813,7 +4813,7 @@ rules:
     __other__: QPAC.FOLGEAKTI '{invalid_value}' is not defined in the check table TQ07.FOLGEAKTI. Correct it there or add
       the missing entry.
   record_fix_template: QPAC.FOLGEAKTI points at a check table TQ07.FOLGEAKTI entry that does not exist.
-- id: DXV00767
+- id: DXV00506
   enabled: false
   field: QPAC.FELDNAME
   check_class: domain_value_check
@@ -4863,7 +4863,7 @@ rules:
       VMENGE01, VMENGE01 0, VMENGE01 1, VMENGE02, VMENGE02 0, VMENGE02 1, VMENGE03, VMENGE03 0 ....'
   record_fix_template: 'QPAC.FELDNAME is {actual_value}; expected one of: 0, 1, TRANSFER01, TRANSFER02, VMENGE01, VMENGE01
     0, VMENGE01 1, VMENGE02, VMENGE02 0, VMENGE02 1, VMENGE03, VMENGE03 0 ....'
-- id: DXR01825
+- id: DXR01461
   enabled: false
   field: QPAM.KSP01
   check_class: referential_check
@@ -4880,7 +4880,7 @@ rules:
     __other__: QPAM.KSP01 '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: QPAM.KSP01 points at a check table T002.SPRAS entry that does not exist.
-- id: DXV00768
+- id: DXV00507
   enabled: false
   field: QPAM.STATUS
   check_class: domain_value_check
@@ -4900,7 +4900,7 @@ rules:
   fix_map:
     __other__: 'QPAM.STATUS ''{invalid_value}'' is not in domain QLOESCHKZ1. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'QPAM.STATUS is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXR01826
+- id: DXR01462
   enabled: false
   field: QPCD.DEFECTCLASS
   check_class: referential_check
@@ -4917,7 +4917,7 @@ rules:
     __other__: QPCD.DEFECTCLASS '{invalid_value}' is not defined in the check table CRMC_DEFCLA.DEFECTCLASS. Correct it there
       or add the missing entry.
   record_fix_template: QPCD.DEFECTCLASS points at a check table CRMC_DEFCLA.DEFECTCLASS entry that does not exist.
-- id: DXV00769
+- id: DXV00508
   enabled: false
   field: QPMK.KONSISTENT
   check_class: domain_value_check
@@ -4935,7 +4935,7 @@ rules:
   fix_map:
     __other__: 'QPMK.KONSISTENT ''{invalid_value}'' is not in domain QVOLLST. Set it to one of: 1, X.'
   record_fix_template: 'QPMK.KONSISTENT is {actual_value}; expected one of: 1, X.'
-- id: DXR01827
+- id: DXR01463
   enabled: false
   field: QPMK.CODEGR9U
   check_class: referential_check
@@ -4952,7 +4952,7 @@ rules:
     __other__: QPMK.CODEGR9U '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add
       the missing entry.
   record_fix_template: QPMK.CODEGR9U points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01828
+- id: DXR01464
   enabled: false
   field: QPMK.CODEGR9O
   check_class: referential_check
@@ -4969,7 +4969,7 @@ rules:
     __other__: QPMK.CODEGR9O '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add
       the missing entry.
   record_fix_template: QPMK.CODEGR9O points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01829
+- id: DXR01465
   enabled: false
   field: QPMK.EEANTVERF
   check_class: referential_check
@@ -4986,7 +4986,7 @@ rules:
     __other__: QPMK.EEANTVERF '{invalid_value}' is not defined in the check table TQ72.ANTVERF. Correct it there or add the
       missing entry.
   record_fix_template: QPMK.EEANTVERF points at a check table TQ72.ANTVERF entry that does not exist.
-- id: DXR01830
+- id: DXR01466
   enabled: false
   field: QPMK.CODEGRQUAL
   check_class: referential_check
@@ -5003,7 +5003,7 @@ rules:
     __other__: QPMK.CODEGRQUAL '{invalid_value}' is not defined in the check table QPGR.CODEGRUPPE. Correct it there or add
       the missing entry.
   record_fix_template: QPMK.CODEGRQUAL points at a check table QPGR.CODEGRUPPE entry that does not exist.
-- id: DXR01831
+- id: DXR01467
   enabled: false
   field: QPMK.CODEQUAL
   check_class: referential_check
@@ -5020,7 +5020,7 @@ rules:
     __other__: QPMK.CODEQUAL '{invalid_value}' is not defined in the check table QPCD.CODE. Correct it there or add the missing
       entry.
   record_fix_template: QPMK.CODEQUAL points at a check table QPCD.CODE entry that does not exist.
-- id: DXR01832
+- id: DXR01468
   enabled: false
   field: QPMK.INPPROC
   check_class: referential_check
@@ -5037,7 +5037,7 @@ rules:
     __other__: QPMK.INPPROC '{invalid_value}' is not defined in the check table TQ71.INPPROC. Correct it there or add the
       missing entry.
   record_fix_template: QPMK.INPPROC points at a check table TQ71.INPPROC entry that does not exist.
-- id: DXR01833
+- id: DXR01469
   enabled: false
   field: QPMK.SPEC_DET_RULE
   check_class: referential_check
@@ -5054,20 +5054,3 @@ rules:
     __other__: QPMK.SPEC_DET_RULE '{invalid_value}' is not defined in the check table QASDRI_SPECDET.SPEC_DET_RULE. Correct
       it there or add the missing entry.
   record_fix_template: QPMK.SPEC_DET_RULE points at a check table QASDRI_SPECDET.SPEC_DET_RULE entry that does not exist.
-- id: DXR01834
-  enabled: false
-  field: TQ29.EINHEIT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Unit of Measurement, in Which Quantitative Data Is Stored must exist in the check table T006.MSEHI
-  why_it_matters: EINHEIT (Unit of Measurement, in Which Quantitative Data Is Stored) is defined in the SAP Data Dictionary
-    with check table T006.MSEHI on domain MEINS. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EINHEIT resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TQ29.EINHEIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: TQ29.EINHEIT points at a check table T006.MSEHI entry that does not exist.

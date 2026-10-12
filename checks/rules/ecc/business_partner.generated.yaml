@@ -6,7 +6,7 @@ module: business_partner
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXV00091
+- id: DXV00039
   enabled: false
   field: ADR2.R3_USER
   check_class: domain_value_check
@@ -26,7 +26,7 @@ rules:
   fix_map:
     __other__: 'ADR2.R3_USER ''{invalid_value}'' is not in domain AD_FLGMOB. Set it to one of: 1, 2, 3, X.'
   record_fix_template: 'ADR2.R3_USER is {actual_value}; expected one of: 1, 2, 3, X.'
-- id: DXR00306
+- id: DXR00180
   enabled: false
   field: ADR3.COUNTRY
   check_class: referential_check
@@ -43,7 +43,7 @@ rules:
     __other__: ADR3.COUNTRY '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: ADR3.COUNTRY points at a check table T005.LAND1 entry that does not exist.
-- id: DXV00092
+- id: DXV00040
   enabled: false
   field: ADR3.FAX_GROUP
   check_class: domain_value_check
@@ -61,7 +61,7 @@ rules:
   fix_map:
     __other__: 'ADR3.FAX_GROUP ''{invalid_value}'' is not in domain AD_FXGRP. Set it to one of: 3, 4.'
   record_fix_template: 'ADR3.FAX_GROUP is {actual_value}; expected one of: 3, 4.'
-- id: DXV00093
+- id: DXV00041
   enabled: false
   field: ADR6.ENCODE
   check_class: domain_value_check
@@ -80,7 +80,7 @@ rules:
   fix_map:
     __other__: 'ADR6.ENCODE ''{invalid_value}'' is not in domain AD_ENCODE. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ADR6.ENCODE is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00307
+- id: DXR00181
   enabled: false
   field: ADRC.TITLE
   check_class: referential_check
@@ -97,7 +97,7 @@ rules:
     __other__: ADRC.TITLE '{invalid_value}' is not defined in the check table TSAD3.TITLE. Correct it there or add the missing
       entry.
   record_fix_template: ADRC.TITLE points at a check table TSAD3.TITLE entry that does not exist.
-- id: DXR00308
+- id: DXR00182
   enabled: false
   field: ADRC.CITY_CODE
   check_class: referential_check
@@ -114,7 +114,7 @@ rules:
     __other__: ADRC.CITY_CODE '{invalid_value}' is not defined in the check table ADRCITY.CITY_CODE. Correct it there or add
       the missing entry.
   record_fix_template: ADRC.CITY_CODE points at a check table ADRCITY.CITY_CODE entry that does not exist.
-- id: DXR00309
+- id: DXR00183
   enabled: false
   field: ADRC.CITYP_CODE
   check_class: referential_check
@@ -131,7 +131,7 @@ rules:
     __other__: ADRC.CITYP_CODE '{invalid_value}' is not defined in the check table ADRCITYPRT.CITYP_CODE. Correct it there
       or add the missing entry.
   record_fix_template: ADRC.CITYP_CODE points at a check table ADRCITYPRT.CITYP_CODE entry that does not exist.
-- id: DXR00310
+- id: DXR00184
   enabled: false
   field: ADRC.CITYH_CODE
   check_class: referential_check
@@ -148,7 +148,7 @@ rules:
     __other__: ADRC.CITYH_CODE '{invalid_value}' is not defined in the check table ADRCITY.CITY_CODE. Correct it there or
       add the missing entry.
   record_fix_template: ADRC.CITYH_CODE points at a check table ADRCITY.CITY_CODE entry that does not exist.
-- id: DXV00094
+- id: DXV00042
   enabled: false
   field: ADRC.CHCKSTATUS
   check_class: domain_value_check
@@ -166,7 +166,7 @@ rules:
   fix_map:
     __other__: 'ADRC.CHCKSTATUS ''{invalid_value}'' is not in domain AD_CHECKST. Set it to one of: C, D.'
   record_fix_template: 'ADRC.CHCKSTATUS is {actual_value}; expected one of: C, D.'
-- id: DXR00311
+- id: DXR00185
   enabled: false
   field: ADRC.REGIOGROUP
   check_class: referential_check
@@ -183,7 +183,7 @@ rules:
     __other__: ADRC.REGIOGROUP '{invalid_value}' is not defined in the check table ADRREGGRP.REGIOGROUP. Correct it there
       or add the missing entry.
   record_fix_template: ADRC.REGIOGROUP points at a check table ADRREGGRP.REGIOGROUP entry that does not exist.
-- id: DXR00312
+- id: DXR00186
   enabled: false
   field: ADRC.DONT_USE_P
   check_class: referential_check
@@ -200,7 +200,7 @@ rules:
     __other__: ADRC.DONT_USE_P '{invalid_value}' is not defined in the check table TSAD12.UNDELIVER. Correct it there or add
       the missing entry.
   record_fix_template: ADRC.DONT_USE_P points at a check table TSAD12.UNDELIVER entry that does not exist.
-- id: DXR00313
+- id: DXR00187
   enabled: false
   field: ADRC.CITY_CODE2
   check_class: referential_check
@@ -217,7 +217,7 @@ rules:
     __other__: ADRC.CITY_CODE2 '{invalid_value}' is not defined in the check table ADRCITY.CITY_CODE. Correct it there or
       add the missing entry.
   record_fix_template: ADRC.CITY_CODE2 points at a check table ADRCITY.CITY_CODE entry that does not exist.
-- id: DXR00314
+- id: DXR00188
   enabled: false
   field: ADRC.PO_BOX_REG
   check_class: referential_check
@@ -234,7 +234,7 @@ rules:
     __other__: ADRC.PO_BOX_REG '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the
       missing entry.
   record_fix_template: ADRC.PO_BOX_REG points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00315
+- id: DXR00189
   enabled: false
   field: ADRC.TRANSPZONE
   check_class: referential_check
@@ -251,7 +251,7 @@ rules:
     __other__: ADRC.TRANSPZONE '{invalid_value}' is not defined in the check table TZONE.ZONE1. Correct it there or add the
       missing entry.
   record_fix_template: ADRC.TRANSPZONE points at a check table TZONE.ZONE1 entry that does not exist.
-- id: DXR00316
+- id: DXR00190
   enabled: false
   field: ADRC.DONT_USE_S
   check_class: referential_check
@@ -268,7 +268,7 @@ rules:
     __other__: ADRC.DONT_USE_S '{invalid_value}' is not defined in the check table TSAD12.UNDELIVER. Correct it there or add
       the missing entry.
   record_fix_template: ADRC.DONT_USE_S points at a check table TSAD12.UNDELIVER entry that does not exist.
-- id: DXR00317
+- id: DXR00191
   enabled: false
   field: ADRC.STREETCODE
   check_class: referential_check
@@ -285,7 +285,7 @@ rules:
     __other__: ADRC.STREETCODE '{invalid_value}' is not defined in the check table ADRSTREET.STRT_CODE. Correct it there or
       add the missing entry.
   record_fix_template: ADRC.STREETCODE points at a check table ADRSTREET.STRT_CODE entry that does not exist.
-- id: DXR00318
+- id: DXR00192
   enabled: false
   field: ADRC.STREETABBR
   check_class: referential_check
@@ -302,7 +302,7 @@ rules:
     __other__: ADRC.STREETABBR '{invalid_value}' is not defined in the check table ADRSTRTYPE.STRTYPEAB. Correct it there
       or add the missing entry.
   record_fix_template: ADRC.STREETABBR points at a check table ADRSTRTYPE.STRTYPEAB entry that does not exist.
-- id: DXR00319
+- id: DXR00193
   enabled: false
   field: ADRC.ADDR_GROUP
   check_class: referential_check
@@ -319,7 +319,7 @@ rules:
     __other__: ADRC.ADDR_GROUP '{invalid_value}' is not defined in the check table TSAD7.ADDR_GROUP. Correct it there or add
       the missing entry.
   record_fix_template: ADRC.ADDR_GROUP points at a check table TSAD7.ADDR_GROUP entry that does not exist.
-- id: DXR00320
+- id: DXR00194
   enabled: false
   field: ADRC.DEFLT_COMM
   check_class: referential_check
@@ -336,7 +336,7 @@ rules:
     __other__: ADRC.DEFLT_COMM '{invalid_value}' is not defined in the check table TSAC.COMM_TYPE. Correct it there or add
       the missing entry.
   record_fix_template: ADRC.DEFLT_COMM points at a check table TSAC.COMM_TYPE entry that does not exist.
-- id: DXR00321
+- id: DXR00195
   enabled: false
   field: ADRC.ADDRORIGIN
   check_class: referential_check
@@ -353,7 +353,7 @@ rules:
     __other__: ADRC.ADDRORIGIN '{invalid_value}' is not defined in the check table TSAD6.ORIGIN. Correct it there or add the
       missing entry.
   record_fix_template: ADRC.ADDRORIGIN points at a check table TSAD6.ORIGIN entry that does not exist.
-- id: DXR00322
+- id: DXR00196
   enabled: false
   field: ADRC.TIME_ZONE
   check_class: referential_check
@@ -370,7 +370,7 @@ rules:
     __other__: ADRC.TIME_ZONE '{invalid_value}' is not defined in the check table TTZZ.TZONE. Correct it there or add the
       missing entry.
   record_fix_template: ADRC.TIME_ZONE points at a check table TTZZ.TZONE entry that does not exist.
-- id: DXV00095
+- id: DXV00043
   enabled: false
   field: ADRC.ADRC_ERR_STATUS
   check_class: domain_value_check
@@ -388,7 +388,7 @@ rules:
   fix_map:
     __other__: 'ADRC.ADRC_ERR_STATUS ''{invalid_value}'' is not in domain AD_ERR_STATUS. Set it to one of: E, W.'
   record_fix_template: 'ADRC.ADRC_ERR_STATUS is {actual_value}; expected one of: E, W.'
-- id: DXR00323
+- id: DXR00197
   enabled: false
   field: ADRC.DELI_SERV_TYPE
   check_class: referential_check
@@ -405,7 +405,7 @@ rules:
     __other__: ADRC.DELI_SERV_TYPE '{invalid_value}' is not defined in the check table ADDRC_DELI_SERV.DELI_SERV_TYPE. Correct
       it there or add the missing entry.
   record_fix_template: ADRC.DELI_SERV_TYPE points at a check table ADDRC_DELI_SERV.DELI_SERV_TYPE entry that does not exist.
-- id: DXR00324
+- id: DXR00198
   enabled: false
   field: BUT000.BU_LOGSYS
   check_class: referential_check
@@ -422,7 +422,7 @@ rules:
     __other__: BUT000.BU_LOGSYS '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add
       the missing entry.
   record_fix_template: BUT000.BU_LOGSYS points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXV00096
+- id: DXV00044
   enabled: false
   field: BUT000.CONTACT
   check_class: domain_value_check
@@ -441,7 +441,7 @@ rules:
   fix_map:
     __other__: 'BUT000.CONTACT ''{invalid_value}'' is not in domain BU_CONTACT. Set it to one of: 1, 2, 3.'
   record_fix_template: 'BUT000.CONTACT is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00097
+- id: DXV00045
   enabled: false
   field: BUT000.PRINT_MODE
   check_class: domain_value_check
@@ -459,7 +459,7 @@ rules:
   fix_map:
     __other__: 'BUT000.PRINT_MODE ''{invalid_value}'' is not in domain BU_PRINT_MODE. Set it to one of: 1, 2.'
   record_fix_template: 'BUT000.PRINT_MODE is {actual_value}; expected one of: 1, 2.'
-- id: DXR00325
+- id: DXR00199
   enabled: false
   field: BUT000.TITLE_ACA2
   check_class: referential_check
@@ -476,7 +476,7 @@ rules:
     __other__: BUT000.TITLE_ACA2 '{invalid_value}' is not defined in the check table TSAD2.TITLE_KEY. Correct it there or
       add the missing entry.
   record_fix_template: BUT000.TITLE_ACA2 points at a check table TSAD2.TITLE_KEY entry that does not exist.
-- id: DXR00326
+- id: DXR00200
   enabled: false
   field: BUT000.TITLE_ROYL
   check_class: referential_check
@@ -493,7 +493,7 @@ rules:
     __other__: BUT000.TITLE_ROYL '{invalid_value}' is not defined in the check table TSAD5.TITLE_KEY. Correct it there or
       add the missing entry.
   record_fix_template: BUT000.TITLE_ROYL points at a check table TSAD5.TITLE_KEY entry that does not exist.
-- id: DXR00327
+- id: DXR00201
   enabled: false
   field: BUT000.PREFIX2
   check_class: referential_check
@@ -510,7 +510,7 @@ rules:
     __other__: BUT000.PREFIX2 '{invalid_value}' is not defined in the check table TSAD4.PREFIX_KEY. Correct it there or add
       the missing entry.
   record_fix_template: BUT000.PREFIX2 points at a check table TSAD4.PREFIX_KEY entry that does not exist.
-- id: DXR00328
+- id: DXR00202
   enabled: false
   field: BUT000.NAMEFORMAT
   check_class: referential_check
@@ -527,7 +527,7 @@ rules:
     __other__: BUT000.NAMEFORMAT '{invalid_value}' is not defined in the check table T005N.NAMEFORMAT. Correct it there or
       add the missing entry.
   record_fix_template: BUT000.NAMEFORMAT points at a check table T005N.NAMEFORMAT entry that does not exist.
-- id: DXR00329
+- id: DXR00203
   enabled: false
   field: BUT000.NAMCOUNTRY
   check_class: referential_check
@@ -544,7 +544,7 @@ rules:
     __other__: BUT000.NAMCOUNTRY '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the
       missing entry.
   record_fix_template: BUT000.NAMCOUNTRY points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00330
+- id: DXR00204
   enabled: false
   field: BUT000.CNDSC
   check_class: referential_check
@@ -561,7 +561,7 @@ rules:
     __other__: BUT000.CNDSC '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: BUT000.CNDSC points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00331
+- id: DXR00205
   enabled: false
   field: BUT000.XUBNAME
   check_class: referential_check
@@ -578,7 +578,7 @@ rules:
     __other__: BUT000.XUBNAME '{invalid_value}' is not defined in the check table USR02.BNAME. Correct it there or add the
       missing entry.
   record_fix_template: BUT000.XUBNAME points at a check table USR02.BNAME entry that does not exist.
-- id: DXR00332
+- id: DXR00206
   enabled: false
   field: BUT000.PARTGRPTYP
   check_class: referential_check
@@ -595,7 +595,7 @@ rules:
     __other__: BUT000.PARTGRPTYP '{invalid_value}' is not defined in the check table TB025.PARTGRPTYP. Correct it there or
       add the missing entry.
   record_fix_template: BUT000.PARTGRPTYP points at a check table TB025.PARTGRPTYP entry that does not exist.
-- id: DXV00098
+- id: DXV00046
   enabled: false
   field: BUT000.IS_ORG_CENTRE
   check_class: domain_value_check
@@ -614,7 +614,7 @@ rules:
   fix_map:
     __other__: 'BUT000.IS_ORG_CENTRE ''{invalid_value}'' is not in domain BU_IS_ORG_CENTRE. Set it to one of: 1, 2.'
   record_fix_template: 'BUT000.IS_ORG_CENTRE is {actual_value}; expected one of: 1, 2.'
-- id: DXR00333
+- id: DXR00207
   enabled: false
   field: BUT020.NATION
   check_class: referential_check
@@ -631,7 +631,7 @@ rules:
     __other__: BUT020.NATION '{invalid_value}' is not defined in the check table TSADV.NATION. Correct it there or add the
       missing entry.
   record_fix_template: BUT020.NATION points at a check table TSADV.NATION entry that does not exist.
-- id: DXR00334
+- id: DXR00208
   enabled: false
   field: CVIC_CUST_TO_BP1.GROUPING
   check_class: referential_check
@@ -648,7 +648,7 @@ rules:
     __other__: CVIC_CUST_TO_BP1.GROUPING '{invalid_value}' is not defined in the check table TB001.BU_GROUP. Correct it there
       or add the missing entry.
   record_fix_template: CVIC_CUST_TO_BP1.GROUPING points at a check table TB001.BU_GROUP entry that does not exist.
-- id: DXR00335
+- id: DXR00209
   enabled: false
   field: CVIC_VEND_TO_BP1.GROUPING
   check_class: referential_check
@@ -665,7 +665,7 @@ rules:
     __other__: CVIC_VEND_TO_BP1.GROUPING '{invalid_value}' is not defined in the check table TB001.BU_GROUP. Correct it there
       or add the missing entry.
   record_fix_template: CVIC_VEND_TO_BP1.GROUPING points at a check table TB001.BU_GROUP entry that does not exist.
-- id: DXR00336
+- id: DXR00210
   enabled: false
   field: IFLO.MLANG
   check_class: referential_check
@@ -682,7 +682,7 @@ rules:
     __other__: IFLO.MLANG '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.MLANG points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00337
+- id: DXR00211
   enabled: false
   field: IFLO.TPLKZ
   check_class: referential_check
@@ -699,7 +699,7 @@ rules:
     __other__: IFLO.TPLKZ '{invalid_value}' is not defined in the check table T370S.TPLKZ. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.TPLKZ points at a check table T370S.TPLKZ entry that does not exist.
-- id: DXR00338
+- id: DXR00212
   enabled: false
   field: IFLO.FLTYP
   check_class: referential_check
@@ -716,7 +716,7 @@ rules:
     __other__: IFLO.FLTYP '{invalid_value}' is not defined in the check table T370F.FLTYP. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.FLTYP points at a check table T370F.FLTYP entry that does not exist.
-- id: DXR00339
+- id: DXR00213
   enabled: false
   field: IFLO.TPLMA
   check_class: referential_check
@@ -733,7 +733,7 @@ rules:
     __other__: IFLO.TPLMA '{invalid_value}' is not defined in the check table IFLOT.TPLNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.TPLMA points at a check table IFLOT.TPLNR entry that does not exist.
-- id: DXR00340
+- id: DXR00214
   enabled: false
   field: IFLO.BEGRU
   check_class: referential_check
@@ -750,7 +750,7 @@ rules:
     __other__: IFLO.BEGRU '{invalid_value}' is not defined in the check table T370B.BEGRU. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.BEGRU points at a check table T370B.BEGRU entry that does not exist.
-- id: DXR00341
+- id: DXR00215
   enabled: false
   field: IFLO.TRPNR
   check_class: referential_check
@@ -767,7 +767,7 @@ rules:
     __other__: IFLO.TRPNR '{invalid_value}' is not defined in the check table IRLOT.TRPNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.TRPNR points at a check table IRLOT.TRPNR entry that does not exist.
-- id: DXR00342
+- id: DXR00216
   enabled: false
   field: IFLO.SUBMT
   check_class: referential_check
@@ -784,7 +784,7 @@ rules:
     __other__: IFLO.SUBMT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.SUBMT points at a check table MARA.MATNR entry that does not exist.
-- id: DXV00099
+- id: DXV00047
   enabled: false
   field: IFLO.SUBMTI
   check_class: domain_value_check
@@ -803,7 +803,7 @@ rules:
   fix_map:
     __other__: 'IFLO.SUBMTI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.SUBMTI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00100
+- id: DXV00048
   enabled: false
   field: IFLO.IEQUII
   check_class: domain_value_check
@@ -822,7 +822,7 @@ rules:
   fix_map:
     __other__: 'IFLO.IEQUII ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.IEQUII is {actual_value}; expected one of: D, H, R.'
-- id: DXV00101
+- id: DXV00049
   enabled: false
   field: IFLO.EINZLI
   check_class: domain_value_check
@@ -841,7 +841,7 @@ rules:
   fix_map:
     __other__: 'IFLO.EINZLI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.EINZLI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00343
+- id: DXR00217
   enabled: false
   field: IFLO.IWERK
   check_class: referential_check
@@ -858,7 +858,7 @@ rules:
     __other__: IFLO.IWERK '{invalid_value}' is not defined in the check table T399I.IWERK. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.IWERK points at a check table T399I.IWERK entry that does not exist.
-- id: DXV00102
+- id: DXV00050
   enabled: false
   field: IFLO.IWERKI
   check_class: domain_value_check
@@ -877,7 +877,7 @@ rules:
   fix_map:
     __other__: 'IFLO.IWERKI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.IWERKI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00344
+- id: DXR00218
   enabled: false
   field: IFLO.INGRP
   check_class: referential_check
@@ -894,7 +894,7 @@ rules:
     __other__: IFLO.INGRP '{invalid_value}' is not defined in the check table T024I.INGRP. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.INGRP points at a check table T024I.INGRP entry that does not exist.
-- id: DXV00103
+- id: DXV00051
   enabled: false
   field: IFLO.INGRPI
   check_class: domain_value_check
@@ -913,7 +913,7 @@ rules:
   fix_map:
     __other__: 'IFLO.INGRPI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.INGRPI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00104
+- id: DXV00052
   enabled: false
   field: IFLO.PM_OBJTY
   check_class: domain_value_check
@@ -933,7 +933,7 @@ rules:
   fix_map:
     __other__: 'IFLO.PM_OBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'IFLO.PM_OBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXR00345
+- id: DXR00219
   enabled: false
   field: IFLO.LGWID
   check_class: referential_check
@@ -950,7 +950,7 @@ rules:
     __other__: IFLO.LGWID '{invalid_value}' is not defined in the check table CRID.OBJID. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.LGWID points at a check table CRID.OBJID entry that does not exist.
-- id: DXV00105
+- id: DXV00053
   enabled: false
   field: IFLO.LGWIDI
   check_class: domain_value_check
@@ -969,7 +969,7 @@ rules:
   fix_map:
     __other__: 'IFLO.LGWIDI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.LGWIDI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00346
+- id: DXR00220
   enabled: false
   field: IFLO.RBNR
   check_class: referential_check
@@ -986,7 +986,7 @@ rules:
     __other__: IFLO.RBNR '{invalid_value}' is not defined in the check table T352B.RBNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.RBNR points at a check table T352B.RBNR entry that does not exist.
-- id: DXV00106
+- id: DXV00054
   enabled: false
   field: IFLO.RBNR_I
   check_class: domain_value_check
@@ -1005,7 +1005,7 @@ rules:
   fix_map:
     __other__: 'IFLO.RBNR_I ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.RBNR_I is {actual_value}; expected one of: D, H, R.'
-- id: DXR00347
+- id: DXR00221
   enabled: false
   field: IFLO.OBJNR
   check_class: referential_check
@@ -1022,7 +1022,7 @@ rules:
     __other__: IFLO.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXV00107
+- id: DXV00055
   enabled: false
   field: IFLO.ISTYP
   check_class: domain_value_check
@@ -1040,7 +1040,7 @@ rules:
   fix_map:
     __other__: 'IFLO.ISTYP ''{invalid_value}'' is not in domain ILOM_ISTYP. Set it to one of: C, D.'
   record_fix_template: 'IFLO.ISTYP is {actual_value}; expected one of: C, D.'
-- id: DXR00348
+- id: DXR00222
   enabled: false
   field: IFLO.EQART
   check_class: referential_check
@@ -1057,7 +1057,7 @@ rules:
     __other__: IFLO.EQART '{invalid_value}' is not defined in the check table T370K.EQART. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.EQART points at a check table T370K.EQART entry that does not exist.
-- id: DXR00349
+- id: DXR00223
   enabled: false
   field: IFLO.GEWEI
   check_class: referential_check
@@ -1074,7 +1074,7 @@ rules:
     __other__: IFLO.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.GEWEI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00350
+- id: DXR00224
   enabled: false
   field: IFLO.WAERS
   check_class: referential_check
@@ -1091,7 +1091,7 @@ rules:
     __other__: IFLO.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.WAERS points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR00351
+- id: DXR00225
   enabled: false
   field: IFLO.HERLD
   check_class: referential_check
@@ -1108,7 +1108,7 @@ rules:
     __other__: IFLO.HERLD '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.HERLD points at a check table T005.LAND1 entry that does not exist.
-- id: DXV00108
+- id: DXV00056
   enabled: false
   field: IFLO.FLLB_DUTY
   check_class: domain_value_check
@@ -1125,7 +1125,7 @@ rules:
   fix_map:
     __other__: 'IFLO.FLLB_DUTY ''{invalid_value}'' is not in domain XFLAG. Set it to one of: ., X.'
   record_fix_template: 'IFLO.FLLB_DUTY is {actual_value}; expected one of: ., X.'
-- id: DXV00109
+- id: DXV00057
   enabled: false
   field: IFLO.FLLB_HIDE
   check_class: domain_value_check
@@ -1143,7 +1143,7 @@ rules:
   fix_map:
     __other__: 'IFLO.FLLB_HIDE ''{invalid_value}'' is not in domain XFLAG. Set it to one of: ., X.'
   record_fix_template: 'IFLO.FLLB_HIDE is {actual_value}; expected one of: ., X.'
-- id: DXR00352
+- id: DXR00226
   enabled: false
   field: IFLO.ABCKZ
   check_class: referential_check
@@ -1160,7 +1160,7 @@ rules:
     __other__: IFLO.ABCKZ '{invalid_value}' is not defined in the check table T370C.ABCKZ. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.ABCKZ points at a check table T370C.ABCKZ entry that does not exist.
-- id: DXV00110
+- id: DXV00058
   enabled: false
   field: IFLO.ABCKZI
   check_class: domain_value_check
@@ -1179,7 +1179,7 @@ rules:
   fix_map:
     __other__: 'IFLO.ABCKZI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.ABCKZI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00111
+- id: DXV00059
   enabled: false
   field: IFLO.EQFNRI
   check_class: domain_value_check
@@ -1198,7 +1198,7 @@ rules:
   fix_map:
     __other__: 'IFLO.EQFNRI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.EQFNRI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00353
+- id: DXR00227
   enabled: false
   field: IFLO.SWERK
   check_class: referential_check
@@ -1215,7 +1215,7 @@ rules:
     __other__: IFLO.SWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.SWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00112
+- id: DXV00060
   enabled: false
   field: IFLO.SWERKI
   check_class: domain_value_check
@@ -1234,7 +1234,7 @@ rules:
   fix_map:
     __other__: 'IFLO.SWERKI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.SWERKI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00354
+- id: DXR00228
   enabled: false
   field: IFLO.STORT
   check_class: referential_check
@@ -1251,7 +1251,7 @@ rules:
     __other__: IFLO.STORT '{invalid_value}' is not defined in the check table T499S.STAND. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.STORT points at a check table T499S.STAND entry that does not exist.
-- id: DXV00113
+- id: DXV00061
   enabled: false
   field: IFLO.STORTI
   check_class: domain_value_check
@@ -1270,7 +1270,7 @@ rules:
   fix_map:
     __other__: 'IFLO.STORTI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.STORTI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00114
+- id: DXV00062
   enabled: false
   field: IFLO.MSGRPI
   check_class: domain_value_check
@@ -1289,7 +1289,7 @@ rules:
   fix_map:
     __other__: 'IFLO.MSGRPI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.MSGRPI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00355
+- id: DXR00229
   enabled: false
   field: IFLO.BEBER
   check_class: referential_check
@@ -1306,7 +1306,7 @@ rules:
     __other__: IFLO.BEBER '{invalid_value}' is not defined in the check table T357.BEBER. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.BEBER points at a check table T357.BEBER entry that does not exist.
-- id: DXV00115
+- id: DXV00063
   enabled: false
   field: IFLO.BEBERI
   check_class: domain_value_check
@@ -1325,7 +1325,7 @@ rules:
   fix_map:
     __other__: 'IFLO.BEBERI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.BEBERI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00116
+- id: DXV00064
   enabled: false
   field: IFLO.CR_OBJTY
   check_class: domain_value_check
@@ -1345,7 +1345,7 @@ rules:
   fix_map:
     __other__: 'IFLO.CR_OBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'IFLO.CR_OBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXR00356
+- id: DXR00230
   enabled: false
   field: IFLO.PPSID
   check_class: referential_check
@@ -1362,7 +1362,7 @@ rules:
     __other__: IFLO.PPSID '{invalid_value}' is not defined in the check table CRID.OBJID. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.PPSID points at a check table CRID.OBJID entry that does not exist.
-- id: DXV00117
+- id: DXV00065
   enabled: false
   field: IFLO.PPSIDI
   check_class: domain_value_check
@@ -1381,7 +1381,7 @@ rules:
   fix_map:
     __other__: 'IFLO.PPSIDI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.PPSIDI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00357
+- id: DXR00231
   enabled: false
   field: IFLO.GSBER
   check_class: referential_check
@@ -1398,7 +1398,7 @@ rules:
     __other__: IFLO.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXV00118
+- id: DXV00066
   enabled: false
   field: IFLO.GSBERI
   check_class: domain_value_check
@@ -1417,7 +1417,7 @@ rules:
   fix_map:
     __other__: 'IFLO.GSBERI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.GSBERI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00358
+- id: DXR00232
   enabled: false
   field: IFLO.KOKRS
   check_class: referential_check
@@ -1434,7 +1434,7 @@ rules:
     __other__: IFLO.KOKRS '{invalid_value}' is not defined in the check table TKA01.KOKRS. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.KOKRS points at a check table TKA01.KOKRS entry that does not exist.
-- id: DXV00119
+- id: DXV00067
   enabled: false
   field: IFLO.KOKRSI
   check_class: domain_value_check
@@ -1453,7 +1453,7 @@ rules:
   fix_map:
     __other__: 'IFLO.KOKRSI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.KOKRSI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00359
+- id: DXR00233
   enabled: false
   field: IFLO.KOSTL
   check_class: referential_check
@@ -1470,7 +1470,7 @@ rules:
     __other__: IFLO.KOSTL '{invalid_value}' is not defined in the check table CSKS.KOSTL. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.KOSTL points at a check table CSKS.KOSTL entry that does not exist.
-- id: DXV00120
+- id: DXV00068
   enabled: false
   field: IFLO.KOSTLI
   check_class: domain_value_check
@@ -1489,7 +1489,7 @@ rules:
   fix_map:
     __other__: 'IFLO.KOSTLI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.KOSTLI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00360
+- id: DXR00234
   enabled: false
   field: IFLO.PROID
   check_class: referential_check
@@ -1506,7 +1506,7 @@ rules:
     __other__: IFLO.PROID '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.PROID points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXV00121
+- id: DXV00069
   enabled: false
   field: IFLO.PROIDI
   check_class: domain_value_check
@@ -1525,7 +1525,7 @@ rules:
   fix_map:
     __other__: 'IFLO.PROIDI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.PROIDI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00361
+- id: DXR00235
   enabled: false
   field: IFLO.BUKRS
   check_class: referential_check
@@ -1542,7 +1542,7 @@ rules:
     __other__: IFLO.BUKRS '{invalid_value}' is not defined in the check table T001.BUKRS. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.BUKRS points at a check table T001.BUKRS entry that does not exist.
-- id: DXV00122
+- id: DXV00070
   enabled: false
   field: IFLO.BUKRSI
   check_class: domain_value_check
@@ -1561,7 +1561,7 @@ rules:
   fix_map:
     __other__: 'IFLO.BUKRSI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.BUKRSI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00362
+- id: DXR00236
   enabled: false
   field: IFLO.ANLNR
   check_class: referential_check
@@ -1578,7 +1578,7 @@ rules:
     __other__: IFLO.ANLNR '{invalid_value}' is not defined in the check table ANLH.ANLN1. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.ANLNR points at a check table ANLH.ANLN1 entry that does not exist.
-- id: DXV00123
+- id: DXV00071
   enabled: false
   field: IFLO.ANLNRI
   check_class: domain_value_check
@@ -1597,7 +1597,7 @@ rules:
   fix_map:
     __other__: 'IFLO.ANLNRI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.ANLNRI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00363
+- id: DXR00237
   enabled: false
   field: IFLO.ANLUN
   check_class: referential_check
@@ -1614,7 +1614,7 @@ rules:
     __other__: IFLO.ANLUN '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.ANLUN points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXV00124
+- id: DXV00072
   enabled: false
   field: IFLO.ANLUNI
   check_class: domain_value_check
@@ -1633,7 +1633,7 @@ rules:
   fix_map:
     __other__: 'IFLO.ANLUNI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.ANLUNI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00364
+- id: DXR00238
   enabled: false
   field: IFLO.DAUFN
   check_class: referential_check
@@ -1650,7 +1650,7 @@ rules:
     __other__: IFLO.DAUFN '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.DAUFN points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXV00125
+- id: DXV00073
   enabled: false
   field: IFLO.DAUFNI
   check_class: domain_value_check
@@ -1669,7 +1669,7 @@ rules:
   fix_map:
     __other__: 'IFLO.DAUFNI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.DAUFNI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00365
+- id: DXR00239
   enabled: false
   field: IFLO.AUFNR
   check_class: referential_check
@@ -1686,7 +1686,7 @@ rules:
     __other__: IFLO.AUFNR '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.AUFNR points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXV00126
+- id: DXV00074
   enabled: false
   field: IFLO.AUFNRI
   check_class: domain_value_check
@@ -1705,7 +1705,7 @@ rules:
   fix_map:
     __other__: 'IFLO.AUFNRI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.AUFNRI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00366
+- id: DXR00240
   enabled: false
   field: IFLO.VKORG
   check_class: referential_check
@@ -1722,7 +1722,7 @@ rules:
     __other__: IFLO.VKORG '{invalid_value}' is not defined in the check table TVKO.VKORG. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.VKORG points at a check table TVKO.VKORG entry that does not exist.
-- id: DXV00127
+- id: DXV00075
   enabled: false
   field: IFLO.VKORGI
   check_class: domain_value_check
@@ -1741,7 +1741,7 @@ rules:
   fix_map:
     __other__: 'IFLO.VKORGI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.VKORGI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00367
+- id: DXR00241
   enabled: false
   field: IFLO.VTWEG
   check_class: referential_check
@@ -1758,7 +1758,7 @@ rules:
     __other__: IFLO.VTWEG '{invalid_value}' is not defined in the check table TVKOV.VTWEG. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.VTWEG points at a check table TVKOV.VTWEG entry that does not exist.
-- id: DXV00128
+- id: DXV00076
   enabled: false
   field: IFLO.VTWEGI
   check_class: domain_value_check
@@ -1777,7 +1777,7 @@ rules:
   fix_map:
     __other__: 'IFLO.VTWEGI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.VTWEGI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00368
+- id: DXR00242
   enabled: false
   field: IFLO.SPART
   check_class: referential_check
@@ -1793,7 +1793,7 @@ rules:
     __other__: IFLO.SPART '{invalid_value}' is not defined in the check table TVTA.SPART. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.SPART points at a check table TVTA.SPART entry that does not exist.
-- id: DXV00129
+- id: DXV00077
   enabled: false
   field: IFLO.SPARTI
   check_class: domain_value_check
@@ -1812,7 +1812,7 @@ rules:
   fix_map:
     __other__: 'IFLO.SPARTI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.SPARTI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00369
+- id: DXR00243
   enabled: false
   field: IFLO.ADRNR
   check_class: referential_check
@@ -1828,7 +1828,7 @@ rules:
   fix_map:
     __other__: IFLO.ADRNR is not defined in the check table ADRC.ADDRNUMBER. Correct it there or add the missing entry.
   record_fix_template: IFLO.ADRNR points at a check table ADRC.ADDRNUMBER entry that does not exist.
-- id: DXV00130
+- id: DXV00078
   enabled: false
   field: IFLO.ADRNRI
   check_class: domain_value_check
@@ -1847,7 +1847,7 @@ rules:
   fix_map:
     __other__: 'IFLO.ADRNRI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IFLO.ADRNRI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00131
+- id: DXV00079
   enabled: false
   field: IFLO.OWNER
   check_class: domain_value_check
@@ -1870,7 +1870,7 @@ rules:
   fix_map:
     __other__: 'IFLO.OWNER ''{invalid_value}'' is not in domain ILOM_OWNER. Set it to one of: 1, 2, 3, 4, 5, 6, 7.'
   record_fix_template: 'IFLO.OWNER is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, 7.'
-- id: DXR00370
+- id: DXR00244
   enabled: false
   field: IFLO.VKBUR
   check_class: referential_check
@@ -1887,7 +1887,7 @@ rules:
     __other__: IFLO.VKBUR '{invalid_value}' is not defined in the check table TVKBZ.VKBUR. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.VKBUR points at a check table TVKBZ.VKBUR entry that does not exist.
-- id: DXR00371
+- id: DXR00245
   enabled: false
   field: IFLO.VKGRP
   check_class: referential_check
@@ -1904,7 +1904,7 @@ rules:
     __other__: IFLO.VKGRP '{invalid_value}' is not defined in the check table TVBVK.VKGRP. Correct it there or add the missing
       entry.
   record_fix_template: IFLO.VKGRP points at a check table TVBVK.VKGRP entry that does not exist.
-- id: DXR00372
+- id: DXR00246
   enabled: false
   field: IFLO.IFLOT_SNTYPE
   check_class: referential_check
@@ -1921,7 +1921,7 @@ rules:
     __other__: IFLO.IFLOT_SNTYPE '{invalid_value}' is not defined in the check table TQ80.QMART. Correct it there or add the
       missing entry.
   record_fix_template: IFLO.IFLOT_SNTYPE points at a check table TQ80.QMART entry that does not exist.
-- id: DXR00373
+- id: DXR00247
   enabled: false
   field: IRLOT.MLANG
   check_class: referential_check
@@ -1938,7 +1938,7 @@ rules:
     __other__: IRLOT.MLANG '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.MLANG points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00374
+- id: DXR00248
   enabled: false
   field: IRLOT.TPLKZ
   check_class: referential_check
@@ -1955,7 +1955,7 @@ rules:
     __other__: IRLOT.TPLKZ '{invalid_value}' is not defined in the check table T370S.TPLKZ. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.TPLKZ points at a check table T370S.TPLKZ entry that does not exist.
-- id: DXR00375
+- id: DXR00249
   enabled: false
   field: IRLOT.RLTYP
   check_class: referential_check
@@ -1972,7 +1972,7 @@ rules:
     __other__: IRLOT.RLTYP '{invalid_value}' is not defined in the check table T370R.RLTYP. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.RLTYP points at a check table T370R.RLTYP entry that does not exist.
-- id: DXR00376
+- id: DXR00250
   enabled: false
   field: IRLOT.TRPMA
   check_class: referential_check
@@ -1989,7 +1989,7 @@ rules:
     __other__: IRLOT.TRPMA '{invalid_value}' is not defined in the check table IRLOT.TRPNR. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.TRPMA points at a check table IRLOT.TRPNR entry that does not exist.
-- id: DXR00377
+- id: DXR00251
   enabled: false
   field: IRLOT.BEGRU
   check_class: referential_check
@@ -2006,7 +2006,7 @@ rules:
     __other__: IRLOT.BEGRU '{invalid_value}' is not defined in the check table T370B.BEGRU. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.BEGRU points at a check table T370B.BEGRU entry that does not exist.
-- id: DXR00378
+- id: DXR00252
   enabled: false
   field: IRLOT.SUBMT
   check_class: referential_check
@@ -2023,7 +2023,7 @@ rules:
     __other__: IRLOT.SUBMT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.SUBMT points at a check table MARA.MATNR entry that does not exist.
-- id: DXV00132
+- id: DXV00080
   enabled: false
   field: IRLOT.IEQUII
   check_class: domain_value_check
@@ -2042,7 +2042,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.IEQUII ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.IEQUII is {actual_value}; expected one of: D, H, R.'
-- id: DXV00133
+- id: DXV00081
   enabled: false
   field: IRLOT.EINZLI
   check_class: domain_value_check
@@ -2061,7 +2061,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.EINZLI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.EINZLI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00379
+- id: DXR00253
   enabled: false
   field: IRLOT.IWERK
   check_class: referential_check
@@ -2078,7 +2078,7 @@ rules:
     __other__: IRLOT.IWERK '{invalid_value}' is not defined in the check table T399I.IWERK. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.IWERK points at a check table T399I.IWERK entry that does not exist.
-- id: DXV00134
+- id: DXV00082
   enabled: false
   field: IRLOT.IWERKI
   check_class: domain_value_check
@@ -2097,7 +2097,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.IWERKI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.IWERKI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00380
+- id: DXR00254
   enabled: false
   field: IRLOT.INGRP
   check_class: referential_check
@@ -2114,7 +2114,7 @@ rules:
     __other__: IRLOT.INGRP '{invalid_value}' is not defined in the check table T024I.INGRP. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.INGRP points at a check table T024I.INGRP entry that does not exist.
-- id: DXV00135
+- id: DXV00083
   enabled: false
   field: IRLOT.INGRPI
   check_class: domain_value_check
@@ -2133,7 +2133,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.INGRPI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.INGRPI is {actual_value}; expected one of: D, H, R.'
-- id: DXV00136
+- id: DXV00084
   enabled: false
   field: IRLOT.PM_OBJTY
   check_class: domain_value_check
@@ -2153,7 +2153,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.PM_OBJTY ''{invalid_value}'' is not in domain CR_OBJTY. Set it to one of: A, AA, FH, H.'
   record_fix_template: 'IRLOT.PM_OBJTY is {actual_value}; expected one of: A, AA, FH, H.'
-- id: DXR00381
+- id: DXR00255
   enabled: false
   field: IRLOT.LGWID
   check_class: referential_check
@@ -2170,7 +2170,7 @@ rules:
     __other__: IRLOT.LGWID '{invalid_value}' is not defined in the check table CRID.OBJID. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.LGWID points at a check table CRID.OBJID entry that does not exist.
-- id: DXV00137
+- id: DXV00085
   enabled: false
   field: IRLOT.LGWIDI
   check_class: domain_value_check
@@ -2189,7 +2189,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.LGWIDI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.LGWIDI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00382
+- id: DXR00256
   enabled: false
   field: IRLOT.RBNR
   check_class: referential_check
@@ -2206,7 +2206,7 @@ rules:
     __other__: IRLOT.RBNR '{invalid_value}' is not defined in the check table T352B.RBNR. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.RBNR points at a check table T352B.RBNR entry that does not exist.
-- id: DXV00138
+- id: DXV00086
   enabled: false
   field: IRLOT.RBNR_I
   check_class: domain_value_check
@@ -2225,7 +2225,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.RBNR_I ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.RBNR_I is {actual_value}; expected one of: D, H, R.'
-- id: DXR00383
+- id: DXR00257
   enabled: false
   field: IRLOT.ABCKZ
   check_class: referential_check
@@ -2242,7 +2242,7 @@ rules:
     __other__: IRLOT.ABCKZ '{invalid_value}' is not defined in the check table T370C.ABCKZ. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.ABCKZ points at a check table T370C.ABCKZ entry that does not exist.
-- id: DXV00139
+- id: DXV00087
   enabled: false
   field: IRLOT.ABCKZI
   check_class: domain_value_check
@@ -2261,7 +2261,7 @@ rules:
   fix_map:
     __other__: 'IRLOT.ABCKZI ''{invalid_value}'' is not in domain INHER. Set it to one of: D, H, R.'
   record_fix_template: 'IRLOT.ABCKZI is {actual_value}; expected one of: D, H, R.'
-- id: DXR00384
+- id: DXR00258
   enabled: false
   field: IRLOT.OBJNR
   check_class: referential_check
@@ -2278,260 +2278,3 @@ rules:
     __other__: IRLOT.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: IRLOT.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00385
-  enabled: false
-  field: T370F.STSMA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Status Profile must exist in the check table TJ20.STSMA
-  why_it_matters: STSMA (Status Profile) is defined in the SAP Data Dictionary with check table TJ20.STSMA on domain J_STSMA.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read STSMA resolve it through check table TJ20.STSMA; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T370F.STSMA '{invalid_value}' is not defined in the check table TJ20.STSMA. Correct it there or add the missing
-      entry.
-  record_fix_template: T370F.STSMA points at a check table TJ20.STSMA entry that does not exist.
-- id: DXR00386
-  enabled: false
-  field: T370F.PARGR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Partner Determination Procedure must exist in the check table TVPG.PARGR
-  why_it_matters: PARGR (Partner Determination Procedure) is defined in the SAP Data Dictionary with check table TVPG.PARGR
-    on domain PARGR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PARGR resolve it through check table TVPG.PARGR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T370F.PARGR '{invalid_value}' is not defined in the check table TVPG.PARGR. Correct it there or add the missing
-      entry.
-  record_fix_template: T370F.PARGR points at a check table TVPG.PARGR entry that does not exist.
-- id: DXR00387
-  enabled: false
-  field: T370F.MPTYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Measuring Point Category must exist in the check table T370P.MPTYP
-  why_it_matters: MPTYP (Measuring Point Category) is defined in the SAP Data Dictionary with check table T370P.MPTYP on domain
-    IMRC_MPTYP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MPTYP resolve it through check table T370P.MPTYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T370F.MPTYP '{invalid_value}' is not defined in the check table T370P.MPTYP. Correct it there or add the missing
-      entry.
-  record_fix_template: T370F.MPTYP points at a check table T370P.MPTYP entry that does not exist.
-- id: DXR00388
-  enabled: false
-  field: T370F.INFOW
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Parameter ID Object Info must exist in the check table TQ80O.INFO_WIND
-  why_it_matters: INFOW (Parameter ID Object Info) is defined in the SAP Data Dictionary with check table TQ80O.INFO_WIND
-    on domain I_INFOWIND. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read INFOW resolve it through check table TQ80O.INFO_WIND; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T370F.INFOW '{invalid_value}' is not defined in the check table TQ80O.INFO_WIND. Correct it there or add the
-      missing entry.
-  record_fix_template: T370F.INFOW points at a check table TQ80O.INFO_WIND entry that does not exist.
-- id: DXR00389
-  enabled: false
-  field: T370F.VIEW_PROF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: View profile for tab index Customizing must exist in the check table TITOBPROF.PROFILE
-  why_it_matters: VIEW_PROF (View profile for tab index Customizing) is defined in the SAP Data Dictionary with check table
-    TITOBPROF.PROFILE on domain ITOBVIEW_PROFILE. A value outside that table is not a value SAP recognises, so the record
-    is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VIEW_PROF resolve it through check table TITOBPROF.PROFILE; an unknown value leaves the
-    record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T370F.VIEW_PROF '{invalid_value}' is not defined in the check table TITOBPROF.PROFILE. Correct it there or
-      add the missing entry.
-  record_fix_template: T370F.VIEW_PROF points at a check table TITOBPROF.PROFILE entry that does not exist.
-- id: DXR00390
-  enabled: false
-  field: TB001.NRRNG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP Number Range must exist in the check table NRIV.NRRANGENR
-  why_it_matters: NRRNG (BP Number Range) is defined in the SAP Data Dictionary with check table NRIV.NRRANGENR on domain
-    CHAR2. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read NRRNG resolve it through check table NRIV.NRRANGENR; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TB001.NRRNG '{invalid_value}' is not defined in the check table NRIV.NRRANGENR. Correct it there or add the
-      missing entry.
-  record_fix_template: TB001.NRRNG points at a check table NRIV.NRRANGENR entry that does not exist.
-- id: DXR00391
-  enabled: false
-  field: TB003.ROLECATEGORY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP Role Category must exist in the check table TB003A.ROLECATEGORY
-  why_it_matters: ROLECATEGORY (BP Role Category) is defined in the SAP Data Dictionary with check table TB003A.ROLECATEGORY
-    on domain BU_ROLECAT. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ROLECATEGORY resolve it through check table TB003A.ROLECATEGORY; an unknown value leaves
-    the record unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TB003.ROLECATEGORY '{invalid_value}' is not defined in the check table TB003A.ROLECATEGORY. Correct it there
-      or add the missing entry.
-  record_fix_template: TB003.ROLECATEGORY points at a check table TB003A.ROLECATEGORY entry that does not exist.
-- id: DXR00392
-  enabled: false
-  field: TB003.BPVIEW
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP View must exist in the check table TBZ0.RLTYP
-  why_it_matters: BPVIEW (BP View) is defined in the SAP Data Dictionary with check table TBZ0.RLTYP on domain BU_RLTYP. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BPVIEW resolve it through check table TBZ0.RLTYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TB003.BPVIEW '{invalid_value}' is not defined in the check table TBZ0.RLTYP. Correct it there or add the missing
-      entry.
-  record_fix_template: TB003.BPVIEW points at a check table TBZ0.RLTYP entry that does not exist.
-- id: DXR00393
-  enabled: false
-  field: TB039A.CATEGORY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP Identification Category must exist in the check table TB039.CATEGORY
-  why_it_matters: CATEGORY (BP Identification Category) is defined in the SAP Data Dictionary with check table TB039.CATEGORY
-    on domain BU_ID_CATEGORY. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CATEGORY resolve it through check table TB039.CATEGORY; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TB039A.CATEGORY '{invalid_value}' is not defined in the check table TB039.CATEGORY. Correct it there or add
-      the missing entry.
-  record_fix_template: TB039A.CATEGORY points at a check table TB039.CATEGORY entry that does not exist.
-- id: DXR00394
-  enabled: false
-  field: TBZ9.RLTP1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP Role Category must exist in the check table TB003A.ROLECATEGORY
-  why_it_matters: RLTP1 (BP Role Category) is defined in the SAP Data Dictionary with check table TB003A.ROLECATEGORY on domain
-    BU_ROLECAT. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RLTP1 resolve it through check table TB003A.ROLECATEGORY; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TBZ9.RLTP1 '{invalid_value}' is not defined in the check table TB003A.ROLECATEGORY. Correct it there or add
-      the missing entry.
-  record_fix_template: TBZ9.RLTP1 points at a check table TB003A.ROLECATEGORY entry that does not exist.
-- id: DXR00395
-  enabled: false
-  field: TBZ9.RLTP2
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: BP Role Category must exist in the check table TB003A.ROLECATEGORY
-  why_it_matters: RLTP2 (BP Role Category) is defined in the SAP Data Dictionary with check table TB003A.ROLECATEGORY on domain
-    BU_ROLECAT. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RLTP2 resolve it through check table TB003A.ROLECATEGORY; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TBZ9.RLTP2 '{invalid_value}' is not defined in the check table TB003A.ROLECATEGORY. Correct it there or add
-      the missing entry.
-  record_fix_template: TBZ9.RLTP2 points at a check table TB003A.ROLECATEGORY entry that does not exist.
-- id: DXR00396
-  enabled: false
-  field: TBZ9.DFTYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Differentiation Type must exist in the check table TBZ0D.DFTYP
-  why_it_matters: DFTYP (Differentiation Type) is defined in the SAP Data Dictionary with check table TBZ0D.DFTYP on domain
-    BU_DFTYP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DFTYP resolve it through check table TBZ0D.DFTYP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TBZ9.DFTYP '{invalid_value}' is not defined in the check table TBZ0D.DFTYP. Correct it there or add the missing
-      entry.
-  record_fix_template: TBZ9.DFTYP points at a check table TBZ0D.DFTYP entry that does not exist.
-- id: DXR00397
-  enabled: false
-  field: TBZ9.APPLI_TAB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Data management application must exist in the check table TBZ0A.APPLI
-  why_it_matters: APPLI_TAB (Data management application) is defined in the SAP Data Dictionary with check table TBZ0A.APPLI
-    on domain BU_APPLI. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read APPLI_TAB resolve it through check table TBZ0A.APPLI; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TBZ9.APPLI_TAB '{invalid_value}' is not defined in the check table TBZ0A.APPLI. Correct it there or add the
-      missing entry.
-  record_fix_template: TBZ9.APPLI_TAB points at a check table TBZ0A.APPLI entry that does not exist.
-- id: DXR00398
-  enabled: false
-  field: TBZ9.VARNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'BDT: Screen sequence must exist in the check table TBZ3N.VARNR'
-  why_it_matters: 'VARNR (BDT: Screen sequence) is defined in the SAP Data Dictionary with check table TBZ3N.VARNR on domain
-    BU_VARNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VARNR resolve it through check table TBZ3N.VARNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TBZ9.VARNR '{invalid_value}' is not defined in the check table TBZ3N.VARNR. Correct it there or add the missing
-      entry.
-  record_fix_template: TBZ9.VARNR points at a check table TBZ3N.VARNR entry that does not exist.
-- id: DXV00140
-  enabled: false
-  field: TBZ9.TIMDP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Time Constraint must be a value of domain BU_TIMDEP (e.g. 0, 1, 2, 4)
-  why_it_matters: Domain BU_TIMDEP fixes the permitted values of TIMDP (Time Constraint) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: TIMDP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '4'
-  fix_map:
-    __other__: 'TBZ9.TIMDP ''{invalid_value}'' is not in domain BU_TIMDEP. Set it to one of: 0, 1, 2, 4.'
-  record_fix_template: 'TBZ9.TIMDP is {actual_value}; expected one of: 0, 1, 2, 4.'

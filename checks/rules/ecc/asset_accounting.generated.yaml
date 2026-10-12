@@ -6,403 +6,7 @@ module: asset_accounting
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00155
-  enabled: false
-  field: ANKA.FELEI
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Screen layout for Asset Accounting must exist in the check table T082A.FELEI
-  why_it_matters: FELEI (Screen layout for Asset Accounting) is defined in the SAP Data Dictionary with check table T082A.FELEI
-    on domain FELEI. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FELEI resolve it through check table T082A.FELEI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.FELEI '{invalid_value}' is not defined in the check table T082A.FELEI. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.FELEI points at a check table T082A.FELEI entry that does not exist.
-- id: DXR00156
-  enabled: false
-  field: ANKA.ZUAWA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Key for sorting according to assignment numbers must exist in the check table TZUN.ZUAWA
-  why_it_matters: ZUAWA (Key for sorting according to assignment numbers) is defined in the SAP Data Dictionary with check
-    table TZUN.ZUAWA on domain ZUAWA. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZUAWA resolve it through check table TZUN.ZUAWA; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ZUAWA '{invalid_value}' is not defined in the check table TZUN.ZUAWA. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ZUAWA points at a check table TZUN.ZUAWA entry that does not exist.
-- id: DXR00157
-  enabled: false
-  field: ANKA.GSBER
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Business Area must exist in the check table TGSB.GSBER
-  why_it_matters: GSBER (Business Area) is defined in the SAP Data Dictionary with check table TGSB.GSBER on domain GSBER.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GSBER resolve it through check table TGSB.GSBER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR00158
-  enabled: false
-  field: ANKA.WERKS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Plant must exist in the check table T001W.WERKS
-  why_it_matters: WERKS (Plant) is defined in the SAP Data Dictionary with check table T001W.WERKS on domain WERKS. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WERKS resolve it through check table T001W.WERKS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.WERKS points at a check table T001W.WERKS entry that does not exist.
-- id: DXV00030
-  enabled: false
-  field: ANKA.ANEQK
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Indicator: Historical management must be a value of domain ANEQK (e.g. 0, 1)'
-  why_it_matters: 'Domain ANEQK fixes the permitted values of ANEQK (Indicator: Historical management) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs that consume
-    the field.'
-  rule_authority: sap_hard_constraint
-  sap_impact: ANEQK will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  fix_map:
-    __other__: 'ANKA.ANEQK ''{invalid_value}'' is not in domain ANEQK. Set it to one of: 0, 1.'
-  record_fix_template: 'ANKA.ANEQK is {actual_value}; expected one of: 0, 1.'
-- id: DXV00031
-  enabled: false
-  field: ANKA.ANEQS
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Completeness indicator for the asset must be a value of domain ANEQS (e.g. 0, 1, 2, 3, 4)
-  why_it_matters: Domain ANEQS fixes the permitted values of ANEQS (Completeness indicator for the asset) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ANEQS will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  - '4'
-  fix_map:
-    __other__: 'ANKA.ANEQS ''{invalid_value}'' is not in domain ANEQS. Set it to one of: 0, 1, 2, 3, 4.'
-  record_fix_template: 'ANKA.ANEQS is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXR00159
-  enabled: false
-  field: ANKA.LAND1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Asset's country of origin must exist in the check table T005.LAND1
-  why_it_matters: LAND1 (Asset's country of origin) is defined in the SAP Data Dictionary with check table T005.LAND1 on domain
-    LAND1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LAND1 resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00160
-  enabled: false
-  field: ANKA.LIFNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Account number of vendor (other key word) must exist in the check table LFA1.LIFNR
-  why_it_matters: LIFNR (Account number of vendor (other key word)) is defined in the SAP Data Dictionary with check table
-    LFA1.LIFNR on domain LIFNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LIFNR resolve it through check table LFA1.LIFNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.LIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.LIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00161
-  enabled: false
-  field: ANKA.ANLUE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Asset super number must exist in the check table T087U.ANLUE
-  why_it_matters: ANLUE (Asset super number) is defined in the SAP Data Dictionary with check table T087U.ANLUE on domain
-    ANLUE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ANLUE resolve it through check table T087U.ANLUE; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ANLUE '{invalid_value}' is not defined in the check table T087U.ANLUE. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ANLUE points at a check table T087U.ANLUE entry that does not exist.
-- id: DXR00162
-  enabled: false
-  field: ANKA.EIGKZ
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Property indicator must exist in the check table T097.EIGKZ
-  why_it_matters: EIGKZ (Property indicator) is defined in the SAP Data Dictionary with check table T097.EIGKZ on domain EIGKZ.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIGKZ resolve it through check table T097.EIGKZ; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.EIGKZ '{invalid_value}' is not defined in the check table T097.EIGKZ. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.EIGKZ points at a check table T097.EIGKZ entry that does not exist.
-- id: DXR00163
-  enabled: false
-  field: ANKA.VMGLI
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Property classification key must exist in the check table T092.VMGLI
-  why_it_matters: VMGLI (Property classification key) is defined in the SAP Data Dictionary with check table T092.VMGLI on
-    domain VMGLI. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VMGLI resolve it through check table T092.VMGLI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.VMGLI '{invalid_value}' is not defined in the check table T092.VMGLI. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.VMGLI points at a check table T092.VMGLI entry that does not exist.
-- id: DXR00164
-  enabled: false
-  field: ANKA.ORD41
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Evaluation group 1 must exist in the check table T087.ORD4X
-  why_it_matters: ORD41 (Evaluation group 1) is defined in the SAP Data Dictionary with check table T087.ORD4X on domain ORD4X.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ORD41 resolve it through check table T087.ORD4X; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ORD41 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ORD41 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00165
-  enabled: false
-  field: ANKA.ORD42
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Evaluation group 2 must exist in the check table T087.ORD4X
-  why_it_matters: ORD42 (Evaluation group 2) is defined in the SAP Data Dictionary with check table T087.ORD4X on domain ORD4X.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ORD42 resolve it through check table T087.ORD4X; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ORD42 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ORD42 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00166
-  enabled: false
-  field: ANKA.ORD43
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Evaluation group 3 must exist in the check table T087.ORD4X
-  why_it_matters: ORD43 (Evaluation group 3) is defined in the SAP Data Dictionary with check table T087.ORD4X on domain ORD4X.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ORD43 resolve it through check table T087.ORD4X; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ORD43 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ORD43 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00167
-  enabled: false
-  field: ANKA.ORD44
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Evaluation group 4 must exist in the check table T087.ORD4X
-  why_it_matters: ORD44 (Evaluation group 4) is defined in the SAP Data Dictionary with check table T087.ORD4X on domain ORD4X.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ORD44 resolve it through check table T087.ORD4X; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ORD44 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ORD44 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00168
-  enabled: false
-  field: ANKA.IZWEK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Reason for investment must exist in the check table T087I.IZWEK
-  why_it_matters: IZWEK (Reason for investment) is defined in the SAP Data Dictionary with check table T087I.IZWEK on domain
-    IZWEK. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read IZWEK resolve it through check table T087I.IZWEK; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.IZWEK '{invalid_value}' is not defined in the check table T087I.IZWEK. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.IZWEK points at a check table T087I.IZWEK entry that does not exist.
-- id: DXR00169
-  enabled: false
-  field: ANKA.MEINS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Base Unit of Measure must exist in the check table T006.MSEHI
-  why_it_matters: MEINS (Base Unit of Measure) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain
-    MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEINS resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00170
-  enabled: false
-  field: ANKA.FEINS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Area unit must exist in the check table T006.MSEHI
-  why_it_matters: FEINS (Area unit) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain MEINS. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FEINS resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.FEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.FEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00032
-  enabled: false
-  field: ANKA.ANLTP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset Category must be a value of domain ANLTP (e.g. 0, 1, 2)
-  why_it_matters: Domain ANLTP fixes the permitted values of ANLTP (Asset Category) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ANLTP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'ANKA.ANLTP ''{invalid_value}'' is not in domain ANLTP. Set it to one of: 0, 1, 2.'
-  record_fix_template: 'ANKA.ANLTP is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXV00033
-  enabled: false
-  field: ANKA.AIMMO
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Indicator: real estate must be a value of domain AIMMO (e.g. 0, 1)'
-  why_it_matters: 'Domain AIMMO fixes the permitted values of AIMMO (Indicator: real estate) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs that consume
-    the field.'
-  rule_authority: sap_hard_constraint
-  sap_impact: AIMMO will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  fix_map:
-    __other__: 'ANKA.AIMMO ''{invalid_value}'' is not in domain AIMMO. Set it to one of: 0, 1.'
-  record_fix_template: 'ANKA.AIMMO is {actual_value}; expected one of: 0, 1.'
-- id: DXR00171
-  enabled: false
-  field: ANKA.GDLGRP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Evaluation group 5 must exist in the check table T087G.GDLGRP
-  why_it_matters: GDLGRP (Evaluation group 5) is defined in the SAP Data Dictionary with check table T087G.GDLGRP on domain
-    GDLGRP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GDLGRP resolve it through check table T087G.GDLGRP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.GDLGRP '{invalid_value}' is not defined in the check table T087G.GDLGRP. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.GDLGRP points at a check table T087G.GDLGRP entry that does not exist.
-- id: DXR00172
-  enabled: false
-  field: ANKA.LEART
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Leasing type must exist in the check table T083L.LEART
-  why_it_matters: LEART (Leasing type) is defined in the SAP Data Dictionary with check table T083L.LEART on domain LEASART.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LEART resolve it through check table T083L.LEART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.LEART '{invalid_value}' is not defined in the check table T083L.LEART. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.LEART points at a check table T083L.LEART entry that does not exist.
-- id: DXR00173
-  enabled: false
-  field: ANKA.ABGSL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Capitalization Key for Investment Measure must exist in the check table TKKAA.ABGSL
-  why_it_matters: ABGSL (Capitalization Key for Investment Measure) is defined in the SAP Data Dictionary with check table
-    TKKAA.ABGSL on domain ABGR_SCHL. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ABGSL resolve it through check table TKKAA.ABGSL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: ANKA.ABGSL '{invalid_value}' is not defined in the check table TKKAA.ABGSL. Correct it there or add the missing
-      entry.
-  record_fix_template: ANKA.ABGSL points at a check table TKKAA.ABGSL entry that does not exist.
-- id: DXR00174
+- id: DXR00138
   enabled: false
   field: ANKB.FELEI
   check_class: referential_check
@@ -419,7 +23,7 @@ rules:
     __other__: ANKB.FELEI '{invalid_value}' is not defined in the check table T082A.FELEI. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.FELEI points at a check table T082A.FELEI entry that does not exist.
-- id: DXR00175
+- id: DXR00139
   enabled: false
   field: ANKB.KTOGR
   check_class: referential_check
@@ -436,7 +40,7 @@ rules:
     __other__: ANKB.KTOGR '{invalid_value}' is not defined in the check table T095A.KTOGR. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.KTOGR points at a check table T095A.KTOGR entry that does not exist.
-- id: DXV00034
+- id: DXV00024
   enabled: false
   field: ANKB.XGWGK
   check_class: domain_value_check
@@ -455,7 +59,7 @@ rules:
   fix_map:
     __other__: 'ANKB.XGWGK ''{invalid_value}'' is not in domain XGWGK. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANKB.XGWGK is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00176
+- id: DXR00140
   enabled: false
   field: ANKB.INVSL
   check_class: referential_check
@@ -472,7 +76,7 @@ rules:
     __other__: ANKB.INVSL '{invalid_value}' is not defined in the check table T085.INVSL. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.INVSL points at a check table T085.INVSL entry that does not exist.
-- id: DXR00177
+- id: DXR00141
   enabled: false
   field: ANKB.WBIND
   check_class: referential_check
@@ -489,7 +93,7 @@ rules:
     __other__: ANKB.WBIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.WBIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00178
+- id: DXR00142
   enabled: false
   field: ANKB.ALIND
   check_class: referential_check
@@ -506,7 +110,7 @@ rules:
     __other__: ANKB.ALIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.ALIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00179
+- id: DXR00143
   enabled: false
   field: ANKB.ANLGR
   check_class: referential_check
@@ -523,7 +127,7 @@ rules:
     __other__: ANKB.ANLGR '{invalid_value}' is not defined in the check table ANLH.ANLN1. Correct it there or add the missing
       entry.
   record_fix_template: ANKB.ANLGR points at a check table ANLH.ANLN1 entry that does not exist.
-- id: DXR00180
+- id: DXR00144
   enabled: false
   field: ANKB.J_1AARVKEY
   check_class: referential_check
@@ -540,7 +144,7 @@ rules:
     __other__: ANKB.J_1AARVKEY '{invalid_value}' is not defined in the check table J_1AAA2.J_1AARVKEY. Correct it there or
       add the missing entry.
   record_fix_template: ANKB.J_1AARVKEY points at a check table J_1AAA2.J_1AARVKEY entry that does not exist.
-- id: DXV00035
+- id: DXV00025
   enabled: false
   field: ANLA.ANLTP
   check_class: domain_value_check
@@ -558,7 +162,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANLTP ''{invalid_value}'' is not in domain ANLTP. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANLA.ANLTP is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00181
+- id: DXR00145
   enabled: false
   field: ANLA.ORD41
   check_class: referential_check
@@ -575,7 +179,7 @@ rules:
     __other__: ANLA.ORD41 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD41 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00182
+- id: DXR00146
   enabled: false
   field: ANLA.ORD42
   check_class: referential_check
@@ -592,7 +196,7 @@ rules:
     __other__: ANLA.ORD42 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD42 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00183
+- id: DXR00147
   enabled: false
   field: ANLA.ORD43
   check_class: referential_check
@@ -609,7 +213,7 @@ rules:
     __other__: ANLA.ORD43 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD43 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00184
+- id: DXR00148
   enabled: false
   field: ANLA.ORD44
   check_class: referential_check
@@ -626,7 +230,7 @@ rules:
     __other__: ANLA.ORD44 '{invalid_value}' is not defined in the check table T087.ORD4X. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ORD44 points at a check table T087.ORD4X entry that does not exist.
-- id: DXR00185
+- id: DXR00149
   enabled: false
   field: ANLA.ANLUE
   check_class: referential_check
@@ -643,7 +247,7 @@ rules:
     __other__: ANLA.ANLUE '{invalid_value}' is not defined in the check table T087U.ANLUE. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ANLUE points at a check table T087U.ANLUE entry that does not exist.
-- id: DXR00186
+- id: DXR00150
   enabled: false
   field: ANLA.ZUAWA
   check_class: referential_check
@@ -660,7 +264,7 @@ rules:
     __other__: ANLA.ZUAWA '{invalid_value}' is not defined in the check table TZUN.ZUAWA. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.ZUAWA points at a check table TZUN.ZUAWA entry that does not exist.
-- id: DXV00036
+- id: DXV00026
   enabled: false
   field: ANLA.ANEQK
   check_class: domain_value_check
@@ -678,7 +282,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANEQK ''{invalid_value}'' is not in domain ANEQK. Set it to one of: 0, 1.'
   record_fix_template: 'ANLA.ANEQK is {actual_value}; expected one of: 0, 1.'
-- id: DXV00037
+- id: DXV00027
   enabled: false
   field: ANLA.ANEQS
   check_class: domain_value_check
@@ -699,7 +303,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANEQS ''{invalid_value}'' is not in domain ANEQS. Set it to one of: 0, 1, 2, 3, 4.'
   record_fix_template: 'ANLA.ANEQS is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXR00187
+- id: DXR00151
   enabled: false
   field: ANLA.LAND1
   check_class: referential_check
@@ -716,7 +320,7 @@ rules:
     __other__: ANLA.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00188
+- id: DXR00152
   enabled: false
   field: ANLA.EIGKZ
   check_class: referential_check
@@ -733,7 +337,7 @@ rules:
     __other__: ANLA.EIGKZ '{invalid_value}' is not defined in the check table T097.EIGKZ. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.EIGKZ points at a check table T097.EIGKZ entry that does not exist.
-- id: DXR00189
+- id: DXR00153
   enabled: false
   field: ANLA.MEINS
   check_class: referential_check
@@ -750,7 +354,7 @@ rules:
     __other__: ANLA.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.MEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00190
+- id: DXR00154
   enabled: false
   field: ANLA.IZWEK
   check_class: referential_check
@@ -767,7 +371,7 @@ rules:
     __other__: ANLA.IZWEK '{invalid_value}' is not defined in the check table T087I.IZWEK. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.IZWEK points at a check table T087I.IZWEK entry that does not exist.
-- id: DXR00191
+- id: DXR00155
   enabled: false
   field: ANLA.VMGLI
   check_class: referential_check
@@ -784,7 +388,7 @@ rules:
     __other__: ANLA.VMGLI '{invalid_value}' is not defined in the check table T092.VMGLI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.VMGLI points at a check table T092.VMGLI entry that does not exist.
-- id: DXR00192
+- id: DXR00156
   enabled: false
   field: ANLA.GRUND
   check_class: referential_check
@@ -801,7 +405,7 @@ rules:
     __other__: ANLA.GRUND '{invalid_value}' is not defined in the check table T098.GRUND. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.GRUND points at a check table T098.GRUND entry that does not exist.
-- id: DXR00193
+- id: DXR00157
   enabled: false
   field: ANLA.FEINS
   check_class: referential_check
@@ -817,7 +421,7 @@ rules:
     __other__: ANLA.FEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.FEINS points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00194
+- id: DXR00158
   enabled: false
   field: ANLA.VBUND
   check_class: referential_check
@@ -834,7 +438,7 @@ rules:
     __other__: ANLA.VBUND '{invalid_value}' is not defined in the check table T880.RCOMP. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.VBUND points at a check table T880.RCOMP entry that does not exist.
-- id: DXR00195
+- id: DXR00159
   enabled: false
   field: ANLA.SPRAS
   check_class: referential_check
@@ -851,7 +455,7 @@ rules:
     __other__: ANLA.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00196
+- id: DXR00160
   enabled: false
   field: ANLA.LEAFI
   check_class: referential_check
@@ -868,7 +472,7 @@ rules:
     __other__: ANLA.LEAFI '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LEAFI points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXV00038
+- id: DXV00028
   enabled: false
   field: ANLA.ANUPD
   check_class: domain_value_check
@@ -887,7 +491,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLA.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXV00039
+- id: DXV00029
   enabled: false
   field: ANLA.AIMMO
   check_class: domain_value_check
@@ -905,7 +509,7 @@ rules:
   fix_map:
     __other__: 'ANLA.AIMMO ''{invalid_value}'' is not in domain AIMMO. Set it to one of: 0, 1.'
   record_fix_template: 'ANLA.AIMMO is {actual_value}; expected one of: 0, 1.'
-- id: DXR00197
+- id: DXR00161
   enabled: false
   field: ANLA.OBJNR
   check_class: referential_check
@@ -922,7 +526,7 @@ rules:
     __other__: ANLA.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00198
+- id: DXR00162
   enabled: false
   field: ANLA.LEART
   check_class: referential_check
@@ -939,7 +543,7 @@ rules:
     __other__: ANLA.LEART '{invalid_value}' is not defined in the check table T083L.LEART. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.LEART points at a check table T083L.LEART entry that does not exist.
-- id: DXR00199
+- id: DXR00163
   enabled: false
   field: ANLA.GDLGRP
   check_class: referential_check
@@ -956,7 +560,7 @@ rules:
     __other__: ANLA.GDLGRP '{invalid_value}' is not defined in the check table T087G.GDLGRP. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.GDLGRP points at a check table T087G.GDLGRP entry that does not exist.
-- id: DXR00200
+- id: DXR00164
   enabled: false
   field: ANLA.UMWKZ
   check_class: referential_check
@@ -973,7 +577,7 @@ rules:
     __other__: ANLA.UMWKZ '{invalid_value}' is not defined in the check table T087K.UMWKZ. Correct it there or add the missing
       entry.
   record_fix_template: ANLA.UMWKZ points at a check table T087K.UMWKZ entry that does not exist.
-- id: DXV00040
+- id: DXV00030
   enabled: false
   field: ANLA.ACT_CHANGE_PM
   check_class: domain_value_check
@@ -992,7 +596,7 @@ rules:
   fix_map:
     __other__: 'ANLA.ACT_CHANGE_PM ''{invalid_value}'' is not in domain AAPM_ACT. Set it to one of: 1, 2, 3.'
   record_fix_template: 'ANLA.ACT_CHANGE_PM is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00201
+- id: DXR00165
   enabled: false
   field: ANLB.FELEI
   check_class: referential_check
@@ -1009,7 +613,7 @@ rules:
     __other__: ANLB.FELEI '{invalid_value}' is not defined in the check table T082A.FELEI. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.FELEI points at a check table T082A.FELEI entry that does not exist.
-- id: DXV00041
+- id: DXV00031
   enabled: false
   field: ANLB.XGWGK
   check_class: domain_value_check
@@ -1028,7 +632,7 @@ rules:
   fix_map:
     __other__: 'ANLB.XGWGK ''{invalid_value}'' is not in domain XGWGK. Set it to one of: 0, 1, 2.'
   record_fix_template: 'ANLB.XGWGK is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00202
+- id: DXR00166
   enabled: false
   field: ANLB.INVSL
   check_class: referential_check
@@ -1045,7 +649,7 @@ rules:
     __other__: ANLB.INVSL '{invalid_value}' is not defined in the check table T085.INVSL. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.INVSL points at a check table T085.INVSL entry that does not exist.
-- id: DXR00203
+- id: DXR00167
   enabled: false
   field: ANLB.WBIND
   check_class: referential_check
@@ -1062,7 +666,7 @@ rules:
     __other__: ANLB.WBIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.WBIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXR00204
+- id: DXR00168
   enabled: false
   field: ANLB.ALIND
   check_class: referential_check
@@ -1079,7 +683,7 @@ rules:
     __other__: ANLB.ALIND '{invalid_value}' is not defined in the check table T094A.WBIND. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.ALIND points at a check table T094A.WBIND entry that does not exist.
-- id: DXV00042
+- id: DXV00032
   enabled: false
   field: ANLB.ANUPD
   check_class: domain_value_check
@@ -1098,7 +702,7 @@ rules:
   fix_map:
     __other__: 'ANLB.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLB.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00205
+- id: DXR00169
   enabled: false
   field: ANLB.ANLGR2
   check_class: referential_check
@@ -1115,7 +719,7 @@ rules:
     __other__: ANLB.ANLGR2 '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: ANLB.ANLGR2 points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR00206
+- id: DXR00170
   enabled: false
   field: ANLB.J_1AARVKEY
   check_class: referential_check
@@ -1132,7 +736,7 @@ rules:
     __other__: ANLB.J_1AARVKEY '{invalid_value}' is not defined in the check table J_1AAA2.J_1AARVKEY. Correct it there or
       add the missing entry.
   record_fix_template: ANLB.J_1AARVKEY points at a check table J_1AAA2.J_1AARVKEY entry that does not exist.
-- id: DXV00043
+- id: DXV00033
   enabled: false
   field: ANLH.ANUPD
   check_class: domain_value_check
@@ -1151,7 +755,7 @@ rules:
   fix_map:
     __other__: 'ANLH.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLH.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00207
+- id: DXR00171
   enabled: false
   field: ANLH.FUNTN
   check_class: referential_check
@@ -1168,7 +772,7 @@ rules:
     __other__: ANLH.FUNTN '{invalid_value}' is not defined in the check table ANLA.ANLN2. Correct it there or add the missing
       entry.
   record_fix_template: ANLH.FUNTN points at a check table ANLA.ANLN2 entry that does not exist.
-- id: DXR00208
+- id: DXR00172
   enabled: false
   field: ANLZ.GSBER
   check_class: referential_check
@@ -1185,7 +789,7 @@ rules:
     __other__: ANLZ.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR00209
+- id: DXR00173
   enabled: false
   field: ANLZ.IAUFN
   check_class: referential_check
@@ -1202,7 +806,7 @@ rules:
     __other__: ANLZ.IAUFN '{invalid_value}' is not defined in the check table AUFK.AUFNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.IAUFN points at a check table AUFK.AUFNR entry that does not exist.
-- id: DXV00044
+- id: DXV00034
   enabled: false
   field: ANLZ.ANUPD
   check_class: domain_value_check
@@ -1221,7 +825,7 @@ rules:
   fix_map:
     __other__: 'ANLZ.ANUPD ''{invalid_value}'' is not in domain ANUPD. Set it to one of: D, I, U.'
   record_fix_template: 'ANLZ.ANUPD is {actual_value}; expected one of: D, I, U.'
-- id: DXR00210
+- id: DXR00174
   enabled: false
   field: ANLZ.TXJCD
   check_class: referential_check
@@ -1238,7 +842,7 @@ rules:
     __other__: ANLZ.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXR00211
+- id: DXR00175
   enabled: false
   field: ANLZ.IPSNR
   check_class: referential_check
@@ -1255,7 +859,7 @@ rules:
     __other__: ANLZ.IPSNR '{invalid_value}' is not defined in the check table PRPS.PSPNR. Correct it there or add the missing
       entry.
   record_fix_template: ANLZ.IPSNR points at a check table PRPS.PSPNR entry that does not exist.
-- id: DXR00212
+- id: DXR00176
   enabled: false
   field: ANLZ.SEGMENT
   check_class: referential_check
@@ -1272,1639 +876,3 @@ rules:
     __other__: ANLZ.SEGMENT '{invalid_value}' is not defined in the check table FAGL_SEGM.SEGMENT. Correct it there or add
       the missing entry.
   record_fix_template: ANLZ.SEGMENT points at a check table FAGL_SEGM.SEGMENT entry that does not exist.
-- id: DXR00213
-  enabled: false
-  field: T090NA.METHBT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Maximum amount method must exist in the check table T090NH_METH.METHBT
-  why_it_matters: METHBT (Maximum amount method) is defined in the SAP Data Dictionary with check table T090NH_METH.METHBT
-    on domain METSL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read METHBT resolve it through check table T090NH_METH.METHBT; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T090NA.METHBT '{invalid_value}' is not defined in the check table T090NH_METH.METHBT. Correct it there or add
-      the missing entry.
-  record_fix_template: T090NA.METHBT points at a check table T090NH_METH.METHBT entry that does not exist.
-- id: DXR00214
-  enabled: false
-  field: T090NA.ANHWSL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Cutoff value key must exist in the check table T091.ANHWSL
-  why_it_matters: ANHWSL (Cutoff value key) is defined in the SAP Data Dictionary with check table T091.ANHWSL on domain ANHWSL.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ANHWSL resolve it through check table T091.ANHWSL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T090NA.ANHWSL '{invalid_value}' is not defined in the check table T091.ANHWSL. Correct it there or add the
-      missing entry.
-  record_fix_template: T090NA.ANHWSL points at a check table T091.ANHWSL entry that does not exist.
-- id: DXV00045
-  enabled: false
-  field: T093.ABVOR1
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sgn of real dep. area in screen layout rule of der. area must be a value of domain VORZEI (e.g. +, -)
-  why_it_matters: Domain VORZEI fixes the permitted values of ABVOR1 (+/- Sgn of real dep. area in screen layout rule of der.
-    area) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ABVOR1 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - '-'
-  fix_map:
-    __other__: 'T093.ABVOR1 ''{invalid_value}'' is not in domain VORZEI. Set it to one of: +, -.'
-  record_fix_template: 'T093.ABVOR1 is {actual_value}; expected one of: +, -.'
-- id: DXR00215
-  enabled: false
-  field: T093.AFABE1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Real depreciation area must exist in the check table T093.AFABER
-  why_it_matters: AFABE1 (Real depreciation area) is defined in the SAP Data Dictionary with check table T093.AFABER on domain
-    AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AFABE1 resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.AFABE1 '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.AFABE1 points at a check table T093.AFABER entry that does not exist.
-- id: DXV00046
-  enabled: false
-  field: T093.ABVOR2
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sgn of real dep. area in screen layout rule of der. area must be a value of domain VORZEI (e.g. +, -)
-  why_it_matters: Domain VORZEI fixes the permitted values of ABVOR2 (+/- Sgn of real dep. area in screen layout rule of der.
-    area) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ABVOR2 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - '-'
-  fix_map:
-    __other__: 'T093.ABVOR2 ''{invalid_value}'' is not in domain VORZEI. Set it to one of: +, -.'
-  record_fix_template: 'T093.ABVOR2 is {actual_value}; expected one of: +, -.'
-- id: DXR00216
-  enabled: false
-  field: T093.AFABE2
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Real depreciation area must exist in the check table T093.AFABER
-  why_it_matters: AFABE2 (Real depreciation area) is defined in the SAP Data Dictionary with check table T093.AFABER on domain
-    AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AFABE2 resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.AFABE2 '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.AFABE2 points at a check table T093.AFABER entry that does not exist.
-- id: DXV00047
-  enabled: false
-  field: T093.ABVOR3
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sgn of real dep. area in screen layout rule of der. area must be a value of domain VORZEI (e.g. +, -)
-  why_it_matters: Domain VORZEI fixes the permitted values of ABVOR3 (+/- Sgn of real dep. area in screen layout rule of der.
-    area) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ABVOR3 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - '-'
-  fix_map:
-    __other__: 'T093.ABVOR3 ''{invalid_value}'' is not in domain VORZEI. Set it to one of: +, -.'
-  record_fix_template: 'T093.ABVOR3 is {actual_value}; expected one of: +, -.'
-- id: DXR00217
-  enabled: false
-  field: T093.AFABE3
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Real depreciation area must exist in the check table T093.AFABER
-  why_it_matters: AFABE3 (Real depreciation area) is defined in the SAP Data Dictionary with check table T093.AFABER on domain
-    AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AFABE3 resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.AFABE3 '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.AFABE3 points at a check table T093.AFABER entry that does not exist.
-- id: DXV00048
-  enabled: false
-  field: T093.ABVOR4
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sgn of real dep. area in screen layout rule of der. area must be a value of domain VORZEI (e.g. +, -)
-  why_it_matters: Domain VORZEI fixes the permitted values of ABVOR4 (+/- Sgn of real dep. area in screen layout rule of der.
-    area) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ABVOR4 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - '-'
-  fix_map:
-    __other__: 'T093.ABVOR4 ''{invalid_value}'' is not in domain VORZEI. Set it to one of: +, -.'
-  record_fix_template: 'T093.ABVOR4 is {actual_value}; expected one of: +, -.'
-- id: DXR00218
-  enabled: false
-  field: T093.AFABE4
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Real depreciation area must exist in the check table T093.AFABER
-  why_it_matters: AFABE4 (Real depreciation area) is defined in the SAP Data Dictionary with check table T093.AFABER on domain
-    AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AFABE4 resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.AFABE4 '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.AFABE4 points at a check table T093.AFABER entry that does not exist.
-- id: DXV00049
-  enabled: false
-  field: T093.VZANSW
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for acquisition value must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZANSW (+/- Sign for acquisition value) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZANSW will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZANSW ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZANSW is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00050
-  enabled: false
-  field: T093.VZREST
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for net book value must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZREST (+/- Sign for net book value) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZREST will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZREST ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZREST is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00051
-  enabled: false
-  field: T093.BUHBKT
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Post to G/L account must be a value of domain BUHBKT (e.g. 0, 1, 2, 3, 4, 5, 6)
-  why_it_matters: Domain BUHBKT fixes the permitted values of BUHBKT (Post to G/L account) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the
-    field.
-  rule_authority: sap_hard_constraint
-  sap_impact: BUHBKT will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  - '4'
-  - '5'
-  - '6'
-  fix_map:
-    __other__: 'T093.BUHBKT ''{invalid_value}'' is not in domain BUHBKT. Set it to one of: 0, 1, 2, 3, 4, 5, 6.'
-  record_fix_template: 'T093.BUHBKT is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5, 6.'
-- id: DXV00052
-  enabled: false
-  field: T093.VIEW0
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW0 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW0 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW0 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW0 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00053
-  enabled: false
-  field: T093.VIEW1
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW1 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW1 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW1 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW1 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00054
-  enabled: false
-  field: T093.VIEW2
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW2 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW2 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW2 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW2 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00055
-  enabled: false
-  field: T093.VIEW3
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW3 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW3 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW3 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW3 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00056
-  enabled: false
-  field: T093.VIEW4
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW4 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW4 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW4 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW4 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00057
-  enabled: false
-  field: T093.VIEW5
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW5 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW5 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW5 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW5 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00058
-  enabled: false
-  field: T093.VIEW6
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Asset view must be a value of domain VIEWX (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain VIEWX fixes the permitted values of VIEW6 (Asset view) in the SAP Data Dictionary. Any other non-blank
-    value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VIEW6 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093.VIEW6 ''{invalid_value}'' is not in domain VIEWX. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093.VIEW6 is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXV00059
-  enabled: false
-  field: T093.VZINVZ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for investment grants must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZINVZ (+/- Sign for investment grants) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZINVZ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZINVZ ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZINVZ is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00060
-  enabled: false
-  field: T093.VZAWMA
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for transfer of reserves(acquis.val.reducing dep.) must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZAWMA (+/- Sign for transfer of reserves(acquis.val.reducing
-    dep.)) in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZAWMA will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZAWMA ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZAWMA is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00061
-  enabled: false
-  field: T093.VZNAFA
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for ordinary depreciation must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZNAFA (+/- Sign for ordinary depreciation) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZNAFA will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZNAFA ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZNAFA is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00062
-  enabled: false
-  field: T093.VZSAFA
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for special depreciation must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZSAFA (+/- Sign for special depreciation) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZSAFA will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZSAFA ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZSAFA is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00063
-  enabled: false
-  field: T093.VZAAFA
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for unplanned depreciation must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZAAFA (+/- Sign for unplanned depreciation) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZAAFA will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZAAFA ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZAAFA is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00064
-  enabled: false
-  field: T093.VZINDW
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for revaluation must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZINDW (+/- Sign for revaluation) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZINDW will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZINDW ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZINDW is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00065
-  enabled: false
-  field: T093.VZZINS
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for interest must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZZINS (+/- Sign for interest) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the
-    field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZZINS will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZZINS ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZZINS is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXV00066
-  enabled: false
-  field: T093.VZINDA
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: +/- Sign for revaluation of ordinary depreciation must be a value of domain VORZW (e.g. *, +, -, 0)
-  why_it_matters: Domain VORZW fixes the permitted values of VZINDA (+/- Sign for revaluation of ordinary depreciation) in
-    the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by
-    the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VZINDA will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '*'
-  - +
-  - '-'
-  - '0'
-  fix_map:
-    __other__: 'T093.VZINDA ''{invalid_value}'' is not in domain VORZW. Set it to one of: *, +, -, 0.'
-  record_fix_template: 'T093.VZINDA is {actual_value}; expected one of: *, +, -, 0.'
-- id: DXR00219
-  enabled: false
-  field: T093.CORRBE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Depreciation area used for modification must exist in the check table T093.AFABER
-  why_it_matters: CORRBE (Depreciation area used for modification) is defined in the SAP Data Dictionary with check table
-    T093.AFABER on domain AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CORRBE resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.CORRBE '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.CORRBE points at a check table T093.AFABER entry that does not exist.
-- id: DXR00220
-  enabled: false
-  field: T093.GAFABER
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Cross-system depreciation area must exist in the check table T093G.GAFABER
-  why_it_matters: GAFABER (Cross-system depreciation area) is defined in the SAP Data Dictionary with check table T093G.GAFABER
-    on domain GLOAFABER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GAFABER resolve it through check table T093G.GAFABER; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.GAFABER '{invalid_value}' is not defined in the check table T093G.GAFABER. Correct it there or add the
-      missing entry.
-  record_fix_template: T093.GAFABER points at a check table T093G.GAFABER entry that does not exist.
-- id: DXR00221
-  enabled: false
-  field: T093.LDGRP_GL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Target Ledger Group must exist in the check table FAGL_TLDGRP.LDGRP
-  why_it_matters: LDGRP_GL (Target Ledger Group) is defined in the SAP Data Dictionary with check table FAGL_TLDGRP.LDGRP
-    on domain FAGL_LDGRP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LDGRP_GL resolve it through check table FAGL_TLDGRP.LDGRP; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.LDGRP_GL '{invalid_value}' is not defined in the check table FAGL_TLDGRP.LDGRP. Correct it there or add
-      the missing entry.
-  record_fix_template: T093.LDGRP_GL points at a check table FAGL_TLDGRP.LDGRP entry that does not exist.
-- id: DXR00222
-  enabled: false
-  field: T093.ABWBER
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Alternative Depreciation Area for Account Determination must exist in the check table T093.AFABER
-  why_it_matters: ABWBER (Alternative Depreciation Area for Account Determination) is defined in the SAP Data Dictionary with
-    check table T093.AFABER on domain AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ABWBER resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093.ABWBER '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093.ABWBER points at a check table T093.AFABER entry that does not exist.
-- id: DXV00067
-  enabled: false
-  field: T093.AREA_USAGE_IND
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Purpose of Depreciation Area must be a value of domain AREA_USAGE_IND (e.g. 1, 2)
-  why_it_matters: Domain AREA_USAGE_IND fixes the permitted values of AREA_USAGE_IND (Purpose of Depreciation Area) in the
-    SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the
-    programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: AREA_USAGE_IND will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'T093.AREA_USAGE_IND ''{invalid_value}'' is not in domain AREA_USAGE_IND. Set it to one of: 1, 2.'
-  record_fix_template: 'T093.AREA_USAGE_IND is {actual_value}; expected one of: 1, 2.'
-- id: DXR00223
-  enabled: false
-  field: T093A.WRTAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Adoption of values from depreciation area must exist in the check table T093.AFABER
-  why_it_matters: WRTAFB (Adoption of values from depreciation area) is defined in the SAP Data Dictionary with check table
-    T093.AFABER on domain AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WRTAFB resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093A.WRTAFB '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093A.WRTAFB points at a check table T093.AFABER entry that does not exist.
-- id: DXR00224
-  enabled: false
-  field: T093A.PARAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Transfer of Depreciation Terms from Depreciation Area must exist in the check table T093.AFABER
-  why_it_matters: PARAFB (Transfer of Depreciation Terms from Depreciation Area) is defined in the SAP Data Dictionary with
-    check table T093.AFABER on domain AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PARAFB resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093A.PARAFB '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093A.PARAFB points at a check table T093.AFABER entry that does not exist.
-- id: DXR00225
-  enabled: false
-  field: T093A.RVERS_GC
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Consolidation version must exist in the check table T858.RVERS
-  why_it_matters: RVERS_GC (Consolidation version) is defined in the SAP Data Dictionary with check table T858.RVERS on domain
-    RVERS_GC. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RVERS_GC resolve it through check table T858.RVERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093A.RVERS_GC '{invalid_value}' is not defined in the check table T858.RVERS. Correct it there or add the
-      missing entry.
-  record_fix_template: T093A.RVERS_GC points at a check table T858.RVERS entry that does not exist.
-- id: DXR00226
-  enabled: false
-  field: T093A.HS1069
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Subgroup must exist in the check table T852.RSUBD
-  why_it_matters: HS1069 (Subgroup) is defined in the SAP Data Dictionary with check table T852.RSUBD on domain RSUBD. A value
-    outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HS1069 resolve it through check table T852.RSUBD; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093A.HS1069 '{invalid_value}' is not defined in the check table T852.RSUBD. Correct it there or add the missing
-      entry.
-  record_fix_template: T093A.HS1069 points at a check table T852.RSUBD entry that does not exist.
-- id: DXV00068
-  enabled: false
-  field: T093A.CURTP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Currency type and valuation view must be a value of domain CURTP (e.g. 00, 10, 11, 12, 20, 30, 31, 32, 40, 50,
-    60, 70 ...)
-  why_it_matters: Domain CURTP fixes the permitted values of CURTP (Currency type and valuation view) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: CURTP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '00'
-  - '10'
-  - '11'
-  - '12'
-  - '20'
-  - '30'
-  - '31'
-  - '32'
-  - '40'
-  - '50'
-  - '60'
-  - '70'
-  - '71'
-  - '72'
-  - '80'
-  - '81'
-  - '82'
-  - '90'
-  - '92'
-  - A0
-  - B0
-  - B2
-  - C0
-  - C1
-  - C2
-  fix_map:
-    __other__: 'T093A.CURTP ''{invalid_value}'' is not in domain CURTP. Set it to one of: 00, 10, 11, 12, 20, 30, 31, 32,
-      40, 50, 60, 70 ....'
-  record_fix_template: 'T093A.CURTP is {actual_value}; expected one of: 00, 10, 11, 12, 20, 30, 31, 32, 40, 50, 60, 70 ....'
-- id: DXV00069
-  enabled: false
-  field: T093A.BERTYP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Standardization of deprec. area must be a value of domain BERTYP (e.g. 01, 02, 03, 04, 05, 06, 07, 08, 09, 10,
-    11, 12 ...)
-  why_it_matters: Domain BERTYP fixes the permitted values of BERTYP (Standardization of deprec. area) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: BERTYP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '01'
-  - '02'
-  - '03'
-  - '04'
-  - '05'
-  - '06'
-  - '07'
-  - 08
-  - 09
-  - '10'
-  - '11'
-  - '12'
-  - '13'
-  - '14'
-  - '15'
-  - '16'
-  - '17'
-  - '18'
-  - '19'
-  - '20'
-  - '21'
-  fix_map:
-    __other__: 'T093A.BERTYP ''{invalid_value}'' is not in domain BERTYP. Set it to one of: 01, 02, 03, 04, 05, 06, 07, 08,
-      09, 10, 11, 12 ....'
-  record_fix_template: 'T093A.BERTYP is {actual_value}; expected one of: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12 ....'
-- id: DXR00227
-  enabled: false
-  field: T093A.VERSN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Capitalization Version for Capital Investment Measure must exist in the check table TKKAL.VERSA
-  why_it_matters: VERSN (Capitalization Version for Capital Investment Measure) is defined in the SAP Data Dictionary with
-    check table TKKAL.VERSA on domain VERSN_AIB1. A value outside that table is not a value SAP recognises, so the record
-    is inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VERSN resolve it through check table TKKAL.VERSA; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093A.VERSN '{invalid_value}' is not defined in the check table TKKAL.VERSA. Correct it there or add the missing
-      entry.
-  record_fix_template: T093A.VERSN points at a check table TKKAL.VERSA entry that does not exist.
-- id: DXR00228
-  enabled: false
-  field: T093C.BUKRSN
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Company code for number assignment must exist in the check table T093N.BUKRSN
-  why_it_matters: BUKRSN (Company code for number assignment) is defined in the SAP Data Dictionary with check table T093N.BUKRSN
-    on domain BUKRSN. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BUKRSN resolve it through check table T093N.BUKRSN; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.BUKRSN '{invalid_value}' is not defined in the check table T093N.BUKRSN. Correct it there or add the
-      missing entry.
-  record_fix_template: T093C.BUKRSN points at a check table T093N.BUKRSN entry that does not exist.
-- id: DXR00229
-  enabled: false
-  field: T093C.VRMAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Depreciation area for net worth tax valuation must exist in the check table T093.AFABER
-  why_it_matters: VRMAFB (Depreciation area for net worth tax valuation) is defined in the SAP Data Dictionary with check
-    table T093.AFABER on domain AFABE. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VRMAFB resolve it through check table T093.AFABER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.VRMAFB '{invalid_value}' is not defined in the check table T093.AFABER. Correct it there or add the missing
-      entry.
-  record_fix_template: T093C.VRMAFB points at a check table T093.AFABER entry that does not exist.
-- id: DXV00070
-  enabled: false
-  field: T093C.XANUEB
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Staus of asset data transfer in the company code must be a value of domain XANUEB (e.g. 0, 1, 2, 3)
-  why_it_matters: Domain XANUEB fixes the permitted values of XANUEB (Staus of asset data transfer in the company code) in
-    the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by
-    the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: XANUEB will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  - '3'
-  fix_map:
-    __other__: 'T093C.XANUEB ''{invalid_value}'' is not in domain XANUEB. Set it to one of: 0, 1, 2, 3.'
-  record_fix_template: 'T093C.XANUEB is {actual_value}; expected one of: 0, 1, 2, 3.'
-- id: DXR00230
-  enabled: false
-  field: T093C.AFBLRT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Document type for depreciation posting must exist in the check table T003.BLART
-  why_it_matters: AFBLRT (Document type for depreciation posting) is defined in the SAP Data Dictionary with check table T003.BLART
-    on domain BLART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AFBLRT resolve it through check table T003.BLART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.AFBLRT '{invalid_value}' is not defined in the check table T003.BLART. Correct it there or add the missing
-      entry.
-  record_fix_template: T093C.AFBLRT points at a check table T003.BLART entry that does not exist.
-- id: DXR00231
-  enabled: false
-  field: T093C.MWSKZVA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Input tax code - Assets without input tax must exist in the check table T007A.MWSKZ
-  why_it_matters: MWSKZVA (Input tax code - Assets without input tax) is defined in the SAP Data Dictionary with check table
-    T007A.MWSKZ on domain MWSKZ. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MWSKZVA resolve it through check table T007A.MWSKZ; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.MWSKZVA '{invalid_value}' is not defined in the check table T007A.MWSKZ. Correct it there or add the
-      missing entry.
-  record_fix_template: T093C.MWSKZVA points at a check table T007A.MWSKZ entry that does not exist.
-- id: DXR00232
-  enabled: false
-  field: T093C.MWSKZAA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Output tax code - asset is exempt from tax  (unused) must exist in the check table T007A.MWSKZ
-  why_it_matters: MWSKZAA (Output tax code - asset is exempt from tax  (unused)) is defined in the SAP Data Dictionary with
-    check table T007A.MWSKZ on domain MWSKZ. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MWSKZAA resolve it through check table T007A.MWSKZ; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.MWSKZAA '{invalid_value}' is not defined in the check table T007A.MWSKZ. Correct it there or add the
-      missing entry.
-  record_fix_template: T093C.MWSKZAA points at a check table T007A.MWSKZ entry that does not exist.
-- id: DXR00233
-  enabled: false
-  field: T093C.APROF
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Settlement profile for assets under construction must exist in the check table TKB1A.APROF
-  why_it_matters: APROF (Settlement profile for assets under construction) is defined in the SAP Data Dictionary with check
-    table TKB1A.APROF on domain APROF. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read APROF resolve it through check table TKB1A.APROF; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.APROF '{invalid_value}' is not defined in the check table TKB1A.APROF. Correct it there or add the missing
-      entry.
-  record_fix_template: T093C.APROF points at a check table TKB1A.APROF entry that does not exist.
-- id: DXR00234
-  enabled: false
-  field: T093C.VARBZD
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Variant for determining asset value date must exist in the check table TABVA.VARIANTE
-  why_it_matters: VARBZD (Variant for determining asset value date) is defined in the SAP Data Dictionary with check table
-    TABVA.VARIANTE on domain VARBZDAT. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VARBZD resolve it through check table TABVA.VARIANTE; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.VARBZD '{invalid_value}' is not defined in the check table TABVA.VARIANTE. Correct it there or add the
-      missing entry.
-  record_fix_template: T093C.VARBZD points at a check table TABVA.VARIANTE entry that does not exist.
-- id: DXR00235
-  enabled: false
-  field: T093C.APERBLRT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Document Type for Periodic Posting of APC Values must exist in the check table T003.BLART
-  why_it_matters: APERBLRT (Document Type for Periodic Posting of APC Values) is defined in the SAP Data Dictionary with check
-    table T003.BLART on domain BLART. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read APERBLRT resolve it through check table T003.BLART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T093C.APERBLRT '{invalid_value}' is not defined in the check table T003.BLART. Correct it there or add the
-      missing entry.
-  record_fix_template: T093C.APERBLRT points at a check table T003.BLART entry that does not exist.
-- id: DXV00071
-  enabled: false
-  field: T093C.REVDMETH
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Method for Revenue Distribution at Asset Retirement must be a value of domain REVDMETH (e.g. A, N)
-  why_it_matters: Domain REVDMETH fixes the permitted values of REVDMETH (Method for Revenue Distribution at Asset Retirement)
-    in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: REVDMETH will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - N
-  fix_map:
-    __other__: 'T093C.REVDMETH ''{invalid_value}'' is not in domain REVDMETH. Set it to one of: A, N.'
-  record_fix_template: 'T093C.REVDMETH is {actual_value}; expected one of: A, N.'
-- id: DXR00236
-  enabled: false
-  field: T095.KTANSW
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Bal. sheet account: Acquisition and production costs must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTANSW (Bal. sheet account: Acquisition and production costs) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTANSW resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTANSW '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTANSW points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00237
-  enabled: false
-  field: T095.KTANZA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: G/L account:down payments must exist in the check table SKA1.SAKNR
-  why_it_matters: KTANZA (G/L account:down payments) is defined in the SAP Data Dictionary with check table SKA1.SAKNR on
-    domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTANZA resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTANZA '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTANZA points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00238
-  enabled: false
-  field: T095.KTERLW
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Clearing account for revenue from asset sale must exist in the check table SKA1.SAKNR
-  why_it_matters: KTERLW (Clearing account for revenue from asset sale) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTERLW resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTERLW '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTERLW points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00239
-  enabled: false
-  field: T095.KTMEHR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'G/L account: asset retirement gain must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTMEHR (G/L account: asset retirement gain) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMEHR resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTMEHR '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTMEHR points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00240
-  enabled: false
-  field: T095.KTMAHK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Acct:Gain from asset retirement over APC (curr. not used) must exist in the check table SKA1.SAKNR
-  why_it_matters: KTMAHK (Acct:Gain from asset retirement over APC (curr. not used)) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMAHK resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTMAHK '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTMAHK points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00241
-  enabled: false
-  field: T095.KTMIND
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: G/L account for asset retirement loss must exist in the check table SKA1.SAKNR
-  why_it_matters: KTMIND (G/L account for asset retirement loss) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMIND resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTMIND '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTMIND points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00242
-  enabled: false
-  field: T095.KTREST
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: G/L account for net book value when scrapped must exist in the check table SKA1.SAKNR
-  why_it_matters: KTREST (G/L account for net book value when scrapped) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTREST resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTREST '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTREST points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00243
-  enabled: false
-  field: T095.KTAPFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'G/L account:Decimals from asset acquisition: not used must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTAPFG (G/L account:Decimals from asset acquisition: not used) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAPFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTAPFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTAPFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00244
-  enabled: false
-  field: T095.KTAUFW
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Reconciliation account: Revaluation must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTAUFW (Reconciliation account: Revaluation) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAUFW resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTAUFW '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTAUFW points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00245
-  enabled: false
-  field: T095.KTAUFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Offsetting account for revaluation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTAUFG (Offsetting account for revaluation) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAUFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTAUFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTAUFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00246
-  enabled: false
-  field: T095.KTANSG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Contra account: Acquisition value posting must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTANSG (Contra account: Acquisition value posting) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTANSG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTANSG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTANSG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00247
-  enabled: false
-  field: T095.KTANZG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Contra account: Down payment posting must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTANZG (Contra account: Down payment posting) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTANZG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTANZG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTANZG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00248
-  enabled: false
-  field: T095.KTVBAB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Clearing acct.revenue from sale to affiliated company must exist in the check table SKA1.SAKNR
-  why_it_matters: KTVBAB (Clearing acct.revenue from sale to affiliated company) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTVBAB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTVBAB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTVBAB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00249
-  enabled: false
-  field: T095.KTVZU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Clearing acct: Acquisition from affiliated company must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTVZU (Clearing acct: Acquisition from affiliated company) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTVZU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTVZU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTVZU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00250
-  enabled: false
-  field: T095.KTVIZU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Clearing account for allocation of investment support must exist in the check table SKA1.SAKNR
-  why_it_matters: KTVIZU (Clearing account for allocation of investment support) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTVIZU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTVIZU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTVIZU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00251
-  enabled: false
-  field: T095.KTRIZU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Clearing account for repaying investment support must exist in the check table SKA1.SAKNR
-  why_it_matters: KTRIZU (Clearing account for repaying investment support) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTRIZU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTRIZU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTRIZU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00252
-  enabled: false
-  field: T095.KTARIZ
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account:Repayment of investment support must exist in the check table SKA1.SAKNR
-  why_it_matters: KTARIZ (Expense account:Repayment of investment support) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTARIZ resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTARIZ '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTARIZ points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00253
-  enabled: false
-  field: T095.KTCOAB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Cost element for settlement of asset u. cons. to CO objects must exist in the check table SKA1.SAKNR
-  why_it_matters: KTCOAB (Cost element for settlement of asset u. cons. to CO objects) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTCOAB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTCOAB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTCOAB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00254
-  enabled: false
-  field: T095.KTENAK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Revenue account for post-capitaliz. of asset must exist in the check table SKA1.SAKNR
-  why_it_matters: KTENAK (Revenue account for post-capitaliz. of asset) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTENAK resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTENAK '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTENAK points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00255
-  enabled: false
-  field: T095.KTNAIB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Account for capitalization differences/nonoperating expense must exist in the check table SKA1.SAKNR
-  why_it_matters: KTNAIB (Account for capitalization differences/nonoperating expense) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTNAIB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095.KTNAIB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095.KTNAIB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00256
-  enabled: false
-  field: T095B.KTNAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Accumulated depreciation account for ordinary depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTNAFB (Accumulated depreciation account for ordinary depreciation) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTNAFB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTNAFB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTNAFB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00257
-  enabled: false
-  field: T095B.KTNAFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for ordinary depreciation to book val. 0 must exist in the check table SKA1.SAKNR
-  why_it_matters: KTNAFG (Expense account for ordinary depreciation to book val. 0) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTNAFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTNAFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTNAFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00258
-  enabled: false
-  field: T095B.KTNAFU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for ordinary depreciation below zero must exist in the check table SKA1.SAKNR
-  why_it_matters: KTNAFU (Expense account for ordinary depreciation below zero) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTNAFU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTNAFU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTNAFU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00259
-  enabled: false
-  field: T095B.KTSAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Accumulated depreciation account for special depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTSAFB (Accumulated depreciation account for special depreciation) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTSAFB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTSAFB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTSAFB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00260
-  enabled: false
-  field: T095B.KTSAFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for special depreciation up to book value 0 must exist in the check table SKA1.SAKNR
-  why_it_matters: KTSAFG (Expense account for special depreciation up to book value 0) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTSAFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTSAFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTSAFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00261
-  enabled: false
-  field: T095B.KTSAFU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for special depreciation below zero must exist in the check table SKA1.SAKNR
-  why_it_matters: KTSAFU (Expense account for special depreciation below zero) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTSAFU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTSAFU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTSAFU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00262
-  enabled: false
-  field: T095B.KTAAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Balance sheet account for unplanned depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTAAFB (Balance sheet account for unplanned depreciation) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAAFB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAAFB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAAFB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00263
-  enabled: false
-  field: T095B.KTAAFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for unplanned depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTAAFG (Expense account for unplanned depreciation) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAAFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAAFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAAFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00264
-  enabled: false
-  field: T095B.KTAAFU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for unplanned depreciation below zero must exist in the check table SKA1.SAKNR
-  why_it_matters: KTAAFU (Expense account for unplanned depreciation below zero) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAAFU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAAFU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAAFU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00265
-  enabled: false
-  field: T095B.KTZINB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Contra account for posting interest must exist in the check table SKA1.SAKNR
-  why_it_matters: KTZINB (Contra account for posting interest) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTZINB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTZINB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTZINB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00266
-  enabled: false
-  field: T095B.KTZING
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Expense account for interest over zero must exist in the check table SKA1.SAKNR
-  why_it_matters: KTZING (Expense account for interest over zero) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTZING resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTZING '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTZING points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00267
-  enabled: false
-  field: T095B.KTZINU
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Expense account: Interest below zero must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTZINU (Expense account: Interest below zero) is defined in the SAP Data Dictionary with check table SKA1.SAKNR
-    on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTZINU resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTZINU '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTZINU points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00268
-  enabled: false
-  field: T095B.KTMAFB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Value adjustment account for transferred reserves must exist in the check table SKA1.SAKNR
-  why_it_matters: KTMAFB (Value adjustment account for transferred reserves) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMAFB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTMAFB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTMAFB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00269
-  enabled: false
-  field: T095B.KTMAFG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Contra account for transferring reserves must exist in the check table SKA1.SAKNR
-  why_it_matters: KTMAFG (Contra account for transferring reserves) is defined in the SAP Data Dictionary with check table
-    SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMAFG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTMAFG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTMAFG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00270
-  enabled: false
-  field: T095B.KTAUNB
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Accumulated depreciation account: Revaluation of ord.deprec. must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTAUNB (Accumulated depreciation account: Revaluation of ord.deprec.) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAUNB resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAUNB '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAUNB points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00271
-  enabled: false
-  field: T095B.KTAUNG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Offsetting account: Revaluation of ordinary depreciation must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTAUNG (Offsetting account: Revaluation of ordinary depreciation) is defined in the SAP Data Dictionary
-    with check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is
-    inconsistent with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAUNG resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAUNG '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAUNG points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00272
-  enabled: false
-  field: T095B.KTNZUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Revenue account for write-up on ordinary depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTNZUS (Revenue account for write-up on ordinary depreciation) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTNZUS resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTNZUS '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTNZUS points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00273
-  enabled: false
-  field: T095B.KTSZUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Revenue account for write-up to special depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTSZUS (Revenue account for write-up to special depreciation) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTSZUS resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTSZUS '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTSZUS points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00274
-  enabled: false
-  field: T095B.KTAZUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Revenue account for write-up on unplanned depreciation must exist in the check table SKA1.SAKNR
-  why_it_matters: KTAZUS (Revenue account for write-up on unplanned depreciation) is defined in the SAP Data Dictionary with
-    check table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTAZUS resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTAZUS '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTAZUS points at a check table SKA1.SAKNR entry that does not exist.
-- id: DXR00275
-  enabled: false
-  field: T095B.KTMZUS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: 'Rev. account: Write-up on transfer of reserves must exist in the check table SKA1.SAKNR'
-  why_it_matters: 'KTMZUS (Rev. account: Write-up on transfer of reserves) is defined in the SAP Data Dictionary with check
-    table SKA1.SAKNR on domain SAKNR. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.'
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KTMZUS resolve it through check table SKA1.SAKNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T095B.KTMZUS '{invalid_value}' is not defined in the check table SKA1.SAKNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T095B.KTMZUS points at a check table SKA1.SAKNR entry that does not exist.

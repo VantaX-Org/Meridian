@@ -6,7 +6,7 @@ module: s4_readiness
 target_state: S4HANA
 generated: true
 rules:
-- id: DXR01835
+- id: DXR01470
   enabled: false
   field: MCHA.LIFNR
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: MCHA.LIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.LIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR01836
+- id: DXR01471
   enabled: false
   field: MCHA.VLCHA
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: MCHA.VLCHA '{invalid_value}' is not defined in the check table MCHA.CHARG. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.VLCHA points at a check table MCHA.CHARG entry that does not exist.
-- id: DXR01837
+- id: DXR01472
   enabled: false
   field: MCHA.VLWRK
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: MCHA.VLWRK '{invalid_value}' is not defined in the check table MARC.WERKS. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.VLWRK points at a check table MARC.WERKS entry that does not exist.
-- id: DXR01838
+- id: DXR01473
   enabled: false
   field: MCHA.VLMAT
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: MCHA.VLMAT '{invalid_value}' is not defined in the check table MARA.MATNR. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.VLMAT points at a check table MARA.MATNR entry that does not exist.
-- id: DXR01839
+- id: DXR01474
   enabled: false
   field: MCHA.BWTAR
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: MCHA.BWTAR '{invalid_value}' is not defined in the check table MBEW.BWTAR. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.BWTAR points at a check table MBEW.BWTAR entry that does not exist.
-- id: DXR01840
+- id: DXR01475
   enabled: false
   field: MCHA.CHAME
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: MCHA.CHAME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.CHAME points at a check table T006.MSEHI entry that does not exist.
-- id: DXR01841
+- id: DXR01476
   enabled: false
   field: MCHA.HERKL
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: MCHA.HERKL '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.HERKL points at a check table T005.LAND1 entry that does not exist.
-- id: DXR01842
+- id: DXR01477
   enabled: false
   field: MCHA.HERKR
   check_class: referential_check
@@ -142,7 +142,7 @@ rules:
     __other__: MCHA.HERKR '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: MCHA.HERKR points at a check table T005S.BLAND entry that does not exist.
-- id: DXR01843
+- id: DXR01478
   enabled: false
   field: MCHA.MTVER
   check_class: referential_check

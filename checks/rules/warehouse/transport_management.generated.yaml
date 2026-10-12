@@ -6,109 +6,7 @@ module: transport_management
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR02473
-  enabled: false
-  field: TVRO.SPFBK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Factory calendar key must exist in the check table TFACD.IDENT
-  why_it_matters: SPFBK (Factory calendar key) is defined in the SAP Data Dictionary with check table TFACD.IDENT on domain
-    WFCID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPFBK resolve it through check table TFACD.IDENT; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.SPFBK '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
-      entry.
-  record_fix_template: TVRO.SPFBK points at a check table TFACD.IDENT entry that does not exist.
-- id: DXR02474
-  enabled: false
-  field: TVRO.EXPVZ
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Mode of Transport for Foreign Trade must exist in the check table T618.EXPVZ
-  why_it_matters: EXPVZ (Mode of Transport for Foreign Trade) is defined in the SAP Data Dictionary with check table T618.EXPVZ
-    on domain EXPVZ. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EXPVZ resolve it through check table T618.EXPVZ; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.EXPVZ '{invalid_value}' is not defined in the check table T618.EXPVZ. Correct it there or add the missing
-      entry.
-  record_fix_template: TVRO.EXPVZ points at a check table T618.EXPVZ entry that does not exist.
-- id: DXR02475
-  enabled: false
-  field: TVRO.SPZST
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Working time from sales view must exist in the check table TTSTRSD.TSTREAMID
-  why_it_matters: SPZST (Working time from sales view) is defined in the SAP Data Dictionary with check table TTSTRSD.TSTREAMID
-    on domain TSTRID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPZST resolve it through check table TTSTRSD.TSTREAMID; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.SPZST '{invalid_value}' is not defined in the check table TTSTRSD.TSTREAMID. Correct it there or add the
-      missing entry.
-  record_fix_template: TVRO.SPZST points at a check table TTSTRSD.TSTREAMID entry that does not exist.
-- id: DXR02476
-  enabled: false
-  field: TVRO.VSART
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Shipping type must exist in the check table T173.VSART
-  why_it_matters: VSART (Shipping type) is defined in the SAP Data Dictionary with check table T173.VSART on domain VERSART.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSART resolve it through check table T173.VSART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.VSART '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
-      entry.
-  record_fix_template: TVRO.VSART points at a check table T173.VSART entry that does not exist.
-- id: DXR02477
-  enabled: false
-  field: TVRO.VSAVL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Shipping type of preliminary leg must exist in the check table T173.VSART
-  why_it_matters: VSAVL (Shipping type of preliminary leg) is defined in the SAP Data Dictionary with check table T173.VSART
-    on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSAVL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.VSAVL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
-      entry.
-  record_fix_template: TVRO.VSAVL points at a check table T173.VSART entry that does not exist.
-- id: DXR02478
-  enabled: false
-  field: TVRO.VSANL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Shipping type of subsequent leg must exist in the check table T173.VSART
-  why_it_matters: VSANL (Shipping type of subsequent leg) is defined in the SAP Data Dictionary with check table T173.VSART
-    on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSANL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TVRO.VSANL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
-      entry.
-  record_fix_template: TVRO.VSANL points at a check table T173.VSART entry that does not exist.
-- id: DXV00986
+- id: DXV00648
   enabled: false
   field: VTTK.STERM
   check_class: domain_value_check
@@ -128,7 +26,7 @@ rules:
   fix_map:
     __other__: 'VTTK.STERM ''{invalid_value}'' is not in domain STERM. Set it to one of: 0, 1, 2, 3, 4.'
   record_fix_template: 'VTTK.STERM is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXV00987
+- id: DXV00649
   enabled: false
   field: VTTK.ABWST
   check_class: domain_value_check
@@ -147,7 +45,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ABWST ''{invalid_value}'' is not in domain ABWST. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'VTTK.ABWST is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00988
+- id: DXV00650
   enabled: false
   field: VTTK.BFART
   check_class: domain_value_check
@@ -166,7 +64,7 @@ rules:
   fix_map:
     __other__: 'VTTK.BFART ''{invalid_value}'' is not in domain BFART. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'VTTK.BFART is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXR02479
+- id: DXR02018
   enabled: false
   field: VTTK.VSAVL
   check_class: referential_check
@@ -183,7 +81,7 @@ rules:
     __other__: VTTK.VSAVL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.VSAVL points at a check table T173.VSART entry that does not exist.
-- id: DXR02480
+- id: DXR02019
   enabled: false
   field: VTTK.VSANL
   check_class: referential_check
@@ -200,7 +98,7 @@ rules:
     __other__: VTTK.VSANL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.VSANL points at a check table T173.VSART entry that does not exist.
-- id: DXV00989
+- id: DXV00651
   enabled: false
   field: VTTK.LAUFK
   check_class: domain_value_check
@@ -220,7 +118,7 @@ rules:
   fix_map:
     __other__: 'VTTK.LAUFK ''{invalid_value}'' is not in domain LAUFK. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'VTTK.LAUFK is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR02481
+- id: DXR02020
   enabled: false
   field: VTTK.VSBED
   check_class: referential_check
@@ -237,7 +135,7 @@ rules:
     __other__: VTTK.VSBED '{invalid_value}' is not defined in the check table TVSB.VSBED. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.VSBED points at a check table TVSB.VSBED entry that does not exist.
-- id: DXV00990
+- id: DXV00652
   enabled: false
   field: VTTK.STTRG
   check_class: domain_value_check
@@ -261,7 +159,7 @@ rules:
   fix_map:
     __other__: 'VTTK.STTRG ''{invalid_value}'' is not in domain STTRG. Set it to one of: 0, 1, 2, 3, 4, 5, 6, 7.'
   record_fix_template: 'VTTK.STTRG is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5, 6, 7.'
-- id: DXV00991
+- id: DXV00653
   enabled: false
   field: VTTK.FBSTA
   check_class: domain_value_check
@@ -280,7 +178,7 @@ rules:
   fix_map:
     __other__: 'VTTK.FBSTA ''{invalid_value}'' is not in domain FBSTA. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.FBSTA is {actual_value}; expected one of: A, B, C.'
-- id: DXV00992
+- id: DXV00654
   enabled: false
   field: VTTK.FBGST
   check_class: domain_value_check
@@ -299,7 +197,7 @@ rules:
   fix_map:
     __other__: 'VTTK.FBGST ''{invalid_value}'' is not in domain FBGST. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.FBGST is {actual_value}; expected one of: A, B, C.'
-- id: DXV00993
+- id: DXV00655
   enabled: false
   field: VTTK.ARSTA
   check_class: domain_value_check
@@ -318,7 +216,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ARSTA ''{invalid_value}'' is not in domain ARSTA. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.ARSTA is {actual_value}; expected one of: A, B, C.'
-- id: DXV00994
+- id: DXV00656
   enabled: false
   field: VTTK.ARGST
   check_class: domain_value_check
@@ -337,7 +235,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ARGST ''{invalid_value}'' is not in domain ARGST. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.ARGST is {actual_value}; expected one of: A, B, C.'
-- id: DXR02482
+- id: DXR02021
   enabled: false
   field: VTTK.KKALSM
   check_class: referential_check
@@ -354,7 +252,7 @@ rules:
     __other__: VTTK.KKALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.KKALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR02483
+- id: DXR02022
   enabled: false
   field: VTTK.SDABW
   check_class: referential_check
@@ -371,7 +269,7 @@ rules:
     __other__: VTTK.SDABW '{invalid_value}' is not defined in the check table TVSAK.SDABW. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.SDABW points at a check table TVSAK.SDABW entry that does not exist.
-- id: DXR02484
+- id: DXR02023
   enabled: false
   field: VTTK.ADD01
   check_class: referential_check
@@ -388,7 +286,7 @@ rules:
     __other__: VTTK.ADD01 '{invalid_value}' is not defined in the check table VTADD01.ADD_INFO. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.ADD01 points at a check table VTADD01.ADD_INFO entry that does not exist.
-- id: DXR02485
+- id: DXR02024
   enabled: false
   field: VTTK.ADD02
   check_class: referential_check
@@ -405,7 +303,7 @@ rules:
     __other__: VTTK.ADD02 '{invalid_value}' is not defined in the check table VTADD02.ADD_INFO. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.ADD02 points at a check table VTADD02.ADD_INFO entry that does not exist.
-- id: DXR02486
+- id: DXR02025
   enabled: false
   field: VTTK.ADD03
   check_class: referential_check
@@ -422,7 +320,7 @@ rules:
     __other__: VTTK.ADD03 '{invalid_value}' is not defined in the check table VTADD03.ADD_INFO. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.ADD03 points at a check table VTADD03.ADD_INFO entry that does not exist.
-- id: DXR02487
+- id: DXR02026
   enabled: false
   field: VTTK.ADD04
   check_class: referential_check
@@ -439,7 +337,7 @@ rules:
     __other__: VTTK.ADD04 '{invalid_value}' is not defined in the check table VTADD04.ADD_INFO. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.ADD04 points at a check table VTADD04.ADD_INFO entry that does not exist.
-- id: DXR02488
+- id: DXR02027
   enabled: false
   field: VTTK.PROLI
   check_class: referential_check
@@ -456,7 +354,7 @@ rules:
     __other__: VTTK.PROLI '{invalid_value}' is not defined in the check table TDGC5.PROLI. Correct it there or add the missing
       entry.
   record_fix_template: VTTK.PROLI points at a check table TDGC5.PROLI entry that does not exist.
-- id: DXV00995
+- id: DXV00657
   enabled: false
   field: VTTK.TNDRST
   check_class: domain_value_check
@@ -478,7 +376,7 @@ rules:
   fix_map:
     __other__: 'VTTK.TNDRST ''{invalid_value}'' is not in domain TNDRST. Set it to one of: AC, AW, CF, CN, EX, NW, RJ.'
   record_fix_template: 'VTTK.TNDRST is {actual_value}; expected one of: AC, AW, CF, CN, EX, NW, RJ.'
-- id: DXV00996
+- id: DXV00658
   enabled: false
   field: VTTK.TNDRRC
   check_class: domain_value_check
@@ -496,7 +394,7 @@ rules:
   fix_map:
     __other__: 'VTTK.TNDRRC ''{invalid_value}'' is not in domain TNDRRC. Set it to one of: DL, SE.'
   record_fix_template: 'VTTK.TNDRRC is {actual_value}; expected one of: DL, SE.'
-- id: DXR02489
+- id: DXR02028
   enabled: false
   field: VTTK.TNDR_MAXC
   check_class: referential_check
@@ -513,7 +411,7 @@ rules:
     __other__: VTTK.TNDR_MAXC '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.TNDR_MAXC points at a check table TCURC.WAERS entry that does not exist.
-- id: DXR02490
+- id: DXR02029
   enabled: false
   field: VTTK.TNDR_ACTC
   check_class: referential_check
@@ -530,7 +428,7 @@ rules:
     __other__: VTTK.TNDR_ACTC '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
       missing entry.
   record_fix_template: VTTK.TNDR_ACTC points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00997
+- id: DXV00659
   enabled: false
   field: VTTK.KZHULFR
   check_class: domain_value_check
@@ -548,7 +446,7 @@ rules:
   fix_map:
     __other__: 'VTTK.KZHULFR ''{invalid_value}'' is not in domain KZHULFR. Set it to one of: X, Y.'
   record_fix_template: 'VTTK.KZHULFR is {actual_value}; expected one of: X, Y.'
-- id: DXV00998
+- id: DXV00660
   enabled: false
   field: VTTK.VLSTK
   check_class: domain_value_check
@@ -567,7 +465,7 @@ rules:
   fix_map:
     __other__: 'VTTK.VLSTK ''{invalid_value}'' is not in domain VLSTK. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.VLSTK is {actual_value}; expected one of: A, B, C.'
-- id: DXR02491
+- id: DXR02030
   enabled: false
   field: VTTK./BEV1/RPFAR1
   check_class: referential_check
@@ -584,7 +482,7 @@ rules:
     __other__: VTTK./BEV1/RPFAR1 '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the
       missing entry.
   record_fix_template: VTTK./BEV1/RPFAR1 points at a check table KNA1.KUNNR entry that does not exist.
-- id: DXR02492
+- id: DXR02031
   enabled: false
   field: VTTK./BEV1/RPFAR2
   check_class: referential_check

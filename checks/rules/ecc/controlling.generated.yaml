@@ -6,7 +6,7 @@ module: controlling
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00399
+- id: DXR00259
   enabled: false
   field: CEPC.VERAK_USER
   check_class: referential_check
@@ -23,7 +23,7 @@ rules:
     __other__: CEPC.VERAK_USER '{invalid_value}' is not defined in the check table USR02.BNAME. Correct it there or add the
       missing entry.
   record_fix_template: CEPC.VERAK_USER points at a check table USR02.BNAME entry that does not exist.
-- id: DXR00400
+- id: DXR00260
   enabled: false
   field: CEPC.LAND1
   check_class: referential_check
@@ -40,7 +40,7 @@ rules:
     __other__: CEPC.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00401
+- id: DXR00261
   enabled: false
   field: CEPC.SPRAS
   check_class: referential_check
@@ -57,7 +57,7 @@ rules:
     __other__: CEPC.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00402
+- id: DXR00262
   enabled: false
   field: CEPC.VNAME
   check_class: referential_check
@@ -74,7 +74,7 @@ rules:
     __other__: CEPC.VNAME '{invalid_value}' is not defined in the check table T8JV.VNAME. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.VNAME points at a check table T8JV.VNAME entry that does not exist.
-- id: DXR00403
+- id: DXR00263
   enabled: false
   field: CEPC.RECID
   check_class: referential_check
@@ -91,7 +91,7 @@ rules:
     __other__: CEPC.RECID '{invalid_value}' is not defined in the check table T8JJ.RECID. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.RECID points at a check table T8JJ.RECID entry that does not exist.
-- id: DXR00404
+- id: DXR00264
   enabled: false
   field: CEPC.ETYPE
   check_class: referential_check
@@ -108,7 +108,7 @@ rules:
     __other__: CEPC.ETYPE '{invalid_value}' is not defined in the check table T8JE.ETYPE. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.ETYPE points at a check table T8JE.ETYPE entry that does not exist.
-- id: DXR00405
+- id: DXR00265
   enabled: false
   field: CEPC.TXJCD
   check_class: referential_check
@@ -125,7 +125,7 @@ rules:
     __other__: CEPC.TXJCD '{invalid_value}' is not defined in the check table TTXJ.TXJCD. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.TXJCD points at a check table TTXJ.TXJCD entry that does not exist.
-- id: DXR00406
+- id: DXR00266
   enabled: false
   field: CEPC.REGIO
   check_class: referential_check
@@ -142,7 +142,7 @@ rules:
     __other__: CEPC.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00407
+- id: DXR00267
   enabled: false
   field: CEPC.KVEWE
   check_class: referential_check
@@ -159,7 +159,7 @@ rules:
     __other__: CEPC.KVEWE '{invalid_value}' is not defined in the check table T681V.KVEWE. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KVEWE points at a check table T681V.KVEWE entry that does not exist.
-- id: DXR00408
+- id: DXR00268
   enabled: false
   field: CEPC.KAPPL
   check_class: referential_check
@@ -176,7 +176,7 @@ rules:
     __other__: CEPC.KAPPL '{invalid_value}' is not defined in the check table T681A.KAPPL. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KAPPL points at a check table T681A.KAPPL entry that does not exist.
-- id: DXR00409
+- id: DXR00269
   enabled: false
   field: CEPC.KALSM
   check_class: referential_check
@@ -193,7 +193,7 @@ rules:
     __other__: CEPC.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: CEPC.KALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR00410
+- id: DXR00270
   enabled: false
   field: CEPC.LOGSYSTEM
   check_class: referential_check
@@ -210,7 +210,7 @@ rules:
     __other__: CEPC.LOGSYSTEM '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the
       missing entry.
   record_fix_template: CEPC.LOGSYSTEM points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXR00411
+- id: DXR00271
   enabled: false
   field: CEPC.PCA_TEMPLATE
   check_class: referential_check
@@ -227,7 +227,7 @@ rules:
     __other__: CEPC.PCA_TEMPLATE '{invalid_value}' is not defined in the check table COTPL.TEMPLATE. Correct it there or add
       the missing entry.
   record_fix_template: CEPC.PCA_TEMPLATE points at a check table COTPL.TEMPLATE entry that does not exist.
-- id: DXR00412
+- id: DXR00272
   enabled: false
   field: CSKA.FUNC_AREA
   check_class: referential_check
@@ -244,7 +244,7 @@ rules:
     __other__: CSKA.FUNC_AREA '{invalid_value}' is not defined in the check table TFKB.FKBER. Correct it there or add the
       missing entry.
   record_fix_template: CSKA.FUNC_AREA points at a check table TFKB.FKBER entry that does not exist.
-- id: DXR00413
+- id: DXR00273
   enabled: false
   field: CSKB.MSEHI
   check_class: referential_check
@@ -261,7 +261,7 @@ rules:
     __other__: CSKB.MSEHI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CSKB.MSEHI points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00414
+- id: DXR00274
   enabled: false
   field: CSKB.RECID
   check_class: referential_check
@@ -278,7 +278,7 @@ rules:
     __other__: CSKB.RECID '{invalid_value}' is not defined in the check table T8JJ.RECID. Correct it there or add the missing
       entry.
   record_fix_template: CSKB.RECID points at a check table T8JJ.RECID entry that does not exist.
-- id: DXR00415
+- id: DXR00275
   enabled: false
   field: CSKS.KALSM
   check_class: referential_check
@@ -295,7 +295,7 @@ rules:
     __other__: CSKS.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.KALSM points at a check table T683.KALSM entry that does not exist.
-- id: DXR00416
+- id: DXR00276
   enabled: false
   field: CSKS.REGIO
   check_class: referential_check
@@ -312,7 +312,7 @@ rules:
     __other__: CSKS.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00417
+- id: DXR00277
   enabled: false
   field: CSKS.SPRAS
   check_class: referential_check
@@ -329,7 +329,7 @@ rules:
     __other__: CSKS.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXR00418
+- id: DXR00278
   enabled: false
   field: CSKS.OBJNR
   check_class: referential_check
@@ -346,7 +346,7 @@ rules:
     __other__: CSKS.OBJNR '{invalid_value}' is not defined in the check table ONR00.OBJNR. Correct it there or add the missing
       entry.
   record_fix_template: CSKS.OBJNR points at a check table ONR00.OBJNR entry that does not exist.
-- id: DXR00419
+- id: DXR00279
   enabled: false
   field: CSKS.LOGSYSTEM
   check_class: referential_check
@@ -363,7 +363,7 @@ rules:
     __other__: CSKS.LOGSYSTEM '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the
       missing entry.
   record_fix_template: CSKS.LOGSYSTEM points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXV00141
+- id: DXV00088
   enabled: false
   field: CSLA.LATYPI
   check_class: domain_value_check
@@ -384,7 +384,7 @@ rules:
   fix_map:
     __other__: 'CSLA.LATYPI ''{invalid_value}'' is not in domain LATYPI. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'CSLA.LATYPI is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR00420
+- id: DXR00280
   enabled: false
   field: CSLA.AUSEH
   check_class: referential_check
@@ -401,7 +401,7 @@ rules:
     __other__: CSLA.AUSEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
       entry.
   record_fix_template: CSLA.AUSEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00421
+- id: DXR00281
   enabled: false
   field: CSLA.TARKZ
   check_class: referential_check
@@ -418,7 +418,7 @@ rules:
     __other__: CSLA.TARKZ '{invalid_value}' is not defined in the check table TKA10.TARKZ. Correct it there or add the missing
       entry.
   record_fix_template: CSLA.TARKZ points at a check table TKA10.TARKZ entry that does not exist.
-- id: DXR00422
+- id: DXR00282
   enabled: false
   field: CSLA.TARKZ_I
   check_class: referential_check
@@ -435,640 +435,3 @@ rules:
     __other__: CSLA.TARKZ_I '{invalid_value}' is not defined in the check table TKA10.TARKZ. Correct it there or add the missing
       entry.
   record_fix_template: CSLA.TARKZ_I points at a check table TKA10.TARKZ entry that does not exist.
-- id: DXR00423
-  enabled: false
-  field: T001W.EKORG
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Purchasing organization must exist in the check table T024E.EKORG
-  why_it_matters: EKORG (Purchasing organization) is defined in the SAP Data Dictionary with check table T024E.EKORG on domain
-    EKORG. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EKORG resolve it through check table T024E.EKORG; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.EKORG '{invalid_value}' is not defined in the check table T024E.EKORG. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.EKORG points at a check table T024E.EKORG entry that does not exist.
-- id: DXR00424
-  enabled: false
-  field: T001W.BWKEY
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Valuation area must exist in the check table T001K.BWKEY
-  why_it_matters: BWKEY (Valuation area) is defined in the SAP Data Dictionary with check table T001K.BWKEY on domain BWKEY.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWKEY resolve it through check table T001K.BWKEY; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.BWKEY '{invalid_value}' is not defined in the check table T001K.BWKEY. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.BWKEY points at a check table T001K.BWKEY entry that does not exist.
-- id: DXR00425
-  enabled: false
-  field: T001W.FABKL
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Factory calendar key must exist in the check table TFACD.IDENT
-  why_it_matters: FABKL (Factory calendar key) is defined in the SAP Data Dictionary with check table TFACD.IDENT on domain
-    WFCID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FABKL resolve it through check table TFACD.IDENT; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.FABKL '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.FABKL points at a check table TFACD.IDENT entry that does not exist.
-- id: DXV00142
-  enabled: false
-  field: T001W.KKOWK
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Indicator: Conditions at plant level must be a value of domain KKOWK (e.g. +, -)'
-  why_it_matters: 'Domain KKOWK fixes the permitted values of KKOWK (Indicator: Conditions at plant level) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs
-    that consume the field.'
-  rule_authority: sap_hard_constraint
-  sap_impact: KKOWK will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - +
-  - '-'
-  fix_map:
-    __other__: 'T001W.KKOWK ''{invalid_value}'' is not in domain KKOWK. Set it to one of: +, -.'
-  record_fix_template: 'T001W.KKOWK is {actual_value}; expected one of: +, -.'
-- id: DXR00426
-  enabled: false
-  field: T001W.LAND1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Country Key must exist in the check table T005.LAND1
-  why_it_matters: LAND1 (Country Key) is defined in the SAP Data Dictionary with check table T005.LAND1 on domain LAND1. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LAND1 resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.LAND1 '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.LAND1 points at a check table T005.LAND1 entry that does not exist.
-- id: DXR00427
-  enabled: false
-  field: T001W.REGIO
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Region (State, Province, County) must exist in the check table T005S.BLAND
-  why_it_matters: REGIO (Region (State, Province, County)) is defined in the SAP Data Dictionary with check table T005S.BLAND
-    on domain REGIO. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REGIO resolve it through check table T005S.BLAND; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.REGIO points at a check table T005S.BLAND entry that does not exist.
-- id: DXR00428
-  enabled: false
-  field: T001W.COUNC
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: County Code must exist in the check table T005E.COUNC
-  why_it_matters: COUNC (County Code) is defined in the SAP Data Dictionary with check table T005E.COUNC on domain COUNC.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read COUNC resolve it through check table T005E.COUNC; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.COUNC '{invalid_value}' is not defined in the check table T005E.COUNC. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.COUNC points at a check table T005E.COUNC entry that does not exist.
-- id: DXR00429
-  enabled: false
-  field: T001W.CITYC
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: City Code must exist in the check table T005G.CITYC
-  why_it_matters: CITYC (City Code) is defined in the SAP Data Dictionary with check table T005G.CITYC on domain CITYC. A
-    value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CITYC resolve it through check table T005G.CITYC; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.CITYC '{invalid_value}' is not defined in the check table T005G.CITYC. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.CITYC points at a check table T005G.CITYC entry that does not exist.
-- id: DXR00430
-  enabled: false
-  field: T001W.IWERK
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Maintenance Planning Plant must exist in the check table T001W.WERKS
-  why_it_matters: IWERK (Maintenance Planning Plant) is defined in the SAP Data Dictionary with check table T001W.WERKS on
-    domain WERKS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read IWERK resolve it through check table T001W.WERKS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.IWERK '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.IWERK points at a check table T001W.WERKS entry that does not exist.
-- id: DXR00431
-  enabled: false
-  field: T001W.SPRAS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Language Key must exist in the check table T002.SPRAS
-  why_it_matters: SPRAS (Language Key) is defined in the SAP Data Dictionary with check table T002.SPRAS on domain SPRAS.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPRAS resolve it through check table T002.SPRAS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.SPRAS points at a check table T002.SPRAS entry that does not exist.
-- id: DXV00143
-  enabled: false
-  field: T001W.VLFKZ
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Plant category must be a value of domain VLFKZ (e.g. A, B)
-  why_it_matters: Domain VLFKZ fixes the permitted values of VLFKZ (Plant category) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: VLFKZ will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - A
-  - B
-  fix_map:
-    __other__: 'T001W.VLFKZ ''{invalid_value}'' is not in domain VLFKZ. Set it to one of: A, B.'
-  record_fix_template: 'T001W.VLFKZ is {actual_value}; expected one of: A, B.'
-- id: DXR00432
-  enabled: false
-  field: T001W.LIFNR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Vendor number of plant must exist in the check table LFA1.LIFNR
-  why_it_matters: LIFNR (Vendor number of plant) is defined in the SAP Data Dictionary with check table LFA1.LIFNR on domain
-    LIFNR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LIFNR resolve it through check table LFA1.LIFNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.LIFNR '{invalid_value}' is not defined in the check table LFA1.LIFNR. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.LIFNR points at a check table LFA1.LIFNR entry that does not exist.
-- id: DXR00433
-  enabled: false
-  field: T001W.ZONE1
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Supply region (region supplied) must exist in the check table TZONE.ZONE1
-  why_it_matters: ZONE1 (Supply region (region supplied)) is defined in the SAP Data Dictionary with check table TZONE.ZONE1
-    on domain ZONE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZONE1 resolve it through check table TZONE.ZONE1; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T001W.ZONE1 '{invalid_value}' is not defined in the check table TZONE.ZONE1. Correct it there or add the missing
-      entry.
-  record_fix_template: T001W.ZONE1 points at a check table TZONE.ZONE1 entry that does not exist.
-- id: DXR00434
-  enabled: false
-  field: T006.DIMID
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Dimension key must exist in the check table T006D.DIMID
-  why_it_matters: DIMID (Dimension key) is defined in the SAP Data Dictionary with check table T006D.DIMID on domain DIMID.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DIMID resolve it through check table T006D.DIMID; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T006.DIMID '{invalid_value}' is not defined in the check table T006D.DIMID. Correct it there or add the missing
-      entry.
-  record_fix_template: T006.DIMID points at a check table T006D.DIMID entry that does not exist.
-- id: DXR00435
-  enabled: false
-  field: T006.ISOCODE
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: ISO code for unit of measurement must exist in the check table T006I.ISOCODE
-  why_it_matters: ISOCODE (ISO code for unit of measurement) is defined in the SAP Data Dictionary with check table T006I.ISOCODE
-    on domain ISOCD_UNIT. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
-    configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ISOCODE resolve it through check table T006I.ISOCODE; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T006.ISOCODE '{invalid_value}' is not defined in the check table T006I.ISOCODE. Correct it there or add the
-      missing entry.
-  record_fix_template: T006.ISOCODE points at a check table T006I.ISOCODE entry that does not exist.
-- id: DXR00436
-  enabled: false
-  field: T006.TEMP_UNIT
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Temperature unit must exist in the check table T006.MSEHI
-  why_it_matters: TEMP_UNIT (Temperature unit) is defined in the SAP Data Dictionary with check table T006.MSEHI on domain
-    MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TEMP_UNIT resolve it through check table T006.MSEHI; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T006.TEMP_UNIT '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the
-      missing entry.
-  record_fix_template: T006.TEMP_UNIT points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00437
-  enabled: false
-  field: T024D.EKGRP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Purchasing group must exist in the check table T024.EKGRP
-  why_it_matters: EKGRP (Purchasing group) is defined in the SAP Data Dictionary with check table T024.EKGRP on domain EKGRP.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EKGRP resolve it through check table T024.EKGRP; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024D.EKGRP '{invalid_value}' is not defined in the check table T024.EKGRP. Correct it there or add the missing
-      entry.
-  record_fix_template: T024D.EKGRP points at a check table T024.EKGRP entry that does not exist.
-- id: DXR00438
-  enabled: false
-  field: T024D.GSBER
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Business Area must exist in the check table TGSB.GSBER
-  why_it_matters: GSBER (Business Area) is defined in the SAP Data Dictionary with check table TGSB.GSBER on domain GSBER.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GSBER resolve it through check table TGSB.GSBER; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024D.GSBER '{invalid_value}' is not defined in the check table TGSB.GSBER. Correct it there or add the missing
-      entry.
-  record_fix_template: T024D.GSBER points at a check table TGSB.GSBER entry that does not exist.
-- id: DXR00439
-  enabled: false
-  field: T024D.PRCTR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Profit Center must exist in the check table CEPC.PRCTR
-  why_it_matters: PRCTR (Profit Center) is defined in the SAP Data Dictionary with check table CEPC.PRCTR on domain PRCTR.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PRCTR resolve it through check table CEPC.PRCTR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024D.PRCTR '{invalid_value}' is not defined in the check table CEPC.PRCTR. Correct it there or add the missing
-      entry.
-  record_fix_template: T024D.PRCTR points at a check table CEPC.PRCTR entry that does not exist.
-- id: DXR00440
-  enabled: false
-  field: T024D.USRTYP
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Recipient type must exist in the check table T779O.OTYPE
-  why_it_matters: USRTYP (Recipient type) is defined in the SAP Data Dictionary with check table T779O.OTYPE on domain OTYPE.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USRTYP resolve it through check table T779O.OTYPE; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T024D.USRTYP '{invalid_value}' is not defined in the check table T779O.OTYPE. Correct it there or add the missing
-      entry.
-  record_fix_template: T024D.USRTYP points at a check table T779O.OTYPE entry that does not exist.
-- id: DXR00441
-  enabled: false
-  field: T351P.ZEIEH
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Unit for the performance of maintenance tasks must exist in the check table T006.MSEHI
-  why_it_matters: ZEIEH (Unit for the performance of maintenance tasks) is defined in the SAP Data Dictionary with check table
-    T006.MSEHI on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZEIEH resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T351P.ZEIEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: T351P.ZEIEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXR00442
-  enabled: false
-  field: T351P.LEIEH
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Maintenance strategy activity unit must exist in the check table T006.MSEHI
-  why_it_matters: LEIEH (Maintenance strategy activity unit) is defined in the SAP Data Dictionary with check table T006.MSEHI
-    on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LEIEH resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: T351P.LEIEH '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
-      entry.
-  record_fix_template: T351P.LEIEH points at a check table T006.MSEHI entry that does not exist.
-- id: DXV00144
-  enabled: false
-  field: T351P.PERKN
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Period type indicator for maintenance package must be a value of domain PERKNZ (e.g. E, P)
-  why_it_matters: Domain PERKNZ fixes the permitted values of PERKN (Period type indicator for maintenance package) in the
-    SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the
-    programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: PERKN will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - E
-  - P
-  fix_map:
-    __other__: 'T351P.PERKN ''{invalid_value}'' is not in domain PERKNZ. Set it to one of: E, P.'
-  record_fix_template: 'T351P.PERKN is {actual_value}; expected one of: E, P.'
-- id: DXV00145
-  enabled: false
-  field: TKA01.KOKFI
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Allocation Indicator must be a value of domain KOKFI (e.g. 1, 2)
-  why_it_matters: Domain KOKFI fixes the permitted values of KOKFI (Allocation Indicator) in the SAP Data Dictionary. Any
-    other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the
-    field.
-  rule_authority: sap_hard_constraint
-  sap_impact: KOKFI will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'TKA01.KOKFI ''{invalid_value}'' is not in domain KOKFI. Set it to one of: 1, 2.'
-  record_fix_template: 'TKA01.KOKFI is {actual_value}; expected one of: 1, 2.'
-- id: DXR00443
-  enabled: false
-  field: TKA01.PCACUR
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Local Currency for Profit Center Accounting must exist in the check table TCURC.WAERS
-  why_it_matters: PCACUR (Local Currency for Profit Center Accounting) is defined in the SAP Data Dictionary with check table
-    TCURC.WAERS on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with
-    the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PCACUR resolve it through check table TCURC.WAERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TKA01.PCACUR '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
-      entry.
-  record_fix_template: TKA01.PCACUR points at a check table TCURC.WAERS entry that does not exist.
-- id: DXV00146
-  enabled: false
-  field: TKA01.PCACURTP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Currency type of the profit center report currency must be a value of domain CURTP (e.g. 00, 10, 11, 12, 20, 30,
-    31, 32, 40, 50, 60, 70 ...)
-  why_it_matters: Domain CURTP fixes the permitted values of PCACURTP (Currency type of the profit center report currency)
-    in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: PCACURTP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '00'
-  - '10'
-  - '11'
-  - '12'
-  - '20'
-  - '30'
-  - '31'
-  - '32'
-  - '40'
-  - '50'
-  - '60'
-  - '70'
-  - '71'
-  - '72'
-  - '80'
-  - '81'
-  - '82'
-  - '90'
-  - '92'
-  - A0
-  - B0
-  - B2
-  - C0
-  - C1
-  - C2
-  fix_map:
-    __other__: 'TKA01.PCACURTP ''{invalid_value}'' is not in domain CURTP. Set it to one of: 00, 10, 11, 12, 20, 30, 31, 32,
-      40, 50, 60, 70 ....'
-  record_fix_template: 'TKA01.PCACURTP is {actual_value}; expected one of: 00, 10, 11, 12, 20, 30, 31, 32, 40, 50, 60, 70
-    ....'
-- id: DXV00147
-  enabled: false
-  field: TKA01.CTYP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Currency Type for Controlling Area must be a value of domain CURTP (e.g. 00, 10, 11, 12, 20, 30, 31, 32, 40, 50,
-    60, 70 ...)
-  why_it_matters: Domain CURTP fixes the permitted values of CTYP (Currency Type for Controlling Area) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: CTYP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '00'
-  - '10'
-  - '11'
-  - '12'
-  - '20'
-  - '30'
-  - '31'
-  - '32'
-  - '40'
-  - '50'
-  - '60'
-  - '70'
-  - '71'
-  - '72'
-  - '80'
-  - '81'
-  - '82'
-  - '90'
-  - '92'
-  - A0
-  - B0
-  - B2
-  - C0
-  - C1
-  - C2
-  fix_map:
-    __other__: 'TKA01.CTYP ''{invalid_value}'' is not in domain CURTP. Set it to one of: 00, 10, 11, 12, 20, 30, 31, 32, 40,
-      50, 60, 70 ....'
-  record_fix_template: 'TKA01.CTYP is {actual_value}; expected one of: 00, 10, 11, 12, 20, 30, 31, 32, 40, 50, 60, 70 ....'
-- id: DXR00444
-  enabled: false
-  field: TKA01.LOGSYSTEM
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Logical System must exist in the check table TBDLS.LOGSYS
-  why_it_matters: LOGSYSTEM (Logical System) is defined in the SAP Data Dictionary with check table TBDLS.LOGSYS on domain
-    LOGSYS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LOGSYSTEM resolve it through check table TBDLS.LOGSYS; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TKA01.LOGSYSTEM '{invalid_value}' is not defined in the check table TBDLS.LOGSYS. Correct it there or add the
-      missing entry.
-  record_fix_template: TKA01.LOGSYSTEM points at a check table TBDLS.LOGSYS entry that does not exist.
-- id: DXV00148
-  enabled: false
-  field: TKA01.ALEMT
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Cost center distribution method via ALE must be a value of domain CO_ALEMT (e.g. 01, 02)
-  why_it_matters: Domain CO_ALEMT fixes the permitted values of ALEMT (Cost center distribution method via ALE) in the SAP
-    Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: ALEMT will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '01'
-  - '02'
-  fix_map:
-    __other__: 'TKA01.ALEMT ''{invalid_value}'' is not in domain CO_ALEMT. Set it to one of: 01, 02.'
-  record_fix_template: 'TKA01.ALEMT is {actual_value}; expected one of: 01, 02.'
-- id: DXV00149
-  enabled: false
-  field: TKA01.PCA_ALEMT
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Method for Distributing Profit Centers Using ALE must be a value of domain PCA_ALEMT (e.g. 01, 02)
-  why_it_matters: Domain PCA_ALEMT fixes the permitted values of PCA_ALEMT (Method for Distributing Profit Centers Using ALE)
-    in the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently
-    by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: PCA_ALEMT will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '01'
-  - '02'
-  fix_map:
-    __other__: 'TKA01.PCA_ALEMT ''{invalid_value}'' is not in domain PCA_ALEMT. Set it to one of: 01, 02.'
-  record_fix_template: 'TKA01.PCA_ALEMT is {actual_value}; expected one of: 01, 02.'
-- id: DXV00150
-  enabled: false
-  field: TKA01.PCA_VALU
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Valuation View must be a value of domain VALUTYP (e.g. 0, 1, 2)
-  why_it_matters: Domain VALUTYP fixes the permitted values of PCA_VALU (Valuation View) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
-  rule_authority: sap_hard_constraint
-  sap_impact: PCA_VALU will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '0'
-  - '1'
-  - '2'
-  fix_map:
-    __other__: 'TKA01.PCA_VALU ''{invalid_value}'' is not in domain VALUTYP. Set it to one of: 0, 1, 2.'
-  record_fix_template: 'TKA01.PCA_VALU is {actual_value}; expected one of: 0, 1, 2.'
-- id: DXR00445
-  enabled: false
-  field: TKA01.VNAME
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Person Responsible for the Controlling Area must exist in the check table USR02.BNAME
-  why_it_matters: VNAME (Person Responsible for the Controlling Area) is defined in the SAP Data Dictionary with check table
-    USR02.BNAME on domain XUBNAME. A value outside that table is not a value SAP recognises, so the record is inconsistent
-    with the configuration it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VNAME resolve it through check table USR02.BNAME; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TKA01.VNAME '{invalid_value}' is not defined in the check table USR02.BNAME. Correct it there or add the missing
-      entry.
-  record_fix_template: TKA01.VNAME points at a check table USR02.BNAME entry that does not exist.
-- id: DXR00446
-  enabled: false
-  field: TKA02.KOKRS
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Controlling Area must exist in the check table TKA01.KOKRS
-  why_it_matters: KOKRS (Controlling Area) is defined in the SAP Data Dictionary with check table TKA01.KOKRS on domain CACCD.
-    A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
-    on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KOKRS resolve it through check table TKA01.KOKRS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TKA02.KOKRS '{invalid_value}' is not defined in the check table TKA01.KOKRS. Correct it there or add the missing
-      entry.
-  record_fix_template: TKA02.KOKRS points at a check table TKA01.KOKRS entry that does not exist.
-- id: DXR00447
-  enabled: false
-  field: TKA05.FUNC_AREA
-  check_class: referential_check
-  severity: high
-  dimension: consistency
-  message: Functional Area must exist in the check table TFKB.FKBER
-  why_it_matters: FUNC_AREA (Functional Area) is defined in the SAP Data Dictionary with check table TFKB.FKBER on domain
-    FKBER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
-    it depends on.
-  rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FUNC_AREA resolve it through check table TFKB.FKBER; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
-  fix_map:
-    __other__: TKA05.FUNC_AREA '{invalid_value}' is not defined in the check table TFKB.FKBER. Correct it there or add the
-      missing entry.
-  record_fix_template: TKA05.FUNC_AREA points at a check table TFKB.FKBER entry that does not exist.
