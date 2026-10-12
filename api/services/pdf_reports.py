@@ -30,13 +30,13 @@ from sqlalchemy.orm import Session
 
 from api.routes.findings import composite_dqs
 from api.services.deterministic_report import compute_readiness_status
-from api.services.scoring import critical_over_tolerance
+from api.services.scoring import critical_over_tolerance, impact
 from api.services.report_pdf import TEMPLATE_DIR
+from api.services.report_theme import PRINT_TOKENS, band_colour
 
 DIMENSIONS = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
 SEVERITIES = ("critical", "high", "medium", "low")
 _SEV_RANK = {s: i for i, s in enumerate(SEVERITIES)}
-_SEV_WEIGHT = {"critical": 8, "high": 4, "medium": 2, "low": 1}
 _IP = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}(?::\S+)?")
 
 # ── formatting ───────────────────────────────────────────────────────────────
@@ -142,6 +142,7 @@ def redact(v: Any) -> str:
 def _env() -> Environment:
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), autoescape=select_autoescape(["html"]),
                       trim_blocks=True, lstrip_blocks=True)
+    env.globals.update(tokens=PRINT_TOKENS, band_colour=band_colour)
     env.filters.update(n=fmt_n, pct=fmt_pct, signed=fmt_signed, dt=fmt_dt, dur=fmt_dur,
                        module=fmt_module, st=status_class, redact=redact,
                        css_str=css_str, sast=fmt_sast)
@@ -158,9 +159,9 @@ def render(template: str, ctx: dict) -> bytes:
 
 # ── inline SVG charts (no JS) ────────────────────────────────────────────────
 
-_ACCENT, _TRACK, _INK, _MUTED = "#2B4BE0", "#E4E2DB", "#141519", "#6A6C76"
-_UP, _DOWN = "#157A3C", "#B42318"
-_HIGH, _MED = "#BA4A0B", "#946200"
+_ACCENT, _TRACK, _INK, _MUTED = (PRINT_TOKENS[k] for k in ("accent", "line", "ink", "ink_3"))
+_UP, _DOWN = PRINT_TOKENS["ok"], PRINT_TOKENS["bad"]
+_HIGH, _MED = PRINT_TOKENS["high"], PRINT_TOKENS["warn"]
 
 
 def hbars(rows: Iterable[tuple[str, Optional[float]]], maximum: float = 100.0, unit: str = "",
@@ -355,8 +356,7 @@ def analysis_context(version: dict, findings: list[dict], *, tenant_name: str, s
 
     fails = _sorted_fails(findings)
     sev = {s: sum(1 for f in fails if f.get("severity") == s) for s in SEVERITIES}
-    fix_first = sorted(fails, key=lambda f: (-_SEV_WEIGHT.get(f.get("severity"), 1) * f["affected"],
-                                             f["check_id"]))[:5]
+    fix_first = sorted(fails, key=lambda f: (-impact(f["affected"], f.get("severity")), f["check_id"]))[:5]
     readiness = overall_readiness(m["status"] for m in modules if m["status"])
     ran = [f for f in findings if not errored(f)]
     errs = [_check_row(f) for f in findings if errored(f)]

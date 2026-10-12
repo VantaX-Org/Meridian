@@ -7,6 +7,9 @@
 # Fields:
 #   check_id                  — matches findings_summary[].check_id
 #   module                    — SAP module key
+#   l1                        — L1 process the feature belongs to (procure_to_pay, order_to_cash,
+#                               record_to_report, plan_to_produce, hire_to_retire, master_data);
+#                               impact is grouped by it and never summed across L1s
 #   target_feature            — the downstream feature / capability affected
 #   target_system             — the system or component that owns target_feature
 #   impact_type               — full_block | degraded | cosmetic
@@ -23,6 +26,7 @@ rules:
   # ===========================================================================
   - check_id: EC001
     module: employee_central
+    l1: hire_to_retire
     target_feature: All SuccessFactors Modules
     target_system: SuccessFactors BizX
     impact_type: full_block
@@ -45,6 +49,7 @@ rules:
 
   - check_id: EC005
     module: employee_central
+    l1: hire_to_retire
     target_feature: SF Onboarding 2.0
     target_system: SuccessFactors Onboarding
     impact_type: full_block
@@ -65,6 +70,7 @@ rules:
 
   - check_id: EC010
     module: employee_central
+    l1: hire_to_retire
     target_feature: Manager Self-Service
     target_system: SuccessFactors Employee Central
     impact_type: degraded
@@ -81,6 +87,7 @@ rules:
 
   - check_id: EC015
     module: employee_central
+    l1: hire_to_retire
     target_feature: Payroll Integration
     target_system: SuccessFactors Employee Central Payroll
     impact_type: full_block
@@ -101,6 +108,7 @@ rules:
   # ===========================================================================
   - check_id: COMP001
     module: compensation
+    l1: hire_to_retire
     target_feature: Compensation Planning
     target_system: SuccessFactors Compensation
     impact_type: full_block
@@ -119,6 +127,7 @@ rules:
 
   - check_id: COMP005
     module: compensation
+    l1: hire_to_retire
     target_feature: Pay Equity Analysis
     target_system: SuccessFactors Compensation
     impact_type: degraded
@@ -137,6 +146,7 @@ rules:
   # ===========================================================================
   - check_id: BEN001
     module: benefits
+    l1: hire_to_retire
     target_feature: Benefits Enrollment
     target_system: SuccessFactors Benefits
     impact_type: full_block
@@ -158,6 +168,7 @@ rules:
   # ===========================================================================
   - check_id: PAY001
     module: payroll_integration
+    l1: hire_to_retire
     target_feature: Payroll Processing
     target_system: SuccessFactors Employee Central Payroll
     impact_type: full_block
@@ -180,6 +191,7 @@ rules:
   # ===========================================================================
   - check_id: PERF001
     module: performance_goals
+    l1: hire_to_retire
     target_feature: Performance Reviews
     target_system: SuccessFactors Performance & Goals
     impact_type: degraded
@@ -197,6 +209,7 @@ rules:
 
   - check_id: PERF005
     module: performance_goals
+    l1: hire_to_retire
     target_feature: Goal Cascade
     target_system: SuccessFactors Performance & Goals
     impact_type: cosmetic
@@ -214,6 +227,7 @@ rules:
   # ===========================================================================
   - check_id: SUCC001
     module: succession_planning
+    l1: hire_to_retire
     target_feature: Succession Nomination
     target_system: SuccessFactors Succession & Development
     impact_type: degraded
@@ -233,6 +247,7 @@ rules:
   # ===========================================================================
   - check_id: REC001
     module: recruiting_onboarding
+    l1: hire_to_retire
     target_feature: Recruiting Pipeline
     target_system: SuccessFactors Recruiting
     impact_type: degraded
@@ -253,6 +268,7 @@ rules:
   # ===========================================================================
   - check_id: LRN001
     module: learning_management
+    l1: hire_to_retire
     target_feature: Compliance Training
     target_system: SuccessFactors Learning
     impact_type: full_block
@@ -269,6 +285,7 @@ rules:
 
   - check_id: LRN005
     module: learning_management
+    l1: hire_to_retire
     target_feature: Learning Assignment
     target_system: SuccessFactors Learning
     impact_type: degraded
@@ -287,6 +304,7 @@ rules:
   # ===========================================================================
   - check_id: TIME001
     module: time_attendance
+    l1: hire_to_retire
     target_feature: Leave Management
     target_system: SuccessFactors Time Off
     impact_type: full_block
@@ -304,6 +322,7 @@ rules:
 
   - check_id: TIME005
     module: time_attendance
+    l1: hire_to_retire
     target_feature: Time Sheet Entry
     target_system: SuccessFactors Time Tracking
     impact_type: degraded
@@ -322,6 +341,7 @@ rules:
   # ===========================================================================
   - check_id: AP001
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: Vendor Master Management
     target_system: SAP ECC FI-AP
     impact_type: full_block
@@ -342,6 +362,7 @@ rules:
 
   - check_id: AP003
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: Purchase Order Processing
     target_system: SAP ECC MM
     impact_type: degraded
@@ -357,6 +378,7 @@ rules:
 
   - check_id: AP014
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: FI Posting / Invoice Verification
     target_system: SAP ECC FI-AP
     impact_type: full_block
@@ -374,6 +396,7 @@ rules:
 
   - check_id: AP016
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: Invoice Due Date Calculation
     target_system: SAP ECC FI-AP
     impact_type: full_block
@@ -389,6 +412,7 @@ rules:
 
   - check_id: AP017
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: F110 Automatic Payment
     target_system: SAP ECC FI-AP
     impact_type: full_block
@@ -405,6 +429,7 @@ rules:
 
   - check_id: AP018
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: F110 Automatic Payment
     target_system: SAP ECC FI-AP
     impact_type: full_block
@@ -419,6 +444,7 @@ rules:
 
   - check_id: AP019
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: Withholding Tax Processing
     target_system: SAP ECC FI-AP
     impact_type: degraded
@@ -434,6 +460,7 @@ rules:
 
   - check_id: AP020
     module: accounts_payable
+    l1: procure_to_pay
     target_feature: Vendor Evaluation
     target_system: SAP ECC MM
     impact_type: cosmetic
@@ -451,6 +478,7 @@ rules:
   # ===========================================================================
   - check_id: AR001
     module: accounts_receivable
+    l1: order_to_cash
     target_feature: Customer Master Management
     target_system: SAP ECC FI-AR
     impact_type: full_block
@@ -470,6 +498,7 @@ rules:
 
   - check_id: AR005
     module: accounts_receivable
+    l1: order_to_cash
     target_feature: Credit Management
     target_system: SAP ECC FI-AR
     impact_type: degraded
@@ -485,6 +514,7 @@ rules:
 
   - check_id: AR010
     module: accounts_receivable
+    l1: order_to_cash
     target_feature: Dunning
     target_system: SAP ECC FI-AR
     impact_type: full_block
@@ -500,6 +530,7 @@ rules:
 
   - check_id: AR015
     module: accounts_receivable
+    l1: order_to_cash
     target_feature: Payment Receipt Processing
     target_system: SAP ECC FI-AR
     impact_type: degraded
@@ -518,6 +549,7 @@ rules:
   # ===========================================================================
   - check_id: MM001
     module: material_master
+    l1: master_data
     target_feature: Material Creation
     target_system: SAP ECC MM
     impact_type: full_block
@@ -533,6 +565,7 @@ rules:
 
   - check_id: MM005
     module: material_master
+    l1: master_data
     target_feature: MRP Planning
     target_system: SAP ECC PP-MRP
     impact_type: full_block
@@ -550,6 +583,7 @@ rules:
 
   - check_id: MM010
     module: material_master
+    l1: master_data
     target_feature: Inventory Valuation
     target_system: SAP ECC FI-MM
     impact_type: full_block
@@ -566,6 +600,7 @@ rules:
 
   - check_id: MM015
     module: material_master
+    l1: master_data
     target_feature: Account Determination
     target_system: SAP ECC FI-MM
     impact_type: degraded
@@ -584,6 +619,7 @@ rules:
   # ===========================================================================
   - check_id: BP001
     module: business_partner
+    l1: master_data
     target_feature: CVI Integration
     target_system: SAP ECC CVI
     impact_type: full_block
@@ -601,6 +637,7 @@ rules:
 
   - check_id: BP005
     module: business_partner
+    l1: master_data
     target_feature: BP Role Assignment
     target_system: SAP ECC BP
     impact_type: degraded
@@ -615,6 +652,7 @@ rules:
 
   - check_id: BP010
     module: business_partner
+    l1: master_data
     target_feature: BP Duplicate Check
     target_system: SAP ECC BP
     impact_type: cosmetic
@@ -632,6 +670,7 @@ rules:
   # ===========================================================================
   - check_id: GL001
     module: fi_gl
+    l1: record_to_report
     target_feature: Financial Posting
     target_system: SAP ECC FI-GL
     impact_type: full_block
@@ -648,6 +687,7 @@ rules:
 
   - check_id: GL005
     module: fi_gl
+    l1: record_to_report
     target_feature: Period Close
     target_system: SAP ECC FI-GL
     impact_type: degraded
@@ -663,6 +703,7 @@ rules:
 
   - check_id: GL010
     module: fi_gl
+    l1: record_to_report
     target_feature: Intercompany Reconciliation
     target_system: SAP ECC FI-GL
     impact_type: degraded
@@ -681,6 +722,7 @@ rules:
   # ===========================================================================
   - check_id: PUR003
     module: mm_purchasing
+    l1: procure_to_pay
     target_feature: PO Creation
     target_system: SAP ECC MM-PUR
     impact_type: full_block
@@ -698,6 +740,7 @@ rules:
 
   - check_id: PUR004
     module: mm_purchasing
+    l1: procure_to_pay
     target_feature: Release Strategy
     target_system: SAP ECC MM-PUR
     impact_type: degraded
@@ -713,6 +756,7 @@ rules:
 
   - check_id: PUR007
     module: mm_purchasing
+    l1: procure_to_pay
     target_feature: Source Determination
     target_system: SAP ECC MM-PUR
     impact_type: degraded
@@ -730,6 +774,7 @@ rules:
   # ===========================================================================
   - check_id: AA001
     module: asset_accounting
+    l1: record_to_report
     target_feature: Asset Capitalisation
     target_system: SAP ECC FI-AA
     impact_type: full_block
@@ -746,6 +791,7 @@ rules:
 
   - check_id: AA005
     module: asset_accounting
+    l1: record_to_report
     target_feature: Depreciation Run
     target_system: SAP ECC FI-AA
     impact_type: full_block
@@ -761,6 +807,7 @@ rules:
 
   - check_id: AA010
     module: asset_accounting
+    l1: record_to_report
     target_feature: Asset Retirement
     target_system: SAP ECC FI-AA
     impact_type: degraded
@@ -779,6 +826,7 @@ rules:
   # ===========================================================================
   - check_id: PM001
     module: plant_maintenance
+    l1: plan_to_produce
     target_feature: Work Order Creation
     target_system: SAP ECC PM
     impact_type: full_block
@@ -794,6 +842,7 @@ rules:
 
   - check_id: PM005
     module: plant_maintenance
+    l1: plan_to_produce
     target_feature: Preventive Maintenance
     target_system: SAP ECC PM
     impact_type: degraded
@@ -809,6 +858,7 @@ rules:
 
   - check_id: PM010
     module: plant_maintenance
+    l1: plan_to_produce
     target_feature: Maintenance Notification
     target_system: SAP ECC PM
     impact_type: cosmetic
@@ -826,6 +876,7 @@ rules:
   # ===========================================================================
   - check_id: PP001
     module: production_planning
+    l1: plan_to_produce
     target_feature: BOM Management
     target_system: SAP ECC PP
     impact_type: full_block
@@ -841,6 +892,7 @@ rules:
 
   - check_id: PP005
     module: production_planning
+    l1: plan_to_produce
     target_feature: Routing / Work Centre
     target_system: SAP ECC PP
     impact_type: degraded
@@ -859,6 +911,7 @@ rules:
   # ===========================================================================
   - check_id: SD001
     module: sd_customer_master
+    l1: order_to_cash
     target_feature: Customer Creation
     target_system: SAP ECC SD
     impact_type: full_block
@@ -875,6 +928,7 @@ rules:
 
   - check_id: SD005
     module: sd_customer_master
+    l1: order_to_cash
     target_feature: Pricing Determination
     target_system: SAP ECC SD
     impact_type: degraded
@@ -893,6 +947,7 @@ rules:
   # ===========================================================================
   - check_id: SO001
     module: sd_sales_orders
+    l1: order_to_cash
     target_feature: Sales Order Creation
     target_system: SAP ECC SD
     impact_type: full_block
@@ -908,6 +963,7 @@ rules:
 
   - check_id: SO005
     module: sd_sales_orders
+    l1: order_to_cash
     target_feature: Delivery Processing
     target_system: SAP ECC LE-SHP
     impact_type: degraded

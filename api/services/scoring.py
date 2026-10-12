@@ -25,6 +25,8 @@ DEFAULT_SEVERITY_MULTIPLIERS = {"critical": 5.0, "high": 2.0, "medium": 1.0, "lo
 # C3: a failing critical rule caps the score only at or above this failing share or row count.
 DEFAULT_CRITICAL_TOLERANCE = {"pct": 0.1, "rows": 25}
 LOW_CONFIDENCE_COVERAGE = 0.70
+# Impact ranking weight per severity: one source for the reports and the Insights endpoints.
+SEV_WEIGHT = {"critical": 8, "high": 4, "medium": 2, "low": 1}
 # ponytail: clean-record key sets are held in memory; past this many failing driving-object
 # keys the figure is reported as null. Spill to disk / a bitmap if large tenants need it.
 CLEAN_KEY_CEILING = 5_000_000
@@ -111,6 +113,11 @@ def tier(score: float | None, thresholds: dict | None = None) -> str | None:
     if score is None:
         return None
     return "pass" if score >= t["target"] else "warn" if score >= t["warning"] else "fail"
+
+
+def impact(affected: int | float | None, severity: str | None) -> int:
+    """Rule impact = failing records x severity weight (unknown severity weighs 1)."""
+    return int(affected or 0) * SEV_WEIGHT.get(severity or "", 1)
 
 
 def critical_over_tolerance(summary: dict) -> int:

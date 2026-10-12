@@ -32,8 +32,8 @@
 <section class="cover">
     <div class="cover-band">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-label="Meridian">
-            <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="#8DA3FF" stroke-width="3" stroke-linecap="round"/>
-            <path d="M16 3V29" stroke="#EDEDF0" stroke-width="3" stroke-linecap="round"/>
+            <path d="M21.74 7.81A10 10 0 1 1 10.26 7.81" stroke="{{ tokens.cover_mark }}" stroke-width="3" stroke-linecap="round"/>
+            <path d="M16 3V29" stroke="{{ tokens.cover_meridian }}" stroke-width="3" stroke-linecap="round"/>
         </svg>
     </div>
     <div class="cover-main">
@@ -45,14 +45,14 @@
         {% if dqs is not none %}
         <div class="cover-ring">
 {% set v = [[dqs, 0] | max, 100] | min %}
-            {% set band = "#157A3C" if v >= 90 else "#946200" if v >= 75 else "#BA4A0B" if v >= 60 else "#B42318" %}
+            {% set band = band_colour(v) %}
             <svg viewBox="0 0 100 100">
                 {# 270 degree arc open at 12 o'clock (the mark's geometry), meridian line through the centre #}
-                <path class="ring-track" d="M81.11 18.89A44 44 0 1 1 18.89 18.89" fill="none" stroke="#EFEDE8" stroke-width="5" stroke-linecap="round"/>
+                <path class="ring-track" d="M81.11 18.89A44 44 0 1 1 18.89 18.89" fill="none" stroke="{{ tokens.ring_track }}" stroke-width="5" stroke-linecap="round"/>
                 <path class="ring-value" d="M81.11 18.89A44 44 0 1 1 18.89 18.89" fill="none" stroke="{{ band }}" stroke-width="5" stroke-linecap="round"
                       stroke-dasharray="{{ (207.35 * v / 100) | round(2) }} 207.35"/>
-                <path class="ring-meridian" d="M50 6V94" stroke="#CFCCC3" stroke-width="0.8"/>
-                <text x="50" y="58" text-anchor="middle" font-family="Instrument Sans" font-weight="600" font-size="22" fill="#141519">{{ dqs | n(1) }}</text>
+                <path class="ring-meridian" d="M50 6V94" stroke="{{ tokens.ring_line }}" stroke-width="0.8"/>
+                <text x="50" y="58" text-anchor="middle" font-family="Instrument Sans" font-weight="600" font-size="22" fill="{{ tokens.ink }}">{{ dqs | n(1) }}</text>
             </svg>
             <div class="cap">Data quality score{% if overall.capped %}. Capped at {{ dqs | n(0) }}{% endif %}</div>
         </div>
