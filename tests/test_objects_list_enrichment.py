@@ -101,3 +101,17 @@ async def test_objects_list_dimension_scores(seeded, monkeypatch):
     # uniqueness has coverage 0, so it is not measured and not returned
     assert by["material_master"]["dimension_scores"] == {"completeness": 90.0, "validity": 40.0}
     assert by["vendor"]["dimension_scores"] == {}
+
+
+@pytest.mark.anyio
+async def test_objects_list_severity_counts(seeded, monkeypatch):
+    t, runs = seeded
+    patch_tenant(monkeypatch, t)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        body = (await client.get(f"/api/v1/objects?run={runs[8]}", headers=HEADERS)).json()
+    by = {o["module"]: o for o in body["objects"]}
+    # MM-CRIT-OK affects 0 records so it is not failing; low does not count in either column
+    assert (by["material_master"]["critical_checks"], by["material_master"]["high_checks"]) == (0, 2)
+    assert (by["vendor"]["critical_checks"], by["vendor"]["high_checks"]) == (1, 0)
+    assert (by["customer"]["critical_checks"], by["customer"]["high_checks"]) == (0, 0)

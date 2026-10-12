@@ -54,8 +54,9 @@ const LEGACY_VERDICT: Record<string, ReadinessFilter> = { ready: "pass" };
 const makeColumns = (run: string, bands: ScoreBands | undefined, objects: ObjectSummary[]): ColumnDef<ObjectSummary>[] => {
   const hasTrend = objects.some((o) => (o.trend?.length ?? 0) >= 2);
   const hasBlocking = objects.some((o) => o.blocking_rule_id);
+  const hasSev = objects.some((o) => o.critical_checks != null);
   const hasDims = objects.some((o) => o.dimension_scores && Object.keys(o.dimension_scores).length > 0);
-  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (c.id !== "dimensions" || hasDims));
+  return allColumns(run, bands).filter((c) => (c.id !== "trend" || hasTrend) && (c.id !== "blocking_rule" || hasBlocking) && (c.id !== "dimensions" || hasDims) && ((c.id !== "critical" && c.id !== "high") || hasSev));
 };
 
 const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
@@ -127,6 +128,8 @@ const allColumns = (run: string, bands: ScoreBands | undefined): ColumnDef<Objec
       );
     },
   },
+  { id: "critical", accessorFn: (o) => o.critical_checks ?? -1, header: "Critical", size: 90, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.critical_checks == null ? "—" : drill(row.original, run, row.original.critical_checks)) },
+  { id: "high", accessorFn: (o) => o.high_checks ?? -1, header: "High", size: 80, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => (row.original.high_checks == null ? "—" : drill(row.original, run, row.original.high_checks)) },
   { accessorKey: "failing_checks", header: "Failing checks", size: 120, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.failing_checks) },
   { accessorKey: "affected_records", header: "Affected records", size: 130, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => drill(row.original, run, row.original.affected_records.toLocaleString()) },
 ];
