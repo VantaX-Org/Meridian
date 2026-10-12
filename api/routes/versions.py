@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.services.rbac import require_permission, scope_from_path
 from pydantic import BaseModel
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
@@ -79,6 +79,8 @@ async def list_versions(
         )
     if system_id:
         stmt = stmt.where(AnalysisVersion.metadata_.op("->>")("system_id") == system_id)
+    # total of the filtered set, so a capped list can say "N of total" instead of silently stopping
+    total = (await db.execute(select(func.count()).select_from(stmt.order_by(None).subquery()))).scalar() or 0
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
     versions = result.scalars().all()
@@ -97,7 +99,7 @@ async def list_versions(
         c = counts.get(str(v.id), {})
         r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
         out.append(r)
-    return {"versions": out}
+    return {"versions": out, "total": total}
 
 
 ARCHIVE_SQL = """

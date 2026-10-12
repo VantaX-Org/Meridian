@@ -18,6 +18,8 @@ export interface ObjectSummary {
   trend?: number[];
   worst_dimension?: string | null;
   owner?: string | null;
+  /** Measured dimension scores for the run (unmeasured dimensions omitted). */
+  dimension_scores?: Record<string, number>;
 }
 
 export interface ObjectRule {

@@ -47,3 +47,14 @@ async def test_versions_list_severity_counts(seeded, monkeypatch):
     by = {v["id"]: v for v in resp.json()["versions"]}
     assert by[a]["severity_counts"] == {"critical": 2, "high": 1, "medium": 0, "low": 0}
     assert by[b]["severity_counts"] == {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    assert resp.json()["total"] == 2
+
+
+@pytest.mark.anyio
+async def test_versions_total_ignores_limit(seeded, monkeypatch):
+    t, a, b = seeded
+    patch_tenant(monkeypatch, t)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        body = (await client.get("/api/v1/versions?limit=1", headers=HEADERS)).json()
+    assert len(body["versions"]) == 1 and body["total"] == 2
