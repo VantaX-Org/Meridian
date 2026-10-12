@@ -13,8 +13,8 @@ from sap.ddic import get_dictionary, dictionary_for_system
 from sap.extraction_plan import MODULES_BY_SYSTEM
 
 D = get_dictionary("s4hana")
-MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 41,
-           "ariba_supplier": 40, "ariba_contracts": 42, "ariba_procurement": 40}
+MODULES = {"s4hc_master_data": 41, "concur_expense": 40, "concur_users": 41, "concur_travel": 6,
+           "ariba_supplier": 40, "ariba_contracts": 42, "ariba_procurement": 40, "ariba_spend": 6}
 ENRICHMENT = ("fix_map", "rule_authority", "why_it_matters", "sap_impact", "record_fix_template")
 
 
@@ -33,8 +33,8 @@ def test_rule_count_and_enrichment(module, count):
 
 def test_modules_registered_per_system():
     assert "s4hc_master_data" in MODULES_BY_SYSTEM["s4hana_cloud"]
-    assert MODULES_BY_SYSTEM["concur"] == ["concur_expense", "concur_users"]
-    assert MODULES_BY_SYSTEM["ariba"] == ["ariba_supplier", "ariba_contracts", "ariba_procurement"]
+    assert MODULES_BY_SYSTEM["concur"] == ["concur_expense", "concur_travel", "concur_users"]
+    assert MODULES_BY_SYSTEM["ariba"] == ["ariba_supplier", "ariba_contracts", "ariba_procurement", "ariba_spend"]
 
 
 def _frames(tables):

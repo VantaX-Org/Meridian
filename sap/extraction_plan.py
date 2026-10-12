@@ -42,8 +42,8 @@ MODULES_BY_SYSTEM: dict[str, list[str]] = {
     "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface", "interface_health"],
     "s4hana_cloud": _ECC + ["s4hc_master_data"],
     "successfactors": _SF,
-    "concur": ["concur_expense", "concur_users"],
-    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement"],
+    "concur": ["concur_expense", "concur_travel", "concur_users"],
+    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement", "ariba_spend"],
 }
 ABAP_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 _CONFIG_DELIVERY_CLASSES = {"C", "G", "E", "S"}

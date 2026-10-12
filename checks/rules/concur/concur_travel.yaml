@@ -1,0 +1,107 @@
+# SAP Concur travel requests (canonical view CONCUR_TRAVEL_REQUEST in
+# sap/dictionaries/canonical/concur.yaml), read from
+# /api/v3.0/travelrequest/requests by sap/concur.py. The module existed in the
+# extraction registry with no rule pack; this is its first coverage.
+#
+# Ordered-pair and sign invariants (START_DATE <= END_DATE, non-negative
+# TOTAL_POSTED_AMOUNT) are declared in the canonical dictionary and generated
+# into concur_travel.generated.yaml, not repeated here.
+module: concur_travel
+target_state: CONCUR
+rules:
+- id: CTR001
+  field: CONCUR_TRAVEL_REQUEST.REQUEST_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Travel request has no request ID
+  why_it_matters: The request ID is the record's key in Concur. Approvals, bookings and expense
+    reports all reference it, so a blank one cannot be reconciled to anything.
+  rule_authority: sap_hard_constraint
+  sap_impact: The request cannot be approved, booked against or reported on; downstream
+    reconciliation silently drops it.
+  fix_map:
+    __blank__: Re-extract the travel request list; a blank ID points to an incomplete page or a
+      broken export.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.NAME}: request ID is {actual_value}.'
+- id: CTR002
+  field: CONCUR_TRAVEL_REQUEST.OWNER_LOGIN_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Travel request has no traveller
+  why_it_matters: The owner login ID is the traveller the request belongs to. Without it the request
+    cannot be attributed to a person, so duty-of-care, approval routing and re-expensing all fail.
+  rule_authority: sap_hard_constraint
+  sap_impact: The request is orphaned in Concur; approvals route to no one and the trip is invisible
+    to duty-of-care reporting.
+  fix_map:
+    __blank__: Re-extract the travel request list. A blank owner means the traveller was deleted or
+      the extract page is incomplete.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: traveller is {actual_value}.'
+- id: CTR003
+  field: CONCUR_TRAVEL_REQUEST.START_DATE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Travel request has no trip start date
+  why_it_matters: The trip dates place the request in time and drive per-diem, policy and duty-of-care
+    rules. A request with no start date cannot be evaluated against any of them.
+  rule_authority: sap_hard_constraint
+  sap_impact: Per-diem and policy checks cannot be applied; the trip is excluded from travel reporting.
+  fix_map:
+    __blank__: Correct the trip dates on the request, or re-extract if the field was dropped.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: start date is {actual_value}.'
+- id: CTR004
+  field: CONCUR_TRAVEL_REQUEST.CURRENCY_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Travel request has no currency
+  why_it_matters: The posted amount is meaningless without the currency it is denominated in, and any
+    cost aggregation across requests mixes units.
+  rule_authority: sap_hard_constraint
+  sap_impact: Trip cost cannot be totalled or compared; spend reporting under-states or over-states
+    by the missing amount.
+  fix_map:
+    __blank__: Correct the request currency, or re-extract if the field was dropped.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: currency is {actual_value}.'
+- id: CTR005
+  field: CONCUR_TRAVEL_REQUEST.OWNER_LOGIN_ID
+  check_class: exists_check
+  grain: CONCUR_TRAVEL_REQUEST
+  target_table: CONCUR_USER
+  target_fields:
+  - LOGIN_ID
+  severity: high
+  dimension: consistency
+  message: Travel request belongs to a traveller with no Concur user profile
+  why_it_matters: Every request owner must be a Concur user. An owner with no profile most often means
+    a leaver whose profile was removed while their travel history was kept, or a login ID that was
+    re-keyed differently in the two extracts.
+  rule_authority: sap_hard_constraint
+  sap_impact: The request cannot be approved or re-expensed; the traveller is invisible in user
+    reporting and any HR-driven deactivation will not reach the request.
+  fix_map:
+    __other__: Restore the Concur user profile for {CONCUR_TRAVEL_REQUEST.OWNER_LOGIN_ID}, or correct the login ID on
+      the request to match the profile.
+  record_fix_template: 'Travel request {CONCUR_TRAVEL_REQUEST.REQUEST_ID}: owner {CONCUR_TRAVEL_REQUEST.OWNER_LOGIN_ID}
+    has no Concur user profile.'
+- id: CTR006
+  field: CONCUR_TRAVEL_REQUEST.REQUEST_ID
+  check_class: uniqueness_check
+  fields:
+  - CONCUR_TRAVEL_REQUEST.REQUEST_ID
+  case_insensitive: true
+  severity: critical
+  dimension: uniqueness
+  message: Request ID is used by more than one travel request
+  why_it_matters: Concur request IDs are unique. Duplicates in an extract mean two records collapsed onto
+    one identity, so approvals and bookings land against the wrong trip.
+  rule_authority: sap_hard_constraint
+  sap_impact: One of the requests is unapprovable or overwritten; trip costs are attributed to the wrong
+    travel request.
+  fix_map:
+    __other__: Re-extract the travel request list; duplicate IDs point to a paging defect or two sources
+      merged into one frame.
+  record_fix_template: 'Travel request ID {CONCUR_TRAVEL_REQUEST.REQUEST_ID} appears more than once.'

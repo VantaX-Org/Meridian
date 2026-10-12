@@ -131,7 +131,7 @@ def test_matdoc_in_s4_dictionary_only() -> None:
 
 @pytest.mark.parametrize("system_type,module,names", [
     ("successfactors", "process_events_sfx", ["JobRequisition", "JobApplication", "EmpJob", "EmployeeTime"]),
-    ("ariba", "process_events_arb", ["suppliers", "contracts", "requisitions"]),
+    ("ariba", "process_events_arb", ["suppliers", "contracts", "purchase_orders"]),
     ("concur", "process_events_cnq", ["reports", "entries"]),
 ])
 def test_cloud_targets(system_type: str, module: str, names: list[str]) -> None:

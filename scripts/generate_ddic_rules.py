@@ -87,7 +87,7 @@ _SENSITIVE = {
 }
 _PUBLIC_TABLES = {"BNKA", "T012", "T012K"}
 
-ID_PREFIX = {"checktab": "DXR", "domain": "DXV"}
+ID_PREFIX = {"checktab": "DXR", "domain": "DXV", "invariant": "DXI"}
 
 
 
@@ -131,6 +131,27 @@ def _rule_fields(rule: dict) -> list[str]:
     if rule.get("field"):
         return [rule["field"]]
     return list(rule.get("fields") or [])
+
+
+CANONICAL_DIR = ROOT / "sap" / "dictionaries" / "canonical"
+
+
+def canonical_invariants() -> list[tuple[str, dict]]:
+    """``(table, invariant)`` declared under ``invariants:`` in the canonical dictionaries.
+
+    Ordered-pair and sign properties (an effectivity cannot end before it starts, a spend
+    amount cannot be negative) are true of the payload by definition. They are *declared*
+    rather than inferred because the non-ABAP systems carry no ``check_table``, no
+    ``picklist`` and no fixed values for the generator to reason from — without this the
+    Ariba and Concur sides yield no derivable rules at all.
+    """
+    out: list[tuple[str, dict]] = []
+    for path in sorted(CANONICAL_DIR.glob("*.yaml")):
+        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for table, spec in (doc.get("tables") or {}).items():
+            for invariant in spec.get("invariants") or []:
+                out.append((table.upper(), invariant))
+    return out
 
 
 def expose_tables() -> dict[str, tuple[str, str]]:
@@ -228,7 +249,58 @@ def derive(dictionary, exposed: dict[str, tuple[str, str]],
             values = sorted(v for v in (field.allowed_values() or set()) if str(v).strip())
             if values and len(values) > 1:
                 out.append((category, module, "domain", _domain_rule(field, desc, values)))
+
+    # Invariants declared in the canonical dictionaries (see canonical_invariants).
+    for table_name, invariant in canonical_invariants():
+        home = exposed.get(table_name)
+        if home is None:
+            continue
+        category, module = home
+        kind = invariant.get("kind")
+        if kind == "date_order":
+            out.append((category, module, "invariant", _date_order_rule(table_name, invariant)))
+        elif kind == "non_negative":
+            out.append((category, module, "invariant", _non_negative_rule(table_name, invariant)))
     return out
+
+
+def _date_order_rule(table: str, invariant: dict) -> dict:
+    start, end = str(invariant["start"]), str(invariant["end"])
+    s, e = f"{table}.{start}", f"{table}.{end}"
+    label = start.replace("_", " ").lower()
+    return {
+        "field": s, "check_class": "cross_field_check",
+        "severity": "high", "dimension": "consistency",
+        "message": f"{label.capitalize()} must not be after {end.replace('_', ' ').lower()}",
+        "why_it_matters": (f"{s} and {e} are both carried by the same {table} record, so their order is a "
+                           f"property of the record itself and not of any process. The source system cannot "
+                           f"produce an inverted pair, so one marks a load, mapping or transformation defect "
+                           f"rather than a data-entry mistake."),
+        "rule_authority": "sap_hard_constraint",
+        "sap_impact": (f"Every duration, age or validity window derived from {start} and {end} is wrong, and the "
+                       f"record's place in time is unreliable."),
+        "fail_when": f"`{s}`.notna() & `{e}`.notna() & (`{s}` > `{e}`)",
+        "fix_map": {"__other__": f"Correct {s} or {e} so the pair is ordered."},
+        "record_fix_template": f"{s} is after {e}.",
+    }
+
+
+def _non_negative_rule(table: str, invariant: dict) -> dict:
+    fld = str(invariant["field"])
+    ref = f"{table}.{fld}"
+    return {
+        "field": ref, "check_class": "cross_field_check",
+        "severity": "high", "dimension": "validity",
+        "message": f"{fld.replace('_', ' ').lower().capitalize()} must not be negative",
+        "why_it_matters": (f"{ref} carries an amount the source system only ever returns unsigned. A negative "
+                           f"value cannot originate from the API, so it marks a sign-convention error in the "
+                           f"extraction or the load."),
+        "rule_authority": "sap_hard_constraint",
+        "sap_impact": (f"Totals including {fld} are understated, and the record reads as a credit where none exists."),
+        "fail_when": f"`{ref}` < 0",
+        "fix_map": {"__other__": f"{ref} is negative; the source does not return negative amounts here."},
+        "record_fix_template": f"{ref} is negative.",
+    }
 
 
 
