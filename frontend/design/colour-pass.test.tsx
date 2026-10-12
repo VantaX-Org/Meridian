@@ -15,7 +15,9 @@ describe("domainOf", () => {
   it.each([
     ["material_master", "material"], ["sd_customer", "customer"], ["vendor_master", "vendor"],
     ["business_partner", "partner"], ["fi_gl_account", "finance"], ["successfactors.employee", "people"],
-    ["plant_maintenance", "plant"], ["fixed_asset", "asset"], ["unknown_thing", "other"], [null, "other"], [undefined, "other"],
+    ["plant_maintenance", "plant"], ["fixed_asset", "asset"], ["unknown_thing", "other"],
+    ["constructor", "other"], ["tostring", "other"], ["MM", "material"], ["SD", "customer"], ["FI", "finance"], ["CO", "finance"], ["HR", "people"], ["HCM", "people"], ["SF", "people"],
+    ["PM", "asset"], ["EAM", "asset"], ["PP", "plant"], ["QM", "plant"], [null, "other"], [undefined, "other"],
   ])("%s -> %s", (id, key) => expect(domainOf(id)).toBe(key));
 });
 
@@ -89,5 +91,37 @@ describe("DataTable colour", () => {
     expect(heatClass("div", -1, [-1, 1])).toBe("m-heat-div-neg-2");
     expect(heatClass("div", 1, [-1, 1])).toBe("m-heat-div-pos-2");
     expect(heatClass("seq", "x", [0, 1])).toBeUndefined();
+  });
+});
+
+describe("Counter settle", () => {
+  it("drops m-count-settle after one settle period", async () => {
+    const { Counter } = await import("./primitives/Counter");
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers();
+    const { container } = render(<Counter value={5} versionId="v1" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
+    expect(container.querySelector(".m-count-settle")).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(container.querySelector(".m-count-settle")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+});
+
+describe("Graph cluster colour and Pareto domain colour", () => {
+  it("fills a clustered node from the viz palette, domain otherwise", async () => {
+    const { Graph } = await import("./charts/Graph");
+    const { mColor } = await import("./tokens");
+    const { container } = render(
+      <Graph nodes={[{ id: "a", size: 1, label: "A", cluster: 2, domain: "plant" }, { id: "b", size: 1, label: "B", domain: "plant" }]} edges={[]} masterId="none" />,
+    );
+    expect(container.querySelector("[data-cluster='2'] circle")?.getAttribute("fill")).toBe(mColor.viz[2]);
+    expect(container.querySelector("[data-domain='plant']:not([data-cluster]) circle")?.getAttribute("fill")).toBe(mColor.dom.plant);
+  });
+  it("colours Pareto bars through the domain palette", async () => {
+    const { chartTheme } = await import("./charts/theme");
+    const { mColor } = await import("./tokens");
+    expect(chartTheme.domain("vendor")).toBe(mColor.dom.vendor);
   });
 });
