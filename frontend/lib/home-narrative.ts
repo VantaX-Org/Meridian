@@ -22,14 +22,19 @@ function worstFirst(objects: ObjectSummary[]): ObjectSummary[] {
  * a role-specific call to action. Pure function of `objects` — no randomness,
  * no clock reads, so it is safe to unit test byte-for-byte.
  */
-export function buildNarrative({ role, objects }: NarrativeInput): string {
-  const sorted = worstFirst(objects);
+/** Sentence 1 alone: the overall state, used as the home verdict. */
+export function verdictSentence(objects: ObjectSummary[]): string {
   const failing = objects.filter((o) => o.readiness === "fail");
-  const worst = sorted[0];
-
-  const sentence1 = objects.length === 0
+  return objects.length === 0
     ? "No objects have been analysed yet."
     : `${failing.length} of ${objects.length} objects are not ready for go-live.`;
+}
+
+export function buildNarrative({ role, objects }: NarrativeInput): string {
+  const sorted = worstFirst(objects);
+  const worst = sorted[0];
+
+  const sentence1 = verdictSentence(objects);
 
   const sentence2 = worst
     ? `${worst.label} is the furthest behind, with ${worst.failing_checks} failing checks affecting ${worst.affected_records} records.`

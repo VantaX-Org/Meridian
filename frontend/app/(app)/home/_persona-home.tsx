@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  buildDrillHref, Card, DataTable, DrillLink, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
-  type HeatmapCell, type PillTone, type StatTone,
+  buildDrillHref, Card, DataTable, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
+  type HeatmapCell, type PillTone,
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
 import { getFindings } from "@/lib/api/findings";
@@ -22,7 +22,7 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { useDayOne } from "@/hooks/use-day-one";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
-import { buildNarrative, type NarrativeInput } from "@/lib/home-narrative";
+import { verdictSentence, type NarrativeInput } from "@/lib/home-narrative";
 import {
   runCap, cappedReason, dimensionHeatmapCells, objectTrend, runDqs, runDimensions, delta as runDelta, trend, readinessOf,
   severityTotals, worstObjectsFirst, DIMENSIONS,
@@ -33,9 +33,11 @@ import { openJobTray } from "@/lib/job-tray-bus";
 import { queryKeys } from "@/lib/query-keys";
 import type { Finding, Version } from "@/types/api";
 
+const TABLE_ROWS = 8;
+
 // Chart bundles load after first paint; the skeleton has the chart's final height.
 const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={200} /> });
-const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={200} /> });
+const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * 32 + 32} /> });
 
 const READINESS_PILL: Record<NonNullable<ObjectSummary["readiness"]>, { tone: PillTone; label: string }> = {
   pass: { tone: "go", label: "Go" },
@@ -43,21 +45,17 @@ const READINESS_PILL: Record<NonNullable<ObjectSummary["readiness"]>, { tone: Pi
   fail: { tone: "no-go", label: "No-go" },
 };
 
-const TABLE_ROWS = 8;
 
 /** Header label for a run: never a raw id (same formula as the run selector). */
 const runLabel = (v: Version) =>
-  v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Run"} · ${formatDate(v.run_at, "date")}`;
-
-/** A work stat: links, or (with `onClick`, no href) opens something. A plain button, never wrapping a link. */
-function Tile({ label, value, hint, href, onClick, tone }: { label: string; value: ReactNode; hint?: string; href?: string; onClick?: () => void; tone?: StatTone }) {
-  const stat = <Stat label={label} value={value} hint={hint} href={href} onClick={onClick} tone={tone} />;
-  return stat;
-}
+  v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Latest"}, ${formatDate(v.run_at, "date")}`;
 
 function WorkRow({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">{children}</div>;
 }
+
+/** Failed or degraded: "unknown" means not tested yet, which is not a failure. */
+const isFailing = (s: { health_status?: string | null }) => s.health_status != null && s.health_status !== "healthy" && s.health_status !== "unknown";
 
 type ObjectRow = ObjectSummary & { blocking?: Finding; trend: { x: string; y: number }[] };
 
@@ -79,11 +77,15 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const shellCountsQ = useQuery({ queryKey: queryKeys.shellCounts(), queryFn: getShellCounts, enabled: wantsFindings });
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   const landscapeQ = useQuery({ queryKey: queryKeys.configLandscape(), queryFn: getConfigLandscape });
-  // Highest-impact findings of the current run: names each object's blocking rule and the rules behind a cap.
+  const finished = (versionsQ.data?.versions ?? [])
+    .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
+    .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
+  const latest = finished[0];
+  // Highest-impact findings of this run: names each object's blocking rule.
   const findingsQ = useQuery({
-    queryKey: ["home-top-findings", "current"],
-    queryFn: () => getFindings({ sort: "impact", limit: 100 }),
-    enabled: wantsFindings,
+    queryKey: ["home-top-findings", latest?.id],
+    queryFn: () => getFindings({ version_id: latest!.id, sort: "impact", limit: 100 }),
+    enabled: wantsFindings && !!latest,
   });
 
   // Seed the run-keyed objects list so opening an object from home needs no second fetch.
@@ -108,7 +110,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   // A module-scoped user sees only in-scope objects (and so only those heatmap rows).
   const objects = (objectsQ.data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
-  const sentence = buildNarrative({ role, objects }).split(". ")[0].replace(/\.?$/, ".");
+  const sentence = verdictSentence(objects);
 
   if (dayOne.step !== null) {
     const versions = versionsQ.data?.versions ?? [];
@@ -129,10 +131,6 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   }
 
   const versions = versionsQ.data?.versions ?? [];
-  const finished = versions
-    .filter((v) => v.dqs_summary && Object.keys(v.dqs_summary).length > 0)
-    .sort((a, b) => new Date(b.run_at).getTime() - new Date(a.run_at).getTime());
-  const latest = finished[0];
   // dayOne says a finished run exists but it hasn't landed in this cache yet: treat as loading rather than crash.
   if (!latest) return <HomePage persona={role} state="loading" />;
 
@@ -141,12 +139,12 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   const trendPoints = trend(versions);
   const dqs = runDqs(latest);
   const cap = runCap(latest);
-  const findings = findingsQ.data?.findings ?? [];
-  const criticalRules = findings.filter((f) => f.severity === "critical").slice(0, 2);
+  const findings = (findingsQ.data?.findings ?? []).filter((f) => !scopeFilter.modules || scopeFilter.modules.has(f.module));
   const scored = worstObjectsFirst(objects.filter((o) => latest.dqs_summary?.[o.module]));
   const worst = worstObjectsFirst(objects)[0];
   const notReady = objects.filter((o) => o.readiness === "fail");
   const systems = systemsQ.data ?? [];
+  const activeSystems = systems.filter((s) => s.is_active);
 
   const action =
     role === "lead"
@@ -154,17 +152,16 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       : role === "steward"
         ? { label: "Open worst object", href: worst ? `/objects/${worst.module}?run=${latest.id}` : `/objects?run=${latest.id}` }
         : (() => {
-            const failed = systems.some((s) => s.is_active && s.health_status !== "healthy");
+            const failed = activeSystems.some(isFailing);
             return { label: failed ? "Open failed system" : "Open systems", href: "/systems" };
           })();
 
   const capReason = cappedReason(latest);
   const capLine = cap || capReason ? (
     <>
-      {cap ? `Capped at ${cap.cap} by ${cap.criticals} critical ${cap.criticals === 1 ? "rule" : "rules"}` : `Capped: ${capReason}`}
-      {criticalRules.map((f, i) => (
-        <span key={f.id}>{i === 0 ? ": " : ", "}<DrillLink href={buildDrillHref({ object: f.module, ruleId: f.check_id, run: latest.id })}><Mono>{f.check_id}</Mono></DrillLink></span>
-      ))}
+      {cap ? (
+        <>Capped at {cap.cap} by <Link href="/findings?severity=critical" style={{ color: "var(--m-accent)" }}>{cap.criticals} critical {cap.criticals === 1 ? "rule" : "rules"}</Link></>
+      ) : `Capped: ${capReason}`}
     </>
   ) : undefined;
 
@@ -174,13 +171,13 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       {DIMENSIONS.map((d) => {
         const score = dims?.[d] ?? null;
         return (
-          <div key={d} className="min-w-[140px] flex-1 snap-start">
+          <div key={d} className="min-w-36 flex-1 snap-start">
             <Stat
               label={formatModuleName(d)}
               value={score === null ? "—" : score.toFixed(1)}
               hint={score === null ? "Not measured" : undefined}
               tone={score === null ? undefined : readinessOf(score, bands)}
-              href={`/objects?run=${latest.id}&dimension=${d}`}
+              href={score === null ? undefined : `/objects?run=${latest.id}&dimension=${d}`}
             />
           </div>
         );
@@ -189,7 +186,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   );
 
   const blockingByModule = new Map<string, Finding>();
-  for (const f of findings) if (!blockingByModule.has(f.module)) blockingByModule.set(f.module, f);
+  for (const f of findings) if (f.severity === "critical" && !blockingByModule.has(f.module)) blockingByModule.set(f.module, f);
   const rows: ObjectRow[] = worstObjectsFirst(role === "steward" ? objects.filter((o) => o.failing_checks > 0) : objects)
     .slice(0, TABLE_ROWS)
     .map((o) => ({ ...o, blocking: blockingByModule.get(o.module), trend: objectTrend(versions, o.module) }));
@@ -233,7 +230,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         hideToolbar
         tableId="home-objects"
       />
-      <div className="px-3 pt-2 text-[13px] leading-[18px]">
+      <div className="m-text-body px-3 pt-2">
         <Link href={`/objects?run=${latest.id}`} style={{ color: "var(--m-accent)" }}>All objects</Link>
       </div>
     </Card>
@@ -245,7 +242,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
     <>
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>The trend starts with the second run</p>
+          <div style={{ minHeight: 200 }}><EmptyState title="The trend starts with the second run" /></div>
         ) : (
           <Line
             data={trendPoints}
@@ -275,21 +272,21 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   );
 
   const counts = shellCountsQ.data;
-  const unhealthy = systems.filter((s) => s.is_active && s.health_status !== "healthy").length;
+  const unhealthy = activeSystems.filter(isFailing).length;
   const notLoaded = Math.max((landscapeQ.data?.total ?? 0) - (landscapeQ.data?.loaded ?? 0), 0);
   const severity = severityTotals(latest);
   const work =
     role === "lead" ? (
       <WorkRow>
-        <Tile label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
-        <Tile label="Blocking findings" value={severity.critical.toLocaleString()} hint="critical severity" tone={severity.critical ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
-        <Tile label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? "waiting for an owner" : "clear"} href="/inbox" />
+        <Stat label="Objects not ready" value={notReady.length} hint={`of ${objects.length}`} tone={notReady.length ? "no-go" : "go"} href={`/objects?run=${latest.id}&readiness=fail`} />
+        <Stat label="Blocking findings" value={severity.critical.toLocaleString()} hint={severity.critical ? "critical severity" : "none"} tone={severity.critical ? "no-go" : "go"} href="/findings?severity=critical" />
+        <Stat label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? undefined : "clear"} href="/inbox" />
       </WorkRow>
     ) : role === "steward" ? (
       <WorkRow>
-        <Tile label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? "work the oldest first" : "clear"} href="/inbox" />
-        <Tile label="Cleaning proposals" value={(counts?.fix ?? 0).toLocaleString()} hint={counts?.fix ? "ready to review" : "none waiting"} href="/fix" />
-        <Tile
+        <Stat label="Open inbox" value={counts?.inbox ?? 0} hint={counts?.inbox ? undefined : "clear"} href="/inbox" />
+        <Stat label="Cleaning proposals" value={(counts?.fix ?? 0).toLocaleString()} hint={counts?.fix ? undefined : "clear"} href="/fix" />
+        <Stat
           label="Worst object"
           value={worst?.composite_score?.toFixed(1) ?? "—"}
           hint={worst?.label}
@@ -299,9 +296,9 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       </WorkRow>
     ) : (
       <WorkRow>
-        <Tile label="Systems unhealthy" value={unhealthy} hint={`of ${systems.length}`} tone={unhealthy ? "no-go" : "go"} href="/systems" />
-        <Tile label="Configuration missing" value={notLoaded} hint={notLoaded === 1 ? "system" : "systems"} tone={notLoaded ? "at-risk" : "go"} href="/systems?config=not_loaded" />
-        <Tile label="Jobs running" value={active.length} hint={active.length ? "open the job tray" : "idle"} onClick={openJobTray} />
+        <Stat label="Systems unhealthy" value={unhealthy} hint={`of ${activeSystems.length} active`} tone={unhealthy ? "no-go" : "go"} href="/systems" />
+        <Stat label="Configuration missing" value={notLoaded} hint={`of ${landscapeQ.data?.total ?? 0} systems`} tone={notLoaded ? "at-risk" : "go"} href="/systems?config=not_loaded" />
+        <Stat label="Jobs running" value={active.length} hint={active.length ? undefined : "idle"} onClick={openJobTray} />
       </WorkRow>
     );
 
@@ -313,7 +310,6 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         dqs,
         delta: runDelta(trendPoints),
         previousLabel: previous ? runLabel(previous) : undefined,
-        status: dqs === null ? undefined : (() => { const r = readinessOf(dqs, bands); return { tone: r, label: r === "go" ? "Go" : r === "at-risk" ? "At risk" : "No-go" }; })(),
         sentence,
         capLine,
         action,

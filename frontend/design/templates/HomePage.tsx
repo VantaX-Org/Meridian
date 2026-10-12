@@ -5,7 +5,6 @@ import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
 import { PageHeader } from "../primitives/PageHeader";
-import { Pill, type PillTone } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
 import { JourneyStepper } from "./JourneyStepper";
@@ -21,7 +20,6 @@ export interface HomeVerdict {
   delta?: number | null;
   /** "vs {previous label}" next to the delta. */
   previousLabel?: string;
-  status?: { tone: PillTone; label: string };
   /** The narrative's first sentence: the verdict with the number that caused it. */
   sentence: string;
   /** "Capped at 70 by 3 critical rules ...", with DrillLinks; omitted when not capped. */
@@ -74,7 +72,7 @@ export function HomePage({
   const header = (
     <PageHeader
       title="Home"
-      meta={state === "data" && run ? `Run ${run.label} · ${relativeTime(run.runAt)}` : undefined}
+      meta={state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined}
       actions={state === "data" ? headerActions : undefined}
     />
   );
@@ -106,7 +104,7 @@ export function HomePage({
       {state === "no-data" && (
         <Card padding="lg" title="Get to your first score">
           <div className="flex flex-col gap-4">
-            <p data-testid="home-verdict" className="text-[15px] leading-5" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
+            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink-2)" }}>{NO_DATA_VERDICT}</p>
             {journey && (
               <JourneyStepper
                 systemsConnected={journey.systemsConnected}
@@ -127,20 +125,19 @@ export function HomePage({
               <span
                 className="m-numeric font-semibold"
                 data-testid="home-dqs"
-                style={{ fontSize: 44, lineHeight: "48px", minWidth: "4ch", color: "var(--m-ink)" }}
+                style={{ fontSize: "var(--m-text-hero)", lineHeight: "var(--m-leading-hero)", minWidth: "4ch", color: "var(--m-ink)" }}
               >
                 {verdict.dqs === null ? "—" : verdict.dqs.toFixed(1)}
               </span>
               {verdict.delta != null && (
                 <span className="flex items-baseline gap-1">
                   <Delta value={verdict.delta} />
-                  {verdict.previousLabel && <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>vs {verdict.previousLabel}</span>}
+                  {verdict.previousLabel && <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>vs {verdict.previousLabel}</span>}
                 </span>
               )}
-              {verdict.status && <Pill tone={verdict.status.tone}>{verdict.status.label}</Pill>}
             </div>
-            <p data-testid="home-verdict" className="text-[15px] leading-5" style={{ color: "var(--m-ink)" }}>{verdict.sentence}</p>
-            {verdict.capLine && <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{verdict.capLine}</p>}
+            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink)" }}>{verdict.sentence}</p>
+            {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{verdict.capLine}</p>}
           </div>
           {verdict.action && <Button render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />}
         </section>
