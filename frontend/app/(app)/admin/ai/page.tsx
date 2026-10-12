@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, ErrorState, Field, Notice, Select, Skeleton, Input } from "@/design";
+import { Button, Card, ErrorState, Field, Notice, PageHeader, Select, Skeleton, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   getLLMConfig,
@@ -39,7 +39,7 @@ export default function AdminAIPage() {
     return (
       <div className="flex flex-col gap-6 p-6">
         <ErrorState
-          message={(providers.error as Error)?.message || (config.error as Error)?.message || "Could not load the language-model settings."}
+          message={apiErrorMessage(providers.error ?? config.error)}
           onRetry={() => { providers.refetch(); config.refetch(); }}
         />
       </div>
@@ -53,36 +53,31 @@ export default function AdminAIPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header>
-        <strong className="m-text-h">AI</strong>
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
-          The language model that writes narrative and remediation proposals.
-        </p>
-      </header>
+      <PageHeader title="AI" meta="The language model that writes narrative and remediation proposals" />
 
       <div className="flex gap-4">
         <div className="flex flex-col gap-1">
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Provider</span>
           <span className="m-text-h font-semibold">{loading ? "–" : provider ?? "Not set"}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{provider ? "Writes the narrative." : "Choose a provider below."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{provider ? "Writes the narrative" : "Choose a provider below"}</span>
         </div>
         <div className="flex flex-col gap-1">
           <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Model</span>
           <span className="m-text-h font-semibold">{loading ? "–" : c?.model || "Not set"}</span>
-          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.model ? "Used for every request." : "Pick a model below."}</span>
+          <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.model ? "Used for every request" : "Pick a model below"}</span>
         </div>
         {c && providers.data?.[c.provider]?.requires_api_key !== false ? (
           <div className="flex flex-col gap-1">
             <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>API key</span>
             <span className="m-text-h font-semibold">{loading ? "–" : c?.has_api_key ? "Stored" : "Not set"}</span>
-            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.has_api_key ? "Kept on the server." : "Not stored. Add one below."}</span>
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{c?.has_api_key ? "Kept on the server" : "Not stored, add one below"}</span>
           </div>
         ) : null}
       </div>
 
       {note("The model never sees SAP data. It receives aggregated finding summaries and writes narrative and remediation proposals. Every score, count and rate comes from deterministic checks.")}
 
-      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the language-model settings.</p>}
+      {providers.data && c ? <LLMForm key={c.updated_at ?? "env"} providers={providers.data} config={c} /> : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading the language-model settings</p>}
     </div>
   );
 }
@@ -118,13 +113,7 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
   const num = (v: string) => (v === "" ? undefined : Number(v));
 
   return (
-    <section className="flex flex-col gap-4 rounded border p-4" style={{ borderColor: "var(--m-line)" }}>
-      <div className="flex items-center justify-between">
-        <strong className="m-text-h">Provider</strong>
-        <span className="m-text-label rounded px-2 py-0.5" style={{ background: "var(--m-sheet-raised)", color: "var(--m-ink-3)" }}>
-          {config.source === "database" ? "set here" : "from environment"}
-        </span>
-      </div>
+    <Card title="Provider" meta={config.source === "database" ? "Set here" : "From environment"}>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Provider">
@@ -203,6 +192,6 @@ function LLMForm({ providers, config }: { providers: Record<string, LLMProvider>
           Last changed {formatDate(config.updated_at, "datetime")} by {config.updated_by ?? "—"}
         </p>
       ) : null}
-    </section>
+    </Card>
   );
 }

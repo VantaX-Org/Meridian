@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Field, ReportPage, Stat, Input } from "@/design";
+import { Button, DataTable, Field, Input, PageHeader, ReportPage, Stat } from "@/design";
 import { getExceptionBilling } from "@/lib/api/exceptions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -32,7 +32,6 @@ export default function ExceptionBillingPage() {
   const b = q.data;
   const tierCount = (bb: ExceptionBilling, t: Tier) => bb[`tier${t}_count` as keyof ExceptionBilling] as number;
   const tierAmount = (bb: ExceptionBilling, t: Tier) => bb[`tier${t}_amount` as keyof ExceptionBilling] as number;
-  const resolved = b ? TIERS.reduce((n, t) => n + tierCount(b, t), 0) : null;
   const rows: TierRow[] = b ? TIERS.map((t) => ({ tier: t, count: tierCount(b, t), amount: tierAmount(b, t) })) : [];
 
   const columns: ColumnDef<TierRow>[] = [
@@ -51,10 +50,10 @@ export default function ExceptionBillingPage() {
       narrative="Resolved exceptions by billing tier, on top of the base fee. Read only."
       charts={
         <div className="flex flex-col gap-4">
+          <PageHeader title="Exception billing" meta="Resolved exceptions by billing tier" />
           <div className="flex gap-6">
-            <Stat label="Total" value={b ? money(b.total_amount) : q.isLoading ? "–" : "Pick a month."} />
-            <Stat label="Base fee" value={b ? money(b.base_fee) : q.isLoading ? "–" : "—"} delta="Charged every month." />
-            <Stat label="Resolved exceptions" value={resolved ?? (q.isLoading ? "–" : "—")} delta={resolved ? "Billed by tier below." : "Nothing resolved this month."} />
+            <Stat label="Total" value={b ? money(b.total_amount) : q.isLoading ? "–" : "Pick a month"} />
+            <Stat label="Base fee" value={b ? money(b.base_fee) : q.isLoading ? "–" : "—"} />
           </div>
           <div style={{ maxWidth: 200 }}>
             <Field label="Month">
@@ -72,7 +71,7 @@ export default function ExceptionBillingPage() {
         ) : null
       }
       state={state}
-      emptyProps={{ title: "No billable exceptions this period.", detail: "Try an earlier month, or check back after the next billing run." }}
+      emptyProps={{ title: "No billable exceptions this period", detail: "Try an earlier month, or check back after the next billing run.", action: <Button variant="secondary" onClick={() => setPeriod(thisMonth())}>Back to this month</Button> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
     />
   );

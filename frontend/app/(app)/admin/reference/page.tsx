@@ -5,7 +5,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Select } from "@/design";
+import Link from "next/link";
+import { Button, DataTable, ExplorerPage, PageHeader, Select } from "@/design";
 import { getSystems } from "@/lib/api/connectivity";
 import { getReferenceLists, type ReferenceList } from "@/lib/api/system-objects";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -26,9 +27,10 @@ export default function ReferenceAdminPage() {
   const failed = isListFailure(systems) ? systems : isListFailure(q) ? q : null;
   return (
     <ExplorerPage
+      header={<PageHeader title="Reference data" meta="Postal code and BIC lists held per system" />}
       filterBar={list.length > 0 ? <Select label="System" value={id} onValueChange={setPicked} options={list.map((s) => ({ value: s.id, label: s.name }))} placeholder="System" /> : undefined}
       state={systems.isLoading || (!!id && q.isLoading) ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No reference data loaded.", detail: list.length === 0 ? "Connect a system first." : "Upload postal codes or a BIC directory from the system page." }}
+      emptyProps={{ title: "No reference data loaded", detail: list.length === 0 ? "Connect a system first." : "Upload postal codes or a BIC directory from the system page.", action: <Link href="/systems"><Button>{list.length === 0 ? "Connect a system" : "Open systems"}</Button></Link> }}
       errorProps={{ message: apiErrorMessage(failed?.error), onRetry: () => { void systems.refetch(); void q.refetch(); } }}
       table={<DataTable columns={columns} data={rows} getRowId={(r) => r.kind} />}
     />
