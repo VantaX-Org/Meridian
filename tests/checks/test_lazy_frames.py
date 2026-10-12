@@ -122,7 +122,7 @@ def test_lazy_run_is_identical_to_eager_run(bundle: dict[str, bytes]) -> None:
         scores = score_all_modules(results + conformance)
         out[lazy] = [_dump(results), _dump(conformance), json.dumps(profiles, sort_keys=True, default=str),
                      json.dumps(find_outliers(MODULE, frames), sort_keys=True, default=str),
-                     json.dumps(sorted(present_keys(results, frames))),
+                     json.dumps(sorted(set(present_keys(results, frames)))),
                      json.dumps({m: s.model_dump() for m, s in scores.items()}, sort_keys=True, default=str)]
         assert len(results) > 400 and any(not r.passed for r in results) and conformance
     for name, eager, lazy in zip(["findings", "conformance", "profiles", "outliers", "present", "dqs"],

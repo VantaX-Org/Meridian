@@ -229,7 +229,11 @@ _CHECKS_LIMIT = int(os.getenv("MERIDIAN_CHECKS_TIME_LIMIT", "21600"))
 # deliveries that died. The broker's ``redelivered`` flag cannot do this: it is a
 # boolean, not a count, and the Redis transport does not set it reliably.
 _MAX_LOST = 2
-_LOST_ERROR = "checks worker ran out of memory twice; aborted"
+
+def _lost_error(n: int) -> str:
+    return f"checks worker lost {n} times (out of memory or restart); aborted"
+
+
 _TIME_LIMIT_ERROR = f"checks exceeded the time limit of {_CHECKS_LIMIT}s; aborted"
 _DELIVERY_TTL = 2 * 24 * 3600
 
@@ -477,10 +481,12 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
         try:
             task_id = self.request.id
             try:  # only a killed worker skips the clearing and leaves its delivery counted
-                if _count_delivery(task_id) > _MAX_LOST:
-                    logger.error(f"run_checks {task_id} for version_id={version_id}: {_LOST_ERROR}")
-                    _mark_failed(engine, tenant_id, version_id, _LOST_ERROR)
-                    return {"version_id": version_id, "status": "failed", "error": _LOST_ERROR}
+                lost = _count_delivery(task_id)
+                if lost > _MAX_LOST:
+                    msg = _lost_error(lost - 1)  # this delivery is the one aborted, not a lost one
+                    logger.error(f"run_checks {task_id} for version_id={version_id}: {msg}")
+                    _mark_failed(engine, tenant_id, version_id, msg)
+                    return {"version_id": version_id, "status": "failed", "error": msg}
                 return _run_checks(self, engine, version_id, tenant_id, parquet_path, reanalyse)
             except SoftTimeLimitExceeded:  # the hard limit follows and runs no handler: fail the version now
                 logger.error(f"run_checks {task_id} for version_id={version_id}: {_TIME_LIMIT_ERROR}")
@@ -900,12 +906,21 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 for t in frames.unsplittable:
                     table_frames[t] = frames.flat[[c for c in frames.flat.columns if c.startswith(t + ".")]]
             for table, tdf in table_frames.items():
+                t0 = time.monotonic()
                 keys = [f"{table}.{k}" for k in dictionary.keys(table)]
                 for res in run_conformance(table, tdf, dictionary, owner.get(table, modules[0] if modules else ""),
                                            keys, live_refs, value_checked, reported):
                     feed(res, report=False)
                     res._all_failing_keys = None
                     all_results.append(res)
+                logger.info(f"DDIC conformance {table}: {len(tdf)} rows x {len(tdf.columns)} cols "
+                            f"in {time.monotonic() - t0:.1f}s")
+                try:  # the heartbeat thread is stopped by now
+                    last_progress.update(current_step="DDIC conformance")
+                    update_task_progress(version_id, **last_progress)
+                except Exception as exc:
+                    reraise_soft_limit(exc)
+                    logger.warning("progress update failed: %s", exc)
         except Exception as e:
             reraise_soft_limit(e)
             logger.warning(f"DDIC conformance pass failed, continuing: {e}", exc_info=True)

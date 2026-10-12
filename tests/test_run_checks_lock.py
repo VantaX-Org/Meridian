@@ -57,7 +57,7 @@ def test_third_delivery_after_two_lost_workers_fails_the_job_without_running():
     body.assert_not_called()
     assert out["status"] == "failed"
     _deliver.failed.assert_called_once()
-    assert "ran out of memory twice" in _deliver.failed.call_args.args[-1]
+    assert "worker lost 2 times" in _deliver.failed.call_args.args[-1]
     assert redis.store == {}  # the aborted delivery is acknowledged; a re-run starts afresh
 
 

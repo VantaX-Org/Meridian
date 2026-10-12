@@ -39,3 +39,36 @@ def test_percentage_condition_rate_unit_is_valid():
     res = run_conformance("KONP", konp, D, "mm_purchasing", ["KONP.KNUMH", "KONP.KOPOS"], {"TCURC.WAERS": {"EUR"}})
     r = next(r for r in res if r.check_id == "DDIC-KONP-CHECK_TABLE")
     assert r.failing_record_keys == ["KNUMH=2|KOPOS=01"]
+
+
+# ── numeric length path: the regex form must equal the old split(expand=True) form ──
+
+_NUM_VALUES = ["", None, pd.NA, "-", "+", "1.2.3", "+0012.3400", "000.5", "12", "1,234.50-", ".5", "5.",
+               "abc", "  7.10 ", "-0.0", "99999999999999999999.99999", "12345678", "0", "00", "1e5", "12-", "203.93\n-", "1.5\n", "12\n.5", "1\n2.3", "1.\n2"]
+
+
+def _old_length(s: pd.Series, f) -> pd.Series:
+    num = s.str.replace(",", "", regex=False).str.replace(r"-$", "", regex=True)
+    parsed = pd.to_numeric(num, errors="coerce")
+    parts = num.str.lstrip("+-").str.split(".", n=1, expand=True)
+    ints = parts[0].str.lstrip("0").str.len().fillna(0)
+    decs = (parts[1].str.rstrip("0").str.len() if parts.shape[1] > 1 else pd.Series(0, index=s.index)).fillna(0)
+    return parsed.notna() & ((ints > (f.length - f.decimals)) | (decs > f.decimals))
+
+
+def test_numeric_length_matches_the_old_split_form():
+    from types import SimpleNamespace
+
+    from checks.ddic_conformance import _violations
+    vals = pd.Series(_NUM_VALUES, dtype="string")
+    for t in ("DEC", "QUAN", "CURR"):
+        for length, decimals in [(13, 3), (5, 2), (3, 0), (15, 2), (8, 5), (1, 0)]:
+            f = SimpleNamespace(type=t, length=length, decimals=decimals, lowercase=False,
+                                allowed_values=lambda: None)
+            new = _violations(vals, f, None)["length"]
+            old = _old_length(vals.str.strip(), f)
+            assert new.tolist() == old.tolist(), (t, length, decimals)
+    # no value has a decimal point: the old code took a separate branch
+    nodot = pd.Series(["1", "123456", None, "-7"], dtype="string")
+    f = SimpleNamespace(type="DEC", length=4, decimals=0, lowercase=False, allowed_values=lambda: None)
+    assert _violations(nodot, f, None)["length"].tolist() == _old_length(nodot, f).tolist()
