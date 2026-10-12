@@ -46,6 +46,7 @@ const ratio = (a, b) => {
 };
 
 const status = ["critical", "high", "medium", "pass"];
+const domains = ["material", "customer", "vendor", "partner", "finance", "people", "plant", "asset", "other"];
 const surfaces = ["sheet", "canvas", "sheet-raised", "sheet-sunken", "rail"];
 const pairs = [
   ...["ink", "ink-2", "ink-3"].flatMap((i) => surfaces.map((s) => [i, s])),
@@ -54,7 +55,19 @@ const pairs = [
   ...["sheet", "canvas", "sheet-raised"].map((s) => ["accent", s]),
   ["accent-ink", "accent-soft"], ["accent", "accent-soft"], ["accent-ink", "accent-soft-2"],
   ...status.flatMap((s) => [[s, "sheet"], [s, "canvas"], [s, "sheet-raised"], [s, `${s}-soft`], [`${s}-ink`, `${s}-soft`], [`${s}-ink`, "sheet"]]),
-  ["low", "low-soft"], ["low", "sheet"],
+  ["low", "low-soft"], ["low", "sheet"], ["low", "canvas"], ["low-ink", "low-soft"], ["low-ink", "sheet"],
+  ...["critical", "high", "medium", "low", "pass", "info"].map((s) => [`${s}-on`, s]),
+  ...["ember", "ember-ink"].flatMap((e) => (e === "ember" ? ["sheet", "canvas", "sheet-raised"] : ["ember-soft", "sheet"]).map((s) => [e, s])),
+  ["ember-on", "ember"],
+  ...["hero-ink", "hero-ink-2", "hero-ink-3"].flatMap((i) => ["hero-bg", "hero-bg-2"].map((b) => [i, b])),
+  ...["critical", "high", "medium", "pass"].map((t) => [`hero-tone-${t}`, "hero-bg"]),
+  ...domains.flatMap((d) => [
+    ...["sheet", "canvas", "sheet-raised", `dom-${d}-soft`].map((s) => [`dom-${d}`, s]),
+    [`dom-${d}-ink`, `dom-${d}-soft`], [`dom-${d}-ink`, "sheet"], ["dom-on", `dom-${d}`],
+  ]),
+  ...["viz-9", "viz-10"].flatMap((v) => ["sheet", "canvas"].map((s) => [v, s])),
+  ...["seq-1", "seq-2", "seq-3", "div-neg-1", "div-mid", "div-pos-1"].map((b) => ["ink", b]),
+  ...["seq-4", "seq-5", "div-neg-2", "div-pos-2"].map((b) => ["ink-on-accent", b]),
   ["viz-tooltip-ink", "viz-tooltip-bg"],
   ["viz-axis", "sheet"],
 ];
