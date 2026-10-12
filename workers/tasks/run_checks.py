@@ -316,7 +316,8 @@ def _mark_failed(engine: Engine, tenant_id: str, version_id: str, error: str) ->
 def _open_checkpoint(engine: Engine, tenant_id: str, version_id: str, rule_set: str, dataset: str) -> dict:
     """``metadata.checks_checkpoint``: the modules an earlier, unfinished run of the same rule
     set on the same dataset completed, which this run resumes rather than re-runs. Anything
-    else starts the version over, without the failing records an earlier run stored."""
+    else starts the version over. An earlier run's failing records stay until each check
+    replaces its own, so a rerun that dies early leaves the record browser populated."""
     with Session(engine) as session:
         session.execute(text("SET app.tenant_id = :tid"), {"tid": str(tenant_id)})
         cp = session.execute(text("SELECT metadata->'checks_checkpoint' FROM analysis_versions WHERE id = :vid"),
@@ -324,7 +325,6 @@ def _open_checkpoint(engine: Engine, tenant_id: str, version_id: str, rule_set: 
         if cp.get("rule_set") == rule_set and cp.get("dataset") == dataset and cp.get("modules") is not None:
             return cp
         cp = {"rule_set": rule_set, "dataset": dataset, "modules": {}}
-        session.execute(text("DELETE FROM finding_records WHERE version_id = :vid"), {"vid": version_id})
         session.execute(text(
             "UPDATE analysis_versions SET metadata = (COALESCE(metadata, '{}'::jsonb) - 'checks_partial') "
             "|| jsonb_build_object('checks_checkpoint', CAST(:cp AS jsonb)) WHERE id = :vid"),
@@ -488,11 +488,19 @@ def run_checks(self: Task, version_id: str, tenant_id: str, parquet_path: str,
                 raise
             finally:
                 _clear_deliveries(task_id)
+        finally:  # nested: a soft time limit between the unlocks still frees both
+            try:
+                lock.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), {"k": slot})
+            finally:
+                lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
+    finally:  # the pooled connection never goes back holding a lock
+        try:
+            lock.execute(text("SELECT pg_advisory_unlock_all()"))
+        except SoftTimeLimitExceeded:  # unlock cut short: drop the session, Postgres frees its locks
+            lock.invalidate()
+            raise
         finally:
-            lock.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), {"k": slot})
-            lock.execute(text("SELECT pg_advisory_unlock(hashtext(:v))"), {"v": version_id})
-    finally:
-        lock.close()
+            lock.close()
 
 
 def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, parquet_path: str,
@@ -658,7 +666,8 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                  "message": r.description, **(r.conditions or {})}
                 for r in session.execute(text(
                     "SELECT name, module, severity, description, conditions FROM rules "
-                    "WHERE source IN ('mined', 'custom') AND enabled AND module = ANY(:m)"), {"m": list(modules)})]
+                    "WHERE source IN ('mined', 'custom') AND enabled AND module = ANY(:m) ORDER BY name"),
+                    {"m": list(modules)})]
         # misplaced values, placeholders, swaps, dead-in-text records (checks/value_placement.py)
         from checks import config_rules, country_rules, value_placement
         from checks.runner import _find_module_yaml
@@ -690,7 +699,13 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
         governance = {**rule_overrides, "_suppressed": sorted(sup_rules)
                       + sorted(f"{c}:{k}" for c, ks in sup_records.items() for k in ks)}
         rule_set = rule_set_fingerprint(modules, governance, fs_rules)
-        resumed: dict[str, dict] = _open_checkpoint(engine, tenant_id, version_id, rule_set, parquet_path)["modules"]
+        # a checkpoint resumes only under the same rules, measuring date and cost model
+        # (uploads measure as of now: the day, so a same-day rerun still resumes)
+        import hashlib
+        resume_key = hashlib.sha256(json.dumps(
+            [rule_set, as_of or datetime.now(timezone.utc).date().isoformat(), cost_model],
+            sort_keys=True, default=str).encode()).hexdigest()[:16]
+        resumed: dict[str, dict] = _open_checkpoint(engine, tenant_id, version_id, resume_key, parquet_path)["modules"]
         # cells a specific rule already reports on that record: the DDIC pass does not report them twice
         reported: dict[str, set[str]] = {}
         rule_fields = {r["id"]: r["fields"] for r in fs_rules if r.get("id") and r.get("fields")}  # e.g. swaps
@@ -957,6 +972,12 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
                 if lost:  # an issue whose records were not stored would be resolved as fixed
                     raise RuntimeError(f"failing records of {len(lost)} check(s) not stored: {sorted(lost)[:5]}")
                 with session.begin_nested():
+                    # each failing check replaced its records as it streamed; the rest no longer fail here
+                    session.execute(text(
+                        "DELETE FROM finding_records WHERE version_id = :vid AND tenant_id = :tid "
+                        "AND check_id <> ALL(:ids)"),
+                        {"vid": version_id, "tid": str(tenant_id),
+                         "ids": [r.check_id for r in all_results if r.affected_count > 0]})
                     stats = track(session, str(tenant_id), str(version_id), scope_of(metadata), all_results, frames,
                                   store=False)
                 logger.info(f"record issues for {version_id}: {stats}")

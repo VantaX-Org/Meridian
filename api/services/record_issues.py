@@ -118,7 +118,7 @@ def track(session, tenant_id: str, version_id: str, scope: str, results, frames,
     # an older version must not resolve or re-open anything.
     newest = session.execute(text("""
         SELECT id::text FROM analysis_versions
-         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND status NOT IN ('failed', 'extracted')
+         WHERE COALESCE(metadata->>'system_id', 'upload') = :scope AND status NOT IN ('failed', 'extracted', 'partial')
          ORDER BY run_at DESC LIMIT 1
     """), p).scalar()
     if newest and newest != str(version_id):

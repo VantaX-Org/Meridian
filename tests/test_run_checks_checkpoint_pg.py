@@ -204,8 +204,30 @@ def test_timeout_leaves_partial_version_and_rerun_resumes_without_duplicates(eng
     assert first.seen and second.seen
     assert all(r.failing_record_values is None and not r.failing_record_keys for r in first.seen + second.seen)
 
-    # a third run of the same version after completion starts over (no checkpoint): same rows again
+    # a third run of the same version after completion starts over (no checkpoint): same rows again,
+    # and records of a check that no longer fails go at the end
+    with owner.begin() as c:
+        c.execute(text("INSERT INTO finding_records (tenant_id, version_id, check_id, module, grain, record_key) "
+                       "VALUES (:t, :v, 'CKPT-MM-3', 'material_master', 'MARA', 'MATNR=stale')"), {"t": tid, "v": vid})
     third = FakeRules()
     _run(app, tid, vid, third)
     assert third.ran == MODULES
+    assert _stored(owner, vid) == (findings, records)
+
+    # a fourth run dies before its first checkpoint: the complete run's records stay browsable
+    fourth = FakeRules(stop_in="material_master")
+    with pytest.raises(SoftTimeLimitExceeded):
+        _run(app, tid, vid, fourth)
+    assert _stored(owner, vid)[1] == records
+
+    # a changed cost model starts over rather than resuming the checkpoint
+    fifth = FakeRules(stop_in="accounts_payable")
+    with pytest.raises(SoftTimeLimitExceeded):
+        _run(app, tid, vid, fifth)
+    with owner.begin() as c:
+        c.execute(text("UPDATE tenants SET cost_model = CAST(:c AS jsonb) WHERE id = :t"),
+                  {"t": tid, "c": json.dumps({"currency": "EUR"})})
+    sixth = FakeRules()
+    _run(app, tid, vid, sixth)
+    assert sixth.ran == MODULES
     assert _stored(owner, vid) == (findings, records)
