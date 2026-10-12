@@ -6,7 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, ExplorerPage, Select } from "@/design";
+import { Button, Card, DataTable, Select } from "@/design";
 import { downloadAuthenticated } from "@/lib/api/download";
 import {
   getAnalysisReportUrl, getCleaningReportUrl, getComparisonReportUrl, getExecutiveReportUrl, getExtractionReportUrl,
@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/format";
 import { getVersions } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { usePermissions } from "@/lib/permissions";
+import { InsightFrame } from "../_components/InsightFrame";
 
 interface ReportRow {
   id: string;
@@ -55,7 +56,7 @@ export default function ReportsPage() {
       header: "",
       cell: ({ row }) => {
         const r = row.original;
-        if (r.url && !can("export")) return <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role.</span>;
+        if (r.url && !can("export")) return <span className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Export needs the auditor or analyst role</span>;
         return r.url ? (
           <Button variant="secondary" onClick={() => void downloadAuthenticated(r.url!(versionId), `${r.id}_${versionId}.${r.format.toLowerCase()}`)}>Download</Button>
         ) : (
@@ -66,8 +67,9 @@ export default function ReportsPage() {
   ];
 
   return (
-    <ExplorerPage
-      filterBar={
+    <InsightFrame
+      title="Reports"
+      actions={
         <Select
           label="Analysis run"
           value={versionId}
@@ -78,12 +80,16 @@ export default function ReportsPage() {
       }
       state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
       emptyProps={{
-        title: "No completed run to report on.",
+        title: "No completed run yet",
         detail: "Reports are rendered from a finished run.",
+        ghost: "table",
         action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
-      table={<DataTable columns={columns} data={REPORTS} getRowId={(r) => r.id} />}
-    />
+    >
+      <Card title="Available reports">
+        <DataTable columns={columns} data={REPORTS} getRowId={(r) => r.id} hideToolbar dense height="auto" />
+      </Card>
+    </InsightFrame>
   );
 }
