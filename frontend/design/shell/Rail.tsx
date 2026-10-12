@@ -396,6 +396,7 @@ export function Rail() {
     >
       <Link
         href={withRun(resolveNavHref("/home/lead", role))}
+        aria-label="Meridian"
         className="flex items-center gap-2 shrink-0 font-semibold"
         style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
       >

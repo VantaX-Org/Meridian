@@ -92,6 +92,14 @@ describe("Rail", () => {
     expect(screen.getByRole("link", { name: "Systems" })).toBeInTheDocument();
   });
 
+  it("brand home link keeps its accessible name in both rail states", async () => {
+    renderRail();
+    expect(await screen.findByRole("link", { name: "Meridian" })).toHaveAttribute("href", expect.stringContaining("/home/"));
+    (await screen.findByRole("button", { name: "Collapse navigation" })).click();
+    await screen.findByRole("button", { name: "Expand navigation" });
+    expect(screen.getByRole("link", { name: "Meridian" })).toBeInTheDocument();
+  });
+
   it("persists the collapsed state to sessionStorage and restores it on remount", async () => {
     const { unmount } = renderRail();
     const toggle = await screen.findByRole("button", { name: "Collapse navigation" });
