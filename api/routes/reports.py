@@ -6,12 +6,13 @@ import logging
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import Tenant, get_db, get_tenant
+from api.routes.record_issues import _rls
 from api.services.report_pdf import (
     ReportNotAssembled,
     build_and_store_pdf,
@@ -178,6 +179,7 @@ _NOT_FOUND = {
     "cleaning": "Run not found.",
     "comparison": "One or both runs not found.",
     "executive": "Run not found.",
+    "board": "Run not found.",
     "object": "Run not found, or this module was not evaluated.",
     "record": "Run not found, or this material is not in the extracted dataset.",
 }
@@ -261,3 +263,123 @@ async def record_report_pdf(version_id: uuid.UUID, matnr: str, tenant: Tenant = 
     """Material 360 fix sheet for one material: failing rules by view, with actual values
     and record fixes. 404 when the run has no extracted dataset or the material is not in it."""
     return await _pdf(tenant, "record", f"meridian_record_{matnr}_{version_id}.pdf", version_id, matnr=matnr)
+
+
+# ── board pack, analyst workbook, catalogue ──────────────────────────────────
+
+async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id: uuid.UUID,
+                        module: Optional[str]) -> None:
+    """One audit_log row per board or workbook download. Never breaks the download."""
+    from api.middleware.audit import _insert_audit_row
+
+    uid = getattr(request.state, "local_user_id", None)
+    row = {
+        "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
+        "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
+        "entity_type": "report", "entity_id": str(version_id), "method": request.method,
+        "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"), "before_json": None,
+        "after_json": {"kind": kind, "version_id": str(version_id), "module": module},
+    }
+    await asyncio.to_thread(_insert_audit_row, row)
+
+
+@router.get("/reports/board/{version_id}.pdf")
+async def board_report_pdf(version_id: uuid.UUID, request: Request, compare: Optional[uuid.UUID] = None,
+                           db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Board pack. Deltas are against ``compare`` only; without it they read "no earlier run"."""
+    await _rls(db, tenant)
+    res = await _pdf(tenant, "board", f"meridian_board_{version_id}.pdf", version_id, compare)
+    await _audit_export(request, tenant, "board", version_id, None)
+    return res
+
+
+def _workbook_sync(tenant_id: str, vid: str, compare: Optional[str], module: Optional[str]) -> Optional[tuple[bytes, str]]:
+    from api.services.workbook_report import build
+    from workers.db import get_sync_engine, tenant_session
+
+    with tenant_session(get_sync_engine(), tenant_id) as session:
+        return build(session, tenant_id, vid, compare, module)
+
+
+@router.get("/reports/{version_id}/workbook.xlsx")
+async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optional[str] = None,
+                        compare: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db),
+                        tenant: Tenant = Depends(get_tenant)) -> Response:
+    """Analyst workbook: summary, modules, rules, findings, record samples, readiness and trend."""
+    from api.services.branded_xlsx import xlsx_response
+
+    await _rls(db, tenant)
+    try:
+        out = await asyncio.to_thread(_workbook_sync, str(tenant.id), str(version_id),
+                                      str(compare) if compare else None, module)
+    except Exception:
+        logger.exception("Workbook failed")
+        raise HTTPException(status_code=500, detail="Failed to generate workbook")
+    if out is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    await _audit_export(request, tenant, "workbook", version_id, module)
+    return xlsx_response(*out)
+
+
+# id, name, format, about, sections, page_estimate, requires, path template, stored-report flag
+_CATALOGUE = (
+    ("board", "Board pack", "PDF", "Score, trend, blockers, root causes and impact by L1 for a board audience.",
+     ["Headline", "Quality by dimension", "Trend", "Blockers", "Root causes", "Impact by L1", "Cleansing funnel",
+      "Modules", "Rule appendix", "Methodology"], 12, [], "/api/v1/reports/board/{v}.pdf", False),
+    ("workbook", "Analyst workbook", "XLSX", "Every module, rule and finding with filters and conditional formats.",
+     ["Summary", "Modules", "Objects", "Rules", "Findings", "Records sample", "Readiness", "Trend"], 8, [],
+     "/api/v1/reports/{v}/workbook.xlsx", False),
+    ("executive", "Executive summary", "PDF", "Readiness, value at risk and owners for the run.",
+     ["Summary", "Scores", "Readiness", "Management overview", "Methodology"], 4, [],
+     "/api/v1/reports/executive/{v}.pdf", False),
+    ("analysis", "Analysis report", "PDF", "Scores, findings and rule results.",
+     ["Scores", "Readiness", "What to fix first", "Failing checks", "Methodology"], 6, [],
+     "/api/v1/reports/analysis/{v}.pdf", False),
+    ("extraction", "Extraction report", "PDF", "Tables read from the source system and their coverage.",
+     ["Tables read", "Row counts", "Timings", "Issues"], 3, [], "/api/v1/reports/extraction/{v}.pdf", False),
+    ("cleaning", "Cleaning and fixes", "PDF", "Cleaning work across the organisation for this run.",
+     ["Queue", "Fixes by status", "Owners"], 3, [], "/api/v1/reports/cleaning.pdf?version_id={v}", False),
+    ("compare", "Run comparison", "PDF", "This run against the baseline or previous run.",
+     ["Score change", "Module changes", "Rule changes"], 4, [], "/api/v1/reports/compare.pdf?v2={v}", False),
+    ("full", "Full report", "PDF", "The stored run report.", ["Stored report"], 10, [],
+     "/api/v1/reports/{v}/download", True),
+    ("json", "Run data", "JSON", "Run results as JSON.", ["Stored report payload"], 0, [],
+     "/api/v1/reports/{v}/export.json", True),
+    ("object", "Object report", "PDF", "One object's rules and fields.",
+     ["Score", "Rules", "Top findings", "Record samples"], 3, ["module"], "/api/v1/reports/object/{v}/{module}.pdf",
+     False),
+    ("record", "Record fix sheet", "PDF", "One record's fixes.", ["Failing rules by view", "Fixes"], 1, ["record"],
+     None, False),
+)
+
+
+@router.get("/reports/catalogue")
+async def report_catalogue(version_id: Optional[uuid.UUID] = None, module: Optional[str] = None,
+                           compare: Optional[uuid.UUID] = None, db: AsyncSession = Depends(get_db),
+                           tenant: Tenant = Depends(get_tenant)) -> list[dict]:
+    """Every report with its sections and download URL for the chosen run. ``url`` is null while a
+    required input (module, record) is missing or no run is chosen."""
+    await _rls(db, tenant)
+    built: Optional[object] = None
+    if version_id:
+        exists = (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                                   {"v": str(version_id), "t": str(tenant.id)})).first()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Run not found.")
+        built = (await db.execute(select(Report.generated_at).where(
+            Report.tenant_id == tenant.id, Report.version_id == version_id))).scalar_one_or_none()
+    out = []
+    for rid, name, fmt, about, sections, pages, requires, path, stored in _CATALOGUE:
+        url = None
+        if path and version_id and not ("module" in requires and not module):
+            url = path.format(v=version_id, module=module or "")
+            if compare and rid in ("board", "workbook", "compare"):
+                key = "v1" if rid == "compare" else "compare"
+                url += ("&" if "?" in url else "?") + f"{key}={compare}"
+            if module and rid == "workbook":
+                url += ("&" if "?" in url else "?") + f"module={module}"
+        out.append({"id": rid, "name": name, "format": fmt, "about": about, "sections": sections,
+                    "page_estimate": pages, "requires": requires, "url": url,
+                    "last_built_at": built.isoformat() if stored and built else None, "size_bytes": None})
+    return out
