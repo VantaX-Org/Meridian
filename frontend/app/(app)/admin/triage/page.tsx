@@ -86,11 +86,9 @@ export default function AdminTriagePage() {
     <div className="flex flex-col gap-6 p-6" aria-busy={teams.isLoading || undefined}>
       <PageHeader title="Triage" meta="Who gets new issues, how long they have, and the calendar the clocks run on" />
 
-      {idle ? (
-        <div className="flex gap-4">
-          <Stat label="Rules switched off" value={idle} tone="at-risk" delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
-        </div>
-      ) : null}
+      <div className="flex gap-4">
+        <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
+      </div>
 
       {!rules && !settings ? (
         <Notice tone="info">Changing triage needs the manage rules or manage settings permission.</Notice>

@@ -10,7 +10,7 @@ import { toast } from "sonner";
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, Drawer, ExplorerPage, ExportMenu, Field, Notice, PageHeader, Pill, Select, Stat, Tabs, emptyExportOptions, type PillTone, Input } from "@/design";
@@ -99,6 +99,8 @@ type QueueSnapshot = [readonly unknown[], QueueCache][];
 export default function InboxPage() {
   const qc = useQueryClient();
   const router = useRouter();
+  const pathname = usePathname();
+  const urlParams = useSearchParams();
   const { user } = useAuth();
   const { can } = useRole();
   const dayOne = useDayOne();
@@ -114,6 +116,15 @@ export default function InboxPage() {
   const kind = oneOf(kindRaw, KINDS.filter((k) => k.value !== "approvals" || canApprove).map((k) => k.value), "task");
   const isExceptions = kind === "exception";
   const [search, setSearch] = useState("");
+  // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
+  const showAll = (alsoSearch: boolean) => {
+    const params = new URLSearchParams(urlParams.toString());
+    params.delete("view");
+    params.delete("type");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    if (alsoSearch) setSearch("");
+  };
   const [rawFocusedIndex, setFocusedIndex] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
   const [rollbackNote, setRollbackNote] = useState<string | null>(null);
@@ -435,7 +446,7 @@ export default function InboxPage() {
               detail: dayOne.step?.detail ?? "Tasks arrive when findings are assigned or proposals need review.",
               action: <DayOneAction step={dayOne.step} fallbackHref="/objects" fallbackLabel="Open objects" />,
             }
-          : { title: "No tasks in this view", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => { setView("all"); setType("all"); setSearch(""); }}>Show all</Button> }
+          : { title: "No tasks in this view", detail: "Show all tasks to see the rest of the queue", action: <Button variant="secondary" onClick={() => showAll(true)}>Show all</Button> }
       }
       errorProps={{ message: apiErrorMessage(firstError), onRetry: refresh }}
       summary={
@@ -484,7 +495,7 @@ export default function InboxPage() {
             />
           </Field>
           {!isExceptions && (view !== "all" || type !== "all") && (
-            <Notice action={<Button variant="ghost" onClick={() => { setView("all"); setType("all"); }}>Show all</Button>}>
+            <Notice action={<Button variant="ghost" onClick={() => showAll(false)}>Show all</Button>}>
               Showing {[view !== "all" ? VIEW_BANNER[view] : null, type !== "all" ? `${labelOf(type)} tasks` : null].filter(Boolean).join(", ")} only.
             </Notice>
           )}

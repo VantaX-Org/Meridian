@@ -125,7 +125,7 @@ export default function ImportPage() {
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
       <PageHeader
         title="Import file"
-        meta="Check how columns map to standard SAP fields, then run the analysis. Every import becomes a version"
+        meta="Check how columns map to standard SAP fields, then run the analysis, and every import becomes a version"
         actions={canUpload ? <Button variant="primary" onClick={() => inputRef.current?.click()}>Choose file</Button> : undefined}
       />
       {systemsQ.data?.length ? (
@@ -157,14 +157,14 @@ export default function ImportPage() {
         </Card>
       </label>
 
-      {running || (run.isPending && !job) ? (
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1" style={{ minHeight: 28 }}>
+        {running || (run.isPending && !job) ? (<>
           <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{ height: 2, background: "var(--m-line)" }}>
             <div style={{ height: 2, width: `${pct}%`, background: "var(--m-accent)" }} />
           </div>
           <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{job ? stepLabel(job.step) : `Uploading ${uploadPct}%`}</p>
-        </div>
-      ) : null}
+        </>) : null}
+      </div>
       {job?.error ? <Notice tone="danger">Analysis failed: {job.error}</Notice> : null}
       {job?.status === "completed" ? <Link href={`/runs/${job.versionId}`} className="underline">Open the run</Link> : null}
 

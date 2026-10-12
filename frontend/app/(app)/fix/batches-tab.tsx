@@ -311,7 +311,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
 
   if (detail.isLoading) return <Skeleton height={240} />;
-  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" />;
+  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />;
 
   const { batch, items } = detail.data;
   const isCreator = !!currentUserId && batch.created_by === currentUserId;
@@ -456,7 +456,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} pageSize={ITEM_PAGE_SIZE} total={items.length} onPageChange={setItemPage} /> : null}
           </>
         ) : (
-          <EmptyState title="No items in this batch" />
+          <EmptyState title="No items in this batch" detail="Proposals are added when a cleanup run creates them" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />
         )}
       </section>
 
@@ -552,7 +552,7 @@ function MonitoringSection({ onOpenBatch }: { onOpenBatch: (id: string) => void 
       ) : monitor.isError ? (
         <ErrorState message={errorText(monitor.error)} onRetry={() => monitor.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState title="No pinned baseline yet" detail="Pin a run after a cleanup to start monitoring it" />
+        <EmptyState title="No pinned baseline yet" detail="Pin a run after a cleanup to start monitoring it" action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
       ) : (
         <div className="flex flex-col gap-3">
           {items.map((m) => <MonitorRow key={m.scope} item={m} onOpenBatch={onOpenBatch} />)}

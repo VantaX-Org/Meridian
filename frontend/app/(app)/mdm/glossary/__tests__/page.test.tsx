@@ -5,9 +5,9 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as glossaryApi from "@/lib/api/glossary";
 import GlossaryPage from "../page";
 
-const mockParams = vi.hoisted(() => ({ value: "" }));
+const mockParams = vi.hoisted(() => ({ value: "", replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: mockParams.replace }),
   usePathname: () => "/x",
   useSearchParams: () => new URLSearchParams(mockParams.value),
 }));
@@ -52,5 +52,16 @@ describe("GlossaryPage", () => {
     const calls = (glossaryApi.getGlossaryTerms as ReturnType<typeof vi.fn>).mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect((glossaryApi.getGlossaryTerms as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
+  });
+
+  it("clears every filter in one URL replace", async () => {
+    mockParams.value = "domain=material_master&status=active&q=grp&keep=1";
+    mockParams.replace.mockClear();
+    vi.spyOn(glossaryApi, "getGlossaryTerms").mockResolvedValue({ terms: [], total: 0, page: 1, per_page: 100 });
+    renderWithQuery(<GlossaryPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Clear filters" }));
+    expect(mockParams.replace).toHaveBeenCalledTimes(1);
+    expect(mockParams.replace.mock.calls[0]?.[0]).toBe("/x?keep=1");
+    mockParams.value = "";
   });
 });

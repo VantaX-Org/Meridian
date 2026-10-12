@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -30,6 +30,7 @@ export function AlertChannelsPanel() {
   const [secret, setSecret] = useState("");
   const [digest, setDigest] = useState<AlertDigest>("daily");
   const [immediate, setImmediate] = useState(false);
+  const targetRef = useRef<HTMLDivElement>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.alertChannels() });
   const fail = (fallback: string) => (e: unknown) => toast.error(apiErrorMessage(e) || fallback);
@@ -91,7 +92,7 @@ export function AlertChannelsPanel() {
         {q.isLoading ? <Skeleton height={64} /> : isListFailure(q) ? (
           <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
         ) : !q.data?.length ? (
-          <EmptyState title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below." />
+          <EmptyState title="No alert channel yet" detail="Add Slack, Teams, email or a signed webhook below" action={<Button onClick={() => targetRef.current?.querySelector("input")?.focus()}>Add channel</Button>} />
         ) : (
           <DataTable columns={columns} data={q.data} getRowId={(c) => c.id} />
         )}
@@ -99,11 +100,11 @@ export function AlertChannelsPanel() {
           <Field label="Kind">
             <Select options={KIND_OPTIONS} value={kind} onValueChange={(v) => { if (isKind(v)) setKind(v); }} />
           </Field>
-          <Field label="Target">
+          <div ref={targetRef}><Field label="Target">
             <Input
               placeholder={kind === "email" ? "team@example.com" : "https://"} value={target}
               onChange={(e) => setTarget(e.target.value)} />
-          </Field>
+          </Field></div>
           {kind === "webhook" ? (
             <Field label="Signing secret" error={secretTooShort ? "At least 16 characters" : undefined}>
               <Input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />

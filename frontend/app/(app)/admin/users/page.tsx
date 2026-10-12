@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
@@ -44,7 +45,7 @@ export default function AdminUsersPage() {
   if (!canManage) {
     return (
       <div className="p-6">
-        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or review the audit log." ghost="list" />
+        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or review the audit log." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -215,7 +216,7 @@ function AuditView() {
         <ErrorState message={apiErrorMessage(auditQ.error)} onRetry={() => auditQ.refetch()} />
       ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
         <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
-      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" />}
+      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}
     </div>
   );
 }

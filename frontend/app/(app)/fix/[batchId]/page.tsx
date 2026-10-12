@@ -42,7 +42,7 @@ function BatchAudit({ batchId }: { batchId: string }) {
   if (q.isLoading) return <Skeleton height={120} />;
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => void q.refetch()} />;
   const rows = q.data?.items ?? [];
-  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals, rejections and applied fixes on this batch are logged here." ghost="list" />;
+  if (rows.length === 0) return <EmptyState title="No changes recorded" detail="Approvals, rejections and applied fixes on this batch are logged here." ghost="list" action={<Button variant="secondary" render={<Link href="/fix?tab=batches">Back to batches</Link>} />} />;
   return <DataTable columns={AUDIT_COLUMNS} data={rows} getRowId={(r) => r.id} tableId="batch-audit" exportName="batch-audit" height={360} />;
 }
 

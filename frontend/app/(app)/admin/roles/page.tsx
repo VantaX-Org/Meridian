@@ -5,6 +5,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, Field, Input, Menu, Mono, Notice, PageHeader, Pill, Select, Skeleton, Tabs } from "@/design";
 import { EffectivePermissionsView } from "@/components/admin/effective-permissions";
 import { GrantsPicker, scopeLabel } from "@/components/admin/grants-picker";
@@ -37,7 +38,7 @@ export default function AdminRolesPage() {
   if (!can("manage_users")) {
     return (
       <div className="p-6">
-        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or grants." ghost="list" />
+        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or grants." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
@@ -96,7 +97,7 @@ function RolesTab({ roles, loading, error, retry }: { roles: Role[]; loading: bo
 
   if (error) return <ErrorState message={apiErrorMessage(error)} onRetry={retry} />;
   if (loading) return <Skeleton height={240} />;
-  if (!roles.length) return <EmptyState title="No roles yet" detail="Built-in roles appear once the tenant is set up." ghost="list" />;
+  if (!roles.length) return <EmptyState title="No roles yet" detail="Built-in roles appear once the tenant is set up." ghost="list" action={<Button variant="secondary" onClick={retry}>Reload roles</Button>} />;
   return (
     <>
       <DataTable columns={columns} data={roles} getRowId={(r) => r.key} onRowClick={setOpen} />
@@ -304,7 +305,7 @@ function RequestsTab({ roles }: { roles: Role[] }) {
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   if (q.isLoading) return <Skeleton height={160} />;
   const rows = q.data ?? [];
-  if (!rows.length) return <EmptyState title="No open requests" detail="Access requests from users appear here for a decision." ghost="list" />;
+  if (!rows.length) return <EmptyState title="No open requests" detail="Access requests from users appear here for a decision." ghost="list" action={<Button variant="secondary" onClick={() => void q.refetch()}>Refresh</Button>} />;
   return (
     <>
       <ul className="flex flex-col gap-3" aria-label="Open access requests">
@@ -349,7 +350,7 @@ function HistoryTab() {
   if (qs.some((q) => q.isError)) return <ErrorState message={apiErrorMessage(qs.find((q) => q.isError)?.error)} onRetry={() => qs.forEach((q) => q.refetch())} />;
   if (qs.some((q) => q.isLoading)) return <Skeleton height={240} />;
   const entries: AuditEntry[] = qs.flatMap((q) => q.data?.entries ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
-  if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" />;
+  if (!entries.length) return <EmptyState title="No role changes yet" detail="Role, grant and request changes are listed here." ghost="list" action={<Button variant="secondary" onClick={() => qs.forEach((x) => void x.refetch())}>Refresh</Button>} />;
   return <DataTable columns={historyCols} data={entries} getRowId={(e) => e.id} />;
 }
 

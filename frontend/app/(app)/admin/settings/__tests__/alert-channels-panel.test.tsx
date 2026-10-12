@@ -27,7 +27,7 @@ describe("AlertChannelsPanel", () => {
     const create = vi.spyOn(notificationsApi, "createAlertChannel").mockResolvedValue(CHANNEL);
     renderWithQuery(<AlertChannelsPanel />);
     await waitFor(() => expect(screen.getByText("No alert channel yet")).toBeInTheDocument());
-    const add = screen.getByRole("button", { name: "Add channel" });
+    const add = screen.getAllByRole("button", { name: "Add channel" }).at(-1)!;
     expect(add).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Target"), { target: { value: " https://hooks.example/abc " } });
     fireEvent.click(add);

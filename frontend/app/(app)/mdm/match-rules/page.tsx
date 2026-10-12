@@ -3,7 +3,7 @@
 import { useUrlState } from "@/hooks/use-url-state";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input } from "@/design";
@@ -208,6 +208,7 @@ function RulesTab() {
 /* ---------- Tuning dry run ---------- */
 
 function TuningTab() {
+  const tuneRef = useRef<HTMLDivElement>(null);
   const [domain, setDomain] = useState("");
   const rulesQuery = useQuery({ enabled: !!domain, queryKey: queryKeys.matchRules(domain), queryFn: () => getMatchRules(domain) });
   const domains = useMemo(() => domainOptions(rulesQuery.data?.rules.map((r) => r.domain) ?? []), [rulesQuery.data]);
@@ -238,9 +239,9 @@ function TuningTab() {
       <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
-      <Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
+      <div ref={tuneRef}><Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} /></div>
       {!domain ? (
-        <EmptyState title="Pick a domain to tune" detail="Choose one above to re-score its stored pairs." />
+        <EmptyState title="Pick a domain to tune" detail="Choose one above to re-score its stored pairs" action={<Button variant="secondary" onClick={() => tuneRef.current?.querySelector("button")?.focus()}>Choose a domain</Button>} />
       ) : rulesQuery.isLoading ? (
         <Skeleton height={160} />
       ) : rulesQuery.error ? (

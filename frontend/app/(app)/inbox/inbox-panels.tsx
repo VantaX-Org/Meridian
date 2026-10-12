@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button, DataTable, EmptyState, ErrorState, Field, Mono, Notice, Pill, Select, Skeleton, Stat, type PillTone, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/hooks/use-role";
@@ -103,7 +104,7 @@ export function IssuesPanel() {
       </div>
       <Panel q={q}>
         {items.length === 0 ? (
-          <EmptyState title="No record issues" detail="Issues open when an analysis finds a failing SAP record, and close when it passes." />
+          <EmptyState title="No record issues" detail="Issues open when an analysis finds a failing SAP record, and close when it passes." action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
         ) : (
           <DataTable columns={cols} data={items} getRowId={(i) => i.id} height={460} exportName="record-issues"
             exportOptions={[{ format: "xlsx", label: "Issues (.xlsx)", run: () => exportIssues("xlsx", filter) }]}
@@ -136,7 +137,7 @@ export function SapMonitorPanel() {
   return (
     <Panel q={q}>
       {list.length === 0 ? (
-        <EmptyState title="No SAP monitor exceptions" detail="Signals such as failed jobs and locked records appear here as they are raised." />
+        <EmptyState title="No SAP monitor exceptions" detail="Signals such as failed jobs and locked records appear here as they are raised." action={<Button variant="secondary" render={<Link href="/systems">Open systems</Link>} />} />
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-6">
@@ -187,7 +188,7 @@ export function ApprovalsPanel() {
           <Notice>Live SAP write-back is off on this deployment. Export fixes as an LSMW or BAPI file and load them in SAP.</Notice>
         ) : null}
         <p className="m-text-body" style={note}>A different person than the requester must approve each request.</p>
-        {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" /> : (
+        {list.length === 0 ? <EmptyState title="No write-backs waiting" detail="Approved fixes queue here before they reach SAP" action={<Button variant="secondary" render={<Link href="/fix">Open fixes</Link>} />} /> : (
           <DataTable columns={cols} data={list} getRowId={(a) => a.id} height={380} exportName="writeback-approvals" />
         )}
       </div>

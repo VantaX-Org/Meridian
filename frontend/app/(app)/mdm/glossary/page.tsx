@@ -3,7 +3,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Select } from "@/design";
@@ -31,6 +31,15 @@ const columns: ColumnDef<GlossaryTermSummary>[] = [
 
 export default function GlossaryPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const urlParams = useSearchParams();
+  // One replace: separate useUrlState setters would each rebuild the query from the same stale string.
+  const clearFilters = () => {
+    const params = new URLSearchParams(urlParams.toString());
+    for (const k of ["domain", "status", "q"]) params.delete(k);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const [domain, setDomain] = useUrlState("domain", "all");
   const [status, setStatus] = useUrlState("status", "all");
   const [search, setSearch] = useUrlState("q");
@@ -90,7 +99,7 @@ export default function GlossaryPage() {
         title: filtered ? "No terms match" : "No terms yet",
         detail: filtered ? "Clear a filter to widen the list." : "Terms are drafted from analysed SAP fields. Run an analysis to populate the glossary.",
         action: filtered
-          ? <Button variant="secondary" onClick={() => { setDomain("all"); setStatus("all"); setSearch(""); }}>Clear filters</Button>
+          ? <Button variant="secondary" onClick={clearFilters}>Clear filters</Button>
           : <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />,
       }}
       errorProps={{
