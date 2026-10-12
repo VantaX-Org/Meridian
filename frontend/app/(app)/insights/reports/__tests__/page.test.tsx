@@ -9,10 +9,10 @@ import * as reportsApi from "@/lib/api/reports";
 import * as versionsApi from "@/lib/api/versions";
 import ReportsPage from "../page";
 
-const perm = vi.hoisted(() => ({ allowed: true }));
+const perm = vi.hoisted(() => ({ allowed: true, only: "" }));
 vi.mock("@/lib/permissions", async (orig) => ({
   ...(await orig<typeof import("@/lib/permissions")>()),
-  usePermissions: () => ({ can: () => perm.allowed, has: () => perm.allowed }),
+  usePermissions: () => ({ can: () => perm.allowed, has: (r: string, a: string) => (perm.only ? perm.only === `${r}.${a}` : perm.allowed) }),
   usePermissionsContext: () => null,
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("") }));
@@ -36,13 +36,30 @@ function mount() {
   return render(<QueryClientProvider client={qc}><ReportsPage /></QueryClientProvider>);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); perm.only = ""; });
 
 describe("ReportsPage", () => {
   it("lists the recent export audit events", async () => {
     perm.allowed = true;
     mount();
     expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+  });
+
+  it.each(["audit.view", "users.admin"])("shows recent exports to a viewer with only %s and no export permission", async (only) => {
+    perm.allowed = false;
+    perm.only = only;
+    mount();
+    expect(await screen.findByText(/board by ana@example.test/)).toBeInTheDocument();
+    expect(screen.queryByRole("listbox", { name: "Reports" })).toBeNull();
+  });
+
+  it("hides recent exports and skips the audit query without audit access", async () => {
+    perm.allowed = false;
+    perm.only = "none.none";
+    mount();
+    await screen.findAllByText(/needs the auditor or analyst role/i);
+    expect(screen.queryByText("Recent exports")).toBeNull();
+    expect(auditApi.getAuditEntries).not.toHaveBeenCalled();
   });
 
   it("lists reports in a listbox, previews one and downloads it", async () => {
