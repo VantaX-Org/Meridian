@@ -32,7 +32,7 @@ describe("HomePage no-data state", () => {
 });
 
 describe("HomePage data state", () => {
-  it("shows the DQS, a sans verdict sentence and the action link", () => {
+  it("shows the DQS, a sans verdict sentence and the action link", async () => {
     render(
       <HomePage
         persona="lead"
@@ -41,7 +41,8 @@ describe("HomePage data state", () => {
         run={run}
       />,
     );
-    expect(screen.getByTestId("home-dqs")).toHaveTextContent("82.4");
+    expect(screen.getByTestId("home-dqs").querySelector("[aria-label='82.4']")).not.toBeNull();
+    expect(screen.getByTestId("home-verdict-row")).toHaveClass("m-hero");
     const sentence = screen.getByTestId("home-verdict");
     expect(sentence.tagName).toBe("P");
     expect(sentence.style.fontFamily).toBe("");

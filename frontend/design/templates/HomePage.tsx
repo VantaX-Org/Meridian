@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
+import { Pill } from "../primitives/Pill";
+import { Stat } from "../primitives/Stat";
 import { PageHeader } from "../primitives/PageHeader";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
@@ -69,10 +71,10 @@ export function HomePage({
   lists?: ReactNode;
   headerActions?: ReactNode;
 }) {
+  const runLabel = state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined;
   const header = (
     <PageHeader
       title="Home"
-      meta={state === "data" && run ? `${/^run\b/i.test(run.label) ? "" : "Run "}${run.label}, ${relativeTime(run.runAt)}` : undefined}
       actions={state === "data" ? headerActions : undefined}
     />
   );
@@ -90,7 +92,7 @@ export function HomePage({
 
       {state === "loading" && (
         <div className="flex flex-col" style={{ gap: "var(--m-space-6)" }} data-testid="home-loading">
-          <Card padding="lg"><Skeleton height={48} width="min(420px, 100%)" /></Card>
+          <div className="m-hero"><Skeleton height={112} hero /></div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={88} />)}
           </div>
@@ -119,27 +121,31 @@ export function HomePage({
       )}
 
       {state === "data" && verdict && (
-        <section className="m-card m-card-lg flex flex-wrap items-start justify-between gap-6" data-testid="home-verdict-row">
-          <div className="flex min-w-0 flex-col gap-2">
-            <div className="flex items-baseline gap-3">
-              <span
-                className="m-numeric font-semibold"
-                data-testid="home-dqs"
-                style={{ fontSize: "var(--m-text-hero)", lineHeight: "var(--m-leading-hero)", minWidth: "4ch", color: "var(--m-ink)" }}
-              >
-                {verdict.dqs === null ? "—" : verdict.dqs.toFixed(1)}
-              </span>
-              {verdict.delta != null && (
-                <span className="flex items-baseline gap-1">
-                  <Delta value={verdict.delta} />
-                  {verdict.previousLabel && <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>vs {verdict.previousLabel}</span>}
-                </span>
-              )}
+        <section className="m-hero flex flex-wrap items-center justify-between gap-6" data-testid="home-verdict-row">
+          <div className="flex min-w-0 flex-1 flex-col gap-2" style={{ minWidth: "min(320px, 100%)" }}>
+            <div className="flex flex-wrap items-center gap-2">
+              {verdict.capLine && <Pill ember>Capped</Pill>}
+              {runLabel && <span className="m-text-meta" style={{ color: "var(--m-hero-ink-3)" }}>{runLabel}</span>}
             </div>
-            <p data-testid="home-verdict" className="m-text-h" style={{ color: "var(--m-ink)" }}>{verdict.sentence}</p>
-            {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{verdict.capLine}</p>}
+            <p data-testid="home-verdict" className="font-semibold" style={{ fontSize: "var(--m-text-verdict)", lineHeight: "var(--m-leading-verdict)", color: "var(--m-hero-ink)" }}>{verdict.sentence}</p>
+            {verdict.capLine && <p className="m-text-body" style={{ color: "var(--m-hero-ink-2)" }}>{verdict.capLine}</p>}
+            {verdict.action && (
+              <div className="pt-2">
+                <Button variant="secondary" render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />
+              </div>
+            )}
           </div>
-          {verdict.action && <Button render={<Link href={verdict.action.href}>{verdict.action.label}</Link>} />}
+          <div data-testid="home-dqs" style={{ width: 220 }}>
+            <Stat
+              hero
+              label="Data quality score"
+              value={verdict.dqs ?? "—"}
+              decimals={1}
+              versionId={run?.label}
+              hint={verdict.delta != null && verdict.previousLabel ? `vs ${verdict.previousLabel}` : undefined}
+              delta={verdict.delta != null ? <Delta hero value={verdict.delta} /> : undefined}
+            />
+          </div>
         </section>
       )}
 
