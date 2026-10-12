@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pager, Select } from "@/design";
+import { Button, DataTable, type CellMeta, ExplorerPage, Field, Input, PageHeader, Pager, Select } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -28,12 +28,12 @@ const DOMAIN_OPTIONS = [
 ];
 
 const columns: ColumnDef<MasterRecordSummary>[] = [
-  { accessorKey: "sap_object_key", header: "SAP key" },
-  { id: "domain", header: "Domain", cell: ({ row }) => formatModuleName(row.original.domain) },
-  { accessorKey: "status", header: "Status" },
-  { accessorKey: "source_count", header: "Sources" },
-  { id: "conf", header: "Confidence", cell: ({ row }) => `${Math.round(row.original.overall_confidence * 100)}%` },
-  { accessorKey: "pending_issues", header: "Open issues" },
+  { accessorKey: "sap_object_key", header: "SAP key", size: 200 },
+  { id: "domain", header: "Domain", size: 160, cell: ({ row }) => formatModuleName(row.original.domain) },
+  { accessorKey: "status", header: "Status", size: 130 },
+  { accessorKey: "source_count", header: "Sources", size: 90, meta: { numeric: true } satisfies CellMeta },
+  { id: "conf", header: "Confidence", size: 110, meta: { numeric: true } satisfies CellMeta, cell: ({ row }) => `${Math.round(row.original.overall_confidence * 100)}%` },
+  { accessorKey: "pending_issues", header: "Open issues", size: 110, meta: { numeric: true } satisfies CellMeta },
 ];
 
 export default function GoldenRecordsPage() {

@@ -29,6 +29,11 @@ export function dqsTrend(versions: SystemVersion[]): number | null {
   return cur == null || prev == null ? null : cur - prev;
 }
 
+/** Mean DQS of the last `limit` analysed runs, oldest first, for a sparkline. */
+export function dqsSeries(versions: SystemVersion[], limit = 8): number[] {
+  return analysedNewestFirst(versions).slice(0, limit).reverse().flatMap((v) => { const m = meanDqs(v); return m == null ? [] : [m]; });
+}
+
 /** Earliest upcoming run among a system's active schedules, or null when it runs manually only. */
 export function nextRun(profiles: SyncProfile[]): string | null {
   const due = profiles.flatMap((p) => (p.active && p.next_run_at ? [p.next_run_at] : []));

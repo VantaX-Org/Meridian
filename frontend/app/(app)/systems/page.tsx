@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
-import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Sparkline, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { HEALTH_LABEL, dqsSeries, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useSystemScope } from "@/lib/permissions";
 import { getSystems } from "@/lib/api/connectivity";
@@ -75,7 +75,7 @@ export default function SystemsPage() {
   const dqsById = new Map(
     systems.map((s, i) => {
       const vs = versionsQ[i]?.data?.versions;
-      return [s.id, vs ? { dqs: latestDqs(vs).dqs, trend: dqsTrend(vs) } : null];
+      return [s.id, vs ? { dqs: latestDqs(vs).dqs, trend: dqsTrend(vs), series: dqsSeries(vs) } : null];
     }),
   );
   const profilesQ = useQueries({
@@ -118,19 +118,26 @@ export default function SystemsPage() {
   const cfgHref = (cfgCounts.failed ?? 0) > 0 ? "?config=failed" : (cfgCounts.loading ?? 0) > 0 ? "?config=loading" : cfgNotLoaded > 0 ? "?config=not_loaded" : undefined;
 
   const columns: ColumnDef<SAPSystemExtended>[] = [
-    { accessorKey: "name", header: "System", cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
-    { accessorKey: "system_type", header: "Type" },
-    { accessorKey: "role", header: "Role", cell: ({ row }) => <Pill tone="neutral">{row.original.role === "target" ? "Target" : "Source"}</Pill> },
+    { accessorKey: "name", header: "System", size: 240, cell: ({ row }) => (<span className="inline-flex items-baseline gap-2">{row.original.name}<Mono>{row.original.client ? `${row.original.environment}/${row.original.client}` : row.original.environment}</Mono></span>) },
+    { accessorKey: "system_type", header: "Type", size: 100 },
+    { accessorKey: "role", header: "Role", size: 90, cell: ({ row }) => <Pill tone="neutral">{row.original.role === "target" ? "Target" : "Source"}</Pill> },
     {
       accessorKey: "health_status",
       header: "Health",
+      size: 170,
       cell: ({ row }) => (
-        <Pill tone={HEALTH_TONE[row.original.health_status]}>{HEALTH_LABEL[row.original.health_status]}</Pill>
+        <span className="inline-flex flex-wrap items-center gap-x-2">
+          <Pill tone={HEALTH_TONE[row.original.health_status]}>{HEALTH_LABEL[row.original.health_status]}</Pill>
+          {row.original.last_health_check ? (
+            <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>checked {relativeTime(row.original.last_health_check)}</span>
+          ) : null}
+        </span>
       ),
     },
     {
       id: "dqs",
       header: "Latest DQS",
+      size: 150,
       cell: ({ row }) => {
         const d = dqsById.get(row.original.id);
         if (!d || d.dqs == null) return "—";
@@ -139,6 +146,7 @@ export default function SystemsPage() {
           <span className="inline-flex items-center gap-1">
             <DrillLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</DrillLink>
             {t != null && Math.abs(t) >= 0.05 ? <Delta value={t} run="the previous run" /> : null}
+            {d.series.length >= 2 ? <Sparkline data={d.series.map((y, x) => ({ x, y }))} /> : null}
           </span>
         );
       },
@@ -146,6 +154,7 @@ export default function SystemsPage() {
     {
       id: "next_run",
       header: "Next run",
+      size: 160,
       cell: ({ row }) => {
         const n = nextRunById.get(row.original.id);
         return n ? formatDate(n, "datetime", "SAST") : "Manual only";
@@ -154,6 +163,7 @@ export default function SystemsPage() {
     {
       id: "config",
       header: "Configuration",
+      size: 200,
       cell: ({ row }) => {
         if (configQ.isLoading) return <Skeleton height={16} width={96} />;
         const c = configById.get(row.original.id);
@@ -169,6 +179,7 @@ export default function SystemsPage() {
     {
       id: "last_sync",
       header: "Last extracted",
+      size: 130,
       cell: ({ row }) => (row.original.last_sync_at ? relativeTime(row.original.last_sync_at) : "Never"),
     },
   ];
@@ -183,6 +194,7 @@ export default function SystemsPage() {
   const active = systems.filter((s) => s.is_active !== false);
   const unhealthy = active.filter((s) => isUnhealthy(s.health_status)).length;
   const attention = systems.filter((s) => s.health_status !== "healthy").length;
+  const lastExtraction = systems.flatMap((s) => (s.last_sync_at ? [s.last_sync_at] : [])).sort((a, b) => Date.parse(b) - Date.parse(a))[0] ?? null;
   const filtering = Boolean(configFilter || healthFilter);
 
   return (
@@ -201,8 +213,12 @@ export default function SystemsPage() {
           </div>
         ) : undefined
       }
+      toolbarEnd={<ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />}
       summary={
         <div className="m-stat-grid m-motion-stagger">
+          {isLoading || systems.length > 0 ? (
+            <Stat label="Systems" loading={isLoading} value={isLoading ? "" : systems.length} />
+          ) : null}
           {isLoading || systems.length > 0 ? (
             <Stat
               label="Unhealthy"
@@ -231,7 +247,7 @@ export default function SystemsPage() {
               onClick={cfgHref ? () => { setHealthFilter(""); setConfigFilter(cfgHref.slice("?config=".length)); } : undefined}
             />
           ) : null}
-          <ExportMenu options={systems.length === 0 ? emptyExportOptions(exportOptions) : exportOptions} />
+          {!isLoading && lastExtraction ? <Stat label="Last extraction" value={relativeTime(lastExtraction)} /> : null}
         </div>
       }
       table={

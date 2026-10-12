@@ -5,18 +5,18 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, PageHeader, Pill } from "@/design";
+import { Button, DataTable, ExplorerPage, PageHeader, Pill, Stat, type CellMeta } from "@/design";
 import { getSurvivorshipRules, type SurvivorshipRule } from "@/lib/api/survivorship";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
 
 const columns: ColumnDef<SurvivorshipRule>[] = [
-  { id: "domain", header: "Domain", cell: ({ row }) => formatModuleName(row.original.domain) },
-  { accessorKey: "field", header: "Field" },
-  { id: "type", header: "Rule", cell: ({ row }) => row.original.rule_type.replace(/_/g, " ") },
+  { id: "domain", header: "Domain", size: 160, cell: ({ row }) => formatModuleName(row.original.domain) },
+  { accessorKey: "field", header: "Field", size: 160 },
+  { id: "type", header: "Rule", size: 160, cell: ({ row }) => row.original.rule_type.replace(/_/g, " ") },
   { id: "sources", header: "Trusted sources", cell: ({ row }) => row.original.trusted_sources?.join(", ") || "—" },
-  { accessorKey: "weight", header: "Weight" },
-  { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.active ? "go" : "at-risk"}>{row.original.active ? "Active" : "Off"}</Pill> },
+  { accessorKey: "weight", header: "Weight", size: 90, meta: { numeric: true } satisfies CellMeta },
+  { id: "active", header: "Status", size: 100, cell: ({ row }) => <Pill tone={row.original.active ? "go" : "at-risk"}>{row.original.active ? "Active" : "Off"}</Pill> },
   { id: "ai", header: "Source", cell: ({ row }) => (row.original.ai_inferred ? "Inferred by AI" : "Set by a person") },
 ];
 
@@ -26,6 +26,13 @@ export default function SurvivorshipPage() {
   return (
     <ExplorerPage
       header={<PageHeader title="Survivorship rules" meta={`${rules.length.toLocaleString()} rules`} />}
+      summary={
+        <div className="m-stat-grid">
+          <Stat label="Rules" value={rules.length.toLocaleString()} loading={q.isLoading} />
+          <Stat label="Active" value={rules.filter((r) => r.active).length.toLocaleString()} loading={q.isLoading} />
+          <Stat label="Inferred by AI" value={rules.filter((r) => r.ai_inferred).length.toLocaleString()} loading={q.isLoading} />
+        </div>
+      }
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : rules.length === 0 ? "empty" : undefined}
       emptyProps={{ title: "No survivorship rules", detail: "Until a rule exists for a field, the most recent source value wins.", action: <Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
