@@ -43,6 +43,38 @@ export function getComparisonReportUrl(v2: string, v1?: string): string {
   return `/api/v1/reports/compare.pdf?${q.toString()}`;
 }
 
+/** One entry of the report catalogue. `url` is null while a required input is missing or no run is chosen. */
+export interface CatalogueEntry {
+  id: string;
+  name: string;
+  format: "PDF" | "XLSX" | "JSON";
+  about: string;
+  sections: string[];
+  page_estimate: number;
+  requires: string[];
+  url: string | null;
+  last_built_at: string | null;
+}
+
+export async function getReportCatalogue(params: { version_id?: string; module?: string; compare?: string }): Promise<CatalogueEntry[]> {
+  const { data } = await apiClient.get<CatalogueEntry[]>("/api/v1/reports/catalogue", { params });
+  return data;
+}
+
+/** The analyst workbook for one run, optionally for one module and against an earlier run. */
+export function getWorkbookUrl(versionId: string, opts?: { module?: string; compare?: string }): string {
+  const q = new URLSearchParams();
+  if (opts?.module) q.set("module", opts.module);
+  if (opts?.compare) q.set("compare", opts.compare);
+  const qs = q.toString();
+  return `/api/v1/reports/${versionId}/workbook.xlsx${qs ? `?${qs}` : ""}`;
+}
+
+/** The board pack. Deltas are against `compare` only. */
+export function getBoardReportUrl(versionId: string, compare?: string): string {
+  return `/api/v1/reports/board/${versionId}.pdf${compare ? `?compare=${compare}` : ""}`;
+}
+
 export async function pollVersionStatus(
   versionId: string,
   onUpdate: (status: string) => void,

@@ -1,7 +1,8 @@
 // frontend/design/charts/charts.test.tsx
 import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
-import { Heatmap } from "./Heatmap";
+import { Heatmap, toneOfTier } from "./Heatmap";
+import { Pareto } from "./Pareto";
 import { Bar } from "./Bar";
 import { Graph, GraphLegend } from "./Graph";
 import { ChartLegend, isolatedOpacity } from "./Legend";
@@ -217,5 +218,19 @@ describe("chart tooltip and theme", () => {
     fireEvent.keyDown(node, { key: "x" });
     expect(onNodeClick).toHaveBeenCalledTimes(2);
     expect(onNodeClick).toHaveBeenCalledWith("a");
+  });
+});
+
+describe("Heatmap tone callback and Pareto label", () => {
+  it("tone puts a numeric cell on the tone fill and maps backend tiers", () => {
+    render(<Heatmap rows={["a"]} cols={["b"]} cells={[{ row: "a", col: "b", value: 42 }]} tone={() => "no-go"} />);
+    expect(screen.getByLabelText("a b: 42, no go")).toBeInTheDocument();
+    expect(toneOfTier("at_risk")).toBe("at-risk");
+    expect(toneOfTier("weird")).toBeUndefined();
+  });
+
+  it("Pareto exposes its label as the accessible name", () => {
+    render(<Pareto data={[{ x: "A", y: 5 }, { x: "B", y: 1 }]} label="Rules by impact" />);
+    expect(screen.getByRole("img", { name: /Rules by impact/ })).toBeInTheDocument();
   });
 });

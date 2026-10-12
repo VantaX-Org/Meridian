@@ -187,6 +187,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         keywords: "readiness impact owners duplicates executive summary forecast process lineage mining",
         children: [
           { href: "/insights/readiness", requires: req("reports", "view"), label: "Readiness", icon: BarChart3, keywords: "waves go no-go blockers" },
+          { href: "/insights/rules", requires: req("reports", "view"), label: "Rule ranking", icon: BarChart3, keywords: "rules failing impact pareto auto fix root cause" },
+          { href: "/insights/trends", requires: req("reports", "view"), label: "Trends", icon: BarChart3, keywords: "score history runs blockers dimension line" },
           { href: "/insights/impact", requires: req("reports", "view"), label: "Value at risk", icon: BarChart3, keywords: "impact features cost" },
           { href: "/insights/owners", requires: req("reports", "view"), label: "Owner scorecards", icon: BarChart3, keywords: "digest score steward" },
           { href: "/insights/duplicates", requires: req("reports", "view"), label: "Duplicate clusters", icon: BarChart3, keywords: "dedup merge graph cluster" },
