@@ -8,17 +8,17 @@ Meridian is a measuring instrument for SAP data: it takes a reading, shows it, a
 
 Rules, all enforced by lint or review:
 
-1. **Zero decoration.** No gradients, glass, backdrop blur, illustrations, mascots, or icons that do not stand for a state. No tile without a drill-down.
-2. **One accent.** `--m-accent` (indigo) is selection, focus, links and the primary button. Nothing else is indigo.
-3. **Hue means defect state.** `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` and the verdicts `--m-go`, `--m-at-risk`, `--m-no-go` carry severity only, never selection or decoration. Severity is colour plus shape (critical square, high triangle, medium circle, low ring, pass check), never colour alone.
+1. **Restrained decoration.** No glass, backdrop blur, gradients outside hero zones, illustrations, mascots, or icons that do not stand for a state. No tile without a drill-down.
+2. **Two accents.** `--m-accent` (cobalt) is selection, focus, links and the primary button. Ember and the `--m-grad-*` gradients exist only inside hero zones (`.m-hero`, `.m-brand-panel`, `.m-report-cover`, `.m-ghost-bg`, `.m-count-settle`); `lint:tokens` enforces it.
+3. **Hue means defect state.** `--m-critical`, `--m-high`, `--m-medium`, `--m-low`, `--m-pass` and the verdicts `--m-go`, `--m-at-risk`, `--m-no-go` carry severity only, never selection or decoration. Severity is colour plus shape (critical square, high triangle, medium circle, low ring, pass check), never colour alone. Object domain (`--m-dom-*`, via `domainOf(moduleId)`) and chart series (`--m-viz-*`, ramps `--m-seq-*`, `--m-div-*`) are separate families and never stand for severity.
 4. **Type.** Public Sans for UI (400, 500, 600), JetBrains Mono for SAP identifiers only (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both load through `next/font`. Numbers are tabular (`font-variant-numeric: tabular-nums` on `body`). Sentence case everywhere, no all-caps eyebrows. No serif face exists.
 5. **Three elevations.** Flat (hairline), raised (menus, popovers), floating (drawer, dialog, palette).
 6. **Motion is 120, 240 or 480 ms**, ease-out, and zero under `prefers-reduced-motion`. Entrance motion is for the first mount of a page frame, not for content that arrives after data.
 7. **Show the cap.** When a critical finding caps the DQS at 85 or 70, the score shows the measured value, the cap and the rules that caused it.
 8. **Every number opens the rows behind it** (`DrillLink`, `Stat href`).
 9. **URL is state.** Filters, tabs, selected run and open drawer live in the query string.
-10. **Light and dark are equals.** Every token has both values; every review screenshot is taken in both.
-11. **Speed is a feature.** Skeletons in the final geometry (no layout shift, never a spinner except the inline `Button pending` dot), virtualised tables above 200 rows, prefetch on hover and focus, optimistic updates for reversible local mutations.
+10. **Light and dark are equals.** Every token has both values, including the domain, viz, ramp and hero tokens; `check:contrast` covers each pair in light, dark and system dark. Every review screenshot is taken in both.
+11. **Speed is a feature.** Skeletons in the final geometry (no layout shift, never a spinner except the inline `Button pending` dot), virtualised tables above 200 rows, prefetch on hover and focus, optimistic updates for reversible local mutations. Colour adds no layout: edges and bars are inset shadows, and count-up and draw-in reserve their final width and height. Reduced motion zeroes all of it.
 
 ## 2. Tokens
 

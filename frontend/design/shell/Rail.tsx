@@ -15,6 +15,13 @@ import { MeridianMark } from "../../components/meridian/icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
+import { domainOf, mColor } from "../tokens";
+
+/** Object-page nav items (`/objects/<module>`) carry a 6px swatch in their owning domain colour. */
+function objectDomainColor(href: string): string | undefined {
+  const m = /^\/objects\/([^/?]+)/.exec(href);
+  return m ? mColor.dom[domainOf(m[1])] : undefined;
+}
 import { Skeleton } from "../primitives/Skeleton";
 import { Tooltip } from "../primitives/Tooltip";
 
@@ -247,9 +254,11 @@ export function Rail() {
     const hasChildren = depth === 0 && !!item.children?.length;
     const isOpen = openParents.has(item.href);
     const showPip = item.href === "/systems" && healthTone !== null;
+    const swatch = objectDomainColor(item.href);
     const iconSpan = (
       <span className="relative inline-flex shrink-0" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
         <item.icon size={ICON_SIZE} />
+        {swatch && <span aria-hidden="true" data-testid="rail-domain-swatch" className="absolute" style={{ width: 6, height: 6, bottom: -2, right: -2, background: swatch }} />}
         {showPip && healthTone && <HealthPip tone={healthTone} />}
         {!expanded && !showPip && count > 0 && (
           <span
@@ -267,7 +276,7 @@ export function Rail() {
         {expanded && <span className="flex-1 truncate" style={depth === 1 ? { fontSize: 12, lineHeight: "16px" } : undefined}>{item.label}</span>}
         {expanded && count > 0 && (
           <span key={count} className="m-motion-rise">
-            <Badge count={count} inverted={active} />
+            <Badge count={count} inverted={active} tone={item.badgeKey === "fix" && !active ? "critical" : undefined} />
           </span>
         )}
         {expanded && item.shortcut && (

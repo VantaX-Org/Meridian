@@ -259,8 +259,11 @@ disagree, follow DESIGN.md.
 - **Direction**: an instrument panel. Cool slate canvas, white sheets,
   near-black ink. Light is the default; dark is a full alternative under
   `[data-theme="dark"]`.
-- **Accent**: one indigo accent, `--m-accent`, for selection, focus and
-  links only. Hue means defect state. No gradients, glass or backdrop blur.
+- **Colour**: cobalt `--m-accent` is interaction (selection, focus, links,
+  primary button). Ember and the `--m-grad-*` gradients appear only in hero
+  zones. Hue means defect state, object domain (`--m-dom-*`, only where an
+  element stands for one SAP object) or chart series (`--m-viz-*`); each
+  family never borrows another's tokens. No glass or backdrop blur.
 - **Type**: Instrument Sans for UI (Instrument Serif for cover titles), JetBrains Mono for SAP identifiers only
   (check IDs, `TABLE.FIELD`, record keys, run IDs, sample values). Both
   loaded with `next/font`. Numbers use tabular figures. Sentence case.

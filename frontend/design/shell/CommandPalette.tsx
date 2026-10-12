@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { DomainChip } from "../primitives/DomainChip";
 import { parsePalette, type GrammarContext } from "@/lib/palette-grammar";
 
 const noSubscribe = () => () => {};
@@ -22,6 +23,8 @@ export interface CommandItem {
   group?: string;
   /** Leading 16px icon. */
   icon?: ReactNode;
+  /** Module id of an object result; shows its domain chip. Pages and actions leave it unset. */
+  moduleId?: string;
   /** Right-aligned key hint. */
   shortcut?: string;
 }
@@ -108,6 +111,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
                   >
                     {item.icon}
                     <span className="flex-1 truncate">{withMono(item.label)}</span>
+                    {item.moduleId && <DomainChip moduleId={item.moduleId} />}
                     {item.shortcut && <kbd className="m-kbd">{item.shortcut}</kbd>}
                   </Command.Item>
                 ))}
