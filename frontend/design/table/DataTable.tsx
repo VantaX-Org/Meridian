@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   type ColumnDef,
   type RowSelectionState,
@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { QueryKey } from "@tanstack/react-query";
 import { Popover } from "@base-ui/react/popover";
@@ -27,7 +27,7 @@ import { Mono } from "../primitives/Mono";
 import { Menu } from "../primitives/Menu";
 import { exportOptionLabel, runExportOption, type ExportOption } from "../primitives/ExportMenu";
 import { deleteView, loadViews, saveView, toCsv, type TableView } from "./views";
-import type { CellMeta } from "./columns";
+import { barFill, type CellMeta } from "./columns";
 import { rampStep } from "../tokens";
 
 const SEVERITIES = ["critical", "high", "medium", "low", "pass"] as const;
@@ -52,8 +52,17 @@ export interface DataTableProps<T> {
   renderDrawer?: (row: T) => ReactNode;
   /** Rendered in a BulkBar above the table once at least one row is selected. */
   bulkActions?: (selected: T[]) => ReactNode;
-  /** Scroll parent height; the virtualised branch needs a bounded container to scroll in. */
+  /** Upper bound of the scroll box; a short table shrinks to its rows. "auto" means unbounded. */
+  maxHeight?: number | string;
+  /** Alias of `maxHeight`, kept for existing call sites. */
   height?: number | string;
+  /** Hides the built-in "Filter rows" search, for pages that bring their own. */
+  hideSearch?: boolean;
+  /** Adds a leading chevron cell; the returned node renders in a full-width panel under the row. */
+  renderExpanded?: (row: T) => ReactNode;
+  /** Message and action for the single empty body row (header stays). */
+  emptyMessage?: ReactNode;
+  emptyAction?: ReactNode;
   /** Controlled sort state, for a caller that keeps the sort in the URL (e.g. `?sort=created_at:desc`).
    * Omit both to keep the table's own uncontrolled sort state. */
   sorting?: SortingState;
@@ -85,8 +94,8 @@ export interface RowPrefetch {
 }
 
 // Fallbacks when the --m-row-h tokens cannot be read (tests, SSR); tokens.css owns the real values.
-const ROW_H_FALLBACK = 44;
-const ROW_H_DENSE_FALLBACK = 36;
+const ROW_H_FALLBACK = 36;
+const ROW_H_DENSE_FALLBACK = 30;
 const VIRTUALIZE_ABOVE = 200;
 
 function readPx(name: string, fallback: number): number {
@@ -95,6 +104,7 @@ function readPx(name: string, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 const SELECT_COLUMN_ID = "__select";
+const EXPAND_COLUMN_ID = "__expand";
 
 function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPrefetch } & React.ComponentProps<"tr">) {
   const prefetch = usePrefetch(prefetchInfo?.href, prefetchInfo?.queryKey, prefetchInfo?.queryFn);
@@ -102,11 +112,12 @@ function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPr
 }
 
 export function DataTable<T>({
-  columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, height = "calc(100vh - 240px)",
+  columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, maxHeight: maxHeightProp, height: heightProp, hideSearch = false, renderExpanded, emptyMessage, emptyAction,
   sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
   tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch,
 }: DataTableProps<T>) {
   "use no memo";
+  const maxHeight = maxHeightProp ?? heightProp ?? "calc(100vh - 240px)";
   // Ruling 4: no BulkBar (or selection column) for users who can change nothing, e.g. viewer and auditor.
   // Outside a PermissionsProvider (component tests) the table is ungated.
   const perms = usePermissionsContext();
@@ -127,6 +138,7 @@ export function DataTable<T>({
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   // The active row is tracked by id so sorting, filtering and data refreshes cannot move it to another row.
   const [activeId, setActiveId] = useState<string | null>(null);
   const [rowHeights, setRowHeights] = useState({ comfortable: ROW_H_FALLBACK, dense: ROW_H_DENSE_FALLBACK });
@@ -157,7 +169,25 @@ export function DataTable<T>({
     enableSorting: false,
   };
 
-  const allColumns = bulkActions ? [selectColumn, ...columns] : columns;
+  const expandColumn: ColumnDef<T> = {
+    id: EXPAND_COLUMN_ID,
+    size: 32,
+    header: () => <span className="sr-only">Expand</span>,
+    cell: ({ row }) => (
+      <button
+        type="button"
+        className="m-motion-colors flex items-center justify-center"
+        style={{ width: 24, height: 24, color: "var(--m-ink-3)" }}
+        aria-label={expanded[row.id] ? "Collapse row" : "Expand row"}
+        aria-expanded={!!expanded[row.id]}
+        onClick={(e) => { e.stopPropagation(); setExpanded((x) => ({ ...x, [row.id]: !x[row.id] })); }}
+      >
+        <ChevronRight size={16} aria-hidden style={{ transform: expanded[row.id] ? "rotate(90deg)" : undefined }} className="m-motion-colors" />
+      </button>
+    ),
+    enableSorting: false,
+  };
+  const allColumns = [...(bulkActions ? [selectColumn] : []), ...(renderExpanded ? [expandColumn] : []), ...columns];
 
   // TanStack Table's hook returns functions React Compiler cannot memoize; this is the single wrapper around it.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -192,7 +222,7 @@ export function DataTable<T>({
   const padBottom = virtualItems && virtualItems.length > 0 ? virtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end : 0;
   const activeIndex = activeId === null ? -1 : rowModel.findIndex((r) => r.id === activeId);
   const activeRendered = activeIndex >= 0 && (!virtualItems || virtualItems.some((v) => v.index === activeIndex));
-  const firstTextColumnId = table.getAllLeafColumns().find((c) => c.id !== SELECT_COLUMN_ID && !(c.columnDef.meta as CellMeta | undefined)?.numeric)?.id;
+  const firstTextColumnId = table.getAllLeafColumns().find((c) => c.id !== SELECT_COLUMN_ID && c.id !== EXPAND_COLUMN_ID && !(c.columnDef.meta as CellMeta | undefined)?.numeric)?.id;
   const severityColumnId = table.getAllLeafColumns().find((c) => (c.columnDef.meta as CellMeta | undefined)?.severity)?.id;
   const heatRanges = new Map<string, readonly [number, number]>();
   for (const c of table.getAllLeafColumns()) {
@@ -207,7 +237,7 @@ export function DataTable<T>({
   }
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
 
-  const dataColumns = table.getAllLeafColumns().filter((c) => c.id !== SELECT_COLUMN_ID);
+  const dataColumns = table.getAllLeafColumns().filter((c) => c.id !== SELECT_COLUMN_ID && c.id !== EXPAND_COLUMN_ID);
   const colLabel = (c: (typeof dataColumns)[number]) => (typeof c.columnDef.header === "string" ? c.columnDef.header : c.id);
   const exportCsv = async () => {
     const cols = dataColumns.filter((c) => c.getIsVisible());
@@ -274,8 +304,19 @@ export function DataTable<T>({
 
   return (
     <div>
-      {!hideToolbar && (
-        <div className="m-text-meta mb-2 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Table options">
+      {(!hideSearch || !hideToolbar) && (
+        <div className="m-text-meta mb-2 flex flex-wrap items-center gap-2" style={{ minHeight: 32 }}>
+          {!hideSearch && (
+            <Input
+              aria-label="Filter rows"
+              placeholder="Type to filter rows"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              style={{ width: 240 }}
+            />
+          )}
+          {!hideToolbar && (
+            <div className="ml-auto flex flex-wrap items-center gap-2" role="toolbar" aria-label="Table options">
           <Menu
             trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Columns</button>}
             items={dataColumns.map((c) => ({ label: colLabel(c), checked: c.getIsVisible(), onSelect: () => c.toggleVisibility() }))}
@@ -320,15 +361,12 @@ export function DataTable<T>({
               items={allExport.map((o) => ({ label: exportOptionLabel(o), onSelect: () => void runExportOption(o) }))}
             />
           )}
+            </div>
+          )}
         </div>
       )}
-      <div className="mb-2" style={{ maxWidth: 320 }}>
-        <Field label="Filter rows">
-          <Input placeholder="Type to filter rows" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} />
-        </Field>
-      </div>
       <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown}>
-      <div ref={parentRef} style={{ height, overflow: "auto" }}>
+      <div ref={parentRef} style={{ maxHeight: maxHeight === "auto" ? undefined : maxHeight, overflow: "auto" }}>
         <table
           className="m-text-body w-full"
           style={{ color: "var(--m-ink)" }}
@@ -352,8 +390,9 @@ export function DataTable<T>({
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
                       className={`m-text-label px-2 font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
                       style={{
-                        height: rowH, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
+                        height: 28, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
+                        width: h.column.columnDef.size !== undefined ? h.getSize() : undefined,
                       }}
                     >
                       {sortable ? (
@@ -379,11 +418,20 @@ export function DataTable<T>({
             ))}
           </thead>
           <tbody>
-            {rowModel.length === 0 && globalFilter && (
-              <tr>
-                <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} className="px-2 py-6 text-center" style={{ color: "var(--m-ink-3)" }}>
-                  <span className="mr-2">No rows match this filter</span>
-                  <Button variant="ghost" size="sm" onClick={() => setGlobalFilter("")}>Clear filter</Button>
+            {rowModel.length === 0 && (
+              <tr style={{ height: 72 }}>
+                <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} className="px-2 text-center" style={{ color: "var(--m-ink-3)" }}>
+                  {globalFilter ? (
+                    <>
+                      <span className="mr-2">No rows match this filter</span>
+                      <Button variant="ghost" size="sm" onClick={() => setGlobalFilter("")}>Clear filter</Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="mr-2">{emptyMessage ?? "No rows"}</span>
+                      {emptyAction}
+                    </>
+                  )}
                 </td>
               </tr>
             )}
@@ -404,8 +452,8 @@ export function DataTable<T>({
                   }
                 : undefined;
               return (
+                <Fragment key={row.id}>
                 <PrefetchRow
-                  key={row.id}
                   id={rowDomId(index)}
                   aria-rowindex={index + 2}
                   aria-selected={bulkActions ? row.getIsSelected() : undefined}
@@ -423,16 +471,30 @@ export function DataTable<T>({
                     const content = flexRender(cell.column.columnDef.cell, cell.getContext());
                     const heat = meta?.heat ? heatClass(meta.heat, cell.getValue(), heatRanges.get(cell.column.id) ?? [0, 1]) : undefined;
                     const firstText = onRowClick && cell.column.id === firstTextColumnId;
+                    const bar = meta?.bar ? barFill(cell.getValue(), meta.bar) : null;
                     return (
                       <td
                         key={cell.id}
                         className={`px-2 ${meta?.numeric ? "text-right m-numeric" : ""} ${firstText ? "m-motion-colors group-hover:text-[var(--m-accent)]" : ""} ${heat ?? ""}`}
                       >
-                        {meta?.mono ? <Mono>{content}</Mono> : content}
+                        {bar ? (
+                          <span className="flex items-center justify-end gap-2">
+                            {content}
+                            <span aria-hidden className="m-bar-track"><span className="m-bar-fill" style={{ width: `${bar.pct}%` }} {...bar.attr} /></span>
+                          </span>
+                        ) : meta?.mono ? <Mono>{content}</Mono> : content}
                       </td>
                     );
                   })}
                 </PrefetchRow>
+                {renderExpanded && expanded[row.id] && (
+                  <tr aria-label="Row detail">
+                    <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} style={{ padding: 0 }}>
+                      <div className="m-row-expand">{renderExpanded(row.original)}</div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
             {padBottom > 0 && (

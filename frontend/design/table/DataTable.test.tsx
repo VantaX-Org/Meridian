@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DataTable } from "./DataTable";
-import { textColumn, numberColumn, idColumn } from "./columns";
+import { textColumn, numberColumn, idColumn, barFill, type CellMeta } from "./columns";
 import { Pager } from "./Pager";
 import { Drawer } from "../primitives/Drawer";
 
@@ -97,18 +97,18 @@ describe("DataTable", () => {
       const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} dense={false} />);
       const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
       const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
-      // Spacer rows plus rendered rows always add up to 44px comfortable row * 2500 rows.
+      // Spacer rows plus rendered rows always add up to 36px comfortable row * 2500 rows.
       const total = () =>
         Array.from(tbody.querySelectorAll("tr")).reduce((n, tr) => n + parseFloat((tr as HTMLElement).style.height), 0);
 
-      expect(total()).toBe(110000);
+      expect(total()).toBe(90000);
       expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
 
-      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 105500 });
+      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 86000 });
       fireEvent.scroll(scrollParent);
 
       expect(screen.getByText("Row 2400")).toBeInTheDocument();
-      expect(total()).toBe(110000);
+      expect(total()).toBe(90000);
       expect(screen.getByText("Row 2400").closest("tr")).toHaveAttribute("aria-rowindex", "2402");
       expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "2501");
     } finally {
@@ -208,7 +208,7 @@ describe("DataTable", () => {
     render(<DataTable columns={cols} data={[{ id: "A1", name: "x", n: 1234 }] as never} getRowId={(r: Row) => r.id} dense />);
     expect(screen.getByText("A1")).toHaveClass("m-mono");
     expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
-    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "36px" });
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "30px" });
   });
 
   it("marks selected rows and shows the floating bulk bar", () => {
@@ -292,5 +292,46 @@ describe("DataTable toolbar", () => {
     expect(screen.getByRole("toolbar")).toBeInTheDocument();
     rerender(<DataTable columns={two} data={rows} getRowId={(r) => r.id} hideToolbar />);
     expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+  });
+});
+
+describe("DataTable layout features", () => {
+  it("expands a row into a detail panel and keeps the chevron labelled", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} renderExpanded={(r) => <p>Detail of {r.name}</p>} />);
+    expect(screen.queryByText("Detail of Alpha")).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Expand row" })[0]);
+    expect(screen.getByText(/^Detail of /)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Collapse row" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("draws an aria-hidden inline bar next to the number and sizes columns", () => {
+    const cols = [
+      { accessorKey: "n", header: "N", size: 120, meta: { numeric: true, bar: { max: 100, tone: "rate" } } satisfies CellMeta },
+    ];
+    const { container } = render(<DataTable columns={cols as never} data={[{ id: "a", n: 50 }] as never} getRowId={(r: { id: string }) => r.id} />);
+    const fill = container.querySelector(".m-bar-fill") as HTMLElement;
+    expect(fill).toHaveStyle({ width: "50%" });
+    expect(fill).toHaveAttribute("data-tone", "critical");
+    expect(fill.closest(".m-bar-track")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("N").closest("th")).toHaveStyle({ width: "120px" });
+  });
+
+  it("barFill maps value to pct and step, and null for non-numbers", () => {
+    expect(barFill(95, { max: 100, tone: "rate" })?.attr["data-tone"]).toBe("pass");
+    expect(barFill(100, { max: 100 })?.attr["data-step"]).toBe(5);
+    expect(barFill(null, { max: 100 })).toBeNull();
+  });
+
+  it("keeps the header and shows one message row with an action when empty", () => {
+    render(<DataTable columns={columns} data={[]} getRowId={(r: Row) => r.id} emptyMessage="Nothing yet" emptyAction={<button type="button">Add one</button>} />);
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Nothing yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add one" })).toBeInTheDocument();
+  });
+
+  it("hides the built-in search with hideSearch and bounds the scroll box with maxHeight", () => {
+    const { container } = render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} hideSearch hideToolbar maxHeight={300} />);
+    expect(screen.queryByLabelText("Filter rows")).not.toBeInTheDocument();
+    expect(container.querySelector("div[style*='max-height: 300px']")).not.toBeNull();
   });
 });
