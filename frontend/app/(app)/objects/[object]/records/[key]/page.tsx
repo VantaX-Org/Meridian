@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
-import { Button, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Card, EmptyState, EntityTabs, ErrorState, ExportMenu, Mono, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getObjectRecord } from "@/lib/api/v1/objects";
 import { getMaterialDuplicates, getMaterialFindings, getMaterialSupersession } from "@/lib/api/materials";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -14,8 +14,6 @@ import { apiErrorMessage } from "@/lib/error";
 import { getRecordReportUrl } from "@/lib/api/reports";
 import { queryKeys } from "@/lib/query-keys";
 import { parseRecordKey } from "@/lib/record-key";
-
-const sectionHeading = "text-[14px] font-semibold";
 
 function SectionError({ what, query }: { what: string; query: UseQueryResult }) {
   return (
@@ -63,7 +61,12 @@ export default function RecordFixSheetPage() {
   });
 
   if (!run) {
-    return <EmptyState title="Select a run to see this record's fix sheet." />;
+    return (
+      <EmptyState
+        title="Select a run to see this record's fix sheet"
+        action={<Button render={<Link href={`/objects/${object}`}>Back to object</Link>} />}
+      />
+    );
   }
   if (recordQuery.isLoading) {
     return (
@@ -74,7 +77,13 @@ export default function RecordFixSheetPage() {
     );
   }
   if (isAxiosError(recordQuery.error) && recordQuery.error.response?.status === 501) {
-    return <EmptyState title={`Not yet available. The record fix sheet for ${object} isn't built yet.`} />;
+    return (
+      <EmptyState
+        title="Not yet available"
+        detail={`The record fix sheet for ${object} isn't built yet.`}
+        action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
+      />
+    );
   }
   if (recordQuery.isError) {
     return (
@@ -88,7 +97,7 @@ export default function RecordFixSheetPage() {
   if (!material) {
     return (
       <EmptyState
-        title="Record not found in this run."
+        title="Record not found in this run"
         detail="The key may belong to another system or run."
         action={<Button render={<Link href={`/objects/${object}?run=${run}`}>Back to object</Link>} />}
       />
@@ -117,9 +126,8 @@ export default function RecordFixSheetPage() {
       <div className="flex justify-end">
         <ExportMenu options={exportOptions} />
       </div>
-      <section className="flex flex-col gap-2">
-        <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Identity</h2>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[13px]">
+      <Card title="Identity">
+        <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
           <dd>{material.description ?? "—"}</dd>
           {isMaterial ? (
@@ -142,11 +150,10 @@ export default function RecordFixSheetPage() {
           <dt style={{ color: "var(--m-ink-3)" }}>Levels</dt>
           <dd>{material.levels_total}</dd>
         </dl>
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>View completeness</h2>
-        <ul className="flex flex-col gap-1 text-[13px]">
+      <Card title="View completeness">
+        <ul className="flex flex-col gap-1">
           {material.views.map((view) => {
             const ok = view.cells.filter((cell) => cell.state === "ok").length;
             return (
@@ -156,15 +163,14 @@ export default function RecordFixSheetPage() {
             );
           })}
         </ul>
-      </section>
+      </Card>
 
       {isMaterial && (
-        <section className="flex flex-col gap-2">
-          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Findings</h2>
+        <Card title="Findings">
           {findingsQuery.isError ? (
             <SectionError what="this record's findings" query={findingsQuery} />
           ) : findings && findings.by_view.some((view) => view.failing.length > 0) ? (
-            <ul className="flex flex-col gap-1 text-[13px]">
+            <ul className="flex flex-col gap-1">
               {findings.by_view.flatMap((view) =>
                 view.failing.map((rule) => (
                   <li key={`${view.view}-${rule.check_id}`}>
@@ -174,18 +180,17 @@ export default function RecordFixSheetPage() {
               )}
             </ul>
           ) : (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No failing rules on this run.</p>
+            <p style={{ color: "var(--m-ink-3)" }}>No failing rules on this run.</p>
           )}
-        </section>
+        </Card>
       )}
 
       {isMaterial && (
-        <section className="flex flex-col gap-2">
-          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Supersession</h2>
+        <Card title="Supersession">
           {supersessionQuery.isError ? (
             <SectionError what="the supersession chain" query={supersessionQuery} />
           ) : supersession && supersession.plants.some((plant) => plant.chain.length > 1) ? (
-            <ul className="flex flex-col gap-1 text-[13px]">
+            <ul className="flex flex-col gap-1">
               {supersession.plants.map((plant) => (
                 <li key={plant.werks}>
                   Plant {plant.werks}: {plant.chain.length} material{plant.chain.length === 1 ? "" : "s"} in chain
@@ -194,18 +199,17 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Not superseded at any plant.</p>
+            <p style={{ color: "var(--m-ink-3)" }}>Not superseded at any plant.</p>
           )}
-        </section>
+        </Card>
       )}
 
       {isMaterial && (
-        <section className="flex flex-col gap-2">
-          <h2 className={sectionHeading} style={{ color: "var(--m-ink)" }}>Possible duplicates</h2>
+        <Card title="Possible duplicates">
           {duplicatesQuery.isError ? (
             <SectionError what="possible duplicates" query={duplicatesQuery} />
           ) : duplicates && duplicates.items.length > 0 ? (
-            <ul className="flex flex-col gap-1 text-[13px]">
+            <ul className="flex flex-col gap-1">
               {duplicates.items.map((item) => (
                 <li key={item.matnr}>
                   <Mono>{item.matnr}</Mono> {item.maktx ?? ""} — matches on {item.matches_on.join(", ")} (score{" "}
@@ -214,9 +218,9 @@ export default function RecordFixSheetPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No duplicate candidates for this record.</p>
+            <p style={{ color: "var(--m-ink-3)" }}>No duplicate candidates for this record.</p>
           )}
-        </section>
+        </Card>
       )}
       </>} />
     </RecordPage>
