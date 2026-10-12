@@ -1,7 +1,7 @@
 // frontend/app/(app)/runs/[versionId]/vs/[b]/page.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import {
   ErrorState,
   ExportMenu,
   Mono,
+  Pager,
   Pill,
   ReportPage,
   Select,
@@ -24,6 +25,7 @@ import {
   type SelectOption,
 } from "@/design";
 import { RunsPageHeader, RunsPageHeaderSkeleton } from "@/app/(app)/runs/_page-header";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { downloadAuthenticated } from "@/lib/api/download";
@@ -60,9 +62,15 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
   const router = useRouter();
   const qc = useQueryClient();
   const regressed = change(rule) > 0;
+  const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const search = useDebouncedValue(filter, 300);
   const keys = useQuery({
-    queryKey: [...queryKeys.runCompare(versionId, v1 ?? "baseline"), "keys", rule.check_id],
-    queryFn: () => compareRecordKeys(rule.check_id, { v1: v1 ?? "", v2: versionId, change: "new", limit: KEYS_LIMIT, offset: 0 }),
+    queryKey: [...queryKeys.runCompare(versionId, v1 ?? "baseline"), "keys", rule.check_id, search, page],
+    queryFn: () =>
+      compareRecordKeys(rule.check_id, {
+        v1: v1 ?? "", v2: versionId, change: "new", search: search || undefined, limit: KEYS_LIMIT, offset: (page - 1) * KEYS_LIMIT,
+      }),
     enabled: regressed && v1 !== undefined,
   });
   const create = useMutation({
@@ -74,6 +82,8 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
     onError: (e: unknown) => toast.error(errorText(e)),
   });
   const list = keys.data?.record_keys ?? [];
+  // The server pages; a full page means there may be another.
+  const pageCount = page + (list.length === KEYS_LIMIT ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -83,15 +93,25 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
       <Pill tone={regressed ? "no-go" : "neutral"}>{regressed ? "Newly failing" : "Fixed"}</Pill>
       {regressed ? (
         <>
-          <p style={{ color: "var(--m-ink-2)" }}>First {KEYS_LIMIT} records that newly fail</p>
+          <p style={{ color: "var(--m-ink-2)" }}>Records that newly fail</p>
+          <input
+            type="search"
+            aria-label="Filter record keys"
+            placeholder="Filter record keys"
+            value={filter}
+            onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+            className="h-8 rounded border px-2"
+            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
+          />
           {keys.isLoading ? <Skeleton height={120} /> : null}
           {keys.isError ? <ErrorState message={errorText(keys.error)} onRetry={() => keys.refetch()} /> : null}
-          {keys.data && list.length === 0 ? <EmptyState title="No new records" detail="Nothing newly fails for this rule." /> : null}
+          {keys.data && list.length === 0 ? <EmptyState title={search ? "No records match" : "No new records"} detail={search ? "Try a different filter." : "Nothing newly fails for this rule."} /> : null}
           <ul className="flex flex-col gap-1">
             {list.map((k) => (
               <li key={k}><Mono>{k}</Mono></li>
             ))}
           </ul>
+          {list.length > 0 ? <Pager page={page} pageCount={pageCount} onPageChange={setPage} /> : null}
           {canFix ? (
             <Button disabled={create.isPending} onClick={() => create.mutate()}>Create fix batch</Button>
           ) : null}
@@ -122,6 +142,25 @@ export default function CompareRunsPage() {
   const diffQ = useQuery({
     queryKey: [...queryKeys.runCompare(versionId, b), "records", module],
     queryFn: () => compareRecords(versionId, v1Param, moduleParam),
+  });
+
+  const qc = useQueryClient();
+  const bulk = useMutation({
+    mutationFn: async (selected: CheckChange[]) => {
+      let ok = 0;
+      for (const c of selected) {
+        await createBatch(`Regressions ${c.check_id}`, { version_id: versionId, check_id: c.check_id, module: c.module }).then(
+          () => { ok += 1; },
+          () => undefined,
+        );
+      }
+      return ok;
+    },
+    onSuccess: (ok, selected) => {
+      qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
+      toast.success(`Created ${ok} of ${selected.length} fix batches`);
+      if (ok < selected.length) toast.error(`${selected.length - ok} fix batch${selected.length - ok === 1 ? "" : "es"} failed to create`);
+    },
   });
 
   const cmp = cmpQ.data;
@@ -191,6 +230,16 @@ export default function CompareRunsPage() {
       columns={columns}
       data={rows}
       getRowId={(c) => c.check_id}
+      bulkActions={
+        can("apply")
+          ? (selected) => {
+              const failing = selected.filter((c) => change(c) > 0);
+              return failing.length > 0 ? (
+                <Button disabled={bulk.isPending} onClick={() => bulk.mutate(failing)}>Create fix batches</Button>
+              ) : null;
+            }
+          : undefined
+      }
       renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} />}
     />
   ) : null;
