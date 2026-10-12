@@ -27,15 +27,19 @@ describe("no middle dot (U+00B7)", () => {
     expect(hits).toEqual([]);
   });
 
-  it("JobProgress splits a worker message on the separator into separate elements", () => {
+  it.each([
+    ["old", `Checks \u2014 material_master ${DOT} rule 3/5 ${DOT} CHK-1`],
+    ["new", "Checks \u2014 material_master | rule 3/5 | CHK-1"],
+  ])("JobProgress splits a %s-format worker message into separate elements", (_n, message) => {
     const now = Date.now() / 1000;
     const job: Job = {
       id: "j", kind: "analysis", status: "running", label: "Analysis", stage: null, stages: [], percent: 50,
       rows_done: 0, rows_total: 0, tables: [], error: null, result: null, started_at: now - 60, updated_at: now, finished_at: null,
-      message: `Checks \u2014 material_master ${DOT} rule 3/5 ${DOT} CHK-1`,
+      message,
     };
     const { container } = render(<JobProgress job={job} />);
     expect(container.textContent).not.toContain(DOT);
+    expect(container.textContent).not.toContain("|");
     expect(screen.getByText("CHK-1")).toBeInTheDocument();
     expect(screen.getByText("rule 3/5")).toBeInTheDocument();
   });

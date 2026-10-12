@@ -417,7 +417,7 @@ async def analyse_version(version_id: str, db: AsyncSession = Depends(get_db), t
     await db.execute(text("UPDATE analysis_versions SET status = 'pending' WHERE id = :v"), {"v": vid})
     await db.commit()
     jobs.start_job(str(tenant.id), version_id, "analysis",
-                   f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' · {row[3]}' if row[3] else ''}",
+                   f"{'Analysis' if row[0] == 'extracted' else 'Re-analysis'}{f' | {row[3]}' if row[3] else ''}",
                    status="queued", progress_key=version_id, version_id=version_id, system_id=row[2])
     job = run_checks.delay(version_id, str(tenant.id), row[1], reanalyse=row[0] != "extracted")
     return {"version_id": version_id, "task_id": job.id, "job_id": version_id, "status": "pending"}

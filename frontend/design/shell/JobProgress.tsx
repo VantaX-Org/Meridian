@@ -6,8 +6,8 @@ import { etaSeconds, formatDuration, isStalled, updatedAgo } from "../../lib/job
 import { Mono } from "../primitives/Mono";
 import { Pill } from "../primitives/Pill";
 
-// The worker joins message parts with a middle dot (U+00B7); split on it so each part renders as its own element.
-const SEP = / \u00B7 /;
+// Workers join message parts with a pipe. Stored messages from older runs use U+00B7, so accept both.
+const SEP = / (?:\u00B7|\|) /;
 const RULE_PART = /^rule \d+\/\d+$/;
 
 /** Live detail for a running job: message with the rule id in mono, elapsed, ETA, freshness, stall warning. */

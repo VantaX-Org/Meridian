@@ -770,7 +770,7 @@ def _run_checks(self: Task, engine: Engine, version_id: str, tenant_id: str, par
             record_step(engine, tenant_id, version_id, check_step_num, check_step_name, status="running")
             def publish_rule(done, total, rule_id, idx=idx, module_name=module_name):
                 last_progress.update(
-                    current_step=f"{check_step_name} — {module_name} · rule {done}/{total} · {rule_id}",
+                    current_step=f"{check_step_name} — {module_name} | rule {done}/{total} | {rule_id}",
                     rows_processed=int((idx + done / max(total, 1)) / module_count * row_count))
                 update_task_progress(version_id, **last_progress)
 
