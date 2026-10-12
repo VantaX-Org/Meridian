@@ -61,9 +61,11 @@ def near_pairs(df: pd.DataFrame, field: str, groups: list[pd.Index], threshold: 
     Names with different numbers never pair. Identical compact keys score 1.0, or are
     skipped when ``exact_elsewhere`` (an exact-duplicate rule reports them)."""
     from checks.value_placement import name_key
-    # plain dicts: a Series lookup per pair costs more than the comparison itself
-    key_s = _key(df[field])
-    compact = name_key(df[field]).fillna("").to_dict()  # the exact-duplicate rule's own key
+    # plain dicts: a Series lookup per pair costs more than the comparison itself.
+    # Only rows in the groups: dicts over a whole 10M-row frame would cost GBs.
+    names = df[field].loc[pd.Index([i for g in groups for i in g])]
+    key_s = _key(names)
+    compact = name_key(names).fillna("").to_dict()  # the exact-duplicate rule's own key
     digits = key_s.str.replace(r"[^0-9]", "", regex=True).to_dict()
     key = key_s.to_dict()
     out: list[tuple[Hashable, Hashable, float]] = []

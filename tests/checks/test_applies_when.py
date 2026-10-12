@@ -108,6 +108,20 @@ def test_contains_any_matches_any_code_as_substring():
     assert out.index.tolist() == [0, 1, 5]
     assert apply_context(df, {"MARC.PSTAT": {"contains_any": ["CT", "x"]}}).index.tolist() == [6, 7]
     assert apply_context(df, {"MARC.PSTAT": {"contains_any": []}}).empty
+    # case-sensitive, like the per-row `c in v` it replaced
+    assert apply_context(df, {"MARC.PSTAT": {"contains_any": ["v"]}}).empty
+    # an empty code is a substring of every string, blank included; nulls still never match
+    assert apply_context(df, {"MARC.PSTAT": {"contains_any": [""]}}).index.tolist() == [0, 1, 2, 3, 5, 6, 7]
+    # missing field: rule not applicable to this extract
+    assert apply_context(df, {"MARC.NOPE": {"contains_any": ["V"]}}).empty
+    # non-string columns are matched on their string form; all-NaN never matches
+    other = pd.DataFrame({"I": [12, 3, 21], "F": [float("nan")] * 3,
+                          "K": pd.Categorical(["AV", "B", None])})
+    assert apply_context(other, {"I": {"contains_any": [1]}}).index.tolist() == [0, 2]
+    assert apply_context(other, {"F": {"contains_any": ["n", ""]}}).empty
+    assert apply_context(other, {"K": {"contains_any": ["V"]}}).index.tolist() == [0]
+    with pytest.raises(TypeError):
+        apply_context(df, {"MARC.PSTAT": {"contains_any": None}})  # malformed rule fails loudly
 
 
 def test_today_relative_date_operators():
