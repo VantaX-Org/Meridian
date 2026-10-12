@@ -1,16 +1,36 @@
 "use client";
 
 /** Process analyst home (process-discovery spec §7.2): coverage, conformance, latest runs. */
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Card, ErrorState, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, DrillLink, ErrorState, PageHeader, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
-import { getCatalogue, listRuns } from "@/lib/api/process-discovery";
+import { getCatalogue, listRuns, type CatalogueRow } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
+import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  CatalogueGrid, NoSystem, RunsTable, SystemSelect, fitnessTone, fmtFitness, headline, processInsight, useProcessSystem,
+  NoSystem, RunsTable, SystemSelect, fitnessTone, fmtCount, fmtFitness, l1Href, headline, processInsight, useProcessSystem,
 } from "../../process/_components/shared";
+import { CoveragePill } from "../../process/_components/coverage-pill";
+
+const FRAME = { padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" } as const;
+
+const columns = (systemId: string, canRun: boolean): ColumnDef<CatalogueRow>[] => [
+  { id: "process", header: "Process", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => <DrillLink href={l1Href(r.l1, systemId, r.last_run?.id)}>{r.name}</DrillLink> },
+  { id: "coverage", header: "Coverage", cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
+  { id: "fitness", header: "Fitness", meta: { numeric: true }, accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => fmtFitness(r.last_run?.fitness) },
+  { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
+  { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
+  { id: "last", header: "Last run", cell: ({ row: { original: r } }) => (r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Never") },
+  {
+    id: "run", header: "", enableSorting: false,
+    cell: ({ row: { original: r } }) => canRun && r.coverage !== "reference" && !r.in_progress
+      ? <Button variant="ghost" render={<Link href={`/process/runs?system=${systemId}&new=1&l1=${r.l1}`}>Run discovery</Link>} /> : null,
+  },
+];
 
 export default function ProcessHomePage() {
   const { can } = useRole();
@@ -28,23 +48,35 @@ export default function ProcessHomePage() {
     enabled: !!system,
   });
 
-  if (systems.isError) return <ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />;
-  if (systems.isSuccess && !system) return <NoSystem />;
-  if (catalogue.isError) return <ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} />;
+  const framed = (node: React.ReactNode) => <div className="mx-auto flex flex-col" style={FRAME}>{node}</div>;
+  if (systems.isError) return framed(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
+  if (systems.isSuccess && !system) return framed(<NoSystem />);
+  if (catalogue.isError) return framed(<ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} />);
   const rows = catalogue.data;
-  if (!rows || !system) return <Skeleton height={320} />;
+  if (!rows || !system) {
+    return (
+      <div className="mx-auto flex flex-col" style={FRAME} data-testid="home-loading">
+        <Skeleton height={26} width={160} />
+        <Skeleton height={112} />
+        <div className="grid grid-cols-2 gap-4"><Skeleton height={88} /><Skeleton height={88} /></div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   const h = headline(rows);
   const catalogueHref = `/process?system=${system.id}`;
   return (
-    <div className="grid gap-4">
+    <div className="mx-auto flex flex-col" style={FRAME}>
+      <PageHeader title="Home" meta={`${system.name}, ${rows.length} processes`} actions={<SystemSelect value={system.id} onValueChange={setSystem} systems={list} />} />
       <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
-      <div className="max-w-xs"><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
         <Stat label="Median fitness" value={fmtFitness(h.fitness)}
           tone={h.fitness == null ? undefined : (fitnessTone(h.fitness) as StatTone)} />
       </div>
-      <CatalogueGrid rows={rows} systemId={system.id} jobs={jobs} />
+      <Card title="Processes" padding="sm">
+        <DataTable columns={columns(system.id, can("run_process_discovery"))} data={rows} getRowId={(r) => r.l1} height="auto" dense hideToolbar tableId="home-processes" />
+      </Card>
       <Card title="Latest runs">
         {runs.isError
           ? <ErrorState message={apiErrorMessage(runs.error)} onRetry={() => runs.refetch()} />
