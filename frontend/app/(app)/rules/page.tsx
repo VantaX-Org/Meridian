@@ -21,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { toast } from "sonner";
-import { DrillLink, Button, Card, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, Card, DataTable, Drawer, EmptyState, ErrorState, ExportMenu, Field, Input, Mono, Notice, PageHeader, Pill, Select, SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { oneOf, useUrlState } from "@/hooks/use-url-state";
 import { createCustomRule, dryRunRule, exportRules, getRules, getRulesSummary, updateRule, type CheckClass, type CustomRuleDraft, type DryRunResult, type Rule } from "@/lib/api/rules";
@@ -108,7 +108,6 @@ function RulesAll({ authoring, setAuthoring }: { authoring: boolean; setAuthorin
     [awareQ.data],
   );
 
-  const summary = useQuery({ queryKey: queryKeys.rulesSummary(), queryFn: getRulesSummary });
   const rulesQ = useQuery({ queryKey: queryKeys.rules({ category }), queryFn: () => getAllRules(category === "all" ? undefined : category) });
   const rules = useMemo(() => rulesQ.data ?? [], [rulesQ.data]);
   const facets = useMemo(() => ({

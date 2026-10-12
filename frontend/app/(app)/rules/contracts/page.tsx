@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, DataTable, Drawer, ExplorerPage, Field, Mono, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, DataTable, Drawer, ExplorerPage, Field, Input, Mono, Pill, Select, Stat, type PillTone } from "@/design";
+import { TextArea } from "../rule-ui";
 import { useRole } from "@/hooks/use-role";
 import { activateContract, createContract, getContractCompliance, getContracts } from "@/lib/api/contracts";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -53,7 +54,7 @@ export default function ContractsPage() {
       cell: ({ row }) => (
         <span>
           <strong>{row.original.name}</strong>
-          {row.original.description ? <span className="block text-[12px]" style={{ color: "var(--m-ink-3)" }}>{row.original.description}</span> : null}
+          {row.original.description ? <span className="block m-text-meta" style={{ color: "var(--m-ink-3)" }}>{row.original.description}</span> : null}
         </span>
       ),
     },
@@ -77,7 +78,7 @@ export default function ContractsPage() {
         <div className="flex items-end justify-between gap-3">
           <div className="flex items-end gap-3">
             <Field label="Filter contracts">
-              <input aria-label="Filter contracts" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input aria-label="Filter contracts" value={search} onChange={(e) => setSearch(e.target.value)} />
             </Field>
             <Field label="Status">
               <Select
@@ -92,36 +93,18 @@ export default function ContractsPage() {
       }
       summary={
         <div className="flex gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Contracts</span>
-            <span className="text-[18px] font-semibold">{q.isLoading ? "–" : q.data?.total ?? all.length}</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Active</span>
-            <span className="text-[18px] font-semibold">{q.isLoading ? "–" : counts.active}</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Breached</span>
-            <span className="text-[18px] font-semibold" style={{ color: counts.breached ? "var(--m-critical)" : undefined }}>
-              {q.isLoading ? "–" : counts.breached}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Awaiting approval</span>
-            <span className="text-[18px] font-semibold" style={{ color: counts.pending ? "var(--m-medium)" : undefined }}>
-              {q.isLoading ? "–" : counts.pending}
-            </span>
-          </div>
+          <Stat label="Breached" value={q.isLoading ? "–" : counts.breached.toLocaleString()} loading={q.isLoading} />
+          <Stat label="Awaiting approval" value={q.isLoading ? "–" : counts.pending.toLocaleString()} loading={q.isLoading} onClick={() => setStatus("pending_approval")} />
         </div>
       }
       table={<DataTable columns={columns} data={visible} getRowId={(c) => c.id} onRowClick={(c) => setSelectedId(c.id)} />}
       state={state}
       emptyProps={
         all.length
-          ? { title: "No contracts match." }
+          ? { title: "No contracts match", action: <Button variant="secondary" onClick={() => { setSearch(""); setStatus("all"); }}>Clear filters</Button> }
           : {
-              title: "No data contracts yet.",
-              detail: "A contract turns a rule into a promise with an owner.",
+              title: "No data contracts yet",
+              detail: "A contract turns a rule into a promise with an owner",
               action: canCreate ? <Button onClick={() => setCreating(true)}>New contract</Button> : undefined,
             }
       }
@@ -153,8 +136,8 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
   return (
     <div className="flex flex-col gap-4">
       <Pill tone={breached(c) ? "no-go" : TONE[c.status]}>{breached(c) ? "Breached" : labelOf(c.status)}</Pill>
-      {c.description ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{c.description}</p> : null}
-      <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-[13px]">
+      {c.description ? <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{c.description}</p> : null}
+      <dl className="grid grid-cols-[140px_1fr] gap-y-1 m-text-body">
         <dt style={{ color: "var(--m-ink-3)" }}>Producer</dt><dd>{c.producer}</dd>
         <dt style={{ color: "var(--m-ink-3)" }}>Consumer</dt><dd>{c.consumer}</dd>
         <dt style={{ color: "var(--m-ink-3)" }}>Latest check</dt><dd>{c.latest_compliant === true ? "Compliant" : c.latest_compliant === false ? "Not compliant" : "Not checked"}</dd>
@@ -168,27 +151,26 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
         <div className="flex flex-col gap-3">
           {terms.map(([k, title]) => (
             <div key={k}>
-              <h3 className="text-[13px] font-semibold">{title} terms</h3>
-              <pre className="text-[12px] font-mono rounded border p-2 overflow-x-auto" style={{ borderColor: "var(--m-line)" }}>
-                {JSON.stringify(c[k], null, 2)}
-              </pre>
+              <Card title={`${title} terms`} padding="sm">
+                <pre className="m-text-meta font-mono overflow-x-auto">{JSON.stringify(c[k], null, 2)}</pre>
+              </Card>
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>No terms stated yet; the contract documents the pair until terms are added.</p>
+        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>No terms stated yet; the contract documents the pair until terms are added.</p>
       )}
 
       <div>
-        <h3 className="text-[13px] font-semibold mb-2">Compliance history</h3>
+        <h3 className="m-text-body font-semibold mb-2">Compliance history</h3>
         {compliance.isLoading ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading compliance history.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Reading compliance history.</p>
         ) : !history.length ? (
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No compliance checks recorded yet.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No compliance checks recorded yet.</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {history.map((h) => (
-              <li key={h.id} className="flex items-center gap-2 text-[13px]">
+              <li key={h.id} className="flex items-center gap-2 m-text-body">
                 <Pill tone={h.overall_compliant ? "go" : "no-go"}>{h.overall_compliant ? "Compliant" : "Not compliant"}</Pill>
                 <span style={{ color: "var(--m-ink-3)" }}>{relativeTime(h.recorded_at)}</span>
               </li>
@@ -204,7 +186,7 @@ function ContractDetail({ contract: c, canActivate, onChanged }: { contract: Con
         <Mono>{c.id}</Mono>
       </div>
       {c.status === "draft" || c.status === "pending_approval" ? (
-        <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Four eyes: someone other than the author activates a contract.</p>
+        <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Four eyes: someone other than the author activates a contract.</p>
       ) : null}
     </div>
   );
@@ -220,13 +202,13 @@ function NewContractForm({ onDone }: { onDone: () => void }) {
   const valid = d.name.trim() && d.producer.trim() && d.consumer.trim();
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (valid) create.mutate(); }} className="flex flex-col gap-3">
-      <Field label="Contract name"><input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Vendor master to S/4HANA" /></Field>
-      <Field label="Producer system"><input value={d.producer} onChange={(e) => setD({ ...d, producer: e.target.value })} placeholder="ECC PRD" /></Field>
-      <Field label="Consumer system"><input value={d.consumer} onChange={(e) => setD({ ...d, consumer: e.target.value })} placeholder="S/4HANA Cloud" /></Field>
+      <Field label="Contract name"><Input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Vendor master to S/4HANA" /></Field>
+      <Field label="Producer system"><Input value={d.producer} onChange={(e) => setD({ ...d, producer: e.target.value })} placeholder="ECC PRD" /></Field>
+      <Field label="Consumer system"><Input value={d.consumer} onChange={(e) => setD({ ...d, consumer: e.target.value })} placeholder="S/4HANA Cloud" /></Field>
       <Field label="What the contract governs">
-        <textarea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
+        <TextArea rows={3} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} />
       </Field>
-      <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
+      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>It starts as a draft. Add schema, quality, freshness and volume terms, then activate it.</p>
       <div><Button type="submit" disabled={!valid || create.isPending}>{create.isPending ? "Creating…" : "Create draft"}</Button></div>
     </form>
   );

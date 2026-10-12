@@ -5,6 +5,7 @@
  * proposal into an active rule with a new LR- id; `manage_rules` can reject. */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -85,7 +86,7 @@ export default function LearnedRulesPage() {
         </div>
       }
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No learned rules yet. Mining runs after the second analysis." }}
+      emptyProps={{ title: "No learned rules yet", detail: "Mining runs after the second analysis", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
       errorProps={{
         message: apiErrorMessage(q.error),
         onRetry: () => q.refetch(),

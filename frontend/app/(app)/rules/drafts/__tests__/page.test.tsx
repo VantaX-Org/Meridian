@@ -8,7 +8,7 @@ describe("rules drafts page", () => {
   it("shows the empty sentence when there are no drafts", async () => {
     vi.spyOn(api, "getRuleDrafts").mockResolvedValue([]);
     renderWithQuery(<RuleDraftsPage />);
-    expect(await screen.findByText("No drafts.")).toBeInTheDocument();
+    expect(await screen.findByText("No drafts")).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while drafts load", () => {

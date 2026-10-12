@@ -16,7 +16,7 @@ import { OwnerPicker } from "@/components/owners/OwnerPicker";
 import { getRuleApplicability, type SystemApplicability } from "@/lib/api/config-load";
 import { getRuleLineage } from "@/lib/api/lineage";
 import { apiErrorMessage } from "@/lib/error";
-import { checkClassLabel, formatDate, formatModuleName, labelOf } from "@/lib/format";
+import { formatDate, formatModuleName, labelOf } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { ConditionList, ThresholdTable } from "../rule-ui";
 
@@ -33,7 +33,6 @@ const APPLIES_LABEL: Record<string, string> = {
   not_available: "Not available",
 };
 
-const SEV_TONE: Record<string, "no-go" | "at-risk" | "neutral"> = { critical: "no-go", high: "no-go", medium: "at-risk", low: "neutral", info: "neutral" };
 const SOURCE_LABEL: Record<string, string> = { yaml: "built-in", hq: "HQ", mined: "mined", custom: "custom" };
 const conditionList = (conditions: Record<string, unknown>[] | Record<string, unknown> | null) =>
   Array.isArray(conditions) ? conditions : conditions ? [conditions] : [];

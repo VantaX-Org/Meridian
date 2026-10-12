@@ -5,7 +5,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Field, Mono } from "@/design";
+import Link from "next/link";
+import { Button, DataTable, ExplorerPage, Field, Input, Mono, Notice } from "@/design";
 import { getDdicFields, type DdicField } from "@/lib/api/rules";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 
@@ -24,9 +25,9 @@ export default function RuleDictionaryPage() {
   const items = (q.data ?? []).filter((f) => !f.missing);
   return (
     <ExplorerPage
-      filterBar={<div className="flex flex-col gap-1"><Field label="Fields"><input aria-label="Fields" className="rounded border px-3 text-[13px]" style={{ borderColor: "var(--m-line)", height: 40, width: 384 }} value={text} placeholder="MARA.MATNR, KNA1.KUNNR" onChange={(e) => setText(e.target.value)} /></Field>{skipped.length ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{`Not TABLE.FIELD, skipped: ${skipped.join(", ")}`}</p> : null}</div>}
+      filterBar={<div className="flex flex-col gap-1"><Field label="Fields"><Input aria-label="Fields" value={text} placeholder="MARA.MATNR, KNA1.KUNNR" onChange={(e) => setText(e.target.value)} /></Field>{skipped.length ? <Notice tone="warning">{`Not TABLE.FIELD, skipped: ${skipped.join(", ")}`}</Notice> : null}</div>}
       state={names.length === 0 ? "empty" : q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No data dictionary snapshot yet. It is captured during extraction.", detail: "Type TABLE.FIELD names above to look them up in the shipped dictionary.", ghost: "table" }}
+      emptyProps={{ title: "No dictionary snapshot yet", detail: "It is captured during extraction. Type TABLE.FIELD names above to look them up in the shipped dictionary", action: <Button variant="secondary" render={<Link href="/systems">Open systems</Link>} />, ghost: "table" }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => `${r.table}.${r.field}`} />}
     />

@@ -24,7 +24,7 @@ export default function RuleDraftsPage() {
     <ExplorerPage
       toolbarEnd={<Button variant="secondary" render={<Link href="/rules">Back to rules</Link>} />}
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No drafts.", ghost: "table" }}
+      emptyProps={{ title: "No drafts", detail: "Drafts appear when a steward starts a rule and has not published it yet", ghost: "table", action: <Button variant="secondary" render={<Link href="/rules">Open rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={columns} data={items} getRowId={(r) => r.id} />}
     />
