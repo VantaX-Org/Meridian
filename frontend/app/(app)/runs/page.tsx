@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Stat, usePrefetch, type PillTone } from "@/design";
+import { PageHeader, DrillLink, Button, DataTable, Delta, ExplorerPage, ExportMenu, emptyExportOptions, Line, Pill, Select, Skeleton, Stat, usePrefetch, type PillTone } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { useUrlState } from "@/hooks/use-url-state";
 import { errorText } from "@/lib/api/remediation";
@@ -165,7 +165,12 @@ export default function RunsPage() {
     />
   );
 
-  const summary = (
+  const summary = all.isLoading ? (
+    <div className="flex flex-col gap-4" aria-busy="true">
+      <div className="flex flex-wrap gap-6"><Stat label="Latest DQS" value="" loading /></div>
+      <Skeleton height={160} />
+    </div>
+  ) : (
     <div className="flex flex-col gap-4">
       {rows.length > 0 || scoped.length > 0 ? (
         <div className="flex flex-wrap gap-6">
@@ -219,12 +224,20 @@ export default function RunsPage() {
         />
       }
       state={state}
-      emptyProps={{
-        title: "No runs yet",
-        detail: dayOne.step?.detail ?? "Run the first extraction from Systems.",
-        action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Connect a system" />,
-        ghost: "table",
-      }}
+      emptyProps={
+        failedOnly || system
+          ? {
+              title: "No runs match",
+              detail: "Try removing a filter.",
+              action: <Button onClick={() => { setSystem(""); setStatus(""); }}>Clear filters</Button>,
+            }
+          : {
+              title: "No runs yet",
+              detail: dayOne.step?.detail ?? "Run the first extraction from Systems.",
+              action: <DayOneAction step={dayOne.step} fallbackHref="/systems" fallbackLabel="Connect a system" />,
+              ghost: "table",
+            }
+      }
       errorProps={{ message: errorText(all.error), onRetry: () => all.refetch() }}
     />
   );

@@ -14,7 +14,9 @@ import {
   Delta,
   EmptyState,
   ErrorState,
+  Field,
   ExportMenu,
+  Input,
   Mono,
   Pager,
   Pill,
@@ -38,22 +40,22 @@ import { queryKeys } from "@/lib/query-keys";
 import type { CheckChange, Version } from "@/types/api";
 
 const KEYS_LIMIT = 50;
-const nf = new Intl.NumberFormat("en-ZA");
 const runLabel = (v: Version) => v.label ?? formatDate(v.run_at, "date");
 const change = (c: CheckChange) => c.v2_affected - c.v1_affected;
+const fmtN = (n: number) => n.toLocaleString();
 
 const columns: ColumnDef<CheckChange>[] = [
   { accessorKey: "check_id", header: "Rule", cell: ({ row }) => <Mono>{row.original.check_id}</Mono> },
   { id: "module", header: "Object", accessorFn: (c) => formatModuleName(c.module) },
-  { id: "before", header: "Records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => nf.format(row.original.v1_affected) },
-  { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => nf.format(row.original.v2_affected) },
+  { id: "before", header: "Records before", accessorFn: (c) => c.v1_affected, cell: ({ row }) => fmtN(row.original.v1_affected) },
+  { id: "after", header: "Records after", accessorFn: (c) => c.v2_affected, cell: ({ row }) => fmtN(row.original.v2_affected) },
   {
     id: "delta",
-    header: "Change",
+    header: "Delta",
     accessorFn: change,
     cell: ({ row }) => {
       const d = change(row.original);
-      return <span className="tabular-nums">{d > 0 ? "+" : ""}{nf.format(d)}</span>;
+      return <span className="tabular-nums">{d > 0 ? "+" : ""}{fmtN(d)}</span>;
     },
   },
 ];
@@ -94,18 +96,17 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
       {regressed ? (
         <>
           <p style={{ color: "var(--m-ink-2)" }}>Records that newly fail</p>
-          <input
-            type="search"
-            aria-label="Filter record keys"
-            placeholder="Filter record keys"
-            value={filter}
-            onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-            className="h-8 rounded border px-2"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
-          />
+          <Field label="Filter record keys">
+            <Input
+              type="search"
+              placeholder="Filter record keys"
+              value={filter}
+              onChange={(e) => { setFilter(e.target.value); setPage(1); }}
+            />
+          </Field>
           {keys.isLoading ? <Skeleton height={120} /> : null}
           {keys.isError ? <ErrorState message={errorText(keys.error)} onRetry={() => keys.refetch()} /> : null}
-          {keys.data && list.length === 0 ? <EmptyState title={search ? "No records match" : "No new records"} detail={search ? "Try a different filter." : "Nothing newly fails for this rule."} /> : null}
+          {keys.data && list.length === 0 ? <EmptyState title={search ? "No records match" : "No new records"} detail={search ? "Try a different filter." : "Nothing newly fails for this rule."} action={search ? <Button onClick={() => { setFilter(""); setPage(1); }}>Clear filter</Button> : <Button onClick={() => router.push("/runs")}>All runs</Button>} /> : null}
           <ul className="flex flex-col gap-1">
             {list.map((k) => (
               <li key={k}><Mono>{k}</Mono></li>
@@ -117,7 +118,7 @@ function RuleDrawer({ rule, versionId, v1, canFix }: { rule: CheckChange; versio
           ) : null}
         </>
       ) : (
-        <p style={{ color: "var(--m-ink-2)" }}>{nf.format(rule.v1_affected)} records failed before; none fail now.</p>
+        <p style={{ color: "var(--m-ink-2)" }}>{fmtN(rule.v1_affected)} records failed before; none fail now.</p>
       )}
     </div>
   );
@@ -133,6 +134,7 @@ export default function CompareRunsPage() {
   const cmpQ = useQuery({
     queryKey: [...queryKeys.runCompare(versionId, b), "modules", moduleParam],
     queryFn: () => compareVersions(v1Param, versionId, moduleParam),
+    placeholderData: (p) => p,
   });
   // Module options come from the unfiltered comparison; shares cache with cmpQ when no module is chosen.
   const allModulesQ = useQuery({
@@ -158,8 +160,9 @@ export default function CompareRunsPage() {
     },
     onSuccess: (ok, selected) => {
       qc.invalidateQueries({ queryKey: queryKeys.remediationBatches() });
-      toast.success(`Created ${ok} of ${selected.length} fix batches`);
-      if (ok < selected.length) toast.error(`${selected.length - ok} fix batch${selected.length - ok === 1 ? "" : "es"} failed to create`);
+      const failed = selected.length - ok;
+      if (ok === 0) toast.error(`No fix batches created; ${failed} failed`);
+      else toast.success(`Created ${ok} of ${selected.length} fix batches${failed > 0 ? `; ${failed} failed` : ""}`);
     },
   });
 
@@ -193,7 +196,7 @@ export default function CompareRunsPage() {
   const errored = cmpQ.isError || diffQ.isError;
   const deltas = cmp ? Object.values(cmp.delta) : [];
   const empty = !!cmp && !!diff && deltas.length === 0 && diff.checks.length === 0;
-  const state: "loading" | "error" | "empty" | undefined = loading ? "loading" : errored ? "error" : empty ? "empty" : undefined;
+  const state: "error" | "empty" | undefined = errored ? "error" : empty ? "empty" : undefined;
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
   const before = mean(deltas.map((d) => d.v1_score));
   const after = mean(deltas.map((d) => d.v2_score));
@@ -205,12 +208,12 @@ export default function CompareRunsPage() {
       status={b === "baseline" ? <Pill>Baseline</Pill> : undefined}
     />
   ) : (
-    <Skeleton height={48} />
+    <Skeleton height={48} width={320} />
   );
 
   const narrative = (
     <div className="flex flex-col gap-2">
-      <Select label="Object" value={module} onValueChange={setModule} options={moduleOptions} placeholder="All objects" />
+      <Select label="Object" value={module} onValueChange={setModule} options={[{ value: "", label: "All objects" }, ...moduleOptions]} placeholder="All objects" />
       {sentences.map((s) => (
         <p key={s}>{s}</p>
       ))}
@@ -221,11 +224,15 @@ export default function CompareRunsPage() {
     <div className="grid grid-cols-3 gap-3">
       <Stat label={`DQS ${runLabel(cmp.v1)}`} value={<span className="tabular-nums">{before.toFixed(1)}</span>} />
       <Stat label={`DQS ${runLabel(cmp.v2)}`} value={<span className="tabular-nums">{after.toFixed(1)}</span>} />
-      <Stat label="Change" value={<Delta value={roundedDelta(before, after)} />} />
+      <Stat label="Delta" value={<Delta value={roundedDelta(before, after)} />} />
     </div>
-  ) : null;
+  ) : (
+    <div className="grid grid-cols-3 gap-3">
+      {[0, 1, 2].map((i) => <Stat key={i} label="" value="" loading />)}
+    </div>
+  );
 
-  const tables = cmp ? (
+  const tables = cmp && !loading ? (
     <DataTable
       columns={columns}
       data={rows}
@@ -242,7 +249,11 @@ export default function CompareRunsPage() {
       }
       renderDrawer={(c) => <RuleDrawer rule={c} versionId={versionId} v1={diff?.v1 ?? v1Param} canFix={can("apply")} />}
     />
-  ) : null;
+  ) : (
+    <div className="flex flex-col gap-1" aria-busy="true">
+      {Array.from({ length: 8 }, (_, i) => <div key={i} style={{ height: 36 }}><Skeleton height="100%" /></div>)}
+    </div>
+  );
 
   return (
     <ReportPage
@@ -258,7 +269,7 @@ export default function CompareRunsPage() {
       charts={charts}
       tables={tables}
       state={state}
-      emptyProps={{ title: "No differences", detail: "These two runs have identical results." }}
+      emptyProps={{ title: "No differences", detail: "These two runs have identical results.", action: <Button render={<Link href="/runs">All runs</Link>} /> }}
       errorProps={{
         message: errorText(cmpQ.error ?? diffQ.error),
         onRetry: () => {

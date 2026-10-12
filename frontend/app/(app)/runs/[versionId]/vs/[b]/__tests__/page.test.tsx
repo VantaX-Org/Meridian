@@ -175,8 +175,8 @@ describe("CompareRunsPage", () => {
     fireEvent.click(screen.getByLabelText("Select row MM050"));
     fireEvent.click(await screen.findByRole("button", { name: "Create fix batches" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches"));
-    expect(toast.error).toHaveBeenCalledWith("1 fix batch failed to create");
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches; 1 failed"));
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("filters record keys in the drawer and shows filter-specific copy", async () => {
@@ -194,6 +194,6 @@ describe("CompareRunsPage", () => {
   it("shows a loading skeleton while the comparison loads", async () => {
     vi.spyOn(versionsApi, "compareVersions").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(container.querySelector('[data-state="loading"]')).not.toBeNull());
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
   });
 });

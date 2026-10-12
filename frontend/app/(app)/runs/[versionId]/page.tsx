@@ -81,7 +81,6 @@ const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" } as c
 const sectionTitle = { fontSize: "var(--m-text-section)", lineHeight: "var(--m-leading-section)" } as const;
 
 function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; history: History; onOpenSteps: () => void }) {
-  const router = useRouter();
   const { can } = useRole();
   const objects = useQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
   const rows = objects.data?.objects ?? [];
@@ -136,27 +135,33 @@ function ObjectsTab({ versionId, history, onOpenSteps }: { versionId: string; hi
           columns={columns}
           data={rows}
           getRowId={(o) => o.module}
-          onRowClick={(o) => router.push(`/objects/${o.module}?run=${versionId}`)}
+          rowHref={(o) => `/objects/${o.module}?run=${versionId}`}
         />
       }
       state={objects.isLoading ? "loading" : isListFailure(objects) ? "error" : rows.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No objects scored", detail: "This run produced no object scores.", action: <Button variant="secondary" onClick={onOpenSteps}>Open steps</Button> }}
+      emptyProps={{ title: "No objects scored", detail: "This run produced no object scores.", action: <Button onClick={onOpenSteps}>Open steps</Button> }}
       errorProps={{ message: errorText(objects.error), onRetry: () => objects.refetch() }}
     />
   );
 }
 
 function SummaryTab({
-  versionId, aggregate, history, systemId,
-}: { versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string }) {
+  versionId, aggregate, history, systemId, versionLoading,
+}: { versionId: string; aggregate: UseQueryResult<FindingsAggregate>; history: History; systemId?: string; versionLoading: boolean }) {
   const router = useRouter();
   const prescriptive = useQuery({ queryKey: ["prescriptive", "next-actions", "all-systems"], queryFn: () => getPrescriptiveAnalytics({ limit: 5 }) });
 
   if (aggregate.isLoading) {
     return (
       <div className="flex flex-col gap-4" style={pad} aria-busy="true">
-        <div className="flex gap-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} width={160} height={88} />)}</div>
-        <Skeleton height={240} />
+        <div className="flex flex-wrap items-center gap-8">
+          {[0, 1, 2, 3].map((i) => <Stat key={i} label="" value="" loading />)}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card title="Score by dimension"><Skeleton height={240} /></Card>
+          <Card title="Where findings concentrate"><Skeleton height={240} /></Card>
+        </div>
+        <Card title="Composite over runs"><Skeleton height={240} /></Card>
       </div>
     );
   }
@@ -171,7 +176,7 @@ function SummaryTab({
         <EmptyState
           title="No findings in this run"
           detail="Open steps to see what ran."
-          action={<Button variant="secondary" render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
+          action={<Button render={<Link href={`/runs/${versionId}?tab=steps`}>Open steps</Link>} />}
         />
       </div>
     );
@@ -180,7 +185,6 @@ function SummaryTab({
   const composite = a.dqs.composite;
   const delta = composite != null && a.previous_dqs != null ? Math.round((composite - a.previous_dqs) * 10) / 10 : null;
   const blocking = a.severity.critical + a.severity.high;
-  const currency = prescriptive.data?.actions[0]?.currency;
 
   const dimensionData = Object.entries(a.dqs.dimension_scores).map(([dimension, score]) => ({
     x: DIMENSIONS.find((d) => d.id === dimension)?.label ?? formatModuleName(dimension),
@@ -189,7 +193,10 @@ function SummaryTab({
   }));
 
   const historyRows = [...(history.data?.history ?? [])].reverse();
-  const points = historyRows.map((h) => ({ x: formatDate(h.run_at, "date"), y: h.at_the_time.composite ?? 0, runId: h.version_id }));
+  const points = historyRows.flatMap((h) => {
+    const y = h.at_the_time.composite;
+    return y == null ? [] : [{ x: formatDate(h.run_at, "date"), y, runId: h.version_id }];
+  });
   // Mark this run, and any run whose composite fell 5 points or more from the one before it.
   const annotations = points.flatMap((p, i): { x: string; label: string; kind: "event" | "change" }[] => {
     if (p.runId === versionId) return [{ x: p.x, label: "This run", kind: "event" as const }];
@@ -206,7 +213,8 @@ function SummaryTab({
     })),
   );
 
-  const next = (prescriptive.data?.actions ?? []).slice(0, 5).map((act) => ({
+  const presentModules = new Set(a.by_module.map((m) => m.module));
+  const next = (prescriptive.data?.actions ?? []).filter((act) => !act.module || presentModules.has(act.module)).slice(0, 5).map((act) => ({
     id: act.id,
     title: act.title,
     impact: [`${act.affected_count.toLocaleString()} records`, `${act.impact_points.toLocaleString()} impact points`],
@@ -225,7 +233,7 @@ function SummaryTab({
         <Stat label="Blocking findings" value={blocking.toLocaleString()} tone={blocking > 0 ? "no-go" : undefined} href={`/runs/${versionId}?tab=findings&severity=critical`} />
         <Stat label="Affected records" value={a.affected_records.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
         {a.cost_at_risk != null ? (
-          <Stat label={currency ? `Cost at risk (${currency})` : "Cost at risk"} value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
+          <Stat label="Cost at risk" value={a.cost_at_risk.toLocaleString()} href={`/runs/${versionId}?tab=findings`} />
         ) : null}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -241,18 +249,20 @@ function SummaryTab({
           />
         </Card>
       </div>
-      <section className="flex flex-col gap-2">
-        <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
-        {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
-      </section>
+      {prescriptive.isLoading || next.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-semibold" style={sectionTitle}>Next actions</h2>
+          {prescriptive.isLoading ? <Skeleton height={96} /> : <NextActions actions={next} />}
+        </section>
+      ) : null}
       <Card title="Composite over runs">
-        {systemId == null || history.isLoading ? (
+        {versionLoading || (systemId != null && history.isLoading) ? (
           <Skeleton height={240} />
-        ) : historyRows.length <= 1 ? (
+        ) : systemId == null || historyRows.length <= 1 ? (
           <EmptyState
             title="Only one run so far"
             detail="Scores over time appear after a second run."
-            action={<Button variant="secondary" render={<Link href={`/systems/${systemId}`}>Run analysis</Link>} />}
+            action={<Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Run analysis</Link>} />}
           />
         ) : (
           <Line data={points} annotations={annotations} onPointClick={(p) => p.runId && router.push(`/runs/${p.runId}`)} />
@@ -275,6 +285,21 @@ const findingsFetch = (versionId: string, severity: string, dimension: string, m
     limit: FINDINGS_PAGE,
     offset: (page - 1) * FINDINGS_PAGE,
   });
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove filter ${label}`}
+      className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
+      style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
+    >
+      {label}
+      <span aria-hidden>×</span>
+    </button>
+  );
+}
 
 function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenSteps: () => void }) {
   const router = useRouter();
@@ -358,18 +383,9 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Severity" value={severity} onValueChange={(v) => setFilter("severity", v)} options={SEVERITY_OPTIONS} placeholder="Severity" />
           <Select label="Dimension" value={dimension} onValueChange={(v) => setFilter("dimension", v)} options={DIMENSION_OPTIONS} placeholder="Dimension" />
-          {moduleFilter ? (
-            <button
-              type="button"
-              onClick={() => setFilter("module", "")}
-              aria-label={`Remove filter ${formatModuleName(moduleFilter)}`}
-              className="inline-flex items-center gap-1 rounded px-2 py-1 m-motion-colors"
-              style={{ background: "var(--m-accent-soft)", color: "var(--m-accent)", fontSize: "var(--m-text-meta)" }}
-            >
-              {formatModuleName(moduleFilter)}
-              <span aria-hidden>×</span>
-            </button>
-          ) : null}
+          {severity ? <FilterChip label={`Severity: ${labelOf(severity)}`} onRemove={() => setFilter("severity", "")} /> : null}
+          {dimension ? <FilterChip label={`Dimension: ${DIMENSIONS.find((d) => d.id === dimension)?.label ?? labelOf(dimension)}`} onRemove={() => setFilter("dimension", "")} /> : null}
+          {moduleFilter ? <FilterChip label={`Object: ${formatModuleName(moduleFilter)}`} onRemove={() => setFilter("module", "")} /> : null}
         </div>
       }
       toolbarEnd={
@@ -380,16 +396,18 @@ function FindingsTab({ versionId, onOpenSteps }: { versionId: string; onOpenStep
       table={
         <div className="flex flex-col gap-2">
           <DataTable columns={columns} data={rows} getRowId={(f) => f.id} onRowClick={(f) => openFinding(f.id)} />
-          {total > FINDINGS_PAGE ? (
-            <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />
-          ) : null}
+          <div style={{ minHeight: "var(--m-control-h)" }}>
+            {total > FINDINGS_PAGE ? (
+              <Pager page={page} pageCount={Math.ceil(total / FINDINGS_PAGE)} onPageChange={setPage} pageSize={FINDINGS_PAGE} total={total} />
+            ) : null}
+          </div>
         </div>
       }
       state={findings.isLoading ? "loading" : isListFailure(findings) ? "error" : rows.length === 0 ? "empty" : undefined}
       emptyProps={
         filtered
-          ? { title: "No findings match", detail: "Try removing a filter.", action: <Button variant="secondary" onClick={clearFilters}>Clear filters</Button> }
-          : { title: "No findings in this run", detail: "Open steps to see what ran.", action: <Button variant="secondary" onClick={onOpenSteps}>Open steps</Button> }
+          ? { title: "No findings match", detail: "Try removing a filter.", action: <Button onClick={clearFilters}>Clear filters</Button> }
+          : { title: "No findings in this run", detail: "Open steps to see what ran.", action: <Button onClick={onOpenSteps}>Open steps</Button> }
       }
       errorProps={{ message: errorText(findings.error), onRetry: () => findings.refetch() }}
       drawer={<FindingDrawer findingId={findingId} versionId={versionId} onClose={() => openFinding(null)} />}
@@ -414,8 +432,11 @@ export default function RunDetailPage() {
   const systems = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
   useEffect(() => {
     void qc.prefetchQuery({ queryKey: findingsKey(versionId, "", "", "", 1), queryFn: () => findingsFetch(versionId, "", "", "", 1) });
-    void qc.prefetchQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
   }, [qc, versionId]);
+  const warmObjects = () => void qc.prefetchQuery({ queryKey: queryKeys.objects(versionId), queryFn: () => getObjects(versionId) });
+  const onTabsHover = (e: { target: EventTarget }) => {
+    if ((e.target as HTMLElement).closest('[role="tab"]')?.textContent === "Objects") warmObjects();
+  };
   // Only the system id comes from the version; these two wait for it and render skeletons meanwhile.
   const systemId = version.data?.metadata?.system_id;
   const scope = useQuery({
@@ -527,11 +548,12 @@ export default function RunDetailPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="mx-auto w-full" style={{ ...pad, paddingBottom: 0 }}>{header}</div>
+      <div onPointerOver={onTabsHover} onFocus={onTabsHover}>
       <Tabs
         value={tab}
         onValueChange={setTab}
         items={[
-          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} /> },
+          { value: "overview", label: "Overview", content: <SummaryTab versionId={versionId} aggregate={aggregate} history={history} systemId={systemId} versionLoading={version.isLoading} /> },
           { value: "objects", label: "Objects", content: <ObjectsTab versionId={versionId} history={history} onOpenSteps={openSteps} /> },
           { value: "findings", label: "Findings", content: <FindingsTab versionId={versionId} onOpenSteps={openSteps} /> },
           {
@@ -557,7 +579,7 @@ export default function RunDetailPage() {
                 emptyProps={{
                   title: "No steps recorded",
                   detail: "This run has no step history.",
-                  action: <Button variant="secondary" render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Re-run analysis</Link>} />,
+                  action: <Button render={<Link href={systemId ? `/systems/${systemId}` : "/systems"}>Re-run analysis</Link>} />,
                 }}
                 errorProps={{ message: errorText(steps.error), onRetry: () => steps.refetch() }}
               />
@@ -567,6 +589,7 @@ export default function RunDetailPage() {
           ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history", "export"] }),
         ]}
       />
+      </div>
     </div>
   );
 }
