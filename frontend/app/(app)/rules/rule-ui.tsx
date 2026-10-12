@@ -15,7 +15,7 @@ export type FilterChip = { key: string; label: string; clear: () => void };
 export function FilterChips({ chips, onClearAll }: { chips: FilterChip[]; onClearAll: () => void }) {
   // Fixed-height slot so the first chip does not shift the page.
   return (
-    <div className="flex flex-wrap items-center gap-2" style={{ minHeight: 24 }} aria-label="Active filters">
+    <div role="group" className="flex flex-wrap items-center gap-2" style={{ minHeight: 24 }} aria-label="Active filters">
       {chips.length ? chips.map((c) => (
         <button
           key={c.key}

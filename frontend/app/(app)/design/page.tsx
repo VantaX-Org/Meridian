@@ -14,7 +14,7 @@ export default function DesignGalleryPage() {
       <PageHeader title="Design gallery" meta="Light and dark side by side" />
       <div className="grid gap-4 xl:grid-cols-2">
       {(["light", "dark"] as const).map((theme) => (
-        <div key={theme} data-theme={theme} className="rounded p-2" style={{ background: "var(--m-canvas)" }}>
+        <div key={theme} data-theme={theme} className="rounded p-2" style={{ background: "var(--m-canvas)", color: "var(--m-ink)" }}>
         <Card title={theme === "light" ? "Light" : "Dark"}>
         <div className="flex flex-col gap-4">
           <div className="flex gap-2 items-center">
