@@ -373,14 +373,17 @@ def run_rule(rule: dict, frames: TableFrames, reference_values: dict[str, set[st
         scoped = apply_context(frame, rule.get("applies_when"), as_of, norm=norm)
         if len(scoped) == 0:
             return {**rule, "_skip": "not_applicable"}, None  # no records in the rule's population
-        result = check_cls(rule).run(scoped, key_cols=key_cols, grain=grain)
+        check = check_cls(rule)
+        if norm is not None and isinstance(check, CrossFieldCheck):
+            check.typed_cache = norm  # typed columns reused by later rules with the same rows
+        result = check.run(scoped, key_cols=key_cols, grain=grain)
         if result is not None and excluded:
             result.details["population_excluded"] = excluded
         if result is not None:
             result.details["baseline"] = baseline_of(rule)
             result.details.update({"target": target_of(rule), **{k: rule[k] for k in S4_KEYS if rule.get(k)}})
         if result is not None and result.affected_count and not result.error and auto_fix.enabled(rule):
-            result.record_fixes = _auto_fixes(rule, check_cls(rule), scoped, result, frames)
+            result.record_fixes = _auto_fixes(rule, check, scoped, result, frames)
         return rule, result
     except SoftTimeLimitExceeded:  # the task's time limit ends the run, never one rule
         raise
@@ -430,10 +433,11 @@ def _auto_fixes(rule: dict, check: BaseCheck, scoped: pd.DataFrame, result: Chec
     table, _, name = field.rpartition(".")
     if field not in scoped.columns or is_sensitive(table, name):
         return None  # personal data never leaves the extraction as a proposed value
-    ev = check.evaluate(scoped)
+    ev = check.evaluation  # what run() just evaluated on ``scoped`` (before dedupe_on)
     if ev is None:
         return None
-    hits = auto_fix.proposals(rule, scoped, ev.failing, frames.frames, check.evaluate)
+    # the proposals are verified on edited values: a fresh check, never one holding typed columns
+    hits = auto_fix.proposals(rule, scoped, ev.failing, frames.frames, type(check)(rule).evaluate)
     if not hits:
         return None
     keys = result.details.get("record_key_fields") or []

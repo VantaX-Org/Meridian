@@ -42,13 +42,21 @@ ISO_ALPHA2_TO_3 = {
 }
 
 
-def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+def typed(df: pd.DataFrame, cols: list[str], cache: dict[str, pd.Series] | None = None) -> pd.DataFrame:
     """Copy of ``cols`` typed by the SAP dictionary for comparison.
 
     RFC and CSV deliver every value as text, so ``"9.000" > "10.000"`` would be
     True. Numeric DDIC types become numbers, dates become timestamps, and SAP
     blanks (empty, whitespace, 00000000) become missing — so conditions can use
     ``.isna()`` / ``.notna()`` and plain comparison operators.
+
+    ``cache`` (the lazy frames' per-grain cache, cleared on a grain change) keeps each
+    numeric and date typed column with the rows it was typed for, and serves it again
+    only to a frame with exactly those rows. Char and unknown (Z) columns are not
+    cached: they are cheap to type, and a python-backed string column holds far more
+    memory than its ``nbytes`` reports, so the byte budget could not bound them. A typed column is not row-wise: ``sap_number`` decides the
+    European format, and the parsers their result dtype, from the rows they see, so a
+    column typed for other rows is never sliced to fit.
     """
     from checks.types.domain_value_check import _parse_dates
     from sap.ddic import get_dictionary
@@ -56,9 +64,16 @@ def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     d = get_dictionary("s4hana")
     out = {}
     for c in cols:
-        s = df[c]
         f = d.resolve(c)
         kind = (f.type or "").upper() if f else ""
+        key = f"typed|{c}"
+        keep = cache is not None and (kind in _NUMERIC or kind in _DATES)
+        # cache[key] (not .get) so a hit refreshes the entry's LRU recency
+        hit = cache[key] if keep and key in cache else None
+        if hit is not None and hit.index.equals(df.index):
+            out[c] = hit.set_axis(df.index)
+            continue
+        s = df[c]
         blank = is_blank(s)
         if kind in _NUMERIC:
             v = sap_number(s)
@@ -77,6 +92,8 @@ def typed(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
             # the two with & raises "boolean value of NA is ambiguous" (pandas 3.x).
             v = s.astype("string[python]").str.strip()
         out[c] = v.mask(blank)
+        if keep:
+            cache[key] = out[c]
     return pd.DataFrame(out, index=df.index)
 
 
@@ -93,6 +110,9 @@ class CrossFieldCheck(BaseCheck):
 
     check_class = "cross_field_check"
     default_dimension = "consistency"
+    # set by the runner to the lazy frames' per-grain cache; never on a check that
+    # evaluates edited values (auto_fix re-verification)
+    typed_cache: dict[str, pd.Series] | None = None
 
     def _expr(self) -> str:
         return self.rule.get("fail_when") or self.rule["condition"]
@@ -103,7 +123,7 @@ class CrossFieldCheck(BaseCheck):
 
     def evaluate(self, df: pd.DataFrame) -> Evaluation:
         cols = self.columns()
-        t = typed(df, cols)
+        t = typed(df, cols, self.typed_cache)
         # the run's snapshot date when pinned, else now in UTC: the same as_of_time()
         # call freshness_check/value_placement_check make
         today = as_of_time(self.rule.get("_as_of")).normalize()
