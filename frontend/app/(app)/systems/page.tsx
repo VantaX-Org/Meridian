@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DrillLink, Button, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
+import { DrillLink, Button, Delta, DataTable, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, Skeleton, Stat, emptyExportOptions, type PillTone } from "@/design";
 import { HEALTH_LABEL, dqsTrend, latestDqs, nextRun } from "./_health";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useSystemScope } from "@/lib/permissions";
@@ -137,15 +137,7 @@ export default function SystemsPage() {
         return (
           <span className="inline-flex items-center gap-1">
             <DrillLink href={`/systems/${row.original.id}?tab=overview`}>{d.dqs.toFixed(1)}</DrillLink>
-            {t != null && Math.abs(t) >= 0.05 ? (
-              <span
-                className="m-text-meta m-numeric"
-                style={{ color: "var(--m-ink-2)" }}
-                aria-label={`${t > 0 ? "Up" : "Down"} ${Math.abs(t).toFixed(1)} since the previous run`}
-              >
-                {t > 0 ? "+" : "-"}{Math.abs(t).toFixed(1)}
-              </span>
-            ) : null}
+            {t != null && Math.abs(t) >= 0.05 ? <Delta value={t} run="the previous run" /> : null}
           </span>
         );
       },
@@ -187,6 +179,8 @@ export default function SystemsPage() {
 
   const exportOptions = [{ format: "xlsx" as const, label: "Runs (.xlsx)", run: () => exportRuns("xlsx") }];
 
+  const active = systems.filter((s) => s.is_active !== false);
+  const unhealthy = active.filter((s) => s.health_status === "degraded" || s.health_status === "unreachable" || s.health_status === "auth_failed").length;
   const attention = systems.filter((s) => s.health_status !== "healthy").length;
   const filtering = Boolean(configFilter || healthFilter);
 
@@ -195,7 +189,7 @@ export default function SystemsPage() {
       header={
         <PageHeader
           title="Systems"
-          meta={isLoading ? undefined : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
+          meta={isLoading ? "\u00a0" : `${systems.length} ${systems.length === 1 ? "system" : "systems"}${attention ? `, ${attention} need attention` : ""}`}
         />
       }
       filterBar={
@@ -208,6 +202,22 @@ export default function SystemsPage() {
       }
       summary={
         <div className="flex flex-wrap items-center gap-6">
+          {!isLoading && systems.length > 0 ? (
+            <Stat
+              label="Unhealthy"
+              value={`${unhealthy} of ${active.length}`}
+              tone={unhealthy === 0 ? "go" : active.some((s) => s.health_status !== "healthy" && s.health_status !== "degraded" && s.health_status !== "unknown") ? "no-go" : "at-risk"}
+              href="?health=degraded"
+            />
+          ) : null}
+          {configQ.data || configQ.isLoading ? (
+            <Stat
+              label="Configuration missing"
+              loading={configQ.isLoading}
+              value={cfgNotLoaded}
+              href="?config=not_loaded"
+            />
+          ) : null}
           {configQ.data || configQ.isLoading ? (
             <Stat
               label="Configuration loaded"
@@ -232,7 +242,7 @@ export default function SystemsPage() {
       state={state}
       emptyProps={{
         title: "No systems yet",
-        detail: "Import a file from an SAP export to start measuring.",
+        detail: "Connect an SAP system or import a file.",
         action: <Button render={<Link href="/import">Import file</Link>} />,
         ghost: "table",
       }}

@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button, Card, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
 import { getConfigCompare, proposeConfigMatches, type MatchStatus } from "@/lib/api/config-pairing";
@@ -51,9 +52,12 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
     body = <ErrorState message={`The comparison could not be read. ${apiErrorMessage(query.error)}`} onRetry={() => void refetch()} />;
   } else if (!data?.source_load_id) {
     body = <EmptyState title="Nothing to compare yet"
-      detail="Load this system's configuration to compare it with its target." />;
+      detail="Load this system's configuration to compare it with its target."
+      action={<Button render={<Link href={`/systems/${systemId}?tab=health`}>Load configuration</Link>} />} />;
   } else if (data.objects.length === 0) {
-    body = <EmptyState title="The source and the target share no configuration objects." />;
+    body = <EmptyState title="No shared configuration objects"
+      detail="The source and the target have no configuration object in common."
+      action={<Button render={<Link href={`/systems/${systemId}?tab=health`}>Load configuration</Link>} />} />;
   } else {
     body = (
       <div className="flex flex-col gap-3">
@@ -83,27 +87,28 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
             ))}
           </tbody>
         </table>
-        {object && data.rows.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            <p className="m-text-body font-medium" style={{ color: "var(--m-ink)" }}><Mono>{object}</Mono> values</p>
-            {data.rows.map((r) => (
-              <Card key={r.source_key} padding="sm">
-                <div className="flex items-center justify-between gap-2 m-text-body">
-                <span className="flex items-center gap-2">
-                  <Mono>{r.source_key}</Mono>
-                  {r.target_key && r.target_key !== r.source_key ? <span style={{ color: "var(--m-ink-2)" }}>to <Mono>{r.target_key}</Mono></span> : null}
-                </span>
-                <Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : null}
       </div>
     );
   }
 
+  const values = object && data?.rows.length ? (
+    <Card title={<><Mono>{object}</Mono> values</>}>
+      <ul className="flex flex-col">
+        {data.rows.map((r) => (
+          <li key={r.source_key} className="flex items-center justify-between gap-2 border-t py-2 m-text-body first:border-t-0" style={{ borderColor: "var(--m-line)" }}>
+            <span className="flex items-center gap-2">
+              <Mono>{r.source_key}</Mono>
+              {r.target_key && r.target_key !== r.source_key ? <span style={{ color: "var(--m-ink-2)" }}>to <Mono>{r.target_key}</Mono></span> : null}
+            </span>
+            <Pill tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Pill>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  ) : null;
+
   return (
+    <div className="flex flex-col gap-4">
     <Card
       title={`Compared with ${data?.target.label ?? "the target"}`}
       actions={canPropose && data?.source_load_id ? (
@@ -115,5 +120,7 @@ export function ConfigComparePanel({ systemId, canPropose }: { systemId: string;
       ) : null}
       {body}
     </Card>
+    {values}
+    </div>
   );
 }

@@ -18,6 +18,6 @@ describe("ConfigurationTab", () => {
     const notFound = new AxiosError("nf", "ERR", undefined, undefined, { status: 404, data: {}, statusText: "", headers: {}, config: {} as never });
     for (const fn of ["getConfigHealth", "getConfigInventory"] as const) vi.spyOn(api, fn).mockRejectedValue(notFound);
     renderWithQuery(<ConfigurationTab systemId="s1" canPropose={false} />);
-    expect(await screen.findByText("No configuration analysis yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No configuration analysis yet")).toBeInTheDocument();
   });
 });

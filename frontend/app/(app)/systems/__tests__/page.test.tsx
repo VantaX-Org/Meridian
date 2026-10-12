@@ -90,7 +90,7 @@ describe("systems list page", () => {
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
-    await waitFor(() => expect(screen.getByLabelText("Up 0.2 since the previous run")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("+0.2")).toBeInTheDocument());
   });
 
   it("hides the trend arrow when the DQS move is below the 0.05 threshold", async () => {

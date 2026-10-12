@@ -13,11 +13,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Bar, Button, Card, Checkbox, DataTable, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
+  Bar, Button, Card, Checkbox, DataTable, Delta, Drawer, DrillLink, EmptyState, ErrorState, ExportMenu, Field, Input, Line, Mono, Notice, PageHeader, Pill, ScoreRing, Select, Skeleton, Stat, Tabs,
   emptyExportOptions, type PillTone,
   entityTabs,
 } from "@/design";
-import { HEALTH_LABEL, latestDqs } from "../_health";
+import { HEALTH_LABEL, dqsTrend, latestDqs } from "../_health";
 import { DqsScore } from "@/components/insight/dqs-score";
 import { ConfigurationTab } from "./config-tab";
 import { CustomObjectsTab } from "./custom-objects-tab";
@@ -160,12 +160,12 @@ export default function SystemPage() {
       <PageHeader
         title={system.name}
         status={<Pill tone="neutral">{system.role === "target" ? "Target system" : "Source system"}</Pill>}
-        meta={`${labelOf(system.system_type)}, ${system.environment}. ${system.last_sync_at ? `Last extraction ${relativeTime(system.last_sync_at)}.` : "Nothing extracted yet."}`}
+        meta={[labelOf(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
         actions={
         <>
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
             onClick={() => setExtractOpen(true)}>
-            Extract now
+            Extract
           </GatedPrimary>
           {can("analyse") ? (
             <Button variant="secondary" disabled={analyse.isPending || !(latest ?? versions[0])} onClick={() => analyse.mutate()}>
@@ -179,7 +179,7 @@ export default function SystemPage() {
                 : [{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }]
             }
           />
-          {can("manage_systems") ? <Button onClick={() => setEditOpen(true)}>Edit</Button> : null}
+          {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
         </>
         }
       />
@@ -197,11 +197,12 @@ export default function SystemPage() {
       ) : null}
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} href={`/systems/${systemId}?tab=health`} />
-        <Stat label="Objects" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
+        <Stat label="Health" value={HEALTH_LABEL[system.health_status]} hint={system.last_sync_at ? `Last extracted ${relativeTime(system.last_sync_at)}` : "Nothing extracted yet"} href={`/systems/${systemId}?tab=health`} />
+        <Stat label="Objects loaded" loading={modulesQ.isLoading} value={modules.length ? `${loaded} of ${modules.length}` : "—"} href={`/systems/${systemId}?tab=objects`} />
         <Stat
-          label="Latest DQS"
+          label="DQS"
           loading={versionsQ.isLoading}
+          delta={dqsTrend(versions) != null && Math.abs(dqsTrend(versions) ?? 0) >= 0.05 ? <Delta value={dqsTrend(versions) ?? 0} run="the previous run" /> : undefined}
           value={dqs === null ? "—" : <span className="inline-flex items-center gap-2">{aggQ.data ? <DqsScore agg={aggQ.data} versionId={latest?.id} /> : <ScoreRing score={dqs} size={48} />}{dqs.toFixed(1)}</span>}
           href={latest ? findingsHref(latest.id) : undefined}
         />
@@ -281,7 +282,11 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
       <div className="grid grid-cols-2 gap-4">
         <Card title="Score per run">
           {scored.length < 2 ? (
-            <EmptyState title="Two analysed runs are needed to draw a trend." />
+            <EmptyState
+              title="No trend yet"
+              detail="Two analysed runs are needed to draw a trend."
+              action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+            />
           ) : (
             <Line
               data={scored.map((v) => ({ x: formatDate(v.run_at), y: Number((meanDqs(v) ?? 0).toFixed(1)) }))}
@@ -294,7 +299,11 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
         </Card>
         <Card title="Objects by rows">
           {!byRows.length ? (
-            <EmptyState title="No object has rows yet." />
+            <EmptyState
+              title="No rows loaded yet"
+              detail="Extract an object to see how many rows it holds."
+              action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+            />
           ) : (
             <Bar
               data={byRows.map((m) => ({ x: formatModuleName(m.module), y: m.row_count }))}
@@ -311,7 +320,11 @@ function Overview({ systemId, modules, versions }: { systemId: string; modules: 
         {versions.length ? (
           <DataTable columns={runCols} data={versions.slice(0, 5)} getRowId={(v) => v.id} onRowClick={(v) => router.push(`/runs/${v.id}`)} />
         ) : (
-          <EmptyState title="Nothing extracted yet" detail="Extract from the Objects tab to create the first run." />
+          <EmptyState
+            title="Nothing extracted yet"
+            detail="Extract from the Objects tab to create the first run."
+            action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />}
+          />
         )}
       </Card>
     </div>
@@ -401,7 +414,11 @@ function Objects({ id, system, modules, versions, canSync, canAnalyse, onChanged
       {modules.length ? (
         <DataTable columns={columns} data={modules} getRowId={(m) => m.module} onRowClick={(m) => router.push(`/objects/${m.module}`)} />
       ) : (
-        <EmptyState title="This system offers no objects yet." />
+        <EmptyState
+          title="No objects yet"
+          detail="Discover this system's design to list its objects."
+          action={<Button render={<Link href={`/systems/${id}?tab=health`}>Discover design</Link>} />}
+        />
       )}
     </div>
   );
@@ -416,9 +433,9 @@ function Runs({ systemId, versions, loading, canSync }: { systemId: string; vers
   if (!versions.length) {
     return (
       <EmptyState
-        title="No runs for this system."
+        title="Nothing extracted yet"
         detail="Run an extraction to create the first run."
-        action={canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run extraction</Link>} /> : undefined}
+        action={canSync ? <Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} /> : undefined}
       />
     );
   }
@@ -508,14 +525,15 @@ function Health({ id, system, canSync, canManage, onChanged }: {
       <SchedulesPanel id={id} canManage={canManage} />
       {canManage ? <ReferencePanel id={id} /> : null}
 
-      <Card title="Design discovery">
-        {!snap ? (
+      {!snap ? (
+        <Card title="Design discovery">
           <EmptyState
             title="Not discovered yet"
             detail="Discover design reads this system's data dictionary and configuration."
             action={canSync ? <Button variant="secondary" disabled={discover.isPending || running} onClick={() => discover.mutate()}>Discover design</Button> : undefined}
           />
-        ) : (
+        </Card>
+      ) : (
           <Tabs
             value={part}
             onValueChange={setPart}
@@ -526,8 +544,7 @@ function Health({ id, system, canSync, canManage, onChanged }: {
               { value: "snapshots", label: "History", content: <SnapshotsTab id={id} /> },
             ]}
           />
-        )}
-      </Card>
+      )}
     </div>
   );
 }
@@ -600,9 +617,10 @@ function EditForm({ system, targets, onDone, onDeleted }: {
           onChange={(e) => setDescription(e.target.value)}
         />
       </Field>
-      <label className="flex items-center gap-2 m-text-body">
-        <Checkbox aria-label="Active" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
-      </label>
+      <div className="flex items-center gap-2 m-text-body">
+        <Checkbox aria-label="Active" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        <span aria-hidden>Active</span>
+      </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
         {!confirming ? <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>Delete</Button> : null}

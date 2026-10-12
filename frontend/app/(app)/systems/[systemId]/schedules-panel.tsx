@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Card, Pill, Select } from "@/design";
+import { Button, Card, Input, Pill, Select } from "@/design";
 import { getSystemObjects } from "@/lib/api/system-objects";
 import { createSyncProfile, getSyncProfiles, updateSyncProfile } from "@/lib/api/systems";
 import type { SyncProfile } from "@/types/api";
@@ -44,8 +44,8 @@ function CronPicker({ value, onChange, disabled }: { value: string; onChange: (c
           onValueChange={(v) => { setCustom(v === CUSTOM); if (v !== CUSTOM) onChange(v); }} />
       </div>
       {custom && (
-        <input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
-          className="m-input font-mono"
+        <Input aria-label="Cron expression" placeholder="min hour day month weekday" disabled={disabled}
+          className="font-mono"
           value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) onChange(text.trim()); }}
           onBlur={() => { if (text.trim() && text.trim() !== value) onChange(text.trim()); }} />

@@ -36,7 +36,7 @@ export function TrendPanel({ systemId }: { systemId: string }) {
   return (
     <Card title="Trend per object">
       {!summary.length ? (
-        <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Extract</Link>} />} />
+        <EmptyState title="No analysed run yet" detail="Trends need at least one analysed run." action={<Button render={<Link href={`/systems/${systemId}?tab=objects`}>Run a second analysis</Link>} />} />
       ) : (
         <table className="w-full m-text-body">
           <thead>

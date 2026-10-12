@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Button, Card, DataTable, EmptyState, Field, Mono, Notice, Skeleton } from "@/design";
+import { Button, Card, Checkbox, DataTable, EmptyState, Field, Input, Mono, Notice, Skeleton } from "@/design";
 import { getSystemObjects, startDownload, type DownloadScope, type ScopeKey } from "@/lib/api/system-objects";
 import { formatModuleName, relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
@@ -16,7 +16,6 @@ const SCOPE_LABEL: Record<ScopeKey, string> = {
   purchasing_orgs: "Purchasing organisations",
 };
 const list = (v: string) => v.split(/[\s,;]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
-const field = "m-input w-full";
 const note = "m-text-body";
 const noteStyle = { color: "var(--m-ink-2)" };
 
@@ -58,7 +57,7 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
 
   const columns = useMemo<ColumnDef<Obj, unknown>[]>(() => [
     { id: "pick", header: "", cell: ({ row }) => (
-      <input type="checkbox" checked={picked.has(row.original.object)} readOnly aria-label={`Select ${formatModuleName(row.original.object)}`} />) },
+      <Checkbox checked={picked.has(row.original.object)} readOnly aria-label={`Select ${formatModuleName(row.original.object)}`} />) },
     { id: "object", header: "Object", cell: ({ row }) => formatModuleName(row.original.object) },
     { id: "tables", header: "Tables", cell: ({ row }) => {
       const t = row.original.tables;
@@ -79,30 +78,30 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {filters.map((k) => (
                   <Field key={k} label={`${SCOPE_LABEL[k]} — comma-separated, empty reads all`}>
-                    <input className={field} value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
+                    <Input className="w-full" value={scopeText[k] ?? ""} placeholder="1000, 2000" onChange={(e) => setScopeText({ ...scopeText, [k]: e.target.value })} />
                   </Field>
                 ))}
                 {windowed.length > 0 ? (
                   <>
                     <Field label={`Documents from — replaces the default window for ${windowed.join(", ")}`}>
-                      <input className={field} type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
+                      <Input className="w-full" type="date" value={dates.date_from ?? ""} onChange={(e) => setDates({ ...dates, date_from: e.target.value || undefined })} />
                     </Field>
                     <Field label="Documents to">
-                      <input className={field} type="date" value={dates.date_to ?? ""} onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />
+                      <Input className="w-full" type="date" value={dates.date_to ?? ""} onChange={(e) => setDates({ ...dates, date_to: e.target.value || undefined })} />
                     </Field>
                   </>
                 ) : null}
                 <Field label="Run label — optional">
-                  <input className={field} value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
+                  <Input className="w-full" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
                 </Field>
               </div>
               <p className={note} style={noteStyle}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
               </p>
-              <label className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
-                <input type="checkbox" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
-                Skip records flagged for deletion
-              </label>
+              <div className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
+                <Checkbox aria-label="Skip records flagged for deletion" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
+                <span aria-hidden>Skip records flagged for deletion</span>
+              </div>
               <p className={note} style={noteStyle}>
                 Faster reads. Leave off for a full quality score, because inactive data is itself a finding.
               </p>

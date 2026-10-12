@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Drawer, Pager, Pill, Select, type PillTone } from "@/design";
+import { Button, Card, Drawer, Input, Pager, Pill, Select, type PillTone } from "@/design";
 import {
   getConfigDeviation,
   getDesignConfig,
@@ -29,7 +29,6 @@ const td = "px-3 py-1.5 border-t";
 const tdStyle = { borderColor: "var(--m-line)" };
 const muted = "m-text-body";
 const mutedStyle = { color: "var(--m-ink-2)" };
-const field = "m-input w-full";
 
 export function TablesTab({ id }: { id: string }) {
   const [search, setSearch] = useState("");
@@ -44,7 +43,7 @@ export function TablesTab({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <input className={field} placeholder="Search table or description, then Enter" aria-label="Search tables"
+        <Input className="w-full" placeholder="Search table or description, then Enter" aria-label="Search tables"
           onKeyDown={(e) => { if (e.key === "Enter") { setSearch(e.currentTarget.value); setOffset(0); } }} />
         <Button variant={customerOnly ? "primary" : "secondary"} onClick={() => { setCustomerOnly(!customerOnly); setOffset(0); }}>
           Customer extensions only
@@ -202,8 +201,7 @@ export function CoverageTab({ id }: { id: string }) {
         this release; &ldquo;failed&rdquo; usually means a missing RFC authorisation (S_TABU_DIS / S_TABU_NAM).
       </p>
       {parts.map(([part, items]) => (
-        <div key={part} className="flex flex-col gap-2">
-          <p className="m-text-body font-semibold" style={{ color: "var(--m-ink)" }}>{part}</p>
+        <Card key={part} title={part}>
           <div className="flex flex-wrap gap-2">
             {items.map((c) => (
               <span key={c.table} title={c.detail}><Pill tone={tone(c.status)}>
@@ -211,7 +209,7 @@ export function CoverageTab({ id }: { id: string }) {
               </Pill></span>
             ))}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
@@ -248,8 +246,7 @@ export function SnapshotsTab({ id }: { id: string }) {
         </tbody>
       </table>
       {done.length > 1 ? (
-        <div className="flex flex-col gap-2">
-          <p className="m-text-body font-semibold" style={{ color: "var(--m-ink)" }}>Design drift</p>
+        <Card title="Design drift">
           <div className="flex gap-2">
             <Select label="Compare from" value={a} options={opts} onValueChange={setFrom} />
             <Select label="Compare to" value={b} options={opts} onValueChange={setTo} />
@@ -274,7 +271,7 @@ export function SnapshotsTab({ id }: { id: string }) {
               </tbody>
             </table>
           ))}
-        </div>
+        </Card>
       ) : <p className={muted} style={mutedStyle}>Drift appears once the system has been discovered twice.</p>}
     </div>
   );

@@ -83,8 +83,8 @@ export function PilotTab({ id }: { id: string }) {
         {data?.rules.length ? (
           <DataTable columns={ruleCols} data={data.rules} getRowId={(r) => `${r.module}/${r.check_id}`} height={420} />
         ) : (
-          <EmptyState title="No record issues yet. Run an analysis of this system first."
-            action={<Link href="/analyse" style={{ color: "var(--m-accent)" }}>Open Analyse</Link>} />
+          <EmptyState title="No record issues yet" detail="Run an analysis of this system first."
+            action={<Button render={<Link href="/analyse">Run analysis</Link>} />} />
         )}
       </Card>
 
@@ -111,10 +111,10 @@ export function PilotTab({ id }: { id: string }) {
           </Notice>
         ) : null}
         {!rec?.known ? (
-          <EmptyState title="No known issues uploaded"
+          <EmptyState title="No known issues uploaded" detail="Upload known issues to measure recall."
             action={can("manage_systems") ? <Button variant="secondary" onClick={() => input.current?.click()}>Upload known issues</Button> : undefined} />
         ) : !rec.missed_total ? (
-          <EmptyState title="Every known issue was caught." />
+          <EmptyState title="Every known issue was caught" detail="Meridian flagged all of the issues you uploaded." action={can("manage_systems") ? <Button variant="secondary" onClick={() => input.current?.click()}>Replace known issues</Button> : undefined} />
         ) : (
           <>
             <DataTable columns={missedCols} data={rec.missed} getRowId={(m) => `${m.module}/${m.record_ref}`} height={340} />
