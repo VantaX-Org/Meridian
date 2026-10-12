@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/api/auth";
-import { AuthFrame, AuthNotice, AuthSpinner, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
-import { Button, Field } from "@/design";
+import { AuthFrame, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button, Field, Notice } from "@/design";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -31,25 +31,23 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthFrame title="Reset your password"
+    <AuthFrame title="Reset password"
       lead={submitted ? undefined : "We'll email a link that works for one hour."}>
       {submitted ? (
         <>
-          <AuthNotice tone="success" title="Check your email">
+          <Notice tone="info" title="Check your email">
             If an account uses {email.trim()}, a reset link is on its way. The link is valid for one hour.
-          </AuthNotice>
+          </Notice>
           <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>No email after a few minutes? Check spam, or ask your administrator to reset the password for you.</p>
         </>
       ) : (
         <form className={authFormClass} onSubmit={onSubmit} noValidate>
-          {error ? <AuthNotice tone="danger">{error}</AuthNotice> : null}
+          {error ? <Notice tone="danger">{error}</Notice> : null}
           <Field label="Work email">
-            <input className={authInputClass} style={authInputStyle} type="email" required autoComplete="email" autoFocus
-              aria-label="Work email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="m-input w-full" type="email" required autoComplete="email" autoFocus
+              value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <div className={authActionsClass}>
-            <Button type="submit" disabled={submitting} className="h-10 w-full">{submitting ? <><AuthSpinner /> Sending…</> : "Send link"}</Button>
-          </div>
+          <Button type="submit" pending={submitting} className="w-full">Send link</Button>
         </form>
       )}
       <Link className={authLinkClass} style={authLinkStyle} href="/sign-in">Back to sign in</Link>

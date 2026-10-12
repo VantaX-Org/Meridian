@@ -1,12 +1,12 @@
 // frontend/app/(app)/mdm/golden/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Button, DataTable, ExplorerPage, Field, Pager, Select } from "@/design";
+import { Button, DataTable, ExplorerPage, Field, Input, PageHeader, Pager, Select } from "@/design";
 import { getMasterRecords } from "@/lib/api/master-records";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { formatModuleName } from "@/lib/format";
@@ -38,11 +38,21 @@ const columns: ColumnDef<MasterRecordSummary>[] = [
 
 export default function GoldenRecordsPage() {
   const router = useRouter();
-  const [domain, setDomain] = useState("all");
-  const [status, setStatus] = useState("all");
-  const [minConfidence, setMinConfidence] = useState("");
-  const [maxConfidence, setMaxConfidence] = useState("");
-  const [page, setPage] = useState(1);
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const domain = search.get("domain") ?? "all";
+  const status = search.get("status") ?? "all";
+  const minConfidence = search.get("min") ?? "";
+  const maxConfidence = search.get("max") ?? "";
+  const page = Math.max(1, Number(search.get("page")) || 1);
+  // One replace per change: separate useUrlState setters would each start from a stale query string.
+  const setParams = (patch: Record<string, string>) => {
+    const params = new URLSearchParams(search.toString());
+    for (const [k, v] of Object.entries({ page: "", ...patch })) { if (v && v !== "all" && !(k === "page" && v === "1")) params.set(k, v); else params.delete(k); }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const setPage = (n: number) => { const params = new URLSearchParams(search.toString()); if (n > 1) params.set("page", String(n)); else params.delete("page"); const qs = params.toString(); router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }); };
 
   const filters = {
     domain: domain === "all" ? undefined : domain,
@@ -63,34 +73,31 @@ export default function GoldenRecordsPage() {
 
   return (
     <ExplorerPage
+      header={<PageHeader title="Golden records" meta={query.data ? `${query.data.total.toLocaleString()} records` : undefined} />}
       filterBar={
         <div className="flex items-end gap-3">
           <Field label="Domain">
-            <Select value={domain} onValueChange={(v) => { setDomain(v); setPage(1); }} options={DOMAIN_OPTIONS} />
+            <Select value={domain} onValueChange={(v) => setParams({ domain: v })} options={DOMAIN_OPTIONS} />
           </Field>
           <Field label="Status">
-            <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }} options={STATUS_OPTIONS} />
+            <Select value={status} onValueChange={(v) => setParams({ status: v })} options={STATUS_OPTIONS} />
           </Field>
           <Field label="Min confidence %">
-            <input
-              aria-label="Min confidence %"
+            <Input
               value={minConfidence}
-              onChange={(e) => { setMinConfidence(e.target.value); setPage(1); }}
+              onChange={(e) => setParams({ min: e.target.value })}
               placeholder="0-100"
               inputMode="numeric"
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)", width: 90 }}
+              style={{ width: 90 }}
             />
           </Field>
           <Field label="Max confidence %">
-            <input
-              aria-label="Max confidence %"
+            <Input
               value={maxConfidence}
-              onChange={(e) => { setMaxConfidence(e.target.value); setPage(1); }}
+              onChange={(e) => setParams({ max: e.target.value })}
               placeholder="0-100"
               inputMode="numeric"
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)", width: 90 }}
+              style={{ width: 90 }}
             />
           </Field>
         </div>
@@ -102,6 +109,7 @@ export default function GoldenRecordsPage() {
             data={records}
             getRowId={(r) => r.id}
             onRowClick={(r) => router.push(`/mdm/golden/${r.id}`)}
+            rowHref={(r) => `/mdm/golden/${r.id}`}
           />
           {pageCount > 1 && <Pager page={page} pageCount={pageCount} pageSize={100} total={query.data?.total ?? 0} onPageChange={setPage} />}
         </div>
@@ -109,8 +117,8 @@ export default function GoldenRecordsPage() {
       state={state}
       emptyProps={
         filtered
-          ? { title: "No master records match these filters." }
-          : { title: "No golden records.", action: <Button render={<Link href="/mdm/match-rules">Match rules</Link>} /> }
+          ? { title: "No records match", detail: "Clear a filter to widen the list.", action: <Button variant="secondary" onClick={() => setParams({ domain: "", status: "", min: "", max: "" })}>Clear filters</Button> }
+          : { title: "No golden records", action: <Button render={<Link href="/mdm/match-rules">Open match rules</Link>} /> }
       }
       errorProps={{
         message: apiErrorMessage(query.error),

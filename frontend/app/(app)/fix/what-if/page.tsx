@@ -45,7 +45,7 @@ export default function WhatIfPage() {
   return (
     <ReportPage
       state={versions.isLoading ? "loading" : isListFailure(versions) ? "error" : runs.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No finished run to simulate.", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
+      emptyProps={{ title: "No finished run to simulate", detail: "Run an analysis, then come back to see what the fixes would be worth.", ghost: "chart" }}
       errorProps={{ message: apiErrorMessage(versions.error), onRetry: () => void versions.refetch() }}
       narrative={controls}
       charts={
@@ -69,7 +69,7 @@ export default function WhatIfPage() {
         ) : sim.isError ? (
           <ErrorState message="This simulation has expired. Run it again." onRetry={() => run.mutate()} />
         ) : (
-          <EmptyState title={running ? "Simulating." : "No simulation yet."} detail={running ? "Applying every rule fix to a copy of the data." : "Pick a run and press Run simulation. Nothing is written to your system."} ghost="ring" />
+          <EmptyState title={running ? "Simulating" : "No simulation yet"} detail={running ? "Applying every rule fix to a copy of the data." : "Pick a run and press Run simulation. Nothing is written to your system"} ghost="ring" />
         )
       }
       tables={

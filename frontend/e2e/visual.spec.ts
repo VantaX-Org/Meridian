@@ -22,7 +22,7 @@ async function prepare(page: Page, mode: Mode): Promise<void> {
   // content for every route, scoped to this spec so other specs keep the plain recording
   await mockRoutes12(page);
   const theme = mode === "dark" ? "dark" : "light";
-  await page.addInitScript((t) => window.localStorage.setItem("aurora:theme", t), theme);
+  await page.addInitScript((t) => window.localStorage.setItem("meridian:theme", t), theme);
   await page.emulateMedia({ reducedMotion: mode === "reduced-motion" ? "reduce" : "no-preference" });
   if (mode === "empty") {
     // a fresh install: no systems, runs, objects or waves (registered last, so it wins)

@@ -93,6 +93,64 @@ beforeEach(() => {
 
 const lastReplace = () => new URL(`http://x${h.replace.mock.calls.at(-1)![0]}`).searchParams;
 
+describe("process L1 empty-state actions", () => {
+  it("offers Go up one level on an empty flow below L1", async () => {
+    h.qs = "system=sys-1&node=PTP-01";
+    vi.spyOn(pdApi, "getDfg").mockResolvedValue({ ...dfg(3, node("PTP-01", "Purchasing", 1), [node("x", "x", 1)]), nodes: [] });
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Go up one level" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["conformance", () => vi.spyOn(pdApi, "getConformance").mockResolvedValue({ case_type: "po_item", fitness: 1, missing: {}, steps: [] })],
+    ["cases", () => vi.spyOn(pdApi, "listCases").mockResolvedValue({ case_type: "po_item", total: 0, items: [] })],
+    ["variants", () => vi.spyOn(pdApi, "getVariants").mockResolvedValue({ case_type: "po_item", total: 0, items: [] })],
+  ])("offers Clear filters on an empty %s tab", async (tab, mock) => {
+    mock();
+    h.qs = `system=sys-1&tab=${tab}&doc_type=ZZ`;
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+  });
+
+  it("offers Open flow on the diagram tab above L4", async () => {
+    h.qs = "system=sys-1&tab=bpmn";
+    renderWithQuery(<ProcessL1Page />);
+    expect(await screen.findByRole("button", { name: "Open flow" })).toBeInTheDocument();
+  });
+
+  it("Clear filters drops filter params and keeps system and tab", async () => {
+    vi.spyOn(pdApi, "getVariants").mockResolvedValue({ case_type: "po_item", total: 0, items: [] });
+    h.qs = "system=sys-1&tab=variants&doc_type=ZZ&from=2026-01-01";
+    renderWithQuery(<ProcessL1Page />);
+    fireEvent.click(await screen.findByRole("button", { name: "Clear filters" }));
+    const q = lastReplace();
+    expect(q.has("doc_type")).toBe(false);
+    expect(q.has("from")).toBe(false);
+    expect(q.get("tab")).toBe("variants");
+    expect(q.get("system")).toBe("sys-1");
+  });
+
+  it.each([
+    ["L2", "PTP-01", null],
+    ["L3", "PTP-01-01", "PTP-01"],
+  ])("Go up one level from %s sets node to %s parent", async (_lvl, at, parent) => {
+    h.qs = `system=sys-1&node=${at}`;
+    vi.spyOn(pdApi, "getDfg").mockResolvedValue({ ...dfg(3, node(at, "x", 1), [node("x", "x", 1)]), nodes: [] });
+    renderWithQuery(<ProcessL1Page />);
+    fireEvent.click(await screen.findByRole("button", { name: "Go up one level" }));
+    expect(lastReplace().get("node")).toBe(parent);
+  });
+
+  it("Open flow switches to the flow tab and clears the case", async () => {
+    h.qs = "system=sys-1&tab=bpmn&case=4500000001/00010";
+    renderWithQuery(<ProcessL1Page />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open flow" }));
+    const q = lastReplace();
+    expect(q.get("tab")).toBe("flow");
+    expect(q.has("case")).toBe(false);
+  });
+});
+
 describe("process L1 drill", () => {
   it("opens the latest completed run on the flow tab and drills on a node click", async () => {
     renderWithQuery(<ProcessL1Page />);
@@ -165,6 +223,16 @@ describe("process L1 drill", () => {
     fireEvent.click(screen.getByRole("button", { name: "View as table" }));
     expect(screen.getByRole("button", { name: "View as chart" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getAllByText("Purchasing").length).toBeGreaterThan(0);
+  });
+
+  it("links each node's DQ defects to the failing objects and dashes an unmapped node", async () => {
+    vi.spyOn(pdApi, "getDfg").mockResolvedValue(dfg(2, node("PTP", "Procure to Pay", 100),
+      [{ ...node("PTP-01", "Purchasing", 100), dq_defects: 12, dq_version_id: "v-ecc" }, { ...node("PTP-02", "Receiving", 50), dq_defects: null }]));
+    renderWithQuery(<ProcessL1Page />);
+    await screen.findByRole("button", { name: "Node Purchasing" });
+    fireEvent.click(screen.getByRole("button", { name: "View as table" }));
+    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/objects?run=v-ecc&readiness=fail");
+    expect(screen.getByRole("columnheader", { name: /DQ defects/ })).toBeTruthy();
   });
 
   it("defaults a reference-only L1 to the reference tab and explains the other tabs", async () => {

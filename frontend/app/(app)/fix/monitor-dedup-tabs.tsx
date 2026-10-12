@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Mono, Pill } from "@/design";
+import Link from "next/link";
+import { Button, DataTable, ExplorerPage, Mono, Pill } from "@/design";
 import { getDedupCandidates, type DedupCandidate } from "@/lib/api/cleaning";
 import { getMonitor, type MonitorItem } from "@/lib/api/remediation";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -32,7 +33,7 @@ export function MonitorTab() {
   return (
     <ExplorerPage
       state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "Nothing is being monitored.", detail: "A scope appears here once it has a baseline run and a later run to compare." }}
+      emptyProps={{ title: "Nothing is being monitored", detail: "A scope appears here once it has a baseline run and a later run to compare", action: <Button variant="secondary" render={<Link href="/runs">Open runs</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={monitorColumns} data={items} getRowId={(r) => r.scope} />}
     />
@@ -55,7 +56,7 @@ export function DedupTab() {
   return (
     <ExplorerPage
       state={q.isLoading ? "loading" : isListFailure({ isError: q.isError, error: q.error }) ? "error" : items.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No duplicate candidates.", detail: "Candidates appear after matching runs on a master-data object." }}
+      emptyProps={{ title: "No duplicate candidates", detail: "Candidates appear after matching runs on a master-data object", action: <Button variant="secondary" render={<Link href="/mdm/match-rules">Tune match rules</Link>} /> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => q.refetch() }}
       table={<DataTable columns={dedupColumns} data={items} getRowId={(r) => r.id} />}
     />

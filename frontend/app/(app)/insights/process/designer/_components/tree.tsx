@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
-import { Button, Mono } from "@/design";
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { Button, IconButton, Input, Mono } from "@/design";
 import type { DqColour } from "@/types/process-model";
 import { childrenOf, type Doc, type Level, type TreeItem } from "./doc";
 
@@ -74,7 +75,7 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
   const focusable = rows.find((r) => r.item.id === selected)?.item.id ?? rows[0]?.item.id;
 
   return (
-    <div className="aurora-designer__tree">
+    <div className="m-designer__tree">
       <ul ref={root} role="tree" aria-label="Process hierarchy">
         {rows.map((r, i) => {
           const id = r.item.id;
@@ -82,37 +83,36 @@ export function ProcessTree({ doc, selected, colour, actions, onSelect, onBlocke
           const kids = r.level < 4 ? childrenOf(r.item, r.level) : [];
           return (
             <li key={id} role="treeitem" aria-level={r.level} aria-selected={id === selected}
-              aria-expanded={kids.length ? open.has(id) : undefined} className="aurora-designer__item">
-              <div className="aurora-designer__row" data-level={r.level} data-selected={id === selected || undefined}>
+              aria-expanded={kids.length ? open.has(id) : undefined} className="m-designer__item">
+              <div className="m-designer__row" style={{ ["--m-level" as string]: r.level }} data-selected={id === selected || undefined}>
                 {renaming === id ? (
-                  <input autoFocus defaultValue={r.item.name} aria-label="Name" maxLength={200}
-                    className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+                  <Input autoFocus defaultValue={r.item.name} aria-label="Name" maxLength={200}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== r.item.name) actions.rename(id, v); setRenaming(null); }}
                     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenaming(null); }} />
                 ) : (
                   <button type="button" data-row={id} tabIndex={id === focusable ? 0 : -1}
-                    className="aurora-designer__label aurora-focus-ring"
+                    className="m-designer__label m-designer-focus m-rail-link m-text-body" style={{ ["--m-rail-fg" as string]: "var(--m-ink)" }}
                     onClick={() => { onSelect(id); if (kids.length) toggle(id); }} onKeyDown={(e) => onKey(e, r, i)}>
-                    <span className="aurora-designer__level"><Mono>{`L${r.level}`}</Mono></span>
-                    <span className="aurora-designer__name">{r.item.name}</span>
+                    <span className="m-text-label" style={{ color: "var(--m-ink-3)" }}><Mono>{`L${r.level}`}</Mono></span>
+                    <span className="m-designer__name">{r.item.name}</span>
                     {dot && dot !== "green" ? (
-                      <span className="aurora-designer__dot" data-tone={dot === "red" ? "danger" : "warning"} role="img" aria-label={WORD[dot]} />
+                      <span className="m-designer__dot" data-tone={dot === "red" ? "danger" : "warning"} role="img" aria-label={WORD[dot]} />
                     ) : null}
                   </button>
                 )}
                 {confirm === id ? (
-                  <span className="aurora-designer__actions" data-open>
-                    <span className="ui-note">Delete with everything below?</span>
+                  <span className="m-designer__actions" data-open>
+                    <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>Delete with everything below?</span>
                     <Button variant="secondary" onClick={() => { actions.remove(id); setConfirm(null); }}>Delete</Button>
                     <Button variant="ghost" onClick={() => setConfirm(null)}>Keep</Button>
                   </span>
                 ) : renaming === id || !canDesign ? null : (
-                  <span className="aurora-designer__actions">
-                    <Button variant="ghost" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}>Rename</Button>
-                    {r.level < 4 ? <Button variant="ghost" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}>Add</Button> : null}
-                    <Button variant="ghost" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}>Up</Button>
-                    <Button variant="ghost" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}>Down</Button>
-                    <Button variant="ghost" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}>Delete</Button>
+                  <span className="m-designer__actions">
+                    <IconButton size="sm" aria-label={`Rename ${r.item.name}`} onClick={() => guard(() => setRenaming(id))}><Pencil size={14} aria-hidden /></IconButton>
+                    {r.level < 4 ? <IconButton size="sm" aria-label={`Add child to ${r.item.name}`} onClick={() => guard(() => { actions.add(id); toggle(id, true); })}><Plus size={14} aria-hidden /></IconButton> : null}
+                    <IconButton size="sm" aria-label={`Move ${r.item.name} up`} disabled={r.index === 0} onClick={() => guard(() => actions.move(id, -1))}><ArrowUp size={14} aria-hidden /></IconButton>
+                    <IconButton size="sm" aria-label={`Move ${r.item.name} down`} disabled={r.index === r.count - 1} onClick={() => guard(() => actions.move(id, 1))}><ArrowDown size={14} aria-hidden /></IconButton>
+                    <IconButton size="sm" aria-label={`Delete ${r.item.name}`} onClick={() => guard(() => setConfirm(id))}><Trash2 size={14} aria-hidden /></IconButton>
                   </span>
                 )}
               </div>

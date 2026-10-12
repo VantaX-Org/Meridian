@@ -7,10 +7,11 @@
  */
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Button, Card, DataTable, DrillLink, EmptyState, Mono, Select, Skeleton, type InsightHeaderProps, type PillTone,
+  Button, Card, DataTable, DrillLink, EmptyState, Mono, Pill, Select, Skeleton, type InsightHeaderProps, type PillTone,
 } from "@/design";
 import { useUrlState } from "@/hooks/use-url-state";
 import { getSystems } from "@/lib/api/connectivity";
@@ -24,9 +25,16 @@ import { CoveragePill, RunStatusPill } from "./coverage-pill";
 
 export const fitnessTone = (f: number | null | undefined): PillTone =>
   f == null ? "neutral" : f >= 0.8 ? "go" : f >= 0.6 ? "at-risk" : "no-go";
-export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" : f.toFixed(2));
+export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" : `${(f * 100).toFixed(1)}%`);
 export const fmtSeconds = (s: number | null | undefined) => (s == null ? "—" : formatDuration(s));
 export const fmtCount = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString());
+
+/** Failing findings of the system's DQ run on the modules a process or step touches, linked to that run's failing
+ *  objects; "—" when unmapped or no DQ run. */
+export function DqDefects({ n, versionId }: { n: number | null | undefined; versionId: string | null | undefined }) {
+  return n == null || versionId == null ? "—"
+    : <DrillLink href={`/objects?run=${encodeURIComponent(versionId)}&readiness=fail`}>{n.toLocaleString()}</DrillLink>;
+}
 
 /** The job's current stage label, else the run status. */
 export function stageLabel(job: Job | undefined): string | null {
@@ -108,8 +116,8 @@ export function processInsight(rows: CatalogueRow[], systemName: string, systemI
 function Figure({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-0.5">
-      <span className="text-[11px] leading-[14px]" style={{ color: "var(--m-ink-3)" }}>{label}</span>
-      <span className="m-numeric text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{children}</span>
+      <span className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{label}</span>
+      <span className="m-numeric m-text-body" style={{ color: "var(--m-ink)" }}>{children}</span>
     </div>
   );
 }
@@ -126,11 +134,11 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
           <Card key={r.l1} title={r.name} meta={<Mono>{r.l1}</Mono>} padding="sm">
             <div className="grid gap-2">
               <div><CoveragePill coverage={r.coverage} /></div>
-              {r.reason && <p className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>{r.reason}</p>}
+              {r.reason && <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{r.reason}</p>}
               {active && (
                 <div className="grid gap-1">
                   <Skeleton height={16} />
-                  <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
+                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
                     {stageLabel(jobs.find((j) => j.id === active.job_id)) ?? <RunStatusPill status={active.status} />}
                   </span>
                 </div>
@@ -147,8 +155,8 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
                   <Figure label="Median">{fmtSeconds(run.median_seconds)}</Figure>
                 </div>
               )}
-              <div className="flex items-center justify-between text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
-                <span>{run?.finished_at ? `Last run ${relativeTime(run.finished_at)}` : "Never run"}</span>
+              <div className="flex items-center justify-between m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                <span>{run?.finished_at ? `Last run ${relativeTime(run.finished_at)}` : "Not run yet"}</span>
                 <DrillLink href={l1Href(r.l1, systemId, done ? run.id : undefined)}>Open {r.l1}</DrillLink>
               </div>
             </div>
@@ -157,6 +165,43 @@ export function CatalogueGrid({ rows, systemId, jobs }: { rows: CatalogueRow[]; 
       })}
     </div>
   );
+}
+
+export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[]; systemId: string; jobs: Job[] }) {
+  const href = (r: CatalogueRow) => l1Href(r.l1, systemId, r.last_run && r.coverage !== "reference" ? r.last_run.id : undefined);
+  const columns: ColumnDef<CatalogueRow>[] = [
+    { accessorKey: "name", header: "Process", cell: ({ row: { original: r } }) => (
+        <span className="flex items-baseline gap-2">
+          <DrillLink href={href(r)}>{r.name}</DrillLink><Mono>{r.l1}</Mono>
+        </span>
+      ) },
+    { id: "coverage", header: "Coverage", accessorFn: (r) => r.coverage, cell: ({ row: { original: r } }) => <CoveragePill coverage={r.coverage} /> },
+    { id: "fitness", header: "Fitness", accessorFn: (r) => r.last_run?.fitness ?? -1, cell: ({ row: { original: r } }) => {
+        const f = r.last_run?.fitness;
+        const last = f == null ? "—" : (
+          <DrillLink href={l1Href(r.l1, systemId, r.last_run!.id, "conformance")}>
+            <Pill tone={fitnessTone(f)}>{fmtFitness(f)}</Pill>
+          </DrillLink>
+        );
+        if (!r.failed && !r.in_progress) return last;
+        const live = r.in_progress && (stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />);
+        return (
+          <span className="flex items-center gap-2">{last}
+            {live && <span style={{ color: "var(--m-ink-3)" }}>{live}</span>}
+            {r.failed && <DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink>}
+          </span>
+        );
+      } },
+    { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
+    { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
+    { id: "median", header: "Median duration", meta: { numeric: true }, accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
+    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} /> },
+    { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
+        r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
+  ];
+  const router = useRouter();
+  return <DataTable columns={columns} data={rows} getRowId={(r) => r.l1} height="auto" hideToolbar
+    onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" exportName="process-catalogue" />;
 }
 
 export function RunsTable({ runs, jobs, systemName, hideToolbar }: {

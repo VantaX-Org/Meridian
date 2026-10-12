@@ -4,7 +4,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, ExplorerPage, Pill, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, DataTable, ExplorerPage, PageHeader, Pill, type PillTone } from "@/design";
 import { getJobs } from "@/lib/api/jobs";
 import { formatDate, formatModuleName } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -28,8 +29,9 @@ export default function JobsPage() {
   const jobs = q.data ?? [];
   return (
     <ExplorerPage
+      header={<PageHeader title="Jobs" meta="Extractions, analyses, uploads and simulations" />}
       state={q.isLoading ? "loading" : isListFailure(q) ? "error" : jobs.length === 0 ? "empty" : undefined}
-      emptyProps={{ title: "No jobs have run yet.", detail: "Extractions, analyses, uploads and simulations are listed here." }}
+      emptyProps={{ title: "No jobs have run yet", detail: "Extractions, analyses, uploads and simulations are listed here.", action: <Link href="/import"><Button>Import data</Button></Link> }}
       errorProps={{ message: apiErrorMessage(q.error), onRetry: () => void q.refetch() }}
       table={<DataTable columns={columns} data={jobs} getRowId={(j) => j.id} />}
     />

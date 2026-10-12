@@ -3,17 +3,28 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 /** Row density, kept here because the legacy token module is retired. */
 export type DensityTier = "compact" | "default" | "comfortable";
-const DENSITY_STORAGE_KEY = "aurora:density";
+const DENSITY_STORAGE_KEY = "meridian:density";
 const DEFAULT_DENSITY: DensityTier = "default";
 
 /** "system" clears data-theme so the tokens follow prefers-color-scheme. */
 export type Theme = "dark" | "light" | "system";
-const THEME_KEY = "aurora:theme";
-const EVENT = "aurora:prefs";
+const THEME_KEY = "meridian:theme";
+const EVENT = "meridian:prefs";
+/** Pre-rename keys; read once, copied to the new key and removed. */
+const LEGACY_KEYS: Record<string, string> = { "meridian:theme": "aurora:theme", "meridian:density": "aurora:density" };
 
 function read<T extends string>(key: string, fallback: T): T {
   try {
-    return (localStorage.getItem(key) as T) || fallback;
+    const current = localStorage.getItem(key);
+    if (current) return current as T;
+    const legacy = LEGACY_KEYS[key];
+    const old = legacy ? localStorage.getItem(legacy) : null;
+    if (legacy && old) {
+      localStorage.setItem(key, old);
+      localStorage.removeItem(legacy);
+      return old as T;
+    }
+    return fallback;
   } catch {
     return fallback;
   }

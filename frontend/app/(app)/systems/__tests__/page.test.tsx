@@ -26,6 +26,23 @@ const SYSTEM: SAPSystemExtended = {
 } as SAPSystemExtended;
 
 describe("systems list page", () => {
+  it("?health=unhealthy lists degraded, unreachable and auth_failed only", async () => {
+    currentSearch = "health=unhealthy";
+    const mk = (id: string, name: string, h: string) => ({ ...SYSTEM, id, name, health_status: h }) as SAPSystemExtended;
+    vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([
+      SYSTEM, mk("s2", "BW Slow", "degraded"), mk("s3", "PO Down", "unreachable"), mk("s4", "CRM Locked", "auth_failed"),
+    ]);
+    vi.spyOn(systemObjectsApi, "getSystemVersions").mockResolvedValue({ versions: [], download: null });
+    vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 4 });
+    vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
+    renderWithQuery(<SystemsPage />);
+    await waitFor(() => expect(screen.getByText("BW Slow")).toBeInTheDocument());
+    expect(screen.getByText("PO Down")).toBeInTheDocument();
+    expect(screen.getByText("CRM Locked")).toBeInTheDocument();
+    expect(screen.queryByText("ECC Prod")).not.toBeInTheDocument();
+    currentSearch = "";
+  });
+
   it("?health=healthy hides unhealthy systems", async () => {
     currentSearch = "health=healthy";
     const sick = { ...SYSTEM, id: "s2", name: "BW Down", health_status: "degraded" } as SAPSystemExtended;
@@ -90,7 +107,7 @@ describe("systems list page", () => {
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ systems: [], counts: {}, loaded: 0, total: 1 });
     vi.spyOn(systemsApi, "getSyncProfiles").mockResolvedValue([]);
     renderWithQuery(<SystemsPage />);
-    await waitFor(() => expect(screen.getByLabelText("Up 0.2 since the previous run")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("+0.2")).toBeInTheDocument());
   });
 
   it("hides the trend arrow when the DQS move is below the 0.05 threshold", async () => {

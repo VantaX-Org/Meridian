@@ -52,3 +52,21 @@ describe("ScopePicker exclude-deleted scope (#exclude_deleted)", () => {
     );
   });
 });
+
+describe("ScopePicker", () => {
+  it("clicking the checkbox text toggles the box", async () => {
+    vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [object()] });
+    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    fireEvent.click(await screen.findByText("Material Master"));
+    const box = await screen.findByRole("checkbox", { name: "Skip records flagged for deletion" });
+    fireEvent.click(screen.getByText("Skip records flagged for deletion"));
+    expect(box).toBeChecked();
+  });
+
+  it("empty state links to the Health tab", async () => {
+    vi.spyOn(systemObjectsApi, "getSystemObjects").mockResolvedValue({ system_type: "ecc", objects: [] });
+    renderWithQuery(<ScopePicker id="sys1" onDownloaded={vi.fn()} />);
+    const link = await screen.findByRole("link", { name: "Test connection" });
+    expect(link).toHaveAttribute("href", "/systems/sys1?tab=health");
+  });
+});

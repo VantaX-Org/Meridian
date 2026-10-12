@@ -64,7 +64,7 @@ describe("process catalogue", () => {
     renderWithQuery(<ProcessCataloguePage />);
     expect(await screen.findByText("0 of 13 processes discovered on KSA PRD; 13 reference only.")).toBeTruthy();
     expect(screen.getAllByText("Reference, not discovered")).toHaveLength(13);
-    expect(screen.getAllByText("Never run")).toHaveLength(13);
+    expect(screen.getAllByText("Not run yet")).toHaveLength(13);
     const action = screen.getByRole("link", { name: /Run discovery/ });
     expect(action.getAttribute("href")).toBe("/process/runs?system=sys-1&new=1");
   });
@@ -95,6 +95,14 @@ describe("process catalogue", () => {
     mockJobs([job({})]);
     renderWithQuery(<ProcessCataloguePage />);
     expect(await screen.findByText("Mining")).toBeTruthy();
+  });
+
+  it("links an L1's DQ defects to the failing objects and dashes an unmapped L1", async () => {
+    vi.spyOn(pdApi, "getCatalogue").mockResolvedValue([
+      { ...reference("PTP"), coverage: "discovered", last_run: lastRun({}), dq_defects: 7, dq_version_id: "v-7" },
+      { ...reference("OTC"), dq_defects: null }]);
+    renderWithQuery(<ProcessCataloguePage />);
+    expect((await screen.findByRole("link", { name: "7" })).getAttribute("href")).toBe("/objects?run=v-7&readiness=fail");
   });
 });
 

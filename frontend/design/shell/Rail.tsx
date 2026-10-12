@@ -15,6 +15,13 @@ import { MeridianMark } from "../../components/meridian/icons";
 import { activeHref, flattenNav, resolveNavHref, type NavItem } from "../../lib/nav";
 import { mMotion } from "../tokens";
 import { Badge } from "../primitives/Badge";
+import { domainOf, mColor } from "../tokens";
+
+/** Object-page nav items (`/objects/<module>`) carry a 6px swatch in their owning domain colour. */
+function objectDomainColor(href: string): string | undefined {
+  const m = /^\/objects\/([^/?]+)/.exec(href);
+  return m ? mColor.dom[domainOf(m[1])] : undefined;
+}
 import { Skeleton } from "../primitives/Skeleton";
 import { Tooltip } from "../primitives/Tooltip";
 
@@ -247,9 +254,11 @@ export function Rail() {
     const hasChildren = depth === 0 && !!item.children?.length;
     const isOpen = openParents.has(item.href);
     const showPip = item.href === "/systems" && healthTone !== null;
+    const swatch = objectDomainColor(item.href);
     const iconSpan = (
       <span className="relative inline-flex shrink-0" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
         <item.icon size={ICON_SIZE} />
+        {swatch && <span aria-hidden="true" data-testid="rail-domain-swatch" className="absolute" style={{ width: 6, height: 6, bottom: -2, right: -2, background: swatch }} />}
         {showPip && healthTone && <HealthPip tone={healthTone} />}
         {!expanded && !showPip && count > 0 && (
           <span
@@ -271,7 +280,7 @@ export function Rail() {
           </span>
         )}
         {expanded && item.shortcut && (
-          <span className="text-[12px] leading-[16px]" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
+          <span className="m-text-meta" style={{ color: active ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}>
             {item.shortcut}
           </span>
         )}
@@ -308,9 +317,9 @@ export function Rail() {
           if (!expanded) openFlyout(item.href, e.currentTarget);
         }}
         onMouseLeave={() => closeFlyout()}
-        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full text-[13px] leading-[18px] hover:!text-[var(--m-ink)]"
+        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full m-text-body m-rail-link"
         style={{
-          color: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
+          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
           borderRadius: "var(--m-radius-control)",
@@ -391,7 +400,7 @@ export function Rail() {
         style={{ height: "var(--m-topbar-h)", paddingLeft: expanded ? 16 : 0, justifyContent: expanded ? "flex-start" : "center", color: "var(--m-ink)" }}
       >
         <MeridianMark size={22} variant="two-tone" aria-hidden />
-        {expanded && <span className="text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
+        {expanded && <span className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Meridian</span>}
       </Link>
 
       <div data-testid="rail-nav-items" aria-busy={navLoading || undefined} className="flex-1 flex flex-col pb-2">
@@ -404,7 +413,7 @@ export function Rail() {
         {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded ? (
-              <p className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)", padding: "20px 16px 6px" }}>
+              <p className="m-text-label font-medium" style={{ color: "var(--m-ink-3)", padding: "var(--m-rail-group-pad)" }}>
                 {group.group}
               </p>
             ) : (
@@ -431,7 +440,7 @@ export function Rail() {
         }
       >
         <PanelLeft size={ICON_SIZE} style={{ color: "var(--m-ink-3)" }} aria-hidden />
-        {expanded && <span className="text-[13px] leading-[18px] font-medium">Collapse</span>}
+        {expanded && <span className="m-text-body font-medium">Collapse</span>}
       </Tooltip>
 
       {!expanded && flyoutItem && flyoutRect && (
@@ -457,14 +466,14 @@ export function Rail() {
           className="m-motion-scale-in m-elev-2 fixed z-50 min-w-[200px]"
           style={{ top: flyoutRect.top, left: flyoutRect.left, padding: 6, borderRadius: "var(--m-radius-sheet)", background: "var(--m-sheet)" }}
         >
-          <p className="px-2 py-1 text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)" }}>
+          <p className="px-2 py-1 m-text-label font-medium" style={{ color: "var(--m-ink-3)" }}>
             {flyoutItem.label}
           </p>
           {(flyoutItem.children?.length ? flyoutItem.children : [flyoutItem]).map((child) => (
             <Link
               key={child.href}
               href={withRun(resolveNavHref(child.href, role))}
-              className="m-motion-colors flex items-center h-8 px-2 text-[13px] leading-[18px] font-medium hover:bg-[var(--m-rail-hover)]"
+              className="m-motion-colors flex items-center h-8 px-2 m-text-body font-medium hover:bg-[var(--m-rail-hover)]"
               style={{
                 borderRadius: "var(--m-radius-control)",
                 background: child.href === activeItemHref ? "var(--m-accent-soft)" : undefined,

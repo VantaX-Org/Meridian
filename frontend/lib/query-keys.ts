@@ -18,6 +18,8 @@ function normalizeFilters(filters: Record<string, unknown>): Record<string, unkn
  */
 export const queryKeys = {
   object: (id: string, run: string) => ["object", id, run] as const,
+  /** List row seeded on row click so the detail header paints before the detail fetch lands. */
+  objectSummary: (id: string, run: string) => ["object-summary", id, run] as const,
   objects: (run: string) => ["object", "list", run] as const,
   record: (object: string, key: string, run: string) => ["object", object, "record", key, run] as const,
   rule: (id: string, run: string) => ["rule", id, run] as const,

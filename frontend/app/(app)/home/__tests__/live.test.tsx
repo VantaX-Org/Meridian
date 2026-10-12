@@ -45,6 +45,6 @@ describe("LiveSection", () => {
 
     expect(await screen.findByText("ECC Prod")).toBeInTheDocument();
     expect(await screen.findByText("Healthy")).toBeInTheDocument();
-    expect(await screen.findByText("Nothing is running.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing is running")).toBeInTheDocument();
   });
 });

@@ -50,7 +50,7 @@ export function Breadcrumb() {
           <Dot />
         </span>
       ))}
-      <h1 className="truncate text-[15px] leading-[20px] font-semibold" style={{ color: "var(--m-ink)" }}>
+      <h1 className="m-text-h truncate font-semibold" style={{ color: "var(--m-ink)" }}>
         {title}
       </h1>
     </nav>

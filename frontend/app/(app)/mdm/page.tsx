@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, ExplorerPage, Line, ScoreExplainer, Stat } from "@/design";
+import { Button, Card, EmptyState, ExplorerPage, Line, PageHeader, ScoreExplainer, Stat } from "@/design";
 import { getMdmHealth } from "@/lib/api/analytics";
 import { getMdmDashboard } from "@/lib/api/mdm-metrics";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
@@ -19,10 +19,11 @@ export default function MdmOverviewPage() {
 
   return (
     <ExplorerPage
+      header={<PageHeader title="MDM overview" meta={m ? `${m.golden_record_count.toLocaleString()} golden records` : undefined} />}
       toolbarEnd={<Button variant="secondary" render={<Link href="/mdm/survivorship">Survivorship rules</Link>} />}
       state={state}
       emptyProps={{
-        title: "No MDM health snapshot yet.",
+        title: "No MDM health snapshot",
         detail: "The first snapshot is taken after golden records are built.",
         action: <Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />,
         ghost: "chart",
@@ -43,21 +44,17 @@ export default function MdmOverviewPage() {
               ]}
               rules={[]}
               historyHref="/mdm"
-            /> : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No current snapshot yet.</p>}</Card>
+            /> : <EmptyState title="No current snapshot" detail="The first snapshot is taken after golden records are built." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} />}</Card>
             <Card title="Health over time">
-              {points.length === 0 ? <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No history yet.</p> : <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" />}
+              {points.length === 0 ? <EmptyState title="No history yet" detail="Each snapshot adds a point to this line." action={<Button variant="secondary" render={<Link href="/mdm/golden">Open golden records</Link>} />} /> : <Line data={points.map((p) => ({ x: p.snapshot_date, y: p.mdm_health_score }))} label="MDM health score" />}
             </Card>
           </div>
           {m && (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat label="Golden records" value={m.golden_record_count.toLocaleString()} href="/mdm/golden" />
-              <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} />
-              <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} />
-              <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} />
-              <Stat label="Source consistency" value={`${m.source_consistency_pct}%`} />
-              <Stat label="Backlog" value={m.backlog_count} />
-              <Stat label="Sync coverage" value={`${m.sync_coverage_pct}%`} />
-              <Stat label="Active systems" value={dash.data?.active_systems_count ?? 0} />
+              <Stat label="Coverage" value={`${m.golden_record_coverage_pct}%`} href="/mdm/golden" />
+              <Stat label="Match confidence" value={`${Math.round(m.avg_match_confidence * 100)}%`} href="/mdm/match-rules" />
+              <Stat label="Steward SLA" value={`${m.steward_sla_compliance_pct}%`} href="/inbox" />
+              <Stat label="Backlog" value={m.backlog_count.toLocaleString()} href="/inbox" />
             </div>
           )}
         </div>

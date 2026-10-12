@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Dialog, ErrorState, Field, Pill, Select } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Button, Card, DataTable, Dialog, EmptyState, ErrorState, Field, Input, Notice, PageHeader, Pill, Select, Skeleton, Stat } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createRule, createTeam, deleteRule, deleteSlaPolicy, deleteTeam, getRules, getSlaPolicies, getTeams, getTriageSettings,
@@ -44,7 +45,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className="px-2 py-0.5 text-[12px] leading-4 rounded-full border"
+      className="px-2 py-0.5 m-text-meta leading-4 rounded-full border"
       style={{
         color: active ? "var(--m-pass)" : "var(--m-ink-3)",
         borderColor: active ? "var(--m-pass)" : "var(--m-line)",
@@ -57,15 +58,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
+  return <Card title={title} actions={action}>{children}</Card>;
 }
 
 export default function AdminTriagePage() {
@@ -77,13 +70,12 @@ export default function AdminTriagePage() {
   const sla = useQuery({ queryKey: queryKeys.triageSla(), queryFn: getSlaPolicies });
   const usersQ = useUsers();
   const idle = (ruleQ.data ?? []).filter((r) => !r.enabled).length;
-  const custom = (sla.data ?? []).filter((p) => !p.is_default).length;
 
   if (teams.isError || ruleQ.isError || sla.isError || usersQ.isError) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <ErrorState
-          message={errText(teams.error ?? ruleQ.error ?? sla.error ?? usersQ.error, "Triage could not be read.")}
+          message={errText(teams.error ?? ruleQ.error ?? sla.error ?? usersQ.error, "Triage could not be read")}
           onRetry={() => { teams.refetch(); ruleQ.refetch(); sla.refetch(); usersQ.refetch(); }}
         />
       </div>
@@ -92,41 +84,14 @@ export default function AdminTriagePage() {
 
   return (
     <div className="flex flex-col gap-6 p-6" aria-busy={teams.isLoading || undefined}>
-      <header>
-        <strong className="text-[17px]">Triage</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-          Who gets new issues, how long they have, and the calendar the clocks run on.
-        </p>
-      </header>
+      <PageHeader title="Triage" meta="Who gets new issues, how long they have, and the calendar the clocks run on" />
 
       <div className="flex gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Teams</span>
-          <span className="text-[18px] font-semibold">{teams.isLoading ? "–" : teams.data?.length ?? 0}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
-            {teams.data?.length ? "Rules can route to a team." : "No team to route to yet."}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Assignment rules</span>
-          <span className="text-[18px] font-semibold" style={{ color: idle ? "var(--m-medium)" : undefined }}>
-            {ruleQ.isLoading ? "–" : ruleQ.data?.length ?? 0}
-          </span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>
-            {idle ? `${idle} switched off.` : ruleQ.data?.length ? "Every rule is active." : "Items go to the fallback user."}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>SLA policies</span>
-          <span className="text-[18px] font-semibold">{sla.isLoading ? "–" : custom}</span>
-          <span className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{custom ? "Saved by you." : "Defaults apply."}</span>
-        </div>
+        <Stat label="Rules switched off" value={idle} tone={idle ? "at-risk" : undefined} loading={ruleQ.isLoading} delta={`of ${ruleQ.data?.length ?? 0} assignment rules`} />
       </div>
 
       {!rules && !settings ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
-          Changing triage needs the manage rules or manage settings permission.
-        </div>
+        <Notice tone="info">Changing triage needs the manage rules or manage settings permission.</Notice>
       ) : null}
 
       <TeamsSection write={rules} />
@@ -147,45 +112,36 @@ function TeamsSection({ write }: { write: boolean }) {
   const del = useMutation({
     mutationFn: (id: string) => deleteTeam(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team deleted"); },
-    onError: (e) => toast.error(errText(e, "Team not deleted.")),
+    onError: (e) => toast.error(errText(e, "Team not deleted")),
   });
+
+  const teamCols: ColumnDef<TriageTeam, unknown>[] = [
+    { id: "name", header: "Name", cell: ({ row }) => row.original.name },
+    { id: "strategy", header: "Strategy", cell: ({ row }) => STRATEGIES.find((x) => x.value === row.original.strategy)?.label ?? row.original.strategy },
+    { id: "lead", header: "Lead", cell: ({ row }) => users.find((u) => u.id === row.original.lead_user_id)?.name ?? "None" },
+    { id: "members", header: "Members", cell: ({ row }) => <span title={row.original.member_ids.map((id) => users.find((u) => u.id === id)?.name ?? id).join(", ")}>{row.original.member_ids.length}</span> },
+    { id: "open", header: "Open items", cell: ({ row }) => row.original.open_items },
+    {
+      id: "act", header: "",
+      cell: ({ row }) => write ? (
+        <span className="flex gap-2">
+          <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
+          <Button variant="ghost" onClick={() => { if (window.confirm(`Delete team "${row.original.name}"?`)) del.mutate(row.original.id); }}>Delete</Button>
+        </span>
+      ) : null,
+    },
+  ];
 
   return (
     <Section title="Teams" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add team</Button> : undefined}>
       {teams.isError ? (
-        <ErrorState message={errText(teams.error, "Teams could not be read.")} onRetry={() => teams.refetch()} />
+        <ErrorState message={errText(teams.error, "Teams could not be read")} onRetry={() => teams.refetch()} />
       ) : teams.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading teams.</p>
+        <Skeleton height={120} />
       ) : !teams.data?.length ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No teams yet.</p>
+        <EmptyState title="No teams yet" detail="Teams let assignment rules route new items to a group." action={write ? <Button onClick={() => setEditing("new")}>Add team</Button> : undefined} />
       ) : (
-        <table className="text-[13px] w-full">
-          <thead>
-            <tr>
-              <th className="text-left">Name</th><th className="text-left">Strategy</th><th className="text-left">Lead</th>
-              <th className="text-left">Members</th><th className="text-left">Open items</th><th><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {teams.data.map((t) => (
-              <tr key={t.id}>
-                <td className="py-1">{t.name}</td>
-                <td>{STRATEGIES.find((s) => s.value === t.strategy)?.label ?? t.strategy}</td>
-                <td>{users.find((u) => u.id === t.lead_user_id)?.name ?? "None"}</td>
-                <td title={t.member_ids.map((id) => users.find((u) => u.id === id)?.name ?? id).join(", ")}>{t.member_ids.length}</td>
-                <td>{t.open_items}</td>
-                <td className="flex gap-2">
-                  {write ? <Button variant="ghost" onClick={() => setEditing(t)}>Edit</Button> : null}
-                  {write ? (
-                    <Button variant="ghost" onClick={() => { if (window.confirm(`Delete team "${t.name}"?`)) del.mutate(t.id); }}>
-                      Delete
-                    </Button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable columns={teamCols} data={teams.data} getRowId={(t) => t.id} />
       )}
       {editing ? <TeamForm team={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
     </Section>
@@ -211,13 +167,13 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageTeams() }); toast.success("Team saved"); onClose(); },
-    onError: (e) => toast.error(errText(e, "Team not saved.")),
+    onError: (e) => toast.error(errText(e, "Team not saved")),
   });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={team ? "Edit team" : "Add team"}>
       <div className="flex flex-col gap-3">
-        <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label="Strategy"><Select value={strategy} onValueChange={(v) => setStrategy(v as TeamStrategy)} options={STRATEGIES} /></Field>
         <Field label="Lead">
           <Select value={lead} onValueChange={setLead} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
@@ -225,7 +181,7 @@ function TeamForm({ team, onClose }: { team: TriageTeam | null; onClose: () => v
         <Field label="Members">
           <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
             {users.map((u) => (
-              <label key={u.id} className="flex items-center gap-2 text-[13px]">
+              <label key={u.id} className="flex items-center gap-2 m-text-body">
                 <input
                   type="checkbox"
                   checked={members.includes(u.id)}
@@ -265,17 +221,17 @@ function RulesSection({ write }: { write: boolean }) {
   const toggle = useMutation({
     mutationFn: (r: AssignmentRule) => updateRule(r.id, { name: r.name, match: r.match, assign_user_id: r.assign_user_id, assign_team_id: r.assign_team_id, enabled: !r.enabled, position: r.position }),
     onSuccess: invalidate,
-    onError: (e) => toast.error(errText(e, "Rule not updated.")),
+    onError: (e) => toast.error(errText(e, "Rule not updated")),
   });
   const move = useMutation({
     mutationFn: (ids: string[]) => reorderRules(ids),
     onSuccess: invalidate,
-    onError: (e) => toast.error(errText(e, "Rules not reordered.")),
+    onError: (e) => toast.error(errText(e, "Rules not reordered")),
   });
   const del = useMutation({
     mutationFn: (id: string) => deleteRule(id),
     onSuccess: () => { invalidate(); toast.success("Rule deleted"); },
-    onError: (e) => toast.error(errText(e, "Rule not deleted.")),
+    onError: (e) => toast.error(errText(e, "Rule not deleted")),
   });
 
   const sorted = [...(ruleQ.data ?? [])].sort((a, b) => a.position - b.position);
@@ -285,44 +241,35 @@ function RulesSection({ write }: { write: boolean }) {
     move.mutate(ids);
   };
 
+  const ruleCols: ColumnDef<AssignmentRule, unknown>[] = [
+    { id: "n", header: "#", cell: ({ row }) => <span className="font-mono m-text-meta">{row.index + 1}</span> },
+    { id: "name", header: "Name", cell: ({ row }) => row.original.name },
+    { id: "match", header: "Matches", cell: ({ row }) => <span style={{ color: "var(--m-ink-3)" }}>{matchText(row.original.match)}</span> },
+    { id: "to", header: "Assigns to", cell: ({ row }) => target(row.original) },
+    { id: "on", header: "Enabled", cell: ({ row }) => <input type="checkbox" checked={row.original.enabled} disabled={!write} onChange={() => toggle.mutate(row.original)} aria-label={`${row.original.name} enabled`} /> },
+    {
+      id: "act", header: "",
+      cell: ({ row }) => write ? (
+        <span className="flex gap-1">
+          <Button variant="ghost" disabled={row.index === 0} onClick={() => swap(row.index, row.index - 1)}>Up</Button>
+          <Button variant="ghost" disabled={row.index === sorted.length - 1} onClick={() => swap(row.index, row.index + 1)}>Down</Button>
+          <Button variant="ghost" onClick={() => setEditing(row.original)}>Edit</Button>
+          <Button variant="ghost" onClick={() => { if (window.confirm(`Delete rule "${row.original.name}"?`)) del.mutate(row.original.id); }}>Delete</Button>
+        </span>
+      ) : null,
+    },
+  ];
+
   return (
     <Section title="Assignment rules" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add rule</Button> : undefined}>
       {ruleQ.isError ? (
-        <ErrorState message={errText(ruleQ.error, "Rules could not be read.")} onRetry={() => ruleQ.refetch()} />
+        <ErrorState message={errText(ruleQ.error, "Rules could not be read")} onRetry={() => ruleQ.refetch()} />
       ) : ruleQ.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading rules.</p>
+        <Skeleton height={120} />
       ) : !sorted.length ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No rules yet. New items go to the fallback user.</p>
+        <EmptyState title="No rules yet" detail="New items go to the fallback user." action={write ? <Button onClick={() => setEditing("new")}>Add rule</Button> : undefined} />
       ) : (
-        <table className="text-[13px] w-full">
-          <thead>
-            <tr>
-              <th className="text-left">#</th><th className="text-left">Name</th><th className="text-left">Matches</th>
-              <th className="text-left">Assigns to</th><th className="text-left">Enabled</th><th><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((r, i) => (
-              <tr key={r.id}>
-                <td className="font-mono text-[12px]">{i + 1}</td>
-                <td className="py-1">{r.name}</td>
-                <td style={{ color: "var(--m-ink-3)" }}>{matchText(r.match)}</td>
-                <td>{target(r)}</td>
-                <td>
-                  <input type="checkbox" checked={r.enabled} disabled={!write} onChange={() => toggle.mutate(r)} aria-label={`${r.name} enabled`} />
-                </td>
-                <td className="flex gap-1">
-                  {write ? <Button variant="ghost" disabled={i === 0} onClick={() => swap(i, i - 1)}>Up</Button> : null}
-                  {write ? <Button variant="ghost" disabled={i === sorted.length - 1} onClick={() => swap(i, i + 1)}>Down</Button> : null}
-                  {write ? <Button variant="ghost" onClick={() => setEditing(r)}>Edit</Button> : null}
-                  {write ? (
-                    <Button variant="ghost" onClick={() => { if (window.confirm(`Delete rule "${r.name}"?`)) del.mutate(r.id); }}>Delete</Button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable columns={ruleCols} data={sorted} getRowId={(r) => r.id} />
       )}
       {editing ? <RuleForm rule={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
     </Section>
@@ -357,13 +304,13 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
       return rule ? updateRule(rule.id, { ...body, position: rule.position }) : createRule(body);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageRules() }); toast.success("Rule saved"); onClose(); },
-    onError: (e) => toast.error(errText(e, "Rule not saved.")),
+    onError: (e) => toast.error(errText(e, "Rule not saved")),
   });
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={rule ? "Edit rule" : "Add rule"}>
       <div className="flex flex-col gap-3">
-        <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+        <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
         <Field label="Assign to">
           <Select
             value={assignee}
@@ -384,7 +331,7 @@ function RuleForm({ rule, onClose }: { rule: AssignmentRule | null; onClose: () 
         </Field>
         {MATCH_FIELDS.map(([k, label]) => (
           <Field key={k} label={`${label} (comma-separated)`}>
-            <input value={fields[k]} onChange={(e) => setFields({ ...fields, [k]: e.target.value })} />
+            <Input value={fields[k]} onChange={(e) => setFields({ ...fields, [k]: e.target.value })} />
           </Field>
         ))}
         <div className="flex gap-2 justify-end">
@@ -405,44 +352,36 @@ function PoliciesSection({ write }: { write: boolean }) {
   const del = useMutation({
     mutationFn: (id: string) => deleteSlaPolicy(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy deleted"); },
-    onError: (e) => toast.error(errText(e, "Policy not deleted.")),
+    onError: (e) => toast.error(errText(e, "Policy not deleted")),
   });
+
+  const slaCols: ColumnDef<SlaPolicy, unknown>[] = [
+    { id: "sev", header: "Severity", cell: ({ row }) => <Pill tone={row.original.severity === "critical" ? "no-go" : row.original.severity === "high" ? "at-risk" : "neutral"}>{labelOf(row.original.severity)}</Pill> },
+    { id: "mod", header: "Module", cell: ({ row }) => (row.original.module ? formatModuleName(row.original.module) : "All modules") },
+    { id: "ack", header: "Acknowledge", cell: ({ row }) => mins(row.original.ack_minutes) },
+    { id: "res", header: "Resolve", cell: ({ row }) => mins(row.original.resolve_minutes) },
+    { id: "risk", header: "At-risk", cell: ({ row }) => `${row.original.at_risk_pct}%` },
+    { id: "hrs", header: "Hours", cell: ({ row }) => (row.original.business_hours ? "Business hours" : "Calendar hours") },
+    { id: "src", header: "Source", cell: ({ row }) => (row.original.is_default ? <Pill tone="neutral">Default</Pill> : "Saved") },
+    {
+      id: "act", header: "",
+      cell: ({ row }) => write ? (
+        <span className="flex gap-1">
+          <Button variant="ghost" onClick={() => setEditing(row.original)}>{row.original.is_default ? "Override" : "Edit"}</Button>
+          {row.original.id ? <Button variant="ghost" onClick={() => { if (window.confirm("Delete this override?")) del.mutate(row.original.id!); }}>Delete</Button> : null}
+        </span>
+      ) : null,
+    },
+  ];
 
   return (
     <Section title="SLA policies" action={write ? <Button variant="secondary" onClick={() => setEditing("new")}>Add override</Button> : undefined}>
       {sla.isError ? (
-        <ErrorState message={errText(sla.error, "Policies could not be read.")} onRetry={() => sla.refetch()} />
+        <ErrorState message={errText(sla.error, "Policies could not be read")} onRetry={() => sla.refetch()} />
       ) : sla.isLoading ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading policies.</p>
+        <Skeleton height={160} />
       ) : (
-        <table className="text-[13px] w-full">
-          <thead>
-            <tr>
-              <th className="text-left">Severity</th><th className="text-left">Module</th><th className="text-left">Acknowledge</th>
-              <th className="text-left">Resolve</th><th className="text-left">At-risk</th><th className="text-left">Hours</th>
-              <th className="text-left">Source</th><th><span className="sr-only">Actions</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {(sla.data ?? []).map((p) => (
-              <tr key={`${p.severity}-${p.module ?? ""}`}>
-                <td className="py-1"><Pill tone={p.severity === "critical" ? "no-go" : p.severity === "high" ? "at-risk" : "neutral"}>{labelOf(p.severity)}</Pill></td>
-                <td>{p.module ? formatModuleName(p.module) : "All modules"}</td>
-                <td>{mins(p.ack_minutes)}</td>
-                <td>{mins(p.resolve_minutes)}</td>
-                <td>{p.at_risk_pct}%</td>
-                <td>{p.business_hours ? "Business hours" : "Calendar hours"}</td>
-                <td>{p.is_default ? <Pill tone="neutral">Default</Pill> : "Saved"}</td>
-                <td className="flex gap-1">
-                  {write ? <Button variant="ghost" onClick={() => setEditing(p)}>{p.is_default ? "Override" : "Edit"}</Button> : null}
-                  {write && p.id ? (
-                    <Button variant="ghost" onClick={() => { if (window.confirm("Delete this override?")) del.mutate(p.id!); }}>Delete</Button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable columns={slaCols} data={sla.data ?? []} getRowId={(p) => `${p.severity}-${p.module ?? ""}`} />
       )}
       {editing ? <PolicyForm policy={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
     </Section>
@@ -467,7 +406,7 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
       resolve_minutes: resolveNum, at_risk_pct: atRiskNum, business_hours: businessHours,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSla() }); toast.success("Policy saved"); onClose(); },
-    onError: (e) => toast.error(errText(e, "Policy not saved.")),
+    onError: (e) => toast.error(errText(e, "Policy not saved")),
   });
 
   return (
@@ -476,11 +415,11 @@ function PolicyForm({ policy, onClose }: { policy: SlaPolicy | null; onClose: ()
         <Field label="Severity">
           <Select value={severity} onValueChange={(v) => setSeverity(v as TriageSeverity)} options={SEVERITIES.map((s) => ({ value: s, label: s }))} />
         </Field>
-        <Field label="Module (blank = all modules)"><input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
-        <Field label="Acknowledge minutes (optional)"><input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
-        <Field label="Resolve minutes"><input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
-        <Field label="At-risk %"><input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
-        <label className="flex items-center gap-2 text-[13px]">
+        <Field label="Module (blank = all modules)"><Input value={module} onChange={(e) => setModule(e.target.value)} /></Field>
+        <Field label="Acknowledge minutes (optional)"><Input type="number" min="0" value={ack} onChange={(e) => setAck(e.target.value)} /></Field>
+        <Field label="Resolve minutes"><Input type="number" min="1" value={resolve} onChange={(e) => setResolve(e.target.value)} /></Field>
+        <Field label="At-risk %"><Input type="number" min="1" max="99" value={atRisk} onChange={(e) => setAtRisk(e.target.value)} /></Field>
+        <label className="flex items-center gap-2 m-text-body">
           <input type="checkbox" checked={businessHours} onChange={(e) => setBusinessHours(e.target.checked)} />
           Business hours only
         </label>
@@ -500,17 +439,15 @@ function CalendarSection({ write }: { write: boolean }) {
   if (settings.isError) {
     return (
       <Section title="Working calendar">
-        <ErrorState message={errText(settings.error, "The calendar could not be read.")} onRetry={() => settings.refetch()} />
+        <ErrorState message={errText(settings.error, "The calendar could not be read")} onRetry={() => settings.refetch()} />
       </Section>
     );
   }
-  if (settings.isLoading) return <Section title="Working calendar"><p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Reading the calendar.</p></Section>;
+  if (settings.isLoading) return <Section title="Working calendar"><Skeleton height={160} /></Section>;
   return (
     <Section title="Working calendar">
       {!write ? (
-        <div className="text-[13px] rounded border p-3" style={{ borderColor: "var(--m-line)", color: "var(--m-ink-3)" }}>
-          Changing the calendar needs the manage settings permission.
-        </div>
+        <Notice tone="info">Changing the calendar needs the manage settings permission.</Notice>
       ) : null}
       {settings.data ? <CalendarForm settings={settings.data} write={write} /> : null}
     </Section>
@@ -534,12 +471,12 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
       holidays: list(holidaysText), fallback_user_id: fallback || null,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.triageSettings() }); toast.success("Calendar saved"); },
-    onError: (e) => toast.error(errText(e, "Calendar not saved.")),
+    onError: (e) => toast.error(errText(e, "Calendar not saved")),
   });
 
   return (
     <div className="flex flex-col gap-3 max-w-[480px]">
-      <Field label="Timezone"><input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
+      <Field label="Timezone"><Input value={timezone} disabled={!write} onChange={(e) => setTimezone(e.target.value)} /></Field>
       <Field label="Work days">
         <div className="flex gap-2">
           {DAYS.map((label, i) => {
@@ -553,14 +490,14 @@ function CalendarForm({ settings, write }: { settings: TriageSettings; write: bo
         </div>
       </Field>
       <div className="flex gap-3">
-        <Field label="Day starts"><input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>
-        <Field label="Day ends"><input type="time" value={workEnd} disabled={!write} onChange={(e) => setWorkEnd(e.target.value)} /></Field>
+        <Field label="Day starts"><Input type="time" value={workStart} disabled={!write} onChange={(e) => setWorkStart(e.target.value)} /></Field>
+        <Field label="Day ends"><Input type="time" value={workEnd} disabled={!write} onChange={(e) => setWorkEnd(e.target.value)} /></Field>
       </div>
       <Field label="Fallback user">
         <Select value={fallback} onValueChange={setFallback} options={[{ value: "", label: "None" }, ...users.map((u) => ({ value: u.id, label: u.name }))]} />
       </Field>
       <Field label="Holidays (YYYY-MM-DD, one per line)" error={badDates.length ? `Not a date: ${badDates.join(", ")}` : undefined}>
-        <textarea rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
+        <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} rows={4} value={holidaysText} disabled={!write} onChange={(e) => setHolidaysText(e.target.value)} />
       </Field>
       {write ? (
         <div>

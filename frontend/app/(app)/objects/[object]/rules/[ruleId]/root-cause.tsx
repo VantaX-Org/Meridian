@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Mono, Pill, Skeleton, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, Card, DataTable, EmptyState, Mono, Pill, Skeleton, type PillTone } from "@/design";
 import { getFindingRootCause, type RootCauseOrigin } from "@/lib/api/versions";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -43,24 +44,25 @@ export function RootCauseSection({ run, ruleId }: { run: string; ruleId: string 
   if (isError || !data) return null; // the failing records above stay usable without it
 
   return (
-    <section className="flex flex-col gap-2">
-      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Root cause</p>
+    <Card title="Root cause" padding="sm">
       {data.status === "computed" ? (
-        <>
-          <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink)" }}>{data.summary}</p>
+        <div className="flex flex-col gap-2">
+          <p style={{ color: "var(--m-ink)" }}>{data.summary}</p>
           <DataTable columns={columns} data={data.origins}
             getRowId={(o) => `${o.origin}|${o.username}|${o.tcode}`} />
           {data.analysed < data.total && (
-            <p className="text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
               Based on {data.analysed} of {data.total} failing records.
             </p>
           )}
-        </>
+        </div>
       ) : (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
-          {NOTE[data.status]}{data.detail ? ` ${data.detail}` : ""}
-        </p>
+        <EmptyState
+          title={NOTE[data.status] ?? "Root cause unavailable"}
+          detail={data.detail || undefined}
+          action={<Button variant="secondary" render={<Link href={`/runs/${run}?tab=steps`}>Open run steps</Link>} />}
+        />
       )}
-    </section>
+    </Card>
   );
 }

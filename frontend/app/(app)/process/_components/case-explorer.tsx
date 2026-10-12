@@ -6,7 +6,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, Drawer, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton } from "@/design";
+import { Button, DataTable, Drawer, EmptyState, ErrorState, Mono, Notice, Pill, Skeleton } from "@/design";
 import { getCaseEvents, listCases, type CaseRow, type ProcessFilterParams } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { formatDate } from "@/lib/format";
@@ -20,11 +20,12 @@ const COLUMNS: ColumnDef<CaseRow>[] = [
   { accessorKey: "events", header: "Events", cell: ({ row }) => fmtCount(row.original.events) },
 ];
 
-export function CaseExplorer({ runId, filters, caseId, onOpenCase }: {
+export function CaseExplorer({ runId, filters, caseId, onOpenCase, onClearFilters }: {
   runId: string;
   filters: ProcessFilterParams;
   caseId: string | null;
   onOpenCase: (caseId: string | null) => void;
+  onClearFilters?: () => void;
 }) {
   const params = { ...filters, limit: 200 };
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "cases", params), queryFn: () => listCases(runId, params) });
@@ -32,7 +33,8 @@ export function CaseExplorer({ runId, filters, caseId, onOpenCase }: {
     <>
       {q.isError ? <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />
         : !q.data ? <Skeleton height={320} />
-        : !q.data.items.length ? <EmptyState title="No cases in this view" detail="Widen the filters to include more cases." />
+        : !q.data.items.length ? <EmptyState title="No cases in this view" detail="Widen the filters to include more cases."
+          action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />
         : (
           <div className="grid gap-2">
             {q.data.total > q.data.items.length && (
@@ -76,8 +78,8 @@ function CaseDrawer({ runId, filters, caseId, onClose }: {
                     <strong>{e.activity}</strong>
                     {e.automated === true && <Pill tone="info">Automated</Pill>}
                   </span>
-                  <span className="text-[12px] leading-4" style={{ color: "var(--m-ink-3)" }}>
-                    {formatDate(e.ts, "datetime")}{e.resource ? ` · ${e.resource}` : ""}{e.doc_type ? ` · document type ${e.doc_type}` : ""}
+                  <span className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>
+                    {formatDate(e.ts, "datetime")}{e.resource ? `, ${e.resource}` : ""}{e.doc_type ? `, document type ${e.doc_type}` : ""}
                   </span>
                   {e.object_refs && (
                     <span className="flex flex-wrap gap-2">

@@ -5,6 +5,7 @@ import * as insightsApi from "@/lib/api/insights";
 import ReadinessPage from "../page";
 
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
 
@@ -29,13 +30,11 @@ describe("ReadinessPage", () => {
       configured: true,
     });
     renderWithQuery(<ReadinessPage />);
-    expect(await screen.findByText("Go")).toBeInTheDocument();
-    expect(screen.getByText("Material Master")).toBeInTheDocument();
-    expect(screen.getByText("Wave 1")).toBeInTheDocument();
-    expect(screen.getByText("100.0%")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Material Master Wave 1: go" })).toBeInTheDocument();
+    expect(screen.getByText("No blockers in this run")).toBeInTheDocument();
   });
 
-  it("gives each wave's sub-headers an accessible name that includes the wave", async () => {
+  it("lists blocked cells worst first in the blockers table", async () => {
     vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({
       version_id: "v1",
       threshold: 70,
@@ -46,11 +45,9 @@ describe("ReadinessPage", () => {
       configured: true,
     });
     renderWithQuery(<ReadinessPage />);
-    await screen.findByText("Go");
-    for (const wave of ["Wave 1", "Wave 2"]) {
-      expect(screen.getByRole("columnheader", { name: `${wave} readiness` })).toBeInTheDocument();
-      expect(screen.getByRole("columnheader", { name: `${wave} records blocked` })).toBeInTheDocument();
-    }
+    expect(await screen.findByRole("button", { name: "Material Master Wave 2: at-risk" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Records blocked" })).toBeInTheDocument();
+    expect(screen.getByText("At risk")).toBeInTheDocument();
   });
 
   it("shows a loading skeleton while the request is in flight", () => {

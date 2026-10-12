@@ -23,18 +23,20 @@ function Sequence({ activities }: { activities: string[] }) {
   );
 }
 
-export function VariantsTable({ runId, filters, canExport, onOpenCase }: {
+export function VariantsTable({ runId, filters, canExport, onOpenCase, onClearFilters }: {
   runId: string;
   filters: ProcessFilterParams;
   canExport: boolean;
   onOpenCase: (caseId: string) => void;
+  onClearFilters?: () => void;
 }) {
   const params = { ...filters, limit: 200 };
   const q = useQuery({ queryKey: queryKeys.processRunView(runId, "variants", params), queryFn: () => getVariants(runId, params) });
   if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   if (!q.data) return <Skeleton height={320} />;
   const rows = q.data.items;
-  if (!rows.length) return <EmptyState title="No variants in this view" detail="Widen the filters to include more cases." />;
+  if (!rows.length) return <EmptyState title="No variants in this view" detail="Widen the filters to include more cases."
+    action={onClearFilters && <Button variant="secondary" onClick={onClearFilters}>Clear filters</Button>} />;
 
   const columns: ColumnDef<VariantRow>[] = [
     { id: "rank", header: "Rank", cell: ({ row }) => (row.original.hash === OTHER_HASH ? "—" : row.index + 1) },
@@ -59,7 +61,7 @@ export function VariantsTable({ runId, filters, canExport, onOpenCase }: {
           <p>Fitness against the reference: <Pill tone={fitnessTone(v.fitness)}>{fmtFitness(v.fitness)}</Pill></p>
           {canExport && v.sample_case_ids.length > 0 && (
             <section className="grid gap-1">
-              <h3 className="font-semibold">Sample cases</h3>
+              <h2 className="font-semibold">Sample cases</h2>
               <ul className="flex flex-wrap gap-2">
                 {v.sample_case_ids.map((id) => (
                   <li key={id}><Button variant="ghost" onClick={() => onOpenCase(id)}><Mono>{id}</Mono></Button></li>

@@ -28,7 +28,7 @@ describe("admin AI page", () => {
     const spy = vi.spyOn(llmApi, "getLLMConfig").mockRejectedValue(new Error("network down"));
     vi.spyOn(llmApi, "getLLMProviders").mockResolvedValue(PROVIDERS);
     renderWithQuery(<AdminAIPage />);
-    await waitFor(() => expect(screen.getByText(/network down/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Could not reach the server/)).toBeInTheDocument());
     const retry = screen.getByRole("button", { name: /retry/i });
     spy.mockResolvedValue(CONFIG);
     retry.click();

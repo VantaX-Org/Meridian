@@ -6,7 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { MoreHorizontal } from "lucide-react";
-import { Button, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, Mono, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
+import Link from "next/link";
+import { Button, Card, DataTable, Dialog, Drawer, EmptyState, ErrorState, ExportMenu, Field, Menu, PageHeader, Pill, Select, Skeleton, Stat, Tabs } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { downloadCsv } from "@/lib/actions";
 import { getRoleMatrix } from "@/lib/api/auth";
@@ -34,7 +35,6 @@ const ROLE_META: Record<UserRole, { label: string; desc: string }> = {
   process_analyst: { label: "Process analyst", desc: "Read everything, run process discovery and export as-is process models." },
 };
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_META[r].label }));
-const WEEK = 7 * 24 * 3600 * 1000;
 
 export default function AdminUsersPage() {
   const [tabRaw, setTab] = useUrlState("tab", "users");
@@ -44,20 +44,15 @@ export default function AdminUsersPage() {
 
   if (!canManage) {
     return (
-      <div className="flex flex-col gap-2 p-6">
-        <strong>Users and audit needs the <Mono>manage_users</Mono> permission</strong>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-          Ask an administrator to change roles or review the audit log.
-        </p>
+      <div className="p-6">
+        <EmptyState title="Needs the manage_users permission" detail="Ask an administrator to change roles or review the audit log." ghost="list" action={<Button variant="secondary" render={<Link href="/home">Back to home</Link>} />} />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <header>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Who can sign in, with which role, and what they did.</p>
-      </header>
+      <PageHeader title="Users" meta="Who can sign in, with which role, and what they did" />
       <Tabs
         value={tab}
         onValueChange={setTab}
@@ -82,11 +77,6 @@ function UsersView() {
   const usersQ = useQuery({ queryKey: queryKeys.users(), queryFn: getUsers });
   const users = useMemo(() => usersQ.data?.users ?? [], [usersQ.data]);
   const active = users.filter((u) => u.is_active);
-  const [mountedAt] = useState(() => Date.now());
-  const activeWeek = useMemo(
-    () => users.filter((u) => u.is_active && u.last_login && new Date(u.last_login).getTime() > mountedAt - WEEK).length,
-    [users, mountedAt],
-  );
   const neverSignedIn = active.filter((u) => !u.last_login).length;
   const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.users() });
 
@@ -95,7 +85,7 @@ function UsersView() {
     onSuccess: (_, u) => { toast.success(`${u.name} removed`); setEditing(null); refresh(); },
     onError: (e) => toast.error(
       (e as { response?: { status?: number } }).response?.status === 409
-        ? "This user is referenced by audit or stewardship records. Deactivate them instead."
+        ? "This user is referenced by audit or stewardship records, deactivate them instead"
         : `Not removed. ${apiErrorMessage(e)}`,
     ),
   });
@@ -103,7 +93,7 @@ function UsersView() {
   const columns = useMemo<ColumnDef<User, unknown>[]>(() => [
     {
       id: "user", header: "User",
-      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{row.original.email}</div></span>,
+      cell: ({ row }) => <span><strong>{row.original.name}</strong><div className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{row.original.email}</div></span>,
     },
     { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original.role]?.label ?? row.original.role}</span> },
     { id: "active", header: "Status", cell: ({ row }) => <Pill tone={row.original.is_active ? "go" : "neutral"}>{row.original.is_active ? "Active" : "Suspended"}</Pill> },
@@ -136,17 +126,15 @@ function UsersView() {
       </div>
 
       <div className="flex gap-4">
-        <Stat label="Users" value={usersQ.isLoading ? undefined : users.length} />
-        <Stat label="Active this week" value={usersQ.isLoading ? undefined : activeWeek} />
         <Stat label="Never signed in" value={usersQ.isLoading ? undefined : neverSignedIn} />
       </div>
 
       {usersQ.isError ? (
-        <ErrorState message={(usersQ.error as Error)?.message || "Could not load users."} onRetry={() => usersQ.refetch()} />
+        <ErrorState message={apiErrorMessage(usersQ.error)} onRetry={() => usersQ.refetch()} />
       ) : usersQ.isLoading ? <Skeleton height={240} /> : users.length ? (
         <DataTable columns={columns} data={users} getRowId={(u) => u.id} onRowClick={(u) => setEditing(u)} />
       ) : (
-        <EmptyState title="No users yet. Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
+        <EmptyState title="No users yet" detail="Invite the first steward or analyst." action={<Button onClick={() => setInvite(true)}>Invite user</Button>}/>
       )}
 
       <Drawer open={invite} onOpenChange={setInvite} title="Invite a user">
@@ -174,42 +162,32 @@ function RolesView() {
   const matrix = matrixQ.data;
   const actions = useMemo(() => Array.from(new Set(Object.values(matrix ?? {}).flat())).sort(), [matrix]);
 
+  const matrixCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
+    { id: "role", header: "Role", cell: ({ row }) => <span>{ROLE_META[row.original].label}<div className="m-text-label" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[row.original].desc}</div></span> },
+    ...actions.map((a): ColumnDef<UserRole, unknown> => ({
+      id: a, header: a,
+      cell: ({ row }) => (matrix?.[row.original]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>),
+    })),
+  ], [actions, matrix]);
+  const holderCols = useMemo<ColumnDef<UserRole, unknown>[]>(() => [
+    { id: "role", header: "Role", cell: ({ row }) => <strong>{ROLE_META[row.original].label}</strong> },
+    { id: "n", header: "Users", cell: ({ row }) => users.filter((u) => u.role === row.original).length },
+    { id: "who", header: "Who", cell: ({ row }) => users.filter((u) => u.role === row.original).map((u) => u.name).join(", ") },
+  ], [users]);
+
   return (
     <div className="flex flex-col gap-6 pt-4">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API&apos;s role matrix. The frontend never keeps its own copy.</p>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Permissions come from the API role matrix, the frontend keeps no copy.</p>
       {matrixQ.isError ? (
-        <ErrorState message={(matrixQ.error as Error)?.message || "Could not load the role matrix."} onRetry={() => matrixQ.refetch()} />
+        <ErrorState message={apiErrorMessage(matrixQ.error)} onRetry={() => matrixQ.refetch()} />
       ) : matrix ? (
-        <section>
-          <h2 className="text-[13px] font-semibold mb-2">Role matrix</h2>
-          <div className="overflow-x-auto">
-            <table className="text-[12px]">
-              <thead><tr><th className="text-left pr-3">Role</th>{actions.map((a) => <th key={a} className="text-left pr-3 font-mono">{a}</th>)}</tr></thead>
-              <tbody>
-                {ROLES.map((r) => (
-                  <tr key={r}>
-                    <td className="pr-3 py-1">{ROLE_META[r].label}<div className="text-[11px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[r].desc}</div></td>
-                    {actions.map((a) => <td key={a} className="text-center">{matrix[r]?.includes(a) ? <span aria-label="Allowed">Yes</span> : <span className="sr-only">Not allowed</span>}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <Card title="Role matrix" padding="sm">
+          <DataTable columns={matrixCols} data={ROLES} getRowId={(r) => r} />
+        </Card>
       ) : <Skeleton height={240} />}
-      <section>
-        <h2 className="text-[13px] font-semibold mb-2">Who holds each role</h2>
-        <table className="text-[12px]">
-          <tbody>
-            {ROLES.filter((r) => users.some((u) => u.role === r)).map((r) => (
-              <tr key={r}>
-                <td className="pr-3 py-1" style={{ width: 160 }}><strong>{ROLE_META[r].label}</strong> <span style={{ color: "var(--m-ink-3)" }}>{users.filter((u) => u.role === r).length}</span></td>
-                <td>{users.filter((u) => u.role === r).map((u) => u.name).join(", ")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <Card title="Who holds each role" padding="sm">
+        <DataTable columns={holderCols} data={ROLES.filter((r) => users.some((u) => u.role === r))} getRowId={(r) => r} />
+      </Card>
     </div>
   );
 }
@@ -217,6 +195,12 @@ function RolesView() {
 function AuditView() {
   const auditQ = useQuery({ queryKey: queryKeys.auditEntries(50), queryFn: () => getAuditEntries({ limit: 50 }) });
   const entries: AuditEntry[] = auditQ.data?.entries ?? [];
+  const auditCols = useMemo<ColumnDef<AuditEntry, unknown>[]>(() => [
+    { id: "when", header: "When", cell: ({ row }) => <time dateTime={row.original.created_at}>{relativeTime(row.original.created_at)}</time> },
+    { id: "who", header: "Actor", cell: ({ row }) => (row.original.actor_email ? row.original.actor_email.split("@")[0] : "system") },
+    { id: "what", header: "Action", cell: ({ row }) => `${row.original.action}, ${row.original.entity_type}` },
+    { id: "ctx", header: "Context", cell: ({ row }) => `${row.original.method} ${row.original.path} returned ${row.original.status_code}${row.original.entity_id ? `, ${row.original.entity_id.slice(0, 8)}` : ""}` },
+  ], []);
 
   return (
     <div className="flex flex-col gap-4 pt-4">
@@ -229,24 +213,10 @@ function AuditView() {
         />
       </div>
       {auditQ.isError ? (
-        <ErrorState message={(auditQ.error as Error)?.message || "Could not load the audit log."} onRetry={() => auditQ.refetch()} />
+        <ErrorState message={apiErrorMessage(auditQ.error)} onRetry={() => auditQ.refetch()} />
       ) : auditQ.isLoading ? <Skeleton height={240} /> : entries.length ? (
-        <div className="overflow-x-auto">
-          <table className="text-[12px]" aria-label="Audit log">
-            <thead><tr><th className="text-left pr-3">When</th><th className="text-left pr-3">Actor</th><th className="text-left pr-3">Action</th><th className="text-left pr-3">Context</th></tr></thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td className="pr-3 py-1"><time dateTime={e.created_at}>{relativeTime(e.created_at)}</time></td>
-                  <td className="pr-3">{e.actor_email ? e.actor_email.split("@")[0] : "system"}</td>
-                  <td className="pr-3">{e.action}, {e.entity_type}</td>
-                  <td style={{ color: "var(--m-ink-3)" }}>{e.method} {e.path} returned {e.status_code}{e.entity_id ? `, ${e.entity_id.slice(0, 8)}` : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No audit activity recorded yet.</p>}
+        <DataTable columns={auditCols} data={entries} getRowId={(e) => e.id} />
+      ) : <EmptyState title="No audit activity yet" detail="Changes to users, rules and data are recorded here." ghost="list" action={<Button variant="secondary" onClick={() => void auditQ.refetch()}>Refresh</Button>} />}
     </div>
   );
 }
@@ -264,14 +234,14 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
   return (
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>{user.email}</p>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{user.email}</p>
       <Field label="Role">
         <Select options={ROLE_OPTIONS} value={role} onValueChange={(v) => setRole(v as UserRole)} />
       </Field>
-      <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
-      <label className="flex items-center gap-2 text-[13px]">
+      <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{ROLE_META[role].desc}</p>
+      <label className="flex items-center gap-2 m-text-body">
         <input type="checkbox" checked={isActive} onChange={(e) => setActive(e.target.checked)} />
-        <span>Active. {isActive ? "This user can sign in." : "Sign-in is blocked."}</span>
+        <span>Active, {isActive ? "this user can sign in" : "sign-in is blocked"}</span>
       </label>
       <div className="flex gap-2">
         <Button type="submit" disabled={m.isPending}>Save</Button>
@@ -281,12 +251,12 @@ function EditForm({ user, onDone, onRemove, removing }: { user: User; onDone: ()
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen} title={`Remove ${user.name}?`}>
         <div className="flex flex-col gap-3">
-          <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-            Why remove {user.name}? Their stewardship history stays attributed to them.
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
+            Why remove {user.name}? Their stewardship history stays attributed to them
           </p>
           {/* ponytail: this reason is a client-side confirmation gate only, same as the
               legacy ReasonButton it replaces — deleteUser() takes no reason parameter. */}
-          <textarea aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+          <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }} aria-label="Reason for removal" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           <div className="flex gap-2">
             <Button
               variant="secondary"

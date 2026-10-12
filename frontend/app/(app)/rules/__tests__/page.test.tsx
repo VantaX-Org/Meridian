@@ -19,7 +19,7 @@ vi.mock("@/hooks/use-day-one", () => ({
 // actually updates) right after every selection.
 const searchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => "/rules",
   useSearchParams: () => searchParams,
 }));
@@ -94,5 +94,30 @@ describe("rules page state param", () => {
     expect(screen.getByText("Disabled rule")).toBeInTheDocument();
     expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
     searchParams.delete("state");
+  });
+});
+
+describe("rule enable switch", () => {
+  it("toggles optimistically and rolls back when the update fails", async () => {
+    vi.spyOn(rulesApi, "getRules").mockResolvedValue({ rules: [RULE], total: 1, limit: 1000, offset: 0 });
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    const update = vi.spyOn(rulesApi, "updateRule").mockRejectedValue(new Error("nope"));
+    renderWithQuery(<RulesPage />);
+    const sw = await screen.findByRole("switch", { name: "Enabled: Vendor number is mandatory" });
+    expect(sw).toHaveAttribute("aria-checked", "true");
+    await userEvent.setup().click(sw);
+    expect(update).toHaveBeenCalledWith("r1", { enabled: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "true"));
+  });
+
+  it("flips the switch state when the update succeeds", async () => {
+    let enabled = true;
+    vi.spyOn(rulesApi, "getRules").mockImplementation(async () => ({ rules: [{ ...RULE, enabled }], total: 1, limit: 1000, offset: 0 }));
+    vi.spyOn(rulesApi, "getRulesSummary").mockResolvedValue({ summary: [] });
+    vi.spyOn(rulesApi, "updateRule").mockImplementation(async () => { enabled = false; return { ...RULE, enabled }; });
+    renderWithQuery(<RulesPage />);
+    const sw = await screen.findByRole("switch", { name: /Enabled:/ });
+    await userEvent.setup().click(sw);
+    await waitFor(() => expect(screen.getByRole("switch", { name: /Enabled:/ })).toHaveAttribute("aria-checked", "false"));
   });
 });

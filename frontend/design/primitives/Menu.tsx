@@ -6,6 +6,8 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 export interface MenuItemDef {
   label: string;
   onSelect: () => void;
+  /** When defined, the item is a checkbox item that stays open on select. */
+  checked?: boolean;
 }
 
 export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDef[] }) {
@@ -16,11 +18,24 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItemDe
       <BaseMenu.Portal>
         <BaseMenu.Positioner>
           <BaseMenu.Popup className="m-popup">
-            {items.map((item) => (
-              <BaseMenu.Item key={item.label} onClick={item.onSelect} className="m-popup-item">
-                {item.label}
-              </BaseMenu.Item>
-            ))}
+            {items.map((item) =>
+              item.checked === undefined ? (
+                <BaseMenu.Item key={item.label} onClick={item.onSelect} className="m-popup-item">
+                  {item.label}
+                </BaseMenu.Item>
+              ) : (
+                <BaseMenu.CheckboxItem key={item.label} checked={item.checked} onCheckedChange={item.onSelect} closeOnClick={false} className="m-popup-item">
+                  <span aria-hidden className="inline-block w-4">
+                    {item.checked && (
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 4.2 3.2 6.4 7 1.6" />
+                      </svg>
+                    )}
+                  </span>
+                  {item.label}
+                </BaseMenu.CheckboxItem>
+              ),
+            )}
           </BaseMenu.Popup>
         </BaseMenu.Positioner>
       </BaseMenu.Portal>

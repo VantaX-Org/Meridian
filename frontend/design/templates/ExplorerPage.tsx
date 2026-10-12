@@ -5,6 +5,7 @@ import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 
 export function ExplorerPage({
+  header,
   filterBar,
   toolbarEnd,
   summary,
@@ -13,7 +14,12 @@ export function ExplorerPage({
   emptyProps,
   errorProps,
   drawer,
+  dense = true,
 }: {
+  /** Row density of the table this page renders; sizes the loading skeleton. Matches DataTable's default. */
+  dense?: boolean;
+  /** Page header slot, rendered above the filter bar (usually a `PageHeader`). */
+  header?: ReactNode;
   filterBar?: ReactNode;
   /** Right-aligned content in the filter bar row (or its own row with no filterBar), e.g. an ExportMenu. */
   toolbarEnd?: ReactNode;
@@ -21,7 +27,7 @@ export function ExplorerPage({
   table: ReactNode;
   /** Swaps the table region for a skeleton, empty or error state. */
   state?: "loading" | "empty" | "error";
-  /** `summary`: a one-sentence line shown in the summary slot in `--m-ink-3` (spec 7.16). */
+  /** `summary` is still read by the objects page; kept until page tasks drop it. */
   emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost; summary?: string };
   errorProps?: { message: string; onRetry?: () => void };
   /** A drawer rendered alongside the page, e.g. a row-detail panel. */
@@ -30,15 +36,18 @@ export function ExplorerPage({
   let body = table;
   let summarySlot = summary;
   if (state === "loading") {
-    // Spec 7.15 / screens.md: header + rows at table row height, staggered in.
+    // Toolbar, header and seven rows at the table's real heights, so loading does not shift the layout.
+    const rowH = dense ? "var(--m-row-h-dense)" : "var(--m-row-h)";
     body = (
       <div className="m-motion-stagger flex flex-col gap-1" data-state="loading">
-        {Array.from({ length: 7 }, (_, i) => <Skeleton key={i} height={36} />)}
+        <div style={{ height: "var(--m-control-h)" }}><Skeleton width={320} height="100%" /></div>
+        <div style={{ height: rowH }}><Skeleton height="100%" /></div>
+        {Array.from({ length: 7 }, (_, i) => <div key={i} style={{ height: rowH }}><Skeleton height="100%" /></div>)}
       </div>
     );
   } else if (state === "empty") {
     if (emptyProps?.summary) {
-      summarySlot = <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
+      summarySlot = <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{emptyProps.summary}</p>;
     }
     body = (
       <EmptyState
@@ -54,6 +63,7 @@ export function ExplorerPage({
 
   return (
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+      {header}
       {toolbarEnd ? (
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">{filterBar}</div>

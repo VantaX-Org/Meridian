@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { AuthFrame, AuthNotice, AuthSpinner, PasswordField, authActionsClass, authFormClass, authInputClass, authInputStyle, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
-import { Button, Field } from "@/design";
+import { AuthFrame, PasswordField, authFormClass, authLinkClass, authLinkStyle } from "@/components/auth/auth-frame";
+import { Button, Field, Notice } from "@/design";
 import { resolveNavHref } from "@/lib/nav";
 import { isRole } from "@/hooks/use-role";
 
@@ -46,6 +46,13 @@ export default function SignInPage() {
     if (error) noticeRef.current?.focus();
   }, [error]);
 
+  useEffect(() => {
+    if (!error) return;
+    const clear = (e: KeyboardEvent) => { if (e.key === "Escape") setError(null); };
+    window.addEventListener("keydown", clear);
+    return () => window.removeEventListener("keydown", clear);
+  }, [error]);
+
   const invalid = !EMAIL_RE.test(email.trim()) || !password;
   const emailError = attempted && !EMAIL_RE.test(email.trim()) ? "Enter your work email" : undefined;
   const passwordError = attempted && !password ? "Enter your password" : undefined;
@@ -71,42 +78,29 @@ export default function SignInPage() {
   };
 
   return (
-    <AuthFrame title="Sign in"
-      side={
-        <>
-          <h2 className="text-[13px] leading-[18px] font-medium" style={{ color: "var(--m-ink)" }}>Your SAP data stays on this server.</h2>
-          <ol className="flex list-decimal flex-col gap-1 pl-5 marker:[color:var(--m-ink-3)]">
-            <li><strong>Extracts and uploads</strong> are checked here, inside your own deployment.</li>
-            <li><strong>Findings, records and reports</strong> are stored in this deployment&apos;s database.</li>
-            <li><strong>The AI assistant</strong> sees field names and aggregate counts, never record values. A cloud model provider, if your administrator picked one, receives only those.</li>
-            <li><strong>The licence check</strong> is the only other call that leaves the server.</li>
-          </ol>
-        </>
-      }>
+    <AuthFrame title="Sign in">
       <form className={authFormClass} onSubmit={handleSubmit} noValidate>
-        {notice && !error ? <AuthNotice tone="success">{notice}</AuthNotice> : null}
+        {notice && !error ? <Notice tone="info">{notice}</Notice> : null}
         {error ? (
           <div ref={noticeRef} tabIndex={-1}>
-            <AuthNotice tone="danger" title={error.title}>
+            <Notice tone="danger" title={error.title}>
               {error.title === "Email or password is wrong."
                 ? error.detail ?? "Check your email and password and try again."
                 : null}
-            </AuthNotice>
+            </Notice>
           </div>
         ) : null}
         <Field label="Work email" error={emailError}>
-          <input className={authInputClass} style={authInputStyle} type="email" required autoComplete="username"
+          <input className="m-input w-full" type="email" required autoComplete="username"
             inputMode="email" autoFocus readOnly={loading} placeholder="you@company.com"
-            aria-label="Work email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <PasswordField label="Password" value={password} onChange={setPassword} autoComplete="current-password"
           error={passwordError} readOnly={loading} />
-        <div className={`${authActionsClass} justify-end`}>
+        <div className="flex items-center">
           <Link className={authLinkClass} style={authLinkStyle} href="/forgot-password">Forgot password?</Link>
         </div>
-        <Button type="submit" aria-busy={loading} disabled={loading} className="h-10 w-full">
-          {loading ? <><AuthSpinner /> Signing in…</> : "Sign in"}
-        </Button>
+        <Button type="submit" pending={loading} className="w-full">Sign in</Button>
       </form>
     </AuthFrame>
   );

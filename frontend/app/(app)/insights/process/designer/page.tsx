@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ErrorState, Mono, Notice, Select, Skeleton, Stat } from "@/design";
+import { Button, ErrorState, Input, Mono, Notice, PageHeader, Select, Skeleton, Stat } from "@/design";
 import { useFindingHref, useLatestVersion } from "@/components/process/shared";
 import {
   adoptVariant, createModel, getModel, getOverlay, getReference, listModels, listVariants, saveFailure, saveModel,
@@ -13,7 +13,9 @@ import { downloadAuthenticated } from "@/lib/api/download";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
+import { domainOf } from "@/design/tokens";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
+import "./designer.css";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
 import { Discovered, skeletonFrom } from "./_components/discovered";
@@ -22,6 +24,7 @@ import { LevelTable } from "./_components/level-table";
 import { ProcessTree, type TreeActions } from "./_components/tree";
 import { OldVersionBanner, VersionsMenu } from "./_components/versions";
 
+const PAGE = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" } as const;
 const NEW_NAME = ["New process", "New process area", "New process group", "New sub-process"];
 
 export default function ProcessDesigner() {
@@ -54,11 +57,8 @@ export default function ProcessDesigner() {
   const failed = reference ? ref.error : saved.error;
   if (!doc) {
     return (
-      <div className="flex flex-col gap-4 p-6">
-        <div>
-          <h2 className="text-[22px] font-semibold">Process designer</h2>
-          <p style={{ color: "var(--m-ink-2)" }}>Design the process model and see where the data behind it breaks.</p>
-        </div>
+      <div className="flex flex-col gap-4" style={PAGE}>
+        <PageHeader title="Process designer" meta="Design the process model and see where the data behind it breaks." />
         {failed ? (
           <ErrorState message={apiErrorMessage(failed)}
             onRetry={() => void (reference ? ref.refetch() : saved.refetch())} />
@@ -198,15 +198,10 @@ function Editor(p: EditorProps) {
     signavioExportUrl(model, viewingOld ? versionNo : undefined, overlayOn ? p.latestId : undefined), "process-model.zip");
 
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-[22px] font-semibold">Process designer</h2>
-          <p style={{ color: "var(--m-ink-2)" }}>
-            {reference ? "The shipped reference model, read-only. Create a model from it to edit." : `Version ${versionNo} of ${currentVersion}. Changes are saved as a new version.`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-4" style={PAGE}>
+      <PageHeader title="Process designer"
+        meta={reference ? "Read-only reference model, create a model to edit" : `Version ${versionNo} of ${currentVersion}, saved as a new version on change`}
+        actions={<>
           <Select
             label="Process model"
             value={model}
@@ -215,13 +210,11 @@ function Editor(p: EditorProps) {
           {!reference ? <VersionsMenu modelId={model} shown={viewingOld ? versionNo : null} onPick={(no) => go({ v: no ? String(no) : null })} /> : null}
           {canDesign ? <Button variant="secondary" onClick={() => setNaming(naming === null ? "" : null)}>New model</Button> : null}
           {canExport ? <Button variant="secondary" disabled={dirty} onClick={() => void exportZip()}>Export to Signavio</Button> : null}
-        </div>
-      </div>
+        </>} />
 
       {naming !== null ? (
         <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (naming.trim()) create.mutate({ name: naming.trim(), from: model }); }}>
-          <input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)}
-            className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+          <Input aria-label="Model name" autoFocus value={naming} onChange={(e) => setNaming(e.target.value)} />
           <Button variant="primary" type="submit" disabled={!naming.trim() || create.isPending}>Create from {reference ? "reference" : "this model"}</Button>
           <Button variant="ghost" onClick={() => setNaming(null)}>Close</Button>
         </form>
@@ -248,16 +241,15 @@ function Editor(p: EditorProps) {
       {fail?.kind === "other" ? <Notice tone="danger" title="The model was not saved">{fail.message}</Notice> : null}
       {dirty && editable ? (
         <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-          <span>Unsaved changes</span>
-          <input aria-label="Version note" placeholder="What changed" value={note} onChange={(e) => setNote(e.target.value)}
-            className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }} />
+          <span className="m-text-body">Unsaved changes</span>
+          <Input aria-label="Version note" placeholder="What changed" value={note} onChange={(e) => setNote(e.target.value)} />
           <Button variant="primary" type="submit" disabled={save.isPending}>Save</Button>
           <Button variant="ghost" onClick={() => { setDoc(initial); setFail(null); }}>Discard</Button>
         </form>
       ) : null}
 
       <div className="flex items-center gap-2">
-        <span>Overlay</span>
+        <span className="m-text-body">Overlay</span>
         <Button variant={overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: null })}>Latest analysis</Button>
         <Button variant={!overlayOn ? "primary" : "secondary"} onClick={() => go({ overlay: "none" })}>None</Button>
       </div>
@@ -282,10 +274,10 @@ function Editor(p: EditorProps) {
           {l4 ? (
             <>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="text-[17px] font-semibold">{l4.name}</h2>
+                <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>{l4.name}</h2>
                 <Button variant="secondary" onClick={() => go({ attr: l4.id })}>Sub-process details</Button>
               </div>
-              <DesignerCanvas key={l4.id} l4={l4} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
+              <DesignerCanvas key={l4.id} l4={l4} domain={domainOf(doc.l1.find((x) => D.locate({ ...doc, l1: [x] }, l4.id))?.modules[0])} overlay={ov} selected={attr} editable={editable} canDesign={canDesign} onBlocked={blocked}
                 onSelect={(id) => go({ attr: id })}
                 onMove={(id, x, y) => edit((d) => D.moveNode(d, l4.id, id, x, y))}
                 onConnect={(s, t) => edit((d) => D.connect(d, l4.id, s, t))}

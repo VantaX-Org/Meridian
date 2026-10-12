@@ -5,8 +5,11 @@ import { renderWithQuery } from "@/__tests__/render";
 import * as masterRecordsApi from "@/lib/api/master-records";
 import GoldenRecordsPage from "../page";
 
+const mockParams = vi.hoisted(() => ({ value: "" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/x",
+  useSearchParams: () => new URLSearchParams(mockParams.value),
 }));
 
 describe("GoldenRecordsPage", () => {
@@ -49,11 +52,10 @@ describe("GoldenRecordsPage", () => {
     await waitFor(() => expect((masterRecordsApi.getMasterRecords as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(calls));
   });
 
-  it("includes max_confidence in the request when set", async () => {
+  it("reads max_confidence from the URL into the request", async () => {
     vi.spyOn(masterRecordsApi, "getMasterRecords").mockResolvedValue({ records: [], total: 0, page: 1, per_page: 100 });
+    mockParams.value = "max=80";
     renderWithQuery(<GoldenRecordsPage />);
-    await waitFor(() => expect(masterRecordsApi.getMasterRecords).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText("Max confidence %"), { target: { value: "80" } });
     await waitFor(() =>
       expect(masterRecordsApi.getMasterRecords).toHaveBeenLastCalledWith(
         expect.objectContaining({ max_confidence: 0.8 })

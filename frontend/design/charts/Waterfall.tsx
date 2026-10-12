@@ -41,7 +41,7 @@ export function Waterfall({ data, onPointClick, label }: { data: ChartPoint[]; o
         <RBar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none" />
         <RBar dataKey="value" name={label ?? "Change"} stackId="w" radius={[3, 3, 0, 0]} onClick={(_, index) => onPointClick?.(data[index])}>
           {bars.map((p) => (
-            <Cell key={p.x} fill={p.total ? chartTheme.threshold : p.y >= 0 ? chartTheme.pass : chartTheme.critical} />
+            <Cell key={p.x} fill={p.total ? chartTheme.accent : p.y >= 0 ? chartTheme.pass : chartTheme.critical} />
           ))}
         </RBar>
       </BarChart>

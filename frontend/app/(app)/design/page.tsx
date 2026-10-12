@@ -1,5 +1,5 @@
 import {
-  Button, IconButton, Pill, Badge, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
+  Button, Card, IconButton, Pill, Badge, PageHeader, SeverityDot, Delta, Stat, ScoreRing, Skeleton, Mono,
 } from "@/design";
 
 import { ExportDemo } from "./export-demo";
@@ -10,15 +10,13 @@ export const dynamic = "force-dynamic";
 /** Storybook-free visual check (spec section 13). Static, no data, behind sign-in; served in production so the Aurora specs can cover it. */
 export default function DesignGalleryPage() {
   return (
-    <div className="flex flex-col gap-8 p-6">
+    <div className="flex flex-col gap-4 p-6">
+      <PageHeader title="Design gallery" meta="Light and dark side by side" />
+      <div className="grid gap-4 xl:grid-cols-2">
       {(["light", "dark"] as const).map((theme) => (
-        <section
-          key={theme}
-          data-theme={theme}
-          className="flex flex-col gap-4 p-6 rounded border"
-          style={{ background: "var(--m-canvas)", borderColor: "var(--m-line)" }}
-        >
-          <h2 style={{ color: "var(--m-ink)" }}>{theme}</h2>
+        <div key={theme} data-theme={theme} className="rounded p-2" style={{ background: "var(--m-canvas)", color: "var(--m-ink)" }}>
+        <Card title={theme === "light" ? "Light" : "Dark"}>
+        <div className="flex flex-col gap-4">
           <div className="flex gap-2 items-center">
             <Button>Primary</Button>
             <Button variant="secondary">Secondary</Button>
@@ -52,8 +50,11 @@ export default function DesignGalleryPage() {
             <ExportDemo />
           </div>
           <GalleryMore />
-        </section>
+        </div>
+        </Card>
+        </div>
       ))}
+      </div>
     </div>
   );
 }

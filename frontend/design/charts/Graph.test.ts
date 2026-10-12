@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { layoutGraph } from "./Graph";
+import { edgeBand, edgeColor, edgeWidth, layoutGraph } from "./Graph";
 
 describe("layoutGraph", () => {
   it("is deterministic for the same input", () => {
@@ -26,5 +26,29 @@ describe("layoutGraph", () => {
     const nodes = [{ id: "a", size: 1 }, { id: "b", size: 1 }, { id: "c", size: 1 }];
     const points = layoutGraph(nodes, [], { iterations: 10 });
     expect(points.map((p) => p.id).sort()).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("edge styling", () => {
+  it("edgeWidth maps weight 0 to 1 and weight 1 to 5, clamped", () => {
+    expect(edgeWidth(0)).toBe(1);
+    expect(edgeWidth(1)).toBe(5);
+    expect(edgeWidth(0.5)).toBe(3);
+    expect(edgeWidth(-2)).toBe(1);
+    expect(edgeWidth(9)).toBe(5);
+  });
+
+  it("edgeBand splits at 0.25 and 0.6", () => {
+    expect(edgeBand(0.1)).toBe("low");
+    expect(edgeBand(0.25)).toBe("mid");
+    expect(edgeBand(0.6)).toBe("mid");
+    expect(edgeBand(0.61)).toBe("high");
+  });
+
+  it("edgeColor puts bottleneck over rework over band", () => {
+    expect(edgeColor({ weight: 0.9, bottleneck: true, rework: true })).toBe("var(--m-critical)");
+    expect(edgeColor({ weight: 0.9, rework: true })).toBe("var(--m-high)");
+    expect(edgeColor({ weight: 0.9 })).toBe("var(--m-accent)");
+    expect(edgeColor({ weight: 0.1 })).toBe("var(--m-line-strong)");
   });
 });

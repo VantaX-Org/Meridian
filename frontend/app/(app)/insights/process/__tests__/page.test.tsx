@@ -50,7 +50,7 @@ describe("ProcessInsightsPage", () => {
     });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([]);
     renderWithQuery(<ProcessInsightsPage />);
-    await waitFor(() => expect(screen.getByText("Procure to pay — gates")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Gates")).toBeInTheDocument());
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getByText("Map")).toBeInTheDocument();
   });

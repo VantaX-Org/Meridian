@@ -21,7 +21,8 @@ export function Radar({ data, onPointClick, label }: { data: ChartPoint[]; onPoi
           dataKey="y"
           name={label ?? "Score"}
           stroke={chartTheme.series[0]}
-          fill={chartTheme.area}
+          strokeWidth={2}
+          fill={chartTheme.seriesFill[0]}
           dot={(dotProps: DotItemDotProps) => (
             <circle
               key={dotProps.index}

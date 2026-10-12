@@ -10,6 +10,7 @@ import ExecPage from "../page";
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("run=v1"),
 }));
+vi.mock("@/lib/api/versions", () => ({ getVersions: async () => ({ versions: [] }) }));
 vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 
 // useDayOne() needs LocalAuthProvider context, which this test does not set up;
@@ -25,7 +26,7 @@ function renderWithQuery(ui: React.ReactElement) {
 }
 
 describe("ExecPage", () => {
-  it("renders the narrative and exports the PDF via the export menu", async () => {
+  it("renders the narrative and exports the PDF", async () => {
     vi.spyOn(insightsApi, "getExec").mockResolvedValue({
       version_id: "v1",
       narrative: "Readiness improved three points since last run.",
@@ -39,7 +40,7 @@ describe("ExecPage", () => {
     renderWithQuery(<ExecPage />);
 
     expect(await screen.findByText(/readiness improved three points/i)).toBeInTheDocument();
-    const exportButton = await screen.findByRole("button", { name: /^export$/i });
+    const exportButton = await screen.findByRole("button", { name: /executive report \(pdf\)/i });
     fireEvent.click(exportButton);
     await waitFor(() => expect(download).toHaveBeenCalledWith("/api/v1/reports/executive/v1.pdf", "executive_v1.pdf"));
   });
@@ -57,7 +58,7 @@ describe("ExecPage", () => {
       .mockResolvedValueOnce({
         version_id: "v1",
         narrative: "Recovered after retry.",
-        readiness_cells: [],
+        readiness_cells: [{ module: "material_master", wave: "wave_1", verdict: "go", blocker_count: 0, dqs: 91, score: 100, records_blocked: 0 }],
         waterfall: [],
         impact_rows: [],
         owner_rows: [],

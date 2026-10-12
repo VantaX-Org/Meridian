@@ -110,10 +110,18 @@ function RunSelectorSlot() {
   return <RunSelector runs={runs} systems={scopeFilter.systems} />;
 }
 
-/** The brand hairline at the top of the content column; animates only while a job runs. */
-function MeridianLine() {
+/** 2px track at the top of the content column; the accent fill shows only while a job runs. The track is always
+ * rendered so the layout below never shifts. */
+function JobProgressBar() {
   const { active } = useJobs();
-  return <div aria-hidden="true" className={active.length > 0 ? "m-meridian-live shrink-0" : "m-meridian-line shrink-0"} style={{ height: 1 }} />;
+  const percent = active.length === 0
+    ? 0
+    : Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + (j.percent ?? 0), 0) / active.length)));
+  return (
+    <div aria-hidden="true" className="shrink-0" style={{ height: 2 }}>
+      {active.length > 0 && <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />}
+    </div>
+  );
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -125,7 +133,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Rail />
         </Suspense>
         <div className="flex flex-col flex-1 overflow-hidden">
-          <MeridianLine />
+          <JobProgressBar />
           <TopBar
             runSelector={<Suspense fallback={<Skeleton width={160} height={24} />}><RunSelectorSlot /></Suspense>}
             commandPalette={<CommandPaletteSlot />}

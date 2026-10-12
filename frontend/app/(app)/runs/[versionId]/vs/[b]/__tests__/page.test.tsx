@@ -54,13 +54,14 @@ beforeEach(() => {
 });
 
 describe("CompareRunsPage", () => {
-  it("renders the narrative, module card and record diff table", async () => {
+  it("renders the narrative, three stats and the changed-rule table", async () => {
     renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(screen.getByText("DQS moved from 71.2 to 74.8 (+3.6) across 1 module.")).toBeInTheDocument());
     expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument();
     expect(screen.getAllByText("74.8").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("MM041").length).toBeGreaterThan(0);
-    expect(screen.getByText("MM002")).toBeInTheDocument();
+    expect(screen.getByText("DQS Oct 1")).toBeInTheDocument();
+    const rules = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    expect(rules.findIndex((t) => t.includes("MM041"))).toBeLessThan(rules.findIndex((t) => t.includes("MM002"))); // largest regression first
   });
 
   it("asks the API to resolve the baseline when b is the literal", async () => {
@@ -79,12 +80,22 @@ describe("CompareRunsPage", () => {
     await waitFor(() => expect(dl).toHaveBeenCalledWith("/api/v1/reports/compare.pdf?v2=v2&v1=v1", "comparison.pdf"));
   });
 
-  it("creates a fix batch for a newly failing check", async () => {
-    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "Regressions MM041 Oct 8", status: "draft", item_count: 1240 });
+  it("creates a fix batch for a newly failing rule from its drawer", async () => {
+    const create = vi.spyOn(remediationApi, "createBatch").mockResolvedValue({ id: "b1", name: "Regressions MM041", status: "draft", item_count: 1240 });
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Create fix batch" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Create fix batch" }));
-    await waitFor(() => expect(create).toHaveBeenCalledWith("Regressions MM041 Oct 8", { version_id: "v2", check_id: "MM041", module: "material_master" }));
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("MM041"));
+    fireEvent.click(await screen.findByRole("button", { name: "Create fix batch" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("Regressions MM041", { version_id: "v2", check_id: "MM041", module: "material_master" }));
+  });
+
+  it("lists the first 50 newly failing records in the drawer", async () => {
+    const keys = vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: ["000000000001"] });
+    renderWithQuery(<CompareRunsPage />);
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("MM041"));
+    expect(await screen.findByText("000000000001")).toBeInTheDocument();
+    expect(keys).toHaveBeenCalledWith("MM041", { v1: "v1", v2: "v2", change: "new", limit: 50, offset: 0 });
   });
 
   it("hides fix batch actions without the apply permission", async () => {
@@ -105,7 +116,7 @@ describe("CompareRunsPage", () => {
     const error = { response: { data: { detail: "Run not found" } } };
     const compareVersions = vi.spyOn(versionsApi, "compareVersions").mockRejectedValue(error);
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Couldn't compare these runs. Run not found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Run not found")).toBeInTheDocument());
     fireEvent.click(screen.getByText("Retry"));
     expect(compareVersions).toHaveBeenCalledTimes(2);
   });
@@ -127,23 +138,23 @@ describe("CompareRunsPage", () => {
     await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("combobox", { name: "Module" }));
+    await user.click(screen.getByRole("combobox", { name: "Object" }));
     expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Material Master" }));
 
     await waitFor(() => expect(compareVersions).toHaveBeenCalledWith("v1", "v2", "material_master"));
-    expect(screen.getByRole("combobox", { name: "Module" })).toHaveTextContent("Material Master");
+    expect(screen.getByRole("combobox", { name: "Object" })).toHaveTextContent("Material Master");
 
     // The Select's options still list every module, even though the filtered response only
     // carries material_master — proving the options come from the unfiltered query, not `cmp`.
-    await user.click(screen.getByRole("combobox", { name: "Module" }));
+    await user.click(screen.getByRole("combobox", { name: "Object" }));
     expect(await screen.findByRole("option", { name: "Material Master" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Accounts Payable" })).toBeInTheDocument();
   });
 
-  it("creates fix batches in bulk, reporting partial success", async () => {
-    const twoChecks: VersionComparison = {
+  it("creates fix batches in bulk for selected rules, reporting partial success", async () => {
+    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue({
       ...cmp,
       checks: {
         newly_failing: [
@@ -152,41 +163,35 @@ describe("CompareRunsPage", () => {
         ],
         fixed: [],
       },
-    };
-    vi.spyOn(versionsApi, "compareVersions").mockResolvedValue(twoChecks);
+    });
     const create = vi
       .spyOn(remediationApi, "createBatch")
       .mockResolvedValueOnce({ id: "b1", name: "r1", status: "draft", item_count: 1240 })
       .mockRejectedValueOnce(new Error("failed"));
     const { toast } = await import("sonner");
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Create fix batches" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Create fix batches" }));
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText("Select row MM041"));
+    fireEvent.click(screen.getByLabelText("Select row MM050"));
+    fireEvent.click(await screen.findByRole("button", { name: "Create fix batches" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches"));
-    expect(toast.error).toHaveBeenCalledWith("1 fix batch failed to create");
-    // Exactly one success toast (the summary) and one error toast — no per-mutation "Batch
-    // created" toast firing inside the bulk loop.
-    expect(toast.success).toHaveBeenCalledTimes(1);
-    expect(toast.error).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Created 1 of 2 fix batches; 1 failed"));
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("keeps the record-key filter input mounted and shows filter-specific copy when nothing matches", async () => {
-    vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: [] });
+  it("filters record keys in the drawer and shows filter-specific copy", async () => {
+    const keys = vi.spyOn(versionsApi, "compareRecordKeys").mockResolvedValue({ record_keys: [] });
     const user = userEvent.setup();
     renderWithQuery(<CompareRunsPage />);
-    await waitFor(() => expect(screen.getByText("Oct 8 vs Oct 1")).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText("MM041")[0]);
-    await waitFor(() => expect(screen.getByText("No new record keys for this check.")).toBeInTheDocument());
-
-    const input = screen.getByLabelText("Filter record keys");
-    await user.type(input, "zzz-no-match");
-
-    await waitFor(() => expect(screen.getByText("No record keys match your filter.")).toBeInTheDocument());
-    expect(screen.getByLabelText("Filter record keys")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("MM041")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("MM041"));
+    await waitFor(() => expect(screen.getByText("No new records")).toBeInTheDocument());
+    await user.type(screen.getByLabelText("Filter record keys"), "zzz");
+    await waitFor(() => expect(screen.getByText("No records match")).toBeInTheDocument());
+    expect(keys).toHaveBeenCalledWith("MM041", expect.objectContaining({ search: "zzz", offset: 0 }));
   });
 
-  it("shows the loading skeleton, then the overall Before, After and Change hero", async () => {
+  it("shows a loading skeleton while the comparison loads", async () => {
     vi.spyOn(versionsApi, "compareVersions").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<CompareRunsPage />);
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());

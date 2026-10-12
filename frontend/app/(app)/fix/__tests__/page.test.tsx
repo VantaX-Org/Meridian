@@ -69,6 +69,6 @@ describe("FixPage", () => {
     vi.mocked(getCleaningQueue).mockResolvedValue({ items: [], total: 0, page: 1, per_page: 100 });
     renderWithQuery(<FixPage />);
 
-    expect(await screen.findByText("No cleaning proposals.")).toBeInTheDocument();
+    expect(await screen.findByText("No cleaning proposals")).toBeInTheDocument();
   });
 });

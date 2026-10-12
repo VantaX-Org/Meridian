@@ -15,7 +15,7 @@ test("lead reaches a failing record in three clicks", async ({ app }) => {
   // Click 2: rule row -> that rule's failing records. The whole row is the click target.
   await app.getByRole("row", { name: /MM551/ }).click();
   await expect(app).toHaveURL(/\/objects\/material_master\?.*tab=records.*check_id=MM551/);
-  const fixSheetLink = app.getByRole("link", { name: /open fix sheet/i });
+  const fixSheetLink = app.getByRole("link", { name: "Open fix sheet", exact: true });
   await expect(fixSheetLink).toBeVisible();
 
   // Click 3: failing record -> record fix sheet.

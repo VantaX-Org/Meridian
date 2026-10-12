@@ -11,6 +11,13 @@ export interface ObjectSummary {
   readiness: "pass" | "warn" | "fail" | null;
   failing_checks: number;
   affected_records: number;
+  /** Optional list-row enrichments; absent on older backends. */
+  blocking_rule_id?: string | null;
+  blocking_rule_name?: string | null;
+  /** Composite score of the last <=8 runs of the same system, oldest first, including this run. */
+  trend?: number[];
+  worst_dimension?: string | null;
+  owner?: string | null;
 }
 
 export interface ObjectRule {
@@ -33,7 +40,7 @@ const get = async <T>(path: string, params?: Record<string, string | undefined>)
 /** A tenant with no completed run answers 200 with `run_id: null` and an
  *  empty list for run=latest — that is an empty state, not an error. */
 export const getObjects = async (run: string) =>
-  (await optional(() => get<{ run_id: string | null; objects: ObjectSummary[]; thresholds?: ScoreBands }>("/api/v1/objects", { run })))
+  (await optional(() => get<{ run_id: string | null; objects: ObjectSummary[]; blocking_findings_total?: number; thresholds?: ScoreBands }>("/api/v1/objects", { run })))
   ?? { run_id: null, objects: [] };
 
 export const getObject = (module: string, run: string) =>

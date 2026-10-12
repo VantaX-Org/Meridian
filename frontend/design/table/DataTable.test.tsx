@@ -66,15 +66,27 @@ describe("DataTable", () => {
     fireEvent.click(screen.getByText("Alpha"));
     expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "1" }));
 
+    const grid = screen.getByRole("grid");
+    fireEvent.keyDown(grid, { key: "Home" });
     const bravoRow = screen.getByText("Bravo").closest("tr") as HTMLTableRowElement;
-    expect(bravoRow).toHaveAttribute("tabindex", "0");
-    fireEvent.keyDown(bravoRow, { key: "Enter" });
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
+    fireEvent.keyDown(grid, { key: "Enter" });
     expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "2" }));
-    fireEvent.keyDown(bravoRow, { key: " " });
-    expect(onRowClick).toHaveBeenCalledTimes(3);
+    // Space selects, it does not open.
+    fireEvent.keyDown(grid, { key: " " });
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText("Select row 2")).toBeChecked();
+    fireEvent.keyDown(grid, { key: "x" });
+    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    fireEvent.keyDown(grid, { key: "End" });
+    expect(grid).toHaveAttribute("aria-activedescendant", (screen.getByText("Alpha").closest("tr") as HTMLTableRowElement).id);
+    fireEvent.keyDown(grid, { key: "Home" });
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
 
     fireEvent.click(screen.getByLabelText("Select row 1"));
-    expect(onRowClick).toHaveBeenCalledTimes(3);
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(grid, { key: "Escape" });
+    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
   });
 
   it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
@@ -82,21 +94,88 @@ describe("DataTable", () => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
     try {
       const bigRows: Row[] = Array.from({ length: 2500 }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
-      const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} />);
+      const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} dense={false} />);
       const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
       const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
+      // Spacer rows plus rendered rows always add up to 44px comfortable row * 2500 rows.
+      const total = () =>
+        Array.from(tbody.querySelectorAll("tr")).reduce((n, tr) => n + parseFloat((tr as HTMLElement).style.height), 0);
 
-      // 36px row estimate * 2500 rows.
-      expect(tbody.style.height).toBe("90000px");
+      expect(total()).toBe(110000);
       expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
 
-      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 86000 });
+      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 105500 });
       fireEvent.scroll(scrollParent);
 
       expect(screen.getByText("Row 2400")).toBeInTheDocument();
+      expect(total()).toBe(110000);
+      expect(screen.getByText("Row 2400").closest("tr")).toHaveAttribute("aria-rowindex", "2402");
+      expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "2501");
     } finally {
       if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
     }
+  });
+
+  it("renders every row at 200 rows and virtualises at 201", () => {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
+    try {
+      const make = (n: number): Row[] => Array.from({ length: n }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
+      const first = render(<DataTable columns={columns} data={make(200)} getRowId={(r) => r.id} />);
+      expect(screen.getByText("Row 199")).toBeInTheDocument();
+      expect(first.container.querySelectorAll("tbody tr")).toHaveLength(200);
+      first.unmount();
+      render(<DataTable columns={columns} data={make(201)} getRowId={(r) => r.id} />);
+      expect(screen.queryByText("Row 200")).not.toBeInTheDocument();
+    } finally {
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+    }
+  });
+
+  it("moves the active row with ArrowDown and ArrowUp and clamps at the ends", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    const grid = screen.getByRole("grid");
+    const idOf = (name: string) => (screen.getByText(name).closest("tr") as HTMLTableRowElement).id;
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Alpha"));
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Alpha"));
+    fireEvent.keyDown(grid, { key: "ArrowUp" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+    fireEvent.keyDown(grid, { key: "ArrowUp" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+  });
+
+  it("keeps the active row on the same record after a sort and drops it when filtered out", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    const grid = screen.getByRole("grid");
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    const bravoId = (screen.getByText("Bravo").closest("tr") as HTMLTableRowElement).id;
+    fireEvent.click(screen.getByRole("button", { name: "Name" }));
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoId);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
+    expect(grid).not.toHaveAttribute("aria-activedescendant");
+  });
+
+  it("clears selection on Escape from a focused row checkbox, and select-all covers only filtered rows", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
+    fireEvent.click(screen.getByLabelText("Select all rows"));
+    expect(screen.getByLabelText("Select row 1")).toBeChecked();
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
+    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    fireEvent.keyDown(screen.getByLabelText("Select row 1"), { key: "Escape" });
+    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+  });
+
+  it("exposes grid row semantics", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "3");
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body.map((r) => r.getAttribute("aria-rowindex"))).toEqual(["2", "3"]);
+    expect(body[0]).toHaveAttribute("aria-selected", "false");
   });
 
   it("selects rows and surfaces them to BulkBar and the bulk action callback", () => {
@@ -129,7 +208,7 @@ describe("DataTable", () => {
     render(<DataTable columns={cols} data={[{ id: "A1", name: "x", n: 1234 }] as never} getRowId={(r: Row) => r.id} dense />);
     expect(screen.getByText("A1")).toHaveClass("m-mono");
     expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
-    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "var(--m-row-h-dense)" });
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "36px" });
   });
 
   it("marks selected rows and shows the floating bulk bar", () => {
@@ -166,12 +245,12 @@ describe("DataTable toolbar", () => {
   it("hides a column from the chooser", () => {
     render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-cols" />);
     fireEvent.click(screen.getByText("Columns"));
-    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
   it("toggles density", () => {
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" />);
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" dense={false} />);
     const btn = screen.getByRole("button", { name: "Compact rows" });
     fireEvent.click(btn);
     expect(screen.getByRole("button", { name: "Comfortable rows" })).toHaveAttribute("aria-pressed", "true");
@@ -181,17 +260,31 @@ describe("DataTable toolbar", () => {
     window.localStorage.clear();
     render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-views" />);
     fireEvent.click(screen.getByText("Columns"));
-    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     fireEvent.click(screen.getByText("Views"));
     fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
     fireEvent.click(screen.getByRole("button", { name: "Save view" }));
     expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
-    fireEvent.click(screen.getByText(/^Columns/));
-    fireEvent.click(screen.getByLabelText("Name")); // show again
+    // The Columns menu stays open after a toggle (checkbox items do not close it).
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" })); // show again
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Views/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ids only" }));
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("shows a filtered-empty row with a Clear filter button", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });
+    expect(screen.getByText("No rows match this filter")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("titles the row drawer from drawerTitle", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} renderDrawer={(r) => <p>{r.name}</p>} drawerTitle="Row detail" />);
+    fireEvent.click(screen.getByText("Alpha"));
+    expect(screen.getByText("Row detail")).toBeInTheDocument();
   });
 
   it("offers CSV export and can hide the toolbar", () => {

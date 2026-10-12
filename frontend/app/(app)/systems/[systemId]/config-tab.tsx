@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import Link from "next/link";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Mono, Pill, Skeleton, Stat, Tabs, type PillTone } from "@/design";
 import {
   getConfigAlignment, getConfigDrift, getConfigGhost, getConfigHealth, getConfigInventory, getConfigLicence,
   getConfigProcesses, getConfigShadow,
@@ -17,15 +18,14 @@ const SEVERITY_TONE: Record<string, PillTone> = { critical: "no-go", high: "no-g
 const STATUS_TONE: Record<string, PillTone> = { active: "go", partial: "at-risk", dormant: "at-risk", inactive: "no-go", ghost: "no-go" };
 const n = (v: number) => v.toLocaleString();
 const dash = (v: string | null | undefined) => v ?? "—";
-const card = "rounded border p-3";
-const cardStyle = { borderColor: "var(--m-line)" };
 const note = { color: "var(--m-ink-2)" };
+const analyseAction = <Button render={<Link href="/analyse">Run an analysis</Link>} />;
 
 /** One config-intelligence list: loading, 404 (no analysis yet) as an honest empty state, error, then the body. */
 function Feed<T>({ q, empty, children }: { q: UseQueryResult<T>; empty: string; children: (data: T) => ReactNode }) {
   if (q.isLoading) return <Skeleton height={200} />;
   if (q.error && isNotFound(q.error)) {
-    return <EmptyState title="No configuration analysis yet." detail={`${empty} Run an analysis to populate it.`} />;
+    return <EmptyState title="No configuration analysis yet" detail={empty} action={analyseAction} />;
   }
   if (q.error) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
   return <>{q.data ? children(q.data) : null}</>;
@@ -48,7 +48,7 @@ function HealthSection() {
   return (
     <Feed q={q} empty="Config health scores each module's configuration.">
       {(d) => d.scores.length === 0
-        ? <EmptyState title="No module scored yet." />
+        ? <EmptyState title="No module scored yet" detail="Scores appear once a run has been analysed." action={analyseAction} />
         : <DataTable columns={cols} data={d.scores} getRowId={(s) => s.module} height={360} exportName="config-health" />}
     </Feed>
   );
@@ -68,7 +68,7 @@ function InventorySection() {
   return (
     <Feed q={q} empty="The inventory lists the configuration values seen in transactions.">
       {(d) => d.elements.length === 0
-        ? <EmptyState title="No configuration elements discovered." />
+        ? <EmptyState title="No configuration elements discovered" detail="The inventory fills from analysed transactions." action={analyseAction} />
         : <DataTable columns={cols} data={d.elements} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={420} exportName="config-inventory" />}
     </Feed>
   );
@@ -87,10 +87,10 @@ function ProcessesSection() {
   ], []);
   return (
     <Feed q={q} empty="Process health traces each process step through its SAP tables.">
-      {(d) => d.processes.length === 0 ? <EmptyState title="No processes detected." /> : (
+      {(d) => d.processes.length === 0 ? <EmptyState title="No processes detected" detail="Processes are traced from analysed transactions." action={analyseAction} /> : (
         <DataTable columns={cols} data={d.processes} getRowId={(p) => p.process_id} height={360} exportName="config-processes"
           renderDrawer={(p) => (
-            <ol className="flex flex-col gap-2 text-[13px]">
+            <ol className="flex flex-col gap-2 m-text-body">
               {p.steps.map((s) => (
                 <li key={s.step_number} className="flex items-center justify-between gap-3">
                   <span>{s.step_number}. {s.step_name} <Mono>{s.sap_table}</Mono></span>
@@ -117,11 +117,11 @@ function findingCols(): ColumnDef<AlignmentFinding, unknown>[] {
 
 function FindingsTable({ rows, name }: { rows: AlignmentFinding[]; name: string }) {
   const cols = useMemo(() => findingCols(), []);
-  if (rows.length === 0) return <EmptyState title="Nothing found." />;
+  if (rows.length === 0) return <EmptyState title="Nothing found" detail="The latest analysis raised no findings here." action={analyseAction} />;
   return (
     <DataTable columns={cols} data={rows} getRowId={(f) => `${f.check_id}/${f.module}/${f.title}`} height={380} exportName={name}
       renderDrawer={(f) => (
-        <div className="flex flex-col gap-2 text-[13px]">
+        <div className="flex flex-col gap-2 m-text-body">
           <p>{f.description}</p>
           {f.remediation ? <p style={note}>Remediation: {f.remediation}</p> : null}
           {f.affected_elements.length ? <p style={note}>Affected: {f.affected_elements.join(", ")}</p> : null}
@@ -140,16 +140,12 @@ function GhostShadowSection() {
   const shadow = useCfg("shadow", getConfigShadow);
   return (
     <div className="flex flex-col gap-4">
-      <div className={card} style={cardStyle}>
-        <p className="mb-1 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Ghost configuration</p>
-        <p className="mb-2 text-[13px]" style={note}>Configured in SAP but never used in a transaction.</p>
+      <Card title="Ghost configuration" meta="Configured in SAP but never used in a transaction.">
         <Feed q={ghost} empty="Ghost configuration is configured but unused.">{(d) => <FindingsTable rows={d.findings} name="config-ghost" />}</Feed>
-      </div>
-      <div className={card} style={cardStyle}>
-        <p className="mb-1 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Shadow configuration</p>
-        <p className="mb-2 text-[13px]" style={note}>Used in transactions but missing from the configuration.</p>
+      </Card>
+      <Card title="Shadow configuration" meta="Used in transactions but missing from the configuration.">
         <Feed q={shadow} empty="Shadow configuration is used but not configured.">{(d) => <FindingsTable rows={d.findings} name="config-shadow" />}</Feed>
-      </div>
+      </Card>
     </div>
   );
 }
@@ -164,10 +160,10 @@ function DriftSection() {
   ], []);
   return (
     <Feed q={q} empty="Drift needs two runs to compare.">
-      {(d) => d.drift_entries.length === 0 ? <EmptyState title="No drift between the last two runs." /> : (
+      {(d) => d.drift_entries.length === 0 ? <EmptyState title="No drift between the last two runs" detail="Configuration is unchanged since the previous run." action={analyseAction} /> : (
         <DataTable columns={cols} data={d.drift_entries} getRowId={(e) => `${e.module}/${e.element_type}/${e.element_value}`} height={380} exportName="config-drift"
           renderDrawer={(e) => (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[13px]">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 m-text-body">
               <dt style={note}>Previous run</dt><dd><Mono>{d.previous_run_id}</Mono></dd>
               <dt style={note}>Current run</dt><dd><Mono>{d.current_run_id}</Mono></dd>
               <dt style={note}>Previous value</dt><dd><Mono>{dash(e.previous_value)}</Mono></dd>
@@ -190,7 +186,7 @@ function LicenceSection() {
   ], []);
   return (
     <Feed q={q} empty="Licence utilisation compares configured modules with the transactions they carry.">
-      {(d) => d.modules.length === 0 ? <EmptyState title="No module utilisation yet." /> : (
+      {(d) => d.modules.length === 0 ? <EmptyState title="No module utilisation yet" detail="Utilisation is measured from analysed transactions." action={analyseAction} /> : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-6">
             <Stat label="Modules" value={d.modules.length} />
@@ -207,7 +203,7 @@ function LicenceSection() {
 export function ConfigurationTab({ systemId, canPropose }: { systemId: string; canPropose: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px]" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
+      <p className="m-text-body" style={note}>Configuration analysis covers every connected system in this workspace, from the latest run.</p>
       <Tabs
         items={[
           { value: "health", label: "Health", content: <HealthSection /> },

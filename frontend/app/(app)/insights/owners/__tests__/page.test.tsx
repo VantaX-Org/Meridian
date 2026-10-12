@@ -27,8 +27,9 @@ describe("OwnersPage", () => {
       ],
     });
     renderWithQuery(<OwnersPage />);
-    expect(await screen.findByText("jane.doe")).toBeInTheDocument();
-    expect(screen.getByText("82.5")).toBeInTheDocument();
+    expect((await screen.findAllByText("jane.doe")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("82.5").length).toBeGreaterThan(0);
+    expect(screen.getByRole("columnheader", { name: /Score/ })).toBeInTheDocument();
     expect(screen.getByText(/critical: 1/)).toBeInTheDocument();
     expect(screen.getByText(/3 new critical findings/)).toBeInTheDocument();
   });

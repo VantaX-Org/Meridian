@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Pill } from "@/design";
+import { Button, Card, Pill } from "@/design";
 import {
   getReferenceLists,
   uploadBicDirectory,
@@ -33,14 +33,13 @@ const KINDS = [
 export function ReferencePanel({ id }: { id: string }) {
   const { data: lists = [] } = useQuery({ queryKey: queryKeys.referenceLists(id), queryFn: () => getReferenceLists(id) });
   return (
-    <div className="rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-      <p className="text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>Reference data</p>
-      <div className="mt-2 flex flex-col gap-3">
+    <Card title="Reference data">
+      <div className="flex flex-col gap-3">
         {KINDS.map((k) => (
           <ReferenceRow key={k.kind} id={id} spec={k} list={lists.find((l) => l.kind === k.kind)} />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -57,7 +56,7 @@ function ReferenceRow({ id, spec, list }: { id: string; spec: (typeof KINDS)[num
   });
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>{spec.help}</p>
+      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>{spec.help}</p>
       {list ? (
         <Pill tone="go">
           {list.records.toLocaleString()} {spec.unit}, {list.countries.join(", ")}

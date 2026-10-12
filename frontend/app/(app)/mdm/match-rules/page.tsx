@@ -2,10 +2,11 @@
 "use client";
 import { useUrlState } from "@/hooks/use-url-state";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, DataTable, EmptyState, ErrorState, Field, Pill, Select, Skeleton, Tabs } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, updateMatchRule,
@@ -56,11 +57,11 @@ export default function MatchRulesPage() {
   const [tabRaw, setTab] = useUrlState("tab", "rules");
   const tab = (["rules", "tuning", "constraints"] as string[]).includes(tabRaw) ? tabRaw : "rules";
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <h2 className="text-[16px] font-semibold" style={{ color: "var(--m-ink)" }}>Match rules</h2>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
-        How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned.
-      </p>
+    <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+      <PageHeader
+        title="Match rules"
+        meta="How the matcher scores duplicate candidates, what a change would do, and the pairs stewards have pinned"
+      />
       <Tabs
         value={tab}
         onValueChange={setTab}
@@ -132,7 +133,7 @@ function RulesTab() {
       </div>
 
       {simulation ? (
-        <dl className="flex gap-6 text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <dl className="flex gap-6 m-text-body" style={{ color: "var(--m-ink-2)" }}>
           <div><dt>Candidate pairs</dt><dd className="font-semibold">{simulation.total_pairs.toLocaleString()}</dd></div>
           <div><dt>Would auto-merge</dt><dd className="font-semibold">{simulation.auto_merge_count.toLocaleString()}</dd></div>
           <div><dt>Would dismiss</dt><dd className="font-semibold">{simulation.auto_dismiss_count.toLocaleString()}</dd></div>
@@ -156,25 +157,23 @@ function RulesTab() {
         />
       ) : (
         <EmptyState
-          title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet."}
+          title={domain ? `No rules for ${formatModuleName(domain)} yet` : "No match rules yet"}
           detail={domain ? undefined : "Add one per field the engine should compare."}
           action={write ? (
             <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
-          ) : undefined}
+          ) : (
+            <Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />
+          )}
         />
       )}
-      {!write ? <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Changing rules needs MDM write access.</p> : null}
+      {!write ? <Notice tone="info">Changing rules needs MDM write access.</Notice> : null}
 
       {draft ? (
-        <div className="flex flex-col gap-3 rounded border p-4" style={{ borderColor: "var(--m-line)" }}>
-          <h3 className="text-[14px] font-semibold" style={{ color: "var(--m-ink)" }}>
-            {editing ? `Edit rule ${editing.field}` : "New match rule"}
-          </h3>
+        <Card title={editing ? `Edit rule ${editing.field}` : "New match rule"}>
+        <div className="flex flex-col gap-3">
           <Field label="Domain"><Select value={draft.domain} options={domains} onValueChange={(v) => setDraft({ ...draft, domain: v })} /></Field>
           <Field label="Field">
-            <input
-              className="rounded border px-3 py-1.5 text-[13px]"
-              style={{ borderColor: "var(--m-line)" }}
+            <Input
               value={draft.field}
               onChange={(e) => setDraft({ ...draft, field: e.target.value.toUpperCase().trim() })}
             />
@@ -183,11 +182,11 @@ function RulesTab() {
             <Select value={draft.match_type} options={MATCH_TYPES} onValueChange={(v) => setDraft({ ...draft, match_type: v as MatchType })} />
           </Field>
           <Field label="Weight">
-            <input type="number" step="0.05" min="0" max="10" className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+            <Input type="number" step="0.05" min="0" max="10"
               value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: Number(e.target.value) })} />
           </Field>
           <Field label="Threshold">
-            <input type="number" step="0.01" min="0" max="1" className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+            <Input type="number" step="0.01" min="0" max="1"
               value={draft.threshold} onChange={(e) => setDraft({ ...draft, threshold: Number(e.target.value) })} />
           </Field>
           <Field label="State">
@@ -202,6 +201,7 @@ function RulesTab() {
             </div>
           ) : null}
         </div>
+        </Card>
       ) : null}
     </div>
   );
@@ -210,6 +210,7 @@ function RulesTab() {
 /* ---------- Tuning dry run ---------- */
 
 function TuningTab() {
+  const tuneRef = useRef<HTMLDivElement>(null);
   const [domain, setDomain] = useState("");
   const rulesQuery = useQuery({ enabled: !!domain, queryKey: queryKeys.matchRules(domain), queryFn: () => getMatchRules(domain) });
   const domains = useMemo(() => domainOptions(rulesQuery.data?.rules.map((r) => r.domain) ?? []), [rulesQuery.data]);
@@ -237,12 +238,12 @@ function TuningTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Re-scores the newest 50,000 stored pairs in a domain with the weights below. Nothing is saved.
       </p>
-      <Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
+      <div ref={tuneRef}><Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} /></div>
       {!domain ? (
-        <EmptyState title="Pick a domain to tune." />
+        <EmptyState title="Pick a domain to tune" detail="Choose one above to re-score its stored pairs" action={<Button variant="secondary" onClick={() => tuneRef.current?.querySelector("button")?.focus()}>Choose a domain</Button>} />
       ) : rulesQuery.isLoading ? (
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
@@ -253,32 +254,25 @@ function TuningTab() {
       ) : (
         <div className="flex flex-col gap-3">
           {fields.length ? (
-            <table className="text-[13px]">
-              <thead><tr><th className="text-left pr-4">Field</th><th className="text-left pr-4">Current</th><th className="text-left">Proposed</th></tr></thead>
-              <tbody>
-                {fields.map((f) => (
-                  <tr key={f}>
-                    <td className="pr-4">{f}</td>
-                    <td className="pr-4">{current[f]}</td>
-                    <td>
-                      <input type="number" min={0} step={0.1} className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: "var(--m-line)" }}
-                        value={weights[f] ?? String(current[f])}
-                        onChange={(e) => { const v = e.target.value; setWeights((w) => ({ ...w, [f]: v })); }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {fields.map((f) => (
+                <Field key={f} label={`${f} (current ${current[f]})`}>
+                  <Input type="number" min={0} step={0.1}
+                    value={weights[f] ?? String(current[f])}
+                    onChange={(e) => { const v = e.target.value; setWeights((w) => ({ ...w, [f]: v })); }} />
+                </Field>
+              ))}
+            </div>
           ) : (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No active match rules for {formatModuleName(domain)}. Thresholds can still be tried.</p>
+            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
           )}
           <div className="flex gap-3">
             <Field label="Auto-merge at">
-              <input type="number" min={0.01} max={1} step={0.01} className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+              <Input type="number" min={0.01} max={1} step={0.01}
                 value={autoMerge} onChange={(e) => setAutoMerge(e.target.value)} />
             </Field>
             <Field label="Review floor">
-              <input type="number" min={0} max={1} step={0.01} className="rounded border px-3 py-1.5 text-[13px]" style={{ borderColor: "var(--m-line)" }}
+              <Input type="number" min={0} max={1} step={0.01}
                 value={reviewFloor} onChange={(e) => setReviewFloor(e.target.value)} />
             </Field>
           </div>
@@ -287,7 +281,7 @@ function TuningTab() {
           </div>
           {result ? (
             <>
-              <dl className="flex flex-wrap gap-6 text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              <dl className="flex flex-wrap gap-6 m-text-body" style={{ color: "var(--m-ink-2)" }}>
                 <div><dt>Pairs re-scored</dt><dd className="font-semibold">{result.pairs.toLocaleString()}</dd></div>
                 <div><dt>Newly linked</dt><dd className="font-semibold">{result.pairs_newly_linked.toLocaleString()}</dd></div>
                 <div><dt>Unlinked</dt><dd className="font-semibold">{result.pairs_unlinked.toLocaleString()}</dd></div>
@@ -296,15 +290,13 @@ function TuningTab() {
                 <div><dt>Would split</dt><dd className="font-semibold">{result.clusters_that_would_split.toLocaleString()}</dd></div>
               </dl>
               {moves.length ? (
-                <table className="text-[13px]">
-                  <thead><tr><th className="text-left pr-4">Band move</th><th className="text-left">Pairs</th></tr></thead>
-                  <tbody>
-                    {moves.map(([k, n]) => (
-                      <tr key={k}><td className="pr-4">{k.split("->").map(formatModuleName).join(" to ")}</td><td>{n.toLocaleString()}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>No pair changes band.</p>}
+                <DataTable<[string, number]>
+                  columns={moveCols}
+                  data={moves}
+                  getRowId={([k]) => k}
+                  height="auto"
+                />
+              ) : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No pair changes band</p>}
             </>
           ) : null}
         </div>
@@ -314,6 +306,11 @@ function TuningTab() {
 }
 
 /* ---------- Pair constraints ---------- */
+
+const moveCols: ColumnDef<[string, number]>[] = [
+  { id: "move", header: "Band move", accessorFn: ([k]) => k.split("->").map(formatModuleName).join(" to ") },
+  { id: "pairs", header: "Pairs", accessorFn: ([, n]) => n.toLocaleString() },
+];
 
 function ConstraintsTab() {
   const qc = useQueryClient();
@@ -344,21 +341,19 @@ function ConstraintsTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px]" style={{ color: "var(--m-ink-3)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
         Stewards create these by accepting or rejecting a pair, or by unmerging. They override the score until cleared.
       </p>
       <div className="flex items-center gap-2">
         <Select label="Domain" placeholder="All domains" value={domain} options={domainOptions([])} onValueChange={setDomain} />
         <Select label="Constraint kind" placeholder="Both kinds" value={kind} options={KINDS} onValueChange={(v) => setKind((v as PairConstraintKind) || "")} />
-        <input
+        <Input
           placeholder="Record key"
-          className="rounded border px-3 py-1.5 text-[13px]"
-          style={{ borderColor: "var(--m-line)" }}
           value={key}
           onChange={(e) => setKey(e.target.value)}
         />
       </div>
-      {!write ? <p className="text-[12px]" style={{ color: "var(--m-ink-3)" }}>Clearing a constraint needs the approve permission.</p> : null}
+      {!write ? <Notice tone="info">Clearing a constraint needs the approve permission.</Notice> : null}
       {list.isLoading ? (
         <Skeleton height={200} />
       ) : list.error ? (
@@ -369,7 +364,11 @@ function ConstraintsTab() {
       ) : rows.length ? (
         <DataTable<PairConstraint> columns={columns} data={rows} getRowId={(c) => c.id} />
       ) : (
-        <EmptyState title="No pair constraints yet." />
+        <EmptyState
+          title="No pair constraints yet"
+          detail="Accept or reject a pair in duplicates to create one."
+          action={<Button render={<Link href="/insights/duplicates">Open duplicates</Link>} />}
+        />
       )}
     </div>
   );

@@ -12,23 +12,38 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
 const TOKEN_FILES = new Set(["design/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
+// design/tokens.ts holds the single TS map of ember and domain token names (mColor), so it must name them.
+// Colour-pass allow sets live here, never in lint-tokens.allow.txt.
+const HERO_ALLOW = new Set([
+  "design/templates/HomePage.tsx", "design/templates/InsightHeader.tsx", "design/primitives/EmptyState.tsx",
+  "design/primitives/Counter.tsx", "design/primitives/Stat.tsx", "design/tokens.ts", "components/auth/auth-frame.tsx",
+  "app/(app)/insights/reports/page.tsx", "app/icon.tsx", "app/apple-icon.tsx", "app/opengraph-image.tsx",
+]);
+const DOMAIN_ALLOW = new Set(["design/tokens.ts", "design/primitives/DomainChip.tsx"]);
 const RULES = [
   { name: "hex colour", re: /(?<![\w&/#-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])/ },
   { name: "gradient", re: /\b(?:linear|radial|conic)-gradient\(|\bbg-(?:gradient|linear|radial)-/ },
   { name: "backdrop blur", re: /\bbackdrop-(?:blur|filter)\b/ },
-  // Rule 13: shadows come from --aurora-elev-* only.
-  { name: "box-shadow literal", re: /box-shadow\s*:[^;]*(?:#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:black|white)\b|var\(--aurora-elev-[\w-]+\s*,)/i },
+  // Rule 13: shadows come from --m-elev-* only.
+  { name: "box-shadow literal", re: /box-shadow\s*:[^;]*(?:#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(|\b(?:black|white)\b|var\(--m-elev-[\w-]+\s*,)/i },
   // Rule 15: no all-caps eyebrows.
   // Catches the CSS declaration, the Tailwind utility inside a className/class string (before or after
   // the attribute name), and `@apply uppercase`.
   { name: "text-transform uppercase", re: /^(?!.*::first-letter).*text-transform\s*:\s*uppercase|(?:className|class)=[^\n]*\buppercase\b|\buppercase\b(?=[^\n]*(?:className|class=|@apply))|@apply[^\n;]*\buppercase\b/ },
   // Rule 11: motion lives in the Aurora style files only.
-  { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css", "app/styles/aurora-components.css"]) },
+  { name: "motion outside aurora css", re: /\b(?:transition|animation)(?:-[a-z-]+)?\s*:|@keyframes\b/, skip: new Set(["app/styles/aurora.css"]) },
+  { name: "ember-outside-hero", re: /var\(--m-ember|var\(--m-grad-/, skip: HERO_ALLOW },
+  { name: "hero-elev-outside-hero", re: /var\(--m-elev-hero/, skip: HERO_ALLOW },
+  { name: "glow-outside-graph", re: /var\(--m-elev-glow-|var\(--m-glow-/, skip: new Set(["design/charts/Graph.tsx"]) },
+  { name: "domain-literal", re: /var\(--m-dom-(?:material|customer|vendor|partner|finance|people|plant|asset|other)/, skip: DOMAIN_ALLOW },
   { name: "duration literal outside aurora.css", re: /\b\d*\.?\d+ms\b/, skip: new Set(["app/styles/aurora.css"]) },
 ];
 
 // Rule 14 and rule 6 read the CSS selector that owns each declaration.
-const OVERLAY = /\[data-overlay\]|popover|menu|dialog|drawer|tooltip|modal|toast|palette|scrim|overlay|listbox|dropdown|combobox|panel|preview/i;
+// Status tones appear only on severity-marked elements (spec 6.2 rule 3).
+const STATUS_USE = /var\(--m-(?:status-|critical|high|medium|low|pass)/;
+const STATUS_OWNER = /\[data-(?:severity|tone|type|alignment)|\.m-pill-|\.m-badge-|\.m-row-severity-|\.m-heat-|\.m-btn-danger|\.m-field-error|\[aria-invalid|\[data-invalid/;
+const OVERLAY = /\[data-overlay\]|\.m-lift|\.m-stat-link:hover|\.m-brand-card|\.m-popup|popover|menu|dialog|drawer|tooltip|modal|toast|palette|scrim|overlay|listbox|dropdown|combobox|panel|preview/i;
 function* cssDecls(src) {
   let sel = "", depth = [];
   const lines = src.split("\n");
@@ -65,8 +80,8 @@ for (const abs of walk(ROOT)) {
   });
   if (file.endsWith(".css") && file !== "app/styles/aurora.css") {
     for (const d of cssDecls(src)) {
-      if (/--aurora-elev-[2-4]/.test(d.text) && !/^\s*--/.test(d.text) && !OVERLAY.test(d.sel)) add(d.line, "elevation 2-4 outside an overlay");
-      if (/var\(--aurora-status-/.test(d.text) && !/\[data-(?:severity|tone)/.test(d.sel)) warns.push(`${file}:${d.line}  status colour without [data-severity] or [data-tone]`);
+      if (/--m-elev-[2-4]/.test(d.text) && !/^\s*--/.test(d.text) && !OVERLAY.test(d.sel)) add(d.line, "elevation 2-4 outside an overlay");
+      if (STATUS_USE.test(d.text) && !/^\s*--/.test(d.text) && !STATUS_OWNER.test(d.sel)) add(d.line, "status colour without data-severity, data-tone or a pill, badge, severity or heat class");
     }
   }
 }
@@ -83,7 +98,7 @@ const stale = [...allow].filter((f) => !hits.has(f));
 for (const l of bad) console.error(l);
 if (stale.length) console.error(`\nClean now, remove from lint-tokens.allow.txt:\n  ${stale.join("\n  ")}`);
 if (bad.length || stale.length) {
-  console.error(`\nlint:tokens failed: use --aurora-* tokens (see DESIGN.md).`);
+  console.error(`\nlint:tokens failed: use --m-* tokens (see DESIGN.md).`);
   process.exit(1);
 }
 if (process.env.LINT_WARN) for (const w of warns) console.warn(`warn ${w}`);

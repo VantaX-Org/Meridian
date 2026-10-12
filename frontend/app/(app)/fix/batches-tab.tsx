@@ -18,9 +18,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import {
-  Button, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
-  type PillTone, type SelectOption,
-} from "@/design";
+  Button, Card, DataTable, Delta, Drawer, EmptyState, ErrorState, Field, Mono, Notice, Pager, Pill, Select, Skeleton, Stat, Tooltip,
+  type PillTone, type SelectOption, Input } from "@/design";
 import { useAuth } from "@/context/auth-context";
 import { useNowSec } from "@/hooks/use-now";
 import { GatedPrimary } from "@/components/gated-primary";
@@ -123,7 +122,7 @@ export function BatchesTab() {
       id: "status",
       accessorFn: (b) => STATUS_LABEL[b.status],
       header: "Status",
-      cell: ({ row }) => <Pill tone={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Pill>,
+      cell: ({ row }) => <Pill tone={STATUS_TONE[row.original.status]} variant="solid">{STATUS_LABEL[row.original.status]}</Pill>,
     },
     { accessorKey: "items", header: "Items" },
     {
@@ -165,25 +164,25 @@ export function BatchesTab() {
       <MonitoringSection onOpenBatch={setBatchId} />
 
       <div className="flex flex-col gap-2">
-        <div className="flex gap-6">
+        <div className="flex gap-6 m-motion-stagger">
           <Link href="?tab=batches&status=draft" className="text-left">
             <Stat label="Draft batches" value={counts.draft}
               delta={counts.draft ? "Waiting for proposals to be accepted and approved." : "No batches in draft."} />
           </Link>
           <Link href="?tab=batches&status=approved" className="text-left">
-            <Stat label="Waiting for export" value={counts.approved}
+            <Stat label="Waiting for export" value={counts.approved} tone={counts.approved ? "at-risk" : "go"}
               delta={counts.approved
                 ? <Pill tone="at-risk">Approved but not exported yet.</Pill>
                 : "Nothing waiting for export."} />
           </Link>
           <Link href="?tab=batches&status=exported" className="text-left">
-            <Stat label="Still failing after export" value={stillFailing}
+            <Stat label="Still failing after export" value={stillFailing} tone={stillFailing ? "no-go" : "go"}
               delta={stillFailing
                 ? <Pill tone="at-risk">Exported records that were checked again and still fail.</Pill>
                 : "No exported record is still failing."} />
           </Link>
         </div>
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           {q.data
             ? `${batches.length.toLocaleString()} fix batch${batches.length === 1 ? "" : "es"}. ${counts.draft} draft, ${counts.approved} waiting for export.`
             : null}
@@ -198,13 +197,11 @@ export function BatchesTab() {
 
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Search">
-          <input
+          <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search batches"
-            className="rounded border px-3 py-1.5 text-[13px]"
-            style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
           />
         </Field>
         <div className="flex items-end gap-2">
@@ -223,12 +220,12 @@ export function BatchesTab() {
         <ErrorState message={errorText(q.error)} onRetry={() => q.refetch()} />
       ) : batches.length === 0 ? (
         <EmptyState
-          title="No batches."
+          title="No batches"
           detail="Approve proposals in the cleaning queue to create a batch."
           action={<Button render={<Link href="/fix?tab=cleaning">Cleaning queue</Link>} />}
         />
       ) : visible.length === 0 ? (
-        <EmptyState title="Nothing in this view." action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
+        <EmptyState title="Nothing in this view" action={<Button variant="ghost" onClick={clearFilters}>Show everything</Button>} />
       ) : (
         <DataTable
           columns={columns}
@@ -265,6 +262,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   const [draftValue, setDraftValue] = useState("");
   const [format, setFormat] = useState<ExportFormat>("cockpit_xlsx");
   const [crType, setCrType] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
   const [ask, setAsk] = useState<"approve" | "export" | null>(null);
 
   const refresh = () => {
@@ -281,8 +279,20 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
   const approve = useMutation({
     mutationFn: () => approveBatch(batchId),
-    onSuccess: () => { toast.success("Batch approved"); setAsk(null); refresh(); },
-    onError: (e) => toast.error(errorText(e)),
+    onMutate: async () => {
+      setFailure(null);
+      await qc.cancelQueries({ queryKey: queryKeys.remediationBatch(batchId) });
+      const prev = qc.getQueryData<typeof detail.data>(queryKeys.remediationBatch(batchId));
+      if (prev) qc.setQueryData(queryKeys.remediationBatch(batchId), { ...prev, batch: { ...prev.batch, status: "approved" } });
+      setAsk(null);
+      return { prev };
+    },
+    onSuccess: () => { toast.success("Batch approved"); },
+    onError: (e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.remediationBatch(batchId), ctx.prev);
+      setFailure(`Batch not approved: ${errorText(e)}`);
+    },
+    onSettled: () => refresh(),
   });
   const patch = useMutation({
     mutationFn: ({ itemId, value }: { itemId: string; value: string | null }) => patchItem(batchId, itemId, value),
@@ -301,7 +311,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
   });
 
   if (detail.isLoading) return <Skeleton height={240} />;
-  if (detail.isError || !detail.data) return <EmptyState title="This batch could not be found. It may have been removed." />;
+  if (detail.isError || !detail.data) return <EmptyState title="Batch not found" detail="It may have been removed" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />;
 
   const { batch, items } = detail.data;
   const isCreator = !!currentUserId && batch.created_by === currentUserId;
@@ -320,7 +330,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
         const i = row.original;
         if (editing === i.id) {
           return (
-            <input
+            <Input
               autoFocus
               aria-label="Proposed value"
               value={draftValue}
@@ -331,8 +341,6 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
               }}
               onBlur={() => setEditing(null)}
               onClick={(e) => e.stopPropagation()}
-              className="rounded border px-2 py-1 text-[13px]"
-              style={{ borderColor: "var(--m-line)" }}
             />
           );
         }
@@ -367,7 +375,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <dl className="grid grid-cols-2 gap-2 text-[13px]">
+      <dl className="grid grid-cols-2 gap-2 m-text-body">
         <div><dt style={{ color: "var(--m-ink-2)" }}>Status</dt><dd>{STATUS_LABEL[batch.status]}</dd></div>
         <div><dt style={{ color: "var(--m-ink-2)" }}>Items</dt><dd>{items.length.toLocaleString()}</dd></div>
         <div><dt style={{ color: "var(--m-ink-2)" }}>With proposal</dt><dd>{items.filter((i) => i.proposed_value !== null).length.toLocaleString()}</dd></div>
@@ -383,26 +391,25 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
       <BeforeAfter batch={batch} monitor={monitor.data?.items ?? []} />
 
       {isCreator && batch.status === "draft" ? (
-        <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           Four-eyes required: a second person must approve this batch before it can be exported.
         </p>
       ) : null}
 
+      {failure ? <Notice tone="danger">{failure}</Notice> : null}
       {ask ? (
-        <div className="flex flex-col gap-2 rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
-          <p className="text-[13px]">
+        <Card padding="sm">
+          <p className="m-text-body">
             Meridian never posts to SAP. {ask === "export" ? "This hands a file to the Migration Cockpit or a mass-change template." : "This is Meridian's record only."}
           </p>
           <div className="flex items-center gap-2">
             {ask === "export" ? <Select label="Export format" value={format} onValueChange={(v) => setFormat(v as ExportFormat)} options={FORMATS} /> : null}
             {ask === "export" && format === "mdg_cr_json" ? (
               <Field label="Change request type">
-                <input
+                <Input
                   aria-label="Change request type"
                   value={crType}
                   onChange={(e) => setCrType(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 40))}
-                  className="rounded border px-3 py-1.5 text-[13px]"
-                  style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)", color: "var(--m-ink)" }}
                 />
               </Field>
             ) : null}
@@ -415,7 +422,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
             <Button variant="ghost" onClick={() => setAsk(null)}>Not now</Button>
           </div>
-        </div>
+        </Card>
       ) : (
         <div className="flex items-center gap-2">
           {batch.status === "draft" && highConfidence.length > 0 && canApprove ? (
@@ -434,7 +441,7 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
             </Button>
           ) : null}
           {batch.status === "exported" ? (
-            <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+            <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               Exported. Load it with the Migration Cockpit or a mass-change template — Meridian never posts to SAP.
             </p>
           ) : null}
@@ -442,14 +449,14 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
       )}
 
       <section>
-        <h3 className="text-[13px] font-semibold">Items</h3>
+        <h3 className="m-text-body font-semibold">Items</h3>
         {items.length ? (
           <>
             <DataTable columns={columns} data={page} getRowId={(i) => i.id} />
             {items.length > ITEM_PAGE_SIZE ? <Pager page={itemPage} pageCount={pageCount} pageSize={ITEM_PAGE_SIZE} total={items.length} onPageChange={setItemPage} /> : null}
           </>
         ) : (
-          <EmptyState title="No items in this batch." />
+          <EmptyState title="No items in this batch" detail="Proposals are added when a cleanup run creates them" action={<Button variant="secondary" render={<Link href="?tab=batches">Back to batches</Link>} />} />
         )}
       </section>
 
@@ -459,10 +466,10 @@ function BatchDetailBody({ batchId, currentUserId, canApprove, canExport }: {
 
       {events.data?.items.length ? (
         <section>
-          <h3 className="text-[13px] font-semibold">History</h3>
+          <h3 className="m-text-body font-semibold">History</h3>
           <ul className="flex flex-col gap-1">
             {events.data.items.map((e, idx) => (
-              <li key={`${e.item_id}-${idx}`} className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+              <li key={`${e.item_id}-${idx}`} className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
                 {EVENT_LABEL[e.action]}{e.user_label ? ` by ${e.user_label}` : ""}, {relativeTime(e.created_at)}
               </li>
             ))}
@@ -493,7 +500,7 @@ function DiffSection({ records }: { records: DiffRecord[] | undefined }) {
   if (!rows.length) return null;
   return (
     <section>
-      <h3 className="text-[13px] font-semibold">Before and after</h3>
+      <h3 className="m-text-body font-semibold">Before and after</h3>
       <DataTable columns={columns} data={rows} getRowId={(r) => r.id} />
     </section>
   );
@@ -504,10 +511,10 @@ function PackagesSection({ items }: { items: ExportPackage[] | undefined }) {
   if (!items?.length) return null;
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-[13px] font-semibold">Exported files</h3>
+      <h3 className="m-text-body font-semibold">Exported files</h3>
       <ul className="flex flex-col gap-1">
         {items.map((p) => (
-          <li key={p.id} className="text-[13px] flex items-center gap-2">
+          <li key={p.id} className="m-text-body flex items-center gap-2">
             <span>{FORMAT_LABEL[p.format]}</span>
             <Tooltip label={p.sha256}>
               <span style={{ color: "var(--m-ink-2)" }}><Mono>{p.sha256.slice(0, 12)}</Mono></span>
@@ -535,9 +542,9 @@ function MonitoringSection({ onOpenBatch }: { onOpenBatch: (id: string) => void 
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold">Monitoring since cleanup</h3>
+        <h3 className="m-text-body font-semibold">Monitoring since cleanup</h3>
         {newestCheck ? (
-          <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>Checked {relativeTime(newestCheck)}</span>
+          <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>Checked {relativeTime(newestCheck)}</span>
         ) : null}
       </div>
       {monitor.isLoading ? (
@@ -545,7 +552,7 @@ function MonitoringSection({ onOpenBatch }: { onOpenBatch: (id: string) => void 
       ) : monitor.isError ? (
         <ErrorState message={errorText(monitor.error)} onRetry={() => monitor.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState title="No system has a pinned baseline yet. Pin a run after a cleanup to start monitoring it." />
+        <EmptyState title="No pinned baseline yet" detail="Pin a run after a cleanup to start monitoring it" action={<Button variant="secondary" render={<Link href="/runs">Open runs</Link>} />} />
       ) : (
         <div className="flex flex-col gap-3">
           {items.map((m) => <MonitorRow key={m.scope} item={m} onOpenBatch={onOpenBatch} />)}
@@ -562,21 +569,21 @@ function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: 
   const changed = m.monitor;
   const delta = m.baseline.dqs != null && m.latest.dqs != null ? Math.round((m.latest.dqs - m.baseline.dqs) * 10) / 10 : null;
   return (
-    <div className="flex flex-col gap-1 rounded border p-3" style={{ borderColor: "var(--m-line)" }}>
+    <Card padding="sm">
       <div className="flex items-center justify-between">
-        <strong className="text-[13px]">{scopeLabel(m)}</strong>
-        <span className="text-[12px]" style={{ color: "var(--m-ink-2)" }}>
+        <strong className="m-text-body">{scopeLabel(m)}</strong>
+        <span className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
           Baseline {m.baseline.run_at ? formatDate(m.baseline.run_at, "datetime") : "—"}
         </span>
       </div>
-      <p className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+      <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
         <Link href={`/runs/${m.baseline.id}`} className="underline">Baseline {m.baseline.dqs != null ? m.baseline.dqs.toFixed(1) : "—"}</Link>
         {" to "}
         <Link href={`/runs/${m.latest.id}`} className="underline">latest {m.latest.dqs != null ? m.latest.dqs.toFixed(1) : "—"}</Link>
         {delta != null ? <> (<Delta value={delta} />)</> : null}
       </p>
       {!changed ? (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>No regressions since the baseline.</span>
+        <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>No regressions since the baseline.</span>
       ) : changed.batch_id ? (
         (() => {
           const batchIdToOpen = changed.batch_id;
@@ -587,16 +594,16 @@ function MonitorRow({ item: m, onOpenBatch }: { item: MonitorItem; onOpenBatch: 
           );
         })()
       ) : (
-        <span className="text-[13px]" style={{ color: "var(--m-ink-2)" }}>
+        <span className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
           {changed.new_records.toLocaleString()} record{changed.new_records === 1 ? "" : "s"} regressed. Already in an open fix batch.
         </span>
       )}
       {stale ? (
-        <p className="text-[13px] flex items-center gap-2">
+        <p className="m-text-body flex items-center gap-2">
           <Pill tone="at-risk">Stale check</Pill>
           <span style={{ color: "var(--m-ink-2)" }}>This system has not been checked in over 36 hours. The comparison above may not reflect recent SAP changes.</span>
         </p>
       ) : null}
-    </div>
+    </Card>
   );
 }
