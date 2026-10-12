@@ -78,6 +78,7 @@
 
   --m-text-hero: 56px;      --m-leading-hero: 60px;      /* count-up DQS */
   --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* verdict sentence */
+  --m-text-verdict-num: 44px; --m-leading-verdict-num: 48px; /* verdict number */
   --m-text-title: 20px;     --m-leading-title: 26px;     /* auth h1, record key */
   --m-text-stat: 26px;      --m-leading-stat: 30px;      /* KPI tile value */
   --m-text-section: 15px;   --m-leading-section: 20px;   /* h2, drawer title */
@@ -114,6 +115,7 @@
   --m-elev-1: 0 0 0 1px var(--m-line);                                    /* flat card: hairline only */
   --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(20 21 25 / 0.08);     /* menu, popover, tooltip */
   --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(20 21 25 / 0.16);    /* drawer, dialog, palette */
+  --m-ring: 0 0 0 2px var(--m-accent);                                      /* selection outline */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
   --m-elev-accent: 0 1px 2px rgb(79 70 229 / 0.30);                         /* primary button */
 
@@ -215,6 +217,17 @@
 .m-text-body  { font-size: 13px; line-height: 18px; }
 .m-text-h     { font-size: 15px; line-height: 20px; }
 .m-text-title { font-size: 20px; line-height: 26px; }
+.m-text-verdict { font-size: var(--m-text-verdict-num); line-height: var(--m-leading-verdict-num); }
+.m-ring { box-shadow: var(--m-ring); }
+.m-textarea { height: auto; min-height: calc(var(--m-control-h) * 2); padding: 6px 10px; resize: vertical; }
+.m-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; background: none; border: 0; padding: 0; color: var(--m-ink); }
+.m-switch-track { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--m-line-strong); transition: background var(--m-motion-duration) var(--m-motion-ease); }
+.m-switch-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--m-sheet); transition: transform var(--m-motion-duration) var(--m-motion-ease); }
+.m-switch[aria-checked="true"] .m-switch-track { background: var(--m-accent); }
+.m-switch[aria-checked="true"] .m-switch-thumb { transform: translateX(12px); }
+.m-switch:focus-visible { outline: none; }
+.m-switch:focus-visible .m-switch-track { box-shadow: var(--m-elev-focus); }
+.m-switch:disabled { cursor: not-allowed; opacity: 0.5; }
 .m-numeric { font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
 
 /* ---------- Motion ---------- */
