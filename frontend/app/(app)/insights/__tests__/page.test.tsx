@@ -1,77 +1,78 @@
 // frontend/app/(app)/insights/__tests__/page.test.tsx
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
-import * as analyticsApi from "@/lib/api/analytics";
+import * as migrationApi from "@/lib/api/migration";
 import * as versionsApi from "@/lib/api/versions";
-import InsightsIndexPage from "../page";
+import InsightsOverviewPage from "../page";
 
-const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, prefetch: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => "/insights",
+  useSearchParams: () => new URLSearchParams("run=v1"),
+}));
+vi.mock("@/hooks/use-role", () => ({ useRole: () => ({ can: () => true }) }));
 vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ status: "ready", step: null }),
   DayOneAction: () => null,
 }));
 
-function renderWithQuery(ui: React.ReactElement) {
+function mount() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><InsightsOverviewPage /></QueryClientProvider>);
 }
 
-const exec = {
-  version_id: "v1",
-  narrative: "",
-  readiness_cells: [{ module: "m", wave: "w1", verdict: "no_go" as const, blocker_count: 1, dqs: 50, score: 50, records_blocked: 3 }],
-  waterfall: [],
-  impact_rows: [],
-  owner_rows: [],
+const overview = {
+  version_id: "v1", run_label: "Run 1", run_at: null, previous_version_id: null,
+  dqs: { composite: 72, previous: 70, delta: 2, tier: "at_risk", capped: false, cap_reason: null },
+  blockers: { count: 4, previous: null, waves: 2 },
+  auto_fixable: { records: 120, failing_records: 400, pct: 30, high_confidence: 80 },
+  value_at_risk: { worst_l1: "procure_to_pay", worst_l1_amount: 5000, currency: "USD", features_blocked: 3 },
+  narrative: [{ text: "Four blocking gaps remain." }],
 };
 
-const tiles = () => Array.from(screen.getByTestId("insights-index").querySelectorAll("a")).map((a) => a.textContent ?? "");
-
-function mockSide() {
-  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
-  vi.spyOn(analyticsApi, "getPredictiveAnalytics").mockResolvedValue({ forecasts: [], early_warnings: [] });
-  vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [], configured: true });
-  vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({ version_id: "v1", currency: "USD", rows: [], cost_by_l1: [], value_at_risk_by_l1: [] });
+function mockAll() {
+  vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [{ id: "v1", label: "Run 1", status: "complete" }] } as never);
+  vi.spyOn(insightsApi, "getOverview").mockResolvedValue(overview);
+  vi.spyOn(insightsApi, "getRootCauses").mockResolvedValue({ version_id: "v1", clusters: [] });
+  vi.spyOn(insightsApi, "getRuleRanking").mockResolvedValue({ version_id: "v1", rows: [] });
+  vi.spyOn(insightsApi, "getTrends").mockResolvedValue({ lineage: "l", runs: [], annotations: [] });
+  vi.spyOn(insightsApi, "getHeatmap").mockResolvedValue({ version_id: "v1", dimensions: [], rows: [] });
+  vi.spyOn(insightsApi, "getCleansing").mockResolvedValue({ version_id: "v1", currency: "USD", steps: [], by_module: [], by_rule: [] } as never);
+  vi.spyOn(migrationApi, "getS4Readiness").mockResolvedValue({ status: "ok", areas: [] });
 }
 
-describe("InsightsIndexPage", () => {
-  it("lists every insight and fetches exec once", async () => {
-    const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
-    mockSide();
-    renderWithQuery(<InsightsIndexPage />);
-    expect((await screen.findAllByText("1 readiness cell is no-go")).length).toBeGreaterThan(0);
-    const names = tiles();
-    expect(names[0]).toMatch(/^Readiness/);
-    expect(screen.getByText("Duplicates")).toBeInTheDocument();
-    expect(getExec).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("insight-hero-stats")).toBeInTheDocument();
-    expect(screen.getByTestId("insights-index").querySelector("a")).toHaveClass("m-lift");
+afterEach(() => vi.restoreAllMocks());
+
+describe("InsightsOverviewPage", () => {
+  it("renders the narrative, one hero and no in-page h1", async () => {
+    mockAll();
+    mount();
+    expect(await screen.findByText("Four blocking gaps remain.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.getAllByTestId("insight-hero-stats")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /^Reports/ })).toBeInTheDocument();
   });
 
-  it("sorts the no-go insight above the rest", async () => {
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
-    mockSide();
-    renderWithQuery(<InsightsIndexPage />);
-    await screen.findAllByText("1 readiness cell is no-go");
-    const names = tiles();
-    expect(names[0]).toMatch(/^Readiness/);
-    expect(names.findIndex((n) => /^Forecast/.test(n))).toBeGreaterThan(0);
+  it("shows the worst L1 and never a cross-L1 total", async () => {
+    mockAll();
+    mount();
+    expect(await screen.findByText(/Procure to pay, 3 features blocked/i)).toBeInTheDocument();
   });
 
-  it("shows the empty state when there is no run", async () => {
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ ...exec, version_id: null, readiness_cells: [] });
-    mockSide();
-    renderWithQuery(<InsightsIndexPage />);
-    expect(await screen.findByText("No insights yet")).toBeInTheDocument();
+  it("shows a section error with retry when one query fails", async () => {
+    mockAll();
+    vi.spyOn(insightsApi, "getRootCauses").mockRejectedValue(new Error("network error"));
+    mount();
+    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByText("Four blocking gaps remain.")).toBeInTheDocument();
   });
 
-  it("shows a retry control when the load fails", async () => {
-    vi.spyOn(insightsApi, "getExec").mockRejectedValue(new Error("network error"));
-    mockSide();
-    renderWithQuery(<InsightsIndexPage />);
+  it("shows the page error when the overview fails", async () => {
+    mockAll();
+    vi.spyOn(insightsApi, "getOverview").mockRejectedValue(new Error("network error"));
+    mount();
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });
