@@ -59,15 +59,15 @@ const newer = version({ id: "v2", label: "Oct 8 upload", dqs_summary: { material
 const older = version({ id: "v1", label: "Oct 1 upload", run_at: "2026-10-01T00:00:00Z", dqs_summary: { material_master: dqs(71.2) } });
 
 describe("RunsPage", () => {
-  it("shows the DQS column and a sparkline per system", async () => {
+  it("shows the DQS column and a score chart for the latest system", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     const links = screen.getAllByText("74.8").map((el) => el.closest("a"));
-    expect(links.length).toBeGreaterThan(1); // hero tile and table cell
+    expect(links.length).toBeGreaterThan(1); // stat tile and table cell
     for (const link of links) expect(link).toHaveAttribute("href", "/runs/v2");
-    expect(screen.getByRole("button", { name: /ECC Prod/ })).toBeInTheDocument();
+    expect(screen.getByText("Score per run, ECC Prod")).toBeInTheDocument();
   });
 
   it("compares the newer run against the older one when two rows are selected", async () => {
@@ -76,7 +76,7 @@ describe("RunsPage", () => {
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText("Select row v1"));
-    expect(screen.getByText("Select exactly two runs to compare")).toBeInTheDocument();
+    expect(screen.getByText("Select two runs")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Select row v2"));
     const bulkBar = screen.getByText("2 selected").parentElement as HTMLElement;
     fireEvent.click(within(bulkBar).getByRole("button", { name: "Compare" }));
@@ -90,21 +90,13 @@ describe("RunsPage", () => {
     await waitFor(() => expect(screen.getByText(/no runs/i)).toBeInTheDocument());
   });
 
-  it("links the per-row Compare button to the predecessor run, and disables it when there is none", async () => {
+  it("has no per-row Compare button; comparing is a bulk action", async () => {
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-
-    const rowNewer = screen.getByText("Oct 8 upload").closest("tr") as HTMLElement;
-    const rowOlder = screen.getByText("Oct 1 upload").closest("tr") as HTMLElement;
-
-    const compareNewer = within(rowNewer).getByRole("link", { name: "Compare" });
-    expect(compareNewer).toHaveAttribute("href", "/runs/v2/vs/v1");
-
-    const compareOlder = within(rowOlder).getByRole("button", { name: "Compare" });
-    expect(compareOlder).toHaveAttribute("aria-disabled", "true");
-    expect(within(rowOlder).queryByRole("link", { name: "Compare" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Compare" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Compare" })).not.toBeInTheDocument();
   });
 
   it("shows an error state with Try again when runs fail to load, and retries on click", async () => {
@@ -118,16 +110,14 @@ describe("RunsPage", () => {
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
   });
 
-  it("filters the table to a system when its sparkline is clicked", async () => {
-    const getVersions = vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
+  it("filters to a system from the URL and shows a removable chip", async () => {
+    searchParams.set("system", "sys-1");
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [newer, older] });
     vi.spyOn(connectivityApi, "getSystems").mockResolvedValue([system]);
     renderWithQuery(<RunsPage />);
     await waitFor(() => expect(screen.getByText("Oct 8 upload")).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole("button", { name: /ECC Prod/ }));
-
-    await waitFor(() => expect(screen.getByText("Filtered")).toBeInTheDocument());
-    expect(getVersions).toHaveBeenCalledWith({ system_id: "sys-1", limit: 100 });
+    expect(screen.getByRole("button", { name: "Remove filter System: ECC Prod" })).toBeInTheDocument();
+    searchParams.delete("system");
   });
 });
 
