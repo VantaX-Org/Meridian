@@ -30,3 +30,9 @@ fill, no gradient. The arc is ink; the meridian line is the accent.
   accent is unavailable.
 - Never rotate, shadow, fill or close the arc, change the gap, or put the mark
   on a tile (the OS app icon is the one exception).
+
+## Licence
+
+The wordmark is outlined from Public Sans, licensed under the SIL Open Font
+License 1.1 (https://openfontlicense.org). Outlined glyphs and the bundled
+`app/_fonts/PublicSans-*.ttf` stay under that licence.

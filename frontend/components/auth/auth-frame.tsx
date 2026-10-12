@@ -29,9 +29,10 @@ export function AuthFrame({ title, lead, children }: { title: string; lead?: Rea
           {lead ? <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)" }}>{lead}</p> : null}
           {children}
         </div>
-        {appVersion ? (
-          <p className="text-right font-mono text-[11px] leading-[14px]" style={{ color: "var(--m-ink-3)" }}>v{appVersion}</p>
-        ) : null}
+        <div className="flex items-baseline justify-between gap-4 text-[11px] leading-[14px]" style={{ color: "var(--m-ink-3)" }}>
+          <p>Your SAP data stays on this server.</p>
+          {appVersion ? <p className="font-mono">v{appVersion}</p> : null}
+        </div>
       </div>
     </main>
   );
