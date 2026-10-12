@@ -52,7 +52,7 @@ class ObjectSummaryOut(BaseModel):
 class ObjectsListOut(BaseModel):
     run_id: Optional[str] = None
     objects: list[ObjectSummaryOut]
-    blocking_findings_total: int = 0  
+    blocking_findings_total: int = 0  # failing critical and high findings in the run
     # the tenant's DQS bands {target, warning, critical}, for the score rings
     thresholds: dict[str, float] = DEFAULT_THRESHOLDS
 
@@ -107,9 +107,9 @@ _TREND_RUNS = 8
 
 async def _enrichments(db: AsyncSession, tenant: Tenant, run_id: str) -> tuple[dict[str, tuple[str, Optional[str]]], dict[str, str], list[dict], int]:
     """Four tenant-scoped queries for the whole list, none per object:
-    blocking rule per module (DISTINCT ON over the run's critical/high failing findings, one pass), their names (one rules lookup),
+    blocking rule per module (DISTINCT ON over the run's failing critical and high findings, one pass), their names (one rules lookup),
     owners (one data_owners join) and the last 8 runs' summaries of this run's system (8 rows).
-    Returns (blocking {module: (check_id, name)}, owners {module: name}, trend rows, critical total)."""
+    Returns (blocking {module: (check_id, name)}, owners {module: name}, trend rows, failing critical and high findings total)."""
     t = {"t": str(tenant.id), "v": run_id}
     block = (await db.execute(text(
         "SELECT DISTINCT ON (module) module, check_id FROM findings "

@@ -253,6 +253,15 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
                     }["PTP"]["dq_defects"] == 2
 
+            # legacy cache entry (a bare DfgResponse, no dfg/modules keys): a miss, rewritten in the new format
+            ckey = next(k for k, val in redis.data.items() if '"modules"' in val and '"dfg"' in val)
+            legacy = json.dumps(json.loads(redis.data[ckey])["dfg"])
+            redis.data[ckey] = legacy
+            r = await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)
+            assert r.status_code == 200 and r.json()["cached"] is False
+            rewritten = json.loads(redis.data[ckey])
+            assert set(rewritten) == {"dfg", "modules"} and rewritten["dfg"]["node"]["id"] == "PTP"
+
             v = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer)).json()
             assert v["case_type"] == "po_item" and v["total"] == len(v["items"]) > 0
             vf = (await c.get(f"{BASE}/runs/{rid}/variants", headers=viewer, params=f)).json()
