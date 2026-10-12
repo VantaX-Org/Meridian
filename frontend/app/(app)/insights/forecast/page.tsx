@@ -57,6 +57,20 @@ export default function ForecastPage() {
     [selected],
   );
 
+  // One line per module, up to the ten series hues; the selected module leads.
+  const series = useMemo(
+    () => [...forecasts].sort((a, b) => Number(b === selected) - Number(a === selected)).slice(0, 10).map((f) => ({
+      name: formatModuleName(f.module_id),
+      data: [
+        { x: "Now", y: f.current_score },
+        { x: "7 days", y: f.forecast_7d },
+        { x: "30 days", y: f.forecast_30d },
+        { x: "90 days", y: f.forecast_90d },
+      ],
+    })),
+    [forecasts, selected],
+  );
+
   const state = isLoading ? "loading" : isListFailure({ isError: !!error, error }) ? "error" : forecasts.length === 0 ? "empty" : undefined;
 
   const declining = forecasts.filter((f) => f.trend === "declining" || f.trend === "critical");
@@ -99,7 +113,7 @@ export default function ForecastPage() {
               options={forecasts.map((f) => ({ value: f.module_id, label: formatModuleName(f.module_id) }))}
             />
           )}
-          {points.length > 0 ? <Line data={points} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
+          {points.length > 0 ? <Line data={points} series={series} /> : <EmptyState title="No forecast for this module" action={<Button render={<Link href="/runs">Open runs</Link>} />} />}
           {selected && (
             <p className="m-text-body" style={{ color: "var(--m-ink-2)" }}>
               {`${formatModuleName(selected.module_id)}: ${selected.trend} trend, ${selected.confidence}% confidence over ${selected.points} runs across ${selected.span_days} days`}
