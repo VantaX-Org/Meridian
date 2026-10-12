@@ -6,7 +6,7 @@ export const alt = "Meridian: SAP data quality, measured";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// ImageResponse cannot read CSS tokens; these mirror hero-ink, ink-2, ember and grad-cover (dark).
+// ImageResponse cannot read CSS tokens; these mirror hero-ink, hero-ink-2, ember and grad-cover (dark).
 const INK = "rgb(237 237 240)";
 const INK_2 = "rgb(183 196 255)";
 const ACCENT = "rgb(255 122 69)";
