@@ -28,6 +28,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -221,6 +222,43 @@ class ParquetTable:
         return out.assign(**{c: v.iloc[:n].set_axis(out.index) for c, v in self._added.items()})
 
 
+DEFAULT_CACHE_BYTES = 2 * 1024**3  # per lazy-column cache outside run_checks (which sets its prefetch budget)
+
+
+class _ByteLRU(dict):
+    """A dict of columns that drops its least recently used ones once they hold more than
+    ``budget`` bytes (the newest always stays). Reads and writes refresh an entry."""
+
+    def __init__(self, budget: int) -> None:
+        super().__init__()
+        self.budget = budget
+        self.bytes = 0
+
+    def __getitem__(self, key: object) -> pd.Series:
+        value = super().pop(key)
+        super().__setitem__(key, value)
+        return value
+
+    def __setitem__(self, key: object, value: pd.Series) -> None:
+        if key in self:
+            self.bytes -= _nbytes(super().pop(key))
+        super().__setitem__(key, value)
+        self.bytes += _nbytes(value)
+        while self.bytes > self.budget and len(self) > 1:
+            self.bytes -= _nbytes(super().pop(next(iter(self))))
+
+    def clear(self) -> None:
+        super().clear()
+        self.bytes = 0
+
+
+def _nbytes(value: object) -> int:
+    try:
+        return int(getattr(value, "nbytes", 0))
+    except Exception:  # an array type that cannot size itself
+        return 0
+
+
 def _edge_columns(edge: Edge) -> set[str]:
     """Columns a join along ``edge`` reads: its keys on both sides and the child's filter/prefer fields."""
     return ({f"{edge.child}.{c}" for c, _ in edge.on} | {f"{edge.parent}.{p}" for _, p in edge.on}
@@ -238,8 +276,7 @@ class TableFrames:
         self.flat = flat
         self.unsplittable = unsplittable or set()
         self.module = module
-        self._cache: dict[tuple, tuple[pd.DataFrame, str, list[str]]] = {}
-        self._norm: dict[str, pd.Series] = {}  # stripped string columns of the cached frame (population.exclude)
+        self.reset_caches()
         self.incomplete: set[str] = set()  # tables the extraction could not read completely
         self.partial: set[str] = set()  # tables read by window or scope (not every record)
         self._apply_moved_fields()
@@ -309,10 +346,31 @@ class TableFrames:
             return None
         return grain or self._resolve_grain(tables)
 
+    def reset_caches(self, budget: int = DEFAULT_CACHE_BYTES) -> None:
+        """Fresh, unshared caches. Lazy tables keep, for the grain last asked for, every decoded
+        or joined column (``_cols``), each joined table's row positions (``_idx``) and the
+        stripped columns rules filter on (``_norm``): every rule frame at a grain has the grain's
+        rows in the same order, so all of it serves every rule of that grain. ``_cols`` and
+        ``_norm`` each drop their least recently used columns past ``budget`` bytes."""
+        self._cache: dict[tuple, tuple[pd.DataFrame, str, list[str]]] = {}  # fully decoded tables
+        self._cols = _ByteLRU(budget)  # (grain, column) -> column aligned to the grain's rows
+        self._norm = _ByteLRU(budget)  # stripped string columns (population.exclude, applies_when)
+        self._idx: dict[str, np.ndarray | None] = {}  # joined table -> its row per grain row (-1: none)
+        self._rk: dict[str, list[str]] = {}  # joined table -> its join keys (held trimmed, as _join adds them)
+        self._grain: str | None = None
+        self._index: pd.Index | None = None
+
+    def set_cache_budget(self, budget: int) -> None:
+        self._cols.budget = self._norm.budget = budget
+
     def clear_cache(self) -> None:
-        """Drop the joined per-rule frames (they hold decoded copies of the tables)."""
+        """Drop every decoded column, join and stripped column (they hold decoded copies of the tables)."""
         self._cache.clear()
+        self._cols.clear()
         self._norm.clear()
+        self._idx.clear()
+        self._rk.clear()
+        self._grain = self._index = None
 
     @property
     def lazy(self) -> bool:
@@ -388,10 +446,8 @@ class TableFrames:
         if lazy:  # a table none of whose requested columns exist adds nothing: leave it out of the key
             want = {c.partition(".")[0] for c in avail} | {g}
         cache_key = (self.module, g, tuple(sorted(want)))
-        for key, hit in self._cache.items():
-            if key == cache_key or (lazy and key[:2] == cache_key[:2] and want <= set(key[2])):
-                if not lazy or avail <= set(hit[0].columns):
-                    return hit
+        if not lazy and cache_key in self._cache:
+            return self._cache[cache_key]
         paths = {t: self._path(g, t) for t in tables if t != g and (not lazy or t in want)}
         for t, path in paths.items():  # before anything is decoded
             if path is None:
@@ -402,6 +458,11 @@ class TableFrames:
             # record id is guessed from all columns (checks/base.find_id_field), so read all
             wanted = read | {f"{g}.{k}" for k in self.dictionary.keys(g)}
             wanted |= {c for path in paths.values() for edge, _ in path or [] for c in _edge_columns(edge)}
+        if lazy:
+            frame = self._assemble(g, paths, wanted)
+            if frame is None:
+                return None
+            return frame, g, [f"{g}.{k}" for k in self.dictionary.keys(g) if f"{g}.{k}" in frame.columns]
         frame = _decoded(self.frames[g], wanted)
         for t, path in paths.items():
             for edge, direction in path:
@@ -412,10 +473,103 @@ class TableFrames:
                 need = [c for c in right.columns if c not in frame.columns]
                 frame = _join(frame, right, edge, need, up=(direction == "up"))
         keys = [f"{g}.{k}" for k in self.dictionary.keys(g) if f"{g}.{k}" in frame.columns]
-        if lazy:
-            self.clear_cache()
         self._cache[cache_key] = (frame, g, keys)
         return self._cache[cache_key]
+
+    # ── lazy tables: columns and joins kept per grain ────────────────────
+
+    def _assemble(self, g: str, paths: dict[str, Optional[list[tuple[Edge, str]]]],
+                  wanted: set[str] | None) -> pd.DataFrame | None:
+        """The frame ``_join`` along ``paths`` builds from the decoded tables, with the same
+        columns in the same order and the same values, put together from columns kept for
+        grain ``g``: a table's rows are matched to the grain once (``_hop``), and a column is
+        decoded and aligned once, however many rules read it."""
+        if self._grain != g:
+            self.clear_cache()
+            self._grain = g
+        if self._index is None:
+            self._index = self.frames[g][[]].index
+        names = [c for c in self.frames[g].columns if wanted is None or c in wanted]
+        out = dict(zip(names, self._columns(g, names, None, ())))
+        joined: set[str] = set()
+        for path in paths.values():
+            prev = g
+            for edge, direction in path or []:
+                up = direction == "up"
+                other = edge.parent if up else edge.child
+                if other not in self.frames:
+                    return None
+                if other not in joined:
+                    joined.add(other)
+                    idx = self._hop(g, prev, edge, up)
+                    if idx is not None:  # _join adds the trimmed keys, then the table's columns
+                        rk = self._rk[other]
+                        add = list(dict.fromkeys(rk + [c for c in self.frames[other].columns
+                                                       if wanted is None or c in wanted]))
+                        add = [c for c in add if c not in out]
+                        out.update(zip(add, self._columns(other, add, idx, rk)))
+                prev = other
+        return pd.DataFrame(out, index=self._index, copy=False) if out else pd.DataFrame(index=self._index)
+
+    def _columns(self, t: str, cols: list[str], idx: np.ndarray | None, trimmed: list[str] | tuple
+                 ) -> list[pd.Series]:
+        """``t``'s ``cols`` aligned to the grain's rows (``idx``: ``t``'s row per grain row, None
+        for the grain itself), ``trimmed`` ones as trimmed strings; decoded in one read."""
+        got = {c: self._cols[(self._grain, c)] for c in cols if (self._grain, c) in self._cols}
+        missing = [c for c in cols if c not in got]
+        if missing:
+            src = self.frames[t]
+            dec = src[missing]
+            for c in missing:
+                s = dec[c]
+                if c in trimmed:
+                    s = s.astype("string").str.strip()
+                if idx is not None:
+                    vals = s.array if not isinstance(s.dtype, np.dtype) else s.to_numpy()
+                    s = pd.Series(vals.take(idx, allow_fill=True) if not isinstance(vals, np.ndarray)
+                                  else pd.api.extensions.take(vals, idx, allow_fill=True),
+                                  index=self._index, name=c, copy=False)
+                got[c] = self._cols[(self._grain, c)] = s
+        return [got[c] for c in cols]
+
+    def _hop(self, g: str, prev: str, edge: Edge, up: bool) -> np.ndarray | None:
+        """Row of the table across ``edge`` from ``prev`` for each row of grain ``g`` (-1: no
+        match), matched exactly as ``_join`` matches; None when ``_join`` would add nothing
+        (a key column is missing on either side)."""
+        other = edge.parent if up else edge.child
+        if other in self._idx:
+            return self._idx[other]
+        lk = [f"{edge.child}.{c}" for c, _ in edge.on] if up else [f"{edge.parent}.{p}" for _, p in edge.on]
+        rk = [f"{edge.parent}.{p}" for _, p in edge.on] if up else [f"{edge.child}.{c}" for c, _ in edge.on]
+        prev_idx = None if prev == g else self._idx.get(prev)
+        src, right = self.frames[prev], self.frames[other]
+        idx = None
+        if ((prev == g or prev_idx is not None) and all(k in src.columns for k in lk)
+                and all(k in right.columns for k in rk)):
+            left = self._columns(prev, lk, prev_idx, self._rk.get(prev, ()))
+            lnorm = pd.DataFrame({k: s.astype("string").str.strip() for k, s in zip(lk, left)})
+            r = _decoded(right, set(rk) | {f"{edge.child}.{f}" for f, _ in edge.filter + edge.prefer})
+            r = r.assign(_pos=np.arange(len(r)))
+            if not up:
+                for f, v in edge.filter:
+                    col = f"{edge.child}.{f}"
+                    if col in r.columns:
+                        r = r[r[col].astype("string").fillna("").str.strip() == v]
+                if edge.prefer:
+                    order = pd.Series(0, index=r.index)
+                    for f, v in edge.prefer:
+                        col = f"{edge.child}.{f}"
+                        if col in r.columns:
+                            order -= (r[col].astype("string").str.strip() == v).astype(int)
+                    r = r.assign(_prefer=order).sort_values("_prefer", kind="stable").drop(columns="_prefer")
+            rnorm = pd.DataFrame({k: r[k].astype("string").str.strip() for k in rk}).assign(_pos=r["_pos"])
+            rnorm = rnorm.drop_duplicates(subset=rk)
+            pos = lnorm.merge(rnorm, how="left", left_on=lk, right_on=rk)["_pos"]
+            idx = pos.fillna(-1).to_numpy(dtype=np.int64)
+            if len(right) < 2**31:
+                idx = idx.astype(np.int32)
+        self._idx[other], self._rk[other] = idx, rk
+        return idx
 
     def path_tables(self, columns: list[str], grain: str | None = None) -> Optional[set[str]]:
         """Every table the engine joins to evaluate ``columns`` (grain + paths)."""

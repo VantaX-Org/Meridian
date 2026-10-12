@@ -544,6 +544,7 @@ def run_checks(
         from api.config import settings
         prefetch_budget = settings.checks_prefetch_budget_bytes
     budget = prefetch_budget
+    frames.set_cache_budget(budget)
     try:
         for done, i in enumerate(order):
             rule = rules[i]
@@ -555,7 +556,6 @@ def run_checks(
                     plan = _prefetch_plan([j for j in order if groups[j][0] == prev], rules, prev, frames,
                                           suppressed, budget)
             if i in plan:
-                frames.clear_cache()
                 try:  # best effort: a rule that finds nothing prefetched builds its own frame
                     frames.prefetch(plan[i], prev)
                 except SoftTimeLimitExceeded:

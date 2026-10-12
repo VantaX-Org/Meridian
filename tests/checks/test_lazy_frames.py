@@ -102,7 +102,8 @@ def test_rule_frame_decodes_only_the_columns_it_needs(bundle: dict[str, bytes],
     eager = _frames(bundle, lazy=False).frame_for(["MARD.LABST", "MARA.MTART"])[0]
     pd.testing.assert_frame_equal(frame, eager[list(frame.columns)])
     frames.frame_for(["MARC.DISPO"])
-    assert len(frames._cache) == 1  # a lazy run keeps one joined frame, not one per rule
+    assert not frames._cache and frames._grain == "MARC"  # columns kept for one grain, not a frame per rule
+    assert all(g == "MARC" for g, _ in frames._cols)
 
 
 def test_lazy_run_is_identical_to_eager_run(bundle: dict[str, bytes]) -> None:
@@ -232,10 +233,9 @@ def test_prefetched_group_frame_serves_every_rule_without_decoding(bundle: dict[
     calls = _count_decodes(monkeypatch)
     for r in rules:
         run_rule(r, frames)
-    assert calls == []  # the group's joined frame was built once, up front
-    assert len(frames._cache) == 1
+    assert calls == []  # the group's columns were decoded and joined once, up front
     frames.clear_cache()
-    assert not frames._cache and not frames._norm  # nothing decoded outlives the group
+    assert not frames._cache and not frames._cols and not frames._norm and not frames._idx  # nothing decoded outlives the group
 
 
 def test_run_checks_builds_the_joined_frame_a_bounded_number_of_times(bundle: dict[str, bytes],
@@ -253,7 +253,7 @@ def test_run_checks_builds_the_joined_frame_a_bounded_number_of_times(bundle: di
     results = run_checks(MODULE, frames, "t1", as_of="2026-01-01")
     assert len(results) > 400
     assert len(joins) < len(results) / 4, len(joins)  # was several per rule
-    assert not frames._cache and not frames._norm  # released after the run
+    assert not frames._cache and not frames._cols and not frames._norm and not frames._idx  # released after the run
 
 
 def test_run_checks_releases_decoded_frames_when_a_rule_raises(bundle: dict[str, bytes],
@@ -261,7 +261,7 @@ def test_run_checks_releases_decoded_frames_when_a_rule_raises(bundle: dict[str,
     import checks.runner as rn
     frames = _frames(bundle, lazy=True)
     frames.frame_for(["MARC.DISPO"])
-    assert frames._cache
+    assert frames._cols
 
     def boom(*a, **kw):  # type: ignore[no-untyped-def]
         raise RuntimeError("x")
@@ -269,7 +269,7 @@ def test_run_checks_releases_decoded_frames_when_a_rule_raises(bundle: dict[str,
     monkeypatch.setattr(rn, "run_rule", boom)
     with pytest.raises(RuntimeError):
         run_checks(MODULE, frames, "t1")
-    assert not frames._cache and not frames._norm
+    assert not frames._cache and not frames._cols and not frames._norm and not frames._idx
 
 
 def test_rule_skipped_by_missing_applies_when_field_decodes_nothing(bundle: dict[str, bytes],
@@ -301,9 +301,9 @@ def test_decoding_every_column_outside_the_rule_loop_retains_nothing(bundle: dic
     for table, src in frames.frames.items():
         for col in src.columns:
             src[col]
-    assert not frames._cache and not frames._norm
+    assert not frames._cache and not frames._cols and not frames._norm and not frames._idx
     run_checks(MODULE, frames, "t1", as_of="2026-01-01")
-    assert not frames._cache and not frames._norm
+    assert not frames._cache and not frames._cols and not frames._norm and not frames._idx
     assert all(not getattr(src, "_memo", None) for src in frames.frames.values())
 
 
@@ -383,3 +383,45 @@ def test_table_never_extracted_skips_its_rules_instead_of_crashing_the_run(bundl
     lazy = _dump(run_checks(MODULE, frames, "t1", as_of="2026-01-01", stats=stats))
     assert lazy == _dump(run_checks(MODULE, _frames(partial, False), "t1", as_of="2026-01-01"))
     assert stats.get("not_evaluable", 0) > 0
+
+
+def test_lazy_column_cache_joins_exactly_like_the_eager_merge() -> None:
+    """Lazy frames join each table once per grain through a positional index and reuse the
+    columns across rules; padded keys, null keys, duplicate and preferred child rows,
+    multi-hop paths and a byte budget that forces eviction all give the eager frame."""
+    na = None
+    tables = {
+        "MARA": pd.DataFrame({"MARA.MATNR": ["A", " B", "C ", na, "E", "A"],
+                              "MARA.MTART": ["FERT", "ROH", na, "HALB", "", "DUP"]}),
+        "MAKT": pd.DataFrame({"MAKT.MATNR": ["A", "A", "B ", na, "C"],
+                              "MAKT.SPRAS": ["D", "E", "E", "E", "D"],
+                              "MAKT.MAKTX": ["de", "en", "b-en", "null", "c-de"]}),
+        "MARC": pd.DataFrame({"MARC.MATNR": ["A", "A", "B", "C", na, "Z", " E "],
+                              "MARC.WERKS": ["1000", "2000", "1000 ", na, "1000", "1000", "1000"],
+                              "MARC.DISPO": ["01", "", "02", "03", na, "04", "05"]}),
+        "MARD": pd.DataFrame({"MARD.MATNR": ["A", "A", "A", "B", "C", "Q"],
+                              "MARD.WERKS": ["1000", "1000", "2000", "1000", na, "1000"],
+                              "MARD.LGORT": ["0001", "0002", "0001", "0001", "0001", "0001"],
+                              "MARD.LABST": ["1", "2", "3", "4", "5", "6"]}),
+        "MBEW": pd.DataFrame({"MBEW.MATNR": ["A", "A", "A", "B", "C", "E"],
+                              "MBEW.BWKEY": ["1000", "1000", "2000", " 1000", na, "1000"],
+                              "MBEW.BWTAR": ["X1", "", "", "", "", "X2"],
+                              "MBEW.VPRSV": ["V", "S", "S", "V", "S", "V"]}),
+    }
+    blobs = {t: _parquet(df) for t, df in tables.items()}
+    asks = [["MARC.DISPO"], ["MARC.DISPO", "MARA.MTART"], ["MBEW.VPRSV", "MARC.DISPO"],
+            ["MAKT.MAKTX", "MARC.DISPO", "MBEW.VPRSV"], ["MARA.MTART", "MAKT.MAKTX"],
+            ["MARD.LABST", "MARC.DISPO"], ["MARD.LABST", "MBEW.VPRSV", "MARA.MTART"],
+            ["MARD.LABST", "MAKT.MAKTX"], ["MARC.DISPO", "MAKT.MAKTX"], ["MARA.MTART"]]
+    for budget in (10**9, 1):
+        eager = TableFrames({t: pd.read_parquet(io.BytesIO(b)) for t, b in blobs.items()}, D, module=MODULE)
+        lazy = TableFrames({t: ParquetTable(b) for t, b in blobs.items()}, D, module=MODULE)
+        lazy.set_cache_budget(budget)
+        for cols in asks + asks[::-1]:
+            want, got = eager.frame_for(cols), lazy.frame_for(cols)
+            assert (want is None) == (got is None), cols
+            if want is not None:
+                assert want[1:] == got[1:], cols
+                # the eager frame holds every column of its tables, the lazy one what the rule reads
+                assert set(cols) <= set(got[0].columns), (cols, list(got[0].columns))
+                pd.testing.assert_frame_equal(got[0], want[0][list(got[0].columns)], obj=str(cols))
