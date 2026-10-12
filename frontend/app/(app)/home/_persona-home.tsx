@@ -51,8 +51,8 @@ const runLabel = (v: Version) =>
 
 /** A work stat: links, or (with `onClick`, no href) opens something. A plain button, never wrapping a link. */
 function Tile({ label, value, hint, href, onClick, tone }: { label: string; value: ReactNode; hint?: string; href?: string; onClick?: () => void; tone?: StatTone }) {
-  const stat = <Stat label={label} value={value} hint={hint} href={href} tone={tone} />;
-  return onClick && !href ? <button type="button" onClick={onClick} className="text-left">{stat}</button> : stat;
+  const stat = <Stat label={label} value={value} hint={hint} href={href} onClick={onClick} tone={tone} />;
+  return stat;
 }
 
 function WorkRow({ children }: { children: ReactNode }) {
@@ -227,6 +227,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         data={rows}
         getRowId={(o) => o.module}
         onRowClick={(o) => router.push(`/objects/${o.module}?run=${latest.id}`)}
+        rowHref={(o) => `/objects/${o.module}?run=${latest.id}`}
         height="auto"
         dense
         hideToolbar

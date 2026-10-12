@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "../primitives/Button";
 import { Card } from "../primitives/Card";
 import { Delta } from "../primitives/Delta";
+import { PageHeader } from "../primitives/PageHeader";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { Skeleton } from "../primitives/Skeleton";
 import { ErrorState } from "../primitives/ErrorState";
@@ -71,15 +72,11 @@ export function HomePage({
   headerActions?: ReactNode;
 }) {
   const header = (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex min-w-0 flex-col">
-        <h1 className="text-[20px] leading-[26px] font-semibold" style={{ color: "var(--m-ink)" }}>Home</h1>
-        <p className="text-[13px] leading-[18px]" style={{ color: "var(--m-ink-2)", minHeight: 18 }}>
-          {state === "data" && run ? `Run ${run.label} · ${relativeTime(run.runAt)}` : null}
-        </p>
-      </div>
-      {state === "data" && headerActions}
-    </div>
+    <PageHeader
+      title="Home"
+      meta={state === "data" && run ? `Run ${run.label} · ${relativeTime(run.runAt)}` : undefined}
+      actions={state === "data" ? headerActions : undefined}
+    />
   );
 
   return (

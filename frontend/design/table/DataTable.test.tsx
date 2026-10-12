@@ -66,15 +66,27 @@ describe("DataTable", () => {
     fireEvent.click(screen.getByText("Alpha"));
     expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "1" }));
 
+    const grid = screen.getByRole("grid");
+    fireEvent.keyDown(grid, { key: "Home" });
     const bravoRow = screen.getByText("Bravo").closest("tr") as HTMLTableRowElement;
-    expect(bravoRow).toHaveAttribute("tabindex", "0");
-    fireEvent.keyDown(bravoRow, { key: "Enter" });
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
+    fireEvent.keyDown(grid, { key: "Enter" });
     expect(onRowClick).toHaveBeenLastCalledWith(expect.objectContaining({ id: "2" }));
-    fireEvent.keyDown(bravoRow, { key: " " });
-    expect(onRowClick).toHaveBeenCalledTimes(3);
+    // Space selects, it does not open.
+    fireEvent.keyDown(grid, { key: " " });
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText("Select row 2")).toBeChecked();
+    fireEvent.keyDown(grid, { key: "x" });
+    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    fireEvent.keyDown(grid, { key: "End" });
+    expect(grid).toHaveAttribute("aria-activedescendant", (screen.getByText("Alpha").closest("tr") as HTMLTableRowElement).id);
+    fireEvent.keyDown(grid, { key: "Home" });
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoRow.id);
 
     fireEvent.click(screen.getByLabelText("Select row 1"));
-    expect(onRowClick).toHaveBeenCalledTimes(3);
+    expect(onRowClick).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(grid, { key: "Escape" });
+    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
   });
 
   it("virtualises large row sets: total height matches getTotalSize and scrolling reveals later rows", () => {
@@ -86,11 +98,11 @@ describe("DataTable", () => {
       const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
       const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
 
-      // 36px row estimate * 2500 rows.
-      expect(tbody.style.height).toBe("90000px");
+      // 44px comfortable row * 2500 rows.
+      expect(tbody.style.height).toBe("110000px");
       expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
 
-      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 86000 });
+      Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 105500 });
       fireEvent.scroll(scrollParent);
 
       expect(screen.getByText("Row 2400")).toBeInTheDocument();
@@ -129,7 +141,7 @@ describe("DataTable", () => {
     render(<DataTable columns={cols} data={[{ id: "A1", name: "x", n: 1234 }] as never} getRowId={(r: Row) => r.id} dense />);
     expect(screen.getByText("A1")).toHaveClass("m-mono");
     expect(screen.getByText(/^1\D?234$/)).toHaveClass("text-right", "m-numeric");
-    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "var(--m-row-h-dense)" });
+    expect(screen.getAllByRole("row")[1]).toHaveStyle({ height: "36px" });
   });
 
   it("marks selected rows and shows the floating bulk bar", () => {
@@ -166,7 +178,7 @@ describe("DataTable toolbar", () => {
   it("hides a column from the chooser", () => {
     render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-cols" />);
     fireEvent.click(screen.getByText("Columns"));
-    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
@@ -181,17 +193,31 @@ describe("DataTable toolbar", () => {
     window.localStorage.clear();
     render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-views" />);
     fireEvent.click(screen.getByText("Columns"));
-    fireEvent.click(screen.getByLabelText("Name"));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" }));
     fireEvent.click(screen.getByText("Views"));
     fireEvent.change(screen.getByLabelText("View name"), { target: { value: "Ids only" } });
     fireEvent.click(screen.getByRole("button", { name: "Save view" }));
     expect(JSON.parse(window.localStorage.getItem("m-table-views:t-views") ?? "[]")[0].visibility).toEqual({ name: false });
-    fireEvent.click(screen.getByText(/^Columns/));
-    fireEvent.click(screen.getByLabelText("Name")); // show again
+    // The Columns menu stays open after a toggle (checkbox items do not close it).
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Name" })); // show again
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Views/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ids only" }));
     expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+  });
+
+  it("shows a filtered-empty row with a Clear filter button", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "zzz" } });
+    expect(screen.getByText("No rows match this filter")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("titles the row drawer from drawerTitle", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} renderDrawer={(r) => <p>{r.name}</p>} drawerTitle="Row detail" />);
+    fireEvent.click(screen.getByText("Alpha"));
+    expect(screen.getByText("Row detail")).toBeInTheDocument();
   });
 
   it("offers CSV export and can hide the toolbar", () => {

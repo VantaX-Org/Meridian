@@ -2,7 +2,7 @@
 
 /** Process analyst home (process-discovery spec §7.2): coverage, conformance, latest runs. */
 import { useQuery } from "@tanstack/react-query";
-import { Card, ErrorState, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
+import { Card, ErrorState, PageHeader, InsightHeader, Skeleton, Stat, type StatTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, listRuns } from "@/lib/api/process-discovery";
@@ -45,7 +45,7 @@ export default function ProcessHomePage() {
   const catalogueHref = `/process?system=${system.id}`;
   return (
     <div className="mx-auto flex flex-col" style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }}>
-      <div className="flex justify-end"><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></div>
+      <PageHeader title="Home" actions={<SystemSelect value={system.id} onValueChange={setSystem} systems={list} />} />
       <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
       <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
