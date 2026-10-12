@@ -27,4 +27,12 @@ describe("RunSelector", () => {
     fireEvent.click(option);
     expect(replace).toHaveBeenCalledWith("/objects/material_master?run=v2", { scroll: false });
   });
+
+  it("tints the pill accent-soft only when a non-latest run is pinned", () => {
+    const { container, rerender } = render(<RunSelector runs={[{ id: "v1", label: "Run 1" }, { id: "v2", label: "Run 2" }]} />);
+    expect(container.querySelector("label")).not.toHaveAttribute("data-pinned");
+    rerender(<RunSelector runs={[{ id: "v2", label: "Run 2" }, { id: "v1", label: "Run 1" }]} />);
+    expect(container.querySelector("label")).toHaveAttribute("data-pinned", "true");
+    expect(container.querySelector("label")!.style.background).toBe("var(--m-accent-soft)");
+  });
 });

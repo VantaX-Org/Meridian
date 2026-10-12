@@ -22,6 +22,7 @@ export function RunSelector({ runs: all, systems }: { runs: RunOption[]; systems
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const current = searchParams.get("run") ?? runs[0]?.id ?? "";
+  const pinned = current !== (runs[0]?.id ?? ""); // a non-latest run is pinned: accent-soft pill (colour spec 3.6)
 
   const onChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -31,8 +32,9 @@ export function RunSelector({ runs: all, systems }: { runs: RunOption[]; systems
 
   return (
     <label
+      data-pinned={pinned || undefined}
       className="flex items-center gap-2 px-2 text-[12px] leading-[16px] border"
-      style={{ height: "var(--m-control-h)", borderColor: "var(--m-line-strong)", background: "var(--m-sheet)", borderRadius: "var(--m-radius-control)", color: "var(--m-ink-3)" }}
+      style={{ height: "var(--m-control-h)", borderColor: pinned ? "var(--m-accent-soft-2)" : "var(--m-line-strong)", background: pinned ? "var(--m-accent-soft)" : "var(--m-sheet)", borderRadius: "var(--m-radius-control)", color: pinned ? "var(--m-accent-ink)" : "var(--m-ink-3)" }}
     >
       <History size={14} aria-hidden className="lg:hidden" />
       <span className="max-lg:sr-only">Run</span>
