@@ -9,5 +9,5 @@ test("clicking a no-go readiness cell drills into the failing rows", async ({ ap
   await expect(cell).toBeVisible();
   await cell.click();
   await expect(app).toHaveURL(/\/objects\//);
-  await expect(app.getByRole("table")).toBeVisible();
+  await expect(app.getByRole("grid")).toBeVisible();
 });
