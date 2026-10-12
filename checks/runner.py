@@ -165,14 +165,40 @@ def _find_module_yaml(module_name: str) -> Path:
     )
 
 
+# DDIC-derived rules live beside the hand-written pack as ``<module>.generated.yaml``
+# (see scripts/generate_ddic_rules.py). Keeping them separate means the reviewable,
+# human-authored pack keeps its pinned counts, while execution, extraction and tenant
+# seeding all merge both through the helpers below.
+GENERATED_SUFFIX = ".generated.yaml"
+
+
+def _module_yaml_paths(module_name: str) -> list[Path]:
+    """The module's hand-written pack, plus its DDIC-derived sidecar when one exists."""
+    primary = _find_module_yaml(module_name)
+    sidecar = primary.with_name(f"{module_name}{GENERATED_SUFFIX}")
+    return [primary, sidecar] if sidecar.exists() else [primary]
+
+
+def module_config(module_name: str) -> dict:
+    """The module's own document (``module``, ``overlay``, ``target_state``, ...)."""
+    return yaml.safe_load(_find_module_yaml(module_name).read_text(encoding="utf-8")) or {}
+
+
+def module_rules(module_name: str) -> list[dict]:
+    """Every rule of a module: the hand-written pack, then the DDIC-derived sidecar."""
+    rules: list[dict] = []
+    for path in _module_yaml_paths(module_name):
+        rules += (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("rules") or []
+    return rules
+
+
 @lru_cache(maxsize=None)
 def is_overlay(module_name: str) -> bool:
     """An overlay module (``overlay: true``) re-judges tables other modules extract,
     e.g. S/4HANA readiness: it runs its rules only, with no generated rules, profiling,
     cleaning, dedup, mining or golden records of its own."""
     try:
-        with open(_find_module_yaml(module_name), "r") as f:
-            return bool((yaml.safe_load(f) or {}).get("overlay"))
+        return bool(module_config(module_name).get("overlay"))
     except FileNotFoundError:
         return False
 
@@ -266,9 +292,7 @@ def _with_child_sums(rule: dict, frames: TableFrames) -> dict | None:
 
 def get_required_columns(module_name: str) -> set[str]:
     """Return every column referenced by the rules of a module (for column pruning)."""
-    with open(_find_module_yaml(module_name), "r") as f:
-        config = yaml.safe_load(f)
-    cols = {c for rule in config.get("rules", [])
+    cols = {c for rule in module_rules(module_name)
             for c in rule_columns(rule) + target_columns(rule) + auto_fix.columns(rule) + auto_fix.reference_columns(rule)}
     return cols | {f"{t}.{f}" for t in tables_of(cols) for f in fields_for(t)}
 
@@ -512,11 +536,10 @@ def run_checks(
     ``on_result`` receives each result as it is produced, while it still holds every failing
     record key (``_all_failing_keys``); the keys are dropped right after.
     """
-    with open(_find_module_yaml(module_name), "r") as f:
-        config = yaml.safe_load(f)
+    config = module_config(module_name)
     from checks.overrides import apply
     # HQ / tenant governance (checks/overrides.py) applies to generated rules too
-    rules = apply(config.get("rules", []) + [r for r in (extra_rules or []) if r.get("module") == module_name],
+    rules = apply(module_rules(module_name) + [r for r in (extra_rules or []) if r.get("module") == module_name],
                   overrides)
     module = config.get("module", module_name)
     frames = data if isinstance(data, TableFrames) else TableFrames.from_flat(data, module=module)

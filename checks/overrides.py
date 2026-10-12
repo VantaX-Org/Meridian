@@ -33,13 +33,19 @@ def load_overrides(session) -> dict[str, dict]:
 
 
 def apply(rules: list[dict], overrides: dict[str, dict] | None) -> list[dict]:
-    if not overrides:
+    # Identity fast path: nothing to disable or re-severity. Preserves the input list
+    # object (a hot path for the common case) and skips the per-rule copy.
+    if not overrides and all(r.get("enabled", True) for r in rules):
         return rules
     kept = []
     for r in rules:
-        o = overrides.get(r.get("id", ""))
+        o = overrides.get(r.get("id", "")) if overrides else None
+        # A rule ships enabled unless its YAML says otherwise (DDIC-derived rules are
+        # disabled by default). A DB override can re-enable a disabled rule or disable
+        # an enabled one; absent any override, the YAML default wins.
         if o is None:
-            kept.append(r)
+            if r.get("enabled", True):
+                kept.append(r)
         elif o.get("enabled", True):
             kept.append({**r, **o.get("body", {}), "id": r["id"],
                          **({"severity": o["severity"]} if "severity" in o else {})})

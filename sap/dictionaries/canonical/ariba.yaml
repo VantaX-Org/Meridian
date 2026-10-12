@@ -13,6 +13,9 @@ tables:
     description: Supplier (sourcing / supplier management)
     source: /api/sourcing-approval/v1/prod/vendors
     keys: [VENDOR_ID]
+    invariants:
+      # true of the payload by definition: a record cannot be updated before it exists
+      - {kind: date_order, start: REGISTRATION_DATE, end: LAST_UPDATED}
     fields:
       VENDOR_ID:             {source: VendorId, type: STRING, description: Supplier ID}
       NAME:                  {source: Name, type: STRING, description: Supplier name}
@@ -28,6 +31,9 @@ tables:
     description: Contract (contract compliance)
     source: /api/contract-compliance/v1/prod/contracts
     keys: [CONTRACT_ID]
+    invariants:
+      - {kind: date_order, start: EFFECTIVE_DATE, end: EXPIRATION_DATE}
+      - {kind: non_negative, field: CONTRACT_AMOUNT}
     fields:
       CONTRACT_ID:           {source: ContractId, type: STRING, description: Contract ID}
       TITLE:                 {source: Title, type: STRING, description: Title}
@@ -43,6 +49,8 @@ tables:
     description: Purchase order (procurement)
     source: /api/procurement/v2/prod/purchaseOrders
     keys: [ORDER_ID]
+    invariants:
+      - {kind: non_negative, field: TOTAL_AMOUNT}
     fields:
       ORDER_ID:              {source: OrderId, type: STRING, description: Purchase order ID}
       TITLE:                 {source: Title, type: STRING, description: Title}
@@ -58,6 +66,8 @@ tables:
     description: Supplier invoice (procurement)
     source: /api/procurement/v2/prod/invoices
     keys: [INVOICE_ID]
+    invariants:
+      - {kind: non_negative, field: TOTAL_AMOUNT}
     fields:
       INVOICE_ID:            {source: InvoiceId, type: STRING, description: Invoice ID}
       INVOICE_NUMBER:        {source: InvoiceNumber, type: STRING, description: Supplier invoice number}
@@ -68,3 +78,19 @@ tables:
       CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
       PAYMENT_TERMS:         {source: PaymentTerms, type: STRING, description: Payment terms}
       PURCHASE_ORDER_ID:     {source: PurchaseOrderId, type: STRING, description: Purchase order ID}
+  ARIBA_SPEND:
+    description: Spend analysis record (module ariba_spend)
+    source: /api/spend-analysis/v1/prod/spendData
+    keys: [SPEND_ID]
+    invariants:
+      - {kind: non_negative, field: AMOUNT}
+    fields:
+      SPEND_ID:              {source: SpendId, type: STRING, description: Spend record ID}
+      SUPPLIER:              {source: Supplier, type: STRING, description: Supplier ID}
+      CATEGORY:              {source: Category, type: STRING, description: Spend category}
+      AMOUNT:                {source: Amount, type: DECIMAL, description: Spend amount}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
+      PERIOD:                {source: Period, type: STRING, description: Spend period}
+      COMPANY_CODE:          {source: CompanyCode, type: STRING, description: ERP company code}
+      COST_CENTER:           {source: CostCenter, type: STRING, description: Cost centre}
+      REGION:                {source: Region, type: STRING, description: Region}

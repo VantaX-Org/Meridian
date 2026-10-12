@@ -42,8 +42,8 @@ MODULES_BY_SYSTEM: dict[str, list[str]] = {
     "ewm": ["batch_management", "ewms_stock", "ewms_transfer_orders", "wm_interface", "interface_health"],
     "s4hana_cloud": _ECC + ["s4hc_master_data"],
     "successfactors": _SF,
-    "concur": ["concur_expense", "concur_users"],
-    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement"],
+    "concur": ["concur_expense", "concur_travel", "concur_users"],
+    "ariba": ["ariba_supplier", "ariba_contracts", "ariba_procurement", "ariba_spend"],
 }
 ABAP_SYSTEM_TYPES = ("ecc", "s4hana_onprem", "ewm")
 _CONFIG_DELIVERY_CLASSES = {"C", "G", "E", "S"}
@@ -480,7 +480,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
     from checks.config_rules import fields_for as config_fields
     from checks.country_rules import fields_for as country_fields
     from checks.value_placement import fields_for as placement_fields
-    from checks.runner import _find_module_yaml, rule_columns, target_columns
+    from checks.runner import module_rules, rule_columns, target_columns
 
     edges, _ = _graph()
     joinable = {t for e in edges for t in (e.parent, e.child)}
@@ -497,7 +497,7 @@ def plan_modules(modules: list[str], dictionary: Dictionary, scope: Optional[dic
 
     for module in modules:
         try:
-            rules = yaml.safe_load(_find_module_yaml(module).read_text()).get("rules", [])
+            rules = module_rules(module)
         except FileNotFoundError:
             continue
         for rule in rules:

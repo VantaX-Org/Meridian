@@ -1224,22 +1224,29 @@ SF_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 # ============================================================================
 
 CONCUR_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
+    # Field names are the JSON properties sap/concur.py requests
+    # (CONCUR_MODULE_ENDPOINTS); the canonical views in
+    # sap/dictionaries/canonical/concur.yaml name the same property in each
+    # field's ``source``. They were camelCase here, matching neither, so the
+    # registry and the connector disagreed about every field.
     "concur_expense": [
         ExtractionTarget(
             source="/api/v3.0/expense/reports",
             fields=[
-                "reportId", "reportName", "ownerLoginId", "ownerName",
-                "submitDate", "approvalStatus", "paymentStatus", "total",
-                "currencyCode", "policyId",
+                "ID", "Name", "OwnerLoginID", "OwnerName",
+                "ApprovalStatusName", "Total", "CurrencyCode",
+                "SubmitDate", "ApprovedDate", "PaymentStatusName",
+                "OrgUnit1", "OrgUnit2", "Custom1",
             ],
             description="Expense reports",
         ),
         ExtractionTarget(
             source="/api/v3.0/expense/entries",
             fields=[
-                "reportId", "entryId", "expenseTypeCode", "expenseTypeName",
-                "transactionDate", "transactionAmount", "transactionCurrencyCode",
-                "vendorDescription", "locationName", "paymentTypeId",
+                "ReportID", "ExpenseTypeName", "TransactionAmount",
+                "TransactionCurrencyCode", "TransactionDate",
+                "VendorDescription", "LocationName", "IsBillable",
+                "IsPersonal",
             ],
             description="Expense entries",
         ),
@@ -1253,13 +1260,13 @@ CONCUR_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 
     "concur_travel": [
         ExtractionTarget(
-            source="/api/v3.0/insights/latestbookings",
+            source="/api/v3.0/travelrequest/requests",
             fields=[
-                "recordLocator", "bookingOwner", "travelType",
-                "startDate", "endDate", "vendorName", "totalCost",
-                "currencyCode",
+                "ID", "Name", "OwnerLoginID", "ApprovalStatusName",
+                "ApprovalStatusCode", "StartDate", "EndDate",
+                "TotalPostedAmount", "CurrencyCode", "Purpose",
             ],
-            description="Travel bookings",
+            description="Travel requests",
         ),
     ],
 
@@ -1267,8 +1274,8 @@ CONCUR_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
         ExtractionTarget(
             source="/api/v3.0/common/users",
             fields=[
-                "loginId", "firstName", "lastName", "emailAddress",
-                "active", "countryCode", "employeeId",
+                "LoginID", "FirstName", "LastName", "EmailAddress",
+                "Active", "EmployeeID", "OrganizationUnit", "CostCenter",
             ],
             description="Concur user profiles",
         ),
@@ -1281,13 +1288,20 @@ CONCUR_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 # ============================================================================
 
 ARIBA_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
+    # Paths and JSON property names come from sap/ariba.py
+    # (ARIBA_MODULE_ENDPOINTS), which is what the connector actually requests;
+    # the canonical views in sap/dictionaries/canonical/ariba.yaml name the same
+    # property in each field's ``source``. They previously pointed at
+    # /api/suppliers, /api/contracts and /api/procurement/requisitions with
+    # camelCase properties — none of which the connector ever asks for — and
+    # ariba_spend was missing entirely although the connector reads it.
     "ariba_supplier": [
         ExtractionTarget(
-            source="/api/suppliers",
+            source="/api/sourcing-approval/v1/prod/vendors",
             fields=[
-                "supplierId", "supplierName", "country", "region",
-                "qualificationStatus", "registrationDate", "category",
-                "riskScore", "preferredStatus",
+                "VendorId", "Name", "Country", "Region", "City",
+                "Status", "QualificationStatus", "Category",
+                "RegistrationDate", "LastUpdated",
             ],
             description="Ariba supplier master",
         ),
@@ -1295,11 +1309,11 @@ ARIBA_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 
     "ariba_contracts": [
         ExtractionTarget(
-            source="/api/contracts",
+            source="/api/contract-compliance/v1/prod/contracts",
             fields=[
-                "contractId", "title", "supplierId", "status",
-                "effectiveDate", "expirationDate", "contractValue",
-                "currencyCode", "owner",
+                "ContractId", "Title", "Status", "EffectiveDate",
+                "ExpirationDate", "Owner", "Supplier", "ContractAmount",
+                "CurrencyCode", "ComplianceStatus",
             ],
             description="Ariba contracts",
         ),
@@ -1307,13 +1321,34 @@ ARIBA_EXTRACTIONS: dict[str, list[ExtractionTarget]] = {
 
     "ariba_procurement": [
         ExtractionTarget(
-            source="/api/procurement/requisitions",
+            source="/api/procurement/v2/prod/purchaseOrders",
             fields=[
-                "requisitionId", "title", "requestor", "status",
-                "createdDate", "totalAmount", "currencyCode",
-                "approvalStatus", "supplierId",
+                "OrderId", "Title", "Status", "OrderDate", "Supplier",
+                "TotalAmount", "CurrencyCode", "CompanyCode", "Plant",
+                "CreatedBy",
             ],
-            description="Procurement requisitions",
+            description="Purchase orders",
+        ),
+        ExtractionTarget(
+            source="/api/procurement/v2/prod/invoices",
+            fields=[
+                "InvoiceId", "InvoiceNumber", "Status", "InvoiceDate",
+                "Supplier", "TotalAmount", "CurrencyCode", "PaymentTerms",
+                "PurchaseOrderId",
+            ],
+            description="Supplier invoices",
+        ),
+    ],
+
+    "ariba_spend": [
+        ExtractionTarget(
+            source="/api/spend-analysis/v1/prod/spendData",
+            fields=[
+                "SpendId", "Supplier", "Category", "Amount",
+                "CurrencyCode", "Period", "CompanyCode", "CostCenter",
+                "Region",
+            ],
+            description="Spend analysis records",
         ),
     ],
 }
@@ -1520,19 +1555,24 @@ _PROCESS_EVENT_CLOUD: dict[str, tuple[str, list[tuple[str, str, str, list[str], 
         ("EmployeeTime", "time_attendance", "EmployeeTime",
          ["userId", "timeType", "startDate", "endDate", "approvalStatus"], 12, "startDate", False),
     ]),
+    # Paths, properties and date fields follow sap/ariba.py and sap/concur.py
+    # (ARIBA_MODULE_ENDPOINTS / CONCUR_MODULE_ENDPOINTS). The Ariba entries used
+    # to point at /api/suppliers, /api/contracts and a "requisitions" endpoint
+    # the connector never calls, with camelCase properties — so no process-event
+    # read could have returned a row.
     "process_events_arb": ("ariba", [
-        ("suppliers", "ariba_supplier", "/api/suppliers", ["supplierId", "qualificationStatus", "registrationDate"],
-         24, "registrationDate", False),
-        ("contracts", "ariba_contracts", "/api/contracts",
-         ["contractId", "status", "effectiveDate", "expirationDate", "owner"], 24, "effectiveDate", False),
-        ("requisitions", "ariba_procurement", "/api/procurement/requisitions",
-         ["requisitionId", "requestor", "status", "createdDate", "approvalStatus"], 24, "createdDate", False),
+        ("suppliers", "ariba_supplier", "/api/sourcing-approval/v1/prod/vendors",
+         ["VendorId", "QualificationStatus", "RegistrationDate"], 24, "RegistrationDate", False),
+        ("contracts", "ariba_contracts", "/api/contract-compliance/v1/prod/contracts",
+         ["ContractId", "Status", "EffectiveDate", "ExpirationDate", "Owner"], 24, "EffectiveDate", False),
+        ("purchase_orders", "ariba_procurement", "/api/procurement/v2/prod/purchaseOrders",
+         ["OrderId", "Status", "OrderDate", "Supplier", "CreatedBy"], 24, "OrderDate", False),
     ]),
     "process_events_cnq": ("concur", [
         ("reports", "concur_expense", "/api/v3.0/expense/reports",
-         ["reportId", "ownerLoginId", "submitDate", "approvalStatus", "paymentStatus"], 24, "submitDate", False),
+         ["ID", "OwnerLoginID", "SubmitDate", "ApprovalStatusName", "PaymentStatusName"], 24, "SubmitDate", False),
         ("entries", "concur_expense", "/api/v3.0/expense/entries",
-         ["reportId", "entryId", "expenseTypeCode", "transactionDate"], 24, "transactionDate", False),
+         ["ReportID", "ExpenseTypeName", "TransactionDate"], 24, "TransactionDate", False),
     ]),
 }
 

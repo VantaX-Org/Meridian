@@ -1,0 +1,103 @@
+# SAP Ariba spend analysis (canonical view ARIBA_SPEND in
+# sap/dictionaries/canonical/ariba.yaml), read from
+# /api/spend-analysis/v1/prod/spendData by sap/ariba.py. The connector read
+# this endpoint with no canonical view and no rule pack; this is its first
+# coverage.
+#
+# The non-negative AMOUNT invariant is declared in the canonical dictionary and
+# generated into ariba_spend.generated.yaml, not repeated here.
+module: ariba_spend
+target_state: ARIBA
+rules:
+- id: ASP001
+  field: ARIBA_SPEND.SPEND_ID
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Spend record has no spend ID
+  why_it_matters: The spend ID is the record's key. Spend totals are aggregated by key, so a blank one
+    cannot be de-duplicated and inflates every category total it lands in.
+  rule_authority: sap_hard_constraint
+  sap_impact: The record cannot be reconciled to a source document; category and supplier totals are
+    overstated on re-load.
+  fix_map:
+    __blank__: Re-extract the spend data; a blank key points to an incomplete page or a broken export.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SUPPLIER}: spend ID is {actual_value}.'
+- id: ASP002
+  field: ARIBA_SPEND.SUPPLIER
+  check_class: null_check
+  severity: critical
+  dimension: completeness
+  message: Spend record has no supplier
+  why_it_matters: Spend is analysed by supplier above all else. A record with no supplier cannot be
+    attributed, and every supplier ranking is computed on an incomplete base.
+  rule_authority: sap_hard_constraint
+  sap_impact: The spend is excluded from supplier scorecards and from any supplier-level consolidation
+    or savings analysis.
+  fix_map:
+    __blank__: Correct the supplier on the source document, or re-extract if the field was dropped.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: supplier is {actual_value}.'
+- id: ASP003
+  field: ARIBA_SPEND.AMOUNT
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Spend record has no amount
+  why_it_matters: A spend record exists to carry an amount. A blank one contributes nothing to any
+    total while still occupying a row, so category and period totals silently understate.
+  rule_authority: sap_hard_constraint
+  sap_impact: Category, period and supplier totals understate actual spend by the missing amount.
+  fix_map:
+    __blank__: Correct the amount on the source document, or re-extract if the field was dropped.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: amount is {actual_value}.'
+- id: ASP004
+  field: ARIBA_SPEND.CURRENCY_CODE
+  check_class: null_check
+  severity: high
+  dimension: completeness
+  message: Spend record has no currency
+  why_it_matters: An amount without its currency cannot be converted or compared. Aggregating records
+    with mixed or missing currencies produces a meaningless total.
+  rule_authority: sap_hard_constraint
+  sap_impact: The amount is added to totals in whatever currency the consumer assumes, misstating spend
+    wherever the source currency differs.
+  fix_map:
+    __blank__: Correct the record currency, or re-extract if the field was dropped.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: currency is {actual_value}.'
+- id: ASP006
+  field: ARIBA_SPEND.SUPPLIER
+  check_class: exists_check
+  grain: ARIBA_SPEND
+  target_table: ARIBA_SUPPLIER
+  target_fields:
+  - VENDOR_ID
+  severity: high
+  dimension: consistency
+  message: Spend record references a supplier that does not exist in supplier master
+  why_it_matters: Every spend line must point at a supplier that exists. A missing one is usually a
+    supplier renamed or merged in Ariba while historical spend kept the old ID, so the spend disappears
+    from the current supplier's scorecard.
+  rule_authority: sap_hard_constraint
+  sap_impact: The spend is attributed to a non-existent supplier; scorecards, risk exposure and savings
+    baselines all miss it.
+  fix_map:
+    __other__: Re-point the spend at the surviving supplier ID, or restore the supplier record if it was
+      removed in error.
+  record_fix_template: 'Spend record {ARIBA_SPEND.SPEND_ID}: supplier {ARIBA_SPEND.SUPPLIER} is not in supplier master.'
+- id: ASP007
+  field: ARIBA_SPEND.SPEND_ID
+  check_class: uniqueness_check
+  fields:
+  - ARIBA_SPEND.SPEND_ID
+  case_insensitive: true
+  severity: critical
+  dimension: uniqueness
+  message: Spend ID is used by more than one spend record
+  why_it_matters: Spend IDs are unique. Duplicates in an extract double-count the amount in every total
+    the record appears in.
+  rule_authority: sap_hard_constraint
+  sap_impact: Category, period and supplier spend totals are overstated by the duplicated amount.
+  fix_map:
+    __other__: Re-extract the spend data; duplicate keys point to a paging defect or overlapping periods
+      loaded into one frame.
+  record_fix_template: 'Spend ID {ARIBA_SPEND.SPEND_ID} appears more than once.'

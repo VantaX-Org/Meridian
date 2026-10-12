@@ -15,6 +15,10 @@ tables:
     description: Expense report header
     source: /api/v3.0/expense/reports
     keys: [REPORT_ID]
+    invariants:
+      # an approval cannot precede the submission it approves
+      - {kind: date_order, start: SUBMIT_DATE, end: APPROVED_DATE}
+      - {kind: non_negative, field: TOTAL}
     fields:
       REPORT_ID:             {source: ID, type: STRING, description: Report ID}
       NAME:                  {source: Name, type: STRING, description: Report name}
@@ -69,3 +73,21 @@ tables:
       EMPLOYEE_ID:           {source: EmployeeID, type: STRING, description: Employee ID}
       ORG_UNIT:              {source: OrganizationUnit, type: STRING, description: Organisation unit}
       COST_CENTER:           {source: CostCenter, type: STRING, description: Cost centre}
+  CONCUR_TRAVEL_REQUEST:
+    description: Travel request (module concur_travel)
+    source: /api/v3.0/travelrequest/requests
+    keys: [REQUEST_ID]
+    invariants:
+      - {kind: date_order, start: START_DATE, end: END_DATE}
+      - {kind: non_negative, field: TOTAL_POSTED_AMOUNT}
+    fields:
+      REQUEST_ID:            {source: ID, type: STRING, description: Travel request ID}
+      NAME:                  {source: Name, type: STRING, description: Request name}
+      OWNER_LOGIN_ID:        {source: OwnerLoginID, type: STRING, description: Traveller login ID}
+      APPROVAL_STATUS:       {source: ApprovalStatusName, type: STRING, description: Approval status (text)}
+      APPROVAL_STATUS_CODE:  {source: ApprovalStatusCode, type: STRING, description: Approval status code}
+      START_DATE:            {source: StartDate, type: DATETIME, description: Trip starts on}
+      END_DATE:              {source: EndDate, type: DATETIME, description: Trip ends on}
+      TOTAL_POSTED_AMOUNT:   {source: TotalPostedAmount, type: DECIMAL, description: Total posted amount}
+      CURRENCY_CODE:         {source: CurrencyCode, type: STRING, description: Currency (ISO 4217)}
+      PURPOSE:               {source: Purpose, type: STRING, description: Purpose of travel}

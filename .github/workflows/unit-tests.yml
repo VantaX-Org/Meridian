@@ -19,13 +19,15 @@ concurrency:
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    # The full suite took 70 of 75 min on one runner. Four shards (split per
-    # test id in tests/conftest.py) each run about a quarter of it.
+    # Split per test id in tests/conftest.py (one rule-proof file holds over half the
+    # suite). Four shards ran 15-34 min each once the rule catalogue grew past 8,000
+    # checks and the slowest neared the 45-minute cap, so: six shards, about a sixth
+    # each, with the cap left at 45 as headroom rather than the expected duration.
     timeout-minutes: 45  # ponytail: add a shard (matrix and PYTEST_SHARD) if one nears 45
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
 
     services:
       postgres:
@@ -78,11 +80,20 @@ jobs:
           pip install -r requirements.txt
           pip install "pytest>=8.0.0" "pytest-asyncio>=0.24.0"
 
+      # Fast drift gates (seconds, before the ~70 min suite): shipped rules must
+      # reconcile with the SAP field dictionary, and the DDIC-derived sidecars
+      # must be up to date with scripts/generate_ddic_rules.py.
+      - name: Rule reconciliation (--strict)
+        run: python -m checks.rule_reconciler --strict
+
+      - name: Generated sidecars up to date
+        run: python scripts/generate_ddic_rules.py --check
+
       # Fast fail on collection errors (import breaks) before running anything.
       - name: Collect tests
         run: pytest tests/ --collect-only -q
 
       - name: Run tests
         env:
-          PYTEST_SHARD: ${{ matrix.shard }}/4
+          PYTEST_SHARD: ${{ matrix.shard }}/6
         run: pytest tests/ -q

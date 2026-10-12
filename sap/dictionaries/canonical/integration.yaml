@@ -11,7 +11,7 @@ tables:
     keys: [SOURCE_SYSTEM, OBJECT_TYPE, OBJECT_KEY]
     fields:
       SOURCE_SYSTEM: {type: CHAR, length: 36, description: Meridian system id the row was read from}
-      OBJECT_TYPE:   {type: CHAR, length: 30, description: Object type (MATERIAL, VENDOR, CUSTOMER, …)}
+      OBJECT_TYPE:   {type: CHAR, length: 30, description: 'Object type (MATERIAL, VENDOR, CUSTOMER, …)'}
       OBJECT_KEY:    {type: CHAR, length: 70, description: Object key in that system}
       MATNR:         {type: CHAR, length: 40, description: Material number (MATNR)}
       LIFNR:         {type: CHAR, length: 10, description: Vendor (LIFNR)}
