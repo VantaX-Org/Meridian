@@ -10,7 +10,7 @@ gets the same header styling, number formats and formula-injection guard.
 from __future__ import annotations
 
 import io
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Literal, Mapping, Optional
@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from fastapi import Response
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.formatting.rule import CellIsRule, ColorScaleRule, DataBarRule
 from openpyxl.styles import Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
@@ -52,6 +53,12 @@ _MARK_PATH = Path(__file__).resolve().parents[2] / "templates" / "assets" / "bra
 _COVER_BAND_ROWS = 40
 
 ColumnKind = Literal["text", "int", "pct", "money", "date", "datetime", "mono", "raw"]
+RuleKind = Literal["status", "databar", "colorscale"]
+
+# Cell word -> STATUS_TINTS key, for the "status" conditional rule. A word not listed stays unfilled.
+STATUS_WORDS = {"pass": "ok", "go": "ok", "warn": "warn", "warning": "warn", "conditional": "warn",
+                "at_risk": "warn", "medium": "warn", "fail": "bad", "no-go": "bad", "no_go": "bad",
+                "blocking": "bad", "critical": "bad", "high": "high"}
 
 
 def guard_formula_cell(value: object) -> object:
@@ -118,11 +125,22 @@ class ColumnSpec:
 
 
 @dataclass(frozen=True)
+class ConditionalRule:
+    """A conditional format over one column's data cells. ``status`` tints known status words,
+    ``databar`` draws an accent bar, ``colorscale`` is a diverging red-to-green scale around zero."""
+    column_key: str
+    kind: RuleKind
+
+
+@dataclass(frozen=True)
 class SheetSpec:
     title: str  # <=31 chars, sentence case; truncated/deduplicated by the writer
     columns: list[ColumnSpec]
     rows: Iterable[Mapping[str, object]]
     note: Optional[str] = None  # one sentence under the title row on the cover
+    hidden: bool = False  # a hidden sheet is written but not listed on the cover
+    totals: Optional[list[str]] = None  # column keys that get a SUBTOTAL row (counts only, never scores)
+    rules: list[ConditionalRule] = field(default_factory=list)
 
 
 def _to_sast(dt: datetime) -> datetime:
@@ -199,6 +217,46 @@ def _column_width(header: str, sample_values: list[str]) -> int:
     return max(10, min(60, max(len(header), p95)))
 
 
+def _apply_rules(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
+    """Conditional formats instead of static fills, so sorting and editing keep the tint right."""
+    if last_row < 2:
+        return
+    index = {c.key: i for i, c in enumerate(spec.columns, start=1)}
+    for rule in spec.rules:
+        col = spec.columns[index[rule.column_key] - 1]
+        letter = get_column_letter(index[rule.column_key])
+        rng = f"{letter}2:{letter}{last_row}"
+        if rule.kind == "status":
+            for word, key in STATUS_WORDS.items():
+                fill, ink = STATUS_TINTS[key]
+                ws.conditional_formatting.add(rng, CellIsRule(
+                    operator="equal", formula=[f'"{word}"'], font=Font(color=ink),
+                    fill=PatternFill(fill_type="solid", start_color=fill, end_color=fill)))
+        elif rule.kind == "databar":
+            top = (1, "num") if col.kind == "pct" else (None, "max")
+            ws.conditional_formatting.add(rng, DataBarRule(
+                start_type="num", start_value=0, end_type=top[1], end_value=top[0],
+                color=_ACCENT, showValue=True))
+        else:
+            bad, ok = STATUS_TINTS["bad"][0], STATUS_TINTS["ok"][0]
+            ws.conditional_formatting.add(rng, ColorScaleRule(
+                start_type="min", start_color=bad, mid_type="num", mid_value=0, mid_color=_WHITE,
+                end_type="max", end_color=ok))
+
+
+def _write_totals(ws: Worksheet, spec: SheetSpec, last_row: int) -> None:
+    """SUBTOTAL row under the data (it follows the active filter). Outside the filter range."""
+    row = last_row + 1
+    ws.cell(row=row, column=1, value="Total").font = Font(bold=True, color=_INK)
+    for i, col in enumerate(spec.columns, start=1):
+        if col.key in (spec.totals or []):
+            letter = get_column_letter(i)
+            cell = ws.cell(row=row, column=i, value=f"=SUBTOTAL(109,{letter}2:{letter}{last_row})")
+            cell.font = Font(bold=True, color=_INK)
+            cell.number_format = "#,##0"
+        ws.cell(row=row, column=i).border = Border(top=Side(style="thin", color=_INK3))
+
+
 def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
     """Write one data sheet. Returns (row_count, truncated)."""
     header_font = Font(color=_WHITE, bold=True, size=11)
@@ -249,6 +307,11 @@ def _write_data_sheet(ws: Worksheet, spec: SheetSpec) -> tuple[int, bool]:
     ws.freeze_panes = "A2"
     if last_row >= 1:
         ws.auto_filter.ref = ws.dimensions
+    _apply_rules(ws, spec, last_row)
+    if spec.totals and last_row >= 2:
+        _write_totals(ws, spec, last_row)
+    if spec.hidden:
+        ws.sheet_state = "hidden"
     for col_idx, col in enumerate(spec.columns, start=1):
         width = col.width or _column_width(col.header, sample_values[col_idx])
         ws.column_dimensions[get_column_letter(col_idx)].width = width
@@ -350,7 +413,8 @@ def build_workbook(
         if truncated:
             truncated_note = "Truncated to 100 000 rows; narrow the filter to export the rest."
             note = f"{note} {truncated_note}" if note else truncated_note
-        sheet_meta.append((title_final, row_count, note))
+        if not spec.hidden:
+            sheet_meta.append((title_final, row_count, note))
 
     _write_cover_sheet(
         cover_ws,
