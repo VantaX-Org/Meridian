@@ -35,6 +35,14 @@ describe("signed-out pages render with the redesigned AuthFrame", () => {
     expect(container.textContent).not.toContain("800+");
   });
 
+  it("sign-in shows the brand panel with the ember instrument and the form card", () => {
+    const { container } = render(<SignInPage />);
+    expect(container.querySelector("aside.m-brand-panel")).not.toBeNull();
+    expect(container.querySelector("aside svg circle.m-motion-draw")).not.toBeNull();
+    expect(container.querySelector("aside .m-meridian-line")).not.toBeNull();
+    expect(container.textContent).toContain("SAP data quality, measured.");
+  });
+
   it("forgot-password renders exactly one h1", () => {
     const { container } = render(<ForgotPasswordPage />);
     expect(container.querySelectorAll("h1")).toHaveLength(1);
