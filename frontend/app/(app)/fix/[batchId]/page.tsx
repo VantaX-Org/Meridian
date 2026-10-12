@@ -183,6 +183,9 @@ export default function BatchPage() {
       table={
         <div className="flex flex-col gap-3">
           {failure ? <Notice tone="danger">{failure}</Notice> : null}
+          {data && data.total > items.length ? (
+            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>Showing the first {items.length.toLocaleString()} of {data.total.toLocaleString()} items in this batch.</p>
+          ) : null}
           <DataTable columns={columns} data={items} getRowId={(row) => row.id} />
         </div>
       }

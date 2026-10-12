@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DomainChip, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
+import { DataTable, DomainChip, useBreadcrumbScope, DrillLink, ExplorerPage, ExportMenu, Mono, PageHeader, Pill, ScoreRing, Sparkline, Stat, emptyExportOptions, type CellMeta, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -154,6 +154,8 @@ export default function ObjectsPage() {
   // Ruling 7: objects outside a module-scoped user's grants are hidden (UI filter; the API enforces scope).
   const { scopeFilter } = usePermissions();
   const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
+
+  useBreadcrumbScope(data ? [`${objects.length} objects`, ...(version?.label ? [`run ${version.label}`] : [])] : []);
 
   let state: "loading" | "empty" | "error" | undefined;
   let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };

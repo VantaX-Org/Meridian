@@ -164,6 +164,7 @@ export default function InboxPage() {
   // SLA maths runs against the last fetch time, so it stays pure and refreshes with the data.
   const now = isExceptions ? excQ.dataUpdatedAt : Math.max(0, ...queues.map((q) => q.dataUpdatedAt));
   const all = useMemo(() => queues.flatMap((q) => q.data?.items ?? []), [queues]);
+  const queueTotal = queues.reduce((n, q) => n + (q.data?.total ?? 0), 0);
 
   const names = useMemo(() => new Map((usersQ.data?.users ?? []).map((u) => [u.id, u.name])), [usersQ.data]);
   const who = useCallback(
@@ -454,6 +455,7 @@ export default function InboxPage() {
           <div className="m-stat-grid">
             <Stat label="Overdue" value={overdue} tone={overdue > 0 ? "no-go" : undefined} loading={isExceptions ? excMetricsQ.isLoading : isLoading} href={isExceptions ? undefined : "/inbox?view=breached"} />
             {!isExceptions && <Stat label="Due today" value={counts.today} loading={isLoading} href="/inbox?view=today" />}
+            {!isExceptions && !isLoading && queueTotal > all.length && <Stat label="Tasks loaded" value={all.length.toLocaleString()} hint={`of ${queueTotal.toLocaleString()}`} />}
           </div>
           {!isExceptions && canSeeTeam && <TeamPanel rungs={ownerRungs(weekQ.data)} aiAcceptance={metricsQ.data?.ai_acceptance_rate ?? null} />}
           {!isExceptions && (
