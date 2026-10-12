@@ -6,11 +6,32 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Button, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
+import { Button, Card, DataTable, EmptyState, EntityTabs, ErrorState, Field, Mono, Pill, RecordPage, Skeleton, type RecordStatus } from "@/design";
 import { getGlossaryTerm, requestAIDraft, reviewGlossaryTerm, updateGlossaryTerm } from "@/lib/api/glossary";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { AIDraftResponse, GlossaryTermDetail } from "@/types/api";
+
+type Rule = GlossaryTermDetail["linked_rules"][number];
+type Change = GlossaryTermDetail["change_history"][number];
+type Approved = { code: string; label: string };
+
+const approvedCols: ColumnDef<Approved>[] = [
+  { id: "code", header: "Code", cell: ({ row }) => <Mono>{row.original.code}</Mono> },
+  { id: "label", header: "Label", accessorFn: (r) => r.label || "None" },
+];
+const ruleCols: ColumnDef<Rule>[] = [
+  { id: "rule", header: "Rule", cell: ({ row }) => <Mono>{row.original.rule_id}</Mono> },
+  { id: "sev", header: "Severity", accessorFn: (r) => r.severity ?? "None" },
+  { id: "pass", header: "Pass rate", accessorFn: (r) => (r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "None") },
+  { id: "aff", header: "Affected of total", accessorFn: (r) => `${r.affected_count} of ${r.total_count ?? "None"}` },
+];
+const changeCols: ColumnDef<Change>[] = [
+  { id: "field", header: "Field", accessorFn: (e) => e.field_changed },
+  { id: "by", header: "By", accessorFn: (e) => e.changed_by },
+  { id: "change", header: "Change", accessorFn: (e) => e.new_value ?? "" },
+];
 
 function daysSince(iso: string | null): number | null {
   return iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null;
@@ -71,7 +92,8 @@ export default function GlossaryTermPage() {
   if (!term) {
     return (
       <EmptyState
-        title="Term not found."
+        title="Term not found"
+        detail="It may have been removed or you may not have access."
         action={<Button render={<Link href="/mdm/glossary">All terms</Link>} />}
       />
     );
@@ -110,10 +132,10 @@ export default function GlossaryTermPage() {
         </Button>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Definition of record</h2>
+      <Card title="Definition of record">
+        <div className="flex flex-col gap-2">
         {draft ? (
-          <div className="flex flex-col gap-2 rounded border p-3">
+          <Card title="Auto-draft">
             <p className="m-text-body">{draft.business_definition}</p>
             {draft.why_it_matters_business ? (
               <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>{draft.why_it_matters_business}</p>
@@ -124,7 +146,7 @@ export default function GlossaryTermPage() {
               </Button>
               <Button variant="ghost" onClick={() => setDraft(null)}>Discard</Button>
             </div>
-          </div>
+          </Card>
         ) : null}
         <Field label="Business definition">
           <textarea className="m-input" style={{ height: "auto", padding: "6px 10px" }}
@@ -151,10 +173,10 @@ export default function GlossaryTermPage() {
         </div>
         {term.why_it_matters ? <p className="m-text-body">Why it matters: {term.why_it_matters}</p> : null}
         {term.sap_impact ? <p className="m-text-body">SAP impact: {term.sap_impact}</p> : null}
-      </section>
+      </div>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>Where it lives in SAP</h2>
+      <Card title="Where it lives in SAP">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 m-text-body">
           <dt style={{ color: "var(--m-ink-3)" }}>SAP table</dt>
           <dd><Mono>{term.sap_table}</Mono></dd>
@@ -165,80 +187,33 @@ export default function GlossaryTermPage() {
           <dt style={{ color: "var(--m-ink-3)" }}>Steward</dt>
           <dd>{term.data_steward_id ?? "Unassigned"}</dd>
         </dl>
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
-          Approved values ({approved.length})
-        </h2>
+      <Card title="Approved values" meta={String(approved.length)}>
         {approved.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No approved values are defined for this field.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>{"No approved values are defined for this field"}</p>
         ) : (
-          <table className="m-text-body">
-            <thead><tr><th className="text-left pr-4">Code</th><th className="text-left">Label</th></tr></thead>
-            <tbody>
-              {approved.map(([code, label]) => (
-                <tr key={code}>
-                  <td className="pr-4"><Mono>{code}</Mono></td>
-                  <td>{label || "None"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable columns={approvedCols} getRowId={(r) => r.code} data={approved.map(([code, label]) => ({ code, label }))} height="auto" />
         )}
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
-          Linked rules failing ({failing.length})
-        </h2>
+      <Card title="Linked rules failing" meta={String(failing.length)}>
         {failing.length === 0 ? (
           <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
-            {term.linked_rules.length ? "Every linked rule passes in the latest analysis." : "No rules are linked to this term."}
+            {term.linked_rules.length ? "Every linked rule passes in the latest analysis" : "No rules are linked to this term"}
           </p>
         ) : (
-          <table className="m-text-body">
-            <thead>
-              <tr>
-                <th className="text-left pr-4">Rule</th><th className="text-left pr-4">Severity</th>
-                <th className="text-left pr-4">Pass rate</th><th className="text-left">Affected of total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {failing.map((r) => (
-                <tr key={r.rule_id}>
-                  <td className="pr-4"><Mono>{r.rule_id}</Mono></td>
-                  <td className="pr-4">{r.severity ?? "None"}</td>
-                  <td className="pr-4">{r.pass_rate != null ? `${r.pass_rate.toFixed(1)}%` : "None"}</td>
-                  <td>{r.affected_count} of {r.total_count ?? "None"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable columns={ruleCols} getRowId={(r) => r.rule_id} data={failing} height="auto" />
         )}
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
-          Change history ({term.change_history.length})
-        </h2>
+      <Card title="Change history" meta={String(term.change_history.length)}>
         {term.change_history.length === 0 ? (
-          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded.</p>
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No changes recorded</p>
         ) : (
-          <table className="m-text-body">
-            <thead><tr><th className="text-left pr-4">Field</th><th className="text-left pr-4">By</th><th className="text-left">Change</th></tr></thead>
-            <tbody>
-              {term.change_history.map((e) => (
-                <tr key={e.id}>
-                  <td className="pr-4">{e.field_changed}</td>
-                  <td className="pr-4">{e.changed_by}</td>
-                  <td>{e.new_value ?? ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable columns={changeCols} getRowId={(r) => r.id} data={term.change_history} height="auto" />
         )}
-      </section>
+      </Card>
       </>} />
     </RecordPage>
   );

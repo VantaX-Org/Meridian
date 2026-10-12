@@ -8,7 +8,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorState, Mono, Skeleton } from "@/design";
+import { Card, DataTable, EmptyState, ErrorState, Mono, PageHeader, Skeleton } from "@/design";
+import type { ColumnDef } from "@tanstack/react-table";
 import { getMasterRecord } from "@/lib/api/master-records";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -26,7 +27,8 @@ export default function GoldenRecordMergePage() {
   if (!id) {
     return (
       <EmptyState
-        title="Choose a master record to review its merge conflicts."
+        title="Choose a master record"
+        detail="Pick a record from merge candidates to compare its sources."
         action={<Link href="/insights/duplicates" style={{ color: "var(--m-accent)" }}>Review merge candidates</Link>}
       />
     );
@@ -53,7 +55,8 @@ export default function GoldenRecordMergePage() {
   if (!record) {
     return (
       <EmptyState
-        title="No merge candidates."
+        title="Record not found"
+        detail="It may have been removed or merged already."
         action={<Link href="/mdm/golden" style={{ color: "var(--m-accent)" }}>All golden records</Link>}
       />
     );
@@ -62,52 +65,41 @@ export default function GoldenRecordMergePage() {
   const fields = Object.entries(record.golden_fields);
   const sources = Object.entries(record.source_contributions);
 
+  const rows = fields.map(([field, value]) => ({ field, value }));
+  const cols: ColumnDef<{ field: string; value: unknown }>[] = [
+    { id: "field", header: "Field", cell: ({ row }) => <Mono>{row.original.field}</Mono> },
+    { id: "golden", header: "Golden value", accessorFn: (r) => (r.value == null ? "None" : String(r.value)) },
+    ...sources.map(([system, s]): ColumnDef<{ field: string; value: unknown }> => ({
+      id: `src-${system}`,
+      header: () => <Mono>{system}</Mono>,
+      cell: ({ row }) => {
+        const c = s as { value: unknown; confidence: number };
+        const conflicts = c.value !== row.original.value;
+        return (
+          <span style={conflicts ? { color: "var(--m-critical)" } : undefined}>
+            {c.value == null ? "None" : String(c.value)} ({Math.round(c.confidence * 100)}%)
+          </span>
+        );
+      },
+    })),
+  ];
+
   return (
     <div className="flex flex-col gap-4 p-6">
-      <h2 className="m-text-h font-semibold" style={{ color: "var(--m-ink)" }}>
-        Merge conflicts for <Mono>{record.sap_object_key}</Mono>
-      </h2>
-      <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>
-        Field-by-field comparison of the golden value against every contributing source.
-        For a different record, go back to{" "}
-        <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
-          merge candidates in duplicates
-        </Link>.
-      </p>
-      {fields.length === 0 ? (
-        <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields to compare.</p>
-      ) : (
-        <table className="m-text-body">
-          <thead>
-            <tr>
-              <th className="text-left pr-4">Field</th>
-              <th className="text-left pr-4">Golden value</th>
-              {sources.map(([system]) => (
-                <th key={system} className="text-left pr-4"><Mono>{system}</Mono></th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {fields.map(([field, value]) => (
-              <tr key={field}>
-                <td className="pr-4"><Mono>{field}</Mono></td>
-                <td className="pr-4">{value == null ? "None" : String(value)}</td>
-                {sources.map(([system, s]) => {
-                  const contribution = s as { value: unknown; confidence: number };
-                  const conflicts = contribution.value !== value;
-                  return (
-                    <td key={system} className="pr-4" style={conflicts ? { color: "var(--m-critical)" } : undefined}>
-                      {contribution.value == null ? "None" : String(contribution.value)} ({Math.round(contribution.confidence * 100)}%)
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <Link href={`/mdm/golden/${record.id}`} className="m-text-body" style={{ color: "var(--m-accent)" }}>
-        Back to record
+      <PageHeader
+        title={`Merge conflicts for ${record.sap_object_key}`}
+        meta="Field-by-field comparison of the golden value against every contributing source"
+        actions={<Link href={`/mdm/golden/${record.id}`} className="m-text-body" style={{ color: "var(--m-accent)" }}>Back to record</Link>}
+      />
+      <Card title="Field comparison" meta={String(fields.length)}>
+        {fields.length === 0 ? (
+          <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No golden fields to compare</p>
+        ) : (
+          <DataTable columns={cols} getRowId={(r) => r.field} data={rows} height="auto" />
+        )}
+      </Card>
+      <Link href="/insights/duplicates" className="m-text-body" style={{ color: "var(--m-accent)" }}>
+        Review other merge candidates in duplicates
       </Link>
     </div>
   );

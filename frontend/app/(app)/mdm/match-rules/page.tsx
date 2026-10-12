@@ -2,10 +2,11 @@
 "use client";
 import { useUrlState } from "@/hooks/use-url-state";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button, Card, DataTable, EmptyState, ErrorState, Field, PageHeader, Pill, Select, Skeleton, Tabs, Input } from "@/design";
+import { Button, Card, DataTable, EmptyState, ErrorState, Field, Notice, PageHeader, Pill, Select, Skeleton, Tabs, Input } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import {
   createMatchRule, deleteMatchRule, getMatchRules, simulateMatchRules, updateMatchRule,
@@ -156,14 +157,14 @@ function RulesTab() {
         />
       ) : (
         <EmptyState
-          title={domain ? `No rules for ${formatModuleName(domain)} yet.` : "No match rules yet."}
+          title={domain ? `No rules for ${formatModuleName(domain)} yet` : "No match rules yet"}
           detail={domain ? undefined : "Add one per field the engine should compare."}
           action={write ? (
             <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
           ) : undefined}
         />
       )}
-      {!write ? <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Changing rules needs MDM write access.</p> : null}
+      {!write ? <Notice tone="info">Changing rules needs MDM write access.</Notice> : null}
 
       {draft ? (
         <Card title={editing ? `Edit rule ${editing.field}` : "New match rule"}>
@@ -239,7 +240,7 @@ function TuningTab() {
       </p>
       <Select label="Domain" placeholder="Pick a domain" value={domain} options={domains} onValueChange={(v) => { setDomain(v); setResult(null); }} />
       {!domain ? (
-        <EmptyState title="Pick a domain to tune." />
+        <EmptyState title="Pick a domain to tune" detail="Choose one above to re-score its stored pairs." />
       ) : rulesQuery.isLoading ? (
         <Skeleton height={160} />
       ) : rulesQuery.error ? (
@@ -250,24 +251,17 @@ function TuningTab() {
       ) : (
         <div className="flex flex-col gap-3">
           {fields.length ? (
-            <table className="m-text-body">
-              <thead><tr><th className="text-left pr-4">Field</th><th className="text-left pr-4">Current</th><th className="text-left">Proposed</th></tr></thead>
-              <tbody>
-                {fields.map((f) => (
-                  <tr key={f}>
-                    <td className="pr-4">{f}</td>
-                    <td className="pr-4">{current[f]}</td>
-                    <td>
-                      <Input type="number" min={0} step={0.1} 
-                        value={weights[f] ?? String(current[f])}
-                        onChange={(e) => { const v = e.target.value; setWeights((w) => ({ ...w, [f]: v })); }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {fields.map((f) => (
+                <Field key={f} label={`${f} (current ${current[f]})`}>
+                  <Input type="number" min={0} step={0.1}
+                    value={weights[f] ?? String(current[f])}
+                    onChange={(e) => { const v = e.target.value; setWeights((w) => ({ ...w, [f]: v })); }} />
+                </Field>
+              ))}
+            </div>
           ) : (
-            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No active match rules for {formatModuleName(domain)}. Thresholds can still be tried.</p>
+            <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No active match rules for {formatModuleName(domain)}, but thresholds can still be tried</p>
           )}
           <div className="flex gap-3">
             <Field label="Auto-merge at">
@@ -293,15 +287,13 @@ function TuningTab() {
                 <div><dt>Would split</dt><dd className="font-semibold">{result.clusters_that_would_split.toLocaleString()}</dd></div>
               </dl>
               {moves.length ? (
-                <table className="m-text-body">
-                  <thead><tr><th className="text-left pr-4">Band move</th><th className="text-left">Pairs</th></tr></thead>
-                  <tbody>
-                    {moves.map(([k, n]) => (
-                      <tr key={k}><td className="pr-4">{k.split("->").map(formatModuleName).join(" to ")}</td><td>{n.toLocaleString()}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No pair changes band.</p>}
+                <DataTable<[string, number]>
+                  columns={moveCols}
+                  data={moves}
+                  getRowId={([k]) => k}
+                  height="auto"
+                />
+              ) : <p className="m-text-body" style={{ color: "var(--m-ink-3)" }}>No pair changes band</p>}
             </>
           ) : null}
         </div>
@@ -311,6 +303,11 @@ function TuningTab() {
 }
 
 /* ---------- Pair constraints ---------- */
+
+const moveCols: ColumnDef<[string, number]>[] = [
+  { id: "move", header: "Band move", accessorFn: ([k]) => k.split("->").map(formatModuleName).join(" to ") },
+  { id: "pairs", header: "Pairs", accessorFn: ([, n]) => n.toLocaleString() },
+];
 
 function ConstraintsTab() {
   const qc = useQueryClient();
@@ -353,7 +350,7 @@ function ConstraintsTab() {
           onChange={(e) => setKey(e.target.value)}
         />
       </div>
-      {!write ? <p className="m-text-meta" style={{ color: "var(--m-ink-3)" }}>Clearing a constraint needs the approve permission.</p> : null}
+      {!write ? <Notice tone="info">Clearing a constraint needs the approve permission.</Notice> : null}
       {list.isLoading ? (
         <Skeleton height={200} />
       ) : list.error ? (
@@ -364,7 +361,11 @@ function ConstraintsTab() {
       ) : rows.length ? (
         <DataTable<PairConstraint> columns={columns} data={rows} getRowId={(c) => c.id} />
       ) : (
-        <EmptyState title="No pair constraints yet." />
+        <EmptyState
+          title="No pair constraints yet"
+          detail="Accept or reject a pair in duplicates to create one."
+          action={<Button render={<Link href="/insights/duplicates">Open duplicates</Link>} />}
+        />
       )}
     </div>
   );
