@@ -1,18 +1,18 @@
 // frontend/app/(app)/objects/[object]/page.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  Bar, Button, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, ScoreRing,
+  Bar, Button, PageHeader, Card, DataTable, Delta, DrillLink, EmptyState, ErrorState, ExportMenu, Mono, Pager, Pill, ScoreRing,
   SeverityDot, Skeleton, Stat, Tabs, emptyExportOptions, isSeverity,
   entityTabs,
 } from "@/design";
 import { OwnerPicker } from "@/components/owners/OwnerPicker";
-import { FilterChips, ObjectsHeader } from "../_header";
+import { FilterChips } from "../_header";
 import { FindingContextPanel } from "./rules/[ruleId]/finding-context-panel";
 import { RootCauseSection } from "./rules/[ruleId]/root-cause";
 import { useRole } from "@/hooks/use-role";
@@ -294,18 +294,14 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
   const router = useRouter();
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch } = useQuery(recordsQuery(run, checkId, page));
-  // Fix sheet for the row last hovered or focused; `f` opens it (falls back to the first row).
-  const activeKey = useRef<string | null>(null);
-  const trackRow = (target: EventTarget) => {
-    const key = (target as HTMLElement).closest?.("tr")?.querySelector<HTMLElement>("[data-fix]")?.dataset.fix;
-    if (key) activeKey.current = key;
-  };
+  // `f` opens the fix sheet of the row DataTable's keyboard cursor is on (aria-activedescendant), else the first row.
   const firstKey = data?.records[0]?.record_key;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (e.key !== "f" || e.metaKey || e.ctrlKey || e.altKey || t?.closest("input,textarea,select,[contenteditable]")) return;
-      const key = activeKey.current ?? firstKey;
+      const rowId = document.querySelector("[role=grid][aria-activedescendant]")?.getAttribute("aria-activedescendant");
+      const key = (rowId ? document.getElementById(rowId)?.querySelector<HTMLElement>("[data-fix]")?.dataset.fix : undefined) ?? firstKey;
       if (key) router.push(fixSheetHref(object, run, key));
     };
     window.addEventListener("keydown", onKey);
@@ -389,14 +385,12 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
           </>
         }
       >
-        <div onFocusCapture={(e) => trackRow(e.target)} onPointerOver={(e) => trackRow(e.target)}>
-          <DataTable
-            columns={columns}
-            data={data.records}
-            getRowId={(row) => row.record_key}
-            onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
-          />
-        </div>
+        <DataTable
+          columns={columns}
+          data={data.records}
+          getRowId={(row) => row.record_key}
+          onRowClick={(row) => router.push(fixSheetHref(object, run, row.record_key))}
+        />
         <Pager page={page} pageCount={pageCount} pageSize={PAGE_SIZE} total={data.total} onPageChange={setPage} />
       </Card>
       <RootCauseSection run={run} ruleId={checkId} />
@@ -478,7 +472,7 @@ export default function ObjectDetailPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <ObjectsHeader
+      <PageHeader
         title={summary?.label ?? formatModuleName(object)}
         meta={meta || undefined}
         status={summary?.readiness ? <Pill tone={READINESS_TONE[summary.readiness] ?? "neutral"}>{READINESS_LABEL[summary.readiness] ?? summary.readiness}</Pill> : null}

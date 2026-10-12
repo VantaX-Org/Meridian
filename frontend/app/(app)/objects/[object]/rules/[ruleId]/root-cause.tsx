@@ -51,7 +51,7 @@ export function RootCauseSection({ run, ruleId }: { run: string; ruleId: string 
           <DataTable columns={columns} data={data.origins}
             getRowId={(o) => `${o.origin}|${o.username}|${o.tcode}`} />
           {data.analysed < data.total && (
-            <p style={{ color: "var(--m-ink-2)", fontSize: "var(--m-text-meta)" }}>
+            <p className="m-text-meta" style={{ color: "var(--m-ink-2)" }}>
               Based on {data.analysed} of {data.total} failing records.
             </p>
           )}

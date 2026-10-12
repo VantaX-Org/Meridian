@@ -127,7 +127,7 @@ export default function RecordFixSheetPage() {
         <ExportMenu options={exportOptions} />
       </div>
       <Card title="Identity">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1" style={{ fontSize: "var(--m-text-body)" }}>
+        <dl className="m-text-body grid grid-cols-2 gap-x-6 gap-y-1">
           <dt style={{ color: "var(--m-ink-3)" }}>Description</dt>
           <dd>{material.description ?? "—"}</dd>
           {isMaterial ? (

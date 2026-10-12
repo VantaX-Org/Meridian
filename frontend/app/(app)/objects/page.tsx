@@ -3,10 +3,10 @@
 
 import { type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usePermissions } from "@/lib/permissions";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, ExplorerPage, ExportMenu, Pill, ScoreRing, Stat, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
+import { DataTable, DrillLink, ExplorerPage, ExportMenu, PageHeader, Pill, ScoreRing, Stat, emptyExportOptions, type PillTone, type ScoreBands } from "@/design";
 import { useDayOne, DayOneAction } from "@/hooks/use-day-one";
 import { downloadAuthenticated } from "@/lib/api/download";
 import { getAnalysisReportUrl } from "@/lib/api/reports";
@@ -14,7 +14,8 @@ import { exportObjects, getObject, getObjects, type ObjectSummary } from "@/lib/
 import { getVersion } from "@/lib/api/versions";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { FilterChips, ObjectsHeader } from "./_header";
+import { usePrefetch } from "@/design/hooks/usePrefetch";
+import { FilterChips } from "./_header";
 
 const READINESS_LABEL: Record<"pass" | "warn" | "fail", string> = {
   pass: "Go",
@@ -46,11 +47,21 @@ type ReadinessFilter = (typeof READINESS_FILTER)[number]["value"];
 /** `?verdict=` is the legacy form of `?readiness=`. */
 const LEGACY_VERDICT: Record<string, ReadinessFilter | "not_ready"> = { ready: "pass", not_ready: "not_ready" };
 
-const makeColumns = (run: string, bands: ScoreBands | undefined, prefetch: (module: string) => void): ColumnDef<ObjectSummary>[] => [
+/** Object name that warms the route and the detail query on hover or focus. */
+function ObjectCell({ module, label, run, resolved }: { module: string; label: string; run: string; resolved: boolean }) {
+  const handlers = usePrefetch(
+    `/objects/${module}?run=${run}&tab=rules`,
+    resolved ? queryKeys.object(module, run) : undefined,
+    resolved ? () => getObject(module, run) : undefined,
+  );
+  return <span {...handlers}>{label}</span>;
+}
+
+const makeColumns = (run: string, resolved: boolean, bands: ScoreBands | undefined): ColumnDef<ObjectSummary>[] => [
   {
     accessorKey: "label",
     header: "Object",
-    cell: ({ row }) => <span onPointerEnter={() => prefetch(row.original.module)}>{row.original.label}</span>,
+    cell: ({ row }) => <ObjectCell module={row.original.module} label={row.original.label} run={run} resolved={resolved} />,
   },
   {
     accessorKey: "composite_score",
@@ -82,7 +93,6 @@ const makeColumns = (run: string, bands: ScoreBands | undefined, prefetch: (modu
 export default function ObjectsPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const run = search.get("run") ?? "latest";
   const dayOne = useDayOne();
 
@@ -104,7 +114,7 @@ export default function ObjectsPage() {
   const objects = (data?.objects ?? []).filter((o) => !scopeFilter.modules || scopeFilter.modules.has(o.module));
 
   let state: "loading" | "empty" | "error" | undefined;
-  let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table"; summary?: string } = { title: "No objects in this run", ghost: "table" };
+  let emptyProps: { title: string; detail?: string; action?: ReactNode; ghost?: "table" } = { title: "No objects in this run", ghost: "table" };
   if (isLoading || dayOne.status === "loading") {
     state = "loading";
   } else if (isListFailure({ isError, error })) {
@@ -114,7 +124,6 @@ export default function ObjectsPage() {
     emptyProps = {
       title: data.run_id ? "No objects in this run" : "No objects measured yet",
       detail: data.run_id ? "Run an analysis on a connected system." : dayOne.step?.detail ?? "Run an extraction to analyse your first objects.",
-      summary: data.run_id ? undefined : "Objects appear after the first analysis.",
       action: <DayOneAction step={dayOne.step} fallbackHref="/runs" fallbackLabel="Open runs" />,
       ghost: "table",
     };
@@ -143,11 +152,7 @@ export default function ObjectsPage() {
     if (next) params.set("readiness", next); else params.delete("readiness");
     router.replace(`/objects?${params.toString()}`);
   };
-  const prefetch = (module: string) => {
-    if (!runId) return;
-    void queryClient.prefetchQuery({ queryKey: queryKeys.object(module, runId), queryFn: () => getObject(module, runId) });
-  };
-  const columns = makeColumns(runId ?? run, data?.thresholds, prefetch); // React Compiler memoizes on run and thresholds
+  const columns = makeColumns(runId ?? run, !!runId, data?.thresholds); // React Compiler memoizes on run and thresholds
 
   const notReady = objects.filter((o) => o.readiness !== "pass").length;
   const failingChecks = objects.reduce((a, o) => a + o.failing_checks, 0);
@@ -168,8 +173,8 @@ export default function ObjectsPage() {
 
   return (
     <ExplorerPage
-      filterBar={
-        <ObjectsHeader
+      header={
+        <PageHeader
           title="Objects"
           meta={version?.label ? `Run ${version.label}` : undefined}
           actions={<ExportMenu options={state === "empty" ? emptyExportOptions(exportOptions) : exportOptions} />}
