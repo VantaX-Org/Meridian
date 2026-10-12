@@ -30,6 +30,8 @@ export interface CatalogueRow {
   reason: string | null;
   /** Failing findings on the DQ modules this process touches; null/absent: no mapping or no DQ run. */
   dq_defects?: number | null;
+  /** The analysis version dq_defects was counted from; null/absent: no DQ run. */
+  dq_version_id?: string | null;
   last_run: {
     id: string;
     status: RunStatus;
@@ -108,6 +110,8 @@ export interface NodeStats {
   fitness: number | null;
   /** Failing findings on the DQ modules this node maps to; null/absent: no mapping or no DQ run. */
   dq_defects?: number | null;
+  /** The analysis version dq_defects was counted from; null/absent: no DQ run. */
+  dq_version_id?: string | null;
 }
 
 export interface Dfg {

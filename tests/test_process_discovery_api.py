@@ -247,11 +247,14 @@ def test_process_discovery_api(app_engine, monkeypatch):  # noqa: F811
             seed("DQ1", 5)
             hit = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()
             assert hit["cached"] is True and hit["node"]["dq_defects"] == 1
+            assert hit["node"]["dq_version_id"] == dq_v and hit["nodes"][0]["dq_version_id"] == dq_v
             seed("DQ2", 2)
             hit = (await c.get(f"{BASE}/runs/{rid}/dfg", headers=viewer, params=f)).json()
             assert hit["cached"] is True and hit["node"]["dq_defects"] == 2  # fresh, not the cached 1
             assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
                     }["PTP"]["dq_defects"] == 2
+            assert {r["l1"]: r for r in (await c.get(f"{BASE}/systems/{sid}/catalogue", headers=viewer)).json()
+                    }["PTP"]["dq_version_id"] == dq_v
 
             # legacy cache entry (a bare DfgResponse, no dfg/modules keys): a miss, rewritten in the new format
             ckey = next(k for k, val in redis.data.items() if '"modules"' in val and '"dfg"' in val)

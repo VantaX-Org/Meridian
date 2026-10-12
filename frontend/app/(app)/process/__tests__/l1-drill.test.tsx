@@ -227,11 +227,11 @@ describe("process L1 drill", () => {
 
   it("links each node's DQ defects to the failing objects and dashes an unmapped node", async () => {
     vi.spyOn(pdApi, "getDfg").mockResolvedValue(dfg(2, node("PTP", "Procure to Pay", 100),
-      [{ ...node("PTP-01", "Purchasing", 100), dq_defects: 12 }, { ...node("PTP-02", "Receiving", 50), dq_defects: null }]));
+      [{ ...node("PTP-01", "Purchasing", 100), dq_defects: 12, dq_version_id: "v-ecc" }, { ...node("PTP-02", "Receiving", 50), dq_defects: null }]));
     renderWithQuery(<ProcessL1Page />);
     await screen.findByRole("button", { name: "Node Purchasing" });
     fireEvent.click(screen.getByRole("button", { name: "View as table" }));
-    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/objects?run=latest&readiness=fail");
+    expect(screen.getByRole("link", { name: "12" }).getAttribute("href")).toBe("/objects?run=v-ecc&readiness=fail");
     expect(screen.getByRole("columnheader", { name: /DQ defects/ })).toBeTruthy();
   });
 

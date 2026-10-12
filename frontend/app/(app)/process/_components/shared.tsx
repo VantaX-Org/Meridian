@@ -29,10 +29,11 @@ export const fmtFitness = (f: number | null | undefined) => (f == null ? "—" :
 export const fmtSeconds = (s: number | null | undefined) => (s == null ? "—" : formatDuration(s));
 export const fmtCount = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString());
 
-/** Failing findings of the latest DQ run on the modules a process or step touches; "—" when unmapped or no DQ run.
- *  ponytail: the API does not return the DQ run id yet, so this lands on the latest run's failing objects. */
-export function DqDefects({ n }: { n: number | null | undefined }) {
-  return n == null ? "—" : <DrillLink href="/objects?run=latest&readiness=fail">{n.toLocaleString()}</DrillLink>;
+/** Failing findings of the system's DQ run on the modules a process or step touches, linked to that run's failing
+ *  objects; "—" when unmapped or no DQ run. */
+export function DqDefects({ n, versionId }: { n: number | null | undefined; versionId: string | null | undefined }) {
+  return n == null || versionId == null ? "—"
+    : <DrillLink href={`/objects?run=${encodeURIComponent(versionId)}&readiness=fail`}>{n.toLocaleString()}</DrillLink>;
 }
 
 /** The job's current stage label, else the run status. */
@@ -194,7 +195,7 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
     { id: "variants", header: "Variants", meta: { numeric: true }, accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
     { id: "cases", header: "Cases", meta: { numeric: true }, accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
     { id: "median", header: "Median duration", meta: { numeric: true }, accessorFn: (r) => r.last_run?.median_seconds ?? -1, cell: ({ row: { original: r } }) => fmtSeconds(r.last_run?.median_seconds) },
-    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} /> },
+    { id: "dq_defects", header: "DQ defects", meta: { numeric: true }, accessorFn: (r) => r.dq_defects ?? -1, cell: ({ row: { original: r } }) => <DqDefects n={r.dq_defects} versionId={r.dq_version_id} /> },
     { id: "finished", header: "Last run", accessorFn: (r) => r.last_run?.finished_at ?? "", cell: ({ row: { original: r } }) => (
         r.last_run?.finished_at ? relativeTime(r.last_run.finished_at) : "Not run yet") },
   ];

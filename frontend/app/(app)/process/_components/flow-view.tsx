@@ -34,7 +34,7 @@ const NODE_COLUMNS: ColumnDef<NodeStats>[] = [
   { accessorKey: "share", header: "Share", cell: ({ row }) => fmtShare(row.original.share) },
   { accessorKey: "median_seconds", header: "Median", cell: ({ row }) => fmtSeconds(row.original.median_seconds) },
   { accessorKey: "fitness", header: "Fitness", cell: ({ row }) => fmtFitness(row.original.fitness) },
-  { id: "dq_defects", header: "DQ defects", accessorFn: (n) => n.dq_defects ?? -1, cell: ({ row }) => <DqDefects n={row.original.dq_defects} /> },
+  { id: "dq_defects", header: "DQ defects", accessorFn: (n) => n.dq_defects ?? -1, cell: ({ row }) => <DqDefects n={row.original.dq_defects} versionId={row.original.dq_version_id} /> },
 ];
 
 export function FlowView({ runId, doc, node, filters, onDrill, onUp }: {

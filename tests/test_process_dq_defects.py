@@ -65,6 +65,8 @@ def test_defects_by_module_is_tenant_scoped(app_engine):  # noqa: F811
         finally:
             await eng.dispose()
 
-    assert asyncio.run(run(t1, sid)) == {"vendor": 2, "fi_gl": 1}  # newest run only; 0-affected excluded
-    assert asyncio.run(run(t2, sid)) == {"vendor": 1}
+    got = asyncio.run(run(t1, sid))
+    assert got.by_module == {"vendor": 2, "fi_gl": 1}  # newest run only; 0-affected excluded
+    assert got.version_id == v1  # the version the counts came from
+    assert asyncio.run(run(t2, sid)).by_module == {"vendor": 1}
     assert asyncio.run(run(t1, str(uuid.uuid4()))) is None  # no run for that system

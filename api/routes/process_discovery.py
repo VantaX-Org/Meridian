@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, Iterable, Literal, Optional, Sequence, Union
+from typing import Annotated, Iterable, Literal, NamedTuple, Optional, Sequence, Union
 from zoneinfo import ZoneInfo
 
 from celery import chain
@@ -179,6 +179,7 @@ class CatalogueEntry(BaseModel):
     in_progress: Optional[RunRef] = None  # the active run, so the UI can say "refreshing" over the last result
     failed: Optional[RunRef] = None       # the newest run, when it failed after the last completed one
     dq_defects: Optional[int] = None      # failing findings on the DQ modules this process touches; None: no mapping or no DQ run
+    dq_version_id: Optional[str] = None   # the analysis_versions id dq_defects was counted from; None: no DQ run
     sources: list[SourceTable]
 
 
@@ -192,6 +193,7 @@ class NodeStats(BaseModel):
     median_seconds: Optional[float]
     fitness: Optional[float]
     dq_defects: Optional[int] = None  # failing findings on the DQ modules this node maps to; None: no mapping or no DQ run
+    dq_version_id: Optional[str] = None  # the analysis_versions id dq_defects was counted from; None: no DQ run
 
 
 class DfgEdge(BaseModel):
@@ -363,8 +365,13 @@ async def _document(db: AsyncSession, tenant: Tenant, run: RunRecord, flt: Proce
 # --- DQ defects per process ---------------------------------------------------------------------------------
 
 
-async def _defects_by_module(db: AsyncSession, tenant: Tenant, system_id: str) -> Optional[dict[str, int]]:
-    """{DQ module: failing findings} of the system's newest finished analysis, or None when it has none.
+class DqCounts(NamedTuple):
+    version_id: str
+    by_module: dict[str, int]
+
+
+async def _defects_by_module(db: AsyncSession, tenant: Tenant, system_id: str) -> Optional[DqCounts]:
+    """The system's newest finished analysis id and its {DQ module: failing findings}, or None when it has none.
     Two tenant-scoped queries per request (newest run, then one GROUP BY over its findings), however many
     processes or nodes read it; the findings scan uses ix_findings_tenant_version."""
     await _rls(db, tenant)
@@ -377,7 +384,7 @@ async def _defects_by_module(db: AsyncSession, tenant: Tenant, system_id: str) -
     rows = (await db.execute(text(
         "SELECT module, count(*) FROM findings WHERE tenant_id = :t AND version_id = :v AND affected_count > 0 "
         "GROUP BY module"), {"t": args["t"], "v": version})).fetchall()
-    return {m: n for m, n in rows}
+    return DqCounts(str(version), {m: n for m, n in rows})
 
 
 def _defects(defects: Optional[dict[str, int]], modules: Iterable[str]) -> Optional[int]:
@@ -424,7 +431,8 @@ async def catalogue(system_id: str, tenant: Tenant = Depends(get_tenant),
             id=n.id, status=n.status, job_id=n.job_id, error=n.error)
         out.append(CatalogueEntry(
             l1=l1, name=names.get(l1, l1),
-            dq_defects=_defects(defects, _node_modules(ref_l1[l1]) if l1 in ref_l1 else ()),
+            dq_defects=_defects(defects and defects.by_module, _node_modules(ref_l1[l1]) if l1 in ref_l1 else ()),
+            dq_version_id=defects and defects.version_id,
             coverage=r.coverage if r else "reference",
             reason=reason(l1, system_type),
             last_run=None if r is None else LastRun(
@@ -590,9 +598,10 @@ def _stats(node: Union[Parent, Child]) -> NodeStats:
 
 
 def _apply_defects(dfg: DfgResponse, modules: dict[str, list[str]],
-                   defects: Optional[dict[str, int]]) -> DfgResponse:
+                   defects: Optional[DqCounts]) -> DfgResponse:
     def one(n: NodeStats) -> NodeStats:
-        return n.model_copy(update={"dq_defects": _defects(defects, modules.get(n.id, ()))})
+        return n.model_copy(update={"dq_defects": _defects(defects and defects.by_module, modules.get(n.id, ())),
+                                    "dq_version_id": defects and defects.version_id})
     return dfg.model_copy(update={"node": one(dfg.node), "nodes": [one(n) for n in dfg.nodes]})
 
 
