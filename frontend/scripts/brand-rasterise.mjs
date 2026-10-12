@@ -35,16 +35,19 @@ const svg = (name) => join(BRAND, name);
 // Transparent-background mark PNGs: PWA fallbacks.
 for (const s of [32, 192, 512]) await png(svg("mark-light.svg"), join(BRAND, `icon-${s}.png`), s);
 
-// Maskable: full-bleed gradient tile, mark inside the 80% safe zone.
+// Maskable: flat accent ground, the apple icon inside the 80% safe zone.
+const { accent } = JSON.parse(readFileSync(join(BRAND, "brand.json"), "utf8"));
 const apple = readFileSync(svg("apple-icon.svg"), "utf8");
-const maskable = await sharp(Buffer.from(apple), { density: 384 }).resize(410, 410).png().toBuffer();
-await sharp({ create: { width: 512, height: 512, channels: 4, background: "#2B4BE0" } })
-  .composite([{ input: maskable, gravity: "centre" }])
+const inner = await sharp(Buffer.from(apple), { density: 384 }).resize(410, 410).png().toBuffer();
+await sharp({ create: { width: 512, height: 512, channels: 4, background: accent } })
+  .composite([{ input: inner, gravity: "centre" }])
   .png()
-  .toFile(join(BRAND, "icon-512-maskable.png"));
+  .toFile(join(BRAND, "maskable-512.png"));
 
 await png(svg("apple-icon.svg"), join(ROOT, "app", "apple-icon.png"), 180);
-await png(svg("og-image.svg"), join(ROOT, "app", "opengraph-image.png"), 1200, 630);
+// 32px favicon fallback from the favicon source (stroke 3.5).
+await png(join(ROOT, "app", "icon.svg"), join(ROOT, "app", "icon.png"), 32);
+// The OG image is app/opengraph-image.tsx (ImageResponse); no raster source here.
 
 // Backend copies (XLSX cover, PDF cover).
 mkdirSync(TEMPLATES, { recursive: true });
