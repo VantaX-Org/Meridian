@@ -9,7 +9,7 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { LayoutGrid, Plus, Trash2 } from "lucide-react";
 import { Button, IconButton } from "@/design";
 import type { ActivityOverlay, L4, NodeType } from "@/types/process-model";
-import { layoutDiagram } from "./layout";
+import { layoutDiagram, SIZE } from "./layout";
 import { nodeTypes, type MarkData, type TaskData } from "./nodes";
 
 export interface CanvasProps {
@@ -30,15 +30,14 @@ export interface CanvasProps {
   onLayout: () => void;
 }
 
-function CanvasInner(p: CanvasProps) {
-  const { l4, overlay, selected } = p;
-  const [connectMode, setConnectMode] = useState(false);
-  const [drag, setDrag] = useState<Record<string, { x: number; y: number }>>({});
-  const [askDelete, setAskDelete] = useState<string | null>(null);
-  const auto = useMemo(() => layoutDiagram(l4.diagram), [l4.diagram]);
-  const acts = useMemo(() => new Map(l4.activities.map((a) => [a.id, a])), [l4.activities]);
-
-  const nodes = useMemo<Node[]>(() => l4.diagram.nodes.map((n) => {
+/** React Flow nodes for a diagram. Sizes come from SIZE so they match the dagre slot and the CSS. */
+export function buildNodes(
+  l4: L4, overlay: Record<string, ActivityOverlay> | null, selected: string | null,
+  drag: Record<string, { x: number; y: number }>, auto: Record<string, { x: number; y: number }>,
+): Node[] {
+  const acts = new Map(l4.activities.map((a) => [a.id, a]));
+  return l4.diagram.nodes.map((n) => {
+    const size = { width: SIZE[n.type].w, height: SIZE[n.type].h };
     const act = n.activity_id ? acts.get(n.activity_id) : undefined;
     const pos = drag[n.id] ?? (n.x != null && n.y != null ? { x: n.x, y: n.y } : auto[n.id]);
     const isSel = selected === n.id || (!!n.activity_id && selected === n.activity_id);
@@ -49,12 +48,22 @@ function CanvasInner(p: CanvasProps) {
         failing: act ? overlay?.[act.id]?.finding_count : undefined, affected: act ? overlay?.[act.id]?.affected_count : undefined,
         evidence: n.evidence ?? act?.evidence, selected: isSel,
       };
-      return { id: n.id, type: "bpmnTask", position: pos, data, width: 220, height: 72 };
+      return { id: n.id, type: "bpmnTask", position: pos, data, ...size };
     }
     const data: MarkData = { label: n.label ?? "", end: n.type === "endEvent", parallel: n.type === "parallelGateway", selected: isSel };
     const gate = n.type === "exclusiveGateway" || n.type === "parallelGateway";
-    return { id: n.id, type: gate ? "bpmnGateway" : "bpmnEvent", position: pos, data, width: gate ? 56 : 36, height: gate ? 56 : 36 };
-  }), [l4.diagram.nodes, acts, drag, auto, selected, overlay]);
+    return { id: n.id, type: gate ? "bpmnGateway" : "bpmnEvent", position: pos, data, ...size };
+  });
+}
+
+function CanvasInner(p: CanvasProps) {
+  const { l4, overlay, selected } = p;
+  const [connectMode, setConnectMode] = useState(false);
+  const [drag, setDrag] = useState<Record<string, { x: number; y: number }>>({});
+  const [askDelete, setAskDelete] = useState<string | null>(null);
+  const auto = useMemo(() => layoutDiagram(l4.diagram), [l4.diagram]);
+
+  const nodes = useMemo<Node[]>(() => buildNodes(l4, overlay, selected, drag, auto), [l4, overlay, selected, drag, auto]);
 
   const edges = useMemo<Edge[]>(() => l4.diagram.flows.map((f) => ({
     id: f.id, source: f.source, target: f.target, type: "smoothstep", label: f.label ?? f.condition ?? undefined,
