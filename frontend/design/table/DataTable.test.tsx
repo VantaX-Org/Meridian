@@ -94,21 +94,88 @@ describe("DataTable", () => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
     try {
       const bigRows: Row[] = Array.from({ length: 2500 }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
-      const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} />);
+      const { container } = render(<DataTable columns={columns} data={bigRows} getRowId={(r) => r.id} dense={false} />);
       const scrollParent = container.querySelector("div[style*='overflow: auto']") as HTMLDivElement;
       const tbody = container.querySelector("tbody") as HTMLTableSectionElement;
+      // Spacer rows plus rendered rows always add up to 44px comfortable row * 2500 rows.
+      const total = () =>
+        Array.from(tbody.querySelectorAll("tr")).reduce((n, tr) => n + parseFloat((tr as HTMLElement).style.height), 0);
 
-      // 44px comfortable row * 2500 rows.
-      expect(tbody.style.height).toBe("110000px");
+      expect(total()).toBe(110000);
       expect(screen.queryByText("Row 2400")).not.toBeInTheDocument();
 
       Object.defineProperty(scrollParent, "scrollTop", { configurable: true, value: 105500 });
       fireEvent.scroll(scrollParent);
 
       expect(screen.getByText("Row 2400")).toBeInTheDocument();
+      expect(total()).toBe(110000);
+      expect(screen.getByText("Row 2400").closest("tr")).toHaveAttribute("aria-rowindex", "2402");
+      expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "2501");
     } finally {
       if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
     }
+  });
+
+  it("renders every row at 200 rows and virtualises at 201", () => {
+    const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight");
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, value: 400 });
+    try {
+      const make = (n: number): Row[] => Array.from({ length: n }, (_, i) => ({ id: String(i), name: `Row ${i}` }));
+      const first = render(<DataTable columns={columns} data={make(200)} getRowId={(r) => r.id} />);
+      expect(screen.getByText("Row 199")).toBeInTheDocument();
+      expect(first.container.querySelectorAll("tbody tr")).toHaveLength(200);
+      first.unmount();
+      render(<DataTable columns={columns} data={make(201)} getRowId={(r) => r.id} />);
+      expect(screen.queryByText("Row 200")).not.toBeInTheDocument();
+    } finally {
+      if (originalOffsetHeight) Object.defineProperty(HTMLElement.prototype, "offsetHeight", originalOffsetHeight);
+    }
+  });
+
+  it("moves the active row with ArrowDown and ArrowUp and clamps at the ends", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    const grid = screen.getByRole("grid");
+    const idOf = (name: string) => (screen.getByText(name).closest("tr") as HTMLTableRowElement).id;
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Alpha"));
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Alpha"));
+    fireEvent.keyDown(grid, { key: "ArrowUp" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+    fireEvent.keyDown(grid, { key: "ArrowUp" });
+    expect(grid).toHaveAttribute("aria-activedescendant", idOf("Bravo"));
+  });
+
+  it("keeps the active row on the same record after a sort and drops it when filtered out", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} />);
+    const grid = screen.getByRole("grid");
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    const bravoId = (screen.getByText("Bravo").closest("tr") as HTMLTableRowElement).id;
+    fireEvent.click(screen.getByRole("button", { name: "Name" }));
+    expect(grid).toHaveAttribute("aria-activedescendant", bravoId);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
+    expect(grid).not.toHaveAttribute("aria-activedescendant");
+  });
+
+  it("clears selection on Escape from a focused row checkbox, and select-all covers only filtered rows", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "Alpha" } });
+    fireEvent.click(screen.getByLabelText("Select all rows"));
+    expect(screen.getByLabelText("Select row 1")).toBeChecked();
+    fireEvent.change(screen.getByLabelText("Filter rows"), { target: { value: "" } });
+    expect(screen.getByLabelText("Select row 2")).not.toBeChecked();
+    fireEvent.keyDown(screen.getByLabelText("Select row 1"), { key: "Escape" });
+    expect(screen.getByLabelText("Select row 1")).not.toBeChecked();
+  });
+
+  it("exposes grid row semantics", () => {
+    render(<DataTable columns={columns} data={rows} getRowId={(r) => r.id} bulkActions={() => null} />);
+    expect(screen.getByRole("grid")).toHaveAttribute("aria-rowcount", "3");
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body.map((r) => r.getAttribute("aria-rowindex"))).toEqual(["2", "3"]);
+    expect(body[0]).toHaveAttribute("aria-selected", "false");
   });
 
   it("selects rows and surfaces them to BulkBar and the bulk action callback", () => {
@@ -183,7 +250,7 @@ describe("DataTable toolbar", () => {
   });
 
   it("toggles density", () => {
-    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" />);
+    render(<DataTable columns={two} data={rows} getRowId={(r) => r.id} tableId="t-dense" dense={false} />);
     const btn = screen.getByRole("button", { name: "Compact rows" });
     fireEvent.click(btn);
     expect(screen.getByRole("button", { name: "Comfortable rows" })).toHaveAttribute("aria-pressed", "true");
