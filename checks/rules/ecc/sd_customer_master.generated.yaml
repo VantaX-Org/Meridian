@@ -6,7 +6,7 @@ module: sd_customer_master
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXV00820
+- id: DXV00770
   enabled: false
   field: KNVD.DOVER
   check_class: domain_value_check
@@ -25,7 +25,7 @@ rules:
   fix_map:
     __other__: 'KNVD.DOVER ''{invalid_value}'' is not in domain NA_VSZTP. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'KNVD.DOVER is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00821
+- id: DXV00771
   enabled: false
   field: KNVD.NACHA
   check_class: domain_value_check
@@ -51,7 +51,7 @@ rules:
   fix_map:
     __other__: 'KNVD.NACHA ''{invalid_value}'' is not in domain NA_NACHA. Set it to one of: 1, 2, 4, 5, 6, 7, 8, 9, A, T.'
   record_fix_template: 'KNVD.NACHA is {actual_value}; expected one of: 1, 2, 4, 5, 6, 7, 8, 9, A, T.'
-- id: DXR02014
+- id: DXR01844
   enabled: false
   field: KNVV.PERRL
   check_class: referential_check
@@ -62,12 +62,13 @@ rules:
     table TFACD.IDENT on domain WFCID. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PERRL resolve it through TFACD.IDENT; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PERRL resolve it through check table TFACD.IDENT; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: KNVV.PERRL '{invalid_value}' is not defined in TFACD.IDENT. Correct it there or add the missing entry to TFACD.IDENT.
-  record_fix_template: KNVV.PERRL points at a TFACD.IDENT entry that does not exist.
-- id: DXR02015
+    __other__: KNVV.PERRL '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
+      entry.
+  record_fix_template: KNVV.PERRL points at a check table TFACD.IDENT entry that does not exist.
+- id: DXR01845
   enabled: false
   field: KNVV.VSORT
   check_class: referential_check
@@ -78,12 +79,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSORT resolve it through VBUK.VBELN; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSORT resolve it through check table VBUK.VBELN; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: KNVV.VSORT '{invalid_value}' is not defined in VBUK.VBELN. Correct it there or add the missing entry to VBUK.VBELN.
-  record_fix_template: KNVV.VSORT points at a VBUK.VBELN entry that does not exist.
-- id: DXR02016
+    __other__: KNVV.VSORT '{invalid_value}' is not defined in the check table VBUK.VBELN. Correct it there or add the missing
+      entry.
+  record_fix_template: KNVV.VSORT points at a check table VBUK.VBELN entry that does not exist.
+- id: DXR01846
   enabled: false
   field: KNVV.KABSS
   check_class: referential_check
@@ -94,12 +96,13 @@ rules:
     on domain KABSSCH_CM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
     configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KABSS resolve it through T691P.KABSS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KABSS resolve it through check table T691P.KABSS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: KNVV.KABSS '{invalid_value}' is not defined in T691P.KABSS. Correct it there or add the missing entry to T691P.KABSS.
-  record_fix_template: KNVV.KABSS points at a T691P.KABSS entry that does not exist.
-- id: DXR02017
+    __other__: KNVV.KABSS '{invalid_value}' is not defined in the check table T691P.KABSS. Correct it there or add the missing
+      entry.
+  record_fix_template: KNVV.KABSS points at a check table T691P.KABSS entry that does not exist.
+- id: DXR01847
   enabled: false
   field: KNVV.MEGRU
   check_class: referential_check
@@ -110,12 +113,13 @@ rules:
     MEGRU. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEGRU resolve it through TWMEG.MEGRU; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read MEGRU resolve it through check table TWMEG.MEGRU; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: KNVV.MEGRU '{invalid_value}' is not defined in TWMEG.MEGRU. Correct it there or add the missing entry to TWMEG.MEGRU.
-  record_fix_template: KNVV.MEGRU points at a TWMEG.MEGRU entry that does not exist.
-- id: DXR02018
+    __other__: KNVV.MEGRU '{invalid_value}' is not defined in the check table TWMEG.MEGRU. Correct it there or add the missing
+      entry.
+  record_fix_template: KNVV.MEGRU points at a check table TWMEG.MEGRU entry that does not exist.
+- id: DXR01848
   enabled: false
   field: KNVV.PVKSM
   check_class: referential_check
@@ -126,12 +130,13 @@ rules:
     on domain PVKSM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PVKSM resolve it through TPVD.PVKSM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PVKSM resolve it through check table TPVD.PVKSM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: KNVV.PVKSM '{invalid_value}' is not defined in TPVD.PVKSM. Correct it there or add the missing entry to TPVD.PVKSM.
-  record_fix_template: KNVV.PVKSM points at a TPVD.PVKSM entry that does not exist.
-- id: DXV00822
+    __other__: KNVV.PVKSM '{invalid_value}' is not defined in the check table TPVD.PVKSM. Correct it there or add the missing
+      entry.
+  record_fix_template: KNVV.PVKSM points at a check table TPVD.PVKSM entry that does not exist.
+- id: DXV00772
   enabled: false
   field: T685A.KRECH
   check_class: domain_value_check
@@ -166,7 +171,7 @@ rules:
     __other__: 'T685A.KRECH ''{invalid_value}'' is not in domain KRECH. Set it to one of: A, B, C, D, E, F, G, H, I, L, M,
       N ....'
   record_fix_template: 'T685A.KRECH is {actual_value}; expected one of: A, B, C, D, E, F, G, H, I, L, M, N ....'
-- id: DXV00823
+- id: DXV00773
   enabled: false
   field: T685A.KZBZG
   check_class: domain_value_check
@@ -198,7 +203,7 @@ rules:
     __other__: 'T685A.KZBZG ''{invalid_value}'' is not in domain KZBZG. Set it to one of: B, C, D, E, F, G, L, M, N, O, P,
       R ....'
   record_fix_template: 'T685A.KZBZG is {actual_value}; expected one of: B, C, D, E, F, G, L, M, N, O, P, R ....'
-- id: DXV00824
+- id: DXV00774
   enabled: false
   field: T685A.KNTYP
   check_class: domain_value_check
@@ -263,7 +268,7 @@ rules:
     __other__: 'T685A.KNTYP ''{invalid_value}'' is not in domain KNTYP. Set it to one of: $, +, -, 0, 1, 2, 3, 4, 5, 6, 7,
       8 ....'
   record_fix_template: 'T685A.KNTYP is {actual_value}; expected one of: $, +, -, 0, 1, 2, 3, 4, 5, 6, 7, 8 ....'
-- id: DXV00825
+- id: DXV00775
   enabled: false
   field: T685A.KMANU
   check_class: domain_value_check
@@ -283,7 +288,7 @@ rules:
   fix_map:
     __other__: 'T685A.KMANU ''{invalid_value}'' is not in domain KMANU. Set it to one of: A, B, C, D.'
   record_fix_template: 'T685A.KMANU is {actual_value}; expected one of: A, B, C, D.'
-- id: DXR02019
+- id: DXR01849
   enabled: false
   field: T685A.GRZGF
   check_class: referential_check
@@ -294,12 +299,13 @@ rules:
     on domain KOZGF. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GRZGF resolve it through T682.KOZGF; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read GRZGF resolve it through check table T682.KOZGF; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.GRZGF '{invalid_value}' is not defined in T682.KOZGF. Correct it there or add the missing entry to T682.KOZGF.
-  record_fix_template: T685A.GRZGF points at a T682.KOZGF entry that does not exist.
-- id: DXR02020
+    __other__: T685A.GRZGF '{invalid_value}' is not defined in the check table T682.KOZGF. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.GRZGF points at a check table T682.KOZGF entry that does not exist.
+- id: DXR01850
   enabled: false
   field: T685A.GRMEN
   check_class: referential_check
@@ -310,12 +316,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GRMEN resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read GRMEN resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.GRMEN '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: T685A.GRMEN points at a T006.MSEHI entry that does not exist.
-- id: DXV00826
+    __other__: T685A.GRMEN '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.GRMEN points at a check table T006.MSEHI entry that does not exist.
+- id: DXV00776
   enabled: false
   field: T685A.KDUPL
   check_class: domain_value_check
@@ -332,7 +339,7 @@ rules:
   fix_map:
     __other__: 'T685A.KDUPL ''{invalid_value}'' is not in domain KDUPL. Set it to one of: A, B.'
   record_fix_template: 'T685A.KDUPL is {actual_value}; expected one of: A, B.'
-- id: DXR02021
+- id: DXR01851
   enabled: false
   field: T685A.KALSM
   check_class: referential_check
@@ -343,12 +350,13 @@ rules:
     check table T683.KALSM on domain KALSM. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KALSM resolve it through T683.KALSM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KALSM resolve it through check table T683.KALSM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.KALSM '{invalid_value}' is not defined in T683.KALSM. Correct it there or add the missing entry to T683.KALSM.
-  record_fix_template: T685A.KALSM points at a T683.KALSM entry that does not exist.
-- id: DXR02022
+    __other__: T685A.KALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.KALSM points at a check table T683.KALSM entry that does not exist.
+- id: DXR01852
   enabled: false
   field: T685A.KZNEP
   check_class: referential_check
@@ -359,12 +367,13 @@ rules:
     on domain KZNEP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KZNEP resolve it through T686A.KZNEP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KZNEP resolve it through check table T686A.KZNEP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.KZNEP '{invalid_value}' is not defined in T686A.KZNEP. Correct it there or add the missing entry to T686A.KZNEP.
-  record_fix_template: T685A.KZNEP points at a T686A.KZNEP entry that does not exist.
-- id: DXV00827
+    __other__: T685A.KZNEP '{invalid_value}' is not defined in the check table T686A.KZNEP. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.KZNEP points at a check table T686A.KZNEP entry that does not exist.
+- id: DXV00777
   enabled: false
   field: T685A.KOAID
   check_class: domain_value_check
@@ -389,7 +398,7 @@ rules:
   fix_map:
     __other__: 'T685A.KOAID ''{invalid_value}'' is not in domain KOAID. Set it to one of: A, B, C, D, E, F, G, H, Q, W.'
   record_fix_template: 'T685A.KOAID is {actual_value}; expected one of: A, B, C, D, E, F, G, H, Q, W.'
-- id: DXV00828
+- id: DXV00778
   enabled: false
   field: T685A.KNEGA
   check_class: domain_value_check
@@ -407,7 +416,7 @@ rules:
   fix_map:
     __other__: 'T685A.KNEGA ''{invalid_value}'' is not in domain KNEGA. Set it to one of: A, X.'
   record_fix_template: 'T685A.KNEGA is {actual_value}; expected one of: A, X.'
-- id: DXV00829
+- id: DXV00779
   enabled: false
   field: T685A.TXPRF
   check_class: domain_value_check
@@ -424,7 +433,7 @@ rules:
   fix_map:
     __other__: 'T685A.TXPRF ''{invalid_value}'' is not in domain TXPRF. Set it to one of: A, B.'
   record_fix_template: 'T685A.TXPRF is {actual_value}; expected one of: A, B.'
-- id: DXV00830
+- id: DXV00780
   enabled: false
   field: T685A.KSTPR
   check_class: domain_value_check
@@ -442,7 +451,7 @@ rules:
   fix_map:
     __other__: 'T685A.KSTPR ''{invalid_value}'' is not in domain KSTPR. Set it to one of: A, B.'
   record_fix_template: 'T685A.KSTPR is {actual_value}; expected one of: A, B.'
-- id: DXV00831
+- id: DXV00781
   enabled: false
   field: T685A.RUKOR
   check_class: domain_value_check
@@ -460,7 +469,7 @@ rules:
   fix_map:
     __other__: 'T685A.RUKOR ''{invalid_value}'' is not in domain RUKOR. Set it to one of: A, B.'
   record_fix_template: 'T685A.RUKOR is {actual_value}; expected one of: A, B.'
-- id: DXV00832
+- id: DXV00782
   enabled: false
   field: T685A.KPRDT
   check_class: domain_value_check
@@ -480,7 +489,7 @@ rules:
   fix_map:
     __other__: 'T685A.KPRDT ''{invalid_value}'' is not in domain KPRDT. Set it to one of: A, B, C, D, E.'
   record_fix_template: 'T685A.KPRDT is {actual_value}; expected one of: A, B, C, D, E.'
-- id: DXV00833
+- id: DXV00783
   enabled: false
   field: T685A.STFKZ
   check_class: domain_value_check
@@ -499,7 +508,7 @@ rules:
   fix_map:
     __other__: 'T685A.STFKZ ''{invalid_value}'' is not in domain STFKZ. Set it to one of: A, B, C, D.'
   record_fix_template: 'T685A.STFKZ is {actual_value}; expected one of: A, B, C, D.'
-- id: DXV00834
+- id: DXV00784
   enabled: false
   field: T685A.PRECH
   check_class: domain_value_check
@@ -534,7 +543,7 @@ rules:
     __other__: 'T685A.PRECH ''{invalid_value}'' is not in domain KRECH. Set it to one of: A, B, C, D, E, F, G, H, I, L, M,
       N ....'
   record_fix_template: 'T685A.PRECH is {actual_value}; expected one of: A, B, C, D, E, F, G, H, I, L, M, N ....'
-- id: DXV00835
+- id: DXV00785
   enabled: false
   field: T685A.BNKWE
   check_class: domain_value_check
@@ -552,7 +561,7 @@ rules:
   fix_map:
     __other__: 'T685A.BNKWE ''{invalid_value}'' is not in domain BNKWE. Set it to one of: 1, 2.'
   record_fix_template: 'T685A.BNKWE is {actual_value}; expected one of: 1, 2.'
-- id: DXR02023
+- id: DXR01853
   enabled: false
   field: T685A.RKAPPL
   check_class: referential_check
@@ -563,13 +572,13 @@ rules:
     KAPPL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RKAPPL resolve it through T681A.KAPPL; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read RKAPPL resolve it through check table T681A.KAPPL; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.RKAPPL '{invalid_value}' is not defined in T681A.KAPPL. Correct it there or add the missing entry to
-      T681A.KAPPL.
-  record_fix_template: T685A.RKAPPL points at a T681A.KAPPL entry that does not exist.
-- id: DXR02024
+    __other__: T685A.RKAPPL '{invalid_value}' is not defined in the check table T681A.KAPPL. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.RKAPPL points at a check table T681A.KAPPL entry that does not exist.
+- id: DXR01854
   enabled: false
   field: T685A.RKSCHL
   check_class: referential_check
@@ -580,12 +589,13 @@ rules:
     KSCHL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RKSCHL resolve it through T685.KSCHL; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read RKSCHL resolve it through check table T685.KSCHL; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.RKSCHL '{invalid_value}' is not defined in T685.KSCHL. Correct it there or add the missing entry to T685.KSCHL.
-  record_fix_template: T685A.RKSCHL points at a T685.KSCHL entry that does not exist.
-- id: DXV00836
+    __other__: T685A.RKSCHL '{invalid_value}' is not defined in the check table T685.KSCHL. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.RKSCHL points at a check table T685.KSCHL entry that does not exist.
+- id: DXV00786
   enabled: false
   field: T685A.BERGL
   check_class: domain_value_check
@@ -606,7 +616,7 @@ rules:
   fix_map:
     __other__: 'T685A.BERGL ''{invalid_value}'' is not in domain BERGL. Set it to one of: A, B, C, D, E, F.'
   record_fix_template: 'T685A.BERGL is {actual_value}; expected one of: A, B, C, D, E, F.'
-- id: DXR02025
+- id: DXR01855
   enabled: false
   field: T685A.VHART
   check_class: referential_check
@@ -617,12 +627,13 @@ rules:
     TRATY. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VHART resolve it through TVTY.TRATY; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VHART resolve it through check table TVTY.TRATY; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.VHART '{invalid_value}' is not defined in TVTY.TRATY. Correct it there or add the missing entry to TVTY.TRATY.
-  record_fix_template: T685A.VHART points at a TVTY.TRATY entry that does not exist.
-- id: DXV00837
+    __other__: T685A.VHART '{invalid_value}' is not defined in the check table TVTY.TRATY. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.VHART points at a check table TVTY.TRATY entry that does not exist.
+- id: DXV00787
   enabled: false
   field: T685A.MDFLG
   check_class: domain_value_check
@@ -641,7 +652,7 @@ rules:
   fix_map:
     __other__: 'T685A.MDFLG ''{invalid_value}'' is not in domain MDFLG. Set it to one of: 1, 2, 3.'
   record_fix_template: 'T685A.MDFLG is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00838
+- id: DXV00788
   enabled: false
   field: T685A.KFRST
   check_class: domain_value_check
@@ -659,7 +670,7 @@ rules:
   fix_map:
     __other__: 'T685A.KFRST ''{invalid_value}'' is not in domain KFRST. Set it to one of: A, B, C.'
   record_fix_template: 'T685A.KFRST is {actual_value}; expected one of: A, B, C.'
-- id: DXR02026
+- id: DXR01856
   enabled: false
   field: T685A.TXTGR
   check_class: referential_check
@@ -670,12 +681,13 @@ rules:
     domain TXTGR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TXTGR resolve it through TTXG.TXTGR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read TXTGR resolve it through check table TTXG.TXTGR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.TXTGR '{invalid_value}' is not defined in TTXG.TXTGR. Correct it there or add the missing entry to TTXG.TXTGR.
-  record_fix_template: T685A.TXTGR points at a TTXG.TXTGR entry that does not exist.
-- id: DXR02027
+    __other__: T685A.TXTGR '{invalid_value}' is not defined in the check table TTXG.TXTGR. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.TXTGR points at a check table TTXG.TXTGR entry that does not exist.
+- id: DXR01857
   enabled: false
   field: T685A.TDID
   check_class: referential_check
@@ -686,12 +698,13 @@ rules:
     on domain TDID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TDID resolve it through TTXERN.TDID; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read TDID resolve it through check table TTXERN.TDID; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.TDID '{invalid_value}' is not defined in TTXERN.TDID. Correct it there or add the missing entry to TTXERN.TDID.
-  record_fix_template: T685A.TDID points at a TTXERN.TDID entry that does not exist.
-- id: DXV00839
+    __other__: T685A.TDID '{invalid_value}' is not defined in the check table TTXERN.TDID. Correct it there or add the missing
+      entry.
+  record_fix_template: T685A.TDID points at a check table TTXERN.TDID entry that does not exist.
+- id: DXV00789
   enabled: false
   field: T685A.KDELE
   check_class: domain_value_check
@@ -709,7 +722,7 @@ rules:
   fix_map:
     __other__: 'T685A.KDELE ''{invalid_value}'' is not in domain KDELE. Set it to one of: A, B.'
   record_fix_template: 'T685A.KDELE is {actual_value}; expected one of: A, B.'
-- id: DXV00840
+- id: DXV00790
   enabled: false
   field: T685A.DTASRC
   check_class: domain_value_check
@@ -748,7 +761,7 @@ rules:
     __other__: 'T685A.DTASRC ''{invalid_value}'' is not in domain CRM_COND_DATA_SOURCE1. Set it to one of: A, B, C, D, E,
       EC, F, G, H, I, J, K ....'
   record_fix_template: 'T685A.DTASRC is {actual_value}; expected one of: A, B, C, D, E, EC, F, G, H, I, J, K ....'
-- id: DXV00841
+- id: DXV00791
   enabled: false
   field: T685A.OIGRNET
   check_class: domain_value_check
@@ -767,7 +780,7 @@ rules:
   fix_map:
     __other__: 'T685A.OIGRNET ''{invalid_value}'' is not in domain OIC_GRNET. Set it to one of: G, N, R.'
   record_fix_template: 'T685A.OIGRNET is {actual_value}; expected one of: G, N, R.'
-- id: DXR02028
+- id: DXR01858
   enabled: false
   field: T685A.OIINVCYC
   check_class: referential_check
@@ -778,13 +791,13 @@ rules:
     OIA_INVCYC. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read OIINVCYC resolve it through TOIA10.OIINVCYC; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read OIINVCYC resolve it through check table TOIA10.OIINVCYC; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.OIINVCYC '{invalid_value}' is not defined in TOIA10.OIINVCYC. Correct it there or add the missing entry
-      to TOIA10.OIINVCYC.
-  record_fix_template: T685A.OIINVCYC points at a TOIA10.OIINVCYC entry that does not exist.
-- id: DXR02029
+    __other__: T685A.OIINVCYC '{invalid_value}' is not defined in the check table TOIA10.OIINVCYC. Correct it there or add
+      the missing entry.
+  record_fix_template: T685A.OIINVCYC points at a check table TOIA10.OIINVCYC entry that does not exist.
+- id: DXR01859
   enabled: false
   field: T685A.OIRCONDCL
   check_class: referential_check
@@ -795,13 +808,13 @@ rules:
     on domain CHAR1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read OIRCONDCL resolve it through OIRE_KSCHL_CLA.OIRCONDCL; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read OIRCONDCL resolve it through check table OIRE_KSCHL_CLA.OIRCONDCL; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.OIRCONDCL '{invalid_value}' is not defined in OIRE_KSCHL_CLA.OIRCONDCL. Correct it there or add the missing
-      entry to OIRE_KSCHL_CLA.OIRCONDCL.
-  record_fix_template: T685A.OIRCONDCL points at a OIRE_KSCHL_CLA.OIRCONDCL entry that does not exist.
-- id: DXR02030
+    __other__: T685A.OIRCONDCL '{invalid_value}' is not defined in the check table OIRE_KSCHL_CLA.OIRCONDCL. Correct it there
+      or add the missing entry.
+  record_fix_template: T685A.OIRCONDCL points at a check table OIRE_KSCHL_CLA.OIRCONDCL entry that does not exist.
+- id: DXR01860
   enabled: false
   field: T685A.WTY_KONDM
   check_class: referential_check
@@ -812,13 +825,13 @@ rules:
     domain KONDM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WTY_KONDM resolve it through T178.KONDM; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read WTY_KONDM resolve it through check table T178.KONDM; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T685A.WTY_KONDM '{invalid_value}' is not defined in T178.KONDM. Correct it there or add the missing entry to
-      T178.KONDM.
-  record_fix_template: T685A.WTY_KONDM points at a T178.KONDM entry that does not exist.
-- id: DXV00842
+    __other__: T685A.WTY_KONDM '{invalid_value}' is not defined in the check table T178.KONDM. Correct it there or add the
+      missing entry.
+  record_fix_template: T685A.WTY_KONDM points at a check table T178.KONDM entry that does not exist.
+- id: DXV00792
   enabled: false
   field: T685A.WTY_KATEG
   check_class: domain_value_check
@@ -837,7 +850,7 @@ rules:
   fix_map:
     __other__: 'T685A.WTY_KATEG ''{invalid_value}'' is not in domain WTY_KATEG. Set it to one of: IC, IV, OC, OV.'
   record_fix_template: 'T685A.WTY_KATEG is {actual_value}; expected one of: IC, IV, OC, OV.'
-- id: DXR02031
+- id: DXR01861
   enabled: false
   field: TPAR.UPARV
   check_class: referential_check
@@ -848,12 +861,13 @@ rules:
     on domain PARVW. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read UPARV resolve it through TPAR.PARVW; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read UPARV resolve it through check table TPAR.PARVW; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TPAR.UPARV '{invalid_value}' is not defined in TPAR.PARVW. Correct it there or add the missing entry to TPAR.PARVW.
-  record_fix_template: TPAR.UPARV points at a TPAR.PARVW entry that does not exist.
-- id: DXR02032
+    __other__: TPAR.UPARV '{invalid_value}' is not defined in the check table TPAR.PARVW. Correct it there or add the missing
+      entry.
+  record_fix_template: TPAR.UPARV points at a check table TPAR.PARVW entry that does not exist.
+- id: DXR01862
   enabled: false
   field: TPAR.FEHGR
   check_class: referential_check
@@ -864,12 +878,13 @@ rules:
     TVUV.FEHGR on domain FEHGR. A value outside that table is not a value SAP recognises, so the record is inconsistent with
     the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FEHGR resolve it through TVUV.FEHGR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read FEHGR resolve it through check table TVUV.FEHGR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TPAR.FEHGR '{invalid_value}' is not defined in TVUV.FEHGR. Correct it there or add the missing entry to TVUV.FEHGR.
-  record_fix_template: TPAR.FEHGR points at a TVUV.FEHGR entry that does not exist.
-- id: DXR02033
+    __other__: TPAR.FEHGR '{invalid_value}' is not defined in the check table TVUV.FEHGR. Correct it there or add the missing
+      entry.
+  record_fix_template: TPAR.FEHGR points at a check table TVUV.FEHGR entry that does not exist.
+- id: DXR01863
   enabled: false
   field: TPAR.NRART
   check_class: referential_check
@@ -880,12 +895,13 @@ rules:
     NRART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read NRART resolve it through TVPA.NRART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read NRART resolve it through check table TVPA.NRART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TPAR.NRART '{invalid_value}' is not defined in TVPA.NRART. Correct it there or add the missing entry to TVPA.NRART.
-  record_fix_template: TPAR.NRART points at a TVPA.NRART entry that does not exist.
-- id: DXR02034
+    __other__: TPAR.NRART '{invalid_value}' is not defined in the check table TVPA.NRART. Correct it there or add the missing
+      entry.
+  record_fix_template: TPAR.NRART points at a check table TVPA.NRART entry that does not exist.
+- id: DXR01864
   enabled: false
   field: TPAR.HITYP
   check_class: referential_check
@@ -896,12 +912,13 @@ rules:
     domain HITYP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HITYP resolve it through THIT.HITYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read HITYP resolve it through check table THIT.HITYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TPAR.HITYP '{invalid_value}' is not defined in THIT.HITYP. Correct it there or add the missing entry to THIT.HITYP.
-  record_fix_template: TPAR.HITYP points at a THIT.HITYP entry that does not exist.
-- id: DXR02035
+    __other__: TPAR.HITYP '{invalid_value}' is not defined in the check table THIT.HITYP. Correct it there or add the missing
+      entry.
+  record_fix_template: TPAR.HITYP points at a check table THIT.HITYP entry that does not exist.
+- id: DXR01865
   enabled: false
   field: TVBUR.ISPVKBURUE
   check_class: referential_check
@@ -912,13 +929,13 @@ rules:
     on domain VKBUR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ISPVKBURUE resolve it through TVBUR.VKBUR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read ISPVKBURUE resolve it through check table TVBUR.VKBUR; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVBUR.ISPVKBURUE '{invalid_value}' is not defined in TVBUR.VKBUR. Correct it there or add the missing entry
-      to TVBUR.VKBUR.
-  record_fix_template: TVBUR.ISPVKBURUE points at a TVBUR.VKBUR entry that does not exist.
-- id: DXV00843
+    __other__: TVBUR.ISPVKBURUE '{invalid_value}' is not defined in the check table TVBUR.VKBUR. Correct it there or add the
+      missing entry.
+  record_fix_template: TVBUR.ISPVKBURUE points at a check table TVBUR.VKBUR entry that does not exist.
+- id: DXV00793
   enabled: false
   field: TVPA.PAOBJ
   check_class: domain_value_check

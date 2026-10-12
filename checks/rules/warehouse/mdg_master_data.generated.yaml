@@ -6,7 +6,7 @@ module: mdg_master_data
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00912
+- id: DXR02464
   enabled: false
   field: CDHDR.TCODE
   check_class: referential_check
@@ -17,12 +17,13 @@ rules:
     on domain TCODE. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TCODE resolve it through TSTC.TCODE; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read TCODE resolve it through check table TSTC.TCODE; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: CDHDR.TCODE '{invalid_value}' is not defined in TSTC.TCODE. Correct it there or add the missing entry to TSTC.TCODE.
-  record_fix_template: CDHDR.TCODE points at a TSTC.TCODE entry that does not exist.
-- id: DXV00397
+    __other__: CDHDR.TCODE '{invalid_value}' is not defined in the check table TSTC.TCODE. Correct it there or add the missing
+      entry.
+  record_fix_template: CDHDR.TCODE points at a check table TSTC.TCODE entry that does not exist.
+- id: DXV00984
   enabled: false
   field: CDHDR.WAS_PLANND
   check_class: domain_value_check
@@ -40,7 +41,7 @@ rules:
   fix_map:
     __other__: 'CDHDR.WAS_PLANND ''{invalid_value}'' is not in domain XFLAG. Set it to one of: ., X.'
   record_fix_template: 'CDHDR.WAS_PLANND is {actual_value}; expected one of: ., X.'
-- id: DXV00398
+- id: DXV00985
   enabled: false
   field: CDHDR.CHANGE_IND
   check_class: domain_value_check
@@ -61,7 +62,7 @@ rules:
   fix_map:
     __other__: 'CDHDR.CHANGE_IND ''{invalid_value}'' is not in domain CDCHNGIND. Set it to one of: D, E, I, J, U.'
   record_fix_template: 'CDHDR.CHANGE_IND is {actual_value}; expected one of: D, E, I, J, U.'
-- id: DXR00913
+- id: DXR02465
   enabled: false
   field: CDPOS.CUKY_OLD
   check_class: referential_check
@@ -72,13 +73,13 @@ rules:
     TCURC.WAERS on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with
     the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CUKY_OLD resolve it through TCURC.WAERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read CUKY_OLD resolve it through check table TCURC.WAERS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: CDPOS.CUKY_OLD '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to
-      TCURC.WAERS.
-  record_fix_template: CDPOS.CUKY_OLD points at a TCURC.WAERS entry that does not exist.
-- id: DXR00914
+    __other__: CDPOS.CUKY_OLD '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
+      missing entry.
+  record_fix_template: CDPOS.CUKY_OLD points at a check table TCURC.WAERS entry that does not exist.
+- id: DXR02466
   enabled: false
   field: CDPOS.CUKY_NEW
   check_class: referential_check
@@ -89,13 +90,13 @@ rules:
     TCURC.WAERS on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with
     the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read CUKY_NEW resolve it through TCURC.WAERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read CUKY_NEW resolve it through check table TCURC.WAERS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: CDPOS.CUKY_NEW '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to
-      TCURC.WAERS.
-  record_fix_template: CDPOS.CUKY_NEW points at a TCURC.WAERS entry that does not exist.
-- id: DXR00915
+    __other__: CDPOS.CUKY_NEW '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
+      missing entry.
+  record_fix_template: CDPOS.CUKY_NEW points at a check table TCURC.WAERS entry that does not exist.
+- id: DXR02467
   enabled: false
   field: USMD110C.USMD_EDTN_TYPE
   check_class: referential_check
@@ -106,13 +107,13 @@ rules:
     on domain USMD_EDITION_TYPE. A value outside that table is not a value SAP recognises, so the record is inconsistent with
     the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_EDTN_TYPE resolve it through USMD010C.USMD_EDTN_TYPE; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_EDTN_TYPE resolve it through check table USMD010C.USMD_EDTN_TYPE; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD110C.USMD_EDTN_TYPE '{invalid_value}' is not defined in USMD010C.USMD_EDTN_TYPE. Correct it there or add
-      the missing entry to USMD010C.USMD_EDTN_TYPE.
-  record_fix_template: USMD110C.USMD_EDTN_TYPE points at a USMD010C.USMD_EDTN_TYPE entry that does not exist.
-- id: DXR00916
+    __other__: USMD110C.USMD_EDTN_TYPE '{invalid_value}' is not defined in the check table USMD010C.USMD_EDTN_TYPE. Correct
+      it there or add the missing entry.
+  record_fix_template: USMD110C.USMD_EDTN_TYPE points at a check table USMD010C.USMD_EDTN_TYPE entry that does not exist.
+- id: DXR02468
   enabled: false
   field: USMD110C.USMD_MODEL
   check_class: referential_check
@@ -123,13 +124,13 @@ rules:
     USMD_MODEL. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_MODEL resolve it through USMD001C.USMD_MODEL; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_MODEL resolve it through check table USMD001C.USMD_MODEL; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD110C.USMD_MODEL '{invalid_value}' is not defined in USMD001C.USMD_MODEL. Correct it there or add the missing
-      entry to USMD001C.USMD_MODEL.
-  record_fix_template: USMD110C.USMD_MODEL points at a USMD001C.USMD_MODEL entry that does not exist.
-- id: DXR00917
+    __other__: USMD110C.USMD_MODEL '{invalid_value}' is not defined in the check table USMD001C.USMD_MODEL. Correct it there
+      or add the missing entry.
+  record_fix_template: USMD110C.USMD_MODEL points at a check table USMD001C.USMD_MODEL entry that does not exist.
+- id: DXR02469
   enabled: false
   field: USMD120C.USMD_EDITION
   check_class: referential_check
@@ -140,13 +141,13 @@ rules:
     USMD_EDITION. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_EDITION resolve it through USMD020C.USMD_EDITION; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_EDITION resolve it through check table USMD020C.USMD_EDITION; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD120C.USMD_EDITION '{invalid_value}' is not defined in USMD020C.USMD_EDITION. Correct it there or add the
-      missing entry to USMD020C.USMD_EDITION.
-  record_fix_template: USMD120C.USMD_EDITION points at a USMD020C.USMD_EDITION entry that does not exist.
-- id: DXR00918
+    __other__: USMD120C.USMD_EDITION '{invalid_value}' is not defined in the check table USMD020C.USMD_EDITION. Correct it
+      there or add the missing entry.
+  record_fix_template: USMD120C.USMD_EDITION points at a check table USMD020C.USMD_EDITION entry that does not exist.
+- id: DXR02470
   enabled: false
   field: USMD120C.USMD_PRIORITY
   check_class: referential_check
@@ -157,13 +158,13 @@ rules:
     domain USMD_PRIORITY. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
     configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_PRIORITY resolve it through USMD210C.USMD_PRIORITY; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_PRIORITY resolve it through check table USMD210C.USMD_PRIORITY; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD120C.USMD_PRIORITY '{invalid_value}' is not defined in USMD210C.USMD_PRIORITY. Correct it there or add
-      the missing entry to USMD210C.USMD_PRIORITY.
-  record_fix_template: USMD120C.USMD_PRIORITY points at a USMD210C.USMD_PRIORITY entry that does not exist.
-- id: DXR00919
+    __other__: USMD120C.USMD_PRIORITY '{invalid_value}' is not defined in the check table USMD210C.USMD_PRIORITY. Correct
+      it there or add the missing entry.
+  record_fix_template: USMD120C.USMD_PRIORITY points at a check table USMD210C.USMD_PRIORITY entry that does not exist.
+- id: DXR02471
   enabled: false
   field: USMD120C.USMD_REASON
   check_class: referential_check
@@ -174,13 +175,13 @@ rules:
     USMD_REASON. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_REASON resolve it through USMD211C.USMD_REASON; an unknown value leaves the record
-    unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_REASON resolve it through check table USMD211C.USMD_REASON; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD120C.USMD_REASON '{invalid_value}' is not defined in USMD211C.USMD_REASON. Correct it there or add the
-      missing entry to USMD211C.USMD_REASON.
-  record_fix_template: USMD120C.USMD_REASON points at a USMD211C.USMD_REASON entry that does not exist.
-- id: DXR00920
+    __other__: USMD120C.USMD_REASON '{invalid_value}' is not defined in the check table USMD211C.USMD_REASON. Correct it there
+      or add the missing entry.
+  record_fix_template: USMD120C.USMD_REASON points at a check table USMD211C.USMD_REASON entry that does not exist.
+- id: DXR02472
   enabled: false
   field: USMD120C.USMD_REASON_REJ
   check_class: referential_check
@@ -191,9 +192,9 @@ rules:
     on domain USMD_REASON_REJ. A value outside that table is not a value SAP recognises, so the record is inconsistent with
     the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read USMD_REASON_REJ resolve it through USMD212C.USMD_REASON_REJ; an unknown value leaves the
-    record unclassified and can block posting, pricing or reporting.
+  sap_impact: Processes that read USMD_REASON_REJ resolve it through check table USMD212C.USMD_REASON_REJ; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: USMD120C.USMD_REASON_REJ '{invalid_value}' is not defined in USMD212C.USMD_REASON_REJ. Correct it there or
-      add the missing entry to USMD212C.USMD_REASON_REJ.
-  record_fix_template: USMD120C.USMD_REASON_REJ points at a USMD212C.USMD_REASON_REJ entry that does not exist.
+    __other__: USMD120C.USMD_REASON_REJ '{invalid_value}' is not defined in the check table USMD212C.USMD_REASON_REJ. Correct
+      it there or add the missing entry.
+  record_fix_template: USMD120C.USMD_REASON_REJ points at a check table USMD212C.USMD_REASON_REJ entry that does not exist.

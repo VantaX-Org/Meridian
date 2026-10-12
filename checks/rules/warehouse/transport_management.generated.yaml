@@ -6,7 +6,7 @@ module: transport_management
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR02458
+- id: DXR02473
   enabled: false
   field: TVRO.SPFBK
   check_class: referential_check
@@ -17,12 +17,13 @@ rules:
     WFCID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPFBK resolve it through TFACD.IDENT; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SPFBK resolve it through check table TFACD.IDENT; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.SPFBK '{invalid_value}' is not defined in TFACD.IDENT. Correct it there or add the missing entry to TFACD.IDENT.
-  record_fix_template: TVRO.SPFBK points at a TFACD.IDENT entry that does not exist.
-- id: DXR02459
+    __other__: TVRO.SPFBK '{invalid_value}' is not defined in the check table TFACD.IDENT. Correct it there or add the missing
+      entry.
+  record_fix_template: TVRO.SPFBK points at a check table TFACD.IDENT entry that does not exist.
+- id: DXR02474
   enabled: false
   field: TVRO.EXPVZ
   check_class: referential_check
@@ -33,12 +34,13 @@ rules:
     on domain EXPVZ. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EXPVZ resolve it through T618.EXPVZ; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EXPVZ resolve it through check table T618.EXPVZ; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.EXPVZ '{invalid_value}' is not defined in T618.EXPVZ. Correct it there or add the missing entry to T618.EXPVZ.
-  record_fix_template: TVRO.EXPVZ points at a T618.EXPVZ entry that does not exist.
-- id: DXR02460
+    __other__: TVRO.EXPVZ '{invalid_value}' is not defined in the check table T618.EXPVZ. Correct it there or add the missing
+      entry.
+  record_fix_template: TVRO.EXPVZ points at a check table T618.EXPVZ entry that does not exist.
+- id: DXR02475
   enabled: false
   field: TVRO.SPZST
   check_class: referential_check
@@ -49,13 +51,13 @@ rules:
     on domain TSTRID. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPZST resolve it through TTSTRSD.TSTREAMID; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read SPZST resolve it through check table TTSTRSD.TSTREAMID; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.SPZST '{invalid_value}' is not defined in TTSTRSD.TSTREAMID. Correct it there or add the missing entry
-      to TTSTRSD.TSTREAMID.
-  record_fix_template: TVRO.SPZST points at a TTSTRSD.TSTREAMID entry that does not exist.
-- id: DXR02461
+    __other__: TVRO.SPZST '{invalid_value}' is not defined in the check table TTSTRSD.TSTREAMID. Correct it there or add the
+      missing entry.
+  record_fix_template: TVRO.SPZST points at a check table TTSTRSD.TSTREAMID entry that does not exist.
+- id: DXR02476
   enabled: false
   field: TVRO.VSART
   check_class: referential_check
@@ -66,12 +68,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSART resolve it through T173.VSART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSART resolve it through check table T173.VSART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.VSART '{invalid_value}' is not defined in T173.VSART. Correct it there or add the missing entry to T173.VSART.
-  record_fix_template: TVRO.VSART points at a T173.VSART entry that does not exist.
-- id: DXR02462
+    __other__: TVRO.VSART '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
+      entry.
+  record_fix_template: TVRO.VSART points at a check table T173.VSART entry that does not exist.
+- id: DXR02477
   enabled: false
   field: TVRO.VSAVL
   check_class: referential_check
@@ -82,12 +85,13 @@ rules:
     on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSAVL resolve it through T173.VSART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSAVL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.VSAVL '{invalid_value}' is not defined in T173.VSART. Correct it there or add the missing entry to T173.VSART.
-  record_fix_template: TVRO.VSAVL points at a T173.VSART entry that does not exist.
-- id: DXR02463
+    __other__: TVRO.VSAVL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
+      entry.
+  record_fix_template: TVRO.VSAVL points at a check table T173.VSART entry that does not exist.
+- id: DXR02478
   enabled: false
   field: TVRO.VSANL
   check_class: referential_check
@@ -98,12 +102,13 @@ rules:
     on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSANL resolve it through T173.VSART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSANL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: TVRO.VSANL '{invalid_value}' is not defined in T173.VSART. Correct it there or add the missing entry to T173.VSART.
-  record_fix_template: TVRO.VSANL points at a T173.VSART entry that does not exist.
-- id: DXV00997
+    __other__: TVRO.VSANL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
+      entry.
+  record_fix_template: TVRO.VSANL points at a check table T173.VSART entry that does not exist.
+- id: DXV00986
   enabled: false
   field: VTTK.STERM
   check_class: domain_value_check
@@ -123,7 +128,7 @@ rules:
   fix_map:
     __other__: 'VTTK.STERM ''{invalid_value}'' is not in domain STERM. Set it to one of: 0, 1, 2, 3, 4.'
   record_fix_template: 'VTTK.STERM is {actual_value}; expected one of: 0, 1, 2, 3, 4.'
-- id: DXV00998
+- id: DXV00987
   enabled: false
   field: VTTK.ABWST
   check_class: domain_value_check
@@ -142,7 +147,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ABWST ''{invalid_value}'' is not in domain ABWST. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'VTTK.ABWST is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00999
+- id: DXV00988
   enabled: false
   field: VTTK.BFART
   check_class: domain_value_check
@@ -161,7 +166,7 @@ rules:
   fix_map:
     __other__: 'VTTK.BFART ''{invalid_value}'' is not in domain BFART. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'VTTK.BFART is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXR02464
+- id: DXR02479
   enabled: false
   field: VTTK.VSAVL
   check_class: referential_check
@@ -172,12 +177,13 @@ rules:
     on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSAVL resolve it through T173.VSART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSAVL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.VSAVL '{invalid_value}' is not defined in T173.VSART. Correct it there or add the missing entry to T173.VSART.
-  record_fix_template: VTTK.VSAVL points at a T173.VSART entry that does not exist.
-- id: DXR02465
+    __other__: VTTK.VSAVL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.VSAVL points at a check table T173.VSART entry that does not exist.
+- id: DXR02480
   enabled: false
   field: VTTK.VSANL
   check_class: referential_check
@@ -188,12 +194,13 @@ rules:
     on domain VERSART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSANL resolve it through T173.VSART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSANL resolve it through check table T173.VSART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.VSANL '{invalid_value}' is not defined in T173.VSART. Correct it there or add the missing entry to T173.VSART.
-  record_fix_template: VTTK.VSANL points at a T173.VSART entry that does not exist.
-- id: DXV01000
+    __other__: VTTK.VSANL '{invalid_value}' is not defined in the check table T173.VSART. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.VSANL points at a check table T173.VSART entry that does not exist.
+- id: DXV00989
   enabled: false
   field: VTTK.LAUFK
   check_class: domain_value_check
@@ -213,7 +220,7 @@ rules:
   fix_map:
     __other__: 'VTTK.LAUFK ''{invalid_value}'' is not in domain LAUFK. Set it to one of: 1, 2, 3, 4, 5.'
   record_fix_template: 'VTTK.LAUFK is {actual_value}; expected one of: 1, 2, 3, 4, 5.'
-- id: DXR02466
+- id: DXR02481
   enabled: false
   field: VTTK.VSBED
   check_class: referential_check
@@ -224,12 +231,13 @@ rules:
     VSBED. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VSBED resolve it through TVSB.VSBED; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VSBED resolve it through check table TVSB.VSBED; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.VSBED '{invalid_value}' is not defined in TVSB.VSBED. Correct it there or add the missing entry to TVSB.VSBED.
-  record_fix_template: VTTK.VSBED points at a TVSB.VSBED entry that does not exist.
-- id: DXV01001
+    __other__: VTTK.VSBED '{invalid_value}' is not defined in the check table TVSB.VSBED. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.VSBED points at a check table TVSB.VSBED entry that does not exist.
+- id: DXV00990
   enabled: false
   field: VTTK.STTRG
   check_class: domain_value_check
@@ -253,7 +261,7 @@ rules:
   fix_map:
     __other__: 'VTTK.STTRG ''{invalid_value}'' is not in domain STTRG. Set it to one of: 0, 1, 2, 3, 4, 5, 6, 7.'
   record_fix_template: 'VTTK.STTRG is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5, 6, 7.'
-- id: DXV01002
+- id: DXV00991
   enabled: false
   field: VTTK.FBSTA
   check_class: domain_value_check
@@ -272,7 +280,7 @@ rules:
   fix_map:
     __other__: 'VTTK.FBSTA ''{invalid_value}'' is not in domain FBSTA. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.FBSTA is {actual_value}; expected one of: A, B, C.'
-- id: DXV01003
+- id: DXV00992
   enabled: false
   field: VTTK.FBGST
   check_class: domain_value_check
@@ -291,7 +299,7 @@ rules:
   fix_map:
     __other__: 'VTTK.FBGST ''{invalid_value}'' is not in domain FBGST. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.FBGST is {actual_value}; expected one of: A, B, C.'
-- id: DXV01004
+- id: DXV00993
   enabled: false
   field: VTTK.ARSTA
   check_class: domain_value_check
@@ -310,7 +318,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ARSTA ''{invalid_value}'' is not in domain ARSTA. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.ARSTA is {actual_value}; expected one of: A, B, C.'
-- id: DXV01005
+- id: DXV00994
   enabled: false
   field: VTTK.ARGST
   check_class: domain_value_check
@@ -329,7 +337,7 @@ rules:
   fix_map:
     __other__: 'VTTK.ARGST ''{invalid_value}'' is not in domain ARGST. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.ARGST is {actual_value}; expected one of: A, B, C.'
-- id: DXR02467
+- id: DXR02482
   enabled: false
   field: VTTK.KKALSM
   check_class: referential_check
@@ -340,12 +348,13 @@ rules:
     on domain KALSM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KKALSM resolve it through T683.KALSM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KKALSM resolve it through check table T683.KALSM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.KKALSM '{invalid_value}' is not defined in T683.KALSM. Correct it there or add the missing entry to T683.KALSM.
-  record_fix_template: VTTK.KKALSM points at a T683.KALSM entry that does not exist.
-- id: DXR02468
+    __other__: VTTK.KKALSM '{invalid_value}' is not defined in the check table T683.KALSM. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.KKALSM points at a check table T683.KALSM entry that does not exist.
+- id: DXR02483
   enabled: false
   field: VTTK.SDABW
   check_class: referential_check
@@ -356,12 +365,13 @@ rules:
     on domain SDABW. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SDABW resolve it through TVSAK.SDABW; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SDABW resolve it through check table TVSAK.SDABW; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.SDABW '{invalid_value}' is not defined in TVSAK.SDABW. Correct it there or add the missing entry to TVSAK.SDABW.
-  record_fix_template: VTTK.SDABW points at a TVSAK.SDABW entry that does not exist.
-- id: DXR02469
+    __other__: VTTK.SDABW '{invalid_value}' is not defined in the check table TVSAK.SDABW. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.SDABW points at a check table TVSAK.SDABW entry that does not exist.
+- id: DXR02484
   enabled: false
   field: VTTK.ADD01
   check_class: referential_check
@@ -372,13 +382,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ADD01 resolve it through VTADD01.ADD_INFO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read ADD01 resolve it through check table VTADD01.ADD_INFO; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.ADD01 '{invalid_value}' is not defined in VTADD01.ADD_INFO. Correct it there or add the missing entry
-      to VTADD01.ADD_INFO.
-  record_fix_template: VTTK.ADD01 points at a VTADD01.ADD_INFO entry that does not exist.
-- id: DXR02470
+    __other__: VTTK.ADD01 '{invalid_value}' is not defined in the check table VTADD01.ADD_INFO. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.ADD01 points at a check table VTADD01.ADD_INFO entry that does not exist.
+- id: DXR02485
   enabled: false
   field: VTTK.ADD02
   check_class: referential_check
@@ -389,13 +399,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ADD02 resolve it through VTADD02.ADD_INFO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read ADD02 resolve it through check table VTADD02.ADD_INFO; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.ADD02 '{invalid_value}' is not defined in VTADD02.ADD_INFO. Correct it there or add the missing entry
-      to VTADD02.ADD_INFO.
-  record_fix_template: VTTK.ADD02 points at a VTADD02.ADD_INFO entry that does not exist.
-- id: DXR02471
+    __other__: VTTK.ADD02 '{invalid_value}' is not defined in the check table VTADD02.ADD_INFO. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.ADD02 points at a check table VTADD02.ADD_INFO entry that does not exist.
+- id: DXR02486
   enabled: false
   field: VTTK.ADD03
   check_class: referential_check
@@ -406,13 +416,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ADD03 resolve it through VTADD03.ADD_INFO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read ADD03 resolve it through check table VTADD03.ADD_INFO; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.ADD03 '{invalid_value}' is not defined in VTADD03.ADD_INFO. Correct it there or add the missing entry
-      to VTADD03.ADD_INFO.
-  record_fix_template: VTTK.ADD03 points at a VTADD03.ADD_INFO entry that does not exist.
-- id: DXR02472
+    __other__: VTTK.ADD03 '{invalid_value}' is not defined in the check table VTADD03.ADD_INFO. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.ADD03 points at a check table VTADD03.ADD_INFO entry that does not exist.
+- id: DXR02487
   enabled: false
   field: VTTK.ADD04
   check_class: referential_check
@@ -423,13 +433,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ADD04 resolve it through VTADD04.ADD_INFO; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read ADD04 resolve it through check table VTADD04.ADD_INFO; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.ADD04 '{invalid_value}' is not defined in VTADD04.ADD_INFO. Correct it there or add the missing entry
-      to VTADD04.ADD_INFO.
-  record_fix_template: VTTK.ADD04 points at a VTADD04.ADD_INFO entry that does not exist.
-- id: DXR02473
+    __other__: VTTK.ADD04 '{invalid_value}' is not defined in the check table VTADD04.ADD_INFO. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.ADD04 points at a check table VTADD04.ADD_INFO entry that does not exist.
+- id: DXR02488
   enabled: false
   field: VTTK.PROLI
   check_class: referential_check
@@ -440,12 +450,13 @@ rules:
     table TDGC5.PROLI on domain ADGD_PROLI. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PROLI resolve it through TDGC5.PROLI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PROLI resolve it through check table TDGC5.PROLI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.PROLI '{invalid_value}' is not defined in TDGC5.PROLI. Correct it there or add the missing entry to TDGC5.PROLI.
-  record_fix_template: VTTK.PROLI points at a TDGC5.PROLI entry that does not exist.
-- id: DXV01006
+    __other__: VTTK.PROLI '{invalid_value}' is not defined in the check table TDGC5.PROLI. Correct it there or add the missing
+      entry.
+  record_fix_template: VTTK.PROLI points at a check table TDGC5.PROLI entry that does not exist.
+- id: DXV00995
   enabled: false
   field: VTTK.TNDRST
   check_class: domain_value_check
@@ -467,7 +478,7 @@ rules:
   fix_map:
     __other__: 'VTTK.TNDRST ''{invalid_value}'' is not in domain TNDRST. Set it to one of: AC, AW, CF, CN, EX, NW, RJ.'
   record_fix_template: 'VTTK.TNDRST is {actual_value}; expected one of: AC, AW, CF, CN, EX, NW, RJ.'
-- id: DXV01007
+- id: DXV00996
   enabled: false
   field: VTTK.TNDRRC
   check_class: domain_value_check
@@ -485,7 +496,7 @@ rules:
   fix_map:
     __other__: 'VTTK.TNDRRC ''{invalid_value}'' is not in domain TNDRRC. Set it to one of: DL, SE.'
   record_fix_template: 'VTTK.TNDRRC is {actual_value}; expected one of: DL, SE.'
-- id: DXR02474
+- id: DXR02489
   enabled: false
   field: VTTK.TNDR_MAXC
   check_class: referential_check
@@ -496,13 +507,13 @@ rules:
     on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TNDR_MAXC resolve it through TCURC.WAERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read TNDR_MAXC resolve it through check table TCURC.WAERS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.TNDR_MAXC '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to
-      TCURC.WAERS.
-  record_fix_template: VTTK.TNDR_MAXC points at a TCURC.WAERS entry that does not exist.
-- id: DXR02475
+    __other__: VTTK.TNDR_MAXC '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.TNDR_MAXC points at a check table TCURC.WAERS entry that does not exist.
+- id: DXR02490
   enabled: false
   field: VTTK.TNDR_ACTC
   check_class: referential_check
@@ -513,13 +524,13 @@ rules:
     on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TNDR_ACTC resolve it through TCURC.WAERS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read TNDR_ACTC resolve it through check table TCURC.WAERS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK.TNDR_ACTC '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to
-      TCURC.WAERS.
-  record_fix_template: VTTK.TNDR_ACTC points at a TCURC.WAERS entry that does not exist.
-- id: DXV01008
+    __other__: VTTK.TNDR_ACTC '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK.TNDR_ACTC points at a check table TCURC.WAERS entry that does not exist.
+- id: DXV00997
   enabled: false
   field: VTTK.KZHULFR
   check_class: domain_value_check
@@ -537,7 +548,7 @@ rules:
   fix_map:
     __other__: 'VTTK.KZHULFR ''{invalid_value}'' is not in domain KZHULFR. Set it to one of: X, Y.'
   record_fix_template: 'VTTK.KZHULFR is {actual_value}; expected one of: X, Y.'
-- id: DXV01009
+- id: DXV00998
   enabled: false
   field: VTTK.VLSTK
   check_class: domain_value_check
@@ -556,7 +567,7 @@ rules:
   fix_map:
     __other__: 'VTTK.VLSTK ''{invalid_value}'' is not in domain VLSTK. Set it to one of: A, B, C.'
   record_fix_template: 'VTTK.VLSTK is {actual_value}; expected one of: A, B, C.'
-- id: DXR02476
+- id: DXR02491
   enabled: false
   field: VTTK./BEV1/RPFAR1
   check_class: referential_check
@@ -567,13 +578,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read /BEV1/RPFAR1 resolve it through KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read /BEV1/RPFAR1 resolve it through check table KNA1.KUNNR; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK./BEV1/RPFAR1 '{invalid_value}' is not defined in KNA1.KUNNR. Correct it there or add the missing entry
-      to KNA1.KUNNR.
-  record_fix_template: VTTK./BEV1/RPFAR1 points at a KNA1.KUNNR entry that does not exist.
-- id: DXR02477
+    __other__: VTTK./BEV1/RPFAR1 '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK./BEV1/RPFAR1 points at a check table KNA1.KUNNR entry that does not exist.
+- id: DXR02492
   enabled: false
   field: VTTK./BEV1/RPFAR2
   check_class: referential_check
@@ -584,9 +595,9 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read /BEV1/RPFAR2 resolve it through KNA1.KUNNR; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read /BEV1/RPFAR2 resolve it through check table KNA1.KUNNR; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: VTTK./BEV1/RPFAR2 '{invalid_value}' is not defined in KNA1.KUNNR. Correct it there or add the missing entry
-      to KNA1.KUNNR.
-  record_fix_template: VTTK./BEV1/RPFAR2 points at a KNA1.KUNNR entry that does not exist.
+    __other__: VTTK./BEV1/RPFAR2 '{invalid_value}' is not defined in the check table KNA1.KUNNR. Correct it there or add the
+      missing entry.
+  record_fix_template: VTTK./BEV1/RPFAR2 points at a check table KNA1.KUNNR entry that does not exist.

@@ -6,7 +6,7 @@ module: ewms_stock
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00453
+- id: DXR02404
   enabled: false
   field: LAGP.SPGRU
   check_class: referential_check
@@ -17,12 +17,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPGRU resolve it through T330.SPGRU; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SPGRU resolve it through check table T330.SPGRU; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LAGP.SPGRU '{invalid_value}' is not defined in T330.SPGRU. Correct it there or add the missing entry to T330.SPGRU.
-  record_fix_template: LAGP.SPGRU points at a T330.SPGRU entry that does not exist.
-- id: DXR00454
+    __other__: LAGP.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
+      entry.
+  record_fix_template: LAGP.SPGRU points at a check table T330.SPGRU entry that does not exist.
+- id: DXR02405
   enabled: false
   field: LAGP.GEWEI
   check_class: referential_check
@@ -33,12 +34,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GEWEI resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read GEWEI resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LAGP.GEWEI '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LAGP.GEWEI points at a T006.MSEHI entry that does not exist.
-- id: DXR00455
+    __other__: LAGP.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LAGP.GEWEI points at a check table T006.MSEHI entry that does not exist.
+- id: DXR02406
   enabled: false
   field: LAGP.BRAND
   check_class: referential_check
@@ -49,12 +51,13 @@ rules:
     LVS_BRAND. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BRAND resolve it through T309.BRAND; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read BRAND resolve it through check table T309.BRAND; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LAGP.BRAND '{invalid_value}' is not defined in T309.BRAND. Correct it there or add the missing entry to T309.BRAND.
-  record_fix_template: LAGP.BRAND points at a T309.BRAND entry that does not exist.
-- id: DXR00456
+    __other__: LAGP.BRAND '{invalid_value}' is not defined in the check table T309.BRAND. Correct it there or add the missing
+      entry.
+  record_fix_template: LAGP.BRAND points at a check table T309.BRAND entry that does not exist.
+- id: DXR02407
   enabled: false
   field: LAGP.KOBER
   check_class: referential_check
@@ -65,12 +68,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KOBER resolve it through T30A.KOBER; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KOBER resolve it through check table T30A.KOBER; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LAGP.KOBER '{invalid_value}' is not defined in T30A.KOBER. Correct it there or add the missing entry to T30A.KOBER.
-  record_fix_template: LAGP.KOBER points at a T30A.KOBER entry that does not exist.
-- id: DXR00457
+    __other__: LAGP.KOBER '{invalid_value}' is not defined in the check table T30A.KOBER. Correct it there or add the missing
+      entry.
+  record_fix_template: LAGP.KOBER points at a check table T30A.KOBER entry that does not exist.
+- id: DXR02408
   enabled: false
   field: LEIN.LETYP
   check_class: referential_check
@@ -81,12 +85,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LETYP resolve it through T307.LETYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LETYP resolve it through check table T307.LETYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.LETYP '{invalid_value}' is not defined in T307.LETYP. Correct it there or add the missing entry to T307.LETYP.
-  record_fix_template: LEIN.LETYP points at a T307.LETYP entry that does not exist.
-- id: DXR00458
+    __other__: LEIN.LETYP '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.LETYP points at a check table T307.LETYP entry that does not exist.
+- id: DXR02409
   enabled: false
   field: LEIN.LGTYP
   check_class: referential_check
@@ -97,12 +102,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGTYP resolve it through T301.LGTYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGTYP resolve it through check table T301.LGTYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.LGTYP '{invalid_value}' is not defined in T301.LGTYP. Correct it there or add the missing entry to T301.LGTYP.
-  record_fix_template: LEIN.LGTYP points at a T301.LGTYP entry that does not exist.
-- id: DXR00459
+    __other__: LEIN.LGTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.LGTYP points at a check table T301.LGTYP entry that does not exist.
+- id: DXR02410
   enabled: false
   field: LEIN.SPGRU
   check_class: referential_check
@@ -113,12 +119,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPGRU resolve it through T330.SPGRU; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SPGRU resolve it through check table T330.SPGRU; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.SPGRU '{invalid_value}' is not defined in T330.SPGRU. Correct it there or add the missing entry to T330.SPGRU.
-  record_fix_template: LEIN.SPGRU points at a T330.SPGRU entry that does not exist.
-- id: DXV00163
+    __other__: LEIN.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.SPGRU points at a check table T330.SPGRU entry that does not exist.
+- id: DXV00952
   enabled: false
   field: LEIN.STATU
   check_class: domain_value_check
@@ -143,7 +150,7 @@ rules:
   fix_map:
     __other__: 'LEIN.STATU ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LEIN.STATU is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXR00460
+- id: DXR02411
   enabled: false
   field: LEIN.GEWEI
   check_class: referential_check
@@ -154,12 +161,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GEWEI resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read GEWEI resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.GEWEI '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LEIN.GEWEI points at a T006.MSEHI entry that does not exist.
-- id: DXR00461
+    __other__: LEIN.GEWEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.GEWEI points at a check table T006.MSEHI entry that does not exist.
+- id: DXR02412
   enabled: false
   field: LEIN.REFNR
   check_class: referential_check
@@ -169,12 +177,13 @@ rules:
   why_it_matters: REFNR (Group) is defined in the SAP Data Dictionary with check table T311.REFNR on domain LVS_REFNR. A value
     outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REFNR resolve it through T311.REFNR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read REFNR resolve it through check table T311.REFNR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.REFNR '{invalid_value}' is not defined in T311.REFNR. Correct it there or add the missing entry to T311.REFNR.
-  record_fix_template: LEIN.REFNR points at a T311.REFNR entry that does not exist.
-- id: DXR00462
+    __other__: LEIN.REFNR '{invalid_value}' is not defined in the check table T311.REFNR. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.REFNR points at a check table T311.REFNR entry that does not exist.
+- id: DXR02413
   enabled: false
   field: LEIN.UVTYP
   check_class: referential_check
@@ -185,12 +194,13 @@ rules:
     with check table T301.LGTYP on domain LGTYP. A value outside that table is not a value SAP recognises, so the record is
     inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read UVTYP resolve it through T301.LGTYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read UVTYP resolve it through check table T301.LGTYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LEIN.UVTYP '{invalid_value}' is not defined in T301.LGTYP. Correct it there or add the missing entry to T301.LGTYP.
-  record_fix_template: LEIN.UVTYP points at a T301.LGTYP entry that does not exist.
-- id: DXR00463
+    __other__: LEIN.UVTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
+      entry.
+  record_fix_template: LEIN.UVTYP points at a check table T301.LGTYP entry that does not exist.
+- id: DXR02414
   enabled: false
   field: LQUA.WERKS
   check_class: referential_check
@@ -200,12 +210,13 @@ rules:
   why_it_matters: WERKS (Plant) is defined in the SAP Data Dictionary with check table T001W.WERKS on domain WERKS. A value
     outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WERKS resolve it through T001W.WERKS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read WERKS resolve it through check table T001W.WERKS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LQUA.WERKS '{invalid_value}' is not defined in T001W.WERKS. Correct it there or add the missing entry to T001W.WERKS.
-  record_fix_template: LQUA.WERKS points at a T001W.WERKS entry that does not exist.
-- id: DXR00464
+    __other__: LQUA.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
+      entry.
+  record_fix_template: LQUA.WERKS points at a check table T001W.WERKS entry that does not exist.
+- id: DXR02415
   enabled: false
   field: LQUA.SPGRU
   check_class: referential_check
@@ -216,12 +227,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPGRU resolve it through T330.SPGRU; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SPGRU resolve it through check table T330.SPGRU; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LQUA.SPGRU '{invalid_value}' is not defined in T330.SPGRU. Correct it there or add the missing entry to T330.SPGRU.
-  record_fix_template: LQUA.SPGRU points at a T330.SPGRU entry that does not exist.
-- id: DXR00465
+    __other__: LQUA.SPGRU '{invalid_value}' is not defined in the check table T330.SPGRU. Correct it there or add the missing
+      entry.
+  record_fix_template: LQUA.SPGRU points at a check table T330.SPGRU entry that does not exist.
+- id: DXR02416
   enabled: false
   field: LQUA.LENUM
   check_class: referential_check
@@ -232,12 +244,13 @@ rules:
     LENUM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LENUM resolve it through LEIN.LENUM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LENUM resolve it through check table LEIN.LENUM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LQUA.LENUM '{invalid_value}' is not defined in LEIN.LENUM. Correct it there or add the missing entry to LEIN.LENUM.
-  record_fix_template: LQUA.LENUM points at a LEIN.LENUM entry that does not exist.
-- id: DXR00466
+    __other__: LQUA.LENUM '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
+      entry.
+  record_fix_template: LQUA.LENUM points at a check table LEIN.LENUM entry that does not exist.
+- id: DXR02417
   enabled: false
   field: LQUA.LGORT
   check_class: referential_check
@@ -248,12 +261,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGORT resolve it through T001L.LGORT; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGORT resolve it through check table T001L.LGORT; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LQUA.LGORT '{invalid_value}' is not defined in T001L.LGORT. Correct it there or add the missing entry to T001L.LGORT.
-  record_fix_template: LQUA.LGORT points at a T001L.LGORT entry that does not exist.
-- id: DXR00467
+    __other__: LQUA.LGORT '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the missing
+      entry.
+  record_fix_template: LQUA.LGORT points at a check table T001L.LGORT entry that does not exist.
+- id: DXR02418
   enabled: false
   field: T307.METYP
   check_class: referential_check
@@ -264,8 +278,9 @@ rules:
     with check table TMET.METYP on domain MEITY. A value outside that table is not a value SAP recognises, so the record is
     inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read METYP resolve it through TMET.METYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read METYP resolve it through check table TMET.METYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T307.METYP '{invalid_value}' is not defined in TMET.METYP. Correct it there or add the missing entry to TMET.METYP.
-  record_fix_template: T307.METYP points at a TMET.METYP entry that does not exist.
+    __other__: T307.METYP '{invalid_value}' is not defined in the check table TMET.METYP. Correct it there or add the missing
+      entry.
+  record_fix_template: T307.METYP points at a check table TMET.METYP entry that does not exist.

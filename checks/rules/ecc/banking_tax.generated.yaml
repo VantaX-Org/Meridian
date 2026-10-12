@@ -17,11 +17,12 @@ rules:
     on domain REGIO. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PROVZ resolve it through T005S.BLAND; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PROVZ resolve it through check table T005S.BLAND; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: BNKA.PROVZ '{invalid_value}' is not defined in T005S.BLAND. Correct it there or add the missing entry to T005S.BLAND.
-  record_fix_template: BNKA.PROVZ points at a T005S.BLAND entry that does not exist.
+    __other__: BNKA.PROVZ '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
+      entry.
+  record_fix_template: BNKA.PROVZ points at a check table T005S.BLAND entry that does not exist.
 - id: DXV00072
   enabled: false
   field: BNKA.SDD_B2B
@@ -112,11 +113,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read QSREC resolve it through T059C.QSREC; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read QSREC resolve it through check table T059C.QSREC; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LFBW.QSREC '{invalid_value}' is not defined in T059C.QSREC. Correct it there or add the missing entry to T059C.QSREC.
-  record_fix_template: LFBW.QSREC points at a T059C.QSREC entry that does not exist.
+    __other__: LFBW.QSREC '{invalid_value}' is not defined in the check table T059C.QSREC. Correct it there or add the missing
+      entry.
+  record_fix_template: LFBW.QSREC points at a check table T059C.QSREC entry that does not exist.
 - id: DXR00278
   enabled: false
   field: LFBW.WT_WTEXRS
@@ -128,12 +130,12 @@ rules:
     on domain WT_WTEXRS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
     configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WT_WTEXRS resolve it through T059V.WT_WTEXRS; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read WT_WTEXRS resolve it through check table T059V.WT_WTEXRS; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: LFBW.WT_WTEXRS '{invalid_value}' is not defined in T059V.WT_WTEXRS. Correct it there or add the missing entry
-      to T059V.WT_WTEXRS.
-  record_fix_template: LFBW.WT_WTEXRS points at a T059V.WT_WTEXRS entry that does not exist.
+    __other__: LFBW.WT_WTEXRS '{invalid_value}' is not defined in the check table T059V.WT_WTEXRS. Correct it there or add
+      the missing entry.
+  record_fix_template: LFBW.WT_WTEXRS points at a check table T059V.WT_WTEXRS entry that does not exist.
 - id: DXV00076
   enabled: false
   field: T007A.EGRKZ
@@ -213,11 +215,12 @@ rules:
     LAND1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LSTML resolve it through T005.LAND1; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LSTML resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T007A.LSTML '{invalid_value}' is not defined in T005.LAND1. Correct it there or add the missing entry to T005.LAND1.
-  record_fix_template: T007A.LSTML points at a T005.LAND1 entry that does not exist.
+    __other__: T007A.LSTML '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
+      entry.
+  record_fix_template: T007A.LSTML points at a check table T005.LAND1 entry that does not exist.
 - id: DXV00079
   enabled: false
   field: T007A.J_1BUSAGE
@@ -247,12 +250,12 @@ rules:
     J_1BTAXLW1. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read J_1BTAXLW1 resolve it through J_1BATL1.TAXLAW; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read J_1BTAXLW1 resolve it through check table J_1BATL1.TAXLAW; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T007A.J_1BTAXLW1 '{invalid_value}' is not defined in J_1BATL1.TAXLAW. Correct it there or add the missing entry
-      to J_1BATL1.TAXLAW.
-  record_fix_template: T007A.J_1BTAXLW1 points at a J_1BATL1.TAXLAW entry that does not exist.
+    __other__: T007A.J_1BTAXLW1 '{invalid_value}' is not defined in the check table J_1BATL1.TAXLAW. Correct it there or add
+      the missing entry.
+  record_fix_template: T007A.J_1BTAXLW1 points at a check table J_1BATL1.TAXLAW entry that does not exist.
 - id: DXR00281
   enabled: false
   field: T007A.J_1BTAXLW2
@@ -264,12 +267,12 @@ rules:
     J_1BTAXLW2. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read J_1BTAXLW2 resolve it through J_1BATL2.TAXLAW; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read J_1BTAXLW2 resolve it through check table J_1BATL2.TAXLAW; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T007A.J_1BTAXLW2 '{invalid_value}' is not defined in J_1BATL2.TAXLAW. Correct it there or add the missing entry
-      to J_1BATL2.TAXLAW.
-  record_fix_template: T007A.J_1BTAXLW2 points at a J_1BATL2.TAXLAW entry that does not exist.
+    __other__: T007A.J_1BTAXLW2 '{invalid_value}' is not defined in the check table J_1BATL2.TAXLAW. Correct it there or add
+      the missing entry.
+  record_fix_template: T007A.J_1BTAXLW2 points at a check table J_1BATL2.TAXLAW entry that does not exist.
 - id: DXR00282
   enabled: false
   field: T007A.J_1BTAXLW4
@@ -281,12 +284,12 @@ rules:
     J_1BTAXLW4. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read J_1BTAXLW4 resolve it through J_1BATL4A.TAXLAW; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read J_1BTAXLW4 resolve it through check table J_1BATL4A.TAXLAW; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T007A.J_1BTAXLW4 '{invalid_value}' is not defined in J_1BATL4A.TAXLAW. Correct it there or add the missing
-      entry to J_1BATL4A.TAXLAW.
-  record_fix_template: T007A.J_1BTAXLW4 points at a J_1BATL4A.TAXLAW entry that does not exist.
+    __other__: T007A.J_1BTAXLW4 '{invalid_value}' is not defined in the check table J_1BATL4A.TAXLAW. Correct it there or
+      add the missing entry.
+  record_fix_template: T007A.J_1BTAXLW4 points at a check table J_1BATL4A.TAXLAW entry that does not exist.
 - id: DXR00283
   enabled: false
   field: T007A.J_1BTAXLW5
@@ -298,12 +301,12 @@ rules:
     J_1BTAXLW5. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read J_1BTAXLW5 resolve it through J_1BATL5.TAXLAW; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read J_1BTAXLW5 resolve it through check table J_1BATL5.TAXLAW; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T007A.J_1BTAXLW5 '{invalid_value}' is not defined in J_1BATL5.TAXLAW. Correct it there or add the missing entry
-      to J_1BATL5.TAXLAW.
-  record_fix_template: T007A.J_1BTAXLW5 points at a J_1BATL5.TAXLAW entry that does not exist.
+    __other__: T007A.J_1BTAXLW5 '{invalid_value}' is not defined in the check table J_1BATL5.TAXLAW. Correct it there or add
+      the missing entry.
+  record_fix_template: T007A.J_1BTAXLW5 points at a check table J_1BATL5.TAXLAW entry that does not exist.
 - id: DXR00284
   enabled: false
   field: T012.BANKS
@@ -315,11 +318,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BANKS resolve it through T005.LAND1; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read BANKS resolve it through check table T005.LAND1; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012.BANKS '{invalid_value}' is not defined in T005.LAND1. Correct it there or add the missing entry to T005.LAND1.
-  record_fix_template: T012.BANKS points at a T005.LAND1 entry that does not exist.
+    __other__: T012.BANKS '{invalid_value}' is not defined in the check table T005.LAND1. Correct it there or add the missing
+      entry.
+  record_fix_template: T012.BANKS points at a check table T005.LAND1 entry that does not exist.
 - id: DXR00285
   enabled: false
   field: T012.SPRAS
@@ -331,11 +335,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SPRAS resolve it through T002.SPRAS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SPRAS resolve it through check table T002.SPRAS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012.SPRAS '{invalid_value}' is not defined in T002.SPRAS. Correct it there or add the missing entry to T002.SPRAS.
-  record_fix_template: T012.SPRAS points at a T002.SPRAS entry that does not exist.
+    __other__: T012.SPRAS '{invalid_value}' is not defined in the check table T002.SPRAS. Correct it there or add the missing
+      entry.
+  record_fix_template: T012.SPRAS points at a check table T002.SPRAS entry that does not exist.
 - id: DXR00286
   enabled: false
   field: T012.BUPLA
@@ -347,12 +352,12 @@ rules:
     J_1BBRANCH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BUPLA resolve it through J_1BBRANCH.BRANCH; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read BUPLA resolve it through check table J_1BBRANCH.BRANCH; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012.BUPLA '{invalid_value}' is not defined in J_1BBRANCH.BRANCH. Correct it there or add the missing entry
-      to J_1BBRANCH.BRANCH.
-  record_fix_template: T012.BUPLA points at a J_1BBRANCH.BRANCH entry that does not exist.
+    __other__: T012.BUPLA '{invalid_value}' is not defined in the check table J_1BBRANCH.BRANCH. Correct it there or add the
+      missing entry.
+  record_fix_template: T012.BUPLA points at a check table J_1BBRANCH.BRANCH entry that does not exist.
 - id: DXR00287
   enabled: false
   field: T012K.WAERS
@@ -364,11 +369,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WAERS resolve it through TCURC.WAERS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read WAERS resolve it through check table TCURC.WAERS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012K.WAERS '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to TCURC.WAERS.
-  record_fix_template: T012K.WAERS points at a TCURC.WAERS entry that does not exist.
+    __other__: T012K.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
+      entry.
+  record_fix_template: T012K.WAERS points at a check table TCURC.WAERS entry that does not exist.
 - id: DXR00288
   enabled: false
   field: T012K.HKID1
@@ -380,11 +386,12 @@ rules:
     with check table T012K.HKTID on domain HKTID. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HKID1 resolve it through T012K.HKTID; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read HKID1 resolve it through check table T012K.HKTID; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012K.HKID1 '{invalid_value}' is not defined in T012K.HKTID. Correct it there or add the missing entry to T012K.HKTID.
-  record_fix_template: T012K.HKID1 points at a T012K.HKTID entry that does not exist.
+    __other__: T012K.HKID1 '{invalid_value}' is not defined in the check table T012K.HKTID. Correct it there or add the missing
+      entry.
+  record_fix_template: T012K.HKID1 points at a check table T012K.HKTID entry that does not exist.
 - id: DXR00289
   enabled: false
   field: T012K.HBID2
@@ -396,11 +403,12 @@ rules:
     check table T012.HBKID on domain HBKID. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HBID2 resolve it through T012.HBKID; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read HBID2 resolve it through check table T012.HBKID; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012K.HBID2 '{invalid_value}' is not defined in T012.HBKID. Correct it there or add the missing entry to T012.HBKID.
-  record_fix_template: T012K.HBID2 points at a T012.HBKID entry that does not exist.
+    __other__: T012K.HBID2 '{invalid_value}' is not defined in the check table T012.HBKID. Correct it there or add the missing
+      entry.
+  record_fix_template: T012K.HBID2 points at a check table T012.HBKID entry that does not exist.
 - id: DXR00290
   enabled: false
   field: T012K.HKID2
@@ -412,11 +420,12 @@ rules:
     with check table T012K.HKTID on domain HKTID. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read HKID2 resolve it through T012K.HKTID; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read HKID2 resolve it through check table T012K.HKTID; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T012K.HKID2 '{invalid_value}' is not defined in T012K.HKTID. Correct it there or add the missing entry to T012K.HKTID.
-  record_fix_template: T012K.HKID2 points at a T012K.HKTID entry that does not exist.
+    __other__: T012K.HKID2 '{invalid_value}' is not defined in the check table T012K.HKTID. Correct it there or add the missing
+      entry.
+  record_fix_template: T012K.HKID2 points at a check table T012K.HKTID entry that does not exist.
 - id: DXR00291
   enabled: false
   field: T035.EBENE
@@ -428,11 +437,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EBENE resolve it through T036.EBENE; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EBENE resolve it through check table T036.EBENE; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T035.EBENE '{invalid_value}' is not defined in T036.EBENE. Correct it there or add the missing entry to T036.EBENE.
-  record_fix_template: T035.EBENE points at a T036.EBENE entry that does not exist.
+    __other__: T035.EBENE '{invalid_value}' is not defined in the check table T036.EBENE. Correct it there or add the missing
+      entry.
+  record_fix_template: T035.EBENE points at a check table T036.EBENE entry that does not exist.
 - id: DXR00292
   enabled: false
   field: T042Z.FORMI
@@ -444,12 +454,12 @@ rules:
     FORMI_FPM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FORMI resolve it through TFPM042F.FORMI; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read FORMI resolve it through check table TFPM042F.FORMI; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T042Z.FORMI '{invalid_value}' is not defined in TFPM042F.FORMI. Correct it there or add the missing entry to
-      TFPM042F.FORMI.
-  record_fix_template: T042Z.FORMI points at a TFPM042F.FORMI entry that does not exist.
+    __other__: T042Z.FORMI '{invalid_value}' is not defined in the check table TFPM042F.FORMI. Correct it there or add the
+      missing entry.
+  record_fix_template: T042Z.FORMI points at a check table TFPM042F.FORMI entry that does not exist.
 - id: DXR00293
   enabled: false
   field: T042Z.FORMZ
@@ -461,12 +471,12 @@ rules:
     on domain FORMZ_FPM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the
     configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FORMZ resolve it through TFPM042FZ.FORMZ; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read FORMZ resolve it through check table TFPM042FZ.FORMZ; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T042Z.FORMZ '{invalid_value}' is not defined in TFPM042FZ.FORMZ. Correct it there or add the missing entry
-      to TFPM042FZ.FORMZ.
-  record_fix_template: T042Z.FORMZ points at a TFPM042FZ.FORMZ entry that does not exist.
+    __other__: T042Z.FORMZ '{invalid_value}' is not defined in the check table TFPM042FZ.FORMZ. Correct it there or add the
+      missing entry.
+  record_fix_template: T042Z.FORMZ points at a check table TFPM042FZ.FORMZ entry that does not exist.
 - id: DXR00294
   enabled: false
   field: T042Z.BLARV
@@ -478,11 +488,12 @@ rules:
     table T003.BLART on domain BLART. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BLARV resolve it through T003.BLART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read BLARV resolve it through check table T003.BLART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T042Z.BLARV '{invalid_value}' is not defined in T003.BLART. Correct it there or add the missing entry to T003.BLART.
-  record_fix_template: T042Z.BLARV points at a T003.BLART entry that does not exist.
+    __other__: T042Z.BLARV '{invalid_value}' is not defined in the check table T003.BLART. Correct it there or add the missing
+      entry.
+  record_fix_template: T042Z.BLARV points at a check table T003.BLART entry that does not exist.
 - id: DXV00080
   enabled: false
   field: T042Z.WEART
@@ -516,11 +527,12 @@ rules:
     with check table T042ZD.FPMCL on domain FPMCL. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read XORB resolve it through T042ZD.FPMCL; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read XORB resolve it through check table T042ZD.FPMCL; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T042Z.XORB '{invalid_value}' is not defined in T042ZD.FPMCL. Correct it there or add the missing entry to T042ZD.FPMCL.
-  record_fix_template: T042Z.XORB points at a T042ZD.FPMCL entry that does not exist.
+    __other__: T042Z.XORB '{invalid_value}' is not defined in the check table T042ZD.FPMCL. Correct it there or add the missing
+      entry.
+  record_fix_template: T042Z.XORB points at a check table T042ZD.FPMCL entry that does not exist.
 - id: DXV00081
   enabled: false
   field: T042Z.XIBAN
@@ -695,11 +707,12 @@ rules:
     on domain REGIO. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REGIO resolve it through T005S.BLAND; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read REGIO resolve it through check table T005S.BLAND; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059P.REGIO '{invalid_value}' is not defined in T005S.BLAND. Correct it there or add the missing entry to T005S.BLAND.
-  record_fix_template: T059P.REGIO points at a T005S.BLAND entry that does not exist.
+    __other__: T059P.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
+      entry.
+  record_fix_template: T059P.REGIO points at a check table T005S.BLAND entry that does not exist.
 - id: DXV00089
   enabled: false
   field: T059P.WT_BCPLVL
@@ -731,11 +744,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KSCHL resolve it through T685A.KSCHL; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KSCHL resolve it through check table T685A.KSCHL; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059P.KSCHL '{invalid_value}' is not defined in T685A.KSCHL. Correct it there or add the missing entry to T685A.KSCHL.
-  record_fix_template: T059P.KSCHL points at a T685A.KSCHL entry that does not exist.
+    __other__: T059P.KSCHL '{invalid_value}' is not defined in the check table T685A.KSCHL. Correct it there or add the missing
+      entry.
+  record_fix_template: T059P.KSCHL points at a check table T685A.KSCHL entry that does not exist.
 - id: DXR00298
   enabled: false
   field: T059P.J_1BTEXKEY
@@ -747,12 +761,12 @@ rules:
     table J_1BMMNFTT.TEXTKEY on domain J_1BTEXKEY. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read J_1BTEXKEY resolve it through J_1BMMNFTT.TEXTKEY; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read J_1BTEXKEY resolve it through check table J_1BMMNFTT.TEXTKEY; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059P.J_1BTEXKEY '{invalid_value}' is not defined in J_1BMMNFTT.TEXTKEY. Correct it there or add the missing
-      entry to J_1BMMNFTT.TEXTKEY.
-  record_fix_template: T059P.J_1BTEXKEY points at a J_1BMMNFTT.TEXTKEY entry that does not exist.
+    __other__: T059P.J_1BTEXKEY '{invalid_value}' is not defined in the check table J_1BMMNFTT.TEXTKEY. Correct it there or
+      add the missing entry.
+  record_fix_template: T059P.J_1BTEXKEY points at a check table J_1BMMNFTT.TEXTKEY entry that does not exist.
 - id: DXR00299
   enabled: false
   field: T059P.WT_KURST
@@ -764,12 +778,12 @@ rules:
     with check table TCURV.KURST on domain KURST. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WT_KURST resolve it through TCURV.KURST; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read WT_KURST resolve it through check table TCURV.KURST; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059P.WT_KURST '{invalid_value}' is not defined in TCURV.KURST. Correct it there or add the missing entry to
-      TCURV.KURST.
-  record_fix_template: T059P.WT_KURST points at a TCURV.KURST entry that does not exist.
+    __other__: T059P.WT_KURST '{invalid_value}' is not defined in the check table TCURV.KURST. Correct it there or add the
+      missing entry.
+  record_fix_template: T059P.WT_KURST points at a check table TCURV.KURST entry that does not exist.
 - id: DXR00300
   enabled: false
   field: T059P.KSCHL_TX
@@ -781,12 +795,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KSCHL_TX resolve it through T685.KSCHL; an unknown value leaves the record unclassified
+  sap_impact: Processes that read KSCHL_TX resolve it through check table T685.KSCHL; an unknown value leaves the record unclassified
     and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059P.KSCHL_TX '{invalid_value}' is not defined in T685.KSCHL. Correct it there or add the missing entry to
-      T685.KSCHL.
-  record_fix_template: T059P.KSCHL_TX points at a T685.KSCHL entry that does not exist.
+    __other__: T059P.KSCHL_TX '{invalid_value}' is not defined in the check table T685.KSCHL. Correct it there or add the
+      missing entry.
+  record_fix_template: T059P.KSCHL_TX points at a check table T685.KSCHL entry that does not exist.
 - id: DXR00301
   enabled: false
   field: T059Z.QSCOD
@@ -798,12 +812,12 @@ rules:
     on domain WT_OWTCD. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read QSCOD resolve it through T059O.WT_QSCOD; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read QSCOD resolve it through check table T059O.WT_QSCOD; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059Z.QSCOD '{invalid_value}' is not defined in T059O.WT_QSCOD. Correct it there or add the missing entry to
-      T059O.WT_QSCOD.
-  record_fix_template: T059Z.QSCOD points at a T059O.WT_QSCOD entry that does not exist.
+    __other__: T059Z.QSCOD '{invalid_value}' is not defined in the check table T059O.WT_QSCOD. Correct it there or add the
+      missing entry.
+  record_fix_template: T059Z.QSCOD points at a check table T059O.WT_QSCOD entry that does not exist.
 - id: DXR00302
   enabled: false
   field: T059Z.REGIO
@@ -815,11 +829,12 @@ rules:
     on domain REGIO. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REGIO resolve it through T005S.BLAND; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read REGIO resolve it through check table T005S.BLAND; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059Z.REGIO '{invalid_value}' is not defined in T005S.BLAND. Correct it there or add the missing entry to T005S.BLAND.
-  record_fix_template: T059Z.REGIO points at a T005S.BLAND entry that does not exist.
+    __other__: T059Z.REGIO '{invalid_value}' is not defined in the check table T005S.BLAND. Correct it there or add the missing
+      entry.
+  record_fix_template: T059Z.REGIO points at a check table T005S.BLAND entry that does not exist.
 - id: DXR00303
   enabled: false
   field: T059Z.FPRCD
@@ -831,11 +846,12 @@ rules:
     FPRCD. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FPRCD resolve it through T005P.FPRCD; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read FPRCD resolve it through check table T005P.FPRCD; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059Z.FPRCD '{invalid_value}' is not defined in T005P.FPRCD. Correct it there or add the missing entry to T005P.FPRCD.
-  record_fix_template: T059Z.FPRCD points at a T005P.FPRCD entry that does not exist.
+    __other__: T059Z.FPRCD '{invalid_value}' is not defined in the check table T005P.FPRCD. Correct it there or add the missing
+      entry.
+  record_fix_template: T059Z.FPRCD points at a check table T005P.FPRCD entry that does not exist.
 - id: DXR00304
   enabled: false
   field: T059Z.QEKAR
@@ -847,11 +863,12 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read QEKAR resolve it through T059E.QEKAR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read QEKAR resolve it through check table T059E.QEKAR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059Z.QEKAR '{invalid_value}' is not defined in T059E.QEKAR. Correct it there or add the missing entry to T059E.QEKAR.
-  record_fix_template: T059Z.QEKAR points at a T059E.QEKAR entry that does not exist.
+    __other__: T059Z.QEKAR '{invalid_value}' is not defined in the check table T059E.QEKAR. Correct it there or add the missing
+      entry.
+  record_fix_template: T059Z.QEKAR points at a check table T059E.QEKAR entry that does not exist.
 - id: DXV00090
   enabled: false
   field: T059Z.WT_POSIN
@@ -882,9 +899,9 @@ rules:
     on domain WITHCD2. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WITHCD2 resolve it through T059Z_WITHCD2.WITHCD2; an unknown value leaves the record unclassified
-    and can block posting, pricing or reporting.
+  sap_impact: Processes that read WITHCD2 resolve it through check table T059Z_WITHCD2.WITHCD2; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: T059Z.WITHCD2 '{invalid_value}' is not defined in T059Z_WITHCD2.WITHCD2. Correct it there or add the missing
-      entry to T059Z_WITHCD2.WITHCD2.
-  record_fix_template: T059Z.WITHCD2 points at a T059Z_WITHCD2.WITHCD2 entry that does not exist.
+    __other__: T059Z.WITHCD2 '{invalid_value}' is not defined in the check table T059Z_WITHCD2.WITHCD2. Correct it there or
+      add the missing entry.
+  record_fix_template: T059Z.WITHCD2 points at a check table T059Z_WITHCD2.WITHCD2 entry that does not exist.

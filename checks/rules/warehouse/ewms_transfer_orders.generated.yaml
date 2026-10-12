@@ -6,7 +6,7 @@ module: ewms_transfer_orders
 target_state: ECC_AND_S4HANA
 generated: true
 rules:
-- id: DXR00468
+- id: DXR02419
   enabled: false
   field: LTAK.BWART
   check_class: referential_check
@@ -17,12 +17,13 @@ rules:
     on domain BWART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read BWART resolve it through T156.BWART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read BWART resolve it through check table T156.BWART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAK.BWART '{invalid_value}' is not defined in T156.BWART. Correct it there or add the missing entry to T156.BWART.
-  record_fix_template: LTAK.BWART points at a T156.BWART entry that does not exist.
-- id: DXR00469
+    __other__: LTAK.BWART '{invalid_value}' is not defined in the check table T156.BWART. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAK.BWART points at a check table T156.BWART entry that does not exist.
+- id: DXR02420
   enabled: false
   field: LTAK.TRART
   check_class: referential_check
@@ -33,12 +34,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read TRART resolve it through T333A.TRART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read TRART resolve it through check table T333A.TRART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAK.TRART '{invalid_value}' is not defined in T333A.TRART. Correct it there or add the missing entry to T333A.TRART.
-  record_fix_template: LTAK.TRART points at a T333A.TRART entry that does not exist.
-- id: DXR00470
+    __other__: LTAK.TRART '{invalid_value}' is not defined in the check table T333A.TRART. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAK.TRART points at a check table T333A.TRART entry that does not exist.
+- id: DXR02421
   enabled: false
   field: LTAK.REFNR
   check_class: referential_check
@@ -48,12 +50,13 @@ rules:
   why_it_matters: REFNR (Group) is defined in the SAP Data Dictionary with check table T311.REFNR on domain LVS_REFNR. A value
     outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read REFNR resolve it through T311.REFNR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read REFNR resolve it through check table T311.REFNR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAK.REFNR '{invalid_value}' is not defined in T311.REFNR. Correct it there or add the missing entry to T311.REFNR.
-  record_fix_template: LTAK.REFNR points at a T311.REFNR entry that does not exist.
-- id: DXR00471
+    __other__: LTAK.REFNR '{invalid_value}' is not defined in the check table T311.REFNR. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAK.REFNR points at a check table T311.REFNR entry that does not exist.
+- id: DXR02422
   enabled: false
   field: LTAK.DRUKZ
   check_class: referential_check
@@ -64,12 +67,13 @@ rules:
     with check table T329F.DRUKZ on domain LVS_DRUKZ. A value outside that table is not a value SAP recognises, so the record
     is inconsistent with the configuration it depends on.'
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DRUKZ resolve it through T329F.DRUKZ; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read DRUKZ resolve it through check table T329F.DRUKZ; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAK.DRUKZ '{invalid_value}' is not defined in T329F.DRUKZ. Correct it there or add the missing entry to T329F.DRUKZ.
-  record_fix_template: LTAK.DRUKZ points at a T329F.DRUKZ entry that does not exist.
-- id: DXV00164
+    __other__: LTAK.DRUKZ '{invalid_value}' is not defined in the check table T329F.DRUKZ. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAK.DRUKZ points at a check table T329F.DRUKZ entry that does not exist.
+- id: DXV00953
   enabled: false
   field: LTAK.KR2SO
   check_class: domain_value_check
@@ -88,7 +92,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KR2SO ''{invalid_value}'' is not in domain LTAK_KR2SO. Set it to one of: 1, N, V.'
   record_fix_template: 'LTAK.KR2SO is {actual_value}; expected one of: 1, N, V.'
-- id: DXV00165
+- id: DXV00954
   enabled: false
   field: LTAK.KZLEI
   check_class: domain_value_check
@@ -108,7 +112,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KZLEI ''{invalid_value}'' is not in domain LVS_KZLEI. Set it to one of: 1, 2, 3, 4.'
   record_fix_template: 'LTAK.KZLEI is {actual_value}; expected one of: 1, 2, 3, 4.'
-- id: DXV00166
+- id: DXV00955
   enabled: false
   field: LTAK.KISTZ
   check_class: domain_value_check
@@ -127,7 +131,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KISTZ ''{invalid_value}'' is not in domain LVS_KISTZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.KISTZ is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00167
+- id: DXV00956
   enabled: false
   field: LTAK.HRSTS
   check_class: domain_value_check
@@ -146,7 +150,7 @@ rules:
   fix_map:
     __other__: 'LTAK.HRSTS ''{invalid_value}'' is not in domain LTAK_HRSTS. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.HRSTS is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00168
+- id: DXV00957
   enabled: false
   field: LTAK.L2SKA
   check_class: domain_value_check
@@ -164,7 +168,7 @@ rules:
   fix_map:
     __other__: 'LTAK.L2SKA ''{invalid_value}'' is not in domain LVS_2SKTAART. Set it to one of: 1, 2.'
   record_fix_template: 'LTAK.L2SKA is {actual_value}; expected one of: 1, 2.'
-- id: DXV00169
+- id: DXV00958
   enabled: false
   field: LTAK.KZVEP
   check_class: domain_value_check
@@ -182,7 +186,7 @@ rules:
   fix_map:
     __other__: 'LTAK.KZVEP ''{invalid_value}'' is not in domain LVS_KZVEP. Set it to one of: 1, 2.'
   record_fix_template: 'LTAK.KZVEP is {actual_value}; expected one of: 1, 2.'
-- id: DXR00472
+- id: DXR02423
   enabled: false
   field: LTAK.AUSFB
   check_class: referential_check
@@ -193,12 +197,13 @@ rules:
     domain LVS_AUSFB. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read AUSFB resolve it through T339.AUSFB; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read AUSFB resolve it through check table T339.AUSFB; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAK.AUSFB '{invalid_value}' is not defined in T339.AUSFB. Correct it there or add the missing entry to T339.AUSFB.
-  record_fix_template: LTAK.AUSFB points at a T339.AUSFB entry that does not exist.
-- id: DXV00170
+    __other__: LTAK.AUSFB '{invalid_value}' is not defined in the check table T339.AUSFB. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAK.AUSFB points at a check table T339.AUSFB entry that does not exist.
+- id: DXV00959
   enabled: false
   field: LTAK.SPEZI
   check_class: domain_value_check
@@ -216,7 +221,7 @@ rules:
   fix_map:
     __other__: 'LTAK.SPEZI ''{invalid_value}'' is not in domain LTAK_SPEZI. Set it to one of: A, B.'
   record_fix_template: 'LTAK.SPEZI is {actual_value}; expected one of: A, B.'
-- id: DXV00171
+- id: DXV00960
   enabled: false
   field: LTAK.VBTYP
   check_class: domain_value_check
@@ -301,7 +306,7 @@ rules:
     __other__: 'LTAK.VBTYP ''{invalid_value}'' is not in domain VBTYP. Set it to one of: #, $, &, *, +, ,, -, ., 0, 1, 2,
       3 ....'
   record_fix_template: 'LTAK.VBTYP is {actual_value}; expected one of: #, $, &, *, +, ,, -, ., 0, 1, 2, 3 ....'
-- id: DXV00172
+- id: DXV00961
   enabled: false
   field: LTAK.LATER
   check_class: domain_value_check
@@ -320,7 +325,7 @@ rules:
   fix_map:
     __other__: 'LTAK.LATER ''{invalid_value}'' is not in domain LTAK_LATER. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAK.LATER is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXR00473
+- id: DXR02424
   enabled: false
   field: LTAP.WERKS
   check_class: referential_check
@@ -330,12 +335,13 @@ rules:
   why_it_matters: WERKS (Plant) is defined in the SAP Data Dictionary with check table T001W.WERKS on domain WERKS. A value
     outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WERKS resolve it through T001W.WERKS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read WERKS resolve it through check table T001W.WERKS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.WERKS '{invalid_value}' is not defined in T001W.WERKS. Correct it there or add the missing entry to T001W.WERKS.
-  record_fix_template: LTAP.WERKS points at a T001W.WERKS entry that does not exist.
-- id: DXV00173
+    __other__: LTAP.WERKS '{invalid_value}' is not defined in the check table T001W.WERKS. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.WERKS points at a check table T001W.WERKS entry that does not exist.
+- id: DXV00962
   enabled: false
   field: LTAP.BESTQ
   check_class: domain_value_check
@@ -354,7 +360,7 @@ rules:
   fix_map:
     __other__: 'LTAP.BESTQ ''{invalid_value}'' is not in domain BESTQ. Set it to one of: Q, R, S.'
   record_fix_template: 'LTAP.BESTQ is {actual_value}; expected one of: Q, R, S.'
-- id: DXR00474
+- id: DXR02425
   enabled: false
   field: LTAP.SOBKZ
   check_class: referential_check
@@ -365,12 +371,13 @@ rules:
     SOBKZ. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read SOBKZ resolve it through T148.SOBKZ; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read SOBKZ resolve it through check table T148.SOBKZ; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.SOBKZ '{invalid_value}' is not defined in T148.SOBKZ. Correct it there or add the missing entry to T148.SOBKZ.
-  record_fix_template: LTAP.SOBKZ points at a T148.SOBKZ entry that does not exist.
-- id: DXR00475
+    __other__: LTAP.SOBKZ '{invalid_value}' is not defined in the check table T148.SOBKZ. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.SOBKZ points at a check table T148.SOBKZ entry that does not exist.
+- id: DXR02426
   enabled: false
   field: LTAP.MEINS
   check_class: referential_check
@@ -381,12 +388,13 @@ rules:
     MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MEINS resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read MEINS resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.MEINS '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LTAP.MEINS points at a T006.MSEHI entry that does not exist.
-- id: DXR00476
+    __other__: LTAP.MEINS '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.MEINS points at a check table T006.MSEHI entry that does not exist.
+- id: DXR02427
   enabled: false
   field: LTAP.ALTME
   check_class: referential_check
@@ -397,12 +405,13 @@ rules:
     table T006.MSEHI on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ALTME resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ALTME resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.ALTME '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LTAP.ALTME points at a T006.MSEHI entry that does not exist.
-- id: DXR00477
+    __other__: LTAP.ALTME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.ALTME points at a check table T006.MSEHI entry that does not exist.
+- id: DXR02428
   enabled: false
   field: LTAP.LETYP
   check_class: referential_check
@@ -413,12 +422,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LETYP resolve it through T307.LETYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LETYP resolve it through check table T307.LETYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.LETYP '{invalid_value}' is not defined in T307.LETYP. Correct it there or add the missing entry to T307.LETYP.
-  record_fix_template: LTAP.LETYP points at a T307.LETYP entry that does not exist.
-- id: DXV00174
+    __other__: LTAP.LETYP '{invalid_value}' is not defined in the check table T307.LETYP. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.LETYP points at a check table T307.LETYP entry that does not exist.
+- id: DXV00963
   enabled: false
   field: LTAP.NULKO
   check_class: domain_value_check
@@ -442,7 +452,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NULKO ''{invalid_value}'' is not in domain LTAP_NULKO. Set it to one of: 0, 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.NULKO is {actual_value}; expected one of: 0, 1, 2, 3, 4, 5, 6.'
-- id: DXV00175
+- id: DXV00964
   enabled: false
   field: LTAP.KZINV
   check_class: domain_value_check
@@ -465,7 +475,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZINV ''{invalid_value}'' is not in domain LVS_KZINV. Set it to one of: CC, DC, MA, PE, PN, PZ, ST.'
   record_fix_template: 'LTAP.KZINV is {actual_value}; expected one of: CC, DC, MA, PE, PN, PZ, ST.'
-- id: DXR00478
+- id: DXR02429
   enabled: false
   field: LTAP.LDEST
   check_class: referential_check
@@ -476,12 +486,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LDEST resolve it through TSP03.PADEST; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LDEST resolve it through check table TSP03.PADEST; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.LDEST '{invalid_value}' is not defined in TSP03.PADEST. Correct it there or add the missing entry to TSP03.PADEST.
-  record_fix_template: LTAP.LDEST points at a TSP03.PADEST entry that does not exist.
-- id: DXR00479
+    __other__: LTAP.LDEST '{invalid_value}' is not defined in the check table TSP03.PADEST. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.LDEST points at a check table TSP03.PADEST entry that does not exist.
+- id: DXR02430
   enabled: false
   field: LTAP.VLBER
   check_class: referential_check
@@ -492,12 +503,13 @@ rules:
     LGBER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VLBER resolve it through T302.LGBER; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VLBER resolve it through check table T302.LGBER; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.VLBER '{invalid_value}' is not defined in T302.LGBER. Correct it there or add the missing entry to T302.LGBER.
-  record_fix_template: LTAP.VLBER points at a T302.LGBER entry that does not exist.
-- id: DXR00480
+    __other__: LTAP.VLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.VLBER points at a check table T302.LGBER entry that does not exist.
+- id: DXR02431
   enabled: false
   field: LTAP.NLBER
   check_class: referential_check
@@ -508,12 +520,13 @@ rules:
     domain LGBER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read NLBER resolve it through T302.LGBER; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read NLBER resolve it through check table T302.LGBER; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.NLBER '{invalid_value}' is not defined in T302.LGBER. Correct it there or add the missing entry to T302.LGBER.
-  record_fix_template: LTAP.NLBER points at a T302.LGBER entry that does not exist.
-- id: DXR00481
+    __other__: LTAP.NLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.NLBER points at a check table T302.LGBER entry that does not exist.
+- id: DXR02432
   enabled: false
   field: LTAP.RLTYP
   check_class: referential_check
@@ -524,12 +537,13 @@ rules:
     LGTYP. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RLTYP resolve it through T301.LGTYP; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read RLTYP resolve it through check table T301.LGTYP; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.RLTYP '{invalid_value}' is not defined in T301.LGTYP. Correct it there or add the missing entry to T301.LGTYP.
-  record_fix_template: LTAP.RLTYP points at a T301.LGTYP entry that does not exist.
-- id: DXR00482
+    __other__: LTAP.RLTYP '{invalid_value}' is not defined in the check table T301.LGTYP. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.RLTYP points at a check table T301.LGTYP entry that does not exist.
+- id: DXR02433
   enabled: false
   field: LTAP.RLBER
   check_class: referential_check
@@ -540,12 +554,13 @@ rules:
     LGBER. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read RLBER resolve it through T302.LGBER; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read RLBER resolve it through check table T302.LGBER; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.RLBER '{invalid_value}' is not defined in T302.LGBER. Correct it there or add the missing entry to T302.LGBER.
-  record_fix_template: LTAP.RLBER points at a T302.LGBER entry that does not exist.
-- id: DXR00483
+    __other__: LTAP.RLBER '{invalid_value}' is not defined in the check table T302.LGBER. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.RLBER points at a check table T302.LGBER entry that does not exist.
+- id: DXR02434
   enabled: false
   field: LTAP.KZDIF
   check_class: referential_check
@@ -556,12 +571,13 @@ rules:
     LVS_KZDIF. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read KZDIF resolve it through T336.KZDIF; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read KZDIF resolve it through check table T336.KZDIF; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.KZDIF '{invalid_value}' is not defined in T336.KZDIF. Correct it there or add the missing entry to T336.KZDIF.
-  record_fix_template: LTAP.KZDIF points at a T336.KZDIF entry that does not exist.
-- id: DXR00484
+    __other__: LTAP.KZDIF '{invalid_value}' is not defined in the check table T336.KZDIF. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.KZDIF points at a check table T336.KZDIF entry that does not exist.
+- id: DXR02435
   enabled: false
   field: LTAP.VLENR
   check_class: referential_check
@@ -572,12 +588,13 @@ rules:
     domain LENUM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VLENR resolve it through LEIN.LENUM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VLENR resolve it through check table LEIN.LENUM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.VLENR '{invalid_value}' is not defined in LEIN.LENUM. Correct it there or add the missing entry to LEIN.LENUM.
-  record_fix_template: LTAP.VLENR points at a LEIN.LENUM entry that does not exist.
-- id: DXR00485
+    __other__: LTAP.VLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.VLENR points at a check table LEIN.LENUM entry that does not exist.
+- id: DXR02436
   enabled: false
   field: LTAP.NLENR
   check_class: referential_check
@@ -588,12 +605,13 @@ rules:
     on domain LENUM. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read NLENR resolve it through LEIN.LENUM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read NLENR resolve it through check table LEIN.LENUM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.NLENR '{invalid_value}' is not defined in LEIN.LENUM. Correct it there or add the missing entry to LEIN.LENUM.
-  record_fix_template: LTAP.NLENR points at a LEIN.LENUM entry that does not exist.
-- id: DXR00486
+    __other__: LTAP.NLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.NLENR points at a check table LEIN.LENUM entry that does not exist.
+- id: DXR02437
   enabled: false
   field: LTAP.DLENR
   check_class: referential_check
@@ -604,12 +622,13 @@ rules:
     table LEIN.LENUM on domain LENUM. A value outside that table is not a value SAP recognises, so the record is inconsistent
     with the configuration it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DLENR resolve it through LEIN.LENUM; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read DLENR resolve it through check table LEIN.LENUM; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.DLENR '{invalid_value}' is not defined in LEIN.LENUM. Correct it there or add the missing entry to LEIN.LENUM.
-  record_fix_template: LTAP.DLENR points at a LEIN.LENUM entry that does not exist.
-- id: DXV00176
+    __other__: LTAP.DLENR '{invalid_value}' is not defined in the check table LEIN.LENUM. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.DLENR points at a check table LEIN.LENUM entry that does not exist.
+- id: DXV00965
   enabled: false
   field: LTAP.VLEST
   check_class: domain_value_check
@@ -634,7 +653,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VLEST ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LTAP.VLEST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXV00177
+- id: DXV00966
   enabled: false
   field: LTAP.NLEST
   check_class: domain_value_check
@@ -659,7 +678,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NLEST ''{invalid_value}'' is not in domain LEIN_STATU. Set it to one of: 1, 2, 3, 4, 5, 6, A, B, C.'
   record_fix_template: 'LTAP.NLEST is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6, A, B, C.'
-- id: DXV00178
+- id: DXV00967
   enabled: false
   field: LTAP.POSTY
   check_class: domain_value_check
@@ -677,7 +696,7 @@ rules:
   fix_map:
     __other__: 'LTAP.POSTY ''{invalid_value}'' is not in domain LTAP_POSTY. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.POSTY is {actual_value}; expected one of: 1, 2.'
-- id: DXV00179
+- id: DXV00968
   enabled: false
   field: LTAP.VSUMM
   check_class: domain_value_check
@@ -695,7 +714,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VSUMM ''{invalid_value}'' is not in domain T331BSUMME. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.VSUMM is {actual_value}; expected one of: 1, 2.'
-- id: DXV00180
+- id: DXV00969
   enabled: false
   field: LTAP.NSUMM
   check_class: domain_value_check
@@ -713,7 +732,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NSUMM ''{invalid_value}'' is not in domain T331BSUMME. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.NSUMM is {actual_value}; expected one of: 1, 2.'
-- id: DXV00181
+- id: DXV00970
   enabled: false
   field: LTAP.VKAPA
   check_class: domain_value_check
@@ -735,7 +754,7 @@ rules:
   fix_map:
     __other__: 'LTAP.VKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.VKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00182
+- id: DXV00971
   enabled: false
   field: LTAP.NKAPA
   check_class: domain_value_check
@@ -757,7 +776,7 @@ rules:
   fix_map:
     __other__: 'LTAP.NKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.NKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00183
+- id: DXV00972
   enabled: false
   field: LTAP.RKAPA
   check_class: domain_value_check
@@ -779,7 +798,7 @@ rules:
   fix_map:
     __other__: 'LTAP.RKAPA ''{invalid_value}'' is not in domain T331_KAPAP. Set it to one of: 1, 2, 3, 4, 5, 6.'
   record_fix_template: 'LTAP.RKAPA is {actual_value}; expected one of: 1, 2, 3, 4, 5, 6.'
-- id: DXV00184
+- id: DXV00973
   enabled: false
   field: LTAP.KZSUB
   check_class: domain_value_check
@@ -797,7 +816,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZSUB ''{invalid_value}'' is not in domain LTAP_KZSUB. Set it to one of: 1, X.'
   record_fix_template: 'LTAP.KZSUB is {actual_value}; expected one of: 1, X.'
-- id: DXR00487
+- id: DXR02438
   enabled: false
   field: LTAP.LGORT
   check_class: referential_check
@@ -808,12 +827,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGORT resolve it through T001L.LGORT; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGORT resolve it through check table T001L.LGORT; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.LGORT '{invalid_value}' is not defined in T001L.LGORT. Correct it there or add the missing entry to T001L.LGORT.
-  record_fix_template: LTAP.LGORT points at a T001L.LGORT entry that does not exist.
-- id: DXR00488
+    __other__: LTAP.LGORT '{invalid_value}' is not defined in the check table T001L.LGORT. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.LGORT points at a check table T001L.LGORT entry that does not exist.
+- id: DXR02439
   enabled: false
   field: LTAP.ZEIEI
   check_class: referential_check
@@ -824,12 +844,13 @@ rules:
     on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZEIEI resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ZEIEI resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.ZEIEI '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LTAP.ZEIEI points at a T006.MSEHI entry that does not exist.
-- id: DXV00185
+    __other__: LTAP.ZEIEI '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.ZEIEI points at a check table T006.MSEHI entry that does not exist.
+- id: DXV00974
   enabled: false
   field: LTAP.IMREL
   check_class: domain_value_check
@@ -847,7 +868,7 @@ rules:
   fix_map:
     __other__: 'LTAP.IMREL ''{invalid_value}'' is not in domain LVS_IMREL. Set it to one of: 1, 2.'
   record_fix_template: 'LTAP.IMREL is {actual_value}; expected one of: 1, 2.'
-- id: DXR00489
+- id: DXR02440
   enabled: false
   field: LTAP.WIRME
   check_class: referential_check
@@ -858,12 +879,13 @@ rules:
     on domain MEINS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WIRME resolve it through T006.MSEHI; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read WIRME resolve it through check table T006.MSEHI; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: LTAP.WIRME '{invalid_value}' is not defined in T006.MSEHI. Correct it there or add the missing entry to T006.MSEHI.
-  record_fix_template: LTAP.WIRME points at a T006.MSEHI entry that does not exist.
-- id: DXV00186
+    __other__: LTAP.WIRME '{invalid_value}' is not defined in the check table T006.MSEHI. Correct it there or add the missing
+      entry.
+  record_fix_template: LTAP.WIRME points at a check table T006.MSEHI entry that does not exist.
+- id: DXV00975
   enabled: false
   field: LTAP.KBNKZ
   check_class: domain_value_check
@@ -880,7 +902,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KBNKZ ''{invalid_value}'' is not in domain KBNKZ. Set it to one of: X, Y.'
   record_fix_template: 'LTAP.KBNKZ is {actual_value}; expected one of: X, Y.'
-- id: DXV00187
+- id: DXV00976
   enabled: false
   field: LTAP.KZFME
   check_class: domain_value_check
@@ -898,7 +920,7 @@ rules:
   fix_map:
     __other__: 'LTAP.KZFME ''{invalid_value}'' is not in domain KZFME. Set it to one of: A, B.'
   record_fix_template: 'LTAP.KZFME is {actual_value}; expected one of: A, B.'
-- id: DXV00188
+- id: DXV00977
   enabled: false
   field: LTAP.QUSUB
   check_class: domain_value_check
@@ -918,7 +940,7 @@ rules:
   fix_map:
     __other__: 'LTAP.QUSUB ''{invalid_value}'' is not in domain RL03TQUKNZ. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAP.QUSUB is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00189
+- id: DXV00978
   enabled: false
   field: LTAP.FHUTA
   check_class: domain_value_check
@@ -937,7 +959,7 @@ rules:
   fix_map:
     __other__: 'LTAP.FHUTA ''{invalid_value}'' is not in domain LTAP_FHUTA. Set it to one of: 1, 2, 3.'
   record_fix_template: 'LTAP.FHUTA is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00190
+- id: DXV00979
   enabled: false
   field: LTAP.PCKPF
   check_class: domain_value_check

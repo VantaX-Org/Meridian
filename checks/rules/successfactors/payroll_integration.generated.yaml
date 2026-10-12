@@ -6,7 +6,7 @@ module: payroll_integration
 target_state: SUCCESSFACTORS
 generated: true
 rules:
-- id: DXV00481
+- id: DXV00947
   enabled: false
   field: HRPY_RGDIR.SRTZA
   check_class: domain_value_check
@@ -25,7 +25,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.SRTZA ''{invalid_value}'' is not in domain SRTZA. Set it to one of: A, O, P.'
   record_fix_template: 'HRPY_RGDIR.SRTZA is {actual_value}; expected one of: A, O, P.'
-- id: DXV00482
+- id: DXV00948
   enabled: false
   field: HRPY_RGDIR.PAYTY
   check_class: domain_value_check
@@ -44,7 +44,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.PAYTY ''{invalid_value}'' is not in domain PAYTY. Set it to one of: A, B, C, S.'
   record_fix_template: 'HRPY_RGDIR.PAYTY is {actual_value}; expected one of: A, B, C, S.'
-- id: DXR01059
+- id: DXR02301
   enabled: false
   field: HRPY_RGDIR.PERMO
   check_class: referential_check
@@ -55,13 +55,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PERMO resolve it through T549R.PERMO; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PERMO resolve it through check table T549R.PERMO; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: HRPY_RGDIR.PERMO '{invalid_value}' is not defined in T549R.PERMO. Correct it there or add the missing entry
-      to T549R.PERMO.
-  record_fix_template: HRPY_RGDIR.PERMO points at a T549R.PERMO entry that does not exist.
-- id: DXV00483
+    __other__: HRPY_RGDIR.PERMO '{invalid_value}' is not defined in the check table T549R.PERMO. Correct it there or add the
+      missing entry.
+  record_fix_template: HRPY_RGDIR.PERMO points at a check table T549R.PERMO entry that does not exist.
+- id: DXV00949
   enabled: false
   field: HRPY_RGDIR.INPTY
   check_class: domain_value_check
@@ -80,7 +80,7 @@ rules:
   fix_map:
     __other__: 'HRPY_RGDIR.INPTY ''{invalid_value}'' is not in domain PAYTY. Set it to one of: A, B, C, S.'
   record_fix_template: 'HRPY_RGDIR.INPTY is {actual_value}; expected one of: A, B, C, S.'
-- id: DXR01060
+- id: DXR02302
   enabled: false
   field: PA0008.PARTN
   check_class: referential_check
@@ -91,12 +91,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PARTN resolve it through T577.AUSPR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PARTN resolve it through check table T577.AUSPR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.PARTN '{invalid_value}' is not defined in T577.AUSPR. Correct it there or add the missing entry to T577.AUSPR.
-  record_fix_template: PA0008.PARTN points at a T577.AUSPR entry that does not exist.
-- id: DXR01061
+    __other__: PA0008.PARTN '{invalid_value}' is not defined in the check table T577.AUSPR. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.PARTN points at a check table T577.AUSPR entry that does not exist.
+- id: DXR02303
   enabled: false
   field: PA0008.VGLTA
   check_class: referential_check
@@ -107,13 +108,13 @@ rules:
     domain TRFAR. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VGLTA resolve it through T510A.TRFAR; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VGLTA resolve it through check table T510A.TRFAR; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.VGLTA '{invalid_value}' is not defined in T510A.TRFAR. Correct it there or add the missing entry to
-      T510A.TRFAR.
-  record_fix_template: PA0008.VGLTA points at a T510A.TRFAR entry that does not exist.
-- id: DXR01062
+    __other__: PA0008.VGLTA '{invalid_value}' is not defined in the check table T510A.TRFAR. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.VGLTA points at a check table T510A.TRFAR entry that does not exist.
+- id: DXR02304
   enabled: false
   field: PA0008.VGLGB
   check_class: referential_check
@@ -124,13 +125,13 @@ rules:
     domain TRFGB. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read VGLGB resolve it through T510G.TRFGB; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read VGLGB resolve it through check table T510G.TRFGB; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.VGLGB '{invalid_value}' is not defined in T510G.TRFGB. Correct it there or add the missing entry to
-      T510G.TRFGB.
-  record_fix_template: PA0008.VGLGB points at a T510G.TRFGB entry that does not exist.
-- id: DXR01063
+    __other__: PA0008.VGLGB '{invalid_value}' is not defined in the check table T510G.TRFGB. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.VGLGB points at a check table T510G.TRFGB entry that does not exist.
+- id: DXR02305
   enabled: false
   field: PA0008.EIN01
   check_class: referential_check
@@ -141,13 +142,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN01 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN01 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN01 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN01 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01064
+    __other__: PA0008.EIN01 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN01 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02306
   enabled: false
   field: PA0008.LGA02
   check_class: referential_check
@@ -158,13 +159,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA02 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA02 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA02 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA02 points at a T512Z.LGART entry that does not exist.
-- id: DXR01065
+    __other__: PA0008.LGA02 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA02 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02307
   enabled: false
   field: PA0008.EIN02
   check_class: referential_check
@@ -175,13 +176,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN02 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN02 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN02 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN02 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01066
+    __other__: PA0008.EIN02 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN02 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02308
   enabled: false
   field: PA0008.LGA03
   check_class: referential_check
@@ -192,13 +193,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA03 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA03 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA03 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA03 points at a T512Z.LGART entry that does not exist.
-- id: DXR01067
+    __other__: PA0008.LGA03 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA03 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02309
   enabled: false
   field: PA0008.EIN03
   check_class: referential_check
@@ -209,13 +210,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN03 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN03 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN03 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN03 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01068
+    __other__: PA0008.EIN03 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN03 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02310
   enabled: false
   field: PA0008.LGA04
   check_class: referential_check
@@ -226,13 +227,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA04 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA04 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA04 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA04 points at a T512Z.LGART entry that does not exist.
-- id: DXR01069
+    __other__: PA0008.LGA04 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA04 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02311
   enabled: false
   field: PA0008.EIN04
   check_class: referential_check
@@ -243,13 +244,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN04 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN04 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN04 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN04 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01070
+    __other__: PA0008.EIN04 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN04 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02312
   enabled: false
   field: PA0008.LGA05
   check_class: referential_check
@@ -260,13 +261,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA05 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA05 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA05 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA05 points at a T512Z.LGART entry that does not exist.
-- id: DXR01071
+    __other__: PA0008.LGA05 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA05 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02313
   enabled: false
   field: PA0008.EIN05
   check_class: referential_check
@@ -277,13 +278,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN05 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN05 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN05 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN05 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01072
+    __other__: PA0008.EIN05 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN05 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02314
   enabled: false
   field: PA0008.LGA06
   check_class: referential_check
@@ -294,13 +295,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA06 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA06 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA06 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA06 points at a T512Z.LGART entry that does not exist.
-- id: DXR01073
+    __other__: PA0008.LGA06 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA06 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02315
   enabled: false
   field: PA0008.EIN06
   check_class: referential_check
@@ -311,13 +312,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN06 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN06 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN06 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN06 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01074
+    __other__: PA0008.EIN06 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN06 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02316
   enabled: false
   field: PA0008.LGA07
   check_class: referential_check
@@ -328,13 +329,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA07 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA07 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA07 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA07 points at a T512Z.LGART entry that does not exist.
-- id: DXR01075
+    __other__: PA0008.LGA07 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA07 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02317
   enabled: false
   field: PA0008.EIN07
   check_class: referential_check
@@ -345,13 +346,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN07 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN07 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN07 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN07 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01076
+    __other__: PA0008.EIN07 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN07 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02318
   enabled: false
   field: PA0008.LGA08
   check_class: referential_check
@@ -362,13 +363,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA08 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA08 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA08 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA08 points at a T512Z.LGART entry that does not exist.
-- id: DXR01077
+    __other__: PA0008.LGA08 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA08 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02319
   enabled: false
   field: PA0008.EIN08
   check_class: referential_check
@@ -379,13 +380,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN08 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN08 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN08 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN08 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01078
+    __other__: PA0008.EIN08 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN08 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02320
   enabled: false
   field: PA0008.LGA09
   check_class: referential_check
@@ -396,13 +397,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA09 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA09 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA09 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA09 points at a T512Z.LGART entry that does not exist.
-- id: DXR01079
+    __other__: PA0008.LGA09 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA09 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02321
   enabled: false
   field: PA0008.EIN09
   check_class: referential_check
@@ -413,13 +414,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN09 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN09 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN09 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN09 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01080
+    __other__: PA0008.EIN09 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN09 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02322
   enabled: false
   field: PA0008.LGA10
   check_class: referential_check
@@ -430,13 +431,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA10 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA10 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA10 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA10 points at a T512Z.LGART entry that does not exist.
-- id: DXR01081
+    __other__: PA0008.LGA10 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA10 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02323
   enabled: false
   field: PA0008.EIN10
   check_class: referential_check
@@ -447,13 +448,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN10 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN10 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN10 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN10 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01082
+    __other__: PA0008.EIN10 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN10 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02324
   enabled: false
   field: PA0008.LGA11
   check_class: referential_check
@@ -464,13 +465,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA11 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA11 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA11 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA11 points at a T512Z.LGART entry that does not exist.
-- id: DXR01083
+    __other__: PA0008.LGA11 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA11 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02325
   enabled: false
   field: PA0008.EIN11
   check_class: referential_check
@@ -481,13 +482,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN11 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN11 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN11 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN11 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01084
+    __other__: PA0008.EIN11 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN11 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02326
   enabled: false
   field: PA0008.LGA12
   check_class: referential_check
@@ -498,13 +499,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA12 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA12 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA12 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA12 points at a T512Z.LGART entry that does not exist.
-- id: DXR01085
+    __other__: PA0008.LGA12 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA12 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02327
   enabled: false
   field: PA0008.EIN12
   check_class: referential_check
@@ -515,13 +516,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN12 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN12 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN12 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN12 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01086
+    __other__: PA0008.EIN12 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN12 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02328
   enabled: false
   field: PA0008.LGA13
   check_class: referential_check
@@ -532,13 +533,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA13 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA13 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA13 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA13 points at a T512Z.LGART entry that does not exist.
-- id: DXR01087
+    __other__: PA0008.LGA13 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA13 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02329
   enabled: false
   field: PA0008.EIN13
   check_class: referential_check
@@ -549,13 +550,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN13 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN13 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN13 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN13 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01088
+    __other__: PA0008.EIN13 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN13 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02330
   enabled: false
   field: PA0008.LGA14
   check_class: referential_check
@@ -566,13 +567,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA14 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA14 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA14 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA14 points at a T512Z.LGART entry that does not exist.
-- id: DXR01089
+    __other__: PA0008.LGA14 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA14 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02331
   enabled: false
   field: PA0008.EIN14
   check_class: referential_check
@@ -583,13 +584,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN14 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN14 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN14 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN14 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01090
+    __other__: PA0008.EIN14 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN14 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02332
   enabled: false
   field: PA0008.LGA15
   check_class: referential_check
@@ -600,13 +601,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA15 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA15 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA15 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA15 points at a T512Z.LGART entry that does not exist.
-- id: DXR01091
+    __other__: PA0008.LGA15 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA15 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02333
   enabled: false
   field: PA0008.EIN15
   check_class: referential_check
@@ -617,13 +618,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN15 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN15 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN15 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN15 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01092
+    __other__: PA0008.EIN15 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN15 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02334
   enabled: false
   field: PA0008.LGA16
   check_class: referential_check
@@ -634,13 +635,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA16 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA16 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA16 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA16 points at a T512Z.LGART entry that does not exist.
-- id: DXR01093
+    __other__: PA0008.LGA16 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA16 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02335
   enabled: false
   field: PA0008.EIN16
   check_class: referential_check
@@ -651,13 +652,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN16 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN16 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN16 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN16 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01094
+    __other__: PA0008.EIN16 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN16 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02336
   enabled: false
   field: PA0008.LGA17
   check_class: referential_check
@@ -668,13 +669,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA17 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA17 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA17 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA17 points at a T512Z.LGART entry that does not exist.
-- id: DXR01095
+    __other__: PA0008.LGA17 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA17 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02337
   enabled: false
   field: PA0008.EIN17
   check_class: referential_check
@@ -685,13 +686,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN17 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN17 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN17 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN17 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01096
+    __other__: PA0008.EIN17 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN17 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02338
   enabled: false
   field: PA0008.LGA18
   check_class: referential_check
@@ -702,13 +703,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA18 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA18 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA18 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA18 points at a T512Z.LGART entry that does not exist.
-- id: DXR01097
+    __other__: PA0008.LGA18 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA18 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02339
   enabled: false
   field: PA0008.EIN18
   check_class: referential_check
@@ -719,13 +720,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN18 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN18 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN18 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN18 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01098
+    __other__: PA0008.EIN18 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN18 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02340
   enabled: false
   field: PA0008.LGA19
   check_class: referential_check
@@ -736,13 +737,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA19 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA19 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA19 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA19 points at a T512Z.LGART entry that does not exist.
-- id: DXR01099
+    __other__: PA0008.LGA19 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA19 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02341
   enabled: false
   field: PA0008.EIN19
   check_class: referential_check
@@ -753,13 +754,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN19 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN19 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN19 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN19 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01100
+    __other__: PA0008.EIN19 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN19 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02342
   enabled: false
   field: PA0008.LGA20
   check_class: referential_check
@@ -770,13 +771,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA20 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA20 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA20 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA20 points at a T512Z.LGART entry that does not exist.
-- id: DXR01101
+    __other__: PA0008.LGA20 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA20 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02343
   enabled: false
   field: PA0008.EIN20
   check_class: referential_check
@@ -787,13 +788,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN20 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN20 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN20 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN20 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01102
+    __other__: PA0008.EIN20 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN20 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02344
   enabled: false
   field: PA0008.LGA21
   check_class: referential_check
@@ -804,13 +805,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA21 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA21 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA21 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA21 points at a T512Z.LGART entry that does not exist.
-- id: DXR01103
+    __other__: PA0008.LGA21 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA21 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02345
   enabled: false
   field: PA0008.EIN21
   check_class: referential_check
@@ -821,13 +822,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN21 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN21 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN21 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN21 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01104
+    __other__: PA0008.EIN21 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN21 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02346
   enabled: false
   field: PA0008.LGA22
   check_class: referential_check
@@ -838,13 +839,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA22 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA22 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA22 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA22 points at a T512Z.LGART entry that does not exist.
-- id: DXR01105
+    __other__: PA0008.LGA22 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA22 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02347
   enabled: false
   field: PA0008.EIN22
   check_class: referential_check
@@ -855,13 +856,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN22 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN22 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN22 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN22 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01106
+    __other__: PA0008.EIN22 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN22 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02348
   enabled: false
   field: PA0008.LGA23
   check_class: referential_check
@@ -872,13 +873,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA23 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA23 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA23 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA23 points at a T512Z.LGART entry that does not exist.
-- id: DXR01107
+    __other__: PA0008.LGA23 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA23 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02349
   enabled: false
   field: PA0008.EIN23
   check_class: referential_check
@@ -889,13 +890,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN23 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN23 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN23 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN23 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01108
+    __other__: PA0008.EIN23 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN23 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02350
   enabled: false
   field: PA0008.LGA24
   check_class: referential_check
@@ -906,13 +907,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA24 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA24 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA24 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA24 points at a T512Z.LGART entry that does not exist.
-- id: DXR01109
+    __other__: PA0008.LGA24 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA24 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02351
   enabled: false
   field: PA0008.EIN24
   check_class: referential_check
@@ -923,13 +924,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN24 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN24 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN24 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN24 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01110
+    __other__: PA0008.EIN24 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN24 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02352
   enabled: false
   field: PA0008.LGA25
   check_class: referential_check
@@ -940,13 +941,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA25 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA25 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA25 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA25 points at a T512Z.LGART entry that does not exist.
-- id: DXR01111
+    __other__: PA0008.LGA25 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA25 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02353
   enabled: false
   field: PA0008.EIN25
   check_class: referential_check
@@ -957,13 +958,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN25 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN25 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN25 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN25 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01112
+    __other__: PA0008.EIN25 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN25 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02354
   enabled: false
   field: PA0008.LGA26
   check_class: referential_check
@@ -974,13 +975,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA26 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA26 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA26 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA26 points at a T512Z.LGART entry that does not exist.
-- id: DXR01113
+    __other__: PA0008.LGA26 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA26 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02355
   enabled: false
   field: PA0008.EIN26
   check_class: referential_check
@@ -991,13 +992,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN26 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN26 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN26 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN26 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01114
+    __other__: PA0008.EIN26 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN26 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02356
   enabled: false
   field: PA0008.LGA27
   check_class: referential_check
@@ -1008,13 +1009,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA27 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA27 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA27 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA27 points at a T512Z.LGART entry that does not exist.
-- id: DXR01115
+    __other__: PA0008.LGA27 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA27 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02357
   enabled: false
   field: PA0008.EIN27
   check_class: referential_check
@@ -1025,13 +1026,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN27 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN27 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN27 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN27 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01116
+    __other__: PA0008.EIN27 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN27 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02358
   enabled: false
   field: PA0008.LGA28
   check_class: referential_check
@@ -1042,13 +1043,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA28 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA28 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA28 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA28 points at a T512Z.LGART entry that does not exist.
-- id: DXR01117
+    __other__: PA0008.LGA28 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA28 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02359
   enabled: false
   field: PA0008.EIN28
   check_class: referential_check
@@ -1059,13 +1060,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN28 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN28 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN28 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN28 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01118
+    __other__: PA0008.EIN28 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN28 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02360
   enabled: false
   field: PA0008.LGA29
   check_class: referential_check
@@ -1076,13 +1077,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA29 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA29 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA29 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA29 points at a T512Z.LGART entry that does not exist.
-- id: DXR01119
+    __other__: PA0008.LGA29 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA29 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02361
   enabled: false
   field: PA0008.EIN29
   check_class: referential_check
@@ -1093,13 +1094,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN29 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN29 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN29 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN29 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01120
+    __other__: PA0008.EIN29 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN29 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02362
   enabled: false
   field: PA0008.LGA30
   check_class: referential_check
@@ -1110,13 +1111,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA30 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA30 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA30 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA30 points at a T512Z.LGART entry that does not exist.
-- id: DXR01121
+    __other__: PA0008.LGA30 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA30 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02363
   enabled: false
   field: PA0008.EIN30
   check_class: referential_check
@@ -1127,13 +1128,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN30 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN30 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN30 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN30 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01122
+    __other__: PA0008.EIN30 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN30 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02364
   enabled: false
   field: PA0008.LGA31
   check_class: referential_check
@@ -1144,13 +1145,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA31 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA31 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA31 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA31 points at a T512Z.LGART entry that does not exist.
-- id: DXR01123
+    __other__: PA0008.LGA31 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA31 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02365
   enabled: false
   field: PA0008.EIN31
   check_class: referential_check
@@ -1161,13 +1162,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN31 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN31 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN31 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN31 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01124
+    __other__: PA0008.EIN31 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN31 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02366
   enabled: false
   field: PA0008.LGA32
   check_class: referential_check
@@ -1178,13 +1179,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA32 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA32 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA32 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA32 points at a T512Z.LGART entry that does not exist.
-- id: DXR01125
+    __other__: PA0008.LGA32 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA32 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02367
   enabled: false
   field: PA0008.EIN32
   check_class: referential_check
@@ -1195,13 +1196,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN32 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN32 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN32 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN32 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01126
+    __other__: PA0008.EIN32 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN32 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02368
   enabled: false
   field: PA0008.LGA33
   check_class: referential_check
@@ -1212,13 +1213,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA33 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA33 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA33 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA33 points at a T512Z.LGART entry that does not exist.
-- id: DXR01127
+    __other__: PA0008.LGA33 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA33 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02369
   enabled: false
   field: PA0008.EIN33
   check_class: referential_check
@@ -1229,13 +1230,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN33 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN33 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN33 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN33 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01128
+    __other__: PA0008.EIN33 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN33 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02370
   enabled: false
   field: PA0008.LGA34
   check_class: referential_check
@@ -1246,13 +1247,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA34 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA34 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA34 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA34 points at a T512Z.LGART entry that does not exist.
-- id: DXR01129
+    __other__: PA0008.LGA34 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA34 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02371
   enabled: false
   field: PA0008.EIN34
   check_class: referential_check
@@ -1263,13 +1264,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN34 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN34 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN34 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN34 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01130
+    __other__: PA0008.EIN34 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN34 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02372
   enabled: false
   field: PA0008.LGA35
   check_class: referential_check
@@ -1280,13 +1281,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA35 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA35 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA35 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA35 points at a T512Z.LGART entry that does not exist.
-- id: DXR01131
+    __other__: PA0008.LGA35 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA35 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02373
   enabled: false
   field: PA0008.EIN35
   check_class: referential_check
@@ -1297,13 +1298,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN35 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN35 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN35 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN35 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01132
+    __other__: PA0008.EIN35 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN35 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02374
   enabled: false
   field: PA0008.LGA36
   check_class: referential_check
@@ -1314,13 +1315,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA36 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA36 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA36 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA36 points at a T512Z.LGART entry that does not exist.
-- id: DXR01133
+    __other__: PA0008.LGA36 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA36 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02375
   enabled: false
   field: PA0008.EIN36
   check_class: referential_check
@@ -1331,13 +1332,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN36 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN36 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN36 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN36 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01134
+    __other__: PA0008.EIN36 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN36 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02376
   enabled: false
   field: PA0008.LGA37
   check_class: referential_check
@@ -1348,13 +1349,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA37 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA37 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA37 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA37 points at a T512Z.LGART entry that does not exist.
-- id: DXR01135
+    __other__: PA0008.LGA37 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA37 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02377
   enabled: false
   field: PA0008.EIN37
   check_class: referential_check
@@ -1365,13 +1366,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN37 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN37 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN37 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN37 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01136
+    __other__: PA0008.EIN37 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN37 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02378
   enabled: false
   field: PA0008.LGA38
   check_class: referential_check
@@ -1382,13 +1383,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA38 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA38 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA38 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA38 points at a T512Z.LGART entry that does not exist.
-- id: DXR01137
+    __other__: PA0008.LGA38 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA38 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02379
   enabled: false
   field: PA0008.EIN38
   check_class: referential_check
@@ -1399,13 +1400,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN38 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN38 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN38 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN38 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01138
+    __other__: PA0008.EIN38 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN38 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02380
   enabled: false
   field: PA0008.LGA39
   check_class: referential_check
@@ -1416,13 +1417,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA39 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA39 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA39 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA39 points at a T512Z.LGART entry that does not exist.
-- id: DXR01139
+    __other__: PA0008.LGA39 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA39 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02381
   enabled: false
   field: PA0008.EIN39
   check_class: referential_check
@@ -1433,13 +1434,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN39 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN39 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN39 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN39 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01140
+    __other__: PA0008.EIN39 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN39 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02382
   enabled: false
   field: PA0008.LGA40
   check_class: referential_check
@@ -1450,13 +1451,13 @@ rules:
     value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read LGA40 resolve it through T512Z.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read LGA40 resolve it through check table T512Z.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.LGA40 '{invalid_value}' is not defined in T512Z.LGART. Correct it there or add the missing entry to
-      T512Z.LGART.
-  record_fix_template: PA0008.LGA40 points at a T512Z.LGART entry that does not exist.
-- id: DXR01141
+    __other__: PA0008.LGA40 '{invalid_value}' is not defined in the check table T512Z.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.LGA40 points at a check table T512Z.LGART entry that does not exist.
+- id: DXR02383
   enabled: false
   field: PA0008.EIN40
   check_class: referential_check
@@ -1467,13 +1468,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read EIN40 resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read EIN40 resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.EIN40 '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0008.EIN40 points at a T538A.ZEINH entry that does not exist.
-- id: DXR01142
+    __other__: PA0008.EIN40 '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.EIN40 points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02384
   enabled: false
   field: PA0008.ANCUR
   check_class: referential_check
@@ -1484,13 +1485,13 @@ rules:
     on domain WAERS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ANCUR resolve it through TCURC.WAERS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ANCUR resolve it through check table TCURC.WAERS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0008.ANCUR '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to
-      TCURC.WAERS.
-  record_fix_template: PA0008.ANCUR points at a TCURC.WAERS entry that does not exist.
-- id: DXV00484
+    __other__: PA0008.ANCUR '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0008.ANCUR points at a check table TCURC.WAERS entry that does not exist.
+- id: DXV00950
   enabled: false
   field: PA0008.CPIND
   check_class: domain_value_check
@@ -1509,7 +1510,7 @@ rules:
   fix_map:
     __other__: 'PA0008.CPIND ''{invalid_value}'' is not in domain P_CPIND. Set it to one of: D, S, T.'
   record_fix_template: 'PA0008.CPIND is {actual_value}; expected one of: D, S, T.'
-- id: DXR01143
+- id: DXR02385
   enabled: false
   field: PA0014.PREAS
   check_class: referential_check
@@ -1520,13 +1521,13 @@ rules:
     on domain PREAS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PREAS resolve it through T530E.PREAS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PREAS resolve it through check table T530E.PREAS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0014.PREAS '{invalid_value}' is not defined in T530E.PREAS. Correct it there or add the missing entry to
-      T530E.PREAS.
-  record_fix_template: PA0014.PREAS points at a T530E.PREAS entry that does not exist.
-- id: DXR01144
+    __other__: PA0014.PREAS '{invalid_value}' is not defined in the check table T530E.PREAS. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0014.PREAS points at a check table T530E.PREAS entry that does not exist.
+- id: DXR02386
   enabled: false
   field: PA0014.ZEINH
   check_class: referential_check
@@ -1537,13 +1538,13 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZEINH resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ZEINH resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0014.ZEINH '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0014.ZEINH points at a T538A.ZEINH entry that does not exist.
-- id: DXR01145
+    __other__: PA0014.ZEINH '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0014.ZEINH points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02387
   enabled: false
   field: PA0014.ZEINZ
   check_class: referential_check
@@ -1554,13 +1555,13 @@ rules:
     on domain RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZEINZ resolve it through T538C.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ZEINZ resolve it through check table T538C.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0014.ZEINZ '{invalid_value}' is not defined in T538C.ZEINH. Correct it there or add the missing entry to
-      T538C.ZEINH.
-  record_fix_template: PA0014.ZEINZ points at a T538C.ZEINH entry that does not exist.
-- id: DXR01146
+    __other__: PA0014.ZEINZ '{invalid_value}' is not defined in the check table T538C.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0014.ZEINZ points at a check table T538C.ZEINH entry that does not exist.
+- id: DXR02388
   enabled: false
   field: PA0014.MODEL
   check_class: referential_check
@@ -1571,13 +1572,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read MODEL resolve it through T549W.MODEL; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read MODEL resolve it through check table T549W.MODEL; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0014.MODEL '{invalid_value}' is not defined in T549W.MODEL. Correct it there or add the missing entry to
-      T549W.MODEL.
-  record_fix_template: PA0014.MODEL points at a T549W.MODEL entry that does not exist.
-- id: DXR01147
+    __other__: PA0014.MODEL '{invalid_value}' is not defined in the check table T549W.MODEL. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0014.MODEL points at a check table T549W.MODEL entry that does not exist.
+- id: DXR02389
   enabled: false
   field: PA0015.PREAS
   check_class: referential_check
@@ -1588,13 +1589,13 @@ rules:
     on domain PREAS. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PREAS resolve it through T530E.PREAS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PREAS resolve it through check table T530E.PREAS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0015.PREAS '{invalid_value}' is not defined in T530E.PREAS. Correct it there or add the missing entry to
-      T530E.PREAS.
-  record_fix_template: PA0015.PREAS points at a T530E.PREAS entry that does not exist.
-- id: DXR01148
+    __other__: PA0015.PREAS '{invalid_value}' is not defined in the check table T530E.PREAS. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0015.PREAS points at a check table T530E.PREAS entry that does not exist.
+- id: DXR02390
   enabled: false
   field: PA0015.ZEINH
   check_class: referential_check
@@ -1605,13 +1606,47 @@ rules:
     RPMSH. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read ZEINH resolve it through T538A.ZEINH; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read ZEINH resolve it through check table T538A.ZEINH; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: PA0015.ZEINH '{invalid_value}' is not defined in T538A.ZEINH. Correct it there or add the missing entry to
-      T538A.ZEINH.
-  record_fix_template: PA0015.ZEINH points at a T538A.ZEINH entry that does not exist.
-- id: DXR01149
+    __other__: PA0015.ZEINH '{invalid_value}' is not defined in the check table T538A.ZEINH. Correct it there or add the missing
+      entry.
+  record_fix_template: PA0015.ZEINH points at a check table T538A.ZEINH entry that does not exist.
+- id: DXR02391
+  enabled: false
+  field: PERINFO.COUNTRY_OF_BIRTH
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Country of birth must exist in the check table Country.externalCode
+  why_it_matters: COUNTRY_OF_BIRTH (Country of birth) is defined in the SAP Data Dictionary with check table Country.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read COUNTRY_OF_BIRTH resolve it through check table Country.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.COUNTRY_OF_BIRTH '{invalid_value}' is not defined in the check table Country.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: PERINFO.COUNTRY_OF_BIRTH points at a check table Country.externalCode entry that does not exist.
+- id: DXR02392
+  enabled: false
+  field: PERINFO.SECOND_NATIONALITY
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Second nationality must exist in the check table Country.externalCode
+  why_it_matters: SECOND_NATIONALITY (Second nationality) is defined in the SAP Data Dictionary with check table Country.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read SECOND_NATIONALITY resolve it through check table Country.externalCode; an unknown value
+    leaves the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: PERINFO.SECOND_NATIONALITY '{invalid_value}' is not defined in the check table Country.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: PERINFO.SECOND_NATIONALITY points at a check table Country.externalCode entry that does not exist.
+- id: DXR02393
   enabled: false
   field: T510F.WAERS
   check_class: referential_check
@@ -1622,12 +1657,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read WAERS resolve it through TCURC.WAERS; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read WAERS resolve it through check table TCURC.WAERS; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T510F.WAERS '{invalid_value}' is not defined in TCURC.WAERS. Correct it there or add the missing entry to TCURC.WAERS.
-  record_fix_template: T510F.WAERS points at a TCURC.WAERS entry that does not exist.
-- id: DXR01150
+    __other__: T510F.WAERS '{invalid_value}' is not defined in the check table TCURC.WAERS. Correct it there or add the missing
+      entry.
+  record_fix_template: T510F.WAERS points at a check table TCURC.WAERS entry that does not exist.
+- id: DXR02394
   enabled: false
   field: T512W.GVALA
   check_class: referential_check
@@ -1638,12 +1674,13 @@ rules:
     LGART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read GVALA resolve it through T512W.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read GVALA resolve it through check table T512W.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T512W.GVALA '{invalid_value}' is not defined in T512W.LGART. Correct it there or add the missing entry to T512W.LGART.
-  record_fix_template: T512W.GVALA points at a T512W.LGART entry that does not exist.
-- id: DXR01151
+    __other__: T512W.GVALA '{invalid_value}' is not defined in the check table T512W.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: T512W.GVALA points at a check table T512W.LGART entry that does not exist.
+- id: DXR02395
   enabled: false
   field: T512W.PZALA
   check_class: referential_check
@@ -1654,12 +1691,13 @@ rules:
     LGART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PZALA resolve it through T512W.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PZALA resolve it through check table T512W.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T512W.PZALA '{invalid_value}' is not defined in T512W.LGART. Correct it there or add the missing entry to T512W.LGART.
-  record_fix_template: T512W.PZALA points at a T512W.LGART entry that does not exist.
-- id: DXR01152
+    __other__: T512W.PZALA '{invalid_value}' is not defined in the check table T512W.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: T512W.PZALA points at a check table T512W.LGART entry that does not exist.
+- id: DXR02396
   enabled: false
   field: T512W.FZALA
   check_class: referential_check
@@ -1670,12 +1708,13 @@ rules:
     LGART. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
     it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read FZALA resolve it through T512W.LGART; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read FZALA resolve it through check table T512W.LGART; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T512W.FZALA '{invalid_value}' is not defined in T512W.LGART. Correct it there or add the missing entry to T512W.LGART.
-  record_fix_template: T512W.FZALA points at a T512W.LGART entry that does not exist.
-- id: DXR01153
+    __other__: T512W.FZALA '{invalid_value}' is not defined in the check table T512W.LGART. Correct it there or add the missing
+      entry.
+  record_fix_template: T512W.FZALA points at a check table T512W.LGART entry that does not exist.
+- id: DXR02397
   enabled: false
   field: T549A.PERMO
   check_class: referential_check
@@ -1686,12 +1725,13 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read PERMO resolve it through T549R.PERMO; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read PERMO resolve it through check table T549R.PERMO; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T549A.PERMO '{invalid_value}' is not defined in T549R.PERMO. Correct it there or add the missing entry to T549R.PERMO.
-  record_fix_template: T549A.PERMO points at a T549R.PERMO entry that does not exist.
-- id: DXR01154
+    __other__: T549A.PERMO '{invalid_value}' is not defined in the check table T549R.PERMO. Correct it there or add the missing
+      entry.
+  record_fix_template: T549A.PERMO points at a check table T549R.PERMO entry that does not exist.
+- id: DXR02398
   enabled: false
   field: T549A.DATMO
   check_class: referential_check
@@ -1702,8 +1742,9 @@ rules:
     A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration it depends
     on.
   rule_authority: sap_hard_constraint
-  sap_impact: Processes that read DATMO resolve it through T549L.DATMO; an unknown value leaves the record unclassified and
-    can block posting, pricing or reporting.
+  sap_impact: Processes that read DATMO resolve it through check table T549L.DATMO; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: T549A.DATMO '{invalid_value}' is not defined in T549L.DATMO. Correct it there or add the missing entry to T549L.DATMO.
-  record_fix_template: T549A.DATMO points at a T549L.DATMO entry that does not exist.
+    __other__: T549A.DATMO '{invalid_value}' is not defined in the check table T549L.DATMO. Correct it there or add the missing
+      entry.
+  record_fix_template: T549A.DATMO points at a check table T549L.DATMO entry that does not exist.

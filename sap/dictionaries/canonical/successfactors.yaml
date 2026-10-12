@@ -39,7 +39,7 @@ tables:
       STATUS:          {source: EmpJob.emplStatus, type: STRING, length: 128, picklist: employee-status, description: Employee status}
       JOB_START_DATE:  {source: EmpJob.startDate, type: DATE, verify: true, description: Effective start date of the current job record}
       SEQ_NUMBER:      {source: EmpJob.seqNumber, type: INTEGER, verify: true, description: Sequence of job records on the same start date}
-      EVENT:           {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event, description: Job event (hire, transfer, termination, ...)}
+      EVENT:           {source: EmpJob.event, type: STRING, length: 128, verify: true, picklist: event, description: 'Job event (hire, transfer, termination, ...)'}
       BUSINESS_UNIT:   {source: EmpJob.businessUnit, type: STRING, length: 128, verify: true, check_table: FOBusinessUnit, description: Business unit}
       FTE:             {source: EmpJob.fte, type: DECIMAL, verify: true, description: Full-time equivalent}
       STANDARD_HOURS:  {source: EmpJob.standardHours, type: DECIMAL, verify: true, description: Standard weekly hours}
@@ -67,7 +67,7 @@ tables:
       # isPrimary is not a documented standard EmpEmployment property; kept only because 13 append-only rules
       # reference EMPEMPLOYMENT.IS_PRIMARY. The connector reports it unavailable on tenants without it.
       IS_PRIMARY:      {source: EmpEmployment.isPrimary, type: BOOLEAN, verify: true, description: Primary employment (concurrent employment); not in the standard property list}
-      ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: ST standard, GA global assignment, PH higher duty, ...}
+      ASSIGNMENT_CLASS: {source: EmpEmployment.assignmentClass, type: STRING, length: 128, verify: true, description: 'ST standard, GA global assignment, PH higher duty, ...'}
       PAY_GRADE:       {source: EmpJob.payGrade, type: STRING, length: 128, verify: true, check_table: FOPayGrade, description: Pay grade}
       WORK_SCHEDULE:   {source: EmpJob.workScheduleCode, type: STRING, length: 128, verify: true, description: Work schedule code}
       HOLIDAY_CALENDAR: {source: EmpJob.holidayCalendarCode, type: STRING, length: 128, verify: true, description: Holiday calendar code}
@@ -181,7 +181,7 @@ tables:
       PAY_COMPONENT_DEFAULT:   {source: FOPayComponent.payComponentValue, type: DECIMAL, verify: true, description: Default value of the pay component}
       ANNUALIZATION_FACTOR:    {source: FOFrequency.annualizationFactor, type: DECIMAL, verify: true, description: Periods per year of the pay component frequency}
       ANNUAL_SALARY:       {source: EmpCompensationCalculatedNavigation.yearlyBaseSalary, type: DECIMAL, verify: true, description: Calculated annual base salary}
-      RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: Calculated position in the pay range (0 at minimum, 1 at maximum)}
+      RANGE_PENETRATION:   {source: EmpCompensationCalculatedNavigation.rangePenetration, type: DECIMAL, verify: true, description: 'Calculated position in the pay range (0 at minimum, 1 at maximum)'}
 
   PAYCOMPNONREC:
     description: One-time pay components (EmpPayCompNonRecurring)
@@ -281,7 +281,7 @@ tables:
     fields:
       PERSON_ID:         {source: PerPersonRelationship.personIdExternal, type: STRING, length: 100}
       RELATED_PERSON_ID: {source: PerPersonRelationship.relatedPersonIdExternal, type: STRING, length: 100}
-      RELATIONSHIP_TYPE: {source: PerPersonRelationship.relationshipType, type: STRING, length: 128, verify: true, description: Picklist relation (spouse, child, ...)}
+      RELATIONSHIP_TYPE: {source: PerPersonRelationship.relationshipType, type: STRING, length: 128, verify: true, description: 'Picklist relation (spouse, child, ...)'}
       START_DATE:        {source: PerPersonRelationship.startDate, type: DATE}
       END_DATE:          {source: PerPersonRelationship.endDate, type: DATE}
       IS_BENEFICIARY:    {source: PerPersonRelationship.isBeneficiary, type: BOOLEAN, verify: true}
@@ -376,7 +376,7 @@ tables:
     fields:
       JOB_REQ_ID:     {source: JobRequisition.jobReqId, type: INTEGER}
       TITLE:          {source: JobRequisition.jobReqLocale.jobTitle, type: STRING, verify: true}
-      STATUS:         {source: JobRequisition.status.externalCode, type: STRING, verify: true, description: Requisition status (navigation property, picklist option code)}
+      STATUS:         {source: JobRequisition.status.externalCode, type: STRING, verify: true, description: 'Requisition status (navigation property, picklist option code)'}
       HIRING_MANAGER: {source: JobRequisition.hiringManager.userId, type: STRING, verify: true, description: Hiring manager user ID (navigation property)}
       RECRUITER:      {source: JobRequisition.recruiter.userId, type: STRING, verify: true, description: Recruiter user ID (navigation property)}
       OPEN_DATE:      {source: JobRequisition.createdDateTime, type: DATETIME}
@@ -725,7 +725,7 @@ tables:
     keys: [USERID, RELATIONSHIP_TYPE, START_DATE]
     fields:
       USERID:            {source: EmpJobRelationships.userId, type: STRING, length: 100, verify: true, description: User ID of the employee}
-      RELATIONSHIP_TYPE: {source: EmpJobRelationships.relationshipType, type: STRING, length: 128, verify: true, picklist: relationshipType, description: Type of relationship (e.g. matrix manager, HR partner)}
+      RELATIONSHIP_TYPE: {source: EmpJobRelationships.relationshipType, type: STRING, length: 128, verify: true, picklist: relationshipType, description: 'Type of relationship (e.g. matrix manager, HR partner)'}
       START_DATE:        {source: EmpJobRelationships.startDate, type: DATE, verify: true, description: Effective start date of the relationship}
       END_DATE:          {source: EmpJobRelationships.endDate, type: DATE, verify: true, description: Effective end date of the relationship}
       RELATED_USER_ID:   {source: EmpJobRelationships.relUserId, type: STRING, length: 100, verify: true, description: User ID of the related person}

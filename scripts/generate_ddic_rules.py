@@ -65,8 +65,16 @@ def pack_files(category: str):
             continue
         yield path
 
-# System types whose module names match the DQ module names, in precedence order.
-_REGISTRY_SYSTEMS = ("ecc", "s4hana_onprem", "ewms", "successfactors", "concur", "ariba")
+# Registry system type -> the rule category its modules live in. A module name is NOT
+# unique across systems: the ABAP registry and SuccessFactors both have a
+# ``payroll_integration`` module, so the system has to travel with the module name.
+_SYSTEM_CATEGORY = {
+    "ecc": "ecc", "s4hana_onprem": "ecc", "s4hana_cloud": "ecc",
+    "successfactors": "successfactors",
+    "ariba": "ariba",
+    "concur": "concur",
+    "ewms": "warehouse", "ewm": "warehouse",
+}
 
 # Personal / identifying data a fix instruction must never echo (mirrors
 # tests/checks/test_rule_integrity.py — refer to the field by name instead).
@@ -86,8 +94,14 @@ ID_PREFIX = {"checktab": "DXR", "domain": "DXV"}
 # ── scope ────────────────────────────────────────────────────────────────────
 
 
-def owned_tables() -> dict[str, str]:
-    """table -> owning module, from the rule packs then the extraction registry."""
+def owned_tables() -> dict[str, tuple[str, str]]:
+    """table -> ``(rule category, module)``: the rule packs first, then the registry.
+
+    The category travels with the module because module names are not unique across
+    systems. Without it, ABAP payroll rules (PA0008, T512W, ...) derived for the ECC
+    ``payroll_integration`` module were filed into the SuccessFactors pack of the same
+    name, where the SF extraction never supplies those tables.
+    """
     owners: dict[str, Counter] = defaultdict(Counter)
     for category in CATEGORIES:
         for path in pack_files(category):
@@ -95,13 +109,13 @@ def owned_tables() -> dict[str, str]:
             module = doc.get("module") or path.stem
             for rule in doc.get("rules") or []:
                 for ref in _columns(rule):
-                    owners[ref.split(".", 1)[0]][module] += 1
-    out = {t: c.most_common(1)[0][0] for t, c in owners.items()}
-    for system in _REGISTRY_SYSTEMS:
+                    owners[ref.split(".", 1)[0]][(category, module)] += 1
+    out: dict[str, tuple[str, str]] = {t: c.most_common(1)[0][0] for t, c in owners.items()}
+    for system, category in _SYSTEM_CATEGORY.items():
         for module, targets in SYSTEM_EXTRACTIONS.get(system, {}).items():
             for target in targets:
                 table = str(target.source).split(".", 1)[0].upper()
-                out.setdefault(table, module)
+                out.setdefault(table, (category, module))
     return out
 
 
@@ -119,14 +133,18 @@ def _rule_fields(rule: dict) -> list[str]:
     return list(rule.get("fields") or [])
 
 
-def expose_tables() -> dict[str, str]:
-    """table -> owning module, with unowned tables inheriting from an FK neighbour."""
+def expose_tables() -> dict[str, tuple[str, str]]:
+    """table -> ``(category, module)``, unowned tables inheriting from an FK neighbour."""
     dictionary = get_dictionary("s4hana")
     owner = owned_tables()
 
-    # a real transparent table, not a canonical view or an S/4-retired one
+    # Every table the platform reads is in scope, except the S/4-retired ones. Canonical
+    # (non-ABAP) entities are included on purpose: SuccessFactors carries check_table and
+    # picklist metadata of its own, so the SF side derives from SF ground truth rather than
+    # being silently skipped. Entities with no such metadata (Ariba, Concur, fleet, XSYS)
+    # simply yield nothing — there is nothing to derive from.
     def eligible(table) -> bool:
-        return table.category != "VIEW" and not table.obsolete_in
+        return not table.obsolete_in
 
     edges: dict[str, set[str]] = defaultdict(set)
     for table in dictionary.tables.values():
@@ -174,13 +192,15 @@ def _sensitive(field: Field) -> bool:
 
 
 
-def derive(dictionary, exposed: dict[str, str], covered: dict[str, set[str]]) -> list[tuple[str, str, dict]]:
-    """Every missing rule as ``(module, kind, rule)``, ordered by (module, table, field, kind)."""
-    out: list[tuple[str, str, dict]] = []
+def derive(dictionary, exposed: dict[str, tuple[str, str]],
+           covered: dict[str, set[str]]) -> list[tuple[str, str, str, dict]]:
+    """Every missing rule as ``(category, module, kind, rule)``."""
+    out: list[tuple[str, str, str, dict]] = []
     for table_name in sorted(dictionary.tables):
-        module = exposed.get(table_name)
-        if module is None:
+        home = exposed.get(table_name)
+        if home is None:
             continue
+        category, module = home
         table = dictionary.tables[table_name]
         for field in table.fields.values():
             if field.name in CLIENT_FIELDS:
@@ -198,15 +218,16 @@ def derive(dictionary, exposed: dict[str, str], covered: dict[str, set[str]]) ->
 
             # Value validation: at most ONE rule per field, and none when a hand-written
             # rule already validates it. A check-table reference is preferred (it carries
-            # live configuration); otherwise a closed domain's fixed values are used.
+            # live configuration), then a picklist (also live, tenant-configured); only
+            # then a closed domain's static fixed values.
             if have & {"exists_check", "referential_check", "domain_value_check"}:
                 continue
-            if field.check_table and field.check_field:
-                out.append((module, "checktab", _checktab_rule(field, desc)))
+            if (field.check_table and field.check_field) or field.picklist:
+                out.append((category, module, "checktab", _checktab_rule(field, desc)))
                 continue
             values = sorted(v for v in (field.allowed_values() or set()) if str(v).strip())
             if values and len(values) > 1:
-                out.append((module, "domain", _domain_rule(field, desc, values)))
+                out.append((category, module, "domain", _domain_rule(field, desc, values)))
     return out
 
 
@@ -219,22 +240,37 @@ def _ph(field: Field, placeholder: str) -> str:
 
 
 def _checktab_rule(field: Field, desc: str) -> dict:
-    target = f"{field.check_table}.{field.check_field}"
-    why = (f"{field.name} ({desc}) is defined in the SAP Data Dictionary with check table {target} on "
-           f"domain {field.domain or 'n/a'}. A value outside that table is not a value SAP recognises, "
-           f"so the record is inconsistent with the configuration it depends on.")
+    """A referential rule from whichever reference the field declares.
+
+    ABAP fields name a DDIC check table; canonical (SuccessFactors) fields name either a
+    Foundation Object entity (``check_table``, resolved on ``externalCode``) or a picklist.
+    The runner resolves both to live configuration at run time.
+    """
+    if field.check_table and field.check_field:
+        target = f"{field.check_table}.{field.check_field}"
+        source = f"check table {target}"
+        fallback = (f"{field.name} ({desc}) is defined in the SAP Data Dictionary with check table {target} on "
+                    f"domain {field.domain or 'n/a'}. A value outside that table is not a value SAP recognises, "
+                    f"so the record is inconsistent with the configuration it depends on.")
+    else:
+        target = f"PICKLIST.{field.picklist}"
+        source = f"picklist {field.picklist}"
+        fallback = (f"{field.name} ({desc}) is a SuccessFactors picklist field (picklist {field.picklist}). Its "
+                    f"permitted values are tenant configuration, so a value outside the configured set is not one "
+                    f"the tenant's own system recognises.")
+    why = fallback
     return {
         "field": field.qualified, "check_class": "referential_check",
         "severity": "high" if not field.key else "critical",
         "dimension": "consistency",
-        "message": f"{desc} must exist in the check table {target}",
+        "message": f"{desc} must exist in the {source}",
         "why_it_matters": why,
         "rule_authority": "sap_hard_constraint",
-        "sap_impact": (f"Processes that read {field.name} resolve it through {target}; an unknown value "
+        "sap_impact": (f"Processes that read {field.name} resolve it through {source}; an unknown value "
                        f"leaves the record unclassified and can block posting, pricing or reporting."),
         "fix_map": {"__other__": f"{field.qualified}{_ph(field, chr(39) + '{invalid_value}' + chr(39))} "
-                                 f"is not defined in {target}. Correct it there or add the missing entry to {target}."},
-        "record_fix_template": f"{field.qualified} points at a {target} entry that does not exist.",
+                                 f"is not defined in the {source}. Correct it there or add the missing entry."},
+        "record_fix_template": f"{field.qualified} points at a {source} entry that does not exist.",
     }
 
 
@@ -288,38 +324,31 @@ def _target_state(module: str) -> str:
         return "ECC_AND_S4HANA"
 
 
-def build() -> dict[str, str]:
-    """module -> rendered sidecar text (only modules that have a hand-written pack)."""
+def build() -> dict[tuple[str, str], str]:
+    """(category, module) -> rendered sidecar, for modules that have a hand-written pack."""
     dictionary = get_dictionary("s4hana")
     exposed = expose_tables()
     covered = existing_coverage()
-    by_module: dict[str, list[tuple[str, dict]]] = defaultdict(list)
-    for module, kind, rule in derive(dictionary, exposed, covered):
-        by_module[module].append((kind, rule))
+    by_home: dict[tuple[str, str], list[tuple[str, dict]]] = defaultdict(list)
+    for category, module, kind, rule in derive(dictionary, exposed, covered):
+        by_home[(category, module)].append((kind, rule))
     # Rule ids are unique across the whole catalogue, not per module: the seeded tenant
     # rule table and the integrity gate both key on the bare id.
     counters: Counter = Counter()
-    out: dict[str, str] = {}
-    for module in sorted(by_module):
-        if _category_of(module) is None:
+    out: dict[tuple[str, str], str] = {}
+    for category, module in sorted(by_home):
+        if not (RULES_DIR / category / f"{module}.yaml").exists():
             continue  # a registry-only module (process_discovery, s4_load_sim): no pack to sit beside
         rules = []
-        for kind, rule in by_module[module]:
+        for kind, rule in by_home[(category, module)]:
             counters[kind] += 1
             # Derived rules ship disabled: they are mechanically sound (every one is
             # proven to fire on a failing record) but not yet consultant-validated
             # against real customer data, so they must not flag clean records by
             # default. A tenant/HQ explicitly enables them via the rules table.
             rules.append({"id": f"{ID_PREFIX[kind]}{counters[kind]:05d}", "enabled": False, **rule})
-        out[module] = render(module, rules, _target_state(module))
+        out[(category, module)] = render(module, rules, _target_state(module))
     return out
-
-
-def _category_of(module: str) -> str | None:
-    for category in CATEGORIES:
-        if (RULES_DIR / category / f"{module}.yaml").exists():
-            return category
-    return None
 
 
 def main() -> int:
@@ -334,10 +363,7 @@ def main() -> int:
 
     sidecars = build()
     written = stale = 0
-    for module, text in sidecars.items():
-        category = _category_of(module)
-        if category is None:
-            continue
+    for (category, module), text in sidecars.items():
         path = RULES_DIR / category / f"{module}.generated.yaml"
         current = path.read_text(encoding="utf-8") if path.exists() else None
         if current == text:
@@ -365,24 +391,38 @@ def _report() -> None:
     covered = existing_coverage()
     rules = derive(dictionary, exposed, covered)
     kinds = Counter({"checktab": 0, "domain": 0})
-    for _, kind, _rule in rules:
+    by_provenance: Counter = Counter()
+    by_category: Counter = Counter()
+    no_pack = 0
+    for category, module, kind, rule in rules:
         kinds[kind] += 1
+        by_category[category] += 1
+        if not (RULES_DIR / category / f"{module}.yaml").exists():
+            no_pack += 1
+        fld = dictionary.resolve(rule["field"])
+        by_provenance[(fld.provenance if fld else "?").split(":")[0]] += 1
     owner = owned_tables()
-    excluded_view = [t.name for t in dictionary.tables.values() if t.category == "VIEW"]
-    excluded_obsolete = [t.name for t in dictionary.tables.values() if t.obsolete_in]
-    unmapped = sorted(t for t in dictionary.tables
-                      if t not in exposed and t not in excluded_view and t not in excluded_obsolete)
-    print(f"DDIC tables                    : {len(dictionary.tables)}")
+    obsolete = [t.name for t in dictionary.tables.values() if t.obsolete_in]
+    unmapped = sorted(t for t in dictionary.tables if t not in exposed and t not in obsolete)
+    print(f"tables in the dictionary       : {len(dictionary.tables)}")
     print(f"tables in scope                : {len(exposed)}")
     print(f"  owned by a pack/registry     : {len([t for t in exposed if t in owner])}")
     print(f"  inherited via a foreign key  : {len([t for t in exposed if t not in owner])}")
-    print(f"excluded - canonical views     : {len(excluded_view)}")
-    print(f"excluded - S/4HANA-obsolete    : {len(excluded_obsolete)}")
+    print(f"excluded - S/4HANA-obsolete    : {len(obsolete)}")
     print(f"excluded - no module home      : {len(unmapped)}")
+    print(f"derived but no pack to hold it : {no_pack}")
     print()
     for kind, n in kinds.most_common():
         print(f"  {kind:20s} {n:6d}")
     print(f"  {'TOTAL':20s} {sum(kinds.values()):6d}")
+    print()
+    print("derived rules by field provenance:")
+    for prov, n in by_provenance.most_common():
+        print(f"  {prov:20s} {n:6d}")
+    print()
+    print("derived rules by target category:")
+    for cat, n in by_category.most_common():
+        print(f"  {cat:20s} {n:6d}")
 
 
 if __name__ == "__main__":

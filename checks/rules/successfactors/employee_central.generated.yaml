@@ -6,209 +6,217 @@ module: employee_central
 target_state: SUCCESSFACTORS
 generated: true
 rules:
-- id: DXV00152
+- id: DXR02288
   enabled: false
-  field: T582A.DATR1
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Reaction to: No delimitation must be a value of domain PAD_DATR1 (e.g. 1, 2, 6, 7)'
-  why_it_matters: 'Domain PAD_DATR1 fixes the permitted values of DATR1 (Reaction to: No delimitation) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs that consume
-    the field.'
+  field: EMPEMPLOYMENT.EVENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Job event (hire, transfer, termination, ...) must exist in the picklist event
+  why_it_matters: EVENT (Job event (hire, transfer, termination, ...)) is a SuccessFactors picklist field (picklist event).
+    Its permitted values are tenant configuration, so a value outside the configured set is not one the tenant's own system
+    recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: DATR1 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '6'
-  - '7'
+  sap_impact: Processes that read EVENT resolve it through picklist event; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.DATR1 ''{invalid_value}'' is not in domain PAD_DATR1. Set it to one of: 1, 2, 6, 7.'
-  record_fix_template: 'T582A.DATR1 is {actual_value}; expected one of: 1, 2, 6, 7.'
-- id: DXV00153
+    __other__: EMPEMPLOYMENT.EVENT '{invalid_value}' is not defined in the picklist event. Correct it there or add the missing
+      entry.
+  record_fix_template: EMPEMPLOYMENT.EVENT points at a picklist event entry that does not exist.
+- id: DXR02289
   enabled: false
-  field: T582A.DATR2
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: 'Reaction to: 1st date entered must be a value of domain PAD_DATR2 (e.g. 3, 4)'
-  why_it_matters: 'Domain PAD_DATR2 fixes the permitted values of DATR2 (Reaction to: 1st date entered) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP''s own domain definition and is read inconsistently by the programs that consume
-    the field.'
+  field: EMPEMPLOYMENT.REGULAR_TEMP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Regular or temporary must exist in the picklist regular-temp
+  why_it_matters: REGULAR_TEMP (Regular or temporary) is a SuccessFactors picklist field (picklist regular-temp). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: DATR2 will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '3'
-  - '4'
+  sap_impact: Processes that read REGULAR_TEMP resolve it through picklist regular-temp; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.DATR2 ''{invalid_value}'' is not in domain PAD_DATR2. Set it to one of: 3, 4.'
-  record_fix_template: 'T582A.DATR2 is {actual_value}; expected one of: 3, 4.'
-- id: DXV00154
+    __other__: EMPEMPLOYMENT.REGULAR_TEMP '{invalid_value}' is not defined in the picklist regular-temp. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.REGULAR_TEMP points at a picklist regular-temp entry that does not exist.
+- id: DXR02290
   enabled: false
-  field: T582A.EPAST
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Reaction to Entry in Payroll Past must be a value of domain EPAST (e.g. E, I, X)
-  why_it_matters: Domain EPAST fixes the permitted values of EPAST (Reaction to Entry in Payroll Past) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
+  field: EMPEMPLOYMENT.EMPLOYEE_CLASS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Employee class must exist in the picklist employee-class
+  why_it_matters: EMPLOYEE_CLASS (Employee class) is a SuccessFactors picklist field (picklist employee-class). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: EPAST will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - E
-  - I
-  - X
+  sap_impact: Processes that read EMPLOYEE_CLASS resolve it through picklist employee-class; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.EPAST ''{invalid_value}'' is not in domain EPAST. Set it to one of: E, I, X.'
-  record_fix_template: 'T582A.EPAST is {actual_value}; expected one of: E, I, X.'
-- id: DXV00155
+    __other__: EMPEMPLOYMENT.EMPLOYEE_CLASS '{invalid_value}' is not defined in the picklist employee-class. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.EMPLOYEE_CLASS points at a picklist employee-class entry that does not exist.
+- id: DXR02291
   enabled: false
-  field: T582A.SRTPS
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Sort sequence of records must be a value of domain SRTPS (e.g. 1, 2, 3)
-  why_it_matters: Domain SRTPS fixes the permitted values of SRTPS (Sort sequence of records) in the SAP Data Dictionary.
-    Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume
-    the field.
+  field: EMPEMPLOYMENT.CONTRACT_TYPE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Contract type must exist in the picklist contractType
+  why_it_matters: CONTRACT_TYPE (Contract type) is a SuccessFactors picklist field (picklist contractType). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: SRTPS will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '3'
+  sap_impact: Processes that read CONTRACT_TYPE resolve it through picklist contractType; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.SRTPS ''{invalid_value}'' is not in domain SRTPS. Set it to one of: 1, 2, 3.'
-  record_fix_template: 'T582A.SRTPS is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00156
+    __other__: EMPEMPLOYMENT.CONTRACT_TYPE '{invalid_value}' is not defined in the picklist contractType. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.CONTRACT_TYPE points at a picklist contractType entry that does not exist.
+- id: DXR02292
   enabled: false
-  field: T582A.ZEITB
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Time Constraint must be a value of domain ZEITB (e.g. 1, 2, 3, A, B, T, Z)
-  why_it_matters: Domain ZEITB fixes the permitted values of ZEITB (Time Constraint) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
+  field: EMPEMPLOYMENT.PAY_GROUP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay group must exist in the check table FOPayGroup.externalCode
+  why_it_matters: PAY_GROUP (Pay group) is defined in the SAP Data Dictionary with check table FOPayGroup.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: ZEITB will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '3'
-  - A
-  - B
-  - T
-  - Z
+  sap_impact: Processes that read PAY_GROUP resolve it through check table FOPayGroup.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.ZEITB ''{invalid_value}'' is not in domain ZEITB. Set it to one of: 1, 2, 3, A, B, T, Z.'
-  record_fix_template: 'T582A.ZEITB is {actual_value}; expected one of: 1, 2, 3, A, B, T, Z.'
-- id: DXV00157
+    __other__: EMPEMPLOYMENT.PAY_GROUP '{invalid_value}' is not defined in the check table FOPayGroup.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.PAY_GROUP points at a check table FOPayGroup.externalCode entry that does not exist.
+- id: DXR02293
   enabled: false
-  field: T582A.RUREC
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Retroactive accounting relevance for payroll must be a value of domain RUREC (e.g. R, T)
-  why_it_matters: Domain RUREC fixes the permitted values of RUREC (Retroactive accounting relevance for payroll) in the SAP
-    Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
+  field: EMPEMPLOYMENT.PAY_GRADE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay grade must exist in the check table FOPayGrade.externalCode
+  why_it_matters: PAY_GRADE (Pay grade) is defined in the SAP Data Dictionary with check table FOPayGrade.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: RUREC will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - R
-  - T
+  sap_impact: Processes that read PAY_GRADE resolve it through check table FOPayGrade.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.RUREC ''{invalid_value}'' is not in domain RUREC. Set it to one of: R, T.'
-  record_fix_template: 'T582A.RUREC is {actual_value}; expected one of: R, T.'
-- id: DXV00158
+    __other__: EMPEMPLOYMENT.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct
+      it there or add the missing entry.
+  record_fix_template: EMPEMPLOYMENT.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
+- id: DXR02294
   enabled: false
-  field: T582A.NOAP
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Reaction indicator for 'No organizational assignment' must be a value of domain NOAP (e.g. N, W)
-  why_it_matters: Domain NOAP fixes the permitted values of NOAP (Reaction indicator for 'No organizational assignment') in
-    the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by
-    the programs that consume the field.
+  field: EMPJOBHIST.STATUS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: STATUS must exist in the picklist employee-status
+  why_it_matters: STATUS (STATUS) is a SuccessFactors picklist field (picklist employee-status). Its permitted values are
+    tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: NOAP will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - N
-  - W
+  sap_impact: Processes that read STATUS resolve it through picklist employee-status; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.NOAP ''{invalid_value}'' is not in domain NOAP. Set it to one of: N, W.'
-  record_fix_template: 'T582A.NOAP is {actual_value}; expected one of: N, W.'
-- id: DXV00159
+    __other__: EMPJOBHIST.STATUS '{invalid_value}' is not defined in the picklist employee-status. Correct it there or add
+      the missing entry.
+  record_fix_template: EMPJOBHIST.STATUS points at a picklist employee-status entry that does not exist.
+- id: DXR02295
   enabled: false
-  field: T582A.DAVO
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Default start date must be a value of domain DAVO (e.g. 1, 2, 3)
-  why_it_matters: Domain DAVO fixes the permitted values of DAVO (Default start date) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
+  field: EMPJOBHIST.EMPLOYEE_CLASS
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: EMPLOYEE_CLASS must exist in the picklist employee-class
+  why_it_matters: EMPLOYEE_CLASS (EMPLOYEE_CLASS) is a SuccessFactors picklist field (picklist employee-class). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: DAVO will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '3'
+  sap_impact: Processes that read EMPLOYEE_CLASS resolve it through picklist employee-class; an unknown value leaves the record
+    unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.DAVO ''{invalid_value}'' is not in domain DAVO. Set it to one of: 1, 2, 3.'
-  record_fix_template: 'T582A.DAVO is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00160
+    __other__: EMPJOBHIST.EMPLOYEE_CLASS '{invalid_value}' is not defined in the picklist employee-class. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPJOBHIST.EMPLOYEE_CLASS points at a picklist employee-class entry that does not exist.
+- id: DXR02296
   enabled: false
-  field: T582A.DAVOE
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Default end date must be a value of domain DAVOE (e.g. 1, 2, 3)
-  why_it_matters: Domain DAVOE fixes the permitted values of DAVOE (Default end date) in the SAP Data Dictionary. Any other
-    non-blank value is outside SAP's own domain definition and is read inconsistently by the programs that consume the field.
+  field: EMPJOBHIST.EMPLOYMENT_TYPE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: EMPLOYMENT_TYPE must exist in the picklist employmentType
+  why_it_matters: EMPLOYMENT_TYPE (EMPLOYMENT_TYPE) is a SuccessFactors picklist field (picklist employmentType). Its permitted
+    values are tenant configuration, so a value outside the configured set is not one the tenant's own system recognises.
   rule_authority: sap_hard_constraint
-  sap_impact: DAVOE will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - '1'
-  - '2'
-  - '3'
+  sap_impact: Processes that read EMPLOYMENT_TYPE resolve it through picklist employmentType; an unknown value leaves the
+    record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.DAVOE ''{invalid_value}'' is not in domain DAVOE. Set it to one of: 1, 2, 3.'
-  record_fix_template: 'T582A.DAVOE is {actual_value}; expected one of: 1, 2, 3.'
-- id: DXV00161
+    __other__: EMPJOBHIST.EMPLOYMENT_TYPE '{invalid_value}' is not defined in the picklist employmentType. Correct it there
+      or add the missing entry.
+  record_fix_template: EMPJOBHIST.EMPLOYMENT_TYPE points at a picklist employmentType entry that does not exist.
+- id: DXR02297
   enabled: false
-  field: T582A.RURZE
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Retroactive acct. relevance for PDC time evaluation must be a value of domain RURZE (e.g. R, T)
-  why_it_matters: Domain RURZE fixes the permitted values of RURZE (Retroactive acct. relevance for PDC time evaluation) in
-    the SAP Data Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by
-    the programs that consume the field.
+  field: EMPJOBHIST.PAY_GRADE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: PAY_GRADE must exist in the check table FOPayGrade.externalCode
+  why_it_matters: PAY_GRADE (PAY_GRADE) is defined in the SAP Data Dictionary with check table FOPayGrade.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: RURZE will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - R
-  - T
+  sap_impact: Processes that read PAY_GRADE resolve it through check table FOPayGrade.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.RURZE ''{invalid_value}'' is not in domain RURZE. Set it to one of: R, T.'
-  record_fix_template: 'T582A.RURZE is {actual_value}; expected one of: R, T.'
-- id: DXV00162
+    __other__: EMPJOBHIST.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct it
+      there or add the missing entry.
+  record_fix_template: EMPJOBHIST.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
+- id: DXR02298
   enabled: false
-  field: T582A.NAUST
-  check_class: domain_value_check
-  severity: medium
-  dimension: validity
-  message: Maintenance permitted after leaving must be a value of domain PAD_NAUST (e.g. E, W)
-  why_it_matters: Domain PAD_NAUST fixes the permitted values of NAUST (Maintenance permitted after leaving) in the SAP Data
-    Dictionary. Any other non-blank value is outside SAP's own domain definition and is read inconsistently by the programs
-    that consume the field.
+  field: EMPJOBHIST.PAY_GROUP
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: PAY_GROUP must exist in the check table FOPayGroup.externalCode
+  why_it_matters: PAY_GROUP (PAY_GROUP) is defined in the SAP Data Dictionary with check table FOPayGroup.externalCode on
+    domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
   rule_authority: sap_hard_constraint
-  sap_impact: NAUST will not evaluate correctly wherever SAP branches on its value.
-  allowed_values:
-  - E
-  - W
+  sap_impact: Processes that read PAY_GROUP resolve it through check table FOPayGroup.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
   fix_map:
-    __other__: 'T582A.NAUST ''{invalid_value}'' is not in domain PAD_NAUST. Set it to one of: E, W.'
-  record_fix_template: 'T582A.NAUST is {actual_value}; expected one of: E, W.'
+    __other__: EMPJOBHIST.PAY_GROUP '{invalid_value}' is not defined in the check table FOPayGroup.externalCode. Correct it
+      there or add the missing entry.
+  record_fix_template: EMPJOBHIST.PAY_GROUP points at a check table FOPayGroup.externalCode entry that does not exist.
+- id: DXR02299
+  enabled: false
+  field: FOEVENTREASON.EVENT
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: EVENT must exist in the picklist event
+  why_it_matters: EVENT (EVENT) is a SuccessFactors picklist field (picklist event). Its permitted values are tenant configuration,
+    so a value outside the configured set is not one the tenant's own system recognises.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read EVENT resolve it through picklist event; an unknown value leaves the record unclassified
+    and can block posting, pricing or reporting.
+  fix_map:
+    __other__: FOEVENTREASON.EVENT '{invalid_value}' is not defined in the picklist event. Correct it there or add the missing
+      entry.
+  record_fix_template: FOEVENTREASON.EVENT points at a picklist event entry that does not exist.
+- id: DXR02300
+  enabled: false
+  field: POSITION.PAY_GRADE
+  check_class: referential_check
+  severity: high
+  dimension: consistency
+  message: Pay grade of the position must exist in the check table FOPayGrade.externalCode
+  why_it_matters: PAY_GRADE (Pay grade of the position) is defined in the SAP Data Dictionary with check table FOPayGrade.externalCode
+    on domain n/a. A value outside that table is not a value SAP recognises, so the record is inconsistent with the configuration
+    it depends on.
+  rule_authority: sap_hard_constraint
+  sap_impact: Processes that read PAY_GRADE resolve it through check table FOPayGrade.externalCode; an unknown value leaves
+    the record unclassified and can block posting, pricing or reporting.
+  fix_map:
+    __other__: POSITION.PAY_GRADE '{invalid_value}' is not defined in the check table FOPayGrade.externalCode. Correct it
+      there or add the missing entry.
+  record_fix_template: POSITION.PAY_GRADE points at a check table FOPayGrade.externalCode entry that does not exist.
