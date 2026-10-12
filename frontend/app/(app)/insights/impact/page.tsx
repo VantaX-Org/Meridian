@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pill, Skeleton, Stat, Waterfall } from "@/design";
+import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -15,6 +15,7 @@ import {
   type ProvenCostResponse,
   type ProvenCostRow,
 } from "@/lib/api/insights";
+import { domainOf } from "@/design/tokens";
 import { labelOf } from "@/lib/format";
 import { apiErrorMessage, isListFailure } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
@@ -182,10 +183,7 @@ export default function ImpactPage() {
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
   const currency = provenCostQuery.data?.currency;
   const totalAtRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
-  const waterfall = [
-    ...[...rows].sort((x, y) => y.value_at_risk - x.value_at_risk).map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk })),
-    { x: "Total", y: totalAtRisk, total: true },
-  ];
+  const byFeature = rows.map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
 
   const loading = impactQuery.isLoading || dayOne.status === "loading";
   const state: "loading" | undefined = loading ? "loading" : undefined;
@@ -216,7 +214,7 @@ export default function ImpactPage() {
     >
       {rows.length > 0 && (
         <Card title="Cost by feature">
-          <Waterfall data={waterfall} label="Value at risk by feature" />
+          <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} /></div>
         </Card>
       )}
       <Card title="Proven cost findings">

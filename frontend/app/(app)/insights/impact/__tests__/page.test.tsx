@@ -44,6 +44,7 @@ describe("ImpactPage", () => {
     expect(screen.getByText("Blocked")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getAllByText(/6[,. ]?300/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: /value at risk by feature/i })).toBeInTheDocument();
   });
 
   it("renders the proven-cost panel with headline stats, row and linked check", async () => {
