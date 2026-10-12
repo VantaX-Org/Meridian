@@ -36,6 +36,7 @@ export * from "./primitives/SeverityDot";
 export * from "./primitives/ScoreRing";
 export * from "./primitives/AiSummary";
 export * from "./primitives/ScoreExplainer";
+export * from "./primitives/DimensionBars";
 
 export * from "./table/DataTable";
 export * from "./table/columns";

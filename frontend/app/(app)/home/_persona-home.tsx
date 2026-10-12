@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-  buildDrillHref, Button, Card, DataTable, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
+  buildDrillHref, Button, Card, DataTable, DimensionBars, DomainChip, DrillLink, EmptyState, ExportMenu, HomePage, Mono, Pill, ScoreRing, Skeleton, Sparkline, Stat,
   type HeatmapCell, type PillTone,
 } from "@/design";
 import { getObjects, type ObjectSummary } from "@/lib/api/v1/objects";
@@ -36,8 +36,8 @@ import type { Finding, Version } from "@/types/api";
 const TABLE_ROWS = 8;
 
 // Chart bundles load after first paint; the skeleton has the chart's final height.
-const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={200} /> });
-const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * 32 + 32} /> });
+const Line = dynamic(() => import("@/design/charts/Line").then((m) => m.Line), { ssr: false, loading: () => <Skeleton height={160} /> });
+const Heatmap = dynamic(() => import("@/design/charts/Heatmap").then((m) => m.Heatmap), { ssr: false, loading: () => <Skeleton height={TABLE_ROWS * 28 + 32} /> });
 
 const READINESS_SEVERITY = { fail: "critical", warn: "medium", pass: "pass" } as const;
 
@@ -53,7 +53,7 @@ const runLabel = (v: Version) =>
   v.label ?? `${(v.metadata?.modules ?? []).map(formatModuleName).join(", ") || "Latest"}, ${formatDate(v.run_at, "date")}`;
 
 function WorkRow({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">{children}</div>;
+  return <div className="m-stat-grid">{children}</div>;
 }
 
 /** Failed or degraded: "unknown" means not tested yet, which is not a failure. */
@@ -183,26 +183,20 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
   ) : undefined;
 
   const dims = runDimensions(latest);
-  const dimSeries = (d: (typeof DIMENSIONS)[number]) =>
-    finished.slice().reverse().map((v) => runDimensions(v)?.[d]).filter((y): y is number => typeof y === "number");
   const dimensionStrip = (
-    <div className="m-motion-stagger flex snap-x gap-4 overflow-x-auto lg:grid lg:grid-cols-6 lg:overflow-visible" data-testid="home-dimensions">
-      {DIMENSIONS.map((d) => {
-        const score = dims?.[d] ?? null;
-        return (
-          <div key={d} className="min-w-36 flex-1 snap-start">
-            <Stat
-              label={formatModuleName(d)}
-              value={score === null ? "—" : score.toFixed(1)}
-              hint={score === null ? "Not measured" : undefined}
-              tone={score === null ? undefined : readinessOf(score, bands)}
-              spark={score === null ? undefined : dimSeries(d)}
-              href={score === null ? undefined : `/objects?run=${latest.id}&dimension=${d}`}
-            />
-          </div>
-        );
-      })}
-    </div>
+    <Card title="Dimensions" padding="sm">
+      <div data-testid="home-dimensions">
+        <DimensionBars
+          label="Dimension scores"
+          items={DIMENSIONS.map((d) => ({
+            key: d,
+            label: formatModuleName(d),
+            score: dims?.[d] ?? null,
+            href: dims?.[d] == null ? undefined : `/objects?run=${latest.id}&dimension=${d}`,
+          }))}
+        />
+      </div>
+    </Card>
   );
 
   const blockingByModule = new Map<string, Finding>();
@@ -238,7 +232,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
         : "—",
     },
     { accessorKey: "affected_records", header: "Affected", meta: { numeric: true }, cell: ({ row: { original: o } }) => o.affected_records.toLocaleString() },
-    { id: "trend", header: "Trend", enableSorting: false, cell: ({ row: { original: o } }) => <Sparkline data={o.trend} width={60} height={16} /> },
+    { id: "trend", header: "Trend", enableSorting: false, meta: { numeric: true }, cell: ({ row: { original: o } }) => <span className="flex justify-end"><Sparkline data={o.trend} width={60} height={16}/></span> },
   ];
 
   const objectsCard = role === "basis" ? undefined : (
@@ -262,28 +256,28 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
 
   const heatRows = scored.slice(0, TABLE_ROWS);
   const heatCells = dimensionHeatmapCells(heatRows, latest, bands);
-  const trendCards = (
-    <>
+  const trendCard = (
       <Card title="Score over runs">
         {trendPoints.length < 2 ? (
-          <div style={{ minHeight: 200 }}><EmptyState title="The trend starts with the second run" action={<Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button>} /></div>
+          <div style={{ minHeight: 160 }}><EmptyState title="The trend starts with the second run" action={<Button variant="secondary" render={<Link href="/systems" />}>Run extraction</Button>} /></div>
         ) : (
           <Line
             data={trendPoints}
             onPointClick={(point) => router.push(`/runs/${(point as unknown as { runId: string }).runId}`)}
-            height={200}
+            height={160}
             dqsThreshold={bands?.target}
             label="DQS over runs"
           />
         )}
       </Card>
-      {role !== "basis" && heatCells.length > 0 && (
+  );
+  const heatmapCard = role !== "basis" && heatCells.length > 0 ? (
         <Card title="Dimensions by object">
           <Heatmap
             rows={heatRows.map((o) => o.label)}
             cols={DIMENSIONS.map(formatModuleName)}
             cells={heatCells}
-            cellSize={32}
+            cellSize={28}
             onPointClick={(cell: HeatmapCell) => {
               const object = heatRows.find((o) => o.label === cell.row);
               const dimension = DIMENSIONS.find((d) => formatModuleName(d) === cell.col);
@@ -291,9 +285,7 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
             }}
           />
         </Card>
-      )}
-    </>
-  );
+  ) : undefined;
 
   const counts = shellCountsQ.data;
   const unhealthy = activeSystems.filter(isFailing).length;
@@ -343,7 +335,8 @@ export function PersonaHomePage({ role, lists = null }: { role: NarrativeInput["
       run={{ label: runLabel(latest), runAt: latest.run_at }}
       dimensions={dimensionStrip}
       objects={objectsCard}
-      trend={trendCards}
+      trend={trendCard}
+      heatmap={heatmapCard}
       work={work}
       lists={lists}
       headerActions={
