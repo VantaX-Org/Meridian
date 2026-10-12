@@ -65,7 +65,7 @@ describe("ObjectsPage", () => {
     vi.spyOn(configLoadApi, "getConfigLandscape").mockResolvedValue({ total: 0, loaded: 0, counts: {}, systems: [] });
     vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<ObjectsPage />);
-    await waitFor(() => expect(screen.getByText("No objects measured yet.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("No objects measured yet")).toBeInTheDocument());
     expect(screen.getByText("Objects appear after the first analysis.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect a system" })).toBeInTheDocument();
     currentSearch = "run=v1";
