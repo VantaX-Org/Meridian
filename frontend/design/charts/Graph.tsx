@@ -9,6 +9,8 @@ export interface GraphNode {
   label?: string;
   /** Owning domain: the node fills with `mColor.dom[domain]`. Default is the first viz hue. */
   domain?: DomainKey;
+  /** Cluster index: when set, the node fills from the ten-hue viz palette (index modulo 10) instead of its domain. */
+  cluster?: number;
   /** Start or end pseudo node: drawn as an `--m-ink-3` ring with no fill. */
   kind?: "start" | "end";
 }
@@ -242,7 +244,7 @@ export function Graph(props: {
         const n = node.get(p.id);
         const r = radius(p.id);
         const pseudo = n?.kind !== undefined;
-        const fill = pseudo ? "none" : p.id === masterId ? mColor.ink : n?.domain ? mColor.dom[n.domain] : mColor.viz[0];
+        const fill = pseudo ? "none" : p.id === masterId ? mColor.ink : n?.cluster !== undefined ? mColor.viz[((n.cluster % mColor.viz.length) + mColor.viz.length) % mColor.viz.length] : n?.domain ? mColor.dom[n.domain] : mColor.viz[0];
         const inside = Boolean(weighted) && !pseudo && r > 18;
         const bottleneck = bottleneckTargets.has(p.id);
         return (
@@ -250,6 +252,7 @@ export function Graph(props: {
             key={p.id}
             className="m-graph-node"
             data-domain={n?.domain}
+            data-cluster={n?.cluster}
             data-bottleneck={bottleneck || undefined}
             role={onNodeClick ? "button" : "img"}
             tabIndex={onNodeClick ? 0 : undefined}

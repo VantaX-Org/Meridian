@@ -136,10 +136,17 @@ const DOMAIN_PREFIXES: ReadonlyArray<readonly [string, DomainKey]> = [
   ["production", "plant"], ["quality", "plant"], ["ewms", "plant"], ["wm_", "plant"], ["fleet", "plant"], ["transport", "plant"],
 ];
 
+/** SAP module codes, matched exactly (a prefix match would catch unrelated words such as "position"). */
+const MODULE_CODES: Readonly<Record<string, DomainKey>> = {
+  mm: "material", sd: "customer", fi: "finance", co: "finance", hr: "people", hcm: "people", sf: "people",
+  pm: "asset", eam: "asset", pp: "plant", qm: "plant", wm: "plant", ewm: "plant",
+};
+
 /** Owning domain of a module id. Unmapped ids fall back to `other`. Pages never hard-code a domain. */
 export function domainOf(moduleId: string | null | undefined): DomainKey {
   if (!moduleId) return "other";
   const id = moduleId.toLowerCase().split(/[./:]/).pop() ?? "";
+  if (Object.hasOwn(MODULE_CODES, id)) return MODULE_CODES[id];
   for (const [prefix, key] of DOMAIN_PREFIXES) if (id.startsWith(prefix)) return key;
   return "other";
 }
