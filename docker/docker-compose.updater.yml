@@ -31,6 +31,15 @@ services:
     environment:
       UPDATER_SHARED_SECRET: ${UPDATER_SHARED_SECRET}
       MERIDIAN_INSTALL_DIR: /opt/meridian
+      # buildx records a builder's last-activity time under
+      # $DOCKER_CONFIG/buildx/activity on every build, so rebuilding the RFC
+      # overlay against a read-only DOCKER_CONFIG fails with
+      #   "failed to update builder last activity time: ... read-only file system"
+      # and update.sh aborts before it restarts anything. Point the CLI at a
+      # writable config dir holding a read-only copy of the host's login, so
+      # buildx has somewhere to write and the container still cannot modify the
+      # host's registry credentials.
+      DOCKER_CONFIG: /tmp/docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Host-absolute-path bind, matching the real install directory 1:1 —
@@ -41,8 +50,10 @@ services:
       - /opt/meridian:/opt/meridian
       # The host's registry login (install.sh runs `docker login ghcr.io` as
       # root). The CLI in this container reads credentials from its OWN home,
-      # not the host daemon — without this, "Update now" cannot pull.
-      - /root/.docker:/root/.docker:ro
+      # not the host daemon — without this, "Update now" cannot pull. Mounted
+      # as the single file under the writable DOCKER_CONFIG above: the whole
+      # /root/.docker cannot be, because buildx needs to write beside it.
+      - /root/.docker/config.json:/tmp/docker/config.json:ro
       # SAP NW RFC SDK, so update.sh can rebuild the RFC overlay after a pull.
       - ${SAPNWRFC_HOME:-/usr/local/sap/nwrfcsdk}:/usr/local/sap/nwrfcsdk:ro
     networks:
