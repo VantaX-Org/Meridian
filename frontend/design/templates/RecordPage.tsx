@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { Pill, type PillTone } from "../primitives/Pill";
 import { DomainChip } from "../primitives/DomainChip";
 import { Mono } from "../primitives/Mono";
-import { Skeleton } from "../primitives/Skeleton";
+import { Skeleton, StatSkeleton } from "../primitives/Skeleton";
+import { Stat, type StatProps } from "../primitives/Stat";
 import { PageFrame } from "./PageFrame";
 
 export interface RecordStatus {
@@ -12,12 +13,14 @@ export interface RecordStatus {
 }
 
 export function RecordPage({
-  recordKey, object, status, children, loading = false,
+  recordKey, object, status, children, stats, loading = false,
 }: {
   recordKey: string;
   object: string;
   status: RecordStatus;
   children: ReactNode;
+  /** Stat row under the header (rule failures, dimensions failing, fields failing, batches, last changed, owner). */
+  stats?: Pick<StatProps, "label" | "value" | "hint" | "tone">[];
   /** Header 32 + body 120 skeletons (screens.md 3.3) while the record loads. */
   loading?: boolean;
 }) {
@@ -25,6 +28,7 @@ export function RecordPage({
     return (
       <PageFrame gap={4} className="m-motion-stagger" data-state="loading">
         <Skeleton height={32} />
+        <div className="m-stat-grid">{[0, 1, 2, 3, 4, 5].map((i) => <StatSkeleton key={i} />)}</div>
         <Skeleton height={120} />
       </PageFrame>
     );
@@ -39,6 +43,7 @@ export function RecordPage({
         <DomainChip moduleId={object} />
         <Pill tone={status.tone}>{status.label}</Pill>
       </header>
+      {stats && stats.length > 0 && <div className="m-stat-grid">{stats.map((x) => <Stat key={x.label} {...x} />)}</div>}
       {children}
     </PageFrame>
   );

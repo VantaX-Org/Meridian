@@ -589,7 +589,7 @@ export default function RunDetailPage() {
             ),
           },
           { value: "config", label: "Configuration", content: <ConfigMatchesTab versionId={versionId} /> },
-          ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history", "export"] }),
+          ...entityTabs({ entityType: "versions", entityId: versionId, skip: ["overview", "related", "history"] }),
         ]}
       />
       </div>

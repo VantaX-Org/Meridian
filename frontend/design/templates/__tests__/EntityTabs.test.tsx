@@ -16,15 +16,10 @@ function wrap(ui: React.ReactElement) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("entityTabs", () => {
-  it("returns related, history, audit, export and honours skip", () => {
+  it("returns related, history and audit and honours skip", () => {
     const all = entityTabs({ entityType: "rules", entityId: "1" }).map((t) => t.value);
-    expect(all).toEqual(["related", "history", "audit", "export"]);
+    expect(all).toEqual(["related", "history", "audit"]);
     expect(entityTabs({ entityType: "rules", entityId: "1", skip: ["history"] }).map((t) => t.value)).not.toContain("history");
-  });
-
-  it("leaves out the Export tab when canExport is false", () => {
-    const v = entityTabs({ entityType: "rules", entityId: "1", canExport: false }).map((t) => t.value);
-    expect(v).toEqual(["related", "history", "audit"]);
   });
 });
 
@@ -64,11 +59,14 @@ describe("EntityTabs", () => {
     await waitFor(() => expect(getAuditEntries).toHaveBeenCalledWith({ path_contains: `/migration/waves/${id}`, limit: 100 }));
   });
 
-  it("export tab renders the options it is given instead of the empty state", async () => {
-    wrap(<EntityTabs entityType="rules" entityId="42" overview={<p>o</p>} exportOptions={[{ format: "xlsx", run: async () => {} }]} />);
-    await userEvent.click(screen.getByRole("tab", { name: "Export" }));
-    expect(screen.queryByText("Nothing to export here")).not.toBeInTheDocument();
+  it("renders the export menu above the tabs, not as a tab, and hides it without the export grant", () => {
+    const opts = [{ format: "xlsx" as const, run: async () => {} }];
+    const { unmount } = wrap(<EntityTabs entityType="rules" entityId="42" overview={<p>o</p>} exportOptions={opts} />);
+    expect(screen.queryByRole("tab", { name: "Export" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
+    unmount();
+    wrap(<EntityTabs entityType="rules" entityId="42" overview={<p>o</p>} exportOptions={opts} canExport={false} />);
+    expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
   });
 
   it("audit tab shows a restricted state on 403", async () => {
