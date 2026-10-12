@@ -203,11 +203,12 @@ export default function SystemsPage() {
       }
       summary={
         <div className="flex flex-wrap items-center gap-6">
-          {!isLoading && systems.length > 0 ? (
+          {isLoading || systems.length > 0 ? (
             <Stat
               label="Unhealthy"
-              value={`${unhealthy} of ${active.length}`}
-              tone={unhealthy === 0 ? "go" : active.some((s) => s.health_status !== "healthy" && s.health_status !== "degraded" && s.health_status !== "unknown") ? "no-go" : "at-risk"}
+              loading={isLoading}
+              value={isLoading ? "" : `${unhealthy} of ${active.length}`}
+              tone={isLoading ? undefined : unhealthy === 0 ? "go" : active.some((s) => s.health_status !== "healthy" && s.health_status !== "degraded" && s.health_status !== "unknown") ? "no-go" : "at-risk"}
               href="?health=unhealthy"
             />
           ) : null}

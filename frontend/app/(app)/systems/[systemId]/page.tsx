@@ -129,6 +129,18 @@ export default function SystemPage() {
     qc.invalidateQueries({ queryKey: queryKeys.design(systemId) });
   };
 
+  const test = useMutation({
+    mutationFn: () => testConnection(systemId),
+    onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); refresh(); },
+    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
+  });
+  const testLabel = test.isPending
+    ? "Testing"
+    : test.isError || (test.data && test.data.status !== "healthy")
+      ? "Test failed, retry"
+      : test.data
+        ? "Connection tested"
+        : "Test connection";
   const analyse = useMutation({
     mutationFn: () => analyseVersion((latest ?? versions[0])!.id),
     onSuccess: () => { toast.success("Analysis started"); refresh(); },
@@ -163,6 +175,8 @@ export default function SystemPage() {
         meta={[labelOf(system.system_type), system.environment, system.host].filter(Boolean).join(", ")}
         actions={
         <>
+          {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
+          {can("trigger_sync") ? <Button variant="secondary" disabled={test.isPending} onClick={() => test.mutate()}>{testLabel}</Button> : null}
           <GatedPrimary kind="extract" allowed={can("trigger_sync")} systemId={systemId} scopeLabel={system.name}
             onClick={() => setExtractOpen(true)}>
             Extract
@@ -179,7 +193,6 @@ export default function SystemPage() {
                 : [{ format: "xlsx", label: "Runs (.xlsx)", run: () => exportRuns("xlsx", { system_id: systemId }) }]
             }
           />
-          {can("manage_systems") ? <Button variant="secondary" onClick={() => setEditOpen(true)}>Edit</Button> : null}
         </>
         }
       />
@@ -242,7 +255,7 @@ export default function SystemPage() {
             value: "health",
             label: "Health",
             content: (
-              <Health id={systemId} system={system} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} />
+              <Health id={systemId} system={system} canSync={can("trigger_sync")} canManage={can("manage_systems")} onChanged={refresh} test={test} testLabel={testLabel} />
             ),
           },
           { value: "config", label: "Configuration", content: <ConfigurationTab systemId={systemId} canPropose={can("trigger_sync")} /> },
@@ -451,12 +464,14 @@ function Runs({ systemId, versions, loading, canSync }: { systemId: string; vers
 
 /* ── Health ────────────────────────────────────────────────────────────── */
 
-function Health({ id, system, canSync, canManage, onChanged }: {
+function Health({ id, system, canSync, canManage, onChanged, test, testLabel }: {
   id: string;
   system: { health_status: keyof typeof HEALTH_LABEL; health_message: string | null; last_health_check: string | null; discovery_status?: string | null; system_type: SystemType };
   canSync: boolean;
   canManage: boolean;
   onChanged: () => void;
+  test: { isPending: boolean; mutate: () => void };
+  testLabel: string;
 }) {
   const designQ = useQuery({
     queryKey: queryKeys.design(id),
@@ -468,18 +483,6 @@ function Health({ id, system, canSync, canManage, onChanged }: {
   const running = ["queued", "running"].includes(design?.discovery_status ?? "");
   const [part, setPart] = useUrlState("part", "tables");
 
-  const test = useMutation({
-    mutationFn: () => testConnection(id),
-    onSuccess: (r) => { toast.success(`Connection ${r.status}, ${r.latency_ms} ms`); onChanged(); },
-    onError: (e) => toast.error((e as Error).message || "Connection test failed"),
-  });
-  const testLabel = test.isPending
-    ? "Testing"
-    : test.isError || (test.data && test.data.status !== "healthy")
-      ? "Test failed, retry"
-      : test.data
-        ? "Connection tested"
-        : "Test connection";
   const cfg = useConfigLoad(id);
   const discover = useMutation({
     mutationFn: () => discoverSystem(id),
@@ -617,10 +620,10 @@ function EditForm({ system, targets, onDone, onDeleted }: {
           onChange={(e) => setDescription(e.target.value)}
         />
       </Field>
-      <div className="flex items-center gap-2 m-text-body">
+      <label className="flex items-center gap-2 m-text-body">
         <Checkbox aria-label="Active" checked={active} onChange={(e) => setActive(e.target.checked)} />
-        <span aria-hidden>Active</span>
-      </div>
+        Active
+      </label>
       <div className="flex gap-2">
         <Button type="submit" disabled={!name.trim() || save.isPending}>Save</Button>
         {!confirming ? <Button type="button" variant="secondary" onClick={() => setConfirming(true)}>Delete</Button> : null}

@@ -99,10 +99,10 @@ export function ScopePicker({ id, onDownloaded }: { id: string; onDownloaded: (j
               <p className={note} style={noteStyle}>
                 Organisational filters restrict every table that carries the field. General data without it is read in full so no record loses its context.
               </p>
-              <div className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
+              <label className="flex items-center gap-2 m-text-body" style={{ color: "var(--m-ink)" }}>
                 <Checkbox aria-label="Skip records flagged for deletion" checked={excludeDeleted} onChange={(e) => setExcludeDeleted(e.target.checked)} />
-                <span aria-hidden>Skip records flagged for deletion</span>
-              </div>
+                Skip records flagged for deletion
+              </label>
               <p className={note} style={noteStyle}>
                 Faster reads. Leave off for a full quality score, because inactive data is itself a finding.
               </p>

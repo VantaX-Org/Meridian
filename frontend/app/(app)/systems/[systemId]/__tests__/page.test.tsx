@@ -56,6 +56,27 @@ describe("system detail page", () => {
     await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
   });
 
+  it("header Test connection runs the shared mutation", async () => {
+    mockHappyPath();
+    const spy = vi.spyOn(connectivityApi, "testConnection").mockResolvedValue({ status: "healthy", latency_ms: 12 } as never);
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith("s1"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Connection tested" })).toBeInTheDocument());
+  });
+
+  it("clicking the Active text in the edit form toggles the box", async () => {
+    mockHappyPath();
+    renderWithQuery(<SystemPage />);
+    await waitFor(() => expect(screen.getByText("ECC Prod")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const box = await screen.findByRole("checkbox", { name: "Active" });
+    expect(box).toBeChecked();
+    fireEvent.click(screen.getAllByText("Active").find((n) => n.tagName === "LABEL")!);
+    expect(box).not.toBeChecked();
+  });
+
   it("shows the system role in the header", async () => {
     mockHappyPath();
     renderWithQuery(<SystemPage />);

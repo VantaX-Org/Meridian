@@ -39,6 +39,23 @@ describe("TrendPanel", () => {
     await waitFor(() => expect(screen.getByText("No analysed run yet")).toBeInTheDocument());
   });
 
+  it("zero runs offers to run an analysis", async () => {
+    vi.spyOn(systemObjectsApi, "getTrends").mockResolvedValue({ summary: [], series: {} });
+    renderWithQuery(<TrendPanel systemId="s1" />);
+    await waitFor(() => expect(screen.getByText("No analysed run yet")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Run analysis" })).toBeInTheDocument();
+  });
+
+  it("one run offers to run a second analysis", async () => {
+    vi.spyOn(systemObjectsApi, "getTrends").mockResolvedValue({
+      summary: [{ ...SUMMARY, points: 1 }],
+      series: { accounts_payable: [point("2026-10-01T00:00:00Z", 80)] },
+    });
+    renderWithQuery(<TrendPanel systemId="s1" />);
+    await waitFor(() => expect(screen.getByText("Only one analysed run")).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: "Run a second analysis" })).toBeInTheDocument();
+  });
+
   it("shows a retryable error", async () => {
     const spy = vi.spyOn(systemObjectsApi, "getTrends").mockRejectedValue(new Error("network down"));
     renderWithQuery(<TrendPanel systemId="s1" />);
