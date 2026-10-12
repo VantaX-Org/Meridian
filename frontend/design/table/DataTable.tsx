@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import type { QueryKey } from "@tanstack/react-query";
 import { Popover } from "@base-ui/react/popover";
 import { Drawer } from "../primitives/Drawer";
 import { Button } from "../primitives/Button";
@@ -60,24 +61,39 @@ export interface DataTableProps<T> {
   drawerTitle?: ReactNode;
   /** Route to warm (router.prefetch) when a row is hovered or focused. */
   rowHref?: (row: T) => string | undefined;
+  /** Warms a row's route and first query on hover or focus. Supersedes `rowHref` when both are given. */
+  rowPrefetch?: (row: T) => RowPrefetch | undefined;
   /** Hide the views / columns / density / export toolbar. */
   hideToolbar?: boolean;
 }
 
-const ROW_H = 44;
-const ROW_H_DENSE = 36;
+export interface RowPrefetch {
+  href?: string;
+  queryKey?: QueryKey;
+  queryFn?: () => Promise<unknown>;
+}
+
+// Fallbacks when the --m-row-h tokens cannot be read (tests, SSR); tokens.css owns the real values.
+const ROW_H_FALLBACK = 44;
+const ROW_H_DENSE_FALLBACK = 36;
 const VIRTUALIZE_ABOVE = 200;
+
+function readPx(name: string, fallback: number): number {
+  if (typeof document === "undefined") return fallback;
+  const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
 const SELECT_COLUMN_ID = "__select";
 
-function PrefetchRow({ href, children, ...rest }: { href?: string } & React.ComponentProps<"tr">) {
-  const prefetch = usePrefetch(href);
-  return <tr {...rest} {...(href ? prefetch : {})}>{children}</tr>;
+function PrefetchRow({ prefetchInfo, children, ...rest }: { prefetchInfo?: RowPrefetch } & React.ComponentProps<"tr">) {
+  const prefetch = usePrefetch(prefetchInfo?.href, prefetchInfo?.queryKey, prefetchInfo?.queryFn);
+  return <tr {...rest} {...(prefetchInfo ? prefetch : {})}>{children}</tr>;
 }
 
 export function DataTable<T>({
   columns, data, getRowId, onRowClick, renderDrawer, bulkActions: bulkActionsProp, height = "calc(100vh - 240px)",
-  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = false,
-  tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref,
+  sorting: sortingProp, onSortingChange: onSortingChangeProp, dense: denseProp = true,
+  tableId, exportOptions = [], exportName = "export", hideToolbar = false, drawerTitle, rowHref, rowPrefetch,
 }: DataTableProps<T>) {
   "use no memo";
   // Ruling 4: no BulkBar (or selection column) for users who can change nothing, e.g. viewer and auditor.
@@ -100,7 +116,13 @@ export function DataTable<T>({
   const [globalFilter, setGlobalFilter] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [openRow, setOpenRow] = useState<T | null>(null);
-  const [activeIndex, setActiveIndex] = useState(-1);
+  // The active row is tracked by id so sorting, filtering and data refreshes cannot move it to another row.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [rowHeights, setRowHeights] = useState({ comfortable: ROW_H_FALLBACK, dense: ROW_H_DENSE_FALLBACK });
+  useEffect(() => {
+    setRowHeights({ comfortable: readPx("--m-row-h", ROW_H_FALLBACK), dense: readPx("--m-row-h-dense", ROW_H_DENSE_FALLBACK) });
+  }, []);
+  const rowH = dense ? rowHeights.dense : rowHeights.comfortable;
   const uid = useId();
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -109,8 +131,8 @@ export function DataTable<T>({
     header: ({ table }) => (
       <Checkbox
         aria-label="Select all rows"
-        checked={table.getIsAllRowsSelected()}
-        onChange={table.getToggleAllRowsSelectedHandler()}
+        checked={table.getIsAllPageRowsSelected()}
+        onChange={table.getToggleAllPageRowsSelectedHandler()}
       />
     ),
     cell: ({ row }) => (
@@ -148,11 +170,17 @@ export function DataTable<T>({
   const virtualizer = useVirtualizer({
     count: shouldVirtualize ? rowModel.length : 0,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (dense ? ROW_H_DENSE : ROW_H),
+    estimateSize: () => rowH,
+    // The sticky thead covers the top rowH pixels of the scroll area; keep scrolled-to rows below it.
+    scrollPaddingStart: rowH,
   });
 
   const virtualItems = shouldVirtualize ? virtualizer.getVirtualItems() : null;
   const visibleRows = virtualItems ? virtualItems.map((v) => rowModel[v.index]) : rowModel;
+  const padTop = virtualItems && virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const padBottom = virtualItems && virtualItems.length > 0 ? virtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end : 0;
+  const activeIndex = activeId === null ? -1 : rowModel.findIndex((r) => r.id === activeId);
+  const activeRendered = activeIndex >= 0 && (!virtualItems || virtualItems.some((v) => v.index === activeIndex));
   const firstTextColumnId = table.getAllLeafColumns().find((c) => c.id !== SELECT_COLUMN_ID && !(c.columnDef.meta as CellMeta | undefined)?.numeric)?.id;
   const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
 
@@ -189,19 +217,14 @@ export function DataTable<T>({
   };
   const moveTo = (i: number) => {
     const next = Math.max(0, Math.min(rowModel.length - 1, i));
-    setActiveIndex(next);
+    setActiveId(rowModel[next].id);
     if (shouldVirtualize) virtualizer.scrollToIndex(next);
   };
   const onGridKeyDown = (e: KeyboardEvent<HTMLTableElement>) => {
     if (e.target !== e.currentTarget) return;
     const last = rowModel.length - 1;
-    if (e.key === "Escape") {
-      table.resetRowSelection();
-      setOpenRow(null);
-      return;
-    }
     if (last < 0) return;
-    const cur = Math.min(activeIndex, last);
+    const cur = activeIndex;
     switch (e.key) {
       case "ArrowDown": e.preventDefault(); moveTo(cur < 0 ? 0 : cur + 1); break;
       case "ArrowUp": e.preventDefault(); moveTo(cur < 0 ? 0 : cur - 1); break;
@@ -213,10 +236,23 @@ export function DataTable<T>({
     }
   };
 
+  const prefetchFor = (row: T): RowPrefetch | undefined => {
+    if (rowPrefetch) return rowPrefetch(row);
+    const href = rowHref?.(row);
+    return href ? { href } : undefined;
+  };
+
+  // Escape works from any focus inside the table, including a row checkbox or a header sort button.
+  const onRegionKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    table.resetRowSelection();
+    setOpenRow(null);
+  };
+
   return (
     <div>
       {!hideToolbar && (
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]" role="toolbar" aria-label="Table options">
+        <div className="m-text-meta mb-2 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Table options">
           <Menu
             trigger={<button type="button" className="m-btn m-btn-secondary m-btn-sm">Columns</button>}
             items={dataColumns.map((c) => ({ label: colLabel(c), checked: c.getIsVisible(), onSelect: () => c.toggleVisibility() }))}
@@ -268,20 +304,21 @@ export function DataTable<T>({
           <Input placeholder="Type to filter rows" value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)} />
         </Field>
       </div>
-      <div className="m-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="m-card" style={{ padding: 0, overflow: "hidden" }} onKeyDown={onRegionKeyDown}>
       <div ref={parentRef} style={{ height, overflow: "auto" }}>
         <table
-          className="w-full text-[13px] leading-[18px]"
+          className="m-text-body w-full"
           style={{ color: "var(--m-ink)" }}
           role="grid"
           tabIndex={0}
           aria-label="Data table"
-          aria-activedescendant={activeIndex >= 0 && activeIndex < rowModel.length ? rowDomId(activeIndex) : undefined}
+          aria-rowcount={rowModel.length + 1}
+          aria-activedescendant={activeRendered ? rowDomId(activeIndex) : undefined}
           onKeyDown={onGridKeyDown}
         >
           <thead className="sticky top-0 z-[1]">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
+              <tr key={hg.id} aria-rowindex={1}>
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort();
                   const sorted = h.column.getIsSorted();
@@ -289,9 +326,9 @@ export function DataTable<T>({
                     <th
                       key={h.id}
                       aria-sort={sortable ? (sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none") : undefined}
-                      className={`px-2 text-[11px] leading-[14px] font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
+                      className={`m-text-label px-2 font-medium border-b ${(h.column.columnDef.meta as CellMeta | undefined)?.numeric ? "text-right" : "text-left"}`}
                       style={{
-                        height: dense ? ROW_H_DENSE : ROW_H, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
+                        height: rowH, background: "var(--m-sheet-raised)", borderColor: "var(--m-line-strong)",
                         color: sorted ? "var(--m-ink)" : "var(--m-ink-3)",
                       }}
                     >
@@ -313,7 +350,7 @@ export function DataTable<T>({
               </tr>
             ))}
           </thead>
-          <tbody style={shouldVirtualize ? { position: "relative", height: virtualizer.getTotalSize() } : undefined}>
+          <tbody>
             {rowModel.length === 0 && globalFilter && (
               <tr>
                 <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} className="px-2 py-6 text-center" style={{ color: "var(--m-ink-3)" }}>
@@ -322,12 +359,16 @@ export function DataTable<T>({
                 </td>
               </tr>
             )}
+            {padTop > 0 && (
+              <tr aria-hidden="true" style={{ height: padTop }}>
+                <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} style={{ padding: 0, border: 0 }} />
+              </tr>
+            )}
             {visibleRows.map((row, i) => {
-              const virtualRow = virtualItems?.[i];
-              const index = virtualRow ? virtualRow.index : i;
+              const index = virtualItems ? virtualItems[i].index : i;
               const activate = onRowClick || renderDrawer
                 ? () => {
-                    setActiveIndex(index);
+                    setActiveId(row.id);
                     onRowClick?.(row.original);
                     if (renderDrawer) setOpenRow(row.original);
                   }
@@ -336,16 +377,15 @@ export function DataTable<T>({
                 <PrefetchRow
                   key={row.id}
                   id={rowDomId(index)}
-                  href={rowHref?.(row.original)}
+                  aria-rowindex={index + 2}
+                  aria-selected={bulkActions ? row.getIsSelected() : undefined}
+                  prefetchInfo={prefetchFor(row.original)}
                   className={`group border-b m-motion-colors ${row.getIsSelected() ? "bg-[var(--m-accent-soft)]" : "hover:bg-[var(--m-sheet-raised)]"} ${index === activeIndex ? "m-row-active" : ""}`}
                   onClick={activate}
                   style={{
                     borderColor: "var(--m-line)",
-                    height: dense ? ROW_H_DENSE : ROW_H,
+                    height: rowH,
                     cursor: activate ? "pointer" : undefined,
-                    ...(virtualRow
-                      ? { position: "absolute", top: 0, left: 0, right: 0, transform: `translateY(${virtualRow.start}px)` }
-                      : {}),
                   }}
                 >
                   {row.getVisibleCells().map((cell) => {
@@ -364,6 +404,11 @@ export function DataTable<T>({
                 </PrefetchRow>
               );
             })}
+            {padBottom > 0 && (
+              <tr aria-hidden="true" style={{ height: padBottom }}>
+                <td colSpan={Math.max(1, table.getVisibleLeafColumns().length)} style={{ padding: 0, border: 0 }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
