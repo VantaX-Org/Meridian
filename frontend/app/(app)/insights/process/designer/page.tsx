@@ -14,6 +14,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
 import { useRole } from "@/hooks/use-role";
 import type { L4, ModelOverlay, ModelSummary, NodeType, ProcessModelDocument, ProcessVariant } from "@/types/process-model";
+import "./designer.css";
 import { AttributeDrawer } from "./_components/attributes";
 import { DesignerCanvas } from "./_components/canvas";
 import { Discovered, skeletonFrom } from "./_components/discovered";

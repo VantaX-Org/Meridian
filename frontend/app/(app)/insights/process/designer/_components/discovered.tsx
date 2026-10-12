@@ -58,8 +58,8 @@ export function Discovered({ variants, onCreate }: { variants: ProcessVariant[];
   const groups = useMemo(() => groupDiscovered(variants), [variants]);
   if (!groups.length) return null;
   return (
-    <section className="aurora-designer__discovered" id="discovered" aria-label="Discovered, unmapped">
-      <h2 className="aurora-designer__rail-title">Discovered, unmapped</h2>
+    <section className="m-designer__discovered" id="discovered" aria-label="Discovered, unmapped">
+      <h2 className="m-designer__rail-title">Discovered, unmapped</h2>
       <ul className="ui-ranked">
         {groups.map((g) => (
           <li key={g.process_id}>

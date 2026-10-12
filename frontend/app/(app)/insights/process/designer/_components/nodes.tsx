@@ -26,31 +26,31 @@ function Handles() {
 function Task({ data }: NodeProps<Node<TaskData>>) {
   const notExtracted = data.evidence === "not_extracted";
   return (
-    <div className="aurora-process-node aurora-bpmn-task" data-selected={data.selected}
+    <div className="m-process-node m-bpmn-task" data-selected={data.selected}
       data-alignment={data.status ? ALIGN[data.status] : undefined} data-evidence={data.evidence ?? undefined}>
       <Handles />
-      {data.tcode ? <span className="aurora-bpmn-task__tcode"><Mono>{data.tcode}</Mono></span> : null}
-      <span className="aurora-process-node__label">{data.name}</span>
-      <span className="aurora-bpmn-task__meta">{plural(data.fields, "field")}, {plural(data.rules, "rule")}</span>
-      <span className="aurora-process-node__alignment" />
-      {notExtracted ? <span className="aurora-bpmn-task__evidence" title="No document table extracted for this step" /> : null}
+      {data.tcode ? <span className="m-bpmn-task__tcode"><Mono>{data.tcode}</Mono></span> : null}
+      <span className="m-process-node__label">{data.name}</span>
+      <span className="m-bpmn-task__meta">{plural(data.fields, "field")}, {plural(data.rules, "rule")}</span>
+      <span className="m-process-node__alignment" />
+      {notExtracted ? <span className="m-bpmn-task__evidence" title="No document table extracted for this step" /> : null}
     </div>
   );
 }
 
 function Gateway({ data }: NodeProps<Node<MarkData>>) {
   return (
-    <div className="aurora-bpmn-gateway" data-selected={data.selected} data-parallel={data.parallel || undefined}>
+    <div className="m-bpmn-gateway" data-selected={data.selected} data-parallel={data.parallel || undefined}>
       <Handles />
-      <span className="aurora-bpmn-gateway__shape" aria-hidden />
-      <span className="aurora-bpmn-gateway__label">{data.label}</span>
+      <span className="m-bpmn-gateway__shape" aria-hidden />
+      <span className="m-bpmn-gateway__label">{data.label}</span>
     </div>
   );
 }
 
 function Event({ data }: NodeProps<Node<MarkData>>) {
   return (
-    <div className="aurora-bpmn-event" data-end={data.end || undefined} data-selected={data.selected}
+    <div className="m-bpmn-event" data-end={data.end || undefined} data-selected={data.selected}
       role="img" aria-label={data.end ? "End event" : "Start event"}>
       <Handles />
     </div>

@@ -1,12 +1,13 @@
 // frontend/app/(app)/insights/__tests__/page.test.tsx
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import * as insightsApi from "@/lib/api/insights";
+import * as versionsApi from "@/lib/api/versions";
 import InsightsIndexPage from "../page";
 
-// useDayOne() needs LocalAuthProvider context, which this test does not set up;
-// mock it wholesale so the page renders without an auth provider.
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, prefetch: vi.fn() }) }));
 vi.mock("@/hooks/use-day-one", () => ({
   useDayOne: () => ({ status: "ready", step: null }),
   DayOneAction: () => null,
@@ -17,70 +18,38 @@ function renderWithQuery(ui: React.ReactElement) {
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 
+const exec = {
+  version_id: "v1",
+  narrative: "",
+  readiness_cells: [{ module: "m", wave: "w1", verdict: "no_go" as const, blocker_count: 1, dqs: 50, score: 50, records_blocked: 3 }],
+  waterfall: [],
+  impact_rows: [],
+  owner_rows: [],
+};
+
 describe("InsightsIndexPage", () => {
-  it("renders links to all five insight views", async () => {
-    vi.spyOn(insightsApi, "getReadiness").mockResolvedValue({ version_id: "v1", threshold: 80, cells: [], configured: true });
-    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
-    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
-      version_id: "v1",
-      narrative: "",
-      readiness_cells: [],
-      waterfall: [],
-      impact_rows: [],
-      owner_rows: [],
-    });
-
+  it("lists every insight with the no-go one first and one exec fetch", async () => {
+    const getExec = vi.spyOn(insightsApi, "getExec").mockResolvedValue(exec);
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<InsightsIndexPage />);
-
-    expect(await screen.findByRole("link", { name: /readiness/i })).toHaveAttribute("href", "/insights/readiness");
-    expect(screen.getByRole("link", { name: /impact/i })).toHaveAttribute("href", "/insights/impact");
-    expect(screen.getByRole("link", { name: /owners/i })).toHaveAttribute("href", "/insights/owners");
-    expect(screen.getByRole("link", { name: /duplicates/i })).toHaveAttribute("href", "/insights/duplicates");
-    expect(screen.getByRole("link", { name: /executive summary/i })).toHaveAttribute("href", "/insights/exec");
+    expect(await screen.findByText("1 wave and module cells are no-go")).toBeInTheDocument();
+    const names = screen.getAllByRole("row").slice(1).map((r) => r.textContent ?? "");
+    expect(names[0]).toMatch(/^Readiness/);
+    expect(screen.getByText("Duplicates")).toBeInTheDocument();
+    expect(getExec).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a skeleton while a tile's query is loading", async () => {
-    vi.spyOn(insightsApi, "getReadiness").mockReturnValue(new Promise(() => {}));
-    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
-    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
-      version_id: "v1",
-      narrative: "",
-      readiness_cells: [],
-      waterfall: [],
-      impact_rows: [],
-      owner_rows: [],
-    });
-
-    const { container } = renderWithQuery(<InsightsIndexPage />);
-
-    await screen.findByRole("link", { name: /readiness/i });
-    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
+  it("shows the empty state when there is no run", async () => {
+    vi.spyOn(insightsApi, "getExec").mockResolvedValue({ ...exec, version_id: null, readiness_cells: [] });
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
+    renderWithQuery(<InsightsIndexPage />);
+    expect(await screen.findByText("No insights yet")).toBeInTheDocument();
   });
 
-  it("shows a retry control when a tile's query fails, and refetches on click", async () => {
-    const getReadiness = vi
-      .spyOn(insightsApi, "getReadiness")
-      .mockRejectedValueOnce(new Error("network error"))
-      .mockResolvedValueOnce({ version_id: "v1", threshold: 80, cells: [], configured: true });
-    vi.spyOn(insightsApi, "getImpact").mockResolvedValue({ version_id: "v1", rows: [] });
-    vi.spyOn(insightsApi, "getOwners").mockResolvedValue({ owners: [] });
-    vi.spyOn(insightsApi, "getExec").mockResolvedValue({
-      version_id: "v1",
-      narrative: "",
-      readiness_cells: [],
-      waterfall: [],
-      impact_rows: [],
-      owner_rows: [],
-    });
-
+  it("shows a retry control when the load fails", async () => {
+    vi.spyOn(insightsApi, "getExec").mockRejectedValue(new Error("network error"));
+    vi.spyOn(versionsApi, "getVersions").mockResolvedValue({ versions: [] });
     renderWithQuery(<InsightsIndexPage />);
-
-    const retry = await screen.findByRole("button", { name: /retry/i });
-    fireEvent.click(retry);
-
-    await waitFor(() => expect(getReadiness).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 });

@@ -156,7 +156,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
           })}
         </ul>
         {p.editable ? (
-          <form className="aurora-designer__addrow" onSubmit={(e) => { e.preventDefault(); void add(); }}>
+          <form className="m-designer__addrow" onSubmit={(e) => { e.preventDefault(); void add(); }}>
             <Field label="Add field" error={error ?? undefined}>
               <input value={row.field} placeholder="Table name, a dot, then the field name." onChange={(e) => setRow({ ...row, field: e.target.value })}
                 className="rounded border px-2 py-1 text-[13px]" style={{ borderColor: error ? "var(--m-critical)" : "var(--m-line)" }} />
@@ -167,7 +167,7 @@ function Activity(p: AttributeProps & { hit: NonNullable<ReturnType<typeof findA
             </Field>
             <Button variant="secondary" type="submit">Add field</Button>
           </form>
-        ) : p.canDesign === false ? null : <p className="ui-note"><button type="button" className="ui-link-button" onClick={p.onBlocked}>Create a model to edit fields.</button></p>}
+        ) : p.canDesign === false ? null : <p className="ui-note"><Button variant="ghost" onClick={p.onBlocked}>Create a model to edit fields</Button></p>}
       </section>
     </>
   );

@@ -92,8 +92,8 @@ function CanvasInner(p: CanvasProps) {
   };
 
   return (
-    <div className="aurora-designer__canvas-wrap" onKeyDown={onKeyDown}>
-      {p.canDesign !== false ? <div className="aurora-designer__toolbar" role="toolbar" aria-label="Diagram tools">
+    <div className="m-designer__canvas-wrap" onKeyDown={onKeyDown}>
+      {p.canDesign !== false ? <div className="m-designer__toolbar" role="toolbar" aria-label="Diagram tools">
         <Button variant="secondary" onClick={guard(() => p.onAdd("task"))}>Add activity</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("exclusiveGateway"))}>Add gateway</Button>
         <Button variant="secondary" onClick={guard(() => p.onAdd("endEvent"))}>Add event</Button>
@@ -102,7 +102,7 @@ function CanvasInner(p: CanvasProps) {
           onClick={() => (p.editable ? setConnectMode((v) => !v) : p.onBlocked())}>Connect mode</Button>
         <Button variant="ghost" disabled={!selNode && !selFlow} onClick={remove}>Delete selected</Button>
         {askDelete ? (
-          <span className="aurora-designer__ask" role="alertdialog" aria-label="Delete activity">
+          <span className="m-designer__ask" role="alertdialog" aria-label="Delete activity">
             Also delete the activity?
             <Button variant="secondary" onClick={() => { p.onDeleteNode(askDelete, true); setAskDelete(null); }}>Delete both</Button>
             <Button variant="ghost" onClick={() => { p.onDeleteNode(askDelete, false); setAskDelete(null); }}>Step only</Button>
@@ -110,7 +110,7 @@ function CanvasInner(p: CanvasProps) {
           </span>
         ) : null}
       </div> : null}
-      <div className="aurora-process-graph aurora-designer__canvas" data-connect={connectMode || undefined}>
+      <div className="m-process-graph m-designer__canvas" data-connect={connectMode || undefined}>
         <ReactFlow
           nodes={nodes} edges={edges} nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}

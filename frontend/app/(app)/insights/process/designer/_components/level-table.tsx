@@ -36,7 +36,7 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
 
   const all: ColumnDef<Row>[] = [
     { id: "name", header: "Name", accessorFn: (r) => r.item.name, cell: ({ row }) => (
-      <button type="button" className="ui-link-button" onClick={() => onOpen(row.original.item.id)}>{row.original.item.name}</button>
+      <Button variant="ghost" onClick={() => onOpen(row.original.item.id)}>{row.original.item.name}</Button>
     ) },
     { id: "activities", header: "Activities", accessorFn: (r) => r.activities },
     { id: "blocked", header: "Blocked", accessorFn: (r) => r.blocked },
@@ -44,7 +44,7 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
     { id: "actions", header: "Actions", enableSorting: false, cell: ({ row }) => {
       const r = row.original;
       return (
-        <span className="aurora-designer__actions" data-open>
+        <span className="m-designer__actions" data-open>
           <Button variant="ghost" disabled={r.index === 0} aria-label={`Move ${r.item.name} up`} onClick={() => guard(() => actions.move(r.item.id, -1))}>Up</Button>
           <Button variant="ghost" disabled={r.index === r.count - 1} aria-label={`Move ${r.item.name} down`} onClick={() => guard(() => actions.move(r.item.id, 1))}>Down</Button>
         </span>
@@ -54,8 +54,8 @@ export function LevelTable({ doc, parent, parentLevel, colour, actions, onOpen, 
   const columns = canDesign ? all : all.filter((c) => c.id !== "actions");
 
   return (
-    <div className="aurora-designer__level">
-      {canDesign ? <div className="aurora-designer__toolbar">
+    <div className="m-designer__level">
+      {canDesign ? <div className="m-designer__toolbar">
         <Button variant="secondary" disabled={level > 4} onClick={() => guard(() => actions.add(parent?.id ?? null))}>
           {`Add L${level}`}
         </Button>
