@@ -70,7 +70,7 @@ export function CommandPalette({ items, grammar }: { items: CommandItem[]; gramm
         open={open}
         onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }}
         label="Command palette"
-        overlayClassName="m-scrim-glass"
+        overlayClassName="m-scrim"
         contentClassName="m-motion-scale-in"
       >
         <Command.Input placeholder="Type a page, object, check ID or record key" value={query} onValueChange={setQuery} />

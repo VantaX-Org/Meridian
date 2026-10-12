@@ -14,7 +14,7 @@ export function Drawer({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
