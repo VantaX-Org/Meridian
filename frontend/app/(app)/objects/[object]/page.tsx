@@ -340,6 +340,7 @@ function RecordsTab({ object, run, checkId }: { object: string; run: string; che
               <Link
                 href={fixSheetHref(object, run, row.original.record_key)}
                 data-fix={row.original.record_key}
+                aria-label={`Open fix sheet for ${row.original.record_key}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 Open fix sheet
