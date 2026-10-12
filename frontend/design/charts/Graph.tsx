@@ -229,7 +229,7 @@ export function Graph(props: {
             />
             {e.label && (
               <g>
-                <rect x={lx - (e.label.length * 3.4 + 5)} y={ly - 9} width={e.label.length * 6.8 + 10} height={18} rx={9} fill="var(--m-sheet)" style={{ filter: "drop-shadow(0 1px 2px rgb(0 0 0 / 0.12))" }} />
+                <rect x={lx - (e.label.length * 3.4 + 5)} y={ly - 9} width={e.label.length * 6.8 + 10} height={18} rx={9} fill="var(--m-sheet)" stroke="var(--m-line)" strokeWidth={1} />
                 <text x={lx} y={ly + 4} fontSize={11} fontFamily="var(--m-font-mono)" fill="var(--m-ink-2)" textAnchor="middle">
                   {e.label}
                 </text>

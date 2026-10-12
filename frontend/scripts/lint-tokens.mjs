@@ -12,6 +12,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const ALLOW_FILE = join(ROOT, "scripts/lint-tokens.allow.txt");
 const TOKEN_FILES = new Set(["design/tokens.css"]);
 const SKIP_DIRS = new Set(["node_modules", ".next", "out", "public", "scripts", "e2e", "__tests__"]);
+// design/tokens.ts holds the single TS map of ember and domain token names (mColor), so it must name them.
 // Colour-pass allow sets live here, never in lint-tokens.allow.txt.
 const HERO_ALLOW = new Set([
   "design/templates/HomePage.tsx", "design/templates/InsightHeader.tsx", "design/primitives/EmptyState.tsx",

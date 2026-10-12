@@ -91,3 +91,18 @@ describe("DataTable colour", () => {
     expect(heatClass("seq", "x", [0, 1])).toBeUndefined();
   });
 });
+
+describe("Counter settle", () => {
+  it("drops m-count-settle after one settle period", async () => {
+    const { Counter } = await import("./primitives/Counter");
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers();
+    const { container } = render(<Counter value={5} versionId="v1" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1100); });
+    expect(container.querySelector(".m-count-settle")).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(container.querySelector(".m-count-settle")).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+});
