@@ -44,7 +44,7 @@ await sharp({ create: { width: 512, height: 512, channels: 4, background: accent
   .png()
   .toFile(join(BRAND, "maskable-512.png"));
 
-await png(svg("apple-icon.svg"), join(ROOT, "app", "apple-icon.png"), 180);
+// app/apple-icon.tsx (ImageResponse) generates the apple icon; no png here.
 // 32px favicon fallback from the favicon source (stroke 3.5).
 await png(join(ROOT, "app", "icon.svg"), join(ROOT, "app", "icon.png"), 32);
 // The OG image is app/opengraph-image.tsx (ImageResponse); no raster source here.

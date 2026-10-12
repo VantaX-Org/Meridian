@@ -62,7 +62,7 @@ Copy: no full stops in table cells, pills, tile labels or hints; no "Showing X."
 
 - **Mark**: a 270 degree arc, open at the top, crossed by a vertical meridian line, on a 32 grid, stroke 3, round caps. The arc is ink, the line is the accent. In the app it is the inline SVG `MeridianMark` (`components/meridian/icons.tsx`).
 - **Wordmark**: the word "Meridian" type-set in Public Sans 600, letter-spacing -0.01em, ink colour. Never hand-drawn, never accented. The lockup is the mark plus the wordmark with a 10px gap at a 32px mark.
-- **Assets** in `public/brand/` (see its README): marks, outlined lockups, `apple-icon.svg` (flat accent ground, white mark), PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`.
+- **Assets** in `public/brand/` (see its README): marks, outlined lockups, `apple-icon.svg` (cover gradient, hero-ink mark, ember meridian line; the live icon is `app/apple-icon.tsx`), PWA icons from `npm run brand:rasterise`. Colours are in `brand.json`.
 - **Favicon**: `app/icon.svg` (stroke 3.5, follows the OS colour scheme) with `app/icon.png` fallback. **Open Graph image**: `app/opengraph-image.tsx`, lockup plus "SAP data quality, measured".
 - **Signed-out pages** (`components/auth/auth-frame.tsx`): one 400px card on the canvas with the lockup, an `<h1>`, the form and the version string beneath. No brand panel, no tagline, no marketing facts.
 

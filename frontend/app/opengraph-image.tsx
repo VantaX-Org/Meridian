@@ -8,7 +8,7 @@ export const contentType = "image/png";
 
 // ImageResponse cannot read CSS tokens; these mirror hero-ink, ink-2, ember and grad-cover (dark).
 const INK = "rgb(237 237 240)";
-const INK_2 = "rgb(237 237 240 / 0.72)";
+const INK_2 = "rgb(183 196 255)";
 const ACCENT = "rgb(255 122 69)";
 const COVER_TOP = "rgb(10 15 46)";
 const COVER_BOTTOM = "rgb(22 40 138)";
