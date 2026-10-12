@@ -32,7 +32,7 @@ from api.routes.findings import composite_dqs
 from api.services.deterministic_report import compute_readiness_status
 from api.services.scoring import critical_over_tolerance, impact
 from api.services.report_pdf import TEMPLATE_DIR
-from api.services.insights_impact import tenant_currency
+from api.services.insights_impact import DEFAULT_CURRENCY, tenant_currency
 from api.services.report_theme import PRINT_TOKENS, band_colour
 
 DIMENSIONS = ("completeness", "accuracy", "consistency", "timeliness", "uniqueness", "validity")
@@ -710,7 +710,7 @@ _CANNED = "Data quality assessment complete. Review the detailed findings below 
 def executive_context(report_json: dict, supplementary: dict, version: dict, findings: list[dict], *,
                       tenant_name: str, scoring: dict, system: Optional[dict] = None,
                       generated_at: Optional[datetime] = None, previous_dqs: Optional[float] = None,
-                      currency: str = "ZAR") -> dict:
+                      currency: str = DEFAULT_CURRENCY) -> dict:
     ctx = analysis_context(version, findings, tenant_name=tenant_name, scoring=scoring, system=system,
                            generated_at=generated_at, previous_dqs=previous_dqs)
     ai = report_json.get("ai_executive_summary")

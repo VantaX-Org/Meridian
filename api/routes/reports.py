@@ -269,19 +269,30 @@ async def record_report_pdf(version_id: uuid.UUID, matnr: str, tenant: Tenant = 
 
 async def _audit_export(request: Request, tenant: Tenant, kind: str, version_id: uuid.UUID,
                         module: Optional[str]) -> None:
-    """One audit_log row per board or workbook download. Never breaks the download."""
+    """One audit_log row per board or workbook download. Never breaks the download: building the
+    row and the insert are both guarded, and a failure is logged and swallowed."""
     from api.middleware.audit import _insert_audit_row
 
-    uid = getattr(request.state, "local_user_id", None)
-    row = {
-        "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
-        "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
-        "entity_type": "report", "entity_id": str(version_id), "method": request.method,
-        "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
-        "user_agent": request.headers.get("user-agent"), "before_json": None,
-        "after_json": {"kind": kind, "version_id": str(version_id), "module": module},
-    }
-    await asyncio.to_thread(_insert_audit_row, row)
+    try:
+        uid = getattr(request.state, "local_user_id", None)
+        row = {
+            "tenant_id": tenant.id, "actor_user_id": uuid.UUID(str(uid)) if uid else None,
+            "actor_email": getattr(request.state, "local_user_email", None), "action": "report.export",
+            "entity_type": "report", "entity_id": str(version_id), "method": request.method,
+            "path": request.url.path, "status_code": 200, "ip": request.client.host if request.client else None,
+            "user_agent": request.headers.get("user-agent"), "before_json": None,
+            "after_json": {"kind": kind, "version_id": str(version_id), "module": module},
+        }
+        await asyncio.to_thread(_insert_audit_row, row)
+    except Exception:
+        logger.exception("report.export audit failed")
+
+
+async def _require_run_of_tenant(db: AsyncSession, tenant: Tenant, version_id: uuid.UUID) -> None:
+    found = (await db.execute(text("SELECT 1 FROM analysis_versions WHERE id = :v AND tenant_id = :t"),
+                              {"v": str(version_id), "t": str(tenant.id)})).scalar()
+    if not found:
+        raise HTTPException(status_code=404, detail="Comparison run not found.")
 
 
 @router.get("/reports/board/{version_id}.pdf")
@@ -289,6 +300,8 @@ async def board_report_pdf(version_id: uuid.UUID, request: Request, compare: Opt
                            db: AsyncSession = Depends(get_db), tenant: Tenant = Depends(get_tenant)) -> Response:
     """Board pack. Deltas are against ``compare`` only; without it they read "no earlier run"."""
     await _rls(db, tenant)
+    if compare:
+        await _require_run_of_tenant(db, tenant, compare)
     res = await _pdf(tenant, "board", f"meridian_board_{version_id}.pdf", version_id, compare)
     await _audit_export(request, tenant, "board", version_id, None)
     return res
@@ -309,7 +322,13 @@ async def workbook_xlsx(version_id: uuid.UUID, request: Request, module: Optiona
     """Analyst workbook: summary, modules, rules, findings, record samples, readiness and trend."""
     from api.services.branded_xlsx import xlsx_response
 
+    from api.services.pdf_reports import _modules
+
     await _rls(db, tenant)
+    if module and module not in _modules():
+        raise HTTPException(status_code=422, detail=f"Unknown module: {module}")
+    if compare:
+        await _require_run_of_tenant(db, tenant, compare)
     try:
         out = await asyncio.to_thread(_workbook_sync, str(tenant.id), str(version_id),
                                       str(compare) if compare else None, module)

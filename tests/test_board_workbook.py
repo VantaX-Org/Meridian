@@ -28,7 +28,8 @@ MODULES = (
 ).split()
 P2P, HCM = "Vendor Master Management", "All SuccessFactors Modules"
 P2P_RECORDS, HCM_RECORDS, P2P_PRICE, HCM_PRICE = 100, 10, 1234.5, 777.25
-CROSS_L1_TOTAL = "1312225"  # P2P + HCM at 1,234.50 x 100 + 777.25 x 10 = 131,222.50, separators stripped
+# Forbidden: the P2P + HCM sum derived from the seed, with separators stripped (131,222.5 -> "1312225")
+CROSS_L1_TOTAL = f"{P2P_RECORDS * P2P_PRICE + HCM_RECORDS * HCM_PRICE:.1f}".replace(".", "")
 SEV = ("critical", "high", "medium")
 DIMS = ("completeness", "accuracy", "validity")
 
@@ -190,6 +191,14 @@ def test_routes_catalogue_audit_and_tenant_isolation(app_engine, seeded, monkeyp
             assert (await c.get(f"/api/v1/reports/board/{vid}.pdf", headers=viewer)).status_code == 403
             assert (await c.get(f"/api/v1/reports/{vid}/workbook.xlsx", headers=viewer)).status_code == 403
 
+            assert (await c.get("/api/v1/reports/catalogue", headers=viewer)).status_code == 403
+            # workbook validation: unknown module 422, unknown or malformed compare 404 / 422
+            wb = f"/api/v1/reports/{vid}/workbook.xlsx"
+            assert (await c.get(f"{wb}?module=not_a_module", headers=analyst)).status_code == 422
+            assert (await c.get(f"{wb}?compare={uuid.uuid4()}", headers=analyst)).status_code == 404
+            assert (await c.get(f"{wb}?compare=not-a-uuid", headers=analyst)).status_code == 422
+            assert (await c.get(f"/api/v1/reports/board/{vid}.pdf?compare={uuid.uuid4()}",
+                                headers=analyst)).status_code == 404
             r = await c.get(f"/api/v1/reports/catalogue?version_id={vid}&module=material_master&compare={prev}",
                             headers=analyst)
             assert r.status_code == 200

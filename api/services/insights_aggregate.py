@@ -7,7 +7,7 @@ for the report builders). Impact is always grouped by L1 and never summed across
 """
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -467,7 +467,7 @@ def rules(s: Session, tid: str, vid: Optional[str], module: Optional[str], *, se
                      load_run_findings(s, tid, str(prev["id"]), module) if prev else None,
                      load_fixes_by_check(s, tid, str(v["id"]), module), module=module, severity=severity,
                      dimension=dimension, auto_fixable=auto_fixable, s4_only=s4_only)
-    return {"version_id": str(v["id"]), "total_impact": sum(r["impact"] for r in rows), "rows": rows[:limit]}
+    return {"version_id": str(v["id"]), "rows": rows[:limit]}
 
 
 def root_causes(s: Session, tid: str, vid: Optional[str], module: Optional[str]) -> Optional[dict]:

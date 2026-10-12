@@ -24,7 +24,7 @@ function mockEmptyProvenCost() {
   return vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({
     version_id: "v1",
     currency: "USD",
-    total: 0,
+    cost_by_l1: [],
     rows: [],
     value_at_risk_by_l1: [],
   });
@@ -52,11 +52,12 @@ describe("ImpactPage", () => {
     vi.spyOn(insightsApi, "getProvenCost").mockResolvedValue({
       version_id: "v1",
       currency: "USD",
-      total: 1070,
-      value_at_risk_by_l1: [{ l1: "P2P", value_at_risk: 5000 }, { l1: "O2C", value_at_risk: 1200 }],
+      cost_by_l1: [{ l1: "procure_to_pay", amount: 1070 }, { l1: "order_to_cash", amount: 300 }],
+      value_at_risk_by_l1: [{ l1: "procure_to_pay", value_at_risk: 5000 }, { l1: "order_to_cash", value_at_risk: 1200 }],
       rows: [
         {
           metric: "late_po",
+          l1: "procure_to_pay",
           label: "Late purchase orders",
           amount: 1070,
           currency: "USD",
@@ -69,9 +70,9 @@ describe("ImpactPage", () => {
     });
     renderWithQuery(<ImpactPage />);
 
-    await waitFor(() => expect(screen.getByText("Proven cost")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Largest L1 proven cost")).toBeInTheDocument());
     expect(screen.getByText("Largest L1 at risk")).toBeInTheDocument();
-    expect(screen.getByText("P2P, across 2 processes")).toBeInTheDocument();
+    expect(screen.getAllByText("Procure to pay, across 2 processes").length).toBeGreaterThan(0);
     expect(screen.getByText("Late purchase orders")).toBeInTheDocument();
     expect(screen.getByText("MM140")).toBeInTheDocument();
     expect(screen.getByText("MM140").closest("a")?.getAttribute("href")).toBe("/rules/MM140");

@@ -32,6 +32,7 @@ export async function getReadiness(params?: { version_id?: string }): Promise<Re
 
 export interface ImpactRow {
   feature: string;
+  l1?: string | null;
   status: string;
   record_count: number;
   value_per_record: number;
@@ -63,6 +64,7 @@ export interface ProvenCostItem {
 
 export interface ProvenCostRow {
   metric: ProvenCostMetric;
+  l1: string;
   label: string;
   amount: number;
   currency: string | null;
@@ -77,19 +79,56 @@ export interface ValueAtRiskL1 {
   value_at_risk: number;
 }
 
+export interface CostL1 {
+  l1: string;
+  amount: number;
+}
+
 export interface ProvenCostResponse {
   version_id: string | null;
   currency: string | null;
-  total: number;
   rows: ProvenCostRow[];
+  /** Proven cost per L1 in the tenant currency. There is no total across L1s. */
+  cost_by_l1: CostL1[];
   /** Per-L1 only. Value at risk is never summed across L1s. */
   value_at_risk_by_l1: ValueAtRiskL1[];
+}
+
+const L1_LABELS: Record<string, string> = {
+  procure_to_pay: "Procure to pay",
+  order_to_cash: "Order to cash",
+  plan_to_produce: "Plan to produce",
+  record_to_report: "Record to report",
+  hire_to_retire: "Hire to retire",
+  master_data: "Master data",
+  unassigned: "Unassigned",
+};
+
+/** Display label for a backend L1 key; unknown keys fall back to a spaced, capitalised form. */
+export function l1Label(key: string): string {
+  if (L1_LABELS[key]) return L1_LABELS[key];
+  const spaced = key.replace(/_/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Group impact rows by L1 (value at risk summed within an L1 only). Rows with no L1 group as "unassigned". */
+export function valueAtRiskByL1(rows: ImpactRow[]): ValueAtRiskL1[] {
+  const out = new Map<string, number>();
+  for (const r of rows) out.set(r.l1 || "unassigned", (out.get(r.l1 || "unassigned") ?? 0) + r.value_at_risk);
+  return [...out].map(([l1, value_at_risk]) => ({ l1, value_at_risk }));
 }
 
 /** Largest L1 by value at risk, plus how many processes (L1s) the figure sits among. Never a sum. */
 export function largestValueAtRisk(by_l1: ValueAtRiskL1[]): { l1: string; value_at_risk: number; processes: number } | null {
   if (by_l1.length === 0) return null;
   const top = by_l1.reduce((a, b) => (b.value_at_risk > a.value_at_risk ? b : a));
+  return { ...top, processes: by_l1.length };
+}
+
+/** Largest L1 by proven cost, plus how many processes (L1s) it sits among. Never a sum. */
+export function largestCost(by_l1: CostL1[]): { l1: string; amount: number; processes: number } | null {
+  if (by_l1.length === 0) return null;
+  const top = by_l1.reduce((a, b) => (b.amount > a.amount ? b : a));
   return { ...top, processes: by_l1.length };
 }
 
@@ -159,7 +198,7 @@ export interface ExecResponse {
   waterfall: ChartPoint[];
   impact_rows: ImpactRow[];
   owner_rows: OwnerCardResponse[];
-  proven_cost_total?: number;
+  proven_cost_by_l1?: CostL1[];
 }
 
 export async function getExec(params?: { version_id?: string }): Promise<ExecResponse> {

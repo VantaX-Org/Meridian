@@ -30,6 +30,15 @@ _METRIC_LABEL = {
 }
 
 
+# L1 process each proven-cost metric belongs to. Metrics are only ever grouped within one L1.
+_METRIC_L1 = {
+    "late_po": "procure_to_pay",
+    "grir_uom_variance": "procure_to_pay",
+    "duplicate_payment": "procure_to_pay",
+    "blocked_sales": "order_to_cash",
+}
+
+
 @router.get("/readiness", dependencies=[Depends(require_permission("view"))])
 async def get_readiness(
     version_id: Optional[uuid.UUID] = None,
@@ -181,7 +190,8 @@ async def get_proven_cost(
             {"t": str(tenant.id)},
         )).scalar()
         if version_id is None:
-            return {"version_id": None, "currency": currency, "total": 0.0, "rows": [], "value_at_risk_by_l1": []}
+            return {"version_id": None, "currency": currency, "rows": [], "cost_by_l1": [],
+                    "value_at_risk_by_l1": []}
 
     res = await db.execute(text("""
         SELECT metric, amount, currency, by_currency, documents, check_ids, items
@@ -193,17 +203,21 @@ async def get_proven_cost(
              "items": r.items}
             for m, label in _METRIC_LABEL.items() if (r := by_metric.get(m))]
     # A metric spanning more than one currency (api/services/proven_cost.py's
-    # _result) carries currency=None with a by_currency breakdown instead; sum each
+    # _result) carries currency=None with a by_currency breakdown instead; take each
     # row's by_currency share of the tenant's chosen currency, never converting the
-    # rest, rather than filtering on row.currency (which would drop the ZAR share of
-    # every mixed-currency metric).
-    total = round(sum(float((r["by_currency"] or {}).get(currency, 0.0)) for r in rows), 2)
+    # rest. Costs are grouped per L1 only: there is deliberately no total across L1s.
+    cost_by_l1: dict[str, float] = {}
+    for r in rows:
+        r["l1"] = _METRIC_L1[r["metric"]]
+        cost_by_l1[r["l1"]] = round(
+            cost_by_l1.get(r["l1"], 0.0) + float((r["by_currency"] or {}).get(currency, 0.0)), 2)
 
     impact = await get_impact(version_id, db, tenant)
     # Per-L1 only: value at risk is never summed across L1s.
     var_by_l1 = [{"l1": k, "value_at_risk": v} for k, v in sorted(by_l1(impact["rows"]).items())]
 
-    return {"version_id": str(version_id), "currency": currency, "total": total, "rows": rows,
+    return {"version_id": str(version_id), "currency": currency, "rows": rows,
+            "cost_by_l1": [{"l1": k, "amount": v} for k, v in sorted(cost_by_l1.items())],
             "value_at_risk_by_l1": var_by_l1}
 
 
@@ -342,15 +356,16 @@ async def get_exec(
     no_go = sum(1 for c in cells if c["verdict"] == "no_go")
     worst_name, worst_amount = worst_l1(rows)
     waterfall = [{"x": r["feature"], "y": r["value_at_risk"], "l1": r["l1"]} for r in rows]
-    proven_cost_total = proven_cost["total"]
+    top_cost = max(proven_cost["cost_by_l1"], key=lambda c: c["amount"], default=None)
 
-    exposure = (f"{len(rows)} priced features are affected; the largest exposure is {worst_amount:,.2f} in {worst_name}."
+    exposure = (f"{len(rows)} priced features are affected; the largest exposure is {worst_amount:,.2f} in {(worst_name or '').replace('_', ' ')}."
                 if rows else "No priced features are affected.")
     narrative = f"{no_go} of {len(cells)} readiness cells are no-go. {exposure} {len(owner_rows)} owners have open digests."
     # Only append the proven-cost sentence when there's something to report —
     # otherwise an empty tenant would read "0.00 ZAR proven lost or held".
-    if proven_cost["rows"]:
-        narrative += f" {proven_cost_total:,.2f} {proven_cost['currency']} proven lost or held in transactions."
+    if top_cost:
+        narrative += (f" The largest proven cost is {top_cost['amount']:,.2f} {proven_cost['currency']}"
+                      f" lost or held in transactions in {top_cost['l1'].replace('_', ' ')}.")
 
     return {
         "version_id": str(version_id),
@@ -359,7 +374,7 @@ async def get_exec(
         "waterfall": waterfall,
         "impact_rows": rows,
         "owner_rows": owner_rows,
-        "proven_cost_total": proven_cost_total,
+        "proven_cost_by_l1": proven_cost["cost_by_l1"],
     }
 
 

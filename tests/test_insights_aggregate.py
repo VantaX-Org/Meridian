@@ -172,6 +172,13 @@ def two_tenants_with_run():
             "total_count, pass_rate, rule_context) VALUES (:id, :v, :t, 'material_master', 'MM-001', 'high', "
             "'completeness', 12, 100, 88, CAST(:rc AS jsonb))"),
             {"id": str(uuid.uuid4()), "v": v1, "t": t1, "rc": json.dumps({"field": "MARA.MATKL"})})
+        # MM-002: no rule_context, field only in details (fallback); MM-003: no field at all (unattributed)
+        for cid, det in (("MM-002", {"field_checked": "MARC.DISMM"}), ("MM-003", {})):
+            conn.execute(text(
+                "INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, "
+                "affected_count, total_count, pass_rate, details) VALUES (:id, :v, :t, 'material_master', :c, "
+                "'medium', 'validity', 5, 100, 95, CAST(:d AS jsonb))"),
+                {"id": str(uuid.uuid4()), "v": v1, "t": t1, "c": cid, "d": json.dumps(det)})
     yield t1, t2, v1
     with engine.begin() as conn:
         for tbl in ("findings", "analysis_versions"):
@@ -202,12 +209,98 @@ async def test_routes_return_data_for_owner_and_404_for_other_tenant(two_tenants
             r = await client.get(f"/api/v1/insights/{p}?version_id={v1}", headers=headers)
             assert r.status_code == 200, (p, r.text)
         rules = (await client.get(f"/api/v1/insights/rules?version_id={v1}", headers=headers)).json()
-        assert [x["check_id"] for x in rules["rows"]] == ["MM-001"]
+        assert sorted(x["check_id"] for x in rules["rows"]) == ["MM-001", "MM-002", "MM-003"]
+        assert "total_impact" not in rules
         rc = (await client.get(f"/api/v1/insights/root-causes?version_id={v1}", headers=headers)).json()
+        by_key = {c["key"]: c for c in rc["clusters"]}
         assert rc["clusters"][0]["key"] == "material_master:MARA.MATKL"
+        assert by_key["material_master:MARC.DISMM"]["kind"] == "field"  # details fallback
+        assert by_key["material_master:unattributed"]["kind"] == "unattributed"
+        assert by_key["material_master:unattributed"]["rules"] == ["MM-003"]
     _patch_tenant(monkeypatch, t2)
     await api_deps.engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         for p in PATHS:
             r = await client.get(f"/api/v1/insights/{p}?version_id={v1}", headers=headers)
             assert r.status_code == 404, (p, r.text)
+
+
+# -- PG: no cross-L1 sum anywhere in the insights payloads --------------------------------------
+
+P2P_FEATURE, HCM_FEATURE = "Vendor Master Management", "All SuccessFactors Modules"
+FEATURE_PRICE = {P2P_FEATURE: 1234.5, HCM_FEATURE: 777.25}
+FEATURE_RECORDS = {P2P_FEATURE: 100, HCM_FEATURE: 10}
+COST_ROWS = (("late_po", 1000.5), ("blocked_sales", 300.25))  # procure_to_pay, order_to_cash
+
+
+@pytest.fixture
+def two_l1_tenant():
+    engine = create_engine(os.environ["MERIDIAN_TEST_DB_URL"])
+    t, v = str(uuid.uuid4()), str(uuid.uuid4())
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO tenants (id, name, cost_model) VALUES (:id, :id, CAST(:cm AS jsonb))"),
+                     {"id": t, "cm": json.dumps({"currency": "ZAR", "features": FEATURE_PRICE})})
+        conn.execute(text("INSERT INTO analysis_versions (id, tenant_id, status, run_at, dqs_summary) "
+                          "VALUES (:id, :t, 'complete', now(), CAST(:s AS jsonb))"),
+                     {"id": v, "t": t, "s": json.dumps({"material_master": _summary(77.0)})})
+        conn.execute(text(
+            "INSERT INTO findings (id, version_id, tenant_id, module, check_id, severity, dimension, affected_count, "
+            "total_count, pass_rate) VALUES (:id, :v, :t, 'material_master', 'MM-001', 'high', 'completeness', "
+            "12, 100, 88)"), {"id": str(uuid.uuid4()), "v": v, "t": t})
+        for feature, n in FEATURE_RECORDS.items():
+            conn.execute(text("INSERT INTO config_impact_results (id, version_id, tenant_id, feature, system, status, "
+                              "total_affected_records) VALUES (:id, :v, :t, :f, 'ECC', 'blocked', :n)"),
+                         {"id": str(uuid.uuid4()), "v": v, "t": t, "f": feature, "n": n})
+        for metric, amount in COST_ROWS:
+            conn.execute(text("INSERT INTO proven_cost_results (id, tenant_id, version_id, metric, amount, currency, "
+                              "by_currency, documents, check_ids, items) VALUES (:id, :t, :v, :m, :a, 'ZAR', "
+                              "CAST(:bc AS jsonb), 1, :ck, '[]'::jsonb)"),
+                         {"id": str(uuid.uuid4()), "t": t, "v": v, "m": metric, "a": amount,
+                          "bc": json.dumps({"ZAR": amount}), "ck": ["MM-001"]})
+    yield t, v
+    with engine.begin() as conn:
+        for tbl in ("proven_cost_results", "config_impact_results", "findings", "analysis_versions"):
+            conn.execute(text(f"DELETE FROM {tbl} WHERE tenant_id = :t"), {"t": t})
+        conn.execute(text("DELETE FROM tenants WHERE id = :t"), {"t": t})
+
+
+def _numbers(node):
+    if isinstance(node, bool):
+        return
+    if isinstance(node, (int, float)):
+        yield float(node)
+    elif isinstance(node, dict):
+        for x in node.values():
+            yield from _numbers(x)
+    elif isinstance(node, list):
+        for x in node:
+            yield from _numbers(x)
+
+
+@pg
+@pytest.mark.anyio
+async def test_no_payload_carries_a_cross_l1_sum(two_l1_tenant, monkeypatch):
+    t, v = two_l1_tenant
+    headers = {"X-User-Role": "admin", "Authorization": "Bearer test-token"}
+    _patch_tenant(monkeypatch, t)
+    await api_deps.engine.dispose()
+    value = {f: FEATURE_PRICE[f] * FEATURE_RECORDS[f] for f in FEATURE_PRICE}
+    forbidden = [round(sum(value.values()), 2), round(sum(a for _, a in COST_ROWS), 2)]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        payloads = {}
+        for p in ("proven-cost", "overview", "rules", "exec", "impact"):
+            r = await client.get(f"/api/v1/insights/{p}?version_id={v}", headers=headers)
+            assert r.status_code == 200, (p, r.text)
+            payloads[p] = r.json()
+    pc = payloads["proven-cost"]
+    assert "total" not in pc and "total_impact" not in payloads["rules"]
+    assert "proven_cost_total" not in payloads["exec"]
+    # per-L1 values: one P2P (vendor master), one H2R (SuccessFactors)
+    assert {x["l1"]: x["value_at_risk"] for x in pc["value_at_risk_by_l1"]} == {
+        "procure_to_pay": value[P2P_FEATURE], "hire_to_retire": value[HCM_FEATURE]}
+    assert {x["l1"]: x["amount"] for x in pc["cost_by_l1"]} == {
+        "procure_to_pay": 1000.5, "order_to_cash": 300.25}
+    for name, body in payloads.items():
+        for n in _numbers(body):
+            for bad in forbidden:
+                assert abs(n - bad) > 0.005, (name, n)

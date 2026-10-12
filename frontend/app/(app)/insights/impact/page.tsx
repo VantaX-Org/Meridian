@@ -9,6 +9,8 @@ import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono,
 import {
   getImpact,
   getProvenCost,
+  l1Label,
+  largestCost,
   largestValueAtRisk,
   type ImpactResponse,
   type ImpactRow,
@@ -110,17 +112,21 @@ function ProvenCostPanel({ query }: { query: UseQueryResult<ProvenCostResponse, 
 
   const rows = query.data?.rows ?? [];
   const currency = query.data?.currency ?? "";
-  const total = query.data?.total ?? 0;
+  const topCost = largestCost(query.data?.cost_by_l1 ?? []);
   const topRisk = largestValueAtRisk(query.data?.value_at_risk_by_l1 ?? []);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-6">
-        <Stat label="Proven cost" value={formatMoney(total, currency)} />
+        <Stat
+          label="Largest L1 proven cost"
+          value={topCost ? formatMoney(topCost.amount, currency) : "—"}
+          hint={topCost ? `${l1Label(topCost.l1)}, across ${topCost.processes} ${topCost.processes === 1 ? "process" : "processes"}` : undefined}
+        />
         <Stat
           label="Largest L1 at risk"
           value={topRisk ? formatMoney(topRisk.value_at_risk, currency) : "—"}
-          hint={topRisk ? `${topRisk.l1}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
+          hint={topRisk ? `${l1Label(topRisk.l1)}, across ${topRisk.processes} ${topRisk.processes === 1 ? "process" : "processes"}` : undefined}
         />
       </div>
       {rows.length === 0 ? (
@@ -187,7 +193,6 @@ export default function ImpactPage() {
   const rows = impactQuery.data?.rows ?? [];
   const top = [...rows].sort((x, y) => y.value_at_risk - x.value_at_risk)[0];
   const currency = provenCostQuery.data?.currency;
-  const totalAtRisk = rows.reduce((n, r) => n + r.value_at_risk, 0);
   const byFeature = rows.map((r) => ({ x: labelOf(r.feature), y: r.value_at_risk, domain: domainOf(r.feature) }));
 
   const loading = impactQuery.isLoading || dayOne.status === "loading";
@@ -207,7 +212,7 @@ export default function ImpactPage() {
       }
       insight={impactQuery.isError ? undefined : {
         situation: {
-          sentence: rows.length ? `${formatMoney(totalAtRisk, currency)} sits in ${rows.length} blocked features` : "No feature carries value at risk",
+          sentence: top ? `${formatMoney(top.value_at_risk, currency)} at risk in ${labelOf(top.feature)}, the largest of ${rows.length} blocked features` : "No feature carries value at risk",
           tone: rows.length ? "at-risk" : "go",
         },
         changed: { sentence: provenCostQuery.data ? `${provenCostQuery.data.rows.length} proven cost metrics found` : "—" },

@@ -6,7 +6,8 @@ Totals rows on Modules sum counts, never scores.
 """
 import json
 from datetime import datetime, timezone
-from typing import Any, Optional
+from collections.abc import Mapping
+from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -15,7 +16,7 @@ from api.routes.findings import composite_dqs
 from api.services import insights_aggregate as agg
 from api.services import s4_readiness
 from api.services.branded_xlsx import (
-    ROW_CAP, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename)
+    ROW_CAP, ColumnKind, ColumnSpec, ConditionalRule, SheetSpec, build_workbook, xlsx_filename)
 from api.services.pdf_reports import (
     DIMENSIONS, _all, _rows_checked, _rule, dimension_scores, load_scoring)
 from api.services.scoring import scoring_config, tier
@@ -29,20 +30,23 @@ _STATUS, _BAR, _SCALE = "status", "databar", "colorscale"
 # ── loaders ──────────────────────────────────────────────────────────────────
 
 _SAMPLE_SQL = """
-SELECT check_id, module, grain, record_key, field, invalid_value, suggested_value, confidence FROM (
-  SELECT fr.check_id, fr.module, fr.grain, fr.record_key, rf.field, rf.invalid_value, rf.suggested_value,
-         (SELECT ri.confidence FROM remediation_items ri
-           WHERE ri.tenant_id = fr.tenant_id AND ri.check_id = fr.check_id AND ri.record_key = fr.record_key
-           ORDER BY ri.updated_at DESC NULLS LAST LIMIT 1) AS confidence,
+WITH ranked AS (
+  SELECT fr.tenant_id, fr.version_id, fr.check_id, fr.module, fr.grain, fr.record_key,
          ROW_NUMBER() OVER (PARTITION BY fr.check_id ORDER BY fr.record_key) AS rn
     FROM finding_records fr
-    LEFT JOIN LATERAL (SELECT field, invalid_value, suggested_value FROM record_fixes x
-                        WHERE x.tenant_id = fr.tenant_id AND x.version_id = fr.version_id
-                          AND x.check_id = fr.check_id AND x.record_id = fr.record_key
-                        ORDER BY x.created_at LIMIT 1) rf ON true
    WHERE fr.tenant_id = :t AND fr.version_id = CAST(:v AS uuid)
-     AND (CAST(:m AS text) IS NULL OR fr.module = CAST(:m AS text))) ranked
- WHERE rn <= :n ORDER BY check_id, record_key LIMIT :cap"""
+     AND (CAST(:m AS text) IS NULL OR fr.module = CAST(:m AS text))),
+kept AS (SELECT * FROM ranked WHERE rn <= :n)
+SELECT k.check_id, k.module, k.grain, k.record_key, rf.field, rf.invalid_value, rf.suggested_value,
+       (SELECT ri.confidence FROM remediation_items ri
+         WHERE ri.tenant_id = k.tenant_id AND ri.check_id = k.check_id AND ri.record_key = k.record_key
+         ORDER BY ri.updated_at DESC NULLS LAST LIMIT 1) AS confidence
+  FROM kept k
+  LEFT JOIN LATERAL (SELECT field, invalid_value, suggested_value FROM record_fixes x
+                      WHERE x.tenant_id = k.tenant_id AND x.version_id = k.version_id
+                        AND x.check_id = k.check_id AND x.record_id = k.record_key
+                      ORDER BY x.created_at LIMIT 1) rf ON true
+ ORDER BY k.check_id, k.record_key LIMIT :cap"""
 
 
 def load_samples(s: Session, tid: str, vid: str, module: Optional[str]) -> list[dict]:
@@ -83,8 +87,9 @@ def load_workbook_data(s: Session, tid: str, vid: str, compare: Optional[str] = 
 
 # ── sheets ───────────────────────────────────────────────────────────────────
 
-def _c(key: str, header: str, kind: str = "text", **kw: Any) -> ColumnSpec:
-    return ColumnSpec(key, header, kind, **kw)  # type: ignore[arg-type]
+def _c(key: str, header: str, kind: ColumnKind = "text", scale: float = 1.0,
+       fill_by_value: Optional[Mapping[str, str]] = None, width: Optional[int] = None) -> ColumnSpec:
+    return ColumnSpec(key, header, kind, scale, fill_by_value, width)
 
 
 def _delta(cur: Optional[float], prev: Optional[float], dp: int = 1) -> Optional[float]:

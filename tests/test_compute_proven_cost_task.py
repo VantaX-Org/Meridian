@@ -161,7 +161,8 @@ async def test_dotted_frames_reach_the_proven_cost_panel(seeded, monkeypatch):
                              headers={"X-User-Role": "admin", "Authorization": "Bearer test-token"})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["version_id"] == seeded["vid"] and body["total"] == 1070.0
+    assert body["version_id"] == seeded["vid"] and "total" not in body
+    assert {c["l1"]: c["amount"] for c in body["cost_by_l1"]}["procure_to_pay"] == 1070.0
     late = next(row for row in body["rows"] if row["metric"] == "late_po")
     assert late["check_ids"] == ["MM140"]
 
