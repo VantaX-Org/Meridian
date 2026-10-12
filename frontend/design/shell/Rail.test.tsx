@@ -63,6 +63,14 @@ describe("Rail", () => {
     expect(within(runs).queryByText(/^\d+$/)).not.toBeInTheDocument();
   });
 
+  it("renders the Fix queue count as a critical badge inside a data-severity element", async () => {
+    renderRail();
+    const fix = await screen.findByRole("link", { name: "Fix" });
+    const badge = await within(fix).findByText("3");
+    expect(badge).toHaveClass("m-badge-critical");
+    expect(badge.closest("[data-severity]")).toHaveAttribute("data-severity", "critical");
+  });
+
   it("every nav href is unique in the flattened rail", async () => {
     renderRail();
     // Scoped to the nav-items list: the brand mark above it is a separate

@@ -275,8 +275,8 @@ export function Rail() {
         {showPip && expanded ? <Tooltip label={systemsTooltipLabel ?? item.label} side="right" render={<span />}>{iconSpan}</Tooltip> : iconSpan}
         {expanded && <span className="flex-1 truncate" style={depth === 1 ? { fontSize: 12, lineHeight: "16px" } : undefined}>{item.label}</span>}
         {expanded && count > 0 && (
-          <span key={count} className="m-motion-rise">
-            <Badge count={count} inverted={active} />
+          <span key={count} className="m-motion-rise" data-severity={item.badgeKey === "fix" ? "critical" : undefined}>
+            <Badge count={count} inverted={active && item.badgeKey !== "fix"} tone={item.badgeKey === "fix" ? "critical" : undefined} />
           </span>
         )}
         {expanded && item.shortcut && (
