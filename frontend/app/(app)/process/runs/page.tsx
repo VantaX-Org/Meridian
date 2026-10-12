@@ -2,14 +2,14 @@
 
 /** Process › Discovery runs (process-discovery spec §7.3): every run on the system, live stage, New run. */
 import { useQuery } from "@tanstack/react-query";
-import { Button, ErrorState, Notice } from "@/design";
+import { PageHeader, Button, ErrorState, Notice } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { useUrlState } from "@/hooks/use-url-state";
 import { ACTIVE_RUN, getCatalogue, listRuns } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { ProcessHeader, ProcessSkeleton, RowsSkeleton } from "../_components/process-header";
+import { ProcessSkeleton, RowsSkeleton } from "../_components/process-header";
 import { NewRunDialog } from "../_components/new-run-dialog";
 import { NoSystem, RunsTable, SystemSelect, useProcessSystem } from "../_components/shared";
 
@@ -38,7 +38,7 @@ export default function ProcessRunsPage() {
   const extraction = active.find((j) => j.kind === "extraction" && j.system_id === system.id);
   return (
     <div className={frame} style={pad}>
-      <ProcessHeader title="Discovery runs" meta={system.name}
+      <PageHeader title="Discovery runs" meta={system.name}
         actions={(
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />

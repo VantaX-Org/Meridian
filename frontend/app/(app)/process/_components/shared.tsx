@@ -174,12 +174,13 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
         if (r.in_progress) {
           return stageLabel(jobs.find((j) => j.id === r.in_progress?.job_id)) ?? <RunStatusPill status={r.in_progress.status} />;
         }
-        if (r.failed) return <DrillLink href={`/process/runs/${r.failed.id}`}>Run failed</DrillLink>;
-        return f == null ? "—" : (
+        const last = f == null ? "—" : (
           <DrillLink href={l1Href(r.l1, systemId, r.last_run!.id, "conformance")}>
             <Pill tone={fitnessTone(f)}>{fmtFitness(f)}</Pill>
           </DrillLink>
         );
+        if (!r.failed) return last;
+        return <span className="flex items-center gap-2">{last}<DrillLink href={`/process/runs/${r.failed.id}`}>See the error</DrillLink></span>;
       } },
     { id: "variants", header: "Variants", accessorFn: (r) => r.last_run?.variants ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.variants) },
     { id: "cases", header: "Cases", accessorFn: (r) => r.last_run?.cases ?? -1, cell: ({ row: { original: r } }) => fmtCount(r.last_run?.cases) },
@@ -189,7 +190,7 @@ export function CatalogueTable({ rows, systemId, jobs }: { rows: CatalogueRow[];
   ];
   const router = useRouter();
   return <DataTable columns={columns} data={rows} getRowId={(r) => r.l1} height="auto" hideToolbar
-    onRowClick={(r) => router.push(href(r))} tableId="process-catalogue" exportName="process-catalogue" />;
+    onRowClick={(r) => router.push(href(r))} rowHref={href} tableId="process-catalogue" exportName="process-catalogue" />;
 }
 
 export function RunsTable({ runs, jobs, systemName, hideToolbar }: {

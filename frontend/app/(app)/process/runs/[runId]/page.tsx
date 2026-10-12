@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, type PillTone } from "@/design";
+import { PageHeader, Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getRun, startRuns } from "@/lib/api/process-discovery";
@@ -12,7 +12,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { JobStageStatus } from "@/types/jobs";
-import { ProcessHeader, ProcessSkeleton } from "../../_components/process-header";
+import { ProcessSkeleton } from "../../_components/process-header";
 import { CoveragePill, RunStatusPill } from "../../_components/coverage-pill";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } from "../../_components/shared";
 
@@ -73,7 +73,7 @@ export default function ProcessRunPage() {
 
   return (
     <div className={frame} style={pad}>
-      <ProcessHeader title={`${r.l1} discovery run`} meta={active && stageLabel(job)
+      <PageHeader title={`${r.l1} discovery run`} meta={active && stageLabel(job)
           ? `${stageLabel(job)}${job ? ` · ${Math.round(job.percent)}%` : ""}` : `Started ${relativeTime(r.started_at)}`}
         status={<><RunStatusPill status={r.status} />{r.coverage && <CoveragePill coverage={r.coverage} />}</>} />
       <InsightHeader

@@ -23,7 +23,7 @@ const POINT_COLUMNS: ColumnDef<Point>[] = [
 function ParetoPanel({ title, data, id }: { title: string; data: Point[]; id: string }) {
   return (
     <section className="grid gap-2">
-      <h3 className="font-semibold">{title}</h3>
+      <h2 className="font-semibold">{title}</h2>
       {data.length ? (
         <ViewAsTable
           chart={<Pareto data={data} height={220} />}

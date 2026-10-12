@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Button, EmptyState, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem,
+  Button, EmptyState, Input, PageHeader, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, getRun, getRunModel, type DiscoveryRunDetail, type ProcessFilterParams } from "@/lib/api/process-discovery";
@@ -29,7 +29,7 @@ import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, useProcessSystem } from "../_components/shared";
-import { ProcessHeader, ProcessSkeleton } from "../_components/process-header";
+import { ProcessSkeleton } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -144,7 +144,7 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   if (!run) {
     return (
       <>
-      <ProcessHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
+      <PageHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
       <InsightHeader
         situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
         changed={{ sentence: "No completed discovery run." }}
@@ -157,8 +157,8 @@ function Header({ l1, name, systemName, systemId, run, reason, canExport, onExpo
   const fitness = s.conformance?.fitness ?? null;
   return (
     <>
-    <ProcessHeader title={name}
-      meta={`${fmtCount(s.cases)} cases · ${fmtCount(s.variants)} variants · fitness ${fmtFitness(fitness)}`}
+    <PageHeader title={name}
+      meta={`${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants, fitness ${fmtFitness(fitness)}`}
       status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
       actions={<>
         {canExport && <Button variant="secondary" onClick={onExport}>Export to Signavio</Button>}
@@ -182,10 +182,10 @@ function Filters({ run, filters, set }: {
   const org = Object.entries(filters).filter(([k]) => k.startsWith("org."));
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <Field label="From"><DateInput value={text("from")} onChange={(v) => set({ from: v })} /></Field>
-      <Field label="To"><DateInput value={text("to")} onChange={(v) => set({ to: v })} /></Field>
+      <Field label="From"><Input type="date" value={text("from")} onChange={(e) => set({ from: e.target.value || null })} /></Field>
+      <Field label="To"><Input type="date" value={text("to")} onChange={(e) => set({ to: e.target.value || null })} /></Field>
       <Field label="Document type">
-        <input className="m-input" value={text("doc_type")} placeholder="Every type" onChange={(e) => set({ doc_type: e.target.value || null })} />
+        <Input value={text("doc_type")} placeholder="Every type" onChange={(e) => set({ doc_type: e.target.value || null })} />
       </Field>
       {caseTypes.length > 1 && (
         <Select label="Case type" value={text("case_type") || ALL} onValueChange={(v) => set({ case_type: v === ALL ? null : v })}
@@ -200,11 +200,6 @@ function Filters({ run, filters, set }: {
       ))}
     </div>
   );
-}
-
-/** ponytail: local until foundations ship a `DateInput` primitive. */
-function DateInput({ value, onChange }: { value: string; onChange: (v: string | null) => void }) {
-  return <input type="date" className="m-input" value={value} onChange={(e) => onChange(e.target.value || null)} />;
 }
 
 function ReferenceView({ doc, l1, node, onOpen }: {

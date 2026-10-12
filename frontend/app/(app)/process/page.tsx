@@ -3,13 +3,13 @@
 /** Process › As-is processes: one row per L1 for the chosen system (process-discovery spec §7.3, §7.4). */
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Button, ErrorState, InsightHeader } from "@/design";
+import { PageHeader, Button, ErrorState, InsightHeader } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue } from "@/lib/api/process-discovery";
 import { apiErrorMessage } from "@/lib/error";
 import { queryKeys } from "@/lib/query-keys";
-import { ProcessHeader, ProcessSkeleton } from "./_components/process-header";
+import { ProcessSkeleton } from "./_components/process-header";
 import { CatalogueTable, NoSystem, SystemSelect, processInsight, useProcessSystem } from "./_components/shared";
 
 export default function ProcessCataloguePage() {
@@ -31,7 +31,7 @@ export default function ProcessCataloguePage() {
   const rows = catalogue.data;
   return (
     <div className={frame} style={pad}>
-      <ProcessHeader title="Processes" meta={system?.name}
+      <PageHeader title="Processes" meta={system?.name}
         actions={system && (
           <>
             <SystemSelect value={system.id} onValueChange={setSystem} systems={list} />
