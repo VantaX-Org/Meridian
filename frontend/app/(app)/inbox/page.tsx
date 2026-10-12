@@ -439,7 +439,7 @@ export default function InboxPage() {
                 detail: "Exceptions are raised by exception rules on new findings.",
                 action: <Button variant="secondary" onClick={() => setRulesOpen(true)}>Exception rules</Button>,
               }
-            : { title: "No exceptions in this view", detail: "Clear the search to see all exceptions" }
+            : { title: "No exceptions in this view", detail: "Clear the search to see all exceptions", action: <Button variant="secondary" onClick={() => setSearch("")}>Clear search</Button> }
           : all.length === 0
           ? {
               title: "Inbox is clear",

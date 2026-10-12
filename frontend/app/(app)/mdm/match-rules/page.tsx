@@ -161,7 +161,9 @@ function RulesTab() {
           detail={domain ? undefined : "Add one per field the engine should compare."}
           action={write ? (
             <Button onClick={() => { setEditing(null); setDraft(emptyDraft(domain || DOMAINS[0])); }}>Add rule</Button>
-          ) : undefined}
+          ) : (
+            <Button variant="secondary" render={<Link href="/mdm/glossary">Open glossary</Link>} />
+          )}
         />
       )}
       {!write ? <Notice tone="info">Changing rules needs MDM write access.</Notice> : null}
