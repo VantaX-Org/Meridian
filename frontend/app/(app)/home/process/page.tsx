@@ -32,14 +32,22 @@ export default function ProcessHomePage() {
   if (systems.isSuccess && !system) return <NoSystem />;
   if (catalogue.isError) return <ErrorState message={apiErrorMessage(catalogue.error)} onRetry={() => catalogue.refetch()} />;
   const rows = catalogue.data;
-  if (!rows || !system) return <Skeleton height={320} />;
+  if (!rows || !system) {
+    return (
+      <div className="mx-auto flex flex-col" style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }} data-testid="home-loading">
+        <Skeleton height={26} width={160} />
+        <div className="grid grid-cols-2 gap-4"><Skeleton height={88} /><Skeleton height={88} /></div>
+        <Skeleton height={240} />
+      </div>
+    );
+  }
   const h = headline(rows);
   const catalogueHref = `/process?system=${system.id}`;
   return (
-    <div className="grid gap-4">
+    <div className="mx-auto flex flex-col" style={{ padding: "var(--m-page-pad)", gap: "var(--m-space-6)", maxWidth: "var(--m-page-max)" }}>
+      <div className="flex justify-end"><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></div>
       <InsightHeader {...processInsight(rows, system.name, system.id, can("run_process_discovery"))} />
-      <div className="max-w-xs"><SystemSelect value={system.id} onValueChange={setSystem} systems={list} /></div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Stat label="Processes discovered" value={`${h.discovered} of ${rows.length}`} href={catalogueHref} />
         <Stat label="Median fitness" value={fmtFitness(h.fitness)}
           tone={h.fitness == null ? undefined : (fitnessTone(h.fitness) as StatTone)} />

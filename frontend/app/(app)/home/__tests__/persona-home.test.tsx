@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQuery } from "@/__tests__/render";
 import * as objectsApi from "@/lib/api/v1/objects";
 import * as versionsApi from "@/lib/api/versions";
-import * as settingsApi from "@/lib/api/settings";
 import * as shellApi from "@/lib/api/shell";
 import * as connectivityApi from "@/lib/api/connectivity";
 import * as configLoadApi from "@/lib/api/config-load";
@@ -73,17 +72,19 @@ describe("PersonaHomePage 404 handling", () => {
   });
 });
 
-describe("PersonaHomePage dimension weights", () => {
-  it("falls back to the default weights when settings fail to load", async () => {
+describe("PersonaHomePage data layout", () => {
+  it("shows the run DQS, six linked dimension stats and a worst-first objects table", async () => {
     vi.spyOn(dayOneHook, "useDayOne").mockReturnValue({ status: "ready", step: null });
-    vi.spyOn(settingsApi, "getSettings").mockRejectedValue(new Error("forbidden"));
 
-    const { container } = renderWithQuery(<LeadHomePage />);
+    renderWithQuery(<LeadHomePage />);
 
-    await waitFor(() => expect(settingsApi.getSettings).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(container.querySelector('[role=img][aria-label^="Score by dimension"]')?.getAttribute("aria-label")).toContain("Completeness · 25%"),
-    );
+    const dims = await screen.findByTestId("home-dimensions");
+    expect(dims.querySelectorAll("a[href*='dimension=']")).toHaveLength(6);
+    expect(screen.getByTestId("home-verdict-row")).toBeInTheDocument();
+    expect(screen.getByText("Objects, worst first")).toBeInTheDocument();
+    expect(screen.getAllByText("Material Master").length).toBeGreaterThan(0);
+    // No count tile is a button wrapping a link.
+    expect(document.querySelector("button a")).toBeNull();
   });
 });
 

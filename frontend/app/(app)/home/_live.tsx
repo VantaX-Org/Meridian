@@ -8,7 +8,8 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design";
+import Link from "next/link";
+import { Button, Card, EmptyState, ErrorState, Pill, Skeleton, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useNowSec } from "@/hooks/use-now";
 import { getSystems } from "@/lib/api/connectivity";
@@ -24,19 +25,10 @@ const HEALTH: Record<string, { tone: PillTone; label: string }> = {
   unknown: { tone: "neutral", label: "Not tested" },
 };
 
-const row = "flex items-center gap-3 border-t px-3 py-1.5 text-[13px]";
-const rowStyle = { borderColor: "var(--m-line)" };
+const row = "flex items-center gap-3 border-t px-1 text-[13px]";
+const rowStyle = { borderColor: "var(--m-line)", minHeight: 36 };
 const meta = "ml-auto tabular-nums";
 const metaStyle = { color: "var(--m-ink-3)" };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded border" style={{ borderColor: "var(--m-line)", background: "var(--m-sheet)" }}>
-      <p className="px-3 py-2 text-[13px] font-medium" style={{ color: "var(--m-ink)" }}>{title}</p>
-      {children}
-    </div>
-  );
-}
 
 export function LiveSection() {
   const systemsQ = useQuery({ queryKey: queryKeys.systems(), queryFn: getSystems });
@@ -46,7 +38,7 @@ export function LiveSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Section title="Systems">
+      <Card title="Systems" padding="sm">
         {systemsQ.isLoading ? <Skeleton height={80} />
           : isListFailure(systemsQ) ? (
             <div className="p-3">
@@ -63,10 +55,10 @@ export function LiveSection() {
                 </span>
               </div>
             );
-          }) : <div className="p-3"><EmptyState title="No systems connected yet." /></div>}
-      </Section>
+          }) : <div className="p-3"><EmptyState title="No systems connected yet." action={<Button variant="secondary" render={<Link href="/systems">Connect a system</Link>} />} /></div>}
+      </Card>
 
-      <Section title="Jobs running">
+      <Card title="Jobs running" padding="sm">
         {active.length ? active.map((j) => (
           <div key={j.id} className={row} style={rowStyle}>
             <Pill tone={j.status === "queued" ? "neutral" : "at-risk"}>{labelOf(j.status)}</Pill>
@@ -75,8 +67,8 @@ export function LiveSection() {
               {j.percent}%, running {relativeTime(new Date(Math.min(j.started_at, nowSec) * 1000).toISOString())}
             </span>
           </div>
-        )) : <div className="p-3"><EmptyState title="Nothing is running." /></div>}
-      </Section>
+        )) : <div className="p-3"><EmptyState title="Nothing is running." action={<Button variant="secondary" render={<Link href="/systems">Run an extraction</Link>} />} /></div>}
+      </Card>
     </div>
   );
 }
