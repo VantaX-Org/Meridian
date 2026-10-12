@@ -308,9 +308,9 @@ export function Rail() {
           if (!expanded) openFlyout(item.href, e.currentTarget);
         }}
         onMouseLeave={() => closeFlyout()}
-        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full text-[13px] leading-[18px] hover:!text-[var(--m-ink)]"
+        className="flex-1 min-w-0 flex items-center gap-2 px-2 h-full text-[13px] leading-[18px] m-rail-link"
         style={{
-          color: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
+          ["--m-rail-fg" as string]: active ? "var(--m-accent-ink)" : "var(--m-ink-2)",
           fontWeight: active ? 600 : 500,
           paddingLeft: expanded && depth === 1 ? 28 : undefined,
           borderRadius: "var(--m-radius-control)",
@@ -404,7 +404,7 @@ export function Rail() {
         {!navLoading && groups.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
             {expanded ? (
-              <p className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)", padding: "20px 16px 6px" }}>
+              <p className="text-[11px] leading-[14px] font-medium" style={{ color: "var(--m-ink-3)", padding: "var(--m-rail-group-pad)" }}>
                 {group.group}
               </p>
             ) : (

@@ -5,6 +5,7 @@ import { ErrorState } from "../primitives/ErrorState";
 import { Skeleton } from "../primitives/Skeleton";
 
 export function ExplorerPage({
+  header,
   filterBar,
   toolbarEnd,
   summary,
@@ -14,6 +15,8 @@ export function ExplorerPage({
   errorProps,
   drawer,
 }: {
+  /** Page header slot, rendered above the filter bar (usually a `PageHeader`). */
+  header?: ReactNode;
   filterBar?: ReactNode;
   /** Right-aligned content in the filter bar row (or its own row with no filterBar), e.g. an ExportMenu. */
   toolbarEnd?: ReactNode;
@@ -21,7 +24,7 @@ export function ExplorerPage({
   table: ReactNode;
   /** Swaps the table region for a skeleton, empty or error state. */
   state?: "loading" | "empty" | "error";
-  /** `summary`: a one-sentence line shown in the summary slot in `--m-ink-3` (spec 7.16). */
+  /** `summary` is still read by the objects page; kept until page tasks drop it. */
   emptyProps?: { title: string; detail?: string; action?: ReactNode; ghost?: EmptyStateGhost; summary?: string };
   errorProps?: { message: string; onRetry?: () => void };
   /** A drawer rendered alongside the page, e.g. a row-detail panel. */
@@ -29,10 +32,11 @@ export function ExplorerPage({
 }) {
   let body = table;
   let summarySlot = summary;
-  if (state === "loading") {
-    // Spec 7.15 / screens.md: header + rows at table row height, staggered in.
+    if (state === "loading") {
+    // A 36px header skeleton plus seven 36px rows, matching the compact table row height.
     body = (
       <div className="m-motion-stagger flex flex-col gap-1" data-state="loading">
+        <Skeleton height={36} />
         {Array.from({ length: 7 }, (_, i) => <Skeleton key={i} height={36} />)}
       </div>
     );
@@ -54,6 +58,7 @@ export function ExplorerPage({
 
   return (
     <div className="mx-auto flex w-full flex-col gap-4" style={{ padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" }}>
+      {header}
       {toolbarEnd ? (
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">{filterBar}</div>
