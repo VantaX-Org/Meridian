@@ -35,3 +35,10 @@ def test_restricted_roles_get_empty_views(role: str) -> None:
 def test_other_roles_reach_the_queries() -> None:
     with pytest.raises(RuntimeError, match="queried"):
         _call(mdm_metrics.get_mdm_dashboard, "analyst")
+
+
+def test_null_metric_columns_do_not_raise() -> None:
+    row = (None, None, None, None, None, None, None, None, None, None, None, None, None)
+    out = mdm_metrics.MdmMetricOut(**mdm_metrics._metric_dict(("2026-01-01",) + row[1:]))
+    assert out.golden_record_count == 0 and out.backlog_count == 0
+    assert out.mdm_health_score == 0.0 and out.ai_projected_score is None
