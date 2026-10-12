@@ -117,12 +117,13 @@ describe("RunDetailPage", () => {
     expect(getVersion).toHaveBeenCalledTimes(2);
   });
 
-  it("shows the no-findings empty state on the summary tab", async () => {
+  it("shows the no-findings empty state on the findings tab", async () => {
     vi.spyOn(versionsApi, "getVersion").mockResolvedValue(current);
     renderWithQuery(<RunDetailPage />);
-    await waitFor(() =>
-      expect(screen.getByText("No findings were produced for this run. Open Steps to see what ran.")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Findings" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("tab", { name: "Findings" }));
+    await waitFor(() => expect(screen.getByText("No findings in this run")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Open steps" })).toBeInTheDocument();
   });
 
   it("lists objects on the objects tab and navigates to the object page on row click", async () => {
@@ -197,5 +198,13 @@ describe("RunDetailPage", () => {
     vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
     const { container } = renderWithQuery(<RunDetailPage />);
     await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+    expect(screen.queryByText(/^Run…$/)).toBeNull();
+  });
+
+  it("starts steps, aggregate and findings before the version resolves", async () => {
+    vi.spyOn(versionsApi, "getVersion").mockReturnValue(new Promise(() => {}));
+    renderWithQuery(<RunDetailPage />);
+    await waitFor(() => expect(runsApi.getRunSteps).toHaveBeenCalled());
+    expect(findingsApi.getFindingsAggregate).toHaveBeenCalled();
   });
 });
