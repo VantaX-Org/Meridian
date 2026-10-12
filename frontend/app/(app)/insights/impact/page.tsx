@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
+import { chartSummary, DataTable, DrillLink, EmptyState, ErrorState, Card, Mono, Pareto, Pill, Skeleton, Stat } from "@/design";
 import {
   getImpact,
   getProvenCost,
@@ -214,7 +214,7 @@ export default function ImpactPage() {
     >
       {rows.length > 0 && (
         <Card title="Cost by feature">
-          <Pareto data={byFeature} />
+          <div role="img" aria-label={chartSummary(byFeature, "Value at risk by feature")}><Pareto data={byFeature} /></div>
         </Card>
       )}
       <Card title="Proven cost findings">
