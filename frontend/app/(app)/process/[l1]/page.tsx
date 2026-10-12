@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Button, EmptyState, ErrorState, Field, InsightHeader, Mono, Notice, Select, Skeleton, Tabs, type TabItem,
+  Button, EmptyState, ErrorState, Field, InsightHeader, Mono, Notice, Pill, Select, Tabs, type TabItem,
 } from "@/design";
 import { useRole } from "@/hooks/use-role";
 import { getCatalogue, getRun, getRunModel, type DiscoveryRunDetail, type ProcessFilterParams } from "@/lib/api/process-discovery";
@@ -29,6 +29,7 @@ import { ExportDialog } from "../_components/export-dialog";
 import { FlowView } from "../_components/flow-view";
 import { L5Table } from "../_components/l5-table";
 import { NoSystem, fitnessTone, fmtCount, fmtFitness, fmtSeconds, useProcessSystem } from "../_components/shared";
+import { ProcessHeader, ProcessSkeleton } from "../_components/process-header";
 import { VariantsTable } from "../_components/variants-table";
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -62,17 +63,20 @@ export default function ProcessL1Page() {
   });
   const reference = useQuery({ queryKey: queryKeys.processReference(), queryFn: getReference });
 
-  if (systems.isError) return <ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />;
-  if (systems.isSuccess && !system) return <NoSystem />;
+  const frame = "mx-auto grid w-full gap-4";
+  const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
+  const wrap = (n: ReactNode) => <div className={frame} style={pad}>{n}</div>;
+  if (systems.isError) return wrap(<ErrorState message={apiErrorMessage(systems.error)} onRetry={() => systems.refetch()} />);
+  if (systems.isSuccess && !system) return wrap(<NoSystem />);
   for (const q of [catalogue, run, model, reference]) {
-    if (q.isError) return <ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />;
+    if (q.isError) return wrap(<ErrorState message={apiErrorMessage(q.error)} onRetry={() => q.refetch()} />);
   }
   if (!catalogue.data || !reference.data || (runId && !run.data) || (discovered && !model.data)) {
-    return <Skeleton height={480} />;
+    return wrap(<ProcessSkeleton />);
   }
   if (!row) {
-    return <EmptyState title="This process is not in the catalogue" detail={`No level-1 process ${l1} exists.`}
-      action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />;
+    return wrap(<EmptyState title="Process not in catalogue" detail={`No level-1 process ${l1} exists.`}
+      action={<Button render={<Link href="/process">Open the catalogue</Link>} />} />);
   }
 
   const r = run.data;
@@ -105,9 +109,10 @@ export default function ProcessL1Page() {
   const items: TabItem[] = available.map((t) => ({ value: t, label: TAB_LABEL[t], content: content[t] }));
 
   return (
-    <div className="grid gap-4">
-      <Header l1={l1} name={row.name} systemName={system!.name} run={discovered ? r : undefined}
-        reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)} />
+    <div className={frame} style={pad}>
+      <Header l1={l1} name={row.name} systemName={system!.name} systemId={system!.id} run={discovered ? r : undefined}
+        reason={isReference ? reason : null} canExport={canExport && discovered} onExport={() => setExporting(true)}
+        canRun={can("run_process_discovery")} />
       <nav aria-label="Process levels">
         <ol className="flex flex-wrap items-center gap-1">
           {crumbs.map((c, i) => (
@@ -130,30 +135,42 @@ export default function ProcessL1Page() {
   );
 }
 
-function Header({ l1, name, systemName, run, reason, canExport, onExport }: {
-  l1: string; name: string; systemName: string; run: DiscoveryRunDetail | undefined; reason: string | null;
-  canExport: boolean; onExport: () => void;
+function Header({ l1, name, systemName, systemId, run, reason, canExport, onExport, canRun }: {
+  l1: string; name: string; systemName: string; systemId: string; run: DiscoveryRunDetail | undefined; reason: string | null;
+  canExport: boolean; onExport: () => void; canRun: boolean;
 }) {
+  const runLink = canRun
+    ? <Button render={<Link href={`/process/runs?system=${systemId}&new=1`}>Run discovery</Link>} /> : null;
   if (!run) {
     return (
+      <>
+      <ProcessHeader title={name} meta={`${l1} on ${systemName}`} actions={runLink} />
       <InsightHeader
         situation={{ sentence: `${name} on ${systemName} has no discovered flow.` }}
         changed={{ sentence: "No completed discovery run." }}
         why={{ sentence: reason ?? "Discovery has not run for this process yet." }}
         next={{ sentence: "Read the reference model below." }} />
+      </>
     );
   }
   const s = run.stats;
   const fitness = s.conformance?.fitness ?? null;
   return (
+    <>
+    <ProcessHeader title={name}
+      meta={`${fmtCount(s.cases)} cases · ${fmtCount(s.variants)} variants · fitness ${fmtFitness(fitness)}`}
+      status={<Pill tone={fitnessTone(fitness)}>{fmtFitness(fitness)}</Pill>}
+      actions={<>
+        {canExport && <Button variant="secondary" onClick={onExport}>Export to Signavio</Button>}
+        {runLink}
+      </>} />
     <InsightHeader
       situation={{ sentence: `${name} on ${systemName}: ${fmtCount(s.cases)} cases, ${fmtCount(s.variants)} variants.` }}
       changed={{ sentence: run.finished_at ? `Discovered ${relativeTime(run.finished_at)}.` : "Discovery in progress." }}
       why={{ sentence: `Fitness ${fmtFitness(fitness)} against the reference, median ${fmtSeconds(s.throughput?.median_seconds)} end to end.`,
         tone: fitnessTone(fitness) }}
-      next={canExport
-        ? { sentence: `Click a step to drill into it, or export ${l1} for Signavio.`, action: { label: "Export to Signavio", onClick: onExport } }
-        : { sentence: "Click a step to drill into it." }} />
+      next={{ sentence: "Click a step to drill into its records." }} />
+    </>
   );
 }
 
@@ -165,8 +182,8 @@ function Filters({ run, filters, set }: {
   const org = Object.entries(filters).filter(([k]) => k.startsWith("org."));
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <Field label="From"><input type="date" className="m-input" value={text("from")} onChange={(e) => set({ from: e.target.value || null })} /></Field>
-      <Field label="To"><input type="date" className="m-input" value={text("to")} onChange={(e) => set({ to: e.target.value || null })} /></Field>
+      <Field label="From"><DateInput value={text("from")} onChange={(v) => set({ from: v })} /></Field>
+      <Field label="To"><DateInput value={text("to")} onChange={(v) => set({ to: v })} /></Field>
       <Field label="Document type">
         <input className="m-input" value={text("doc_type")} placeholder="Every type" onChange={(e) => set({ doc_type: e.target.value || null })} />
       </Field>
@@ -185,11 +202,17 @@ function Filters({ run, filters, set }: {
   );
 }
 
+/** ponytail: local until foundations ship a `DateInput` primitive. */
+function DateInput({ value, onChange }: { value: string; onChange: (v: string | null) => void }) {
+  return <input type="date" className="m-input" value={value} onChange={(e) => onChange(e.target.value || null)} />;
+}
+
 function ReferenceView({ doc, l1, node, onOpen }: {
   doc: ProcessModelDocument; l1: string; node: string | null; onOpen: (id: string) => void;
 }) {
   const hit = locate(doc, node ?? l1);
-  if (!hit) return <EmptyState title="Not in the reference model" detail="This step exists only in the discovered flow." />;
+  if (!hit) return <EmptyState title="Not in the reference model" detail="This step exists only in the discovered flow."
+      action={<Button render={<Link href="/insights/process/designer">Open designer</Link>} />} />;
   if (hit.level === 4) return <L5Table l4={hit.item as L4} onOpen={noop} />;
   return (
     <>

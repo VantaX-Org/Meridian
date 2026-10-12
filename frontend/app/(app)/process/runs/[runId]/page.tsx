@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, Skeleton, type PillTone } from "@/design";
+import { Card, DataTable, ErrorState, InsightHeader, Mono, Notice, Pill, type PillTone } from "@/design";
 import { useJobs } from "@/hooks/use-jobs";
 import { useRole } from "@/hooks/use-role";
 import { ACTIVE_RUN, getRun, startRuns } from "@/lib/api/process-discovery";
@@ -12,6 +12,7 @@ import { apiErrorMessage } from "@/lib/error";
 import { relativeTime } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import type { JobStageStatus } from "@/types/jobs";
+import { ProcessHeader, ProcessSkeleton } from "../../_components/process-header";
 import { CoveragePill, RunStatusPill } from "../../_components/coverage-pill";
 import { fitnessTone, fmtCount, fmtFitness, fmtSeconds, l1Href, stageLabel } from "../../_components/shared";
 
@@ -56,8 +57,10 @@ export default function ProcessRunPage() {
     },
   });
 
-  if (run.isError) return <ErrorState message={apiErrorMessage(run.error)} onRetry={() => run.refetch()} />;
-  if (!run.data) return <Skeleton height={320} />;
+  const frame = "mx-auto grid w-full gap-4";
+  const pad = { padding: "var(--m-page-pad)", maxWidth: "var(--m-page-max)" };
+  if (run.isError) return <div className={frame} style={pad}><ErrorState message={apiErrorMessage(run.error)} onRetry={() => run.refetch()} /></div>;
+  if (!run.data) return <div className={frame} style={pad}><ProcessSkeleton rows={4} /></div>;
   const r = run.data;
   const job = jobs.find((j) => j.id === r.job_id);
   const s = r.stats;
@@ -69,7 +72,10 @@ export default function ProcessRunPage() {
   const canRun = can("run_process_discovery");
 
   return (
-    <div className="grid gap-4">
+    <div className={frame} style={pad}>
+      <ProcessHeader title={`${r.l1} discovery run`} meta={active && stageLabel(job)
+          ? `${stageLabel(job)}${job ? ` · ${Math.round(job.percent)}%` : ""}` : `Started ${relativeTime(r.started_at)}`}
+        status={<><RunStatusPill status={r.status} />{r.coverage && <CoveragePill coverage={r.coverage} />}</>} />
       <InsightHeader
         situation={{ sentence: `${r.l1} ${r.mode === "incremental" ? "incremental" : "full"} run, ${active ? "in progress" : r.status}.`,
           tone: r.status === "failed" ? "no-go" : r.status === "completed" ? "go" : "neutral" }}
@@ -87,11 +93,6 @@ export default function ProcessRunPage() {
               : { sentence: "Ask a process analyst to run it again." })
             : { sentence: "Leave this page open or come back later; the run continues in the background." }}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <RunStatusPill status={r.status} />
-        {r.coverage && <CoveragePill coverage={r.coverage} />}
-        {active && stageLabel(job) && <span>{stageLabel(job)}{job ? ` · ${Math.round(job.percent)}%` : ""}</span>}
-      </div>
       {r.status === "failed" && (
         <ErrorState message={r.error ?? "The run failed without a message."} onRetry={canRun ? () => retry.mutate() : undefined} />
       )}
