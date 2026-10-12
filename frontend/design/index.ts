@@ -26,6 +26,7 @@ export * from "./primitives/Stat";
 export * from "./primitives/PageHeader";
 export * from "./primitives/Checkbox";
 export * from "./primitives/Input";
+export * from "./primitives/Radio";
 export * from "./primitives/Switch";
 export * from "./primitives/Textarea";
 export * from "./hooks/usePrefetch";
