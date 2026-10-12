@@ -47,6 +47,8 @@ class ObjectSummaryOut(BaseModel):
     trend: list[float] = []                   # composite score of the last <=8 runs of the same system, oldest first
     worst_dimension: Optional[str] = None     # measured DAMA dimension with the lowest score
     owner: Optional[str] = None               # data_owners (kind 'object', ref = module) owner's name
+    # measured DAMA dimension scores from the run summary (coverage 0 = not measured, omitted); {} when there is none
+    dimension_scores: dict[str, float] = {}
 
 
 class ObjectsListOut(BaseModel):
@@ -97,6 +99,12 @@ def _worst_dimension(mod_summary: dict) -> Optional[str]:
     scores = {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
               if v is not None and coverage.get(d) != 0}  # coverage 0: not measured
     return min(scores, key=lambda d: scores[d]) if scores else None
+
+
+def _measured_dimensions(mod_summary: dict) -> dict[str, float]:
+    coverage = mod_summary.get("dimension_coverage") or {}
+    return {d: v for d, v in (mod_summary.get("dimension_scores") or {}).items()
+            if v is not None and coverage.get(d) != 0}
 
 
 _SEVERITY_RANK = ("critical", "high", "medium", "low")
@@ -177,6 +185,7 @@ async def list_objects(run: str = Query(..., alias="run"),
                       if isinstance(h.get(module), dict) and h[module].get("composite_score") is not None],
             "worst_dimension": _worst_dimension(mod_summary),
             "owner": owners.get(module),
+            "dimension_scores": _measured_dimensions(mod_summary),
         })
     return {"run_id": run_id, "objects": objects, "thresholds": thresholds,
             "blocking_findings_total": blocking_total}

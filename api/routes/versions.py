@@ -33,6 +33,8 @@ class VersionResponse(BaseModel):
     status: str
     dqs_summary: Optional[dict]
     metadata: Optional[dict]
+    # open findings per severity ({critical, high, medium, low}) for the run; the list endpoint fills it, other callers leave None
+    severity_counts: Optional[dict[str, int]] = None
 
 
 class PatchVersionRequest(BaseModel):
@@ -80,7 +82,22 @@ async def list_versions(
     stmt = stmt.offset(offset).limit(limit)
     result = await db.execute(stmt)
     versions = result.scalars().all()
-    return {"versions": [_version_to_response(v) for v in versions]}
+    # one grouped query for the whole page of runs, none per run
+    counts: dict[str, dict[str, int]] = {}
+    if versions:
+        rows = (await db.execute(text(
+            "SELECT version_id, severity, count(*) FROM findings "
+            "WHERE tenant_id = :t AND version_id = ANY(CAST(:ids AS uuid[])) AND affected_count > 0 "
+            "GROUP BY version_id, severity"), {"t": str(tenant.id), "ids": [str(v.id) for v in versions]})).fetchall()
+        for vid, sev, n in rows:
+            counts.setdefault(str(vid), {})[sev] = n
+    out = []
+    for v in versions:
+        r = _version_to_response(v)
+        c = counts.get(str(v.id), {})
+        r.severity_counts = {k: c.get(k, 0) for k in ("critical", "high", "medium", "low")}
+        out.append(r)
+    return {"versions": out}
 
 
 ARCHIVE_SQL = """

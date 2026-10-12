@@ -88,3 +88,16 @@ async def test_objects_list_enrichment(seeded, monkeypatch):
     assert vendor["blocking_rule_id"] == "V-CRIT" and vendor["blocking_rule_name"] is None
     assert vendor["worst_dimension"] is None and vendor["owner"] is None
     assert len(vendor["trend"]) == 8
+
+
+@pytest.mark.anyio
+async def test_objects_list_dimension_scores(seeded, monkeypatch):
+    t, runs = seeded
+    patch_tenant(monkeypatch, t)
+    await api_deps.engine.dispose()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        body = (await client.get(f"/api/v1/objects?run={runs[8]}", headers=HEADERS)).json()
+    by = {o["module"]: o for o in body["objects"]}
+    # uniqueness has coverage 0, so it is not measured and not returned
+    assert by["material_master"]["dimension_scores"] == {"completeness": 90.0, "validity": 40.0}
+    assert by["vendor"]["dimension_scores"] == {}
