@@ -104,7 +104,7 @@ describe("HomePage fresh install vs data", () => {
         }
       />,
     );
-    expect(screen.getByTestId("home-verdict").style.fontFamily).toContain("--m-font-display");
+    expect(screen.getByTestId("home-verdict").style.fontFamily).toContain("--m-font-ui");
     const ring = container.querySelector("svg[role=img][aria-label^=Score]");
     expect(ring).toHaveAttribute("width", "160");
     expect(container.querySelector("[data-cap]")).not.toBeNull();
