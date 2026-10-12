@@ -6,39 +6,39 @@
 
 :root {
   /* ---------- Surfaces (light: warm paper) ---------- */
-  --m-canvas: #F4F3EF;          /* page background */
+  --m-canvas: #F5F6F8;          /* page background */
   --m-sheet: #FFFFFF;           /* cards, tables, forms */
-  --m-sheet-raised: #FAF9F6;    /* table header rows, hover rows, inset wells */
-  --m-sheet-sunken: #EFEDE8;    /* code/sample wells, ghost shapes */
-  --m-rail: #F4F3EF;            /* sidebar background (same as canvas in light) */
+  --m-sheet-raised: #F9FAFB;    /* table header rows, hover rows, inset wells */
+  --m-sheet-sunken: #EDEFF3;    /* code/sample wells, ghost shapes */
+  --m-rail: #F5F6F8;            /* sidebar background (same as canvas in light) */
   --m-rail-hover: var(--m-sheet-raised);
   --m-rail-edge: transparent;   /* rail right border: none in light, hairline in dark */
-  --m-line: #E4E2DB;            /* hairline borders (1px) */
-  --m-line-strong: #CFCCC3;     /* input borders, table head rule */
+  --m-line: #E3E6EB;            /* hairline borders (1px) */
+  --m-line-strong: #C9CED6;     /* input borders, table head rule */
   --m-scrim: rgb(20 21 25 / 0.32);
 
   /* ---------- Ink ---------- */
-  --m-ink: #141519;             /* 16.4:1 on sheet */
-  --m-ink-2: #4A4C55;           /* 8.1:1 */
-  --m-ink-3: #686A74;           /* 5.4:1 on sheet, 4.8:1 on canvas, 4.6:1 on sunken; minimum for body text */
+  --m-ink: #15171C;             /* 16.4:1 on sheet */
+  --m-ink-2: #4B5160;           /* 8.1:1 */
+  --m-ink-3: #656C7B;           /* 4.9:1 on sheet; minimum for body text */
   --m-ink-4: #A3A5AD;           /* disabled, decorative only; never for text */
   --m-ink-on-accent: #FFFFFF;
 
   /* ---------- Accent: cobalt ---------- */
-  --m-accent: #2B4BE0;          /* 6.1:1 on sheet, 5.6:1 on canvas */
-  --m-accent-hover: #2340C4;
-  --m-accent-active: #1C35A8;
-  --m-accent-soft: #E9EDFC;     /* selected row, active nav */
-  --m-accent-soft-2: #D5DCF8;   /* selected + hover */
-  --m-accent-ink: #1E3AB8;      /* accent used as text on soft tint: 7.4:1 */
-  --m-accent-ring: rgb(43 75 224 / 0.35);
+  --m-accent: #4F46E5;          /* 6.1:1 on sheet, 5.6:1 on canvas */
+  --m-accent-hover: #4338CA;
+  --m-accent-active: #3730A3;
+  --m-accent-soft: #EEF0FD;     /* selected row, active nav */
+  --m-accent-soft-2: #DDE0FA;   /* selected + hover */
+  --m-accent-ink: #3730A3;      /* accent used as text on soft tint: 7.4:1 */
+  --m-accent-ring: rgb(79 70 229 / 0.35);
 
   /* ---------- Status scale (hue means defect state) ---------- */
-  --m-critical: #B42318;        --m-critical-soft: #FCEBE9;   --m-critical-ink: #8E1B12;
-  --m-high: #BA4A0B;            --m-high-soft: #FDEEE3;       --m-high-ink: #8F3908;
-  --m-medium: #946200;          --m-medium-soft: #FBF1DB;     --m-medium-ink: #6E4900;
+  --m-critical: #C2410C;        --m-critical-soft: #FDF1ED;   --m-critical-ink: #8E1B12;
+  --m-high: #B45309;            --m-high-soft: #FEF3E8;       --m-high-ink: #8F3908;
+  --m-medium: #A16207;          --m-medium-soft: #FCF5E0;     --m-medium-ink: #6E4900;
   --m-low: var(--m-ink-3);      --m-low-soft: var(--m-sheet-raised);
-  --m-pass: #157A3C;            --m-pass-soft: #E4F4EA;       --m-pass-ink: #0F5C2D;
+  --m-pass: #15803D;            --m-pass-soft: #EDF8F1;       --m-pass-ink: #0F5C2D;
   --m-info: var(--m-accent);    --m-info-soft: var(--m-accent-soft);
 
   /* Readiness verdicts reuse the status scale */
@@ -56,29 +56,30 @@
   --m-dqs-cap-line: var(--m-ink-2);
 
   /* ---------- Charts ---------- */
-  --m-viz-1: #2B4BE0;  /* cobalt      */
-  --m-viz-2: #157A3C;  /* green       */
-  --m-viz-3: #946200;  /* amber       */
+  --m-viz-1: #4F46E5;  /* cobalt      */
+  --m-viz-2: #15803D;  /* green       */
+  --m-viz-3: #CA8A04;  /* amber       */
   --m-viz-4: #0E7490;  /* teal        */
   --m-viz-5: #6D28D9;  /* violet      */
-  --m-viz-6: #B42318;  /* red         */
+  --m-viz-6: #C2410C;  /* red         */
   --m-viz-7: #BE185D;  /* magenta     */
   --m-viz-8: #4D7C0F;  /* olive       */
   --m-viz-grid: var(--m-line);
   --m-viz-axis: var(--m-ink-3);
   --m-viz-threshold: var(--m-ink-2);
-  --m-viz-area: rgb(43 75 224 / 0.10);
+  --m-viz-area: rgb(79 70 229 / 0.10);
   --m-viz-tooltip-bg: var(--m-ink);
   --m-viz-tooltip-ink: var(--m-sheet);
 
   /* ---------- Type ---------- */
   --m-font-ui: var(--font-ui, "Public Sans", system-ui, sans-serif);
   --m-font-sans: var(--m-font-ui);
-  --m-font-mono: var(--font-mono, "JetBrains Mono", ui-monospace, monospace);
+  --m-font-mono: var(--font-jbm, "JetBrains Mono", ui-monospace, monospace);
 
   --m-text-hero: 56px;      --m-leading-hero: 60px;      /* count-up DQS */
   --m-text-verdict: 28px;   --m-leading-verdict: 34px;   /* verdict sentence */
-  --m-text-title: 22px;     --m-leading-title: 28px;     /* auth h1, record key */
+  --m-text-verdict-num: 44px; --m-leading-verdict-num: 48px; /* verdict number */
+  --m-text-title: 20px;     --m-leading-title: 26px;     /* auth h1, record key */
   --m-text-stat: 26px;      --m-leading-stat: 30px;      /* KPI tile value */
   --m-text-section: 15px;   --m-leading-section: 20px;   /* h2, drawer title */
   --m-text-body: 13px;      --m-leading-body: 18px;
@@ -104,8 +105,8 @@
   --m-rail-w: 240px;
   --m-rail-w-collapsed: 56px;
   --m-topbar-h: 48px;
-  --m-row-h: 36px;
-  --m-row-h-dense: 30px;
+  --m-row-h: 44px;
+  --m-row-h-dense: 36px;
   --m-control-h: 32px;
   --m-control-h-lg: 40px;
 
@@ -114,8 +115,9 @@
   --m-elev-1: 0 0 0 1px var(--m-line);                                    /* flat card: hairline only */
   --m-elev-2: 0 0 0 1px var(--m-line), 0 4px 12px rgb(20 21 25 / 0.08);     /* menu, popover, tooltip */
   --m-elev-3: 0 0 0 1px var(--m-line), 0 16px 48px rgb(20 21 25 / 0.16);    /* drawer, dialog, palette */
+  --m-ring: 0 0 0 2px var(--m-accent);                                      /* selection outline */
   --m-elev-focus: 0 0 0 2px var(--m-sheet), 0 0 0 4px var(--m-accent);
-  --m-elev-accent: 0 1px 2px rgb(43 75 224 / 0.30);                         /* primary button */
+  --m-elev-accent: 0 1px 2px rgb(79 70 229 / 0.30);                         /* primary button */
 
   /* ---------- Motion ---------- */
   --m-motion-duration: 120ms;    /* hover, focus, colour */
@@ -129,41 +131,41 @@
 
 /* ---------- Dark ---------- */
 [data-theme="dark"] {
-  --m-canvas: #0C0D11;
-  --m-sheet: #131519;
-  --m-sheet-raised: #1A1C22;
-  --m-sheet-sunken: #0F1014;
+  --m-canvas: #0F1115;
+  --m-sheet: #171A20;
+  --m-sheet-raised: #1D2129;
+  --m-sheet-sunken: #0C0E12;
   --m-rail: #0A0B0E;
   --m-rail-edge: var(--m-line);
   --m-rail-hover: var(--m-sheet);
-  --m-line: #24262E;
+  --m-line: #262B35;
   --m-line-strong: #34373F;
   --m-scrim: rgb(0 0 0 / 0.6);
 
-  --m-ink: #EDEDF0;             /* 15.2:1 on sheet */
-  --m-ink-2: #AEB0B8;           /* 8.0:1 */
-  --m-ink-3: #85878F;           /* 4.9:1 */
+  --m-ink: #ECEEF2;             /* 15.2:1 on sheet */
+  --m-ink-2: #A6ADBB;           /* 8.0:1 */
+  --m-ink-3: #8A92A1;           /* 4.9:1 */
   --m-ink-4: #4F525B;
-  --m-ink-on-accent: #0C0D11;
+  --m-ink-on-accent: #0F1115;
 
-  --m-accent: #8DA3FF;          /* 8.3:1 on sheet */
-  --m-accent-hover: #A3B5FF;
-  --m-accent-active: #7891F2;
-  --m-accent-soft: #1A2247;
-  --m-accent-soft-2: #222D5C;
-  --m-accent-ink: #B7C4FF;
-  --m-accent-ring: rgb(141 163 255 / 0.40);
+  --m-accent: #818CF8;          /* 8.3:1 on sheet */
+  --m-accent-hover: #A5B4FC;
+  --m-accent-active: #6D78E8;
+  --m-accent-soft: #23264A;
+  --m-accent-soft-2: #2D3160;
+  --m-accent-ink: #C7D2FE;
+  --m-accent-ring: rgb(129 140 248 / 0.40);
 
-  --m-critical: #F2756B;  --m-critical-soft: #3A1512;  --m-critical-ink: #FFA69E;
-  --m-high: #F39A4B;      --m-high-soft: #3B2010;      --m-high-ink: #FFBE85;
-  --m-medium: #E2B646;    --m-medium-soft: #352A0C;    --m-medium-ink: #F3D27E;
-  --m-pass: #5FCF8A;      --m-pass-soft: #0F2F1C;      --m-pass-ink: #93E3B1;
+  --m-critical: #F97316;  --m-critical-soft: #3A1512;  --m-critical-ink: #FFA69E;
+  --m-high: #F59E0B;      --m-high-soft: #3B2010;      --m-high-ink: #FFBE85;
+  --m-medium: #EAB308;    --m-medium-soft: #352A0C;    --m-medium-ink: #F3D27E;
+  --m-pass: #22C55E;      --m-pass-soft: #0F2F1C;      --m-pass-ink: #93E3B1;
 
-  --m-viz-1: #8DA3FF; --m-viz-2: #5FCF8A; --m-viz-3: #E2B646; --m-viz-4: #4FC3DB;
-  --m-viz-5: #B79AF5; --m-viz-6: #F2756B; --m-viz-7: #F27AB0; --m-viz-8: #A3CF5F;
-  --m-viz-area: rgb(141 163 255 / 0.14);
-  --m-viz-tooltip-bg: #EDEDF0;
-  --m-viz-tooltip-ink: #0C0D11;
+  --m-viz-1: #818CF8; --m-viz-2: #22C55E; --m-viz-3: #EAB308; --m-viz-4: #4FC3DB;
+  --m-viz-5: #B79AF5; --m-viz-6: #F97316; --m-viz-7: #F27AB0; --m-viz-8: #A3CF5F;
+  --m-viz-area: rgb(129 140 248 / 0.14);
+  --m-viz-tooltip-bg: #ECEEF2;
+  --m-viz-tooltip-ink: #0F1115;
 
   --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
   --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
@@ -174,18 +176,18 @@
 /* System preference when no explicit theme is set. Keep in sync with the dark block above. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --m-canvas: #0C0D11; --m-sheet: #131519; --m-sheet-raised: #1A1C22; --m-sheet-sunken: #0F1014;
-    --m-rail: #0A0B0E; --m-rail-edge: var(--m-line); --m-rail-hover: var(--m-sheet); --m-line: #24262E; --m-line-strong: #34373F; --m-scrim: rgb(0 0 0 / 0.6);
-    --m-ink: #EDEDF0; --m-ink-2: #AEB0B8; --m-ink-3: #85878F; --m-ink-4: #4F525B; --m-ink-on-accent: #0C0D11;
-    --m-accent: #8DA3FF; --m-accent-hover: #A3B5FF; --m-accent-active: #7891F2;
-    --m-accent-soft: #1A2247; --m-accent-soft-2: #222D5C; --m-accent-ink: #B7C4FF; --m-accent-ring: rgb(141 163 255 / 0.40);
-    --m-critical: #F2756B; --m-critical-soft: #3A1512; --m-critical-ink: #FFA69E;
-    --m-high: #F39A4B; --m-high-soft: #3B2010; --m-high-ink: #FFBE85;
-    --m-medium: #E2B646; --m-medium-soft: #352A0C; --m-medium-ink: #F3D27E;
-    --m-pass: #5FCF8A; --m-pass-soft: #0F2F1C; --m-pass-ink: #93E3B1;
-    --m-viz-1: #8DA3FF; --m-viz-2: #5FCF8A; --m-viz-3: #E2B646; --m-viz-4: #4FC3DB;
-    --m-viz-5: #B79AF5; --m-viz-6: #F2756B; --m-viz-7: #F27AB0; --m-viz-8: #A3CF5F;
-    --m-viz-area: rgb(141 163 255 / 0.14); --m-viz-tooltip-bg: #EDEDF0; --m-viz-tooltip-ink: #0C0D11;
+    --m-canvas: #0F1115; --m-sheet: #171A20; --m-sheet-raised: #1D2129; --m-sheet-sunken: #0C0E12;
+    --m-rail: #0A0B0E; --m-rail-edge: var(--m-line); --m-rail-hover: var(--m-sheet); --m-line: #262B35; --m-line-strong: #34373F; --m-scrim: rgb(0 0 0 / 0.6);
+    --m-ink: #ECEEF2; --m-ink-2: #A6ADBB; --m-ink-3: #8A92A1; --m-ink-4: #4F525B; --m-ink-on-accent: #0F1115;
+    --m-accent: #818CF8; --m-accent-hover: #A5B4FC; --m-accent-active: #6D78E8;
+    --m-accent-soft: #23264A; --m-accent-soft-2: #2D3160; --m-accent-ink: #C7D2FE; --m-accent-ring: rgb(129 140 248 / 0.40);
+    --m-critical: #F97316; --m-critical-soft: #3A1512; --m-critical-ink: #FFA69E;
+    --m-high: #F59E0B; --m-high-soft: #3B2010; --m-high-ink: #FFBE85;
+    --m-medium: #EAB308; --m-medium-soft: #352A0C; --m-medium-ink: #F3D27E;
+    --m-pass: #22C55E; --m-pass-soft: #0F2F1C; --m-pass-ink: #93E3B1;
+    --m-viz-1: #818CF8; --m-viz-2: #22C55E; --m-viz-3: #EAB308; --m-viz-4: #4FC3DB;
+    --m-viz-5: #B79AF5; --m-viz-6: #F97316; --m-viz-7: #F27AB0; --m-viz-8: #A3CF5F;
+    --m-viz-area: rgb(129 140 248 / 0.14); --m-viz-tooltip-bg: #ECEEF2; --m-viz-tooltip-ink: #0F1115;
     --m-elev-2: 0 0 0 1px var(--m-line-strong), 0 4px 16px rgb(0 0 0 / 0.5);
     --m-elev-3: 0 0 0 1px var(--m-line-strong), 0 24px 64px rgb(0 0 0 / 0.7);
     --m-elev-accent: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -215,6 +217,17 @@
 .m-text-body  { font-size: 13px; line-height: 18px; }
 .m-text-h     { font-size: 15px; line-height: 20px; }
 .m-text-title { font-size: 20px; line-height: 26px; }
+.m-text-verdict { font-size: var(--m-text-verdict-num); line-height: var(--m-leading-verdict-num); }
+.m-ring { box-shadow: var(--m-ring); }
+.m-textarea { height: auto; min-height: calc(var(--m-control-h) * 2); padding: 6px 10px; resize: vertical; }
+.m-switch { display: inline-flex; align-items: center; min-width: 24px; min-height: 24px; gap: 8px; cursor: pointer; background: none; border: 0; padding: 0; color: var(--m-ink); }
+.m-switch-track { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--m-line-strong); transition: background var(--m-motion-duration) var(--m-motion-ease); }
+.m-switch-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--m-sheet); transition: transform var(--m-motion-duration) var(--m-motion-ease); }
+.m-switch[aria-checked="true"] .m-switch-track { background: var(--m-pass); }
+.m-switch[aria-checked="true"] .m-switch-thumb { transform: translateX(12px); }
+.m-switch:focus-visible { outline: none; }
+.m-switch:focus-visible .m-switch-track { box-shadow: var(--m-elev-focus); }
+.m-switch:disabled { cursor: not-allowed; opacity: 0.5; }
 .m-numeric { font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; }
 
 /* ---------- Motion ---------- */
@@ -261,6 +274,8 @@
 .m-rail-link:hover { color: var(--m-ink); }
 
 /* Form primitives */
+.m-radio { accent-color: var(--m-accent); width: 16px; height: 16px; }
+.m-radio-row { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; cursor: pointer; }
 .m-checkbox { accent-color: var(--m-accent); width: 16px; height: 16px; }
 
 /* DataTable keyboard cursor */

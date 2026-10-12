@@ -110,14 +110,16 @@ function RunSelectorSlot() {
   return <RunSelector runs={runs} systems={scopeFilter.systems} />;
 }
 
-/** 2px solid accent bar at the top of the content column; rendered only while a job runs. */
+/** 2px track at the top of the content column; the accent fill shows only while a job runs. The track is always
+ * rendered so the layout below never shifts. */
 function JobProgressBar() {
   const { active } = useJobs();
-  if (active.length === 0) return null;
-  const percent = Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + j.percent, 0) / active.length)));
+  const percent = active.length === 0
+    ? 0
+    : Math.min(100, Math.max(0, Math.round(active.reduce((n, j) => n + (j.percent ?? 0), 0) / active.length)));
   return (
     <div aria-hidden="true" className="shrink-0" style={{ height: 2 }}>
-      <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />
+      {active.length > 0 && <div className="m-motion-width" style={{ height: "100%", width: `${percent}%`, background: "var(--m-accent)" }} />}
     </div>
   );
 }
